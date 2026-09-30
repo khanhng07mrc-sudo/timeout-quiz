@@ -5,7 +5,7 @@ import { initSocketServer } from "./src/lib/socket-server";
 import { registerSocketHandlers } from "./src/lib/socket-handlers";
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
 const app = next({ dev, hostname, port });
@@ -26,7 +26,7 @@ app.prepare().then(() => {
   const io = initSocketServer(httpServer);
   registerSocketHandlers(io);
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> Socket.IO server initialized`);
   });

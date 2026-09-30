@@ -259,8 +259,24 @@ export interface GameEndPayload {
   }>;
 }
 
+export interface GameStartingPayload {
+  seconds: number;
+}
+
+export interface GamePreparePayload {
+  questionIndex: number;
+  totalQuestions: number;
+  points: number;
+  timeLimit: number;
+  seconds: number;
+  bloomLevel?: BloomLevel;
+  primaryTeamName?: string;
+}
+
 export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
+  "game:starting": (payload: GameStartingPayload) => void;
+  "game:prepare": (payload: GamePreparePayload) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number }) => void;
   "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string }) => void;
@@ -288,6 +304,7 @@ export interface ClientToServerEvents {
   "game:buzz": () => void;
   "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
   "admin:next": () => void;
+  "admin:skip:prepare": () => void;
   "admin:pause": () => void;
   "admin:resume": () => void;
   "admin:reveal": () => void;

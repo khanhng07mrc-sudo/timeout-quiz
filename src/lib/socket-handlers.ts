@@ -13,6 +13,8 @@ import {
   ScoreUpdate,
   BloomLevel,
   getBloomLevelFromPoints,
+  GameStartingPayload,
+  GamePreparePayload,
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount } from "./game-engine/scoring";
 import { shuffleArray } from "./utils";
@@ -30,6 +32,16 @@ interface ActiveTeamCard {
   appliedAt: number;
 }
 
+interface RoomPrepareState {
+  type: "STARTING" | "PREPARE";
+  questionIndex: number;
+  totalQuestions: number;
+  targetTimestamp: number;
+  timer?: NodeJS.Timeout;
+  skipCallback?: () => void;
+  preparePayload?: GamePreparePayload;
+}
+
 let globalIO: IO | undefined;
 const pendingDisconnects = new Map<string, NodeJS.Timeout>(); // playerId -> timeout for graceful reconnect
 
@@ -42,6 +54,7 @@ const roomQuestionTeamCards = new Map<string, Map<string, ActiveTeamCard>>(); //
 const roomFrozenTeams = new Map<string, Set<string>>(); // qKey -> Set(teamId)
 const roomFiftyFifty = new Map<string, Map<string, string[]>>(); // qKey -> Map(teamId -> hiddenOptionIds[])
 const roomQuestionProcessed = new Set<string>(); // qKey to prevent double team scoring
+const roomPrepareStates = new Map<string, RoomPrepareState>(); // roomId -> preparation countdown state
 
 // Mode-specific in-memory states
 const roomPrimaryTeams = new Map<string, { teamId: string; teamName: string }>(); // qKey -> primaryTeam in BOUNCEBACK
@@ -255,6 +268,16 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
+        if (roomPrepareStates.has(room.id)) {
+          const prep = roomPrepareStates.get(room.id)!;
+          const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
+          if (prep.type === "STARTING") {
+            socket.emit("game:starting", { seconds: remainingSec });
+          } else if (prep.type === "PREPARE" && prep.preparePayload) {
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+          }
+        }
+
         callback({ success: true, playerId: player.id, teamId: player.teamId ?? undefined, roomState });
       } catch (err) {
         console.error("[room:join]", err);
@@ -322,6 +345,16 @@ export function registerSocketHandlers(io: IO) {
             if (typeof remaining === "number" && remaining > 0) {
               socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
             }
+          }
+        }
+
+        if (roomPrepareStates.has(room.id)) {
+          const prep = roomPrepareStates.get(room.id)!;
+          const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
+          if (prep.type === "STARTING") {
+            socket.emit("game:starting", { seconds: remainingSec });
+          } else if (prep.type === "PREPARE" && prep.preparePayload) {
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
           }
         }
 
@@ -421,6 +454,16 @@ export function registerSocketHandlers(io: IO) {
             if (typeof remaining === "number" && remaining > 0) {
               socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
             }
+          }
+        }
+
+        if (roomPrepareStates.has(room.id)) {
+          const prep = roomPrepareStates.get(room.id)!;
+          const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
+          if (prep.type === "STARTING") {
+            socket.emit("game:starting", { seconds: remainingSec });
+          } else if (prep.type === "PREPARE" && prep.preparePayload) {
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
           }
         }
       }
@@ -760,29 +803,14 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("room:state", state);
     });
 
-    // ── Admin: Next Question ──────────────────────────────────────────────────
-    socket.on("admin:next", async () => {
-      const room = await getAdminRoom(socket);
-      if (!room) return;
-
-      const questions = room.quizBank?.questions ?? [];
-
-      if (questions.length === 0) {
-        socket.emit("error", "Phòng chưa có câu hỏi nào! Vui lòng chọn bộ đề câu hỏi trước khi bắt đầu.");
-        return;
-      }
-
-      const nextIndex = room.status === "LOBBY" ? 0 : room.currentQuestion + 1;
-
-      if (nextIndex >= questions.length) {
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
-        const leaderboard = await buildLeaderboard(room.id);
-        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
-        return;
-      }
-
-      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } });
-      const q = questions[nextIndex];
+    async function startQuestionPrepareAndLaunch(
+      room: any,
+      questions: any[],
+      questionIndex: number
+    ) {
+      stopQuestionTimer(room.id);
+      const q = questions[questionIndex];
+      if (!q) return;
       const qKey = `${room.id}:${q.id}`;
 
       // Reset mode states for new question
@@ -798,7 +826,7 @@ export function registerSocketHandlers(io: IO) {
         if (teams.length > 0) {
           const config = room.config as any;
           const questionsPerTurn = config?.bouncebackQuestionsPerTurn || 1;
-          const turnIndex = Math.floor(nextIndex / questionsPerTurn) % teams.length;
+          const turnIndex = Math.floor(questionIndex / questionsPerTurn) % teams.length;
           const primary = teams[turnIndex];
           primaryTeamId = primary.id;
           primaryTeamName = primary.name;
@@ -807,20 +835,135 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const config = room.config as any;
-      const questionState = buildQuestionState(q, {
-        primaryTeamId,
-        primaryTeamName,
-        bloomLevel: getBloomLevelFromPoints(q.points),
-        answerMethod: config?.answerMethod ?? "DEVICE",
-      });
+      const bloomLevel = getBloomLevelFromPoints(q.points);
 
-      io.to(`room:${room.code}`).emit("game:question", questionState);
-      startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+      const launchQuestion = () => {
+        roomPrepareStates.delete(room.id);
+        const questionState = buildQuestionState(q, {
+          primaryTeamId,
+          primaryTeamName,
+          bloomLevel,
+          answerMethod: config?.answerMethod ?? "DEVICE",
+        });
+        io.to(`room:${room.code}`).emit("game:question", questionState);
+        startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+      };
+
+      const preparePayload: GamePreparePayload = {
+        questionIndex,
+        totalQuestions: questions.length,
+        points: q.points,
+        timeLimit: q.timeLimit,
+        seconds: 3,
+        bloomLevel,
+        primaryTeamName,
+      };
+
+      io.to(`room:${room.code}`).emit("game:prepare", preparePayload);
+
+      const timer = setTimeout(() => {
+        launchQuestion();
+      }, 3000);
+
+      roomPrepareStates.set(room.id, {
+        type: "PREPARE",
+        questionIndex,
+        totalQuestions: questions.length,
+        targetTimestamp: Date.now() + 3000,
+        timer,
+        skipCallback: launchQuestion,
+        preparePayload,
+      });
+    }
+
+    // ── Admin: Next Question ──────────────────────────────────────────────────
+    socket.on("admin:next", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+
+      // Fast-skip if preparation/countdown is already active
+      if (roomPrepareStates.has(room.id)) {
+        const prep = roomPrepareStates.get(room.id);
+        if (prep) {
+          if (prep.timer) clearTimeout(prep.timer);
+          roomPrepareStates.delete(room.id);
+          if (prep.skipCallback) {
+            prep.skipCallback();
+            return;
+          }
+        }
+      }
+
+      const questions = room.quizBank?.questions ?? [];
+
+      if (questions.length === 0) {
+        socket.emit("error", "Phòng chưa có câu hỏi nào! Vui lòng chọn bộ đề câu hỏi trước khi bắt đầu.");
+        return;
+      }
+
+      if (room.status === "LOBBY") {
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } });
+        const updatedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", updatedState);
+
+        const launchWarmupToFirstQuestion = () => {
+          roomPrepareStates.delete(room.id);
+          startQuestionPrepareAndLaunch(room, questions, 0);
+        };
+
+        io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
+
+        const timer = setTimeout(() => {
+          launchWarmupToFirstQuestion();
+        }, 5000);
+
+        roomPrepareStates.set(room.id, {
+          type: "STARTING",
+          questionIndex: 0,
+          totalQuestions: questions.length,
+          targetTimestamp: Date.now() + 5000,
+          timer,
+          skipCallback: launchWarmupToFirstQuestion,
+        });
+        return;
+      }
+
+      const nextIndex = room.currentQuestion + 1;
+
+      if (nextIndex >= questions.length) {
+        stopQuestionTimer(room.id);
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
+      }
+
+      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } });
+      await startQuestionPrepareAndLaunch(room, questions, nextIndex);
+    });
+
+    socket.on("admin:skip:prepare", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      if (roomPrepareStates.has(room.id)) {
+        const prep = roomPrepareStates.get(room.id);
+        if (prep) {
+          if (prep.timer) clearTimeout(prep.timer);
+          roomPrepareStates.delete(room.id);
+          if (prep.skipCallback) {
+            prep.skipCallback();
+          }
+        }
+      }
     });
 
     socket.on("admin:pause", async () => {
       const room = await getAdminRoom(socket);
       if (!room) return;
+      if (roomPrepareStates.has(room.id)) {
+        const prep = roomPrepareStates.get(room.id);
+        if (prep?.timer) clearTimeout(prep.timer);
+      }
       await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } });
       io.to(`room:${room.code}`).emit("game:paused");
     });

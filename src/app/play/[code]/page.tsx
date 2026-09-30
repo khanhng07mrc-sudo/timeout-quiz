@@ -11,6 +11,7 @@ import type {
   GameEndPayload,
   PowerupUsedPayload,
   AnswerRevealPayload,
+  GamePreparePayload,
 } from "@/types";
 import { CARD_METADATA } from "@/types";
 import GameQuestion from "@/components/play/GameQuestion";
@@ -18,6 +19,7 @@ import PlayerLobby from "@/components/play/PlayerLobby";
 import GameEnd from "@/components/play/GameEnd";
 import PowerupBar from "@/components/play/PowerupBar";
 import ScoreDisplay from "@/components/play/ScoreDisplay";
+import { soundManager } from "@/lib/sound-manager";
 
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
@@ -38,10 +40,58 @@ export default function PlayPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStealPhase, setIsStealPhase] = useState(false);
   const [stealBuzzedTeam, setStealBuzzedTeam] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const soundEnabledRef = useRef(false);
+
   const myTeamIdRef = useRef<string | undefined>(undefined);
   const playerIdRef = useRef<string>("");
 
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEnabledRef.current = next;
+    soundManager.setMuted(!next);
+    if (next) soundManager.unlockAudio();
+  };
+
+  // Local ticker for match warmup countdown (5s)
   useEffect(() => {
+    if (!matchStarting || matchStarting.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setMatchStarting((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [matchStarting]);
+
+  // Local ticker for question preparation countdown (3s)
+  useEffect(() => {
+    if (!questionPrepare || questionPrepare.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setQuestionPrepare((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { ...prev, seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [questionPrepare]);
+
+  useEffect(() => {
+    // Default sound MUTED on player devices to prevent room echo
+    soundManager.setMuted(true);
+
     const storageKey = `timeout_player_id_${code}`;
     let savedPlayerId = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
     if (!savedPlayerId) {
@@ -109,7 +159,29 @@ export default function PlayPage() {
       }
     });
 
+    socket.on("game:starting", (p) => {
+      setMatchStarting({ seconds: p.seconds });
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(p.seconds);
+      }
+    });
+
+    socket.on("game:prepare", (p) => {
+      setMatchStarting(null);
+      setQuestionPrepare(p);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(p.seconds);
+      }
+    });
+
     socket.on("game:question", (q) => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
       setAnswered(false);
@@ -118,12 +190,18 @@ export default function PlayPage() {
       setHiddenOptionIds([]);
       setIsStealPhase(false);
       setStealBuzzedTeam(null);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(0);
+      }
     });
 
     socket.on("game:timer", (t) => setTimer(t));
 
     socket.on("game:buzz", (payload) => {
       setBuzzedBy({ playerName: payload.playerName, teamId: payload.teamId, teamName: payload.teamName });
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
     });
 
     socket.on("game:buzz:answering", (payload) => {
@@ -140,6 +218,9 @@ export default function PlayPage() {
     socket.on("game:bounceback:steal_buzzed", (payload) => {
       setIsStealPhase(false);
       setStealBuzzedTeam(payload);
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
     });
 
     socket.on("game:bounceback:steal_answering", (payload) => {
@@ -153,6 +234,16 @@ export default function PlayPage() {
     socket.on("game:answer:reveal", (payload) => {
       setRevealPayload(payload);
       setIsStealPhase(false);
+      if (soundEnabledRef.current) {
+        const myAns = payload.answers.find(
+          (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
+        );
+        if (myAns?.isCorrect) {
+          soundManager.playCorrect();
+        } else {
+          soundManager.playWrong();
+        }
+      }
     });
 
     socket.on("game:score:update", (scores) => {
@@ -172,6 +263,9 @@ export default function PlayPage() {
 
     socket.on("game:powerup:used", (payload) => {
       setLastPowerup(payload);
+      if (soundEnabledRef.current) {
+        soundManager.playPowerup();
+      }
       setTimeout(() => setLastPowerup(null), 4000);
     });
 
@@ -186,7 +280,12 @@ export default function PlayPage() {
       setTimeout(() => setErrorMessage(null), 4000);
     });
 
-    socket.on("game:ended", (payload) => setGameEnd(payload));
+    socket.on("game:ended", (payload) => {
+      if (soundEnabledRef.current) {
+        soundManager.playFanfare();
+      }
+      setGameEnd(payload);
+    });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
@@ -257,14 +356,83 @@ export default function PlayPage() {
     );
   }
 
+  // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
+  if (matchStarting) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold uppercase tracking-widest">
+          ⚡ Sẵn sàng thi đấu
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+          Trận đấu bắt đầu sau
+        </h1>
+        <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
+          {matchStarting.seconds}
+        </div>
+        <p className="text-muted-foreground text-sm max-w-xs">
+          Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
+        </p>
+        <button
+          onClick={toggleSound}
+          className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
+        >
+          {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
+        </button>
+      </div>
+    );
+  }
+
+  // ── Question Preparation Countdown (3s) ──────────────────────────────────
+  if (questionPrepare) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-full max-w-sm glass rounded-2xl p-6 border-2 border-purple-500/40 space-y-5 animate-slide-up">
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
+            <span>CÂU {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}</span>
+            <span className="text-cyan-400 font-bold">{questionPrepare.points}đ · {questionPrepare.timeLimit}s</span>
+          </div>
+          <h2 className="text-2xl font-black text-white">Chuẩn bị câu hỏi!</h2>
+          {questionPrepare.primaryTeamName && (
+            <p className="text-xs font-bold text-purple-300">
+              🎯 Đội trả lời chính: {questionPrepare.primaryTeamName}
+            </p>
+          )}
+          <div className="py-2">
+            <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white text-5xl font-black shadow-xl animate-bounce-in glow-cyan">
+              {questionPrepare.seconds}
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">Đáp án và câu hỏi sẽ mở ngay sau đếm ngược</p>
+        </div>
+        <button
+          onClick={toggleSound}
+          className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
+        >
+          {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
+        </button>
+      </div>
+    );
+  }
+
   const myTeam = roomState?.teams.find((t) =>
     t.cards.some(() => true) && roomState.players.find((p) => p.id === playerId)?.teamId === t.id
   );
 
   return (
     <div className="min-h-screen flex flex-col p-4 gap-4">
-      {/* Header with score */}
-      <ScoreDisplay roomState={roomState} playerId={playerId} />
+      {/* Header with score and sound toggle */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <ScoreDisplay roomState={roomState} playerId={playerId} />
+        </div>
+        <button
+          onClick={toggleSound}
+          title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
+          className="p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-base shrink-0"
+        >
+          {soundEnabled ? "🔊" : "🔇"}
+        </button>
+      </div>
 
       {/* Powerup notification */}
       {lastPowerup && (

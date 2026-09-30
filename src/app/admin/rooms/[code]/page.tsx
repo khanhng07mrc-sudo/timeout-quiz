@@ -10,10 +10,12 @@ import type {
   QuestionState,
   AnswerRevealPayload,
   BloomLevel,
+  GamePreparePayload,
 } from "@/types";
 import { BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import Link from "next/link";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
+import { soundManager } from "@/lib/sound-manager";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
@@ -33,6 +35,51 @@ export default function AdminRoomPage() {
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
   const [currentBankInfo, setCurrentBankInfo] = useState<{ id: string; title: string; questionsCount: number } | null>(null);
   const [updatingBank, setUpdatingBank] = useState(false);
+
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const soundEnabledRef = useRef(false);
+
+  const toggleSound = () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    soundEnabledRef.current = next;
+    soundManager.setMuted(!next);
+    if (next) soundManager.unlockAudio();
+  };
+
+  // Local ticker for match warmup countdown (5s)
+  useEffect(() => {
+    if (!matchStarting || matchStarting.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setMatchStarting((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [matchStarting]);
+
+  // Local ticker for question preparation countdown (3s)
+  useEffect(() => {
+    if (!questionPrepare || questionPrepare.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setQuestionPrepare((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { ...prev, seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [questionPrepare]);
 
   const fetchRoomAndBanks = async () => {
     try {
@@ -60,6 +107,8 @@ export default function AdminRoomPage() {
   }, [code]);
 
   useEffect(() => {
+    soundManager.setMuted(true);
+
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({ transports: ["websocket", "polling"] });
     socketRef.current = socket;
 
@@ -79,17 +128,46 @@ export default function AdminRoomPage() {
     });
 
     socket.on("room:state", setRoomState);
+
+    socket.on("game:starting", (p) => {
+      setMatchStarting({ seconds: p.seconds });
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(p.seconds);
+      }
+    });
+
+    socket.on("game:prepare", (p) => {
+      setMatchStarting(null);
+      setQuestionPrepare(p);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(p.seconds);
+      }
+    });
+
     socket.on("game:question", (q) => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
       setTimer(null);
       setBuzzedTeam(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
+      if (soundEnabledRef.current) {
+        soundManager.playCountdownTick(0);
+      }
     });
     socket.on("game:timer", setTimer);
     socket.on("game:buzz", (p) => {
       setBuzzedTeam(p);
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
     });
     socket.on("game:bounceback:open_steal", () => {
       setIsStealOpen(true);
@@ -98,6 +176,9 @@ export default function AdminRoomPage() {
     socket.on("game:bounceback:steal_buzzed", (p) => {
       setIsStealOpen(false);
       setStealBuzzed(p);
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
     });
     socket.on("game:buzz:closed", () => {
       setIsStealOpen(false);
@@ -105,6 +186,13 @@ export default function AdminRoomPage() {
     socket.on("game:answer:reveal", (p) => {
       setRevealPayload(p);
       setIsStealOpen(false);
+      if (soundEnabledRef.current) {
+        if (p.answers?.some((a) => a.isCorrect)) {
+          soundManager.playCorrect();
+        } else {
+          soundManager.playWrong();
+        }
+      }
     });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {
@@ -114,7 +202,12 @@ export default function AdminRoomPage() {
         return { ...prev, teams, players };
       });
     });
-    socket.on("game:ended", () => setGameEnded(true));
+    socket.on("game:ended", () => {
+      if (soundEnabledRef.current) {
+        soundManager.playFanfare();
+      }
+      setGameEnded(true);
+    });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
@@ -231,6 +324,14 @@ export default function AdminRoomPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap justify-end">
+          <button
+            onClick={toggleSound}
+            title={soundEnabled ? "Tắt âm thanh máy Host" : "Bật âm thanh máy Host"}
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-amber-400 font-medium text-sm transition-colors flex items-center gap-1.5"
+          >
+            <span>{soundEnabled ? "🔊" : "🔇"}</span>
+            <span>{soundEnabled ? "Âm thanh: BẬT" : "Âm thanh"}</span>
+          </button>
           <Link
             href={`/display/${code}`}
             target="_blank"
@@ -312,6 +413,43 @@ export default function AdminRoomPage() {
         {/* Game controls */}
         <div className="glass rounded-2xl p-6 space-y-4">
           <h2 className="font-bold text-lg">⚡ Điều khiển game</h2>
+
+          {/* Match warmup countdown banner with Skip button */}
+          {matchStarting && (
+            <div className="p-4 rounded-xl bg-purple-900/30 border border-purple-500/50 text-center space-y-3 animate-pulse">
+              <p className="text-xs uppercase font-bold text-purple-300 tracking-wider">
+                ⚡ Đang đếm ngược chuẩn bị trận đấu: {matchStarting.seconds}s
+              </p>
+              <div className="text-4xl font-black text-cyan-400">
+                {matchStarting.seconds}s
+              </div>
+              <button
+                onClick={() => emit("admin:skip:prepare")}
+                className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>⚡</span> Bỏ qua đếm ngược (Vào câu hỏi ngay)
+              </button>
+            </div>
+          )}
+
+          {/* Question preparation countdown banner with Skip button */}
+          {questionPrepare && (
+            <div className="p-4 rounded-xl bg-purple-900/30 border border-purple-500/50 text-center space-y-3 animate-pulse">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                <span>Chuẩn bị câu {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}</span>
+                <span className="text-cyan-300 font-bold">{questionPrepare.points}đ · {questionPrepare.timeLimit}s</span>
+              </div>
+              <div className="text-4xl font-black text-cyan-400">
+                {questionPrepare.seconds}s
+              </div>
+              <button
+                onClick={() => emit("admin:skip:prepare")}
+                className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>⚡</span> Bỏ qua đếm ngược (Vào câu hỏi ngay)
+              </button>
+            </div>
+          )}
 
           {/* Timer display */}
           {timer && (

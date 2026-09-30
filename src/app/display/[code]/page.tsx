@@ -12,8 +12,10 @@ import type {
   AnswerRevealPayload,
   PowerupUsedPayload,
   BloomLevel,
+  GamePreparePayload,
 } from "@/types";
 import { CARD_METADATA, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
+import { soundManager } from "@/lib/sound-manager";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -29,7 +31,48 @@ export default function DisplayPage() {
   const [isStealOpen, setIsStealOpen] = useState(false);
   const [stealBuzzed, setStealBuzzed] = useState<{ teamName: string; playerName: string } | null>(null);
 
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [soundMuted, setSoundMuted] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+
+  // Local ticker for match warmup countdown (5s)
   useEffect(() => {
+    if (!matchStarting || matchStarting.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setMatchStarting((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [matchStarting]);
+
+  // Local ticker for question preparation countdown (3s)
+  useEffect(() => {
+    if (!questionPrepare || questionPrepare.seconds <= 0) return;
+    const interval = setInterval(() => {
+      setQuestionPrepare((prev) => {
+        if (!prev) return null;
+        const next = prev.seconds - 1;
+        if (next >= 0) {
+          soundManager.playCountdownTick(next);
+        }
+        return next > 0 ? { ...prev, seconds: next } : null;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [questionPrepare]);
+
+  useEffect(() => {
+    // Default sound ON on Display
+    soundManager.setMuted(false);
+    soundManager.setVolume(0.8);
+
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
     });
@@ -39,17 +82,49 @@ export default function DisplayPage() {
       socket.emit("display:join", code);
     });
 
-    socket.on("room:state", setRoomState);
+    socket.on("room:state", (state) => {
+      setRoomState(state);
+      if (state.status === "LOBBY") {
+        soundManager.playLobbyMusic();
+      }
+    });
+
+    socket.on("game:starting", (p) => {
+      setMatchStarting({ seconds: p.seconds });
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      soundManager.stopMusic();
+      soundManager.playCountdownTick(p.seconds);
+    });
+
+    socket.on("game:prepare", (p) => {
+      setMatchStarting(null);
+      setQuestionPrepare(p);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      soundManager.stopMusic();
+      soundManager.playCountdownTick(p.seconds);
+    });
+
     socket.on("game:question", (q) => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
       setBuzzed(null);
       setTimer(null);
       setIsStealOpen(false);
       setStealBuzzed(null);
+      soundManager.playCountdownTick(0);
+      soundManager.playQuestionMusic(q.timeLimit);
     });
+
     socket.on("game:timer", setTimer);
-    socket.on("game:buzz", (p) => setBuzzed({ playerName: p.teamName ?? p.playerName }));
+    socket.on("game:buzz", (p) => {
+      setBuzzed({ playerName: p.teamName ?? p.playerName });
+      soundManager.playBuzz();
+    });
     socket.on("game:buzz:answering", (p) => setBuzzed({ playerName: p.teamName }));
     socket.on("game:bounceback:open_steal", () => {
       setIsStealOpen(true);
@@ -58,6 +133,7 @@ export default function DisplayPage() {
     socket.on("game:bounceback:steal_buzzed", (p) => {
       setIsStealOpen(false);
       setStealBuzzed({ teamName: p.teamName, playerName: p.playerName });
+      soundManager.playBuzz();
     });
     socket.on("game:buzz:closed", () => {
       setIsStealOpen(false);
@@ -65,12 +141,31 @@ export default function DisplayPage() {
     socket.on("game:answer:reveal", (payload) => {
       setRevealPayload(payload);
       setIsStealOpen(false);
+      soundManager.stopMusic();
+      if (payload.answers?.some((a) => a.isCorrect)) {
+        soundManager.playCorrect();
+      } else {
+        soundManager.playWrong();
+      }
     });
     socket.on("game:powerup:used", (p) => {
       setLastPowerup(p);
+      soundManager.playPowerup();
       setTimeout(() => setLastPowerup(null), 4000);
     });
-    socket.on("game:ended", setGameEnd);
+    socket.on("game:ended", (payload) => {
+      soundManager.stopMusic();
+      soundManager.playFanfare();
+      setGameEnd(payload);
+    });
+    socket.on("game:paused", () => {
+      soundManager.stopMusic();
+      setRoomState((s) => s ? { ...s, status: "PAUSED" } : s);
+    });
+    socket.on("game:resumed", () => {
+      setRoomState((s) => s ? { ...s, status: "PLAYING" } : s);
+      soundManager.playQuestionMusic();
+    });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {
         if (!prev) return prev;
@@ -87,9 +182,33 @@ export default function DisplayPage() {
     });
 
     return () => {
+      soundManager.stopMusic();
       socket.disconnect();
     };
   }, [code]);
+
+  const handleUnlockAudio = () => {
+    soundManager.unlockAudio();
+    soundManager.setMuted(false);
+    setAudioUnlocked(true);
+    setSoundMuted(false);
+    if (!matchStarting && !questionPrepare) {
+      if (roomState?.status === "LOBBY") {
+        soundManager.playLobbyMusic();
+      } else if (currentQuestion && !revealPayload) {
+        soundManager.playQuestionMusic();
+      }
+    }
+  };
+
+  const toggleSound = () => {
+    const next = !soundMuted;
+    setSoundMuted(next);
+    soundManager.setMuted(next);
+    if (!next) {
+      handleUnlockAudio();
+    }
+  };
 
   // ── Leaderboard (game end) ──────────────────────────────────────────────────
   if (gameEnd) {
@@ -120,11 +239,152 @@ export default function DisplayPage() {
     );
   }
 
+  // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
+  if (matchStarting) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-950 via-[#0f0f1a] to-cyan-950 relative overflow-hidden cursor-pointer"
+        onClick={handleUnlockAudio}
+      >
+        {/* Floating Sound Toggle */}
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition"
+          >
+            {soundMuted ? "🔇 Đã tắt âm" : "🔊 Âm thanh: BẬT"}
+          </button>
+        </div>
+
+        {!audioUnlocked && (
+          <div
+            onClick={handleUnlockAudio}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+          >
+            <span>🔊</span>
+            <span>Nhấp chuột bất kỳ đâu để bật âm thanh hội trường</span>
+          </div>
+        )}
+
+        <div className="text-center z-10 max-w-2xl space-y-6 animate-slide-up">
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-sm font-bold uppercase tracking-widest">
+            ⚡ Chuẩn bị bắt đầu trận đấu
+          </div>
+          <h1 className="text-5xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+            {roomState?.name ?? "Timeout Quiz"}
+          </h1>
+          <p className="text-xl text-white/70">
+            Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
+          </p>
+          <div className="py-6">
+            <div className="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-8xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
+              {matchStarting.seconds}
+            </div>
+          </div>
+          <p className="text-sm text-cyan-300 font-mono tracking-wider animate-pulse">
+            Trận đấu sẽ bắt đầu ngay sau tiếng chuông...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Question Preparation Countdown (3s) ──────────────────────────────────
+  if (questionPrepare) {
+    const bloom = questionPrepare.bloomLevel ?? getBloomLevelFromPoints(questionPrepare.points);
+    const bloomMeta = BLOOM_METADATA[bloom];
+
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-[#0c0d18] via-[#121429] to-[#0c1a2e] relative overflow-hidden cursor-pointer"
+        onClick={handleUnlockAudio}
+      >
+        {/* Floating Sound Toggle */}
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition"
+          >
+            {soundMuted ? "🔇 Đã tắt âm" : "🔊 Âm thanh: BẬT"}
+          </button>
+        </div>
+
+        {!audioUnlocked && (
+          <div
+            onClick={handleUnlockAudio}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+          >
+            <span>🔊</span>
+            <span>Nhấp chuột bất kỳ đâu để bật âm thanh hội trường</span>
+          </div>
+        )}
+
+        <div className="w-full max-w-3xl glass rounded-3xl p-10 text-center border-2 border-purple-500/40 glow-purple space-y-8 animate-slide-up relative">
+          <div className="flex items-center justify-between border-b border-border/60 pb-4">
+            <span className="text-base font-bold text-muted-foreground uppercase tracking-widest">
+              Câu hỏi {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}
+            </span>
+            <span
+              className="px-4 py-1.5 rounded-full text-sm font-bold border"
+              style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}60`, background: bloomMeta.bg }}
+            >
+              {bloomMeta.emoji} {bloomMeta.labelVi}
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-sm uppercase tracking-wider text-cyan-300 font-semibold">Chuẩn bị</p>
+            <h2 className="text-4xl sm:text-5xl font-black text-white">
+              Sẵn sàng câu trả lời!
+            </h2>
+            <div className="flex items-center justify-center gap-6 pt-2 text-lg text-muted-foreground font-medium">
+              <span>💰 Điểm: <strong className="text-cyan-400 font-bold">{questionPrepare.points} điểm</strong></span>
+              <span>⏱️ Thời gian: <strong className="text-purple-400 font-bold">{questionPrepare.timeLimit}s</strong></span>
+            </div>
+            {questionPrepare.primaryTeamName && (
+              <div className="mt-4 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-bold text-base inline-block">
+                🎯 Lượt trả lời chính: {questionPrepare.primaryTeamName}
+              </div>
+            )}
+          </div>
+
+          <div className="pt-4 pb-2">
+            <div className="inline-flex items-center justify-center w-36 h-36 rounded-full bg-gradient-to-br from-purple-600 via-indigo-600 to-cyan-500 text-white text-7xl font-black shadow-2xl animate-bounce-in glow-cyan border-4 border-white/30">
+              {questionPrepare.seconds}
+            </div>
+          </div>
+
+          <p className="text-sm text-white/50">Chú ý đọc nhanh nội dung câu hỏi khi xuất hiện</p>
+        </div>
+      </div>
+    );
+  }
+
   // ── Lobby ──────────────────────────────────────────────────────────────────
   if (!roomState || roomState.status === "LOBBY") {
     const isTeamMode = roomState?.teamMode === "TEAM";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-6xl mx-auto">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-6xl mx-auto relative" onClick={handleUnlockAudio}>
+        {/* Floating Sound Toggle */}
+        <div className="absolute top-6 right-6 z-20">
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition"
+          >
+            {soundMuted ? "🔇 Đã tắt âm" : "🔊 Nhạc nền: BẬT"}
+          </button>
+        </div>
+
+        {!audioUnlocked && (
+          <div
+            onClick={handleUnlockAudio}
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+          >
+            <span>🔊</span>
+            <span>Nhấp chuột bất kỳ đâu để bật nhạc nền và âm thanh hội trường</span>
+          </div>
+        )}
+
         <div className="text-center mb-10">
           <span className="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
             {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
@@ -229,7 +489,17 @@ export default function DisplayPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="min-h-screen grid grid-cols-[1fr_340px] gap-4 p-4">
+    <div className="min-h-screen grid grid-cols-[1fr_340px] gap-4 p-4 relative" onClick={handleUnlockAudio}>
+      {!audioUnlocked && (
+        <div
+          onClick={handleUnlockAudio}
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+        >
+          <span>🔊</span>
+          <span>Nhấp chuột bất kỳ đâu để bật âm thanh hội trường</span>
+        </div>
+      )}
+
       {/* Main content area */}
       <div className="flex flex-col gap-4">
         {/* Powerup notification */}
@@ -400,7 +670,15 @@ export default function DisplayPage() {
 
       {/* Leaderboard sidebar */}
       <div className="glass rounded-2xl p-4 flex flex-col gap-2">
-        <h3 className="text-lg font-bold mb-2">🏆 Bảng điểm</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-bold">🏆 Bảng điểm</h3>
+          <button
+            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+            className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 hover:bg-white/10 transition"
+          >
+            {soundMuted ? "🔇 Tắt" : "🔊 Bật"}
+          </button>
+        </div>
         {sortedTeams.map((entry: any, i) => (
           <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
             <span className="text-xl font-black w-8">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>

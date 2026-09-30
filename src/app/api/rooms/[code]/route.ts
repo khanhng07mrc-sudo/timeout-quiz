@@ -37,3 +37,20 @@ export async function PATCH(
 
   return NextResponse.json({ room });
 }
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ code: string }> }
+) {
+  const { code } = await params;
+
+  const room = await prisma.room.findUnique({ where: { code } });
+  if (!room) {
+    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+  }
+
+  // Cascade delete handled by Prisma schema (onDelete: Cascade on all relations)
+  await prisma.room.delete({ where: { code } });
+
+  return NextResponse.json({ success: true });
+}

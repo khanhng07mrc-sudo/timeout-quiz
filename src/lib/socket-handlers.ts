@@ -687,10 +687,10 @@ async function processAnswerSubmission({
 
       let points = 0;
       if (isCorrect) {
-        // Đúng: +100% điểm
+        // Đúng: +100% điểm cố định (không bonus thời gian trong Bounceback)
         points = Math.floor(question.points * multiplier);
       } else {
-        // Sai: -50% điểm (nếu có khiên thì không bị trừ)
+        // Sai: LUÔN trừ -50% điểm bất kể config penaltyForWrong, shield vẫn bảo vệ
         points = shielded ? 0 : -Math.floor(question.points * 0.5);
       }
 
@@ -735,7 +735,7 @@ async function processAnswerSubmission({
     if (existingPrimary) return;
 
     if (isCorrect) {
-      // Đội chính đúng: +100% điểm
+      // Đội chính đúng: +100% điểm cố định (KHÔNG bonus thời gian trong Bounceback)
       const points = Math.floor(question.points * multiplier);
       await prisma.answer.create({
         data: {
@@ -763,9 +763,7 @@ async function processAnswerSubmission({
       stopQuestionTimer(room.id);
       await revealCurrentAnswer(io, room.id, room.code, question.id);
     } else {
-      // Đội chính sai: phạt nếu có cấu hình
-      const config = room.config as any;
-      const penalty = (config.penaltyForWrong && !shielded) ? -Math.floor(config.penaltyPoints || 5) : 0;
+      // Đội chính sai: Bounceback KHÔNG trừ điểm đội chính, chỉ dừng timer để admin mở chuông cướp
       await prisma.answer.create({
         data: {
           roomId: room.id,
@@ -774,20 +772,10 @@ async function processAnswerSubmission({
           teamId: effTeamId,
           answer: Array.isArray(answer) ? answer : [answer],
           isCorrect: false,
-          pointsAwarded: penalty,
+          pointsAwarded: 0,
           timeSpent: 0,
         },
       });
-
-      if (penalty !== 0 && effTeamId) {
-        const updatedTeam = await prisma.team.update({
-          where: { id: effTeamId },
-          data: { score: { increment: penalty } },
-        });
-        io.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: effTeamId, score: updatedTeam.score, delta: penalty },
-        ]);
-      }
 
       // Stop primary timer so admin can open 5s steal buzz
       stopQuestionTimer(room.id);

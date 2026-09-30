@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import type {
   ServerToClientEvents,
@@ -16,6 +16,7 @@ import Link from "next/link";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
+  const router = useRouter();
   const socketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
@@ -26,6 +27,7 @@ export default function AdminRoomPage() {
   const [buzzedTeam, setBuzzedTeam] = useState<{ teamId?: string; teamName?: string; playerId: string; playerName: string } | null>(null);
   const [stealBuzzed, setStealBuzzed] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const [isStealOpen, setIsStealOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({ transports: ["websocket", "polling"] });
@@ -91,6 +93,24 @@ export default function AdminRoomPage() {
     emit("admin:lock:cards", locked);
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`Xóa phòng "${roomState?.name ?? code}"? Hành động này không thể hoàn tác!`)) return;
+    setDeleteLoading(true);
+    try {
+      const res = await fetch(`/api/rooms/${code}`, { method: "DELETE" });
+      if (res.ok) {
+        socketRef.current?.disconnect();
+        router.push("/admin/rooms");
+      } else {
+        alert("Lỗi khi xóa phòng!");
+        setDeleteLoading(false);
+      }
+    } catch {
+      alert("Lỗi kết nối!");
+      setDeleteLoading(false);
+    }
+  };
+
   const handleAdminSubmitAnswer = (answerId: string) => {
     if (!currentQuestion) return;
     emit("admin:submit:answer", {
@@ -132,7 +152,7 @@ export default function AdminRoomPage() {
             {" "}· Trạng thái: <span className={`font-bold ${ roomState?.status === "PLAYING" ? "text-green-400" : roomState?.status === "PAUSED" ? "text-yellow-400" : roomState?.status === "FINISHED" ? "text-red-400" : "text-cyan-400" }`}>{roomState?.status ?? "..."}</span>
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Link
             href={`/display/${code}`}
             target="_blank"
@@ -147,6 +167,13 @@ export default function AdminRoomPage() {
           >
             🔗 Link tham gia
           </a>
+          <button
+            onClick={handleDelete}
+            disabled={deleteLoading}
+            className="px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/40 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors disabled:opacity-50"
+          >
+            {deleteLoading ? "Đang xóa..." : "🗑️ Xóa phòng"}
+          </button>
         </div>
       </div>
 

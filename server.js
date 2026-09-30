@@ -739,8 +739,6 @@ async function processAnswerSubmission({
       stopQuestionTimer(room.id);
       await revealCurrentAnswer(io2, room.id, room.code, question.id);
     } else {
-      const config2 = room.config;
-      const penalty = config2.penaltyForWrong && !shielded ? -Math.floor(config2.penaltyPoints || 5) : 0;
       await prisma.answer.create({
         data: {
           roomId: room.id,
@@ -749,19 +747,10 @@ async function processAnswerSubmission({
           teamId: effTeamId,
           answer: Array.isArray(answer) ? answer : [answer],
           isCorrect: false,
-          pointsAwarded: penalty,
+          pointsAwarded: 0,
           timeSpent: 0
         }
       });
-      if (penalty !== 0 && effTeamId) {
-        const updatedTeam = await prisma.team.update({
-          where: { id: effTeamId },
-          data: { score: { increment: penalty } }
-        });
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: effTeamId, score: updatedTeam.score, delta: penalty }
-        ]);
-      }
       stopQuestionTimer(room.id);
       io2.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: question.timeLimit });
     }

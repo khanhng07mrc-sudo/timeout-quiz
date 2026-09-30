@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const GAME_MODES = [
@@ -31,6 +31,19 @@ export default function CreateRoomPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Quiz banks
+  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
+  const [quizBankId, setQuizBankId] = useState("");
+
+  useEffect(() => {
+    fetch("/api/quiz-bank")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.banks) setQuizBanks(d.banks);
+      })
+      .catch(() => {});
+  }, []);
 
   // Step 1: Basic settings
   const [roomName, setRoomName] = useState("");
@@ -85,6 +98,7 @@ export default function CreateRoomPage() {
           name: roomName,
           mode,
           teamMode,
+          quizBankId: quizBankId || null,
           hostId: "demo-host-id", // In real app: from session
           teams: teamMode === "TEAM" ? teams : [],
           config: {
@@ -137,6 +151,31 @@ export default function CreateRoomPage() {
               placeholder="Quiz Trí Tuệ Khỏi Đầu Năm..."
               className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Bộ đề câu hỏi{" "}
+              <span className="text-muted-foreground font-normal">(có thể chọn sau)</span>
+            </label>
+            <select
+              value={quizBankId}
+              onChange={(e) => setQuizBankId(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+            >
+              <option value="">— Chưa chọn bộ đề —</option>
+              {quizBanks.map((bank) => (
+                <option key={bank.id} value={bank.id}>
+                  {bank.title}{bank._count ? ` (${bank._count.questions} câu)` : ""}
+                </option>
+              ))}
+            </select>
+            {quizBanks.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Chưa có bộ đề nào.{" "}
+                <a href="/admin/quiz-bank/new" className="text-purple-400 underline">Tạo bộ đề mới</a>
+              </p>
+            )}
           </div>
 
           <div>

@@ -19,6 +19,7 @@ import PlayerLobby from "@/components/play/PlayerLobby";
 import GameEnd from "@/components/play/GameEnd";
 import PowerupBar from "@/components/play/PowerupBar";
 import ScoreDisplay from "@/components/play/ScoreDisplay";
+import PowerupIcon from "@/components/ui/PowerupIcon";
 import { soundManager } from "@/lib/sound-manager";
 
 export default function PlayPage() {
@@ -436,11 +437,11 @@ export default function PlayPage() {
 
       {/* Powerup notification */}
       {lastPowerup && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-6 py-3 text-center animate-bounce-in">
-          <span className="text-2xl mr-2">{CARD_METADATA[lastPowerup.type].emoji}</span>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-6 py-3 text-center animate-bounce-in flex items-center gap-2 border border-purple-500/40 shadow-xl">
+          <PowerupIcon type={lastPowerup.type} className="w-8 h-8 shrink-0 drop-shadow" />
           <span className="font-bold">{lastPowerup.usedByName}</span>
           <span className="text-muted-foreground"> dùng thẻ: </span>
-          <span>{lastPowerup.effect}</span>
+          <span className="font-semibold text-cyan-300">{lastPowerup.effect}</span>
         </div>
       )}
 

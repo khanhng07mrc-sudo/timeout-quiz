@@ -15,6 +15,7 @@ import type {
   GamePreparePayload,
 } from "@/types";
 import { CARD_METADATA, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
+import PowerupIcon from "@/components/ui/PowerupIcon";
 import { soundManager } from "@/lib/sound-manager";
 
 export default function DisplayPage() {
@@ -504,10 +505,10 @@ export default function DisplayPage() {
       <div className="flex flex-col gap-4">
         {/* Powerup notification */}
         {lastPowerup && (
-          <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50">
-            <span className="text-3xl">{CARD_METADATA[lastPowerup.type].emoji}</span>
+          <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50 shadow-xl">
+            <PowerupIcon type={lastPowerup.type} className="w-12 h-12 shrink-0 drop-shadow" />
             <div>
-              <p className="font-bold">{lastPowerup.usedByName} dùng thẻ!</p>
+              <p className="font-bold text-lg">{lastPowerup.usedByName} dùng thẻ!</p>
               <p className="text-muted-foreground">{lastPowerup.effect}</p>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
+import PowerupIcon from "@/components/ui/PowerupIcon";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng trả lời, chấm điểm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮" },
@@ -474,7 +475,7 @@ export default function CreateRoomPage() {
                         allowedPowerups.includes(pt.value) ? "border-purple-500 bg-purple-500/10" : "border-border opacity-50"
                       }`}
                     >
-                      <span className="text-xl mt-0.5">{pt.emoji}</span>
+                      <PowerupIcon type={pt.value} className="w-8 h-8 shrink-0 mt-0.5 drop-shadow" />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold">{pt.label}</div>
                         <div className="text-xs text-muted-foreground">{pt.desc}</div>

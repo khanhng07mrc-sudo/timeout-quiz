@@ -1,0 +1,14 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tp_grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#9d174d"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="8" width="52" height="48" rx="12" fill="url(#tp_grad)"/>
+  <circle cx="32" cy="33" r="16" stroke="#ffffff" stroke-width="3.5"/>
+  <path d="M29 13H35M32 13V17" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <path d="M32 25V33L37 36" stroke="#fbcfe8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M44 19L47 16" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="32" y="53" fill="#fdf2f8" font-size="10" font-weight="900" font-family="sans-serif" text-anchor="middle">+15s</text>
+</svg>

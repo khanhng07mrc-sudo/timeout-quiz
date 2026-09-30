@@ -1,0 +1,13 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ff_grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="8" width="52" height="48" rx="12" fill="url(#ff_grad)"/>
+  <path d="M14 48L50 16" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="3 3"/>
+  <text x="18" y="32" fill="#ffffff" font-size="16" font-weight="900" font-family="sans-serif">50</text>
+  <text x="32" y="48" fill="#bfdbfe" font-size="16" font-weight="900" font-family="sans-serif">50</text>
+  <circle cx="48" cy="18" r="3.5" fill="#60a5fa" stroke="#ffffff" stroke-width="1.5"/>
+</svg>

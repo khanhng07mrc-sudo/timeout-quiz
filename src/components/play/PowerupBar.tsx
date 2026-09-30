@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RoomState, CARD_METADATA, CardType } from "@/types";
+import PowerupIcon from "@/components/ui/PowerupIcon";
 
 interface Props {
   roomState: RoomState;
@@ -84,10 +85,10 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
             {/* Modal Header */}
             <div className="flex items-start gap-4">
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-inner shrink-0"
+                className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner shrink-0 p-2"
                 style={{ background: `${activeMeta.color}25`, border: `2px solid ${activeMeta.color}60` }}
               >
-                {activeMeta.emoji}
+                <PowerupIcon type={confirmingCard.type} className="w-12 h-12 drop-shadow" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
@@ -207,9 +208,9 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
               className="flex items-center sm:flex-col sm:items-start p-3 rounded-xl border border-border/70 hover:border-purple-500 hover:bg-purple-500/10 transition-all active:scale-[0.98] group text-left relative overflow-hidden bg-card/40 hover:shadow-md"
             >
               <div className="flex items-center gap-2.5 sm:mb-2 w-full">
-                <span className="text-2xl sm:text-3xl shrink-0 group-hover:scale-110 transition-transform">
-                  {meta.emoji}
-                </span>
+                <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 group-hover:scale-110 transition-transform">
+                  <PowerupIcon type={card.type} className="w-full h-full drop-shadow" />
+                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-sm text-foreground truncate">{meta.nameVi}</span>

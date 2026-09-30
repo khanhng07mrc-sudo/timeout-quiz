@@ -13,8 +13,33 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* 4 Main Action Cards with high visibility, padding, and interaction */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+      {/* 5 Main Action Cards with high visibility, padding, and interaction */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Link
+          href="/admin/sandbox"
+          className="quiz-card-interactive p-8 flex flex-col justify-between group border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-950/20 via-[#16192e] to-[#121424]"
+        >
+          <div>
+            <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+              🧪
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-2xl font-black text-white group-hover:text-fuchsia-300 transition-colors">
+                Sandbox Studio
+              </h2>
+              <span className="px-2 py-0.5 rounded text-[11px] font-extrabold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30">
+                Solo Test
+              </span>
+            </div>
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+              Môi trường test độc lập không cần nhiều thiết bị: 1-click kích hoạt 8 mode chơi với 3 virtual Bot tự động tương tác & điều khiển đa màn hình trên 1 trình duyệt.
+            </p>
+          </div>
+          <span className="text-sm font-bold text-fuchsia-400 group-hover:text-fuchsia-300 flex items-center gap-1.5 pt-4 border-t border-[#232747]">
+            Mở phòng thí nghiệm test solo ➔
+          </span>
+        </Link>
+
         <Link
           href="/admin/quiz-bank"
           className="quiz-card-interactive p-8 flex flex-col justify-between group"

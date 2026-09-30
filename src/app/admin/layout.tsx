@@ -27,6 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             { href: "/admin/quiz-bank", icon: "📚", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
             { href: "/admin/rooms/create", icon: "➕", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
             { href: "/admin/rooms", icon: "🚪", label: "Phòng đang có", desc: "Quản lý & Điều phối" },
+            { href: "/admin/sandbox", icon: "🧪", label: "Sandbox Studio", desc: "Test solo 1 người" },
             { href: "/display", icon: "📺", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
           ].map(({ href, icon, label, desc }) => (
             <Link

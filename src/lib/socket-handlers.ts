@@ -1961,6 +1961,36 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
+    socket.on("admin:timer:set", async ({ seconds }: { seconds: number }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      const key = `${room.id}:timer`;
+      if (roomRemainingTimes.has(key)) {
+        const newRemaining = Math.max(1, seconds);
+        roomRemainingTimes.set(key, newRemaining);
+        io.to(`room:${room.code}`).emit("game:timer", {
+          remaining: newRemaining,
+          total: 30,
+        });
+      }
+    });
+
+    socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      await prisma.powerupCard.create({
+        data: {
+          type: cardType as any,
+          ownerType: "TEAM",
+          roomId: room.id,
+          teamId,
+          used: false,
+        },
+      });
+      const state = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", state);
+    });
+
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);

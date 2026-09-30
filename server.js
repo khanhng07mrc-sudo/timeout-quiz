@@ -280,54 +280,60 @@ var roomUsedQuestions = /* @__PURE__ */ new Map();
 var roomWagerTimers = /* @__PURE__ */ new Map();
 var roomGridTimers = /* @__PURE__ */ new Map();
 function checkGridCaroStreak(cells, rows, cols, teamId, targetK) {
-  if (rows < 4 || cols < 4 || targetK < 3) return false;
-  const board = Array.from({ length: rows }, () => Array(cols).fill(null));
+  if (rows < 4 || cols < 4 || targetK < 3) return null;
+  const cellMap = /* @__PURE__ */ new Map();
   cells.forEach((c) => {
-    if (c.isCompleted && c.claimedByTeamId) {
-      board[c.row][c.col] = c.claimedByTeamId;
-    }
+    cellMap.set(`${c.row},${c.col}`, c);
   });
   for (let r = 0; r < rows; r++) {
-    let streak = 0;
-    for (let c = 0; c < cols; c++) {
-      if (board[r][c] === teamId) {
-        streak++;
-        if (streak >= targetK) return true;
-      } else {
-        streak = 0;
+    for (let c = 0; c <= cols - targetK; c++) {
+      const streakCells = [];
+      for (let k = 0; k < targetK; k++) {
+        const cell = cellMap.get(`${r},${c + k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
+      if (streakCells.length === targetK) return streakCells;
     }
   }
   for (let c = 0; c < cols; c++) {
-    let streak = 0;
-    for (let r = 0; r < rows; r++) {
-      if (board[r][c] === teamId) {
-        streak++;
-        if (streak >= targetK) return true;
-      } else {
-        streak = 0;
+    for (let r = 0; r <= rows - targetK; r++) {
+      const streakCells = [];
+      for (let k = 0; k < targetK; k++) {
+        const cell = cellMap.get(`${r + k},${c}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
+      if (streakCells.length === targetK) return streakCells;
     }
   }
   for (let r = 0; r <= rows - targetK; r++) {
     for (let c = 0; c <= cols - targetK; c++) {
-      let streak = 0;
+      const streakCells = [];
       for (let k = 0; k < targetK; k++) {
-        if (board[r + k][c + k] === teamId) streak++;
+        const cell = cellMap.get(`${r + k},${c + k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
-      if (streak === targetK) return true;
+      if (streakCells.length === targetK) return streakCells;
     }
   }
   for (let r = 0; r <= rows - targetK; r++) {
     for (let c = targetK - 1; c < cols; c++) {
-      let streak = 0;
+      const streakCells = [];
       for (let k = 0; k < targetK; k++) {
-        if (board[r + k][c - k] === teamId) streak++;
+        const cell = cellMap.get(`${r + k},${c - k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
-      if (streak === targetK) return true;
+      if (streakCells.length === targetK) return streakCells;
     }
   }
-  return false;
+  return null;
 }
 function buildTournamentMatches(teams, questionsPerMatch) {
   const matches = [];
@@ -1366,8 +1372,11 @@ function registerSocketHandlers(io2) {
           const rows = config?.gridRows || 4;
           const cols = config?.gridCols || 4;
           const streakK = config?.gridStreakTargetK || 3;
-          const bonusPts = config?.gridCaroBonusPoints || 100;
+          const bonusPts = config?.gridCaroBonusPoints || 30;
           const prevSecs = config?.gridPreviewDuration || 5;
+          const totalCells = rows * cols;
+          const isCaroEligible = rows >= 4 && cols >= 4;
+          const caroEnabled = isCaroEligible && config?.gridCaroEnabled !== false && questions.length >= totalCells;
           const cells = [];
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
@@ -1388,12 +1397,13 @@ function registerSocketHandlers(io2) {
           const gridCaroState = {
             rows,
             cols,
-            totalCells: rows * cols,
+            totalCells,
             cells,
             previewActive: true,
             previewRemaining: prevSecs,
             currentTurnTeamId: teams[0]?.id,
             currentTurnTeamName: teams[0]?.name,
+            caroEnabled,
             streakTargetK: streakK,
             caroAchievedTeams: [],
             caroBonusPoints: bonusPts
@@ -1668,17 +1678,18 @@ function registerSocketHandlers(io2) {
         usedSet = /* @__PURE__ */ new Set();
         roomUsedQuestions.set(room.id, usedSet);
       }
-      const questions = room.quizBank?.questions ?? [];
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const questions = gridState.caroEnabled ? rawQuestions.slice(0, gridState.totalCells) : rawQuestions;
       const unusedQ = questions.find((q) => !usedSet.has(q.id));
       if (!unusedQ) {
-        socket.emit("error", "\u0110\xE3 h\u1EBFt c\xE2u h\u1ECFi kh\u1EA3 d\u1EE5ng trong b\u1ED9 \u0111\u1EC1!");
+        socket.emit("error", "\u0110\xE3 h\u1EBFt c\xE2u h\u1ECFi kh\u1EA3 d\u1EE5ng trong b\xE0n c\u1EDD!");
         return;
       }
       usedSet.add(unusedQ.id);
-      const qIndex = questions.findIndex((q) => q.id === unusedQ.id);
+      const qIndex = rawQuestions.findIndex((q) => q.id === unusedQ.id);
       room.currentQuestion = qIndex;
       io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
-      await startQuestionPrepareAndLaunch(room, questions, qIndex);
+      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
     });
     socket.on("game:dice:roll", async () => {
       const playerId = playerSockets.get(socket.id);
@@ -1797,14 +1808,15 @@ function registerSocketHandlers(io2) {
         usedSet = /* @__PURE__ */ new Set();
         roomUsedQuestions.set(room.id, usedSet);
       }
-      const questions = room.quizBank?.questions ?? [];
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const questions = gridState.caroEnabled ? rawQuestions.slice(0, gridState.totalCells) : rawQuestions;
       const unusedQ = questions.find((q) => !usedSet.has(q.id));
       if (!unusedQ) return;
       usedSet.add(unusedQ.id);
-      const qIndex = questions.findIndex((q) => q.id === unusedQ.id);
+      const qIndex = rawQuestions.findIndex((q) => q.id === unusedQ.id);
       room.currentQuestion = qIndex;
       io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
-      await startQuestionPrepareAndLaunch(room, questions, qIndex);
+      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
     });
     socket.on("admin:dice:roll:manual", async () => {
       const room = await getAdminRoom(socket);
@@ -1863,6 +1875,34 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:question", questionState);
         startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
       }
+    });
+    socket.on("admin:timer:set", async ({ seconds }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      const key = `${room.id}:timer`;
+      if (roomRemainingTimes.has(key)) {
+        const newRemaining = Math.max(1, seconds);
+        roomRemainingTimes.set(key, newRemaining);
+        io2.to(`room:${room.code}`).emit("game:timer", {
+          remaining: newRemaining,
+          total: 30
+        });
+      }
+    });
+    socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      await prisma.powerupCard.create({
+        data: {
+          type: cardType,
+          ownerType: "TEAM",
+          roomId: room.id,
+          teamId,
+          used: false
+        }
+      });
+      const state = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", state);
     });
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
@@ -2201,21 +2241,26 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
       cell.claimedByTeamName = currentTeam.name;
       cell.claimedByTeamColor = currentTeam.color;
       let awardedPoints = cell.points;
-      const wonCaro = checkGridCaroStreak(
-        gridState.cells,
-        gridState.rows,
-        gridState.cols,
-        currentTeam.id,
-        gridState.streakTargetK
-      );
-      if (wonCaro && !gridState.caroAchievedTeams.includes(currentTeam.name)) {
-        gridState.caroAchievedTeams.push(currentTeam.name);
-        awardedPoints += gridState.caroBonusPoints;
-        io2.to(`room:${roomCode}`).emit("game:grid:caro:celebrate", {
-          teamId: currentTeam.id,
-          teamName: currentTeam.name,
-          bonusPoints: gridState.caroBonusPoints
-        });
+      if (gridState.caroEnabled) {
+        const winningStreak = checkGridCaroStreak(
+          gridState.cells,
+          gridState.rows,
+          gridState.cols,
+          currentTeam.id,
+          gridState.streakTargetK
+        );
+        if (winningStreak && winningStreak.length > 0 && !gridState.caroAchievedTeams.includes(currentTeam.name)) {
+          const streakPtsSum = winningStreak.reduce((acc, c) => acc + c.points, 0);
+          const avgPts = streakPtsSum / winningStreak.length;
+          const dynamicBonus = Math.max(10, Math.round(avgPts / 5) * 5);
+          gridState.caroAchievedTeams.push(currentTeam.name);
+          awardedPoints += dynamicBonus;
+          io2.to(`room:${roomCode}`).emit("game:grid:caro:celebrate", {
+            teamId: currentTeam.id,
+            teamName: currentTeam.name,
+            bonusPoints: dynamicBonus
+          });
+        }
       }
       const upd = await prisma.team.update({
         where: { id: currentTeam.id },

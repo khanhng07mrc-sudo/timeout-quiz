@@ -807,6 +807,8 @@ export interface ClientToServerEvents {
   "admin:dice:roll:manual": () => void;
   "admin:tournament:advance": () => void;
   "admin:wager:skip_timer": () => void;
+  "admin:timer:set": (payload: { seconds: number }) => void;
+  "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

@@ -378,6 +378,14 @@ export default function AdminRoomPage() {
             <span>Luật chơi</span>
           </button>
           <Link
+            href={`/admin/sandbox?code=${code}`}
+            target="_blank"
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-fuchsia-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-fuchsia-300 hover:text-white"
+          >
+            <span>🧪</span>
+            <span>Mở Sandbox</span>
+          </Link>
+          <Link
             href={`/display/${code}`}
             target="_blank"
             className="px-4 py-2 rounded-xl glass border border-border hover:border-purple-500 font-medium text-sm transition-colors"

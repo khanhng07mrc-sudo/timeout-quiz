@@ -35,6 +35,58 @@ export function computePointsAwarded(ctx: ScoringContext): number {
   return Math.floor(score * multiplier);
 }
 
+export interface TeamScoringContext {
+  basePoints: number;
+  timeLimit: number; // seconds
+  totalOnlineMembers: number;
+  correctMembers: number;
+  correctTimes: number[]; // ms spent by members who got the question right
+  config: GameConfig;
+  multiplier?: number; // 2 from DOUBLE / SCORE_X2
+  shielded?: boolean; // from SHIELD / SCORE_X2
+  penaltyMultiplier?: number; // from PENALTY
+}
+
+export interface TeamScoreResult {
+  points: number;
+  accuracyRatio: number;
+  speedBonus: number;
+  avgTimeSpent: number;
+}
+
+export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResult {
+  const total = Math.max(1, ctx.totalOnlineMembers);
+  const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
+
+  if (ctx.correctMembers === 0) {
+    if (!ctx.config.penaltyForWrong || ctx.shielded) {
+      return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0 };
+    }
+    const pm = ctx.penaltyMultiplier ?? 1;
+    const penalty = Math.floor(ctx.config.penaltyPoints * pm);
+    return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0 };
+  }
+
+  // Calculate average response time of members who answered correctly
+  const avgTimeSpent =
+    ctx.correctTimes.length > 0
+      ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length
+      : ctx.timeLimit * 1000;
+
+  let speedBonus = 0;
+  if (ctx.config.timeBonusEnabled) {
+    const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1000));
+    speedBonus = remainingRatio * 0.5; // up to +50% speed bonus
+  }
+
+  const multiplier = ctx.multiplier ?? 1;
+  // Formula: floor(BasePoints * (CorrectMembers / TotalMembers) * (1 + SpeedBonus) * Multiplier)
+  const rawScore = ctx.basePoints * accuracyRatio * (1 + speedBonus) * multiplier;
+  const points = Math.floor(rawScore);
+
+  return { points, accuracyRatio, speedBonus, avgTimeSpent };
+}
+
 export function computeTeamScore(
   memberScores: number[],
   correctCount: number,

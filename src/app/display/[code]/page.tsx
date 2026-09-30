@@ -219,6 +219,31 @@ export default function DisplayPage() {
                 })}
               </div>
             )}
+
+            {/* Team Results on Reveal */}
+            {revealPayload?.teamSummaries && revealPayload.teamSummaries.length > 0 && (
+              <div className="mt-6 p-5 rounded-2xl glass border border-purple-500/40 animate-slide-up">
+                <h3 className="font-bold text-lg mb-3 text-cyan-400 flex items-center gap-2">
+                  <span>📊</span> Điểm đồng đội câu này (theo chuẩn tỷ lệ đúng & tốc độ):
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {revealPayload.teamSummaries.map((ts) => (
+                    <div key={ts.teamId} className="p-3 rounded-xl bg-card border border-border flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-4 h-4 rounded-full shrink-0" style={{ background: ts.teamColor }} />
+                        <span className="font-bold truncate text-base">{ts.teamName}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng {ts.speedBonus > 0 ? `(+${ts.speedBonus}% tốc độ)` : ""}</p>
+                        <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
+                          {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

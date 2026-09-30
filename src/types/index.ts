@@ -164,6 +164,18 @@ export interface JoinResult {
   error?: string;
 }
 
+export interface TeamRevealSummary {
+  teamId: string;
+  teamName: string;
+  teamColor: string;
+  totalOnlineMembers: number;
+  correctMembers: number;
+  pointsAwarded: number;
+  speedBonus: number;
+  multiplier: number;
+  activeCard?: CardType;
+}
+
 export interface AnswerRevealPayload {
   questionId: string;
   correctAnswer: string | string[];
@@ -176,6 +188,7 @@ export interface AnswerRevealPayload {
     pointsAwarded: number;
     timeSpent: number;
   }>;
+  teamSummaries?: TeamRevealSummary[];
 }
 
 export interface ScoreUpdate {
@@ -216,6 +229,7 @@ export interface ServerToClientEvents {
   "game:answer:reveal": (payload: AnswerRevealPayload) => void;
   "game:score:update": (scores: ScoreUpdate[]) => void;
   "game:powerup:used": (payload: PowerupUsedPayload) => void;
+  "game:fifty_fifty:applied": (payload: { teamId: string; hiddenOptionIds: string[] }) => void;
   "game:ended": (payload: GameEndPayload) => void;
   "game:paused": () => void;
   "game:resumed": () => void;

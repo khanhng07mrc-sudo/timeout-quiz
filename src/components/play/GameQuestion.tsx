@@ -12,9 +12,10 @@ interface Props {
   revealPayload: AnswerRevealPayload | null;
   isBuzzMode: boolean;
   roomStatus: string;
+  hiddenOptionIds?: string[];
 }
 
-export default function GameQuestion({ question, timer, onAnswer, onBuzz, answered, revealPayload, roomStatus }: Props) {
+export default function GameQuestion({ question, timer, onAnswer, onBuzz, answered, revealPayload, roomStatus, hiddenOptionIds }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [essayText, setEssayText] = useState("");
   const [fillText, setFillText] = useState("");
@@ -24,7 +25,7 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
   const timerColor = timerPercent > 50 ? "#06b6d4" : timerPercent > 25 ? "#f59e0b" : "#ef4444";
 
   const handleOptionClick = (optId: string) => {
-    if (answered || revealPayload) return;
+    if (answered || revealPayload || hiddenOptionIds?.includes(optId)) return;
     if (q.type === "MC_SINGLE" || q.type === "TRUE_FALSE") {
       onAnswer(optId);
     } else if (q.type === "MC_MULTI") {
@@ -97,13 +98,16 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
             const labels = ["A", "B", "C", "D"];
             const isCorrect = revealPayload?.correctAnswer.includes(opt.id);
             const isSelected = selected.includes(opt.id);
+            const isHidden = hiddenOptionIds?.includes(opt.id);
             return (
               <button
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
-                disabled={answered || !!revealPayload}
+                disabled={answered || !!revealPayload || isHidden}
                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                  revealPayload
+                  isHidden
+                    ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
+                    : revealPayload
                     ? isCorrect
                       ? "border-green-500 bg-green-500/20 text-green-300"
                       : "border-border opacity-50"
@@ -115,7 +119,12 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
                 <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold shrink-0">
                   {labels[i] ?? i + 1}
                 </span>
-                <span>{opt.text}</span>
+                <span className="flex-1">{opt.text}</span>
+                {isHidden && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                    50/50
+                  </span>
+                )}
               </button>
             );
           })}
@@ -126,13 +135,16 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
             const labels = ["A", "B", "C", "D"];
             const isCorrect = revealPayload?.correctAnswer.includes(opt.id);
             const isSelected = selected.includes(opt.id);
+            const isHidden = hiddenOptionIds?.includes(opt.id);
             return (
               <button
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
-                disabled={answered || !!revealPayload}
+                disabled={answered || !!revealPayload || isHidden}
                 className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
-                  revealPayload
+                  isHidden
+                    ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
+                    : revealPayload
                     ? isCorrect
                       ? "border-green-500 bg-green-500/20"
                       : "border-border opacity-50"
@@ -145,7 +157,12 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
                   {isSelected && "✓"}
                 </span>
                 <span className="font-bold w-6">{labels[i]}</span>
-                <span>{opt.text}</span>
+                <span className="flex-1">{opt.text}</span>
+                {isHidden && (
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                    50/50
+                  </span>
+                )}
               </button>
             );
           })}
@@ -178,24 +195,6 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
             Gửi
           </button>
         </div>
-      ) : q.type === "ESSAY" ? (
-        <div className="flex flex-col gap-2">
-          <textarea
-            value={essayText}
-            onChange={(e) => setEssayText(e.target.value)}
-            placeholder="Viết câu trả lời của bạn..."
-            rows={4}
-            disabled={answered || !!revealPayload}
-            className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-          />
-          <button
-            onClick={handleSubmitEssay}
-            disabled={!essayText.trim() || answered}
-            className="py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50"
-          >
-            Nộp bài
-          </button>
-        </div>
       ) : null}
 
       {answered && !revealPayload && (
@@ -203,11 +202,36 @@ export default function GameQuestion({ question, timer, onAnswer, onBuzz, answer
       )}
 
       {revealPayload && (
-        <div className="text-center py-2 font-bold">
-          {revealPayload.answers.find((a) => a.isCorrect) ? (
-            <span className="text-green-400">✓ Đúng rồi! +{revealPayload.answers.find((a) => a.isCorrect)?.pointsAwarded ?? 0} điểm</span>
-          ) : (
-            <span className="text-red-400">✗ Sai rồi!</span>
+        <div className="space-y-3">
+          <div className="text-center py-2 font-bold">
+            {revealPayload.answers.find((a) => a.isCorrect) ? (
+              <span className="text-green-400">✓ Bạn trả lời đúng! +{revealPayload.answers.find((a) => a.isCorrect)?.pointsAwarded ?? 0} điểm</span>
+            ) : (
+              <span className="text-red-400">✗ Bạn trả lời chưa chính xác!</span>
+            )}
+          </div>
+
+          {/* Hiển thị kết quả điểm đồng đội */}
+          {revealPayload.teamSummaries && revealPayload.teamSummaries.length > 0 && (
+            <div className="p-3 rounded-xl bg-card/90 border border-border space-y-2">
+              <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider">📊 Điểm đồng đội câu này</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {revealPayload.teamSummaries.map((ts) => (
+                  <div key={ts.teamId} className="flex items-center justify-between p-2 rounded-lg bg-background/60 border border-border text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: ts.teamColor }} />
+                      <span className="font-bold truncate">{ts.teamName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 font-mono shrink-0">
+                      <span className="text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</span>
+                      <span className={ts.pointsAwarded >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+                        {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

@@ -34,6 +34,9 @@ export default function PlayPage() {
   const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [answered, setAnswered] = useState(false);
+  const [hiddenOptionIds, setHiddenOptionIds] = useState<string[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const myTeamIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     const playerName = sessionStorage.getItem("playerName") || "Player";
@@ -49,6 +52,8 @@ export default function PlayPage() {
         if (result.success) {
           setPlayerId(result.playerId ?? "");
           setRoomState(result.roomState ?? null);
+          const p = result.roomState?.players.find((pl) => pl.id === result.playerId);
+          myTeamIdRef.current = p?.teamId;
         } else {
           alert(result.error ?? "Không thể vào phòng");
           router.push("/play");
@@ -56,7 +61,11 @@ export default function PlayPage() {
       });
     });
 
-    socket.on("room:state", (state) => setRoomState(state));
+    socket.on("room:state", (state) => {
+      setRoomState(state);
+      const p = state.players.find((pl) => pl.id === playerId);
+      if (p?.teamId) myTeamIdRef.current = p.teamId;
+    });
 
     socket.on("game:question", (q) => {
       setCurrentQuestion(q);
@@ -64,6 +73,7 @@ export default function PlayPage() {
       setAnswered(false);
       setBuzzedBy(null);
       setTimer(null);
+      setHiddenOptionIds([]);
     });
 
     socket.on("game:timer", (t) => setTimer(t));
@@ -94,6 +104,17 @@ export default function PlayPage() {
     socket.on("game:powerup:used", (payload) => {
       setLastPowerup(payload);
       setTimeout(() => setLastPowerup(null), 4000);
+    });
+
+    socket.on("game:fifty_fifty:applied", (payload) => {
+      if (!myTeamIdRef.current || myTeamIdRef.current === payload.teamId) {
+        setHiddenOptionIds(payload.hiddenOptionIds);
+      }
+    });
+
+    socket.on("error", (msg) => {
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(null), 4000);
     });
 
     socket.on("game:ended", (payload) => setGameEnd(payload));
@@ -158,6 +179,13 @@ export default function PlayPage() {
         </div>
       )}
 
+      {/* Error / Alert notification */}
+      {errorMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white rounded-xl px-6 py-3 text-center font-bold animate-bounce-in shadow-lg">
+          ⚠️ {errorMessage}
+        </div>
+      )}
+
       {/* Buzz notification */}
       {buzzedBy && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black rounded-xl px-6 py-3 text-center font-bold animate-bounce-in">
@@ -177,6 +205,7 @@ export default function PlayPage() {
             revealPayload={revealPayload}
             isBuzzMode={roomState?.mode === "BUZZ" || roomState?.mode === "CLASSIC"}
             roomStatus={roomState?.status ?? "PLAYING"}
+            hiddenOptionIds={hiddenOptionIds}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">

@@ -15,6 +15,9 @@ const DEFAULT_CONFIG = {
   maxTeams: 20,
   buzzMode: false,
   eliminationRounds: 3,
+  bouncebackQuestionsPerTurn: 1,
+  bouncebackCycles: 1,
+  answerMethod: "DEVICE",
 };
 
 export async function POST(req: NextRequest) {

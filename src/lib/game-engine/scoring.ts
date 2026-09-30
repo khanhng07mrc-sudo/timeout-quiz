@@ -45,6 +45,7 @@ export interface TeamScoringContext {
   multiplier?: number; // 2 from DOUBLE / SCORE_X2
   shielded?: boolean; // from SHIELD / SCORE_X2
   penaltyMultiplier?: number; // from PENALTY
+  roomAccuracy?: number; // Tỷ lệ đúng của toàn phòng (0 - 1)
 }
 
 export interface TeamScoreResult {
@@ -52,19 +53,28 @@ export interface TeamScoreResult {
   accuracyRatio: number;
   speedBonus: number;
   avgTimeSpent: number;
+  empiricalMultiplier: number;
 }
 
 export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResult {
   const total = Math.max(1, ctx.totalOnlineMembers);
   const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
 
+  // Tính hệ số hiếm thực nghiệm (Empirical Rarity Multiplier)
+  // Nếu tỷ lệ đúng của toàn phòng < 30%, câu hỏi thực sự hóc búa -> thưởng điểm hiếm
+  let empiricalMultiplier = 1.0;
+  if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
+    const rarityDelta = 0.30 - Math.max(0, ctx.roomAccuracy);
+    empiricalMultiplier = 1 + rarityDelta * 1.5; // tối đa +45% khi tỷ lệ đúng tiệm cận 0
+  }
+
   if (ctx.correctMembers === 0) {
     if (!ctx.config.penaltyForWrong || ctx.shielded) {
-      return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0 };
+      return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
     const penalty = Math.floor(ctx.config.penaltyPoints * pm);
-    return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0 };
+    return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
   }
 
   // Calculate average response time of members who answered correctly
@@ -80,11 +90,11 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
   }
 
   const multiplier = ctx.multiplier ?? 1;
-  // Formula: floor(BasePoints * (CorrectMembers / TotalMembers) * (1 + SpeedBonus) * Multiplier)
-  const rawScore = ctx.basePoints * accuracyRatio * (1 + speedBonus) * multiplier;
+  // Formula: floor(BasePoints * EmpiricalMultiplier * (1 + SpeedBonus) * AccuracyRatio * Multiplier)
+  const rawScore = ctx.basePoints * empiricalMultiplier * (1 + speedBonus) * accuracyRatio * multiplier;
   const points = Math.floor(rawScore);
 
-  return { points, accuracyRatio, speedBonus, avgTimeSpent };
+  return { points, accuracyRatio, speedBonus, avgTimeSpent, empiricalMultiplier };
 }
 
 export function computeTeamScore(

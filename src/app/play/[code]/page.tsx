@@ -31,11 +31,13 @@ export default function PlayPage() {
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
   const [playerId, setPlayerId] = useState("");
   const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
-  const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string } | null>(null);
+  const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string; teamName?: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [answered, setAnswered] = useState(false);
   const [hiddenOptionIds, setHiddenOptionIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isStealPhase, setIsStealPhase] = useState(false);
+  const [stealBuzzedTeam, setStealBuzzedTeam] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const myTeamIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -74,16 +76,43 @@ export default function PlayPage() {
       setBuzzedBy(null);
       setTimer(null);
       setHiddenOptionIds([]);
+      setIsStealPhase(false);
+      setStealBuzzedTeam(null);
     });
 
     socket.on("game:timer", (t) => setTimer(t));
 
     socket.on("game:buzz", (payload) => {
-      setBuzzedBy({ playerName: payload.playerName, teamId: payload.teamId });
+      setBuzzedBy({ playerName: payload.playerName, teamId: payload.teamId, teamName: payload.teamName });
+    });
+
+    socket.on("game:buzz:answering", (payload) => {
+      setBuzzedBy({ playerName: payload.teamName, teamId: payload.teamId, teamName: payload.teamName });
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+    });
+
+    socket.on("game:bounceback:open_steal", (payload) => {
+      setIsStealPhase(true);
+      setStealBuzzedTeam(null);
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+    });
+
+    socket.on("game:bounceback:steal_buzzed", (payload) => {
+      setIsStealPhase(false);
+      setStealBuzzedTeam(payload);
+    });
+
+    socket.on("game:bounceback:steal_answering", (payload) => {
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+    });
+
+    socket.on("game:buzz:closed", () => {
+      setIsStealPhase(false);
     });
 
     socket.on("game:answer:reveal", (payload) => {
       setRevealPayload(payload);
+      setIsStealPhase(false);
     });
 
     socket.on("game:score:update", (scores) => {
@@ -203,9 +232,14 @@ export default function PlayPage() {
             onBuzz={handleBuzz}
             answered={answered}
             revealPayload={revealPayload}
-            isBuzzMode={roomState?.mode === "BUZZ" || roomState?.mode === "CLASSIC"}
             roomStatus={roomState?.status ?? "PLAYING"}
             hiddenOptionIds={hiddenOptionIds}
+            roomMode={roomState?.mode ?? "CLASSIC"}
+            myTeamId={myTeamIdRef.current}
+            answerMethod={roomState?.config?.answerMethod ?? "DEVICE"}
+            isStealPhase={isStealPhase}
+            stealBuzzedTeam={stealBuzzedTeam}
+            buzzedBy={buzzedBy}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center">

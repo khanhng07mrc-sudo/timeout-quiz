@@ -11,8 +11,9 @@ import type {
   GameEndPayload,
   AnswerRevealPayload,
   PowerupUsedPayload,
+  BloomLevel,
 } from "@/types";
-import { CARD_METADATA } from "@/types";
+import { CARD_METADATA, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -25,6 +26,8 @@ export default function DisplayPage() {
   const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
   const [buzzed, setBuzzed] = useState<{ playerName: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
+  const [isStealOpen, setIsStealOpen] = useState(false);
+  const [stealBuzzed, setStealBuzzed] = useState<{ teamName: string; playerName: string } | null>(null);
 
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
@@ -42,10 +45,27 @@ export default function DisplayPage() {
       setRevealPayload(null);
       setBuzzed(null);
       setTimer(null);
+      setIsStealOpen(false);
+      setStealBuzzed(null);
     });
     socket.on("game:timer", setTimer);
-    socket.on("game:buzz", (p) => setBuzzed({ playerName: p.playerName }));
-    socket.on("game:answer:reveal", setRevealPayload);
+    socket.on("game:buzz", (p) => setBuzzed({ playerName: p.teamName ?? p.playerName }));
+    socket.on("game:buzz:answering", (p) => setBuzzed({ playerName: p.teamName }));
+    socket.on("game:bounceback:open_steal", () => {
+      setIsStealOpen(true);
+      setStealBuzzed(null);
+    });
+    socket.on("game:bounceback:steal_buzzed", (p) => {
+      setIsStealOpen(false);
+      setStealBuzzed({ teamName: p.teamName, playerName: p.playerName });
+    });
+    socket.on("game:buzz:closed", () => {
+      setIsStealOpen(false);
+    });
+    socket.on("game:answer:reveal", (payload) => {
+      setRevealPayload(payload);
+      setIsStealOpen(false);
+    });
     socket.on("game:powerup:used", (p) => {
       setLastPowerup(p);
       setTimeout(() => setLastPowerup(null), 4000);
@@ -137,8 +157,13 @@ export default function DisplayPage() {
   const timerPercent = timer ? (timer.remaining / timer.total) * 100 : 100;
   const timerColor = timerPercent > 50 ? "#06b6d4" : timerPercent > 25 ? "#f59e0b" : "#ef4444";
 
+  const bloom: BloomLevel = currentQuestion
+    ? (currentQuestion.bloomLevel ?? getBloomLevelFromPoints(currentQuestion.question.points))
+    : "REMEMBER";
+  const bloomMeta = BLOOM_METADATA[bloom];
+
   return (
-    <div className="min-h-screen grid grid-cols-[1fr_320px] gap-4 p-4">
+    <div className="min-h-screen grid grid-cols-[1fr_340px] gap-4 p-4">
       {/* Main content area */}
       <div className="flex flex-col gap-4">
         {/* Powerup notification */}
@@ -152,96 +177,149 @@ export default function DisplayPage() {
           </div>
         )}
 
+        {/* Bounceback Steal notifications */}
+        {isStealOpen && (
+          <div className="bg-gradient-to-r from-amber-500 to-yellow-500 text-black rounded-xl p-4 text-center font-black text-2xl animate-bounce shadow-xl">
+            ⚡ MỞ CHUÔNG CƯỚP LƯỢT (5s) — CÁC ĐỘI HÃY BẤM CHUÔNG!
+          </div>
+        )}
+
+        {stealBuzzed && (
+          <div className="bg-purple-600 text-white rounded-xl p-4 text-center font-black text-2xl animate-bounce-in shadow-xl">
+            ⚡ ĐỘI {stealBuzzed.teamName.toUpperCase()} ĐÃ CƯỚP CHUÔNG THÀNH CÔNG!
+          </div>
+        )}
+
         {/* Buzz notification */}
         {buzzed && (
-          <div className="bg-yellow-500 text-black rounded-xl p-4 text-center font-black text-2xl animate-bounce-in">
-            ⚡ {buzzed.playerName} BUZZ!
+          <div className="bg-yellow-500 text-black rounded-xl p-4 text-center font-black text-2xl animate-bounce-in shadow-xl">
+            ⚡ ĐỘI {buzzed.playerName.toUpperCase()} BUZZ!
           </div>
         )}
 
         {/* Question */}
         {currentQuestion && (
-          <div className="flex-1 glass rounded-2xl p-8">
-            {/* Timer */}
-            {timer && (
-              <div className="flex items-center gap-4 mb-6">
-                <svg className="w-16 h-16" viewBox="0 0 64 64">
-                  <circle cx="32" cy="32" r="28" fill="none" stroke="#2d2d5a" strokeWidth="6" />
-                  <circle
-                    cx="32" cy="32" r="28"
-                    fill="none"
-                    stroke={timerColor}
-                    strokeWidth="6"
-                    strokeDasharray={`${2 * Math.PI * 28}`}
-                    strokeDashoffset={`${2 * Math.PI * 28 * (1 - timerPercent / 100)}`}
-                    className="timer-ring transition-all duration-1000"
-                  />
-                  <text x="32" y="38" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">
-                    {timer.remaining}
-                  </text>
-                </svg>
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground">Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}</p>
-                  <p className="font-semibold">Câu hỏi đang chờ trả lời</p>
+          <div className="flex-1 glass rounded-2xl p-8 flex flex-col justify-between">
+            <div>
+              {/* Timer & Turn Info */}
+              <div className="flex items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-4">
+                  {timer && (
+                    <svg className="w-16 h-16" viewBox="0 0 64 64">
+                      <circle cx="32" cy="32" r="28" fill="none" stroke="#2d2d5a" strokeWidth="6" />
+                      <circle
+                        cx="32" cy="32" r="28"
+                        fill="none"
+                        stroke={timerColor}
+                        strokeWidth="6"
+                        strokeDasharray={`${2 * Math.PI * 28}`}
+                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - timerPercent / 100)}`}
+                        className="timer-ring transition-all duration-1000"
+                      />
+                      <text x="32" y="38" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">
+                        {timer.remaining}
+                      </text>
+                    </svg>
+                  )}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground font-semibold">
+                        Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}
+                      </span>
+                      <span
+                        className="px-2.5 py-0.5 rounded-full text-xs font-bold border"
+                        style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}40`, background: bloomMeta.bg }}
+                      >
+                        {bloomMeta.emoji} {bloomMeta.labelVi} ({currentQuestion.question.points}đ)
+                      </span>
+                    </div>
+
+                    {/* Mode specific info banner */}
+                    {roomState.mode === "BOUNCEBACK" && (
+                      <p className="text-lg font-black text-cyan-300 mt-1">
+                        🎯 Lượt trả lời chính: {currentQuestion.primaryTeamName ?? "..."}
+                      </p>
+                    )}
+                    {roomState.config.answerMethod === "MC" && (
+                      <p className="text-xs text-yellow-300 font-medium mt-0.5">
+                        🎙️ Chế độ trả lời miệng qua MC / Ban giám khảo
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Question content */}
-            <h2 className="text-3xl font-bold mb-6 leading-relaxed">{currentQuestion.question.content}</h2>
+              {/* Question content */}
+              <h2 className="text-3xl font-bold mb-6 leading-relaxed">{currentQuestion.question.content}</h2>
 
-            {currentQuestion.question.mediaUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-64 rounded-xl mb-6 mx-auto" />
-            )}
+              {currentQuestion.question.mediaUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-64 rounded-xl mb-6 mx-auto" />
+              )}
 
-            {/* Options */}
-            {currentQuestion.question.options && (
-              <div className="grid grid-cols-2 gap-4">
-                {currentQuestion.question.options.map((opt, i) => {
-                  const labels = ["A", "B", "C", "D", "E", "F"];
-                  const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
-                  return (
-                    <div
-                      key={opt.id}
-                      className={`p-4 rounded-xl border-2 transition-all text-xl font-medium ${
-                        revealPayload
-                          ? isRevealed
-                            ? "border-green-500 bg-green-500/20 text-green-300"
-                            : "border-border opacity-50"
-                          : "border-border glass"
-                      }`}
-                    >
-                      <span className="font-black mr-3 text-purple-400">{labels[i]}.</span>
-                      {opt.text}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Team Results on Reveal */}
-            {revealPayload?.teamSummaries && revealPayload.teamSummaries.length > 0 && (
-              <div className="mt-6 p-5 rounded-2xl glass border border-purple-500/40 animate-slide-up">
-                <h3 className="font-bold text-lg mb-3 text-cyan-400 flex items-center gap-2">
-                  <span>📊</span> Điểm đồng đội câu này (theo chuẩn tỷ lệ đúng & tốc độ):
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {revealPayload.teamSummaries.map((ts) => (
-                    <div key={ts.teamId} className="p-3 rounded-xl bg-card border border-border flex items-center justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-4 h-4 rounded-full shrink-0" style={{ background: ts.teamColor }} />
-                        <span className="font-bold truncate text-base">{ts.teamName}</span>
+              {/* Options */}
+              {currentQuestion.question.options && (
+                <div className="grid grid-cols-2 gap-4">
+                  {currentQuestion.question.options.map((opt, i) => {
+                    const labels = ["A", "B", "C", "D", "E", "F"];
+                    const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
+                    return (
+                      <div
+                        key={opt.id}
+                        className={`p-5 rounded-xl border-2 transition-all text-xl font-medium ${
+                          revealPayload
+                            ? isRevealed
+                              ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50"
+                              : "border-border opacity-40"
+                            : "border-border glass"
+                        }`}
+                      >
+                        <span className="font-black mr-3 text-purple-400">{labels[i]}.</span>
+                        {opt.text}
                       </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng {ts.speedBonus > 0 ? `(+${ts.speedBonus}% tốc độ)` : ""}</p>
-                        <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              )}
+            </div>
+
+            {/* Rarity & Team Results on Reveal */}
+            {revealPayload && (
+              <div className="mt-6 space-y-3 animate-slide-up">
+                {revealPayload.rarityBonusPercent !== undefined && revealPayload.rarityBonusPercent > 0 && (
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 border border-amber-500/40 text-center animate-bounce-in">
+                    <p className="font-black text-amber-300 text-lg">
+                      🔥 CÂU HỎI HÓC BÚA (Độ hiếm toàn phòng: {Math.round((revealPayload.roomAccuracy ?? 0) * 100)}% đúng)
+                    </p>
+                    <p className="text-sm text-amber-200/90 mt-1">
+                      Các đội đúng được cộng thưởng thêm <strong>+{revealPayload.rarityBonusPercent}%</strong> điểm hiếm thực nghiệm!
+                    </p>
+                  </div>
+                )}
+
+                {revealPayload.teamSummaries && revealPayload.teamSummaries.length > 0 && (
+                  <div className="p-4 rounded-2xl glass border border-purple-500/40">
+                    <h3 className="font-bold text-base mb-3 text-cyan-400 flex items-center gap-2">
+                      <span>📊</span> Điểm đồng đội câu này:
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {revealPayload.teamSummaries.map((ts) => (
+                        <div key={ts.teamId} className="p-3 rounded-xl bg-card border border-border flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-4 h-4 rounded-full shrink-0" style={{ background: ts.teamColor }} />
+                            <span className="font-bold truncate text-base">{ts.teamName}</span>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</p>
+                            <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
+                              {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

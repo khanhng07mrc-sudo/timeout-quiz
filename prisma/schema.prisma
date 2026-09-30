@@ -25,6 +25,7 @@ enum QuestionType {
 enum GameMode {
   CLASSIC
   BUZZ
+  BOUNCEBACK
   POWERUP
   ELIMINATION
   TOURNAMENT

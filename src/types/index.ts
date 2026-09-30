@@ -25,7 +25,7 @@ export type CardType =
   | "PENALTY"
   | "SCORE_X2";
 
-export type GameMode = "CLASSIC" | "BUZZ" | "POWERUP" | "ELIMINATION" | "TOURNAMENT";
+export type GameMode = "CLASSIC" | "BUZZ" | "BOUNCEBACK" | "POWERUP" | "ELIMINATION" | "TOURNAMENT";
 export type TeamMode = "INDIVIDUAL" | "TEAM";
 export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
@@ -43,6 +43,23 @@ export const CARD_METADATA: Record<CardType, { emoji: string; name: string; name
   PENALTY: { emoji: "💥", name: "Penalty", nameVi: "Phạt đôi", description: "Double penalty for target team", descriptionVi: "Nhân đôi điểm trừ của đội mục tiêu" },
   SCORE_X2: { emoji: "⭐", name: "Score x2", nameVi: "x2 điểm", description: "Correct=x2, Wrong=0 penalty", descriptionVi: "Đúng x2 điểm, sai không bị trừ" },
 };
+
+export type BloomLevel = "REMEMBER" | "APPLY" | "ANALYZE";
+
+export const BLOOM_METADATA: Record<BloomLevel, { labelVi: string; emoji: string; color: string; bg: string }> = {
+  REMEMBER: { labelVi: "Nhận biết / Thông hiểu", emoji: "🟢", color: "#22c55e", bg: "rgba(34, 197, 94, 0.15)" },
+  APPLY: { labelVi: "Vận dụng", emoji: "🟡", color: "#eab308", bg: "rgba(234, 179, 8, 0.15)" },
+  ANALYZE: { labelVi: "Tình huống nâng cao", emoji: "🟣", color: "#a855f7", bg: "rgba(168, 85, 247, 0.15)" },
+};
+
+export function getBloomLevelFromPoints(points: number, explicitLevel?: string): BloomLevel {
+  if (explicitLevel === "REMEMBER" || explicitLevel === "APPLY" || explicitLevel === "ANALYZE") {
+    return explicitLevel;
+  }
+  if (points >= 20) return "ANALYZE";
+  if (points >= 15) return "APPLY";
+  return "REMEMBER";
+}
 
 // ─── Question ─────────────────────────────────────────────────────────────────
 
@@ -71,6 +88,7 @@ export interface Question {
   mediaType?: "image" | "audio" | "video";
   hint?: string;
   order: number;
+  bloomLevel?: BloomLevel;
 }
 
 // ─── Game Config ──────────────────────────────────────────────────────────────
@@ -87,6 +105,9 @@ export interface GameConfig {
   maxTeams: number;
   buzzMode: boolean;
   eliminationRounds: number;
+  bouncebackQuestionsPerTurn?: number;
+  bouncebackCycles?: number;
+  answerMethod?: "DEVICE" | "MC";
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -153,6 +174,17 @@ export interface QuestionState {
   startedAt: number;
   buzzedBy?: string;
   activeBoosts: ActiveBoost[];
+  bloomLevel?: BloomLevel;
+  primaryTeamId?: string; // For BOUNCEBACK: team answering primarily
+  primaryTeamName?: string;
+  isStealPhase?: boolean; // For BOUNCEBACK: 5s steal buzz window active
+  stealBuzzedTeamId?: string; // Team that buzzed to steal
+  stealBuzzedTeamName?: string;
+  stealAnsweringActive?: boolean; // When answer timer is counting down for steal team
+  buzzAnsweringActive?: boolean; // In BUZZ mode: when answer timer is active for buzzed team
+  buzzedTeamId?: string;
+  buzzedTeamName?: string;
+  answerMethod?: "DEVICE" | "MC";
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -174,6 +206,7 @@ export interface TeamRevealSummary {
   speedBonus: number;
   multiplier: number;
   activeCard?: CardType;
+  empiricalMultiplier?: number;
 }
 
 export interface AnswerRevealPayload {
@@ -189,6 +222,9 @@ export interface AnswerRevealPayload {
     timeSpent: number;
   }>;
   teamSummaries?: TeamRevealSummary[];
+  roomAccuracy?: number; // Tỷ lệ đúng toàn phòng (0 - 1)
+  rarityBonusPercent?: number; // % thưởng hiếm nếu tỷ lệ < 30%
+  bloomLevel?: BloomLevel;
 }
 
 export interface ScoreUpdate {
@@ -224,8 +260,12 @@ export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number }) => void;
-  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string }) => void;
+  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string }) => void;
   "game:buzz:closed": () => void;
+  "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
+  "game:bounceback:open_steal": (payload: { questionId: string; timeLimit: number }) => void;
+  "game:bounceback:steal_buzzed": (payload: { teamId: string; teamName: string; playerId: string; playerName: string }) => void;
+  "game:bounceback:steal_answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
   "game:answer:reveal": (payload: AnswerRevealPayload) => void;
   "game:score:update": (scores: ScoreUpdate[]) => void;
   "game:powerup:used": (payload: PowerupUsedPayload) => void;
@@ -251,6 +291,10 @@ export interface ClientToServerEvents {
   "admin:score:manual": (payload: { answerId: string; points: number }) => void;
   "admin:shuffle:cards": () => void;
   "admin:lock:cards": (locked: boolean) => void;
+  "admin:buzz:start_answer": () => void;
+  "admin:bounceback:open_steal": () => void;
+  "admin:bounceback:start_steal_answer": () => void;
+  "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
   "display:join": (code: string) => void;
 }
 

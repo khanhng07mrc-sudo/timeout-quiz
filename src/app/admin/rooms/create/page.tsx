@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 const GAME_MODES = [
-  { value: "CLASSIC", label: "Classic", desc: "Câu hỏi lần lượt, điểm theo đúng/sai", emoji: "🎮" },
-  { value: "BUZZ", label: "Buzz", desc: "Tranh quyền trả lời realtime", emoji: "⚡" },
-  { value: "POWERUP", label: "Power-up", desc: "Có thẻ hỗ trợ và chức năng đặc biệt", emoji: "🃏" },
+  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng trả lời, chấm điểm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮" },
+  { value: "BUZZ", label: "Buzz", desc: "Bấm chuông tranh quyền trả lời sớm nhất", emoji: "⚡" },
+  { value: "BOUNCEBACK", label: "Bounceback", desc: "1 đội trả lời chính, sai thì mở chuông 5s cho các đội khác cướp lượt", emoji: "🔄" },
   { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất", emoji: "❌" },
   { value: "TOURNAMENT", label: "Tournament", desc: "Bảng đấu 1v1", emoji: "🏆" },
 ];
@@ -36,6 +36,9 @@ export default function CreateRoomPage() {
   const [roomName, setRoomName] = useState("");
   const [mode, setMode] = useState("CLASSIC");
   const [teamMode, setTeamMode] = useState<"INDIVIDUAL" | "TEAM">("TEAM");
+  const [bouncebackQuestionsPerTurn, setBouncebackQuestionsPerTurn] = useState(1);
+  const [bouncebackCycles, setBouncebackCycles] = useState(1);
+  const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
 
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([
@@ -93,6 +96,9 @@ export default function CreateRoomPage() {
             timeBonusEnabled,
             penaltyForWrong,
             penaltyPoints,
+            bouncebackQuestionsPerTurn,
+            bouncebackCycles,
+            answerMethod,
           },
         }),
       });
@@ -151,6 +157,67 @@ export default function CreateRoomPage() {
                   </div>
                 </button>
               ))}
+            </div>
+          </div>
+
+          {mode === "BOUNCEBACK" && (
+            <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
+              <h3 className="font-bold text-sm text-purple-300">⚙️ Cấu hình lượt chơi Bounceback</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số câu mỗi lượt cho mỗi đội</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={bouncebackQuestionsPerTurn}
+                    onChange={(e) => setBouncebackQuestionsPerTurn(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số chu kỳ luân phiên</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={bouncebackCycles}
+                    onChange={(e) => setBouncebackCycles(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ước tính: {teams.length} đội × {bouncebackQuestionsPerTurn} câu/lượt × {bouncebackCycles} chu kỳ = {teams.length * bouncebackQuestionsPerTurn * bouncebackCycles} câu hỏi.
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium mb-3">Phương thức trả lời (Tất cả các mode, đặc biệt Buzz & Bounceback)</label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAnswerMethod("DEVICE")}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  answerMethod === "DEVICE" ? "border-purple-500 bg-purple-500/10" : "border-border hover:border-purple-400"
+                }`}
+              >
+                <div className="text-2xl mb-1">📱</div>
+                <p className="font-bold text-sm">Trên thiết bị thí sinh</p>
+                <p className="text-xs text-muted-foreground mt-1">Thí sinh bấm chọn đáp án trực tiếp trên điện thoại/máy tính</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAnswerMethod("MC")}
+                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                  answerMethod === "MC" ? "border-cyan-500 bg-cyan-500/10" : "border-border hover:border-cyan-400"
+                }`}
+              >
+                <div className="text-2xl mb-1">🎙️</div>
+                <p className="font-bold text-sm">Trả lời qua MC / Admin</p>
+                <p className="text-xs text-muted-foreground mt-1">Thí sinh trả lời miệng, quản trò (Admin) click chọn đáp án trên máy</p>
+              </button>
             </div>
           </div>
 

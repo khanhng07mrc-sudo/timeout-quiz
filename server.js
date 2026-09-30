@@ -140,6 +140,8 @@ function shuffleArray(array) {
 }
 
 // src/lib/socket-handlers.ts
+var globalIO;
+var pendingDisconnects = /* @__PURE__ */ new Map();
 var playerSockets = /* @__PURE__ */ new Map();
 var adminSockets = /* @__PURE__ */ new Map();
 var roomTimers = /* @__PURE__ */ new Map();
@@ -176,6 +178,7 @@ async function getAdminRoom(socket) {
   return null;
 }
 function registerSocketHandlers(io2) {
+  globalIO = io2;
   io2.on("connection", (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
     socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
@@ -185,7 +188,8 @@ function registerSocketHandlers(io2) {
           include: {
             teams: { include: { players: true, powerupCards: true } },
             players: true,
-            powerupCards: { where: { teamId: null } }
+            powerupCards: { where: { teamId: null } },
+            quizBank: { include: { questions: { orderBy: { order: "asc" } } } }
           }
         });
         if (!room) {
@@ -194,6 +198,10 @@ function registerSocketHandlers(io2) {
         if (room.status === "FINISHED") {
           return callback({ success: false, error: "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 k\u1EBFt th\xFAc" });
         }
+        if (playerId && pendingDisconnects.has(playerId)) {
+          clearTimeout(pendingDisconnects.get(playerId));
+          pendingDisconnects.delete(playerId);
+        }
         const trimmedName = (playerName || "Th\xED sinh").trim();
         let player = null;
         if (playerId) {
@@ -201,10 +209,15 @@ function registerSocketHandlers(io2) {
             where: { id: playerId, roomId: room.id }
           });
           if (existingById) {
+            if (pendingDisconnects.has(existingById.id)) {
+              clearTimeout(pendingDisconnects.get(existingById.id));
+              pendingDisconnects.delete(existingById.id);
+            }
+            const finalName = trimmedName && trimmedName !== "Player" && trimmedName !== "Th\xED sinh" ? trimmedName : existingById.name;
             player = await prisma.player.update({
               where: { id: existingById.id },
               data: {
-                name: trimmedName,
+                name: finalName,
                 socketId: socket.id,
                 ...teamId && !existingById.teamId ? { teamId } : {}
               }
@@ -212,7 +225,7 @@ function registerSocketHandlers(io2) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: finalName,
                 id: { not: existingById.id },
                 socketId: null
               }
@@ -229,6 +242,10 @@ function registerSocketHandlers(io2) {
             }
           });
           if (offlineSameName) {
+            if (pendingDisconnects.has(offlineSameName.id)) {
+              clearTimeout(pendingDisconnects.get(offlineSameName.id));
+              pendingDisconnects.delete(offlineSameName.id);
+            }
             player = await prisma.player.update({
               where: { id: offlineSameName.id },
               data: {
@@ -269,11 +286,43 @@ function registerSocketHandlers(io2) {
             }
           });
         }
+        if (player && pendingDisconnects.has(player.id)) {
+          clearTimeout(pendingDisconnects.get(player.id));
+          pendingDisconnects.delete(player.id);
+        }
         playerSockets.set(socket.id, player.id);
         socket.join(`room:${code}`);
         socket.join(`room:${code}:players`);
         const roomState = await buildRoomState(room.id);
         io2.to(`room:${code}`).emit("room:state", roomState);
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config;
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName
+            });
+            socket.emit("game:question", qState);
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
         callback({ success: true, playerId: player.id, teamId: player.teamId ?? void 0, roomState });
       } catch (err) {
         console.error("[room:join]", err);
@@ -282,7 +331,10 @@ function registerSocketHandlers(io2) {
     });
     socket.on("admin:join", async (code, callback) => {
       try {
-        const room = await prisma.room.findUnique({ where: { code } });
+        const room = await prisma.room.findUnique({
+          where: { code },
+          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+        });
         if (!room) {
           return callback?.({ success: false, error: "Ph\xF2ng kh\xF4ng t\u1ED3n t\u1EA1i" });
         }
@@ -302,6 +354,34 @@ function registerSocketHandlers(io2) {
         socket.join(`room:${code}:admin`);
         const roomState = await buildRoomState(room.id);
         io2.to(`room:${code}`).emit("room:state", roomState);
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config;
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName
+            });
+            socket.emit("game:question", qState);
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
         callback?.({ success: true, roomState });
       } catch (err) {
         console.error("[admin:join]", err);
@@ -342,10 +422,41 @@ function registerSocketHandlers(io2) {
     socket.on("display:join", async (code) => {
       socket.join(`room:${code}`);
       socket.join(`room:${code}:display`);
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await prisma.room.findUnique({
+        where: { code },
+        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+      });
       if (room) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config;
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName
+            });
+            socket.emit("game:question", qState);
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
       }
     });
     socket.on("game:answer:submit", async ({ questionId, answer }) => {
@@ -760,16 +871,24 @@ function registerSocketHandlers(io2) {
           callback?.({ success: false, error: "Kh\xF4ng c\xF3 quy\u1EC1n Admin" });
           return;
         }
-        const result = await prisma.player.deleteMany({
+        const offlineCandidates = await prisma.player.findMany({
           where: {
             roomId: room.id,
             socketId: null,
             isHost: false
           }
         });
+        const toDeleteIds = offlineCandidates.filter((p) => !pendingDisconnects.has(p.id)).map((p) => p.id);
+        let count = 0;
+        if (toDeleteIds.length > 0) {
+          const result = await prisma.player.deleteMany({
+            where: { id: { in: toDeleteIds } }
+          });
+          count = result.count;
+        }
         const state = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", state);
-        callback?.({ success: true, count: result.count });
+        callback?.({ success: true, count });
       } catch (err) {
         console.error("[admin:clean:offline]", err);
         callback?.({ success: false, error: "L\u1ED7i khi d\u1ECDn d\u1EB9p th\xED sinh offline" });
@@ -778,17 +897,62 @@ function registerSocketHandlers(io2) {
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
-      if (playerId) {
-        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-        await prisma.player.update({ where: { id: playerId }, data: { socketId: null } }).catch(() => {
+      if (!playerId) return;
+      playerSockets.delete(socket.id);
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player) return;
+      if (player.socketId && player.socketId !== socket.id) {
+        return;
+      }
+      let activeSocketId = null;
+      for (const [sockId, pId] of playerSockets.entries()) {
+        if (pId === playerId && io2.sockets.sockets.has(sockId)) {
+          activeSocketId = sockId;
+          break;
+        }
+      }
+      if (activeSocketId) {
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { socketId: activeSocketId }
+        }).catch(() => {
         });
-        playerSockets.delete(socket.id);
-        if (player?.room) {
+        return;
+      }
+      const existingTimer = pendingDisconnects.get(playerId);
+      if (existingTimer) clearTimeout(existingTimer);
+      const timer = setTimeout(async () => {
+        pendingDisconnects.delete(playerId);
+        let reconnectedSocketId = null;
+        for (const [sockId, pId] of playerSockets.entries()) {
+          if (pId === playerId && io2.sockets.sockets.has(sockId)) {
+            reconnectedSocketId = sockId;
+            break;
+          }
+        }
+        if (reconnectedSocketId) {
+          await prisma.player.update({
+            where: { id: playerId },
+            data: { socketId: reconnectedSocketId }
+          }).catch(() => {
+          });
+          return;
+        }
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { socketId: null }
+        }).catch(() => {
+        });
+        if (player.room) {
           io2.to(`room:${player.room.code}`).emit("player:left", playerId);
           const state = await buildRoomState(player.room.id);
           io2.to(`room:${player.room.code}`).emit("room:state", state);
         }
-      }
+      }, 2500);
+      pendingDisconnects.set(playerId, timer);
     });
   });
 }
@@ -1148,15 +1312,31 @@ async function buildRoomState(roomId) {
       playerCount: teamPlayers.length
     };
   });
-  const players = validPlayers.map((p) => ({
-    id: p.id,
-    name: p.name,
-    avatar: p.avatar ?? void 0,
-    score: p.score,
-    teamId: p.teamId ?? void 0,
-    isHost: false,
-    isOnline: !!p.socketId
-  }));
+  const players = validPlayers.map((p) => {
+    let isConnected = false;
+    if (p.socketId && globalIO?.sockets.sockets.has(p.socketId)) {
+      isConnected = true;
+    } else if (p.socketId && !globalIO) {
+      isConnected = true;
+    } else {
+      for (const [sockId, pId] of playerSockets.entries()) {
+        if (pId === p.id && globalIO?.sockets.sockets.has(sockId)) {
+          isConnected = true;
+          break;
+        }
+      }
+    }
+    const isOnline = isConnected || pendingDisconnects.has(p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar ?? void 0,
+      score: p.score,
+      teamId: p.teamId ?? void 0,
+      isHost: false,
+      isOnline
+    };
+  });
   const sharedCards = room.powerupCards.map((c) => ({
     id: c.id,
     type: c.type,

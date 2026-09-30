@@ -30,6 +30,9 @@ interface ActiveTeamCard {
   appliedAt: number;
 }
 
+let globalIO: IO | undefined;
+const pendingDisconnects = new Map<string, NodeJS.Timeout>(); // playerId -> timeout for graceful reconnect
+
 // In-memory session store
 const playerSockets = new Map<string, string>(); // socketId -> playerId
 const adminSockets = new Map<string, string>(); // socketId -> roomId
@@ -74,6 +77,8 @@ async function getAdminRoom(socket: Sock) {
 }
 
 export function registerSocketHandlers(io: IO) {
+  globalIO = io;
+
   io.on("connection", (socket: Sock) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
@@ -86,6 +91,7 @@ export function registerSocketHandlers(io: IO) {
             teams: { include: { players: true, powerupCards: true } },
             players: true,
             powerupCards: { where: { teamId: null } },
+            quizBank: { include: { questions: { orderBy: { order: "asc" } } } },
           },
         });
 
@@ -94,6 +100,12 @@ export function registerSocketHandlers(io: IO) {
         }
         if (room.status === "FINISHED") {
           return callback({ success: false, error: "Trận đấu đã kết thúc" });
+        }
+
+        // Cancel any pending disconnect timer for this playerId
+        if (playerId && pendingDisconnects.has(playerId)) {
+          clearTimeout(pendingDisconnects.get(playerId)!);
+          pendingDisconnects.delete(playerId);
         }
 
         const trimmedName = (playerName || "Thí sinh").trim();
@@ -105,10 +117,20 @@ export function registerSocketHandlers(io: IO) {
             where: { id: playerId, roomId: room.id },
           });
           if (existingById) {
+            // Cancel pending disconnect timer
+            if (pendingDisconnects.has(existingById.id)) {
+              clearTimeout(pendingDisconnects.get(existingById.id)!);
+              pendingDisconnects.delete(existingById.id);
+            }
+
+            const finalName = (trimmedName && trimmedName !== "Player" && trimmedName !== "Thí sinh")
+              ? trimmedName
+              : existingById.name;
+
             player = await prisma.player.update({
               where: { id: existingById.id },
               data: {
-                name: trimmedName,
+                name: finalName,
                 socketId: socket.id,
                 ...(teamId && !existingById.teamId ? { teamId } : {}),
               },
@@ -118,7 +140,7 @@ export function registerSocketHandlers(io: IO) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: finalName,
                 id: { not: existingById.id },
                 socketId: null,
               },
@@ -136,6 +158,11 @@ export function registerSocketHandlers(io: IO) {
             },
           });
           if (offlineSameName) {
+            if (pendingDisconnects.has(offlineSameName.id)) {
+              clearTimeout(pendingDisconnects.get(offlineSameName.id)!);
+              pendingDisconnects.delete(offlineSameName.id);
+            }
+
             player = await prisma.player.update({
               where: { id: offlineSameName.id },
               data: {
@@ -181,6 +208,11 @@ export function registerSocketHandlers(io: IO) {
           });
         }
 
+        if (player && pendingDisconnects.has(player.id)) {
+          clearTimeout(pendingDisconnects.get(player.id)!);
+          pendingDisconnects.delete(player.id);
+        }
+
         playerSockets.set(socket.id, player.id);
         socket.join(`room:${code}`);
         socket.join(`room:${code}:players`);
@@ -189,6 +221,39 @@ export function registerSocketHandlers(io: IO) {
 
         // Broadcast updated room state so all participants see the online status & team counts
         io.to(`room:${code}`).emit("room:state", roomState);
+
+        // If the game is PLAYING, recover current question and timer for this player socket
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config as any;
+
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName,
+            });
+
+            socket.emit("game:question", qState);
+
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
 
         callback({ success: true, playerId: player.id, teamId: player.teamId ?? undefined, roomState });
       } catch (err) {
@@ -200,7 +265,10 @@ export function registerSocketHandlers(io: IO) {
     // ── Admin Join ───────────────────────────────────────────────────────────
     socket.on("admin:join", async (code, callback) => {
       try {
-        const room = await prisma.room.findUnique({ where: { code } });
+        const room = await prisma.room.findUnique({
+          where: { code },
+          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+        });
         if (!room) {
           return callback?.({ success: false, error: "Phòng không tồn tại" });
         }
@@ -223,6 +291,39 @@ export function registerSocketHandlers(io: IO) {
 
         const roomState = await buildRoomState(room.id);
         io.to(`room:${code}`).emit("room:state", roomState);
+
+        // If the game is PLAYING, recover current question and timer for admin socket
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config as any;
+
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName,
+            });
+
+            socket.emit("game:question", qState);
+
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
 
         callback?.({ success: true, roomState });
       } catch (err) {
@@ -272,10 +373,45 @@ export function registerSocketHandlers(io: IO) {
     socket.on("display:join", async (code) => {
       socket.join(`room:${code}`);
       socket.join(`room:${code}:display`);
-      const room = await prisma.room.findUnique({ where: { code } });
+      const room = await prisma.room.findUnique({
+        where: { code },
+        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+      });
       if (room) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
+
+        if (room.status === "PLAYING" && room.quizBank?.questions) {
+          const currentQ = room.quizBank.questions[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            const primary = roomPrimaryTeams.get(qKey);
+            const stealBuzzed = roomStealBuzzed.get(qKey);
+            const buzzFirst = roomBuzzFirst.get(qKey);
+            const isSteal = roomStealPhase.get(qKey) ?? false;
+            const config = room.config as any;
+
+            const qState = buildQuestionState(currentQ, {
+              primaryTeamId: primary?.teamId,
+              primaryTeamName: primary?.teamName,
+              bloomLevel: getBloomLevelFromPoints(currentQ.points),
+              answerMethod: config?.answerMethod ?? "DEVICE",
+              isStealPhase: isSteal,
+              stealBuzzedTeamId: stealBuzzed?.teamId,
+              stealBuzzedTeamName: stealBuzzed?.teamName,
+              buzzedTeamId: buzzFirst?.teamId,
+              buzzedTeamName: buzzFirst?.teamName,
+            });
+
+            socket.emit("game:question", qState);
+
+            const timerKey = `${room.id}:timer`;
+            const remaining = roomRemainingTimes.get(timerKey);
+            if (typeof remaining === "number" && remaining > 0) {
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+            }
+          }
+        }
       }
     });
 
@@ -786,7 +922,7 @@ export function registerSocketHandlers(io: IO) {
           return;
         }
 
-        const result = await prisma.player.deleteMany({
+        const offlineCandidates = await prisma.player.findMany({
           where: {
             roomId: room.id,
             socketId: null,
@@ -794,9 +930,22 @@ export function registerSocketHandlers(io: IO) {
           },
         });
 
+        // Filter out anyone currently in pendingDisconnects grace period (refreshing)
+        const toDeleteIds = offlineCandidates
+          .filter((p) => !pendingDisconnects.has(p.id))
+          .map((p) => p.id);
+
+        let count = 0;
+        if (toDeleteIds.length > 0) {
+          const result = await prisma.player.deleteMany({
+            where: { id: { in: toDeleteIds } },
+          });
+          count = result.count;
+        }
+
         const state = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", state);
-        callback?.({ success: true, count: result.count });
+        callback?.({ success: true, count });
       } catch (err) {
         console.error("[admin:clean:offline]", err);
         callback?.({ success: false, error: "Lỗi khi dọn dẹp thí sinh offline" });
@@ -806,17 +955,76 @@ export function registerSocketHandlers(io: IO) {
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
-      if (playerId) {
-        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-        await prisma.player.update({ where: { id: playerId }, data: { socketId: null } }).catch(() => {});
-        playerSockets.delete(socket.id);
+      if (!playerId) return;
 
-        if (player?.room) {
+      playerSockets.delete(socket.id);
+
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player) return;
+
+      // If player already reconnected with a newer socket, do NOT mark them offline!
+      if (player.socketId && player.socketId !== socket.id) {
+        return;
+      }
+
+      // Check if player has another active socket in playerSockets
+      let activeSocketId: string | null = null;
+      for (const [sockId, pId] of playerSockets.entries()) {
+        if (pId === playerId && io.sockets.sockets.has(sockId)) {
+          activeSocketId = sockId;
+          break;
+        }
+      }
+
+      if (activeSocketId) {
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { socketId: activeSocketId },
+        }).catch(() => {});
+        return;
+      }
+
+      // 2.5s grace period to allow seamless page refresh without turning offline
+      const existingTimer = pendingDisconnects.get(playerId);
+      if (existingTimer) clearTimeout(existingTimer);
+
+      const timer = setTimeout(async () => {
+        pendingDisconnects.delete(playerId);
+
+        // Check if player reconnected during the grace period
+        let reconnectedSocketId: string | null = null;
+        for (const [sockId, pId] of playerSockets.entries()) {
+          if (pId === playerId && io.sockets.sockets.has(sockId)) {
+            reconnectedSocketId = sockId;
+            break;
+          }
+        }
+
+        if (reconnectedSocketId) {
+          await prisma.player.update({
+            where: { id: playerId },
+            data: { socketId: reconnectedSocketId },
+          }).catch(() => {});
+          return;
+        }
+
+        // Truly disconnected/offline
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { socketId: null },
+        }).catch(() => {});
+
+        if (player.room) {
           io.to(`room:${player.room.code}`).emit("player:left", playerId);
           const state = await buildRoomState(player.room.id);
           io.to(`room:${player.room.code}`).emit("room:state", state);
         }
-      }
+      }, 2500);
+
+      pendingDisconnects.set(playerId, timer);
     });
   });
 }
@@ -1256,15 +1464,33 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     };
   });
 
-  const players: PlayerState[] = validPlayers.map((p) => ({
-    id: p.id,
-    name: p.name,
-    avatar: p.avatar ?? undefined,
-    score: p.score,
-    teamId: p.teamId ?? undefined,
-    isHost: false,
-    isOnline: !!p.socketId,
-  }));
+  const players: PlayerState[] = validPlayers.map((p) => {
+    let isConnected = false;
+    if (p.socketId && globalIO?.sockets.sockets.has(p.socketId)) {
+      isConnected = true;
+    } else if (p.socketId && !globalIO) {
+      isConnected = true;
+    } else {
+      // Check if player has any other active socket in playerSockets
+      for (const [sockId, pId] of playerSockets.entries()) {
+        if (pId === p.id && globalIO?.sockets.sockets.has(sockId)) {
+          isConnected = true;
+          break;
+        }
+      }
+    }
+    const isOnline = isConnected || pendingDisconnects.has(p.id);
+
+    return {
+      id: p.id,
+      name: p.name,
+      avatar: p.avatar ?? undefined,
+      score: p.score,
+      teamId: p.teamId ?? undefined,
+      isHost: false,
+      isOnline,
+    };
+  });
 
   const sharedCards = room.powerupCards.map((c) => ({
     id: c.id,

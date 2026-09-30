@@ -27,6 +27,7 @@ export default function JoinPage() {
         return;
       }
       sessionStorage.setItem("playerName", name.trim());
+      localStorage.setItem("playerName", name.trim());
       router.push(`/play/${pin.trim()}`);
     } catch {
       setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");

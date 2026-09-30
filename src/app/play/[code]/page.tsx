@@ -39,43 +39,74 @@ export default function PlayPage() {
   const [isStealPhase, setIsStealPhase] = useState(false);
   const [stealBuzzedTeam, setStealBuzzedTeam] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const myTeamIdRef = useRef<string | undefined>(undefined);
+  const playerIdRef = useRef<string>("");
 
   useEffect(() => {
-    const playerName = sessionStorage.getItem("playerName") || "Player";
     const storageKey = `timeout_player_id_${code}`;
-    let savedPlayerId = sessionStorage.getItem(storageKey);
+    let savedPlayerId = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
     if (!savedPlayerId) {
       savedPlayerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       sessionStorage.setItem(storageKey, savedPlayerId);
+      localStorage.setItem(storageKey, savedPlayerId);
     }
+    playerIdRef.current = savedPlayerId;
     setPlayerId(savedPlayerId);
+
+    const playerName = sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
     });
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      setConnected(true);
-      socket.emit("room:join", { code, playerName, playerId: savedPlayerId }, (result) => {
+    const joinRoom = () => {
+      const currentPid = playerIdRef.current || savedPlayerId;
+      const currentName = sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
+
+      socket.emit("room:join", {
+        code,
+        playerName: currentName,
+        playerId: currentPid,
+        teamId: myTeamIdRef.current,
+      }, (result) => {
         if (result.success) {
-          const finalId = result.playerId || savedPlayerId;
+          const finalId = result.playerId || currentPid;
+          playerIdRef.current = finalId;
           setPlayerId(finalId);
           sessionStorage.setItem(storageKey, finalId);
+          localStorage.setItem(storageKey, finalId);
           setRoomState(result.roomState ?? null);
           const p = result.roomState?.players.find((pl) => pl.id === finalId);
-          myTeamIdRef.current = p?.teamId;
+          if (p?.name) {
+            sessionStorage.setItem("playerName", p.name);
+            localStorage.setItem("playerName", p.name);
+          }
+          if (p?.teamId) myTeamIdRef.current = p.teamId;
         } else {
           alert(result.error ?? "Không thể vào phòng");
           router.push("/play");
         }
       });
+    };
+
+    socket.on("connect", () => {
+      setConnected(true);
+      joinRoom();
+    });
+
+    socket.io.on("reconnect", () => {
+      joinRoom();
     });
 
     socket.on("room:state", (state) => {
       setRoomState(state);
-      const p = state.players.find((pl) => pl.id === savedPlayerId);
+      const currentPid = playerIdRef.current || savedPlayerId;
+      const p = state.players.find((pl) => pl.id === currentPid);
       if (p?.teamId) myTeamIdRef.current = p.teamId;
+      if (p?.name) {
+        sessionStorage.setItem("playerName", p.name);
+        localStorage.setItem("playerName", p.name);
+      }
     });
 
     socket.on("game:question", (q) => {
@@ -180,6 +211,7 @@ export default function PlayPage() {
   };
 
   const handleSelectTeam = (teamId: string) => {
+    myTeamIdRef.current = teamId;
     socketRef.current?.emit("player:select:team", { teamId }, (res) => {
       if (res?.error) {
         setErrorMessage(res.error);

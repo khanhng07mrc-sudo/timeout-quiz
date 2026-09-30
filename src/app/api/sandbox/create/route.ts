@@ -73,23 +73,28 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If no quiz bank specified, find the first available bank
-    if (!quizBankId) {
-      const firstBank = await prisma.quizBank.findFirst({
-        where: { ownerId: host.id },
-        include: { _count: { select: { questions: true } } },
-      });
-      if (firstBank) {
-        quizBankId = firstBank.id;
-      }
-    }
-
-    const quizBank = quizBankId
+    // If quiz bank specified, find it; otherwise find any available bank
+    let quizBank = quizBankId
       ? await prisma.quizBank.findUnique({
           where: { id: quizBankId },
           include: { _count: { select: { questions: true } } },
         })
       : null;
+
+    if (!quizBank) {
+      quizBank = await prisma.quizBank.findFirst({
+        where: { OR: [{ ownerId: host.id }, { isPublic: true }] },
+        include: { _count: { select: { questions: true } } },
+        orderBy: { createdAt: "desc" },
+      });
+    }
+
+    if (!quizBank) {
+      quizBank = await prisma.quizBank.findFirst({
+        include: { _count: { select: { questions: true } } },
+        orderBy: { createdAt: "desc" },
+      });
+    }
 
     // Generate unique 6-digit room code
     let code = generateRoomCode();

@@ -68,11 +68,22 @@ export default function AdminSandboxPage() {
     fetch("/api/quiz-bank?ownerId=demo-host-id")
       .then((res) => res.json())
       .then((data) => {
-        if (data.quizBanks && Array.isArray(data.quizBanks)) {
-          setQuizBanks(data.quizBanks);
-          if (data.quizBanks.length > 0) {
-            setSelectedBankId(data.quizBanks[0].id);
-          }
+        const banksList = data.banks || data.quizBanks || [];
+        if (Array.isArray(banksList) && banksList.length > 0) {
+          setQuizBanks(banksList);
+          setSelectedBankId(banksList[0].id);
+        } else {
+          // If no banks with ownerId, try fetching public banks
+          fetch("/api/quiz-bank")
+            .then((res2) => res2.json())
+            .then((data2) => {
+              const fallbackList = data2.banks || data2.quizBanks || [];
+              if (Array.isArray(fallbackList) && fallbackList.length > 0) {
+                setQuizBanks(fallbackList);
+                setSelectedBankId(fallbackList[0].id);
+              }
+            })
+            .catch(() => {});
         }
       })
       .catch(console.error);
@@ -368,13 +379,17 @@ export default function AdminSandboxPage() {
               <select
                 value={selectedBankId}
                 onChange={(e) => setSelectedBankId(e.target.value)}
-                className="px-3 py-2 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none max-w-[200px] truncate"
+                className="px-3 py-2 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none min-w-[200px] max-w-[280px] truncate"
               >
-                {quizBanks.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.title} ({b._count?.questions ?? 25} câu)
-                  </option>
-                ))}
+                {quizBanks.length === 0 ? (
+                  <option value="">📚 Bộ đề mặc định (25 câu)</option>
+                ) : (
+                  quizBanks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      📚 {b.title} ({b._count?.questions ?? 25} câu)
+                    </option>
+                  ))
+                )}
               </select>
 
               <button
@@ -556,12 +571,48 @@ export default function AdminSandboxPage() {
             </p>
           </div>
 
-          <div className="pt-4 flex flex-col sm:flex-row gap-3 justify-center">
+          {/* Quick Selectors in Welcome Card */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto pt-2 text-left">
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ chơi (8 Mode)</label>
+              <select
+                value={selectedMode}
+                onChange={(e) => setSelectedMode(e.target.value as GameMode)}
+                className="w-full px-3 py-2.5 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
+              >
+                {AVAILABLE_MODES.map((m) => (
+                  <option key={m.mode} value={m.mode}>
+                    {m.emoji} {m.name} ({m.mode})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-[11px] font-bold text-slate-400 mb-1">📚 Bộ câu hỏi</label>
+              <select
+                value={selectedBankId}
+                onChange={(e) => setSelectedBankId(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none truncate"
+              >
+                {quizBanks.length === 0 ? (
+                  <option value="">📚 Bộ đề mặc định (25 câu)</option>
+                ) : (
+                  quizBanks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      📚 {b.title} ({b._count?.questions ?? 25} câu)
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
             <button
               type="button"
               disabled={creating}
               onClick={handleLaunchSandbox}
-              className="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-sm shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-sm shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               {creating ? "Đang chuẩn bị phòng..." : `⚡ Khởi chạy Sandbox Mode: ${selectedMode}`}
             </button>

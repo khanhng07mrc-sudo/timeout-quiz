@@ -108,11 +108,16 @@
     "hint": "Chỉ số kinh tế quan trọng để cân nhắc mức thuế carbon hoặc phân tích lợi ích - chi phí (CBA) của các chính sách khí hậu."
   },
   {
-    "type": "ESSAY",
-    "content": "Phân tích ngắn gọn nghịch lý 'Người đi nhờ xe' (Free-rider problem) trong việc hợp tác toàn cầu nhằm cắt giảm khí nhà kính.",
-    "answer": "Gợi ý: Do bầu khí quyển là tài sản chung toàn cầu (không có tính loại trừ), bất kỳ quốc gia nào cắt giảm khí thải đều tạo ra lợi ích chung cho toàn thế giới. Do đó, một số quốc gia có xu hướng không hành động hoặc không chịu tốn chi phí cắt giảm, mà chỉ muốn 'đi nhờ' vào nỗ lực giảm phát thải của các nước khác.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Liên hệ đặc tính của hàng hóa công cộng toàn cầu và động cơ trốn tránh chi phí của các quốc gia cá biệt."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Trong đàm phán quốc tế về cắt giảm khí thải CO2, quốc gia X từ chối ký cam kết đóng cửa các nhà máy điện than để duy trì chi phí sản xuất giá rẻ, trong khi vẫn được hưởng lợi từ bầu khí quyển trong lành hơn do các nước láng giềng đã chi hàng tỷ USD để cắt giảm khí thải. Hành vi của quốc gia X minh họa rõ nét nhất cho vấn đề kinh tế học nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Vấn đề 'Kẻ đi nhờ xe' (Free-rider problem) bắt nguồn từ tính chất hàng hóa công cộng thuần túy (không có tính loại trừ) của bầu khí quyển", "isCorrect": true },
+      { "id": "B", "text": "Nghịch lý Leontief trong thương mại quốc tế", "isCorrect": false },
+      { "id": "C", "text": "Hiệu ứng bẫy thanh khoản của chính sách tiền tệ", "isCorrect": false },
+      { "id": "D", "text": "Quy luật lợi suất giảm dần trong nông nghiệp", "isCorrect": false }
+    ],
+    "hint": "Tận hưởng thành quả bảo vệ môi trường do người khác bỏ tiền chi trả mà bản thân không phải chịu chi phí."
   }
 ]

@@ -108,11 +108,16 @@
     "hint": "Tạo ra dòng tiền dồi dào để nuôi dưỡng các mảng kinh doanh khác mà không cần tái đầu tư lớn."
   },
   {
-    "type": "ESSAY",
-    "content": "Hãy nêu 3 lý do giải thích tại sao một bản kế hoạch kinh doanh dù được chuẩn bị kỹ lưỡng vẫn có thể thất bại khi triển khai trong thực tế.",
-    "answer": "Gợi ý: (1) Môi trường vĩ mô và thị trường biến động ngoài dự báo; (2) Mục tiêu phi thực tế hoặc thiếu nguồn lực tài chính/nhân sự; (3) Khâu truyền thông nội bộ và phối hợp thực thi kém, thiếu kiểm soát tiến độ.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Xem xét các yếu tố về dự báo môi trường, năng lực nguồn lực và sự phối hợp khi thực thi."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Một doanh nghiệp bán lẻ xây dựng bản kế hoạch mở rộng chuỗi cửa hàng chi tiết trong 2 năm. Tuy nhiên sau 6 tháng thực hiện, doanh số sụt giảm mạnh do xuất hiện xu hướng mua sắm trực tuyến tăng vọt bất ngờ và chi phí mặt bằng tăng cao. Yếu tố cốt lõi nào khiến bản kế hoạch trên thất bại?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Doanh nghiệp lập kế hoạch quá cứng nhắc, thiếu tính thích ứng động và không xây dựng các kịch bản dự phòng với biến động môi trường", "isCorrect": true },
+      { "id": "B", "text": "Doanh nghiệp chi quá nhiều kinh phí cho việc nghiên cứu thị trường ban đầu", "isCorrect": false },
+      { "id": "C", "text": "Doanh nghiệp phân bổ sai thẩm quyền giữa ban giám đốc và các cửa hàng trưởng", "isCorrect": false },
+      { "id": "D", "text": "Doanh nghiệp áp dụng sai cấu trúc ma trận SWOT khi đánh giá năng lực nội bộ", "isCorrect": false }
+    ],
+    "hint": "Tính linh hoạt và khả năng thích ứng với biến động môi trường là yếu tố sống còn của lập kế hoạch."
   }
 ]

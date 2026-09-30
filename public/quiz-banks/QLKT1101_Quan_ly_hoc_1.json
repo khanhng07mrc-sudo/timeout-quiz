@@ -108,11 +108,16 @@
     "hint": "Nhà quản trị cấp cao cần kỹ năng tư duy chiến lược nhiều nhất; cấp cơ sở cần kỹ năng chuyên môn kỹ thuật nhiều nhất."
   },
   {
-    "type": "ESSAY",
-    "content": "Hãy phân tích ngắn gọn sự khác biệt cốt lõi giữa 'Hiệu quả' (Efficiency) và 'Hiệu lực' (Effectiveness) trong quản lý.",
-    "answer": "Gợi ý: Hiệu quả là làm đúng cách (doing things right) - tối ưu hóa chi phí và nguồn lực; Hiệu lực là làm đúng việc (doing the right things) - đạt được mục tiêu đề ra.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Phân biệt giữa việc đạt mục tiêu (làm đúng việc) và việc tiết kiệm chi phí/nguồn lực (làm đúng phương pháp)."
+    "type": "MC_SINGLE",
+    "content": "Một doanh nghiệp sản xuất ra các sản phẩm đạt tiêu chuẩn kỹ thuật cao với chi phí tối thiểu nhưng sản phẩm đó thị trường hoàn toàn không có nhu cầu tiêu thụ. Tình huống này phản ánh doanh nghiệp đang ở trạng thái nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Đạt hiệu quả cao nhưng hiệu lực thấp (High Efficiency, Low Effectiveness)", "isCorrect": true },
+      { "id": "B", "text": "Đạt hiệu lực cao nhưng hiệu quả thấp (High Effectiveness, Low Efficiency)", "isCorrect": false },
+      { "id": "C", "text": "Đạt cả hiệu quả và hiệu lực cao", "isCorrect": false },
+      { "id": "D", "text": "Kém cả hiệu quả lẫn hiệu lực", "isCorrect": false }
+    ],
+    "hint": "Hiệu quả là làm việc đúng cách (tiết kiệm chi phí), còn hiệu lực là làm đúng việc (đáp ứng đúng mục tiêu thị trường cần)."
   }
 ]

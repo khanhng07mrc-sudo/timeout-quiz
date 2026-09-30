@@ -59,28 +59,29 @@ async function main() {
     const questionsFile = import_path.default.join(__dirname, `../public${item.file}`);
     if (import_fs.default.existsSync(questionsFile)) {
       const questionsData = JSON.parse(import_fs.default.readFileSync(questionsFile, "utf-8"));
+      await prisma.answer.deleteMany({
+        where: { question: { quizBankId: bank.id } }
+      });
+      await prisma.question.deleteMany({
+        where: { quizBankId: bank.id }
+      });
       for (let i = 0; i < questionsData.length; i++) {
         const q = questionsData[i];
-        const existing = await prisma.question.findFirst({
-          where: { quizBankId: bank.id, content: q.content }
+        await prisma.question.create({
+          data: {
+            quizBankId: bank.id,
+            type: q.type,
+            content: q.content,
+            options: q.options || void 0,
+            answer: q.answer || null,
+            points: q.points || 10,
+            timeLimit: q.timeLimit || 30,
+            hint: q.hint || null,
+            order: i + 1
+          }
         });
-        if (!existing) {
-          await prisma.question.create({
-            data: {
-              quizBankId: bank.id,
-              type: q.type,
-              content: q.content,
-              options: q.options || void 0,
-              answer: q.answer || null,
-              points: q.points || 10,
-              timeLimit: q.timeLimit || 30,
-              hint: q.hint || null,
-              order: i + 1
-            }
-          });
-        }
       }
-      console.log(`   \u2705 \u0110\xE3 n\u1EA1p ${questionsData.length} c\xE2u h\u1ECFi cho ${item.code}`);
+      console.log(`   \u2705 \u0110\xE3 n\u1EA1p m\u1EDBi ${questionsData.length} c\xE2u h\u1ECFi chu\u1EA9n h\xF3a cho ${item.code}`);
     }
   }
   console.log("\u{1F389} Ho\xE0n t\u1EA5t n\u1EA1p d\u1EEF li\u1EC7u m\u1EABu 8 m\xF4n h\u1ECDc th\xE0nh c\xF4ng!");

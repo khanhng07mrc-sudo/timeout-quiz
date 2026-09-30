@@ -108,11 +108,16 @@
     "hint": "Nguyên lý tối ưu hóa biên cơ bản trong kinh tế học: mở rộng quy mô đến khi lợi ích tăng thêm bằng chi phí tăng thêm."
   },
   {
-    "type": "ESSAY",
-    "content": "Trình bày ngắn gọn 2 tác động tiêu cực của hiện tượng 'Dàn trải đô thị' (Urban Sprawl - phát triển phân tán ra vùng ven) đối với kinh tế và môi trường.",
-    "answer": "Gợi ý: (1) Kinh tế: Làm tăng chi phí đầu tư công cho hạ tầng kéo dài (điện, nước, đường xá) và tăng chi phí đi lại của người dân; (2) Môi trường: Tiêu tốn đất nông nghiệp, tăng lượng khí thải giao thông do phụ thuộc xe cá nhân di chuyển quãng đường xa.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Xem xét chi phí đầu tư hạ tầng kéo dài và mức độ phát thải do phụ thuộc vào phương tiện cá nhân."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Một chính quyền thành phố mở rộng vùng ven bằng việc phê duyệt ồ ạt các khu nhà ở phân tán mật độ thấp cách xa trung tâm. Sau 5 năm, ngân sách thành phố thâm hụt nặng nề do phải kéo dài mạng lưới cấp thoát nước và đường xá, trong khi người dân chịu chi phí xăng dầu tăng vọt và kẹt xe nghiêm trọng do bắt buộc phải dùng xe cá nhân đi làm. Hiện tượng này minh chứng cho tác động tiêu cực của:",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Hiện tượng 'Dàn trải đô thị' (Urban Sprawl) làm đội chi phí đầu tư hạ tầng công ích và gia tăng ngoại ứng tiêu cực giao thông - môi trường", "isCorrect": true },
+      { "id": "B", "text": "Chiến lược xây dựng đô thị nén (Compact City)", "isCorrect": false },
+      { "id": "C", "text": "Mô hình phát triển đô thị định hướng giao thông công cộng (TOD)", "isCorrect": false },
+      { "id": "D", "text": "Hiện tượng phục hưng và quý tộc hóa đô thị (Gentrification)", "isCorrect": false }
+    ],
+    "hint": "Phát triển dàn trải mật độ thấp ra ngoại vi làm gia tăng đột biến chi phí hạ tầng và phát thải xe cá nhân."
   }
 ]

@@ -108,11 +108,16 @@
     "hint": "Không đánh giá quá cao tài sản và thu nhập, cũng như không đánh giá quá thấp nợ phải trả và chi phí."
   },
   {
-    "type": "ESSAY",
-    "content": "Hãy giải thích tại sao một doanh nghiệp có số liệu Báo cáo kết quả kinh doanh đạt 'Lợi nhuận dương rất cao' nhưng trên thực tế vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản.",
-    "answer": "Gợi ý: Do ghi nhận theo cơ sở dồn tích, doanh thu được ghi nhận khi bán hàng trả chậm nhưng dòng tiền thực tế chưa thu về (nằm ở các khoản Phải thu khó đòi hoặc tồn kho ứ đọng). Khi đến hạn trả nợ vay ngân hàng hoặc nhà cung cấp, doanh nghiệp không có tiền mặt thanh khoản để chi trả.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Phân tích sự khác biệt giữa Lợi nhuận kế toán (cơ sở dồn tích) và Dòng tiền thuần thực tế (Cash flow)."
+    "type": "MC_SINGLE",
+    "content": "Trong thực tế, một doanh nghiệp có Báo cáo kết quả kinh doanh đạt mức 'Lợi nhuận dương rất cao' nhưng vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản chủ yếu là do nguyên nhân nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Ghi nhận doanh thu theo cơ sở dồn tích nhưng dòng tiền thực tế chưa thu được (bị ứ đọng lớn ở nợ phải thu khó đòi hoặc hàng tồn kho)", "isCorrect": true },
+      { "id": "B", "text": "Doanh nghiệp quên không trích khấu hao tài sản cố định trong năm", "isCorrect": false },
+      { "id": "C", "text": "Chi phí thuế thu nhập doanh nghiệp được hoãn lại quá nhiều năm", "isCorrect": false },
+      { "id": "D", "text": "Giá trị vốn chủ sở hữu trên sổ sách cao hơn giá trị thị trường", "isCorrect": false }
+    ],
+    "hint": "Sự khác biệt giữa Lợi nhuận kế toán (trên giấy tờ) và Dòng tiền mặt thuần thực tế có sẵn để thanh toán nợ đến hạn."
   }
 ]

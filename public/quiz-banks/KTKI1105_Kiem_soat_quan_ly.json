@@ -108,11 +108,16 @@
     "hint": "Dựa trên sự tự giác, đạo đức nghề nghiệp và chuẩn mực văn hóa doanh nghiệp."
   },
   {
-    "type": "ESSAY",
-    "content": "Trình bày ngắn gọn tại sao một hệ thống kiểm soát quản lý quá khắt khe, nặng về áp đặt chỉ tiêu định lượng có thể dẫn đến hành vi gian lận hoặc đối phó của cấp dưới (Gaming the system).",
-    "answer": "Gợi ý: Khi áp lực đạt chỉ tiêu quá lớn gắn liền với khen thưởng/kỷ luật mà năng lực thực tế không theo kịp, nhân viên dễ có xu hướng thao túng số liệu, dịch chuyển doanh thu/chi phí giữa các kỳ, hoặc cắt giảm chi phí bảo trì/R&D để tạo lợi nhuận ảo ngắn hạn.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Phân tích tâm lý nhân viên khi bị áp lực KPI phi thực tế dẫn đến tối ưu hóa cục bộ hoặc làm đẹp báo cáo."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Để đạt chỉ tiêu lợi nhuận quý IV theo KPI nghiêm ngặt của tập đoàn nhằm nhận thưởng lớn, giám đốc nhà máy đã hoãn toàn bộ chi phí bảo dưỡng máy móc định kỳ sang năm sau và ghi nhận trước doanh thu các đơn hàng chưa giao. Hành vi này phản ánh hiện tượng gì trong kiểm soát quản lý?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Hành vi đối phó / thao túng hệ thống (Gaming the system) do hệ thống kiểm soát kết quả quá nặng về chỉ tiêu tài chính ngắn hạn", "isCorrect": true },
+      { "id": "B", "text": "Khả năng ứng biến linh hoạt và tối ưu chi phí của nhà quản trị sản xuất", "isCorrect": false },
+      { "id": "C", "text": "Áp dụng đúng chuẩn mực kế toán dồn tích (Accrual accounting)", "isCorrect": false },
+      { "id": "D", "text": "Phát huy tối đa văn hóa tự chủ theo mô hình Thẻ điểm cân bằng (BSC)", "isCorrect": false }
+    ],
+    "hint": "Hiện tượng hy sinh lợi ích dài hạn để làm đẹp số liệu báo cáo tài chính ngắn hạn nhằm hoàn thành KPI."
   }
 ]

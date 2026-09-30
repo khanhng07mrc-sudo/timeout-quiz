@@ -108,11 +108,16 @@
     "hint": "Giai đoạn triển khai các gói công việc cụ thể để tạo ra sản phẩm bàn giao thực tế."
   },
   {
-    "type": "ESSAY",
-    "content": "Tại sao việc xác định phạm vi dự án (Project Scope) rõ ràng ngay từ đầu lại là yếu tố sống còn để ngăn chặn hiện tượng 'Phình phạm vi' (Scope Creep)?",
-    "answer": "Gợi ý: Phạm vi rõ ràng giúp thiết lập ranh giới những gì được làm và không được làm, làm cơ sở kiểm soát các yêu cầu thay đổi phát sinh ngoài kế hoạch, tránh làm đội chi phí và kéo dài thời gian hoàn thành.",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Phân tích tác hại của các yêu cầu thay đổi không kiểm soát đến chi phí và tiến độ."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Trong dự án phát triển ứng dụng di động, khách hàng liên tục yêu cầu bổ sung các tính năng nhỏ ngoài hợp đồng ban đầu. Quản trị dự án (PM) đều chấp thuận miệng mà không thông qua quy trình đánh giá thay đổi chính thức, khiến dự án chậm tiến độ 3 tháng và vượt 35% ngân sách. Hiện tượng này được gọi là gì?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Hiện tượng 'Phình phạm vi' (Scope Creep) - Thiếu quy trình kiểm soát thay đổi (Change Control Process) dẫn đến vượt tầm kiểm soát về thời gian và chi phí", "isCorrect": true },
+      { "id": "B", "text": "Hiện tượng 'Đường găng kéo dài' (Critical Path Delay) do năng suất lập trình viên kém", "isCorrect": false },
+      { "id": "C", "text": "Hiện tượng 'Phá vỡ cấu trúc phân chia công việc' (WBS Breakdown)", "isCorrect": false },
+      { "id": "D", "text": "Xung đột ma trận trách nhiệm RACI giữa các bên liên quan", "isCorrect": false }
+    ],
+    "hint": "Scope Creep xảy ra khi các thay đổi không được kiểm soát chặt chẽ qua thủ tục đề xuất thay đổi chính thức (Change Request)."
   }
 ]

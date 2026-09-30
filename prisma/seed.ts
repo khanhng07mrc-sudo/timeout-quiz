@@ -46,31 +46,31 @@ async function main() {
     if (fs.existsSync(questionsFile)) {
       const questionsData = JSON.parse(fs.readFileSync(questionsFile, "utf-8"));
 
+      // Xóa câu trả lời và câu hỏi cũ thuộc bank này để đồng bộ sạch sẽ dữ liệu mới
+      await prisma.answer.deleteMany({
+        where: { question: { quizBankId: bank.id } },
+      });
+      await prisma.question.deleteMany({
+        where: { quizBankId: bank.id },
+      });
+
       for (let i = 0; i < questionsData.length; i++) {
         const q = questionsData[i];
-        
-        // Kiểm tra xem câu hỏi đã tồn tại chưa
-        const existing = await prisma.question.findFirst({
-          where: { quizBankId: bank.id, content: q.content },
+        await prisma.question.create({
+          data: {
+            quizBankId: bank.id,
+            type: q.type,
+            content: q.content,
+            options: q.options || undefined,
+            answer: q.answer || null,
+            points: q.points || 10,
+            timeLimit: q.timeLimit || 30,
+            hint: q.hint || null,
+            order: i + 1,
+          },
         });
-
-        if (!existing) {
-          await prisma.question.create({
-            data: {
-              quizBankId: bank.id,
-              type: q.type,
-              content: q.content,
-              options: q.options || undefined,
-              answer: q.answer || null,
-              points: q.points || 10,
-              timeLimit: q.timeLimit || 30,
-              hint: q.hint || null,
-              order: i + 1,
-            },
-          });
-        }
       }
-      console.log(`   ✅ Đã nạp ${questionsData.length} câu hỏi cho ${item.code}`);
+      console.log(`   ✅ Đã nạp mới ${questionsData.length} câu hỏi chuẩn hóa cho ${item.code}`);
     }
   }
 

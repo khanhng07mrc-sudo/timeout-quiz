@@ -109,11 +109,16 @@
     "hint": "Chỉ số bằng 0 khi tất cả các phần tử tại nút đều thuộc về cùng một nhóm duy nhất."
   },
   {
-    "type": "ESSAY",
-    "content": "Lấy ví dụ một tình huống ứng dụng khoa học dữ liệu trong lĩnh vực Ngân hàng hoặc Bán lẻ (E-commerce) và nêu rõ mục tiêu kinh doanh cụ thể.",
-    "answer": "Gợi ý: (1) Ngân hàng: Dự đoán gian lận thẻ tín dụng (Credit Card Fraud Detection) giúp phong tỏa giao dịch bất thường tức thì; hoặc (2) Thương mại điện tử: Hệ thống gợi ý sản phẩm (Recommendation System) dựa trên lịch sử xem hàng để tăng giá trị đơn hàng (AOV).",
-    "points": 20,
-    "timeLimit": 60,
-    "hint": "Xác định rõ: Dữ liệu đầu vào, bài toán máy học áp dụng (phân loại/hồi quy/gợi ý), và giá trị gia tăng kinh doanh."
+    "type": "MC_SINGLE",
+    "content": "Tình huống: Một ngân hàng xây dựng mô hình máy học phát hiện giao dịch gian lận thẻ tín dụng. Do giao dịch gian lận chỉ chiếm 0.1% tổng số (mất cân bằng dữ liệu nghiêm trọng - Imbalanced Data), một mô hình 'ngây thơ' luôn dự đoán 'Không gian lận' vẫn đạt độ chính xác Accuracy = 99.9% nhưng bỏ sót 100% các vụ lừa đảo. Nhóm khoa học dữ liệu nên ưu tiên dùng chỉ số nào để đánh giá mô hình?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Recall (Độ nhạy) của lớp gian lận và chỉ số F1-Score / PR-AUC", "isCorrect": true },
+      { "id": "B", "text": "Hệ số xác định R-squared (R2) và Sai số bình phương trung bình (MSE)", "isCorrect": false },
+      { "id": "C", "text": "Độ chính xác thô (Overall Accuracy) kết hợp kiểm định Chi-square", "isCorrect": false },
+      { "id": "D", "text": "Thời gian huấn luyện mô hình (Training time)", "isCorrect": false }
+    ],
+    "hint": "Với dữ liệu mất cân bằng nghiêm trọng, Recall (tránh bỏ lọt gian lận) và F1-Score phản ánh chất lượng mô hình chính xác hơn Accuracy."
   }
 ]

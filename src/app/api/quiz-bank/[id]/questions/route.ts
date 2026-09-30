@@ -20,6 +20,8 @@ export async function POST(
   const { id } = await params;
   const body = await req.json();
 
+  const normalizePoints = (pts: any) => Math.max(10, Math.round((Number(pts) || 10) / 10) * 10);
+
   // Support bulk creation (import)
   if (Array.isArray(body)) {
     const created = await prisma.$transaction(
@@ -31,7 +33,7 @@ export async function POST(
             content: q.content,
             options: q.options ?? undefined,
             answer: q.answer ?? null,
-            points: q.points ?? 10,
+            points: normalizePoints(q.points),
             timeLimit: q.timeLimit ?? 30,
             mediaUrl: q.mediaUrl ?? null,
             mediaType: q.mediaType ?? null,
@@ -52,7 +54,7 @@ export async function POST(
       content: body.content,
       options: body.options ?? undefined,
       answer: body.answer ?? null,
-      points: body.points ?? 10,
+      points: normalizePoints(body.points),
       timeLimit: body.timeLimit ?? 30,
       mediaUrl: body.mediaUrl ?? null,
       mediaType: body.mediaType ?? null,

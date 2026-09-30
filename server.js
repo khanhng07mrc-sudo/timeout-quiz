@@ -79,7 +79,7 @@ function getBloomLevelFromPoints(points, explicitLevel) {
 function computePointsAwarded(ctx) {
   if (!ctx.isCorrect) {
     if (!ctx.config.penaltyForWrong) return 0;
-    const penalty = ctx.config.penaltyPoints;
+    const penalty = Math.floor(ctx.basePoints * 0.5);
     if (ctx.shielded) return 0;
     const pm = ctx.penaltyMultiplier ?? 1;
     return -Math.floor(penalty * pm);
@@ -109,7 +109,7 @@ function computeTeamQuestionScore(ctx) {
       return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
-    const penalty = Math.floor(ctx.config.penaltyPoints * pm);
+    const penalty = Math.floor(ctx.basePoints * 0.5 * pm);
     return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
   }
   const avgTimeSpent = ctx.correctTimes.length > 0 ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length : ctx.timeLimit * 1e3;
@@ -141,6 +141,7 @@ function shuffleArray(array) {
 
 // src/lib/socket-handlers.ts
 var playerSockets = /* @__PURE__ */ new Map();
+var adminSockets = /* @__PURE__ */ new Map();
 var roomTimers = /* @__PURE__ */ new Map();
 var roomRemainingTimes = /* @__PURE__ */ new Map();
 var roomQuestionTeamCards = /* @__PURE__ */ new Map();
@@ -152,6 +153,28 @@ var roomStealPhase = /* @__PURE__ */ new Map();
 var roomStealBuzzed = /* @__PURE__ */ new Map();
 var roomStealTimer = /* @__PURE__ */ new Map();
 var roomBuzzFirst = /* @__PURE__ */ new Map();
+async function getAdminRoom(socket) {
+  const roomId = adminSockets.get(socket.id);
+  if (roomId) {
+    return prisma.room.findUnique({
+      where: { id: roomId },
+      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+    });
+  }
+  const playerId = playerSockets.get(socket.id);
+  if (playerId) {
+    const player = await prisma.player.findUnique({
+      where: { id: playerId },
+      include: {
+        room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } }
+      }
+    });
+    if (player?.isHost && player.room) {
+      return player.room;
+    }
+  }
+  return null;
+}
 function registerSocketHandlers(io2) {
   io2.on("connection", (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
@@ -204,6 +227,65 @@ function registerSocketHandlers(io2) {
         callback({ success: false, error: "Server error" });
       }
     });
+    socket.on("admin:join", async (code, callback) => {
+      try {
+        const room = await prisma.room.findUnique({ where: { code } });
+        if (!room) {
+          return callback?.({ success: false, error: "Ph\xF2ng kh\xF4ng t\u1ED3n t\u1EA1i" });
+        }
+        await prisma.player.deleteMany({
+          where: {
+            roomId: room.id,
+            OR: [
+              { isHost: true },
+              { name: "Host" },
+              { name: "Admin Host" }
+            ]
+          }
+        }).catch(() => {
+        });
+        adminSockets.set(socket.id, room.id);
+        socket.join(`room:${code}`);
+        socket.join(`room:${code}:admin`);
+        const roomState = await buildRoomState(room.id);
+        io2.to(`room:${code}`).emit("room:state", roomState);
+        callback?.({ success: true, roomState });
+      } catch (err) {
+        console.error("[admin:join]", err);
+        callback?.({ success: false, error: "L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7" });
+      }
+    });
+    socket.on("player:select:team", async ({ teamId }, callback) => {
+      try {
+        const playerId = playerSockets.get(socket.id);
+        if (!playerId) {
+          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ng\u01B0\u1EDDi ch\u01A1i" });
+        }
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (!player || !player.room) {
+          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ng\u01B0\u1EDDi ch\u01A1i ho\u1EB7c ph\xF2ng" });
+        }
+        const team = await prisma.team.findFirst({
+          where: { id: teamId, roomId: player.room.id }
+        });
+        if (!team) {
+          return callback?.({ success: false, error: "\u0110\u1ED9i kh\xF4ng t\u1ED3n t\u1EA1i trong ph\xF2ng n\xE0y" });
+        }
+        await prisma.player.update({
+          where: { id: playerId },
+          data: { teamId }
+        });
+        const state = await buildRoomState(player.room.id);
+        io2.to(`room:${player.room.code}`).emit("room:state", state);
+        callback?.({ success: true });
+      } catch (err) {
+        console.error("[player:select:team]", err);
+        callback?.({ success: false, error: "L\u1ED7i khi ch\u1ECDn \u0111\u1ED9i" });
+      }
+    });
     socket.on("display:join", async (code) => {
       socket.join(`room:${code}`);
       socket.join(`room:${code}:display`);
@@ -233,11 +315,8 @@ function registerSocketHandlers(io2) {
       });
     });
     socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer }) => {
-      const hostPlayerId = playerSockets.get(socket.id);
-      if (!hostPlayerId) return;
-      const hostPlayer = await prisma.player.findUnique({ where: { id: hostPlayerId }, include: { room: true } });
-      if (!hostPlayer?.room || !hostPlayer.isHost) return;
-      const room = hostPlayer.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const qKey = `${room.id}:${questionId}`;
       let effTeamId = teamId;
       let effPlayerId = playerId;
@@ -315,11 +394,8 @@ function registerSocketHandlers(io2) {
       }
     });
     socket.on("admin:buzz:start_answer", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      const room = player.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
@@ -335,11 +411,8 @@ function registerSocketHandlers(io2) {
       startQuestionTimer(io2, room.code, room.id, currentQ.id, timeLimit);
     });
     socket.on("admin:bounceback:open_steal", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      const room = player.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
@@ -358,11 +431,8 @@ function registerSocketHandlers(io2) {
       roomStealTimer.set(qKey, timer);
     });
     socket.on("admin:bounceback:start_steal_answer", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      const room = player.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
@@ -500,14 +570,8 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("room:state", state);
     });
     socket.on("admin:next", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } }
-      });
-      if (!player?.room || !player.isHost) return;
-      const room = player.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const questions = room.quizBank?.questions ?? [];
       if (questions.length === 0) {
         socket.emit("error", "Ph\xF2ng ch\u01B0a c\xF3 c\xE2u h\u1ECFi n\xE0o! Vui l\xF2ng ch\u1ECDn b\u1ED9 \u0111\u1EC1 c\xE2u h\u1ECFi tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u.");
@@ -551,39 +615,27 @@ function registerSocketHandlers(io2) {
       startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
     });
     socket.on("admin:pause", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      await prisma.room.update({ where: { id: player.room.id }, data: { status: "PAUSED" } });
-      io2.to(`room:${player.room.code}`).emit("game:paused");
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } });
+      io2.to(`room:${room.code}`).emit("game:paused");
     });
     socket.on("admin:resume", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      await prisma.room.update({ where: { id: player.room.id }, data: { status: "PLAYING" } });
-      io2.to(`room:${player.room.code}`).emit("game:resumed");
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } });
+      io2.to(`room:${room.code}`).emit("game:resumed");
     });
     socket.on("admin:reveal", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } }
-      });
-      if (!player?.room || !player.isHost) return;
-      const room = player.room;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const q = room.quizBank?.questions[room.currentQuestion];
       if (!q) return;
       await revealCurrentAnswer(io2, room.id, room.code, q.id);
     });
     socket.on("admin:score:manual", async ({ answerId, points }) => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId } });
-      if (!player?.isHost) return;
+      const room = await getAdminRoom(socket);
+      if (!room) return;
       const answer = await prisma.answer.update({
         where: { id: answerId },
         data: { isCorrect: points > 0, pointsAwarded: points }
@@ -596,14 +648,29 @@ function registerSocketHandlers(io2) {
       }
     });
     socket.on("admin:shuffle:cards", async () => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-      if (!player?.room || !player.isHost) return;
-      const state = await buildRoomState(player.room.id);
-      io2.to(`room:${player.room.code}`).emit("room:state", state);
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      const state = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", state);
+    });
+    socket.on("admin:lock:cards", async (locked) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      const config = room.config;
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: { ...config, cardsLocked: locked } }
+      });
+      const state = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", state);
+    });
+    socket.on("admin:buzz:clear", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      io2.to(`room:${room.code}`).emit("game:buzz:closed");
     });
     socket.on("disconnect", async () => {
+      adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
       if (playerId) {
         const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
@@ -780,7 +847,7 @@ async function processAnswerSubmission({
       points2 = Math.floor(question.points * multiplier);
     } else {
       const config2 = room.config;
-      points2 = config2.penaltyForWrong && !shielded ? -Math.floor(config2.penaltyPoints || 5) : 0;
+      points2 = config2.penaltyForWrong && !shielded ? -Math.floor(question.points * 0.5) : 0;
     }
     await prisma.answer.create({
       data: {
@@ -951,25 +1018,35 @@ async function buildRoomState(roomId) {
   });
   if (!room) throw new Error("Room not found");
   const config = room.config;
-  const teams = room.teams.map((t) => ({
-    id: t.id,
-    name: t.name,
-    color: t.color,
-    avatar: t.avatar ?? void 0,
-    score: t.score,
-    isEliminated: t.isEliminated,
-    frozenRounds: t.frozenRounds,
-    shieldCount: t.shieldCount,
-    cards: t.powerupCards.map((c) => ({ id: c.id, type: c.type, ownerType: c.ownerType, teamId: c.teamId ?? void 0, used: c.used })),
-    playerCount: t.players.length
-  }));
-  const players = room.players.map((p) => ({
+  const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+  const teams = room.teams.map((t) => {
+    const teamPlayers = validPlayers.filter((p) => p.teamId === t.id);
+    return {
+      id: t.id,
+      name: t.name,
+      color: t.color,
+      avatar: t.avatar ?? void 0,
+      score: t.score,
+      isEliminated: t.isEliminated,
+      frozenRounds: t.frozenRounds,
+      shieldCount: t.shieldCount,
+      cards: t.powerupCards.map((c) => ({
+        id: c.id,
+        type: c.type,
+        ownerType: c.ownerType,
+        teamId: c.teamId ?? void 0,
+        used: c.used
+      })),
+      playerCount: teamPlayers.length
+    };
+  });
+  const players = validPlayers.map((p) => ({
     id: p.id,
     name: p.name,
     avatar: p.avatar ?? void 0,
     score: p.score,
     teamId: p.teamId ?? void 0,
-    isHost: p.isHost,
+    isHost: false,
     isOnline: !!p.socketId
   }));
   const sharedCards = room.powerupCards.map((c) => ({
@@ -1163,7 +1240,8 @@ async function buildLeaderboard(roomId) {
       totalAnswers: room.answers.filter((a) => a.teamId === t.id).length
     }));
   } else {
-    return room.players.sort((a, b) => b.score - a.score).map((p, i) => ({
+    const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+    return validPlayers.sort((a, b) => b.score - a.score).map((p, i) => ({
       rank: i + 1,
       playerId: p.id,
       name: p.name,

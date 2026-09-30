@@ -160,10 +160,11 @@ export default function QuizBankPage() {
     e.preventDefault();
     if (!selectedBank || !qContent.trim()) return;
 
+    const rawPoints = Math.max(10, Math.round((Number(qPoints) || 10) / 10) * 10);
     const payload: any = {
       type: qType,
       content: qContent,
-      points: Number(qPoints),
+      points: rawPoints,
       timeLimit: Number(qTimeLimit),
       hint: qHint || null,
     };
@@ -224,7 +225,7 @@ export default function QuizBankPage() {
           const formatted = results.data.map((row: any, idx: number) => ({
             type: row.type || "MC_SINGLE",
             content: row.content || `Câu hỏi ${idx + 1}`,
-            points: Number(row.points) || 10,
+            points: Math.max(10, Math.round((Number(row.points) || 10) / 10) * 10),
             timeLimit: Number(row.timeLimit) || 30,
             options: [
               { id: "A", text: row.optionA || "", isCorrect: row.correct === "A" },
@@ -248,7 +249,7 @@ export default function QuizBankPage() {
           const formatted = rows.map((row: any, idx: number) => ({
             type: row.type || "MC_SINGLE",
             content: row.content || `Câu hỏi ${idx + 1}`,
-            points: Number(row.points) || 10,
+            points: Math.max(10, Math.round((Number(row.points) || 10) / 10) * 10),
             timeLimit: Number(row.timeLimit) || 30,
             options: [
               { id: "A", text: String(row.optionA || ""), isCorrect: String(row.correct).toUpperCase() === "A" },
@@ -269,11 +270,15 @@ export default function QuizBankPage() {
 
   const uploadBulkQuestions = async (items: any[]) => {
     if (!selectedBank) return;
+    const normalizedItems = items.map((q) => ({
+      ...q,
+      points: Math.max(10, Math.round((Number(q.points) || 10) / 10) * 10),
+    }));
     try {
       const res = await fetch(`/api/quiz-bank/${selectedBank.id}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(items),
+        body: JSON.stringify(normalizedItems),
       });
       if (res.ok) {
         alert(`Đã nạp thành công ${items.length} câu hỏi!`);
@@ -525,13 +530,16 @@ export default function QuizBankPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số</label>
+                <label className="block text-xs font-medium mb-1">Điểm số (bội số của 10)</label>
                 <input
                   type="number"
+                  min={10}
+                  step={10}
                   value={qPoints}
                   onChange={(e) => setQPoints(Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl bg-input border border-border"
                 />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Bắt buộc chia hết cho 10 (10, 20, 30...)</p>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>

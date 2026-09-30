@@ -170,6 +170,15 @@ export default function PlayPage() {
     socketRef.current?.emit("game:powerup:use", { cardId, targetTeamId });
   };
 
+  const handleSelectTeam = (teamId: string) => {
+    socketRef.current?.emit("player:select:team", { teamId }, (res) => {
+      if (res?.error) {
+        setErrorMessage(res.error);
+        setTimeout(() => setErrorMessage(null), 4000);
+      }
+    });
+  };
+
   if (!connected) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -186,7 +195,7 @@ export default function PlayPage() {
   }
 
   if (roomState?.status === "LOBBY") {
-    return <PlayerLobby roomState={roomState} playerId={playerId} />;
+    return <PlayerLobby roomState={roomState} playerId={playerId} onSelectTeam={handleSelectTeam} />;
   }
 
   const myTeam = roomState?.teams.find((t) =>

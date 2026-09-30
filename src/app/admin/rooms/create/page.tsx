@@ -522,10 +522,18 @@ export default function CreateRoomPage() {
 
           <div className="flex items-center justify-between glass rounded-xl p-4">
             <div>
-              <p className="font-bold">Trừ điểm khi sai</p>
-              <p className="text-sm text-muted-foreground">Đội trả lời sai sẽ bị trừ điểm</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold">Trừ điểm khi sai</p>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/20 text-destructive border border-destructive/30">
+                  -50% điểm câu
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Trả lời sai sẽ bị trừ đúng bằng một nửa (50%) số điểm của câu hỏi đó
+              </p>
             </div>
             <button
+              type="button"
               onClick={() => setPenaltyForWrong(!penaltyForWrong)}
               className={`w-12 h-6 rounded-full transition-colors ${ penaltyForWrong ? "bg-destructive" : "bg-muted" }`}
             >
@@ -534,9 +542,13 @@ export default function CreateRoomPage() {
           </div>
 
           {penaltyForWrong && (
-            <div>
-              <label className="block text-sm font-medium mb-2">Điểm trừ: {penaltyPoints}</label>
-              <input type="range" min={1} max={20} value={penaltyPoints} onChange={(e) => setPenaltyPoints(+e.target.value)} className="w-full" />
+            <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive-foreground space-y-1">
+              <p className="font-bold flex items-center gap-1.5">
+                <span>⚠️</span> Quy tắc trừ điểm cố định:
+              </p>
+              <p className="text-muted-foreground">
+                Mức trừ điểm luôn bằng <strong>1/2 (50%)</strong> giá trị câu hỏi (Ví dụ: câu 10 điểm trừ 5 điểm, câu 20 điểm trừ 10 điểm, câu 30 điểm trừ 15 điểm). Điểm số các câu hỏi trong đề được quy định chia hết cho 10.
+              </p>
             </div>
           )}
         </div>

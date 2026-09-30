@@ -122,29 +122,95 @@ export default function DisplayPage() {
 
   // ── Lobby ──────────────────────────────────────────────────────────────────
   if (!roomState || roomState.status === "LOBBY") {
-    const participants = roomState?.teamMode === "TEAM" ? roomState.teams : roomState?.players ?? [];
+    const isTeamMode = roomState?.teamMode === "TEAM";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8">
-        <div className="text-center mb-12">
-          <h1 className="text-7xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-6xl mx-auto">
+        <div className="text-center mb-10">
+          <span className="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
+          </span>
+          <h1 className="text-6xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mt-3">
             {roomState?.name ?? "Timeout Quiz"}
           </h1>
-          <p className="text-2xl text-muted-foreground mt-4">Mã phòng</p>
-          <p className="text-8xl font-black font-mono tracking-widest text-white mt-2">{code}</p>
-          <p className="text-muted-foreground mt-4">Vào play/{code} để tham gia</p>
+          <p className="text-xl text-muted-foreground mt-4">Mã phòng tham gia</p>
+          <div className="inline-block mt-2 px-8 py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">
+            <p className="text-7xl sm:text-8xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
+          </div>
+          <p className="text-muted-foreground mt-4 text-lg">
+            Truy cập <span className="text-white font-bold font-mono">/play/{code}</span> để tham gia
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-w-4xl">
-          {participants.slice(0, 10).map((p: any) => (
-            <div key={p.id} className="glass rounded-xl p-4 text-center">
-              <div className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold" style={{ background: p.color ?? "#6366f1" }}>
-                {p.name.charAt(0).toUpperCase()}
-              </div>
-              <p className="text-sm font-medium truncate">{p.name}</p>
+        {isTeamMode ? (
+          <div className="w-full space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {roomState.teams.map((t) => {
+                const members = roomState.players.filter((pl) => pl.teamId === t.id);
+                return (
+                  <div
+                    key={t.id}
+                    className="glass rounded-2xl p-5 border-2 flex flex-col justify-between"
+                    style={{ borderColor: t.color }}
+                  >
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-black text-white shadow"
+                          style={{ background: t.color }}
+                        >
+                          {t.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-lg truncate">{t.name}</p>
+                          <p className="text-xs text-muted-foreground">{members.length} thành viên</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 min-h-[36px]">
+                        {members.length > 0 ? (
+                          members.map((m) => (
+                            <span
+                              key={m.id}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-muted/80 text-foreground border border-border/60"
+                            >
+                              {m.name}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Chờ thí sinh tham gia...</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        {(participants.length > 10) && <p className="text-muted-foreground mt-4">+{participants.length - 10} người khác</p>}
+
+            {(() => {
+              const unassigned = roomState.players.filter((pl) => !pl.teamId);
+              if (unassigned.length === 0) return null;
+              return (
+                <div className="glass rounded-xl p-3 text-center text-sm text-yellow-300 border border-yellow-500/30">
+                  ⚠️ <strong>Chưa chọn đội ({unassigned.length}):</strong> {unassigned.map((pl) => pl.name).join(", ")}
+                </div>
+              );
+            })()}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 max-w-4xl w-full">
+            {(roomState?.players ?? []).slice(0, 20).map((p) => (
+              <div key={p.id} className="glass rounded-xl p-4 text-center">
+                <div
+                  className="w-12 h-12 rounded-full mx-auto mb-2 flex items-center justify-center text-xl font-bold text-white shadow"
+                  style={{ background: "#6366f1" }}
+                >
+                  {p.name.charAt(0).toUpperCase()}
+                </div>
+                <p className="text-sm font-medium truncate">{p.name}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   }

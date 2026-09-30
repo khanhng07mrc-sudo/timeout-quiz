@@ -64,8 +64,12 @@ export default function AdminRoomPage() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("room:join", { code, playerName: "Admin Host" }, (result) => {
-        if (result.success) setRoomState(result.roomState ?? null);
+      socket.emit("admin:join", code, (result) => {
+        if (result?.success && result.roomState) {
+          setRoomState(result.roomState);
+        } else if (result?.error) {
+          setErrorMessage(result.error);
+        }
       });
     });
 
@@ -525,19 +529,97 @@ export default function AdminRoomPage() {
 
       {/* Players/Teams grid */}
       <div className="glass rounded-2xl p-6">
-        <h2 className="font-bold text-lg mb-4">👥 {roomState?.teamMode === "TEAM" ? "Đội" : "Người chơi"} ({(roomState?.teamMode === "TEAM" ? roomState?.teams : roomState?.players)?.length ?? 0})</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {(roomState?.teamMode === "TEAM" ? roomState.teams : roomState?.players ?? []).map((entry: any) => (
-            <div key={entry.id} className="glass rounded-xl p-3 text-center">
-              <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold" style={{ background: entry.color ?? "#6366f1" }}>
-                {entry.name.charAt(0).toUpperCase()}
-              </div>
-              <p className="text-sm font-medium truncate">{entry.name}</p>
-              <p className="text-xs text-cyan-400 font-bold">{entry.score} pts</p>
-              {entry.isEliminated && <p className="text-xs text-red-400">❌ Loại</p>}
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-lg">
+            👥 {roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}
+          </h2>
         </div>
+
+        {/* Warning if any players have not picked a team yet */}
+        {roomState?.teamMode === "TEAM" && (() => {
+          const unassigned = roomState.players.filter((p) => !p.teamId);
+          if (unassigned.length === 0) return null;
+          return (
+            <div className="mb-4 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="text-base">⚠️</span>
+                <span>
+                  <strong>Thí sinh chưa chọn đội ({unassigned.length}):</strong>{" "}
+                  {unassigned.map((p) => p.name).join(", ")}
+                </span>
+              </div>
+              <span className="text-xs text-yellow-400/80 italic">
+                (Thí sinh cần bấm &quot;Vào đội này&quot; trên màn hình điện thoại/máy tính của họ)
+              </span>
+            </div>
+          );
+        })()}
+
+        {roomState?.teamMode === "TEAM" ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {roomState.teams.map((team) => {
+              const members = roomState.players.filter((p) => p.teamId === team.id);
+              return (
+                <div
+                  key={team.id}
+                  className="glass rounded-xl p-4 flex flex-col gap-2.5 border border-border/80 hover:border-purple-500/40 transition"
+                  style={{ borderLeft: `4px solid ${team.color}` }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 text-white"
+                        style={{ background: team.color }}
+                      >
+                        {team.name.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="font-bold text-sm truncate">{team.name}</p>
+                    </div>
+                    <span className="text-xs font-black text-cyan-400">{team.score} pts</span>
+                  </div>
+
+                  <div className="text-xs text-muted-foreground flex items-center justify-between border-t border-border/40 pt-2">
+                    <span>Thành viên:</span>
+                    <span className={`font-semibold ${members.length > 0 ? "text-foreground" : "text-yellow-400/80"}`}>
+                      {members.length} người
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 min-h-[28px]">
+                    {members.length > 0 ? (
+                      members.map((m) => (
+                        <span
+                          key={m.id}
+                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/60 text-foreground border border-border/50"
+                        >
+                          {m.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground italic">Chưa có ai vào đội</span>
+                    )}
+                  </div>
+                  {team.isEliminated && <p className="text-xs text-red-400 font-bold mt-auto">❌ Đã bị loại</p>}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {(roomState?.players ?? []).map((entry) => (
+              <div key={entry.id} className="glass rounded-xl p-3 text-center">
+                <div
+                  className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-white"
+                  style={{ background: "#6366f1" }}
+                >
+                  {entry.name.charAt(0).toUpperCase()}
+                </div>
+                <p className="text-sm font-medium truncate">{entry.name}</p>
+                <p className="text-xs text-cyan-400 font-bold">{entry.score} pts</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

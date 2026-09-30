@@ -14,7 +14,8 @@ export interface ScoringContext {
 export function computePointsAwarded(ctx: ScoringContext): number {
   if (!ctx.isCorrect) {
     if (!ctx.config.penaltyForWrong) return 0;
-    const penalty = ctx.config.penaltyPoints;
+    // Điểm trừ luôn mặc định = nửa số điểm câu hỏi (-50%)
+    const penalty = Math.floor(ctx.basePoints * 0.5);
     if (ctx.shielded) return 0;
     const pm = ctx.penaltyMultiplier ?? 1;
     return -Math.floor(penalty * pm);
@@ -73,7 +74,8 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
       return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
-    const penalty = Math.floor(ctx.config.penaltyPoints * pm);
+    // Điểm trừ luôn mặc định = nửa số điểm câu hỏi (-50%)
+    const penalty = Math.floor(ctx.basePoints * 0.5 * pm);
     return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier };
   }
 

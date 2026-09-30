@@ -25,7 +25,7 @@ export async function PATCH(
       ...(body.content && { content: body.content }),
       ...(body.options !== undefined && { options: body.options }),
       ...(body.answer !== undefined && { answer: body.answer }),
-      ...(body.points !== undefined && { points: body.points }),
+      ...(body.points !== undefined && { points: Math.max(10, Math.round((Number(body.points) || 10) / 10) * 10) }),
       ...(body.timeLimit !== undefined && { timeLimit: body.timeLimit }),
       ...(body.hint !== undefined && { hint: body.hint }),
       ...(body.order !== undefined && { order: body.order }),

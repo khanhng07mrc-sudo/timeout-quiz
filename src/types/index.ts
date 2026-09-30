@@ -293,10 +293,13 @@ export interface ClientToServerEvents {
   "admin:score:manual": (payload: { answerId: string; points: number }) => void;
   "admin:shuffle:cards": () => void;
   "admin:lock:cards": (locked: boolean) => void;
+  "admin:buzz:clear": () => void;
   "admin:buzz:start_answer": () => void;
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": () => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
+  "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
+  "player:select:team": (payload: { teamId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "display:join": (code: string) => void;
 }
 

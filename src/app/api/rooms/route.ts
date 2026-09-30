@@ -58,15 +58,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Create host as player
-    await prisma.player.create({
-      data: {
-        name: "Host",
-        roomId: room.id,
-        userId: hostId,
-        isHost: true,
-      },
-    });
 
     // Create teams if provided
     if (teams && Array.isArray(teams)) {

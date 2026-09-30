@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Henry Fayol, nguyên tắc nào yêu cầu mỗi nhân viên chỉ nên nhận mệnh lệnh từ một người cấp trên duy nhất?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Thống nhất điều khiển (Unity of Direction)", "isCorrect": false },
+      { "id": "B", "text": "Thống nhất chỉ huy (Unity of Command)", "isCorrect": true },
+      { "id": "C", "text": "Tập trung hóa (Centralization)", "isCorrect": false },
+      { "id": "D", "text": "Kỷ luật (Discipline)", "isCorrect": false }
+    ],
+    "hint": "Nguyên tắc nhằm tránh sự mâu thuẫn trong mệnh lệnh và xung đột thẩm quyền quản lý."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong các chức năng quản lý cơ bản, chức năng nào đóng vai trò 'kim chỉ nam', định hướng mục tiêu và phương thức đạt được mục tiêu cho tổ chức?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Hoạch định (Planning)", "isCorrect": true },
+      { "id": "B", "text": "Tổ chức (Organizing)", "isCorrect": false },
+      { "id": "C", "text": "Lãnh đạo (Leading)", "isCorrect": false },
+      { "id": "D", "text": "Kiểm soát (Controlling)", "isCorrect": false }
+    ],
+    "hint": "Chức năng đầu tiên trong chu trình quản lý, xác định đích đến trước khi phân bổ nguồn lực."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo Thuyết Hai nhân tố của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) tạo ra sự thỏa mãn thực sự trong công việc?",
+    "points": 15,
+    "timeLimit": 35,
+    "options": [
+      { "id": "A", "text": "Sự thừa nhận thành tích và tiến bộ", "isCorrect": true },
+      { "id": "B", "text": "Bản chất công việc có tính thách thức", "isCorrect": true },
+      { "id": "C", "text": "Tiền lương và phụ cấp cơ bản", "isCorrect": false },
+      { "id": "D", "text": "Điều kiện làm việc vật lý và chính sách công ty", "isCorrect": false }
+    ],
+    "hint": "Phân biệt giữa yếu tố duy trì (ngăn bất mãn) và yếu tố động viên (thúc đẩy hăng say cống hiến)."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Khi tầm hạn quản trị (Span of control) của nhà quản lý càng rộng, cơ cấu tổ chức của doanh nghiệp sẽ có xu hướng càng nhiều tầng nấc trung gian (cơ cấu hình tháp cao).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Tầm hạn rộng nghĩa là một người quản lý được nhiều cấp dưới ➔ ít tầng nấc hơn (cơ cấu nằm ngang/dẹt)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Loại hình kiểm soát nào được thực hiện TRƯỚC KHI hoạt động thực tế bắt đầu nhằm ngăn chặn sai lệch từ khâu chuẩn bị nguồn lực?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Kiểm soát phản hồi (Feedback control)", "isCorrect": false },
+      { "id": "B", "text": "Kiểm soát đồng thời (Concurrent control)", "isCorrect": false },
+      { "id": "C", "text": "Kiểm soát lường trước / dự phòng (Feedforward control)", "isCorrect": true },
+      { "id": "D", "text": "Kiểm toán tài chính độc lập", "isCorrect": false }
+    ],
+    "hint": "Chủ động kiểm tra nguyên vật liệu, chất lượng đầu vào và năng lực nhân sự trước khi sản xuất."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Tác giả được coi là 'Cha đẻ của thuyết quản lý theo khoa học' với nguyên tắc định mức lao động và trả lương theo sản phẩm là ai? (Ghi họ của tác giả)",
+    "answer": "Taylor",
+    "points": 15,
+    "timeLimit": 30,
+    "hint": "Tên đầy đủ là Frederick Winslow Taylor."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Henry Mintzberg, vai trò nào dưới đây KHÔNG thuộc nhóm vai trò 'Quan hệ với con người' (Interpersonal roles) của nhà quản lý?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Đại diện / Biểu trưng (Figurehead)", "isCorrect": false },
+      { "id": "B", "text": "Người lãnh đạo (Leader)", "isCorrect": false },
+      { "id": "C", "text": "Người liên lạc (Liaison)", "isCorrect": false },
+      { "id": "D", "text": "Người phát ngôn (Spokesperson)", "isCorrect": true }
+    ],
+    "hint": "Người phát ngôn thuộc nhóm vai trò thông tin (Informational roles)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phong cách lãnh đạo theo mô hình Kurt Lewin, phong cách nào phát huy tối đa tính sáng tạo và trách nhiệm của nhân viên có trình độ chuyên môn cao?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Độc đoán (Autocratic)", "isCorrect": false },
+      { "id": "B", "text": "Dân chủ (Democratic)", "isCorrect": false },
+      { "id": "C", "text": "Tự do / Ủy quyền hoàn toàn (Laissez-faire)", "isCorrect": true },
+      { "id": "D", "text": "Gia trưởng (Paternalistic)", "isCorrect": false }
+    ],
+    "hint": "Nhà lãnh đạo trao quyền quyết định hoàn toàn cho cấp dưới, phù hợp với các nhóm chuyên gia nghiên cứu R&D."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kỹ năng tư duy (Conceptual skills) có vai trò và tỷ trọng quan trọng nhất đối với nhà quản trị cấp cơ sở (tổ trưởng, trưởng ca) so với nhà quản trị cấp cao.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Nhà quản trị cấp cao cần kỹ năng tư duy chiến lược nhiều nhất; cấp cơ sở cần kỹ năng chuyên môn kỹ thuật nhiều nhất."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy phân tích ngắn gọn sự khác biệt cốt lõi giữa 'Hiệu quả' (Efficiency) và 'Hiệu lực' (Effectiveness) trong quản lý.",
+    "answer": "Gợi ý: Hiệu quả là làm đúng cách (doing things right) - tối ưu hóa chi phí và nguồn lực; Hiệu lực là làm đúng việc (doing the right things) - đạt được mục tiêu đề ra.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Phân biệt giữa việc đạt mục tiêu (làm đúng việc) và việc tiết kiệm chi phí/nguồn lực (làm đúng phương pháp)."
+  }
+]

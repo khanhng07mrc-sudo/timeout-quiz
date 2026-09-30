@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Dưới góc độ kinh tế học, tại sao biến đổi khí hậu toàn cầu được nhà kinh tế học Nicholas Stern nhận định là 'thất bại thị trường lớn nhất và rộng nhất từng thấy'?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Do sự thiếu hụt tài chính công của các quốc gia đang phát triển", "isCorrect": false },
+      { "id": "B", "text": "Do phát thải khí nhà kính là một ngoại ứng tiêu cực toàn cầu và bầu khí quyển là tài sản chung không có quyền sở hữu xác định", "isCorrect": true },
+      { "id": "C", "text": "Do chi phí năng lượng tái tạo luôn cao hơn nhiên liệu hóa thạch", "isCorrect": false },
+      { "id": "D", "text": "Do các doanh nghiệp không thể tính toán được chi phí biên sản xuất", "isCorrect": false }
+    ],
+    "hint": "Người gây ô nhiễm không phải gánh chịu toàn bộ chi phí thiệt hại môi trường mà họ gây ra cho xã hội (ngoại ứng tiêu cực)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Công cụ kinh tế nào kiểm soát biến đổi khí hậu bằng cách áp đặt một mức giá cố định trên mỗi tấn CO2 phát thải vào môi trường (dựa trên nguyên lý thuế Pigou)?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Thuế Carbon (Carbon Tax)", "isCorrect": true },
+      { "id": "B", "text": "Hệ thống mua bán hạn ngạch phát thải (Cap-and-Trade / ETS)", "isCorrect": false },
+      { "id": "C", "text": "Trợ cấp tiêu dùng năng lượng sạch", "isCorrect": false },
+      { "id": "D", "text": "Tiêu chuẩn kỹ thuật bắt buộc", "isCorrect": false }
+    ],
+    "hint": "Cơ chế dựa trên giá (Price-based instrument), đem lại sự ổn định và chắc chắn về chi phí cho doanh nghiệp."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong hệ thống Mua bán hạn ngạch phát thải (Cap-and-Trade), đại lượng nào được cơ quan quản lý nhà nước ấn định và khống chế cố định trước?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Giá giao dịch của 1 tín chỉ carbon", "isCorrect": false },
+      { "id": "B", "text": "Tổng lượng phát thải trần cho phép của toàn bộ nền kinh tế (Cap)", "isCorrect": true },
+      { "id": "C", "text": "Lợi nhuận tối đa của các nhà máy công nghiệp", "isCorrect": false },
+      { "id": "D", "text": "Tỷ suất thuế giá trị gia tăng đối với năng lượng", "isCorrect": false }
+    ],
+    "hint": "Nhà nước khóa trần tổng lượng khí thải (Quantity-based); giá thị trường do cung - cầu hạn ngạch tự quyết định."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những biện pháp nào dưới đây thuộc nhóm giải pháp 'Giảm nhẹ' (Mitigation) biến đổi khí hậu nhằm triệt tiêu nguồn phát thải khí nhà kính?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Chuyển đổi từ điện than sang điện gió và điện mặt trời", "isCorrect": true },
+      { "id": "B", "text": "Trồng và phục hồi rừng đầu nguồn để hấp thụ CO2", "isCorrect": true },
+      { "id": "C", "text": "Xây dựng đê biển kiên cố chống xâm nhập mặn và triều cường", "isCorrect": false },
+      { "id": "D", "text": "Cải tiến giống lúa chịu mặn để đối phó với nước biển dâng", "isCorrect": false }
+    ],
+    "hint": "Xây đê và đổi giống lúa là 'Thích ứng' (Adaptation); năng lượng tái tạo và trồng rừng là 'Giảm nhẹ' (Mitigation)."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Mục tiêu cam kết đưa mức phát thải ròng khí nhà kính về bằng 0 được các quốc gia hướng đến vào năm 2050 thường được gọi bằng thuật ngữ tiếng Anh là gì?",
+    "answer": "Net Zero",
+    "points": 15,
+    "timeLimit": 20,
+    "hint": "Cụm từ gồm 2 từ tiếng Anh, có nghĩa là Phát thải ròng bằng 0."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Đường chi phí biên giảm phát thải (MAC - Marginal Abatement Cost) thể hiện chi phí phải bỏ ra để cắt giảm thêm một đơn vị phát thải khí nhà kính bổ sung.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Đường MAC thường dốc lên: việc cắt giảm những tấn phát thải đầu tiên thường rẻ, càng về sau càng tốn kém công nghệ cao."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Cơ chế Điều chỉnh Biên giới Carbon (CBAM) do Liên minh Châu Âu (EU) ban hành nhằm mục đích chính nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Ngăn chặn hiện tượng 'Rò rỉ carbon' (Carbon Leakage) khi doanh nghiệp di dời sản xuất sang các nước có quy định môi trường lỏng lẻo", "isCorrect": true },
+      { "id": "B", "text": "Cấm hoàn toàn việc nhập khẩu hàng hóa công nghiệp từ Châu Á", "isCorrect": false },
+      { "id": "C", "text": "Tài trợ 100% kinh phí cho các dự án thủy điện tại các nước đang phát triển", "isCorrect": false },
+      { "id": "D", "text": "Xóa bỏ thuế nhập khẩu đối với tất cả các sản phẩm thép và xi măng", "isCorrect": false }
+    ],
+    "hint": "Đánh thuế tương đương hàm lượng carbon vào hàng nhập khẩu để bảo vệ sự công bằng cạnh tranh với nhà sản xuất nội khối EU."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Theo Thỏa thuận Paris (2015), mục tiêu cốt lõi là giữ cho mức tăng nhiệt độ trung bình toàn cầu dưới 2°C so với thời kỳ tiền công nghiệp và nỗ lực giới hạn ở mức 1.5°C.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Mục tiêu định lượng toàn cầu được hơn 190 quốc gia thông qua tại COP21."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khái niệm 'Chi phí xã hội của Carbon' (Social Cost of Carbon - SCC) đo lường điều gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Chi phí xây dựng một nhà máy điện hạt nhân mới", "isCorrect": false },
+      { "id": "B", "text": "Tổng giá trị thiệt hại kinh tế quy về hiện tại do 1 tấn CO2 bổ sung phát thải vào khí quyển gây ra", "isCorrect": true },
+      { "id": "C", "text": "Mức giá niêm yết của cổ phiếu ngành dầu khí", "isCorrect": false },
+      { "id": "D", "text": "Thu nhập bình quân của các chuyên gia môi trường", "isCorrect": false }
+    ],
+    "hint": "Chỉ số kinh tế quan trọng để cân nhắc mức thuế carbon hoặc phân tích lợi ích - chi phí (CBA) của các chính sách khí hậu."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Phân tích ngắn gọn nghịch lý 'Người đi nhờ xe' (Free-rider problem) trong việc hợp tác toàn cầu nhằm cắt giảm khí nhà kính.",
+    "answer": "Gợi ý: Do bầu khí quyển là tài sản chung toàn cầu (không có tính loại trừ), bất kỳ quốc gia nào cắt giảm khí thải đều tạo ra lợi ích chung cho toàn thế giới. Do đó, một số quốc gia có xu hướng không hành động hoặc không chịu tốn chi phí cắt giảm, mà chỉ muốn 'đi nhờ' vào nỗ lực giảm phát thải của các nước khác.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Liên hệ đặc tính của hàng hóa công cộng toàn cầu và động cơ trốn tránh chi phí của các quốc gia cá biệt."
+  }
+]

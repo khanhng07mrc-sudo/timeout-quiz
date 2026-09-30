@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo lý thuyết kinh tế đô thị, động lực căn bản hàng đầu thúc đẩy sự hình thành và phát triển của các đô thị tập trung là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Tính kinh tế nhờ tập tụ (Agglomeration Economies)", "isCorrect": true },
+      { "id": "B", "text": "Sự dư thừa diện tích đất nông nghiệp ở nông thôn", "isCorrect": false },
+      { "id": "C", "text": "Quy định bắt buộc về hộ khẩu hành chính", "isCorrect": false },
+      { "id": "D", "text": "Chi phí xây dựng cầu đường ở đô thị rẻ hơn nông thôn", "isCorrect": false }
+    ],
+    "hint": "Lợi ích doanh nghiệp và người lao động có được khi ở gần nhau: chia sẻ nguồn cung, khớp nối việc làm và lan tỏa tri thức."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong Mô hình thành phố đơn tâm (Monocentric City Model) của William Alonso, đường Giá thầu địa tô (Bid-rent curve) của khu vực thương mại dịch vụ có đặc điểm nào so với khu vực nhà ở dân cư?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Độ dốc thoải hơn và có giá thầu thấp hơn ở khu trung tâm CBD", "isCorrect": false },
+      { "id": "B", "text": "Độ dốc dốc hơn nhiều và sẵn sàng trả giá đất cao nhất tại vị trí lõi trung tâm CBD", "isCorrect": true },
+      { "id": "C", "text": "Hoàn toàn song song với trục hoành khoảng cách", "isCorrect": false },
+      { "id": "D", "text": "Luôn nằm dưới đường giá thầu của đất nông nghiệp ngoại thành", "isCorrect": false }
+    ],
+    "hint": "Khu thương mại hưởng lợi lớn nhất từ mật độ khách hàng tại trung tâm, nên sẵn sàng trả giá thuê đất đắt đỏ nhất."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Dưới góc độ kinh tế học, tại sao hiện tượng ùn tắc giao thông giờ cao điểm tại các đô thị lớn được coi là một thất bại thị trường?",
+    "points": 15,
+    "timeLimit": 35,
+    "options": [
+      { "id": "A", "text": "Mỗi người lái xe chỉ quan tâm đến chi phí cá nhân (thời gian của mình) mà không tính đến chi phí làm chậm trễ người khác", "isCorrect": true },
+      { "id": "B", "text": "Chi phí biên xã hội (MSC) vượt xa chi phí biên cá nhân (MPC) khi đường sá bị quá tải", "isCorrect": true },
+      { "id": "C", "text": "Đường giao thông đô thị không thu phí trở thành tài sản chung bị khai thác quá mức", "isCorrect": true },
+      { "id": "D", "text": "Do tất cả phương tiện giao thông đều sử dụng động cơ điện", "isCorrect": false }
+    ],
+    "hint": "Phân tích theo ngoại ứng tiêu cực và bi kịch của tài sản công (Tragedy of the Commons)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Giải pháp kinh tế thị trường được các nhà kinh tế đô thị đánh giá là hiệu quả nhất để giải quyết nạn kẹt xe tại lõi trung tâm (như Singapore hoặc London đang áp dụng) là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Cấm hoàn toàn việc lưu thông của người dân vào ban ngày", "isCorrect": false },
+      { "id": "B", "text": "Thu phí ùn tắc giao thông giờ cao điểm (Congestion Pricing)", "isCorrect": true },
+      { "id": "C", "text": "Mở rộng lòng đường vô hạn định", "isCorrect": false },
+      { "id": "D", "text": "Miễn phí toàn bộ xăng dầu trong nội thành", "isCorrect": false }
+    ],
+    "hint": "Áp một mức phí phản ánh đúng chi phí ngoại ứng tiêu cực mà xe cộ gây ra trong giờ cao điểm."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Khu vực tập trung mật độ cao các hoạt động tài chính, ngân hàng, văn phòng thương mại nằm tại trung tâm của thành phố được viết tắt là gì? (3 chữ cái tiếng Anh)",
+    "answer": "CBD",
+    "points": 10,
+    "timeLimit": 20,
+    "hint": "Viết tắt của cụm từ Central Business District."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Nghịch lý Braess trong giao thông đô thị chỉ ra rằng việc xây thêm một tuyến đường mới đôi khi có thể làm tăng tổng thời gian di chuyển của tất cả các phương tiện thay vì giảm ùn tắc.",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Khi mỗi cá nhân tự tối ưu hành trình ích kỷ của mình, cân bằng Nash mới có thể kém hiệu quả hơn cân bằng cũ."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Chính sách kiểm soát giá trần thuê nhà ở đô thị (Rent Control) trong dài hạn sẽ khuyến khích các nhà đầu tư tư nhân xây dựng thêm nhiều nhà ở giá rẻ cho người nghèo.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Giá trần thấp hơn giá thị trường làm giảm tỷ suất sinh lời, khiến chủ nhà giảm đầu tư và thu hẹp nguồn cung nhà cho thuê."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Mô hình phát triển đô thị định hướng giao thông công cộng, tập trung mật độ cao quanh các nhà ga metro hoặc xe buýt nhanh được gọi là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Mô hình đô thị vệ tinh khép kín", "isCorrect": false },
+      { "id": "B", "text": "Mô hình TOD (Transit-Oriented Development)", "isCorrect": true },
+      { "id": "C", "text": "Mô hình dàn trải đô thị (Urban Sprawl)", "isCorrect": false },
+      { "id": "D", "text": "Mô hình đô thị dải ven biển", "isCorrect": false }
+    ],
+    "hint": "Quy hoạch nhà ở, thương mại và dịch vụ trong bán kính đi bộ 500m - 800m quanh các trạm trung chuyển giao thông công cộng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Quy mô đô thị tối ưu (Optimal City Size) đạt được tại điểm mà:",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Lợi ích biên từ tính kinh tế tập tụ bằng với Chi phí biên từ sự đông đúc và ùn tắc (MB = MC)", "isCorrect": true },
+      { "id": "B", "text": "Dân số thành phố đạt mức 10 triệu người", "isCorrect": false },
+      { "id": "C", "text": "Giá đất tại trung tâm giảm về bằng 0", "isCorrect": false },
+      { "id": "D", "text": "Không còn đất trống để xây dựng", "isCorrect": false }
+    ],
+    "hint": "Nguyên lý tối ưu hóa biên cơ bản trong kinh tế học: mở rộng quy mô đến khi lợi ích tăng thêm bằng chi phí tăng thêm."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Trình bày ngắn gọn 2 tác động tiêu cực của hiện tượng 'Dàn trải đô thị' (Urban Sprawl - phát triển phân tán ra vùng ven) đối với kinh tế và môi trường.",
+    "answer": "Gợi ý: (1) Kinh tế: Làm tăng chi phí đầu tư công cho hạ tầng kéo dài (điện, nước, đường xá) và tăng chi phí đi lại của người dân; (2) Môi trường: Tiêu tốn đất nông nghiệp, tăng lượng khí thải giao thông do phụ thuộc xe cá nhân di chuyển quãng đường xa.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Xem xét chi phí đầu tư hạ tầng kéo dài và mức độ phát thải do phụ thuộc vào phương tiện cá nhân."
+  }
+]

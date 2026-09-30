@@ -1,0 +1,119 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong quy trình chuẩn khai phá dữ liệu công nghiệp CRISP-DM, giai đoạn nào chiếm trung bình từ 60% đến 80% thời gian của một dự án phân tích dữ liệu?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Thấu hiểu nghiệp vụ (Business Understanding)", "isCorrect": false },
+      { "id": "B", "text": "Chuẩn bị và làm sạch dữ liệu (Data Preparation)", "isCorrect": true },
+      { "id": "C", "text": "Xây dựng mô hình (Modeling)", "isCorrect": false },
+      { "id": "D", "text": "Triển khai hệ thống (Deployment)", "isCorrect": false }
+    ],
+    "hint": "Khâu xử lý dữ liệu khuyết, lọc ngoại lai, mã hóa biến và chuẩn hóa thang đo."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Bài toán nào dưới đây thuộc nhóm 'Học có giám sát' (Supervised Learning) với nhãn mục tiêu dạng phân loại (Classification)?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Dự báo giá bán nhà ở dựa trên diện tích và vị trí", "isCorrect": false },
+      { "id": "B", "text": "Phân cụm khách hàng thành các nhóm hành vi mua sắm bằng K-Means", "isCorrect": false },
+      { "id": "C", "text": "Dự đoán khả năng khách hàng vỡ nợ tín dụng (Vỡ nợ / Không vỡ nợ)", "isCorrect": true },
+      { "id": "D", "text": "Rút gọn số chiều dữ liệu bằng phương pháp PCA", "isCorrect": false },
+      { "id": "A", "text": "A", "isCorrect": false }
+    ],
+    "hint": "Đầu ra là nhãn danh mục rời rạc (Nhị phân: Có/Không)."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Để đánh giá hiệu năng của một mô hình bài toán Phân loại (Classification) khi tập dữ liệu bị mất cân bằng lớp nghiêm trọng (Imbalanced Data), những chỉ số nào dưới đây đáng tin cậy hơn độ chính xác thông thường (Accuracy)?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Precision (Độ chuẩn xác)", "isCorrect": true },
+      { "id": "B", "text": "Recall (Độ nhạy / Độ bao phủ)", "isCorrect": true },
+      { "id": "C", "text": "F1-Score (Trung bình điều hòa của Precision và Recall)", "isCorrect": true },
+      { "id": "D", "text": "R-squared (Hệ số xác định)", "isCorrect": false }
+    ],
+    "hint": "R-squared dùng cho hồi quy tuyến tính; 3 chỉ số còn lại phân tích từ Confusion Matrix."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Hiện tượng 'Quá khớp' (Overfitting) trong mô hình máy học xảy ra khi:",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Mô hình hoạt động kém trên cả tập huấn luyện (Train) lẫn tập kiểm thử (Test)", "isCorrect": false },
+      { "id": "B", "text": "Mô hình ghi nhớ quá mức nhiễu trên tập huấn luyện dẫn đến độ chính xác cao trên Train nhưng rất thấp trên Test", "isCorrect": true },
+      { "id": "C", "text": "Mô hình có quá ít tham số để học các quy luật dữ liệu", "isCorrect": false },
+      { "id": "D", "text": "Kích thước tập dữ liệu quá lớn so với dung lượng RAM", "isCorrect": false }
+    ],
+    "hint": "Học vẹt dữ liệu cũ khiến khả năng tổng quát hóa dữ liệu mới bị suy giảm trầm trọng."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Trong thuật toán phân cụm K-Means, phương pháp phổ biến nhất để lựa chọn số cụm K tối ưu dựa trên đồ thị suy giảm của tổng bình phương khoảng cách nội cụm (WCSS) được gọi là phương pháp đường gì?",
+    "answer": "Khuỷu tay",
+    "points": 15,
+    "timeLimit": 30,
+    "hint": "Tiếng Anh là Elbow Method (Điểm gấp khúc như cùi chỏ / khuỷu tay)."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hệ số xác định R-squared (R²) trong mô hình hồi quy tuyến tính luôn nằm trong khoảng từ -1 đến +1.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Hệ số tương quan r mới từ -1 đến +1. Trong hồi quy OLS chuẩn, R-squared dao động từ 0 đến 1 (tỷ lệ giải thích biến thiên)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi dữ liệu có phân phối lệch nhiều và xuất hiện các điểm ngoại lai (Outliers) cực đoan, giá trị đại diện hướng tâm nào nên được ưu tiên sử dụng để điền khuyết thiếu thay cho giá trị trung bình (Mean)?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Trung vị (Median)", "isCorrect": true },
+      { "id": "B", "text": "Phương sai (Variance)", "isCorrect": false },
+      { "id": "C", "text": "Độ lệch chuẩn (Standard Deviation)", "isCorrect": false },
+      { "id": "D", "text": "Số lớn nhất (Maximum)", "isCorrect": false }
+    ],
+    "hint": "Giá trị nằm chính giữa chuỗi số liệu được sắp xếp, không bị kéo lệch bởi các giá trị ngoại lai dị biệt."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kỹ thuật K-Fold Cross-Validation giúp đánh giá độ ổn định và giảm thiểu nguy cơ phụ thuộc vào việc chia ngẫu nhiên tập dữ liệu Train/Test.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Chia dữ liệu thành k phần bằng nhau, luân phiên dùng 1 phần để kiểm tra và k-1 phần để huấn luyện."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Tiêu chí nào thường được sử dụng trong thuật toán Cây quyết định (Decision Tree - CART) để đo lường mức độ tinh khiết (Purity) khi phân nhánh?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Chỉ số Gini (Gini Impurity)", "isCorrect": true },
+      { "id": "B", "text": "Khoảng cách Euclidean", "isCorrect": false },
+      { "id": "C", "text": "Khoảng cách Manhattan", "isCorrect": false },
+      { "id": "D", "text": "Độ tương đồng Cosine", "isCorrect": false }
+    ],
+    "hint": "Chỉ số bằng 0 khi tất cả các phần tử tại nút đều thuộc về cùng một nhóm duy nhất."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Lấy ví dụ một tình huống ứng dụng khoa học dữ liệu trong lĩnh vực Ngân hàng hoặc Bán lẻ (E-commerce) và nêu rõ mục tiêu kinh doanh cụ thể.",
+    "answer": "Gợi ý: (1) Ngân hàng: Dự đoán gian lận thẻ tín dụng (Credit Card Fraud Detection) giúp phong tỏa giao dịch bất thường tức thì; hoặc (2) Thương mại điện tử: Hệ thống gợi ý sản phẩm (Recommendation System) dựa trên lịch sử xem hàng để tăng giá trị đơn hàng (AOV).",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Xác định rõ: Dữ liệu đầu vào, bài toán máy học áp dụng (phân loại/hồi quy/gợi ý), và giá trị gia tăng kinh doanh."
+  }
+]

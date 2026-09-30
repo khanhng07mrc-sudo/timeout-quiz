@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Phương trình kế toán cơ bản thể hiện mối quan hệ bất biến trên Bảng cân đối kế toán là:",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Tổng Tài sản = Nợ phải trả + Vốn chủ sở hữu", "isCorrect": true },
+      { "id": "B", "text": "Tổng Tài sản = Doanh thu - Chi phí", "isCorrect": false },
+      { "id": "C", "text": "Tổng Tài sản = Vốn chủ sở hữu - Nợ phải trả", "isCorrect": false },
+      { "id": "D", "text": "Tổng Tài sản = Tiền mặt + Hàng tồn kho", "isCorrect": false }
+    ],
+    "hint": "Tổng tài sản của doanh nghiệp luôn được tài trợ bởi hai nguồn: tiền đi vay (Nợ) và vốn của chủ doanh nghiệp."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo nguyên tắc 'Cơ sở dồn tích' (Accrual Basis), doanh thu bán hàng được ghi nhận vào thời điểm nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Chỉ khi doanh nghiệp đã thực sự thu được tiền mặt từ khách hàng", "isCorrect": false },
+      { "id": "B", "text": "Khi quyền sở hữu hàng hóa/dịch vụ đã chuyển giao cho người mua và thỏa mãn điều kiện ghi nhận, bất kể đã thu tiền hay chưa", "isCorrect": true },
+      { "id": "C", "text": "Vào ngày ký hợp đồng nguyên tắc", "isCorrect": false },
+      { "id": "D", "text": "Vào ngày cuối cùng của năm tài chính", "isCorrect": false }
+    ],
+    "hint": "Kế toán dồn tích ghi nhận giao dịch theo thời điểm phát sinh nghĩa vụ kinh tế, không phụ thuộc vào thời điểm thu chi tiền."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Doanh nghiệp mua nguyên vật liệu nhập kho trị giá 50 triệu đồng, chưa thanh toán cho người bán. Nghiệp vụ này sẽ làm thay đổi cấu trúc bảng cân đối kế toán như thế nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Tài sản tăng 50 triệu, Nợ phải trả tăng 50 triệu (Quy mô tài sản tăng)", "isCorrect": true },
+      { "id": "B", "text": "Tài sản tăng 50 triệu, Vốn chủ sở hữu tăng 50 triệu", "isCorrect": false },
+      { "id": "C", "text": "Một khoản tài sản tăng, một khoản tài sản giảm (Quy mô tài sản không đổi)", "isCorrect": false },
+      { "id": "D", "text": "Tài sản giảm 50 triệu, Nợ phải trả giảm 50 triệu", "isCorrect": false }
+    ],
+    "hint": "Hàng tồn kho (Tài sản) tăng lên đồng thời Phải trả người bán (Nợ phải trả) cũng tăng tương ứng."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Trong quy ước kế toán ghi sổ kép đối với các tài khoản phản ánh Tài sản (loại 1, 2) và Chi phí (loại 6): Số tiền phát sinh TĂNG sẽ được ghi vào bên nào (Nợ hay Có)?",
+    "answer": "Nợ",
+    "points": 10,
+    "timeLimit": 20,
+    "hint": "Tài sản tăng ghi bên Nợ (Debit), giảm ghi bên Có (Credit)."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những báo cáo nào dưới đây thuộc Hệ thống Báo cáo Tài chính bắt buộc hàng năm của doanh nghiệp?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Bảng cân đối kế toán (Báo cáo tình hình tài chính)", "isCorrect": true },
+      { "id": "B", "text": "Báo cáo kết quả hoạt động kinh doanh", "isCorrect": true },
+      { "id": "C", "text": "Báo cáo lưu chuyển tiền tệ", "isCorrect": true },
+      { "id": "D", "text": "Bản Thuyết minh báo cáo tài chính", "isCorrect": true }
+    ],
+    "hint": "Bộ 4 báo cáo tài chính hoàn chỉnh theo chuẩn mực kế toán Việt Nam (VAS) và quốc tế (IFRS)."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong điều kiện giá cả nguyên vật liệu trên thị trường có xu hướng tăng liên tục qua các đợt nhập, phương pháp tính giá xuất kho FIFO (Nhập trước - Xuất trước) sẽ cho ra Giá vốn hàng bán thấp hơn và Lợi nhuận gộp cao hơn so với phương pháp Bình quân gia quyền.",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Hàng mua trước với giá rẻ được tính xuất trước ➔ giá vốn hàng bán phản ánh mức giá thấp ban đầu ➔ lợi nhuận cao hơn."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khoản tiền mà khách hàng đã thanh toán trước cho dịch vụ mà doanh nghiệp chưa cung cấp (chẳng hạn khách trả trước tiền thuê văn phòng 1 năm) được kế toán phân loại vào đâu?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Doanh thu bán hàng ngay lập tức", "isCorrect": false },
+      { "id": "B", "text": "Nợ phải trả (Doanh thu chưa thực hiện / Người mua trả tiền trước)", "isCorrect": true },
+      { "id": "C", "text": "Vốn góp của chủ sở hữu", "isCorrect": false },
+      { "id": "D", "text": "Chi phí quản lý doanh nghiệp", "isCorrect": false }
+    ],
+    "hint": "Doanh nghiệp nhận tiền nhưng đang nợ khách hàng nghĩa vụ cung cấp dịch vụ trong tương lai."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Bảng cân đối kế toán phản ánh tình hình tài sản và nguồn vốn của doanh nghiệp trong suốt một thời kỳ (ví dụ cả một năm hoặc quý).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Bảng cân đối kế toán là bức ảnh chụp tại một THỜI ĐIỂM nhất định (vd: ngày 31/12); Báo cáo kết quả kinh doanh mới là thời kỳ."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Nguyên tắc 'Thận trọng' (Prudence/Conservatism) trong kế toán đòi hỏi người làm kế toán phải ứng xử thế nào khi lập báo cáo tài chính?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Ghi nhận ngay các khoản tăng vốn khi chưa có căn cứ chắc chắn", "isCorrect": false },
+      { "id": "B", "text": "Chỉ ghi nhận một khoản tăng tài sản hoặc doanh thu khi có bằng chứng chắc chắn, nhưng phải lập dự phòng tổn thất khi có dấu hiệu rủi ro suy giảm giá trị", "isCorrect": true },
+      { "id": "C", "text": "Luôn luôn che giấu các khoản nợ phải trả", "isCorrect": false },
+      { "id": "D", "text": "Không bao giờ trích khấu hao tài sản cố định", "isCorrect": false }
+    ],
+    "hint": "Không đánh giá quá cao tài sản và thu nhập, cũng như không đánh giá quá thấp nợ phải trả và chi phí."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy giải thích tại sao một doanh nghiệp có số liệu Báo cáo kết quả kinh doanh đạt 'Lợi nhuận dương rất cao' nhưng trên thực tế vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản.",
+    "answer": "Gợi ý: Do ghi nhận theo cơ sở dồn tích, doanh thu được ghi nhận khi bán hàng trả chậm nhưng dòng tiền thực tế chưa thu về (nằm ở các khoản Phải thu khó đòi hoặc tồn kho ứ đọng). Khi đến hạn trả nợ vay ngân hàng hoặc nhà cung cấp, doanh nghiệp không có tiền mặt thanh khoản để chi trả.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Phân tích sự khác biệt giữa Lợi nhuận kế toán (cơ sở dồn tích) và Dòng tiền thuần thực tế (Cash flow)."
+  }
+]

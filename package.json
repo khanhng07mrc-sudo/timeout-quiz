@@ -12,6 +12,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
+    "db:seed": "esbuild prisma/seed.ts --bundle --platform=node --target=node20 --outfile=prisma/seed.js --external:@prisma/client && node prisma/seed.js",
     "db:studio": "prisma studio"
   },
   "dependencies": {

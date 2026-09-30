@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Tam giác ràng buộc cốt lõi (Project Management Iron Triangle) trong quản lý dự án bao gồm 3 yếu tố cơ bản nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Thời gian - Chi phí - Phạm vi / Chất lượng", "isCorrect": true },
+      { "id": "B", "text": "Nhân sự - Công nghệ - Tài chính", "isCorrect": false },
+      { "id": "C", "text": "Mục tiêu - Kế hoạch - Kiểm tra", "isCorrect": false },
+      { "id": "D", "text": "Rủi ro - Lợi nhuận - Thị phần", "isCorrect": false }
+    ],
+    "hint": "Bất kỳ sự thay đổi nào ở một cạnh sẽ ảnh hưởng trực tiếp đến hai cạnh còn lại."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp sơ đồ mạng CPM (Critical Path Method), 'Đường găng' (Critical Path) được định nghĩa là gì?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Đường có thời gian thực hiện ngắn nhất trong dự án", "isCorrect": false },
+      { "id": "B", "text": "Đường nối các công việc có chi phí cao nhất", "isCorrect": false },
+      { "id": "C", "text": "Đường dài nhất xuyên suốt sơ đồ mạng, quyết định tổng thời gian hoàn thành dự án", "isCorrect": true },
+      { "id": "D", "text": "Đường chứa các công việc có độ trễ tự do lớn nhất", "isCorrect": false }
+    ],
+    "hint": "Bất kỳ sự chậm trễ nào của các công việc trên đường này đều sẽ làm trễ tiến độ toàn bộ dự án."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp Quản lý Giá trị Thu được (EVM), nếu chỉ số hiệu suất chi phí CPI = EV / AC > 1, điều này có ý nghĩa gì đối với dự án?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Dự án đang bị vượt ngân sách (bội chi)", "isCorrect": false },
+      { "id": "B", "text": "Dự án đang tiết kiệm chi phí (dưới ngân sách dự toán)", "isCorrect": true },
+      { "id": "C", "text": "Dự án đang bị trễ tiến độ thời gian", "isCorrect": false },
+      { "id": "D", "text": "Dự án có nguy cơ rủi ro cao", "isCorrect": false }
+    ],
+    "hint": "Giá trị công việc hoàn thành (EV) lớn hơn chi phí thực tế đã bỏ ra (AC)."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Công cụ phân rã mục tiêu toàn bộ dự án thành các gói công việc (Work Packages) nhỏ hơn, có thể quản lý và giao quyền được gọi là gì? (Ghi tên viết tắt 3 chữ cái)",
+    "answer": "WBS",
+    "points": 15,
+    "timeLimit": 25,
+    "hint": "Viết tắt của thuật ngữ Work Breakdown Structure."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong quản trị rủi ro dự án, những chiến lược nào dưới đây được sử dụng để ứng phó với các 'Rủi ro tiêu cực' (Threats)?",
+    "points": 15,
+    "timeLimit": 35,
+    "options": [
+      { "id": "A", "text": "Né tránh (Avoidance)", "isCorrect": true },
+      { "id": "B", "text": "Chuyển giao (Transference - như mua bảo hiểm)", "isCorrect": true },
+      { "id": "C", "text": "Giảm nhẹ (Mitigation)", "isCorrect": true },
+      { "id": "D", "text": "Khai thác (Exploit)", "isCorrect": false }
+    ],
+    "hint": "Khai thác là chiến lược dùng cho cơ hội (rủi ro tích cực), không phải rủi ro tiêu cực."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong kỹ thuật ước tính 3 điểm của PERT, thời gian kỳ vọng Te được tính theo công thức: Te = (To + 4Tm + Tp) / 6 (với To: lạc quan, Tm: khả dĩ nhất, Tp: bi quan).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Công thức trọng số phân phối Beta chuẩn phổ biến trong quản lý dự án."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Mô hình tổ chức dự án nào mà ở đó người quản lý dự án có toàn quyền quyết định về nhân sự, ngân sách và nguồn lực cao nhất?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Cơ cấu ma trận yếu (Weak Matrix)", "isCorrect": false },
+      { "id": "B", "text": "Cơ cấu chức năng truyền thống (Functional)", "isCorrect": false },
+      { "id": "C", "text": "Cơ cấu chuyên trách dự án (Projectized)", "isCorrect": true },
+      { "id": "D", "text": "Cơ cấu ma trận cân bằng (Balanced Matrix)", "isCorrect": false }
+    ],
+    "hint": "Các thành viên trong nhóm dự án được điều động toàn thời gian dưới sự chỉ huy trực tiếp của Project Manager."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Chỉ số chênh lệch tiến độ SV (Schedule Variance) trong EVM được tính bằng công thức SV = EV - AC.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "SV = EV - PV (Planned Value). Còn EV - AC là CV (Cost Variance - Chênh lệch chi phí)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Giai đoạn nào trong vòng đời dự án thường tiêu hao phần lớn thời gian, nhân lực và nguồn lực tài chính của dự án nhất?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Khởi tạo dự án (Initiating)", "isCorrect": false },
+      { "id": "B", "text": "Lập kế hoạch dự án (Planning)", "isCorrect": false },
+      { "id": "C", "text": "Thực hiện dự án (Executing)", "isCorrect": true },
+      { "id": "D", "text": "Đóng dự án (Closing)", "isCorrect": false }
+    ],
+    "hint": "Giai đoạn triển khai các gói công việc cụ thể để tạo ra sản phẩm bàn giao thực tế."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Tại sao việc xác định phạm vi dự án (Project Scope) rõ ràng ngay từ đầu lại là yếu tố sống còn để ngăn chặn hiện tượng 'Phình phạm vi' (Scope Creep)?",
+    "answer": "Gợi ý: Phạm vi rõ ràng giúp thiết lập ranh giới những gì được làm và không được làm, làm cơ sở kiểm soát các yêu cầu thay đổi phát sinh ngoài kế hoạch, tránh làm đội chi phí và kéo dài thời gian hoàn thành.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Phân tích tác hại của các yêu cầu thay đổi không kiểm soát đến chi phí và tiến độ."
+  }
+]

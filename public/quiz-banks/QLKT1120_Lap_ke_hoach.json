@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong quy trình lập kế hoạch kinh doanh tiêu chuẩn, bước đầu tiên mang tính nền tảng quyết định hướng đi là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Phân bổ ngân sách tài chính", "isCorrect": false },
+      { "id": "B", "text": "Nhận thức cơ hội và đánh giá hiện trạng", "isCorrect": true },
+      { "id": "C", "text": "Lựa chọn phương án tối ưu", "isCorrect": false },
+      { "id": "D", "text": "Xây dựng các kế hoạch tác nghiệp", "isCorrect": false }
+    ],
+    "hint": "Cần thấu hiểu bối cảnh thị trường, điểm mạnh/yếu trước khi định hình mục tiêu."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo tiêu chí SMART, chữ 'M' trong một mục tiêu kế hoạch hiệu quả đại diện cho đặc tính nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Motivated (Có tính thúc đẩy)", "isCorrect": false },
+      { "id": "B", "text": "Measurable (Đo lường được)", "isCorrect": true },
+      { "id": "C", "text": "Manageable (Quản lý được)", "isCorrect": false },
+      { "id": "D", "text": "Meaningful (Có ý nghĩa sâu sắc)", "isCorrect": false }
+    ],
+    "hint": "Mục tiêu phải gắn liền với chỉ số định lượng cụ thể để kiểm tra kết quả."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Phương pháp dự báo định tính nào dưới đây thu thập ý kiến chuyên gia qua nhiều vòng ẩn danh và phản hồi tổng hợp nhằm đạt được sự đồng thuận cao?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Kỹ thuật Delphi", "isCorrect": true },
+      { "id": "B", "text": "Phương pháp điều tra khảo sát chuyên gia độc lập", "isCorrect": true },
+      { "id": "C", "text": "Phân tích hồi quy chuỗi thời gian", "isCorrect": false },
+      { "id": "D", "text": "Phương pháp san bằng số mũ (Exponential smoothing)", "isCorrect": false }
+    ],
+    "hint": "Hai phương án định tính dựa trên trí tuệ tập thể chuyên gia mà không cần họp mặt trực tiếp."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Phương pháp lập ngân sách nào yêu cầu mọi khoản chi phí đều phải được giải trình và chứng minh lại từ đầu cho mỗi kỳ kế hoạch mới, bất kể ngân sách kỳ trước là bao nhiêu?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Ngân sách gia tăng (Incremental Budgeting)", "isCorrect": false },
+      { "id": "B", "text": "Ngân sách gốc 0 (Zero-based Budgeting - ZBB)", "isCorrect": true },
+      { "id": "C", "text": "Ngân sách cố định (Static Budgeting)", "isCorrect": false },
+      { "id": "D", "text": "Ngân sách linh hoạt (Flexible Budgeting)", "isCorrect": false }
+    ],
+    "hint": "Bắt đầu mỗi chu kỳ từ con số 0 để loại trừ các khoản lãng phí tồn dư của quá khứ."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kế hoạch chiến lược thường có tầm nhìn dài hạn (từ 3 đến 5 năm trở lên), do nhà quản trị cấp cao phê duyệt và tập trung vào các mục tiêu tổng thể của toàn tổ chức.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Phân biệt kế hoạch chiến lược dài hạn với kế hoạch tác nghiệp ngắn hạn phục vụ công việc hàng ngày."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Phương pháp quản lý theo mục tiêu phổ biến trong lập kế hoạch, nơi cấp trên và cấp dưới cùng thống nhất xác định mục tiêu và tiêu chuẩn đánh giá, viết tắt là gì?",
+    "answer": "MBO",
+    "points": 15,
+    "timeLimit": 25,
+    "hint": "Viết tắt của 3 chữ cái tiếng Anh: Management by Objectives."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong ma trận SWOT, việc kết hợp giữa 'Điểm mạnh bên trong' (Strengths) và 'Cơ hội bên ngoài' (Opportunities) sẽ hình thành nên chiến lược nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Chiến lược SO (Tấn công / Tận dụng tối đa)", "isCorrect": true },
+      { "id": "B", "text": "Chiến lược WO (Khắc phục điểm yếu đón cơ hội)", "isCorrect": false },
+      { "id": "C", "text": "Chiến lược ST (Phòng thủ trước nguy cơ)", "isCorrect": false },
+      { "id": "D", "text": "Chiến lược WT (Cắt giảm thiệt hại / Rút lui)", "isCorrect": false }
+    ],
+    "hint": "Sử dụng ưu thế nội lực để nắm bắt thời cơ vàng từ thị trường."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kế hoạch dự phòng (Contingency plan) là bản kế hoạch chỉ được kích hoạt khi các sự cố hoặc kịch bản rủi ro bất khả kháng đã được dự báo trước xảy ra.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Kế hoạch Phương án B (Plan B) phòng khi hoàn cảnh môi trường biến động lớn."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao nhưng hoạt động trong ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Ngôi sao (Stars)", "isCorrect": false },
+      { "id": "B", "text": "Bò sữa (Cash Cows)", "isCorrect": true },
+      { "id": "C", "text": "Dấu hỏi (Question Marks)", "isCorrect": false },
+      { "id": "D", "text": "Chó mực (Dogs)", "isCorrect": false }
+    ],
+    "hint": "Tạo ra dòng tiền dồi dào để nuôi dưỡng các mảng kinh doanh khác mà không cần tái đầu tư lớn."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy nêu 3 lý do giải thích tại sao một bản kế hoạch kinh doanh dù được chuẩn bị kỹ lưỡng vẫn có thể thất bại khi triển khai trong thực tế.",
+    "answer": "Gợi ý: (1) Môi trường vĩ mô và thị trường biến động ngoài dự báo; (2) Mục tiêu phi thực tế hoặc thiếu nguồn lực tài chính/nhân sự; (3) Khâu truyền thông nội bộ và phối hợp thực thi kém, thiếu kiểm soát tiến độ.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Xem xét các yếu tố về dự báo môi trường, năng lực nguồn lực và sự phối hợp khi thực thi."
+  }
+]

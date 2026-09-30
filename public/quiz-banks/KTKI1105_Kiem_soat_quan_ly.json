@@ -1,0 +1,118 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Một chi nhánh hoặc bộ phận trong doanh nghiệp mà người quản lý có quyền quyết định và chịu trách nhiệm về cả Doanh thu, Chi phí và Vốn đầu tư vào tài sản được gọi là:",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Trung tâm chi phí (Cost Center)", "isCorrect": false },
+      { "id": "B", "text": "Trung tâm doanh thu (Revenue Center)", "isCorrect": false },
+      { "id": "C", "text": "Trung tâm lợi nhuận (Profit Center)", "isCorrect": false },
+      { "id": "D", "text": "Trung tâm đầu tư (Investment Center)", "isCorrect": true }
+    ],
+    "hint": "Cấp độ trung tâm trách nhiệm tài chính cao nhất, đánh giá hiệu quả bằng chỉ số ROI hoặc RI."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC), 4 khía cạnh đo lường hiệu quả hoạt động toàn diện của tổ chức bao gồm:",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "Tài chính - Khách hàng - Quy trình nội bộ - Học hỏi & Phát triển", "isCorrect": true },
+      { "id": "B", "text": "Doanh thu - Chi phí - Lợi nhuận - Thuế", "isCorrect": false },
+      { "id": "C", "text": "Sản xuất - Bán hàng - Nhân sự - Tài chính", "isCorrect": false },
+      { "id": "D", "text": "Chiến lược - Kế hoạch - Thực hiện - Kiểm tra", "isCorrect": false }
+    ],
+    "hint": "Mô hình do Kaplan & Norton phát triển nhằm cân bằng giữa chỉ số tài chính quá khứ và động lực phi tài chính tương lai."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo khuôn khổ Kiểm soát Nội bộ COSO (2013), những thành phần nào dưới đây nằm trong 5 bộ phận cấu thành của hệ thống kiểm soát nội bộ?",
+    "points": 15,
+    "timeLimit": 35,
+    "options": [
+      { "id": "A", "text": "Môi trường kiểm soát (Control Environment)", "isCorrect": true },
+      { "id": "B", "text": "Đánh giá rủi ro (Risk Assessment)", "isCorrect": true },
+      { "id": "C", "text": "Hoạt động giám sát (Monitoring Activities)", "isCorrect": true },
+      { "id": "D", "text": "Tối đa hóa lợi nhuận cổ đông (Profit Maximization)", "isCorrect": false }
+    ],
+    "hint": "COSO bao gồm 5 trụ cột quản trị rủi ro và tuân thủ quy trình, không xem việc tối đa hóa lợi nhuận là một bộ phận kiểm soát."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số Lợi nhuận còn lại (Residual Income - RI) để đánh giá trung tâm đầu tư được tính theo công thức nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "RI = Lợi nhuận hoạt động - (Vốn đầu tư × Tỷ suất lợi nhuận yêu cầu tối thiểu)", "isCorrect": true },
+      { "id": "B", "text": "RI = Lợi nhuận hoạt động / Vốn đầu tư trung bình", "isCorrect": false },
+      { "id": "C", "text": "RI = Tổng doanh thu - Tổng chi phí biến đổi", "isCorrect": false },
+      { "id": "D", "text": "RI = Lợi nhuận sau thuế - Chi phí lãi vay", "isCorrect": false }
+    ],
+    "hint": "Phần lợi nhuận dôi ra sau khi đã trừ đi chi phí sử dụng vốn đầu tư tối thiểu."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Một ưu điểm lớn của chỉ số Lợi nhuận còn lại (RI) so với ROI là giúp ngăn chặn xu hướng người quản lý từ chối các dự án đầu tư có lợi cho toàn công ty nhưng thấp hơn ROI hiện tại của bộ phận.",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "ROI dễ dẫn đến hiện tượng cận thị (sub-optimization), trong khi RI khuyến khích nhận dự án sinh lời vượt chi phí vốn."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Mức giá dùng để chuyển giao hàng hóa hoặc dịch vụ giữa các đơn vị thành viên độc lập bên trong cùng một tập đoàn được gọi là giá gì?",
+    "answer": "Giá chuyển nhượng",
+    "points": 10,
+    "timeLimit": 25,
+    "hint": "Thuật ngữ tiếng Anh tương đương là Transfer Price."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi thị trường bên ngoài là cạnh tranh hoàn hảo, phương pháp định giá chuyển nhượng nội bộ nào được xem là tối ưu nhất để vừa đảm bảo tính tự chủ vừa tối ưu hóa lợi ích tập đoàn?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      { "id": "A", "text": "Giá theo chi phí biến đổi", "isCorrect": false },
+      { "id": "B", "text": "Giá theo chi phí toàn bộ (Full Cost)", "isCorrect": false },
+      { "id": "C", "text": "Giá thị trường (Market-based Transfer Price)", "isCorrect": true },
+      { "id": "D", "text": "Giá do công ty mẹ áp đặt chủ quan", "isCorrect": false }
+    ],
+    "hint": "Dùng giá niêm yết công khai trên thị trường cạnh tranh làm căn cứ minh bạch nhất."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kiểm soát hành vi (Action Control) là hình thức kiểm soát chỉ tập trung vào việc đo lường các kết quả đầu ra cuối cùng mà không cần can thiệp hay giám sát quy trình thực hiện.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
+      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+    ],
+    "hint": "Kiểm soát hành vi tập trung vào việc tuân thủ quy tắc, thao tác, quy trình thực hiện; kiểm soát kết quả mới là đo đầu ra (Results Control)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Hình thức kiểm soát nào dưới đây thuộc nhóm 'Kiểm soát nhân sự / văn hóa' (Personnel/Cultural Control)?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "Lắp đặt camera giám sát dây chuyền sản xuất", "isCorrect": false },
+      { "id": "B", "text": "Đánh giá doanh số bán hàng cuối tháng", "isCorrect": false },
+      { "id": "C", "text": "Tuyển dụng nhân viên có hệ giá trị phù hợp và xây dựng văn hóa tin cậy", "isCorrect": true },
+      { "id": "D", "text": "Phân chia hạn mức chi tiêu ngân sách bằng chữ ký", "isCorrect": false }
+    ],
+    "hint": "Dựa trên sự tự giác, đạo đức nghề nghiệp và chuẩn mực văn hóa doanh nghiệp."
+  },
+  {
+    "type": "ESSAY",
+    "content": "Trình bày ngắn gọn tại sao một hệ thống kiểm soát quản lý quá khắt khe, nặng về áp đặt chỉ tiêu định lượng có thể dẫn đến hành vi gian lận hoặc đối phó của cấp dưới (Gaming the system).",
+    "answer": "Gợi ý: Khi áp lực đạt chỉ tiêu quá lớn gắn liền với khen thưởng/kỷ luật mà năng lực thực tế không theo kịp, nhân viên dễ có xu hướng thao túng số liệu, dịch chuyển doanh thu/chi phí giữa các kỳ, hoặc cắt giảm chi phí bảo trì/R&D để tạo lợi nhuận ảo ngắn hạn.",
+    "points": 20,
+    "timeLimit": 60,
+    "hint": "Phân tích tâm lý nhân viên khi bị áp lực KPI phi thực tế dẫn đến tối ưu hóa cục bộ hoặc làm đẹp báo cáo."
+  }
+]

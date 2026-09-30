@@ -772,6 +772,7 @@ export interface ServerToClientEvents {
   "game:dice:update": (state: DiceRaceState) => void;
   "game:wager:update": (state: WagerState) => void;
   "game:tournament:update": (state: TournamentState) => void;
+  "game:question:clear": () => void;
 }
 
 export interface ClientToServerEvents {

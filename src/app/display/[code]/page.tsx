@@ -70,7 +70,7 @@ export default function DisplayPage() {
         if (next >= 0) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { ...prev, seconds: next } : null;
+        return next > 0 ? { ...prev, seconds: next } : { ...prev, seconds: 0 };
       });
     }, 1000);
     return () => clearInterval(interval);
@@ -192,6 +192,15 @@ export default function DisplayPage() {
     socket.on("game:resumed", () => {
       setRoomState((s) => s ? { ...s, status: "PLAYING" } : s);
       soundManager.playQuestionMusic();
+    });
+    socket.on("game:question:clear", () => {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      setBuzzed(null);
+      setIsStealOpen(false);
+      setStealBuzzed(null);
+      soundManager.stopMusic();
     });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {

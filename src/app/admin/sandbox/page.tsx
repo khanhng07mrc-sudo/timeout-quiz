@@ -55,6 +55,8 @@ export default function AdminSandboxPage() {
   // Sockets
   const adminSocketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
   const botSocketsRef = useRef<Map<string, Socket<ServerToClientEvents, ClientToServerEvents>>>(new Map());
+  const pendingBotGridTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingBotDiceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const addLog = useCallback((msg: string) => {
     setBotLogs((prev) => [
@@ -94,6 +96,14 @@ export default function AdminSandboxPage() {
     // Disconnect old bot sockets
     botSocketsRef.current.forEach((sock) => sock.disconnect());
     botSocketsRef.current.clear();
+    if (pendingBotGridTimerRef.current) {
+      clearTimeout(pendingBotGridTimerRef.current);
+      pendingBotGridTimerRef.current = null;
+    }
+    if (pendingBotDiceTimerRef.current) {
+      clearTimeout(pendingBotDiceTimerRef.current);
+      pendingBotDiceTimerRef.current = null;
+    }
 
     // Spawn sockets for Teams 2, 3, 4 (Teams[1], [2], [3])
     teams.slice(1).forEach((team) => {
@@ -119,6 +129,11 @@ export default function AdminSandboxPage() {
         const qData = q.question;
         const opts = qData.options || [];
         if (opts.length === 0) return;
+
+        // If turn-based mode, only answer if it is this bot's turn:
+        if (q.primaryTeamId && q.primaryTeamId !== team.id) {
+          return; // It's another team's turn, do not spam answers!
+        }
 
         // Human-like thinking delay: 2000ms - 4000ms
         const delay = 2000 + Math.random() * 2000;
@@ -179,21 +194,43 @@ export default function AdminSandboxPage() {
     sock.on("room:state", (state) => setRoomState(state));
     sock.on("game:question", (q) => {
       setCurrentQuestion(q);
+      if (pendingBotGridTimerRef.current) {
+        clearTimeout(pendingBotGridTimerRef.current);
+        pendingBotGridTimerRef.current = null;
+      }
+      if (pendingBotDiceTimerRef.current) {
+        clearTimeout(pendingBotDiceTimerRef.current);
+        pendingBotDiceTimerRef.current = null;
+      }
       addLog(`Câu hỏi mới: "${q.question.content.slice(0, 30)}..."`);
     });
     sock.on("game:timer", (t) => setTimer(t));
     sock.on("game:grid:update", (grid) => {
       setRoomState((prev) => prev ? { ...prev, gridCaroState: grid } : prev);
-      // If current turn is a bot and auto-play is on, automatically select a cell
-      if (botAutoEnabled && grid.currentTurnTeamId && !grid.previewActive) {
+      
+      // If cell is already selected or preview is active, clear any pending auto-selection
+      if (grid.selectedCellId || grid.previewActive) {
+        if (pendingBotGridTimerRef.current) {
+          clearTimeout(pendingBotGridTimerRef.current);
+          pendingBotGridTimerRef.current = null;
+        }
+        return;
+      }
+
+      // If current turn is a bot and auto-play is on, and NO cell is currently selected:
+      if (botAutoEnabled && grid.currentTurnTeamId && !grid.previewActive && !grid.selectedCellId) {
+        if (pendingBotGridTimerRef.current) {
+          clearTimeout(pendingBotGridTimerRef.current);
+        }
         const botSock = botSocketsRef.current.get(grid.currentTurnTeamId);
         if (botSock) {
           const unclaimed = grid.cells.filter((c) => !c.isCompleted);
           if (unclaimed.length > 0) {
-            setTimeout(() => {
+            pendingBotGridTimerRef.current = setTimeout(() => {
               const target = unclaimed[Math.floor(Math.random() * unclaimed.length)];
               botSock.emit("game:grid:select", { cellId: target.id });
               addLog(`Bot [${grid.currentTurnTeamName}] đã chọn ô #${target.id} (${target.points}đ)`);
+              pendingBotGridTimerRef.current = null;
             }, 2000);
           }
         }
@@ -202,13 +239,24 @@ export default function AdminSandboxPage() {
 
     sock.on("game:dice:update", (dice) => {
       setRoomState((prev) => prev ? { ...prev, diceRaceState: dice } : prev);
+      if (dice.dicePendingAnswer || dice.isRolling) {
+        if (pendingBotDiceTimerRef.current) {
+          clearTimeout(pendingBotDiceTimerRef.current);
+          pendingBotDiceTimerRef.current = null;
+        }
+        return;
+      }
       // If current turn is a bot and waiting to roll, auto roll
       if (botAutoEnabled && dice.currentTurnTeamId && !dice.dicePendingAnswer && !dice.isRolling) {
+        if (pendingBotDiceTimerRef.current) {
+          clearTimeout(pendingBotDiceTimerRef.current);
+        }
         const botSock = botSocketsRef.current.get(dice.currentTurnTeamId);
         if (botSock) {
-          setTimeout(() => {
+          pendingBotDiceTimerRef.current = setTimeout(() => {
             botSock.emit("game:dice:roll");
             addLog(`Bot [${dice.currentTurnTeamName}] đã đổ xúc xắc!`);
+            pendingBotDiceTimerRef.current = null;
           }, 2000);
         }
       }
@@ -229,6 +277,12 @@ export default function AdminSandboxPage() {
 
     sock.on("game:answer:reveal", (rev) => {
       addLog(`Đáp án đã công bố! Câu: ${rev.questionId}`);
+    });
+
+    sock.on("game:question:clear", () => {
+      setCurrentQuestion(null);
+      setTimer(null);
+      addLog(`Chuyển về bảng điều khiển / đường đua`);
     });
 
     sock.on("game:ended", () => {

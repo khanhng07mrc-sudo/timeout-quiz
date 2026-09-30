@@ -89,7 +89,7 @@ export default function PlayPage() {
         if (next >= 0 && soundEnabledRef.current) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { ...prev, seconds: next } : null;
+        return next > 0 ? { ...prev, seconds: next } : { ...prev, seconds: 0 };
       });
     }, 1000);
     return () => clearInterval(interval);
@@ -251,6 +251,17 @@ export default function PlayPage() {
           soundManager.playWrong();
         }
       }
+    });
+
+    socket.on("game:question:clear", () => {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setAnswered(false);
+      setBuzzedBy(null);
+      setTimer(null);
+      setHiddenOptionIds([]);
+      setIsStealPhase(false);
+      setStealBuzzedTeam(null);
     });
 
     socket.on("game:score:update", (scores) => {

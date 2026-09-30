@@ -81,7 +81,7 @@ export default function AdminRoomPage() {
         if (next >= 0 && soundEnabledRef.current) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { ...prev, seconds: next } : null;
+        return next > 0 ? { ...prev, seconds: next } : { ...prev, seconds: 0 };
       });
     }, 1000);
     return () => clearInterval(interval);
@@ -210,6 +210,16 @@ export default function AdminRoomPage() {
           soundManager.playWrong();
         }
       }
+    });
+    socket.on("game:question:clear", () => {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      setBuzzedTeam(null);
+      setStealBuzzed(null);
+      setIsStealOpen(false);
+      setTeamSelectedAnswers({});
+      setAdminSelectedAnswerId(null);
     });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {

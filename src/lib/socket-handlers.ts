@@ -504,8 +504,9 @@ export function registerSocketHandlers(io: IO) {
         // Broadcast updated room state so all participants see the online status & team counts
         io.to(`room:${code}`).emit("room:state", roomState);
 
-        // If the game is PLAYING, recover current question and timer for this player socket
-        if (room.status === "PLAYING" && room.quizBank?.questions) {
+        // If the game is PLAYING and not in preparation countdown, recover current question and timer for this player socket
+        const isPreparing = roomPrepareStates.has(room.id);
+        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -584,8 +585,9 @@ export function registerSocketHandlers(io: IO) {
         const roomState = await buildRoomState(room.id);
         io.to(`room:${code}`).emit("room:state", roomState);
 
-        // If the game is PLAYING, recover current question and timer for admin socket
-        if (room.status === "PLAYING" && room.quizBank?.questions) {
+        // If the game is PLAYING and not in preparation countdown, recover current question and timer for admin socket
+        const isPreparing = roomPrepareStates.has(room.id);
+        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -694,7 +696,8 @@ export function registerSocketHandlers(io: IO) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
 
-        if (room.status === "PLAYING" && room.quizBank?.questions) {
+        const isPreparing = roomPrepareStates.has(room.id);
+        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1078,6 +1081,18 @@ export function registerSocketHandlers(io: IO) {
       questionIndex: number
     ) {
       stopQuestionTimer(room.id);
+      const existingPrepare = roomPrepareStates.get(room.id);
+      if (existingPrepare?.timer) {
+        clearTimeout(existingPrepare.timer);
+      }
+      roomPrepareStates.delete(room.id);
+
+      const existingWagerTimer = roomWagerTimers.get(room.id);
+      if (existingWagerTimer) {
+        clearInterval(existingWagerTimer);
+        roomWagerTimers.delete(room.id);
+      }
+
       const q = questions[questionIndex];
       if (!q) return;
       const qKey = `${room.id}:${q.id}`;
@@ -1435,6 +1450,11 @@ export function registerSocketHandlers(io: IO) {
         const updatedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", updatedState);
 
+        if (room.mode === "GRID_CARO" || room.mode === "DICE_RACE") {
+          // Board-based modes wait for turn player's action (cell select / dice roll)
+          return;
+        }
+
         const launchWarmupToFirstQuestion = () => {
           roomPrepareStates.delete(room.id);
           startQuestionPrepareAndLaunch(room, questions, 0);
@@ -1455,6 +1475,46 @@ export function registerSocketHandlers(io: IO) {
           skipCallback: launchWarmupToFirstQuestion,
         });
         return;
+      }
+
+      if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState) {
+          const uncompleted = gridState.cells.filter((c) => !c.isCompleted);
+          if (uncompleted.length === 0) {
+            stopQuestionTimer(room.id);
+            room.status = "FINISHED";
+            roomCache.set(room.id, room);
+            prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+            const leaderboard = await buildLeaderboard(room.id);
+            io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+            return;
+          }
+          gridState.selectedCellId = undefined;
+          io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+          io.to(`room:${room.code}`).emit("game:question:clear");
+          return;
+        }
+      }
+
+      if (room.mode === "DICE_RACE") {
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState) {
+          const allFinished = Object.values(diceState.teamPositions).every((p) => p.hasFinished);
+          if (allFinished) {
+            stopQuestionTimer(room.id);
+            room.status = "FINISHED";
+            roomCache.set(room.id, room);
+            prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+            const leaderboard = await buildLeaderboard(room.id);
+            io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+            return;
+          }
+          diceState.dicePendingAnswer = false;
+          io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+          io.to(`room:${room.code}`).emit("game:question:clear");
+          return;
+        }
       }
 
       const nextIndex = room.currentQuestion + 1;
@@ -1693,7 +1753,7 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
 
       const gridState = roomGridCaros.get(room.id);
-      if (!gridState || gridState.previewActive) return;
+      if (!gridState || gridState.previewActive || gridState.selectedCellId || roomPrepareStates.has(room.id)) return;
 
       if (gridState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa tới lượt chọn ô của đội bạn!");
@@ -1748,7 +1808,7 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
 
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState || diceState.dicePendingAnswer) return;
+      if (!diceState || diceState.dicePendingAnswer || roomPrepareStates.has(room.id)) return;
 
       if (diceState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa tới lượt tung xúc xắc của đội bạn!");
@@ -1866,7 +1926,7 @@ export function registerSocketHandlers(io: IO) {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "GRID_CARO") return;
       const gridState = roomGridCaros.get(room.id);
-      if (!gridState) return;
+      if (!gridState || gridState.selectedCellId || gridState.previewActive || roomPrepareStates.has(room.id)) return;
 
       const cell = gridState.cells.find((c) => c.id === cellId);
       if (!cell || cell.isCompleted) return;
@@ -1898,7 +1958,7 @@ export function registerSocketHandlers(io: IO) {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "DICE_RACE") return;
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState) return;
+      if (!diceState || diceState.dicePendingAnswer || roomPrepareStates.has(room.id)) return;
 
       const roll = Math.floor(Math.random() * 6) + 1;
       diceState.lastDiceRoll = roll;
@@ -3192,6 +3252,7 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
         } else {
           await finalizeIndividualScores(io, roomId, roomCode, questionId);
         }
+        await revealCurrentAnswer(io, roomId, roomCode, questionId);
       }
     }
   }, 1000) as unknown as NodeJS.Timeout);

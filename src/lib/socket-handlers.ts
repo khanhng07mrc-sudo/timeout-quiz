@@ -78,7 +78,7 @@ export function registerSocketHandlers(io: IO) {
     console.log(`[Socket] Connected: ${socket.id}`);
 
     // ── Join Room ────────────────────────────────────────────────────────────
-    socket.on("room:join", async ({ code, playerName, teamId }, callback) => {
+    socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
       try {
         const room = await prisma.room.findUnique({
           where: { code },
@@ -90,48 +90,110 @@ export function registerSocketHandlers(io: IO) {
         });
 
         if (!room) {
-          return callback({ success: false, error: "Room not found" });
+          return callback({ success: false, error: "Không tìm thấy phòng chơi" });
         }
         if (room.status === "FINISHED") {
-          return callback({ success: false, error: "Game already ended" });
+          return callback({ success: false, error: "Trận đấu đã kết thúc" });
         }
 
-        // Upsert player
-        const player = await prisma.player.upsert({
-          where: { id: socket.id },
-          create: {
-            id: socket.id,
-            name: playerName,
-            socketId: socket.id,
-            roomId: room.id,
-            teamId: teamId ?? null,
-          },
-          update: {
-            name: playerName,
-            socketId: socket.id,
-            teamId: teamId ?? null,
-          },
-        });
+        const trimmedName = (playerName || "Thí sinh").trim();
+        let player: any = null;
+
+        // 1. Try reconnecting via persistent playerId
+        if (playerId) {
+          const existingById = await prisma.player.findFirst({
+            where: { id: playerId, roomId: room.id },
+          });
+          if (existingById) {
+            player = await prisma.player.update({
+              where: { id: existingById.id },
+              data: {
+                name: trimmedName,
+                socketId: socket.id,
+                ...(teamId && !existingById.teamId ? { teamId } : {}),
+              },
+            });
+
+            // Clean up any stale disconnected ghost clones with same name
+            await prisma.player.deleteMany({
+              where: {
+                roomId: room.id,
+                name: trimmedName,
+                id: { not: existingById.id },
+                socketId: null,
+              },
+            }).catch(() => {});
+          }
+        }
+
+        // 2. If no playerId match, try reclaiming an offline player with the exact same name
+        if (!player) {
+          const offlineSameName = await prisma.player.findFirst({
+            where: {
+              roomId: room.id,
+              name: trimmedName,
+              socketId: null,
+            },
+          });
+          if (offlineSameName) {
+            player = await prisma.player.update({
+              where: { id: offlineSameName.id },
+              data: {
+                socketId: socket.id,
+                ...(teamId && !offlineSameName.teamId ? { teamId } : {}),
+              },
+            });
+
+            // Clean up any remaining duplicate offline entries with same name
+            await prisma.player.deleteMany({
+              where: {
+                roomId: room.id,
+                name: trimmedName,
+                id: { not: offlineSameName.id },
+                socketId: null,
+              },
+            }).catch(() => {});
+          }
+        }
+
+        // 3. Otherwise, create a new player record
+        if (!player) {
+          // Clean up any old disconnected duplicates in lobby before creating
+          if (room.status === "LOBBY") {
+            await prisma.player.deleteMany({
+              where: {
+                roomId: room.id,
+                name: trimmedName,
+                socketId: null,
+              },
+            }).catch(() => {});
+          }
+
+          const newId = (playerId && playerId.length > 5) ? playerId : `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          player = await prisma.player.create({
+            data: {
+              id: newId,
+              name: trimmedName,
+              socketId: socket.id,
+              roomId: room.id,
+              teamId: teamId ?? null,
+            },
+          });
+        }
 
         playerSockets.set(socket.id, player.id);
         socket.join(`room:${code}`);
         socket.join(`room:${code}:players`);
 
         const roomState = await buildRoomState(room.id);
-        // Notify others
-        socket.to(`room:${code}`).emit("player:joined", {
-          id: player.id,
-          name: player.name,
-          score: player.score,
-          teamId: player.teamId ?? undefined,
-          isHost: player.isHost,
-          isOnline: true,
-        });
 
-        callback({ success: true, playerId: player.id, roomState });
+        // Broadcast updated room state so all participants see the online status & team counts
+        io.to(`room:${code}`).emit("room:state", roomState);
+
+        callback({ success: true, playerId: player.id, teamId: player.teamId ?? undefined, roomState });
       } catch (err) {
         console.error("[room:join]", err);
-        callback({ success: false, error: "Server error" });
+        callback({ success: false, error: "Lỗi kết nối máy chủ" });
       }
     });
 
@@ -675,16 +737,85 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:buzz:closed");
     });
 
+    // ── Admin: Kick Player ───────────────────────────────────────────────────
+    socket.on("admin:kick:player", async ({ playerId }, callback) => {
+      try {
+        const room = await getAdminRoom(socket);
+        if (!room) {
+          callback?.({ success: false, error: "Không có quyền Admin" });
+          return;
+        }
+
+        const playerToKick = await prisma.player.findFirst({
+          where: { id: playerId, roomId: room.id },
+        });
+
+        if (!playerToKick) {
+          callback?.({ success: false, error: "Không tìm thấy người chơi" });
+          return;
+        }
+
+        // Delete player
+        await prisma.player.delete({ where: { id: playerId } });
+
+        // Disconnect their socket if active
+        if (playerToKick.socketId) {
+          const clientSock = io.sockets.sockets.get(playerToKick.socketId);
+          if (clientSock) {
+            clientSock.emit("error", "Bạn đã bị chủ phòng mời ra khỏi phòng.");
+            clientSock.disconnect(true);
+          }
+          playerSockets.delete(playerToKick.socketId);
+        }
+
+        const state = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true });
+      } catch (err) {
+        console.error("[admin:kick:player]", err);
+        callback?.({ success: false, error: "Lỗi khi xoá người chơi" });
+      }
+    });
+
+    // ── Admin: Clean All Offline Players in Lobby ─────────────────────────────
+    socket.on("admin:clean:offline", async (callback) => {
+      try {
+        const room = await getAdminRoom(socket);
+        if (!room) {
+          callback?.({ success: false, error: "Không có quyền Admin" });
+          return;
+        }
+
+        const result = await prisma.player.deleteMany({
+          where: {
+            roomId: room.id,
+            socketId: null,
+            isHost: false,
+          },
+        });
+
+        const state = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", state);
+        callback?.({ success: true, count: result.count });
+      } catch (err) {
+        console.error("[admin:clean:offline]", err);
+        callback?.({ success: false, error: "Lỗi khi dọn dẹp thí sinh offline" });
+      }
+    });
+
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
       if (playerId) {
         const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
-        if (player?.room) {
-          io.to(`room:${player.room.code}`).emit("player:left", playerId);
-        }
         await prisma.player.update({ where: { id: playerId }, data: { socketId: null } }).catch(() => {});
         playerSockets.delete(socket.id);
+
+        if (player?.room) {
+          io.to(`room:${player.room.code}`).emit("player:left", playerId);
+          const state = await buildRoomState(player.room.id);
+          io.to(`room:${player.room.code}`).emit("room:state", state);
+        }
       }
     });
   });

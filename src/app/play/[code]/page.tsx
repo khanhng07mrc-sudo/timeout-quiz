@@ -42,6 +42,13 @@ export default function PlayPage() {
 
   useEffect(() => {
     const playerName = sessionStorage.getItem("playerName") || "Player";
+    const storageKey = `timeout_player_id_${code}`;
+    let savedPlayerId = sessionStorage.getItem(storageKey);
+    if (!savedPlayerId) {
+      savedPlayerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      sessionStorage.setItem(storageKey, savedPlayerId);
+    }
+    setPlayerId(savedPlayerId);
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
@@ -50,11 +57,13 @@ export default function PlayPage() {
 
     socket.on("connect", () => {
       setConnected(true);
-      socket.emit("room:join", { code, playerName }, (result) => {
+      socket.emit("room:join", { code, playerName, playerId: savedPlayerId }, (result) => {
         if (result.success) {
-          setPlayerId(result.playerId ?? "");
+          const finalId = result.playerId || savedPlayerId;
+          setPlayerId(finalId);
+          sessionStorage.setItem(storageKey, finalId);
           setRoomState(result.roomState ?? null);
-          const p = result.roomState?.players.find((pl) => pl.id === result.playerId);
+          const p = result.roomState?.players.find((pl) => pl.id === finalId);
           myTeamIdRef.current = p?.teamId;
         } else {
           alert(result.error ?? "Không thể vào phòng");
@@ -65,7 +74,7 @@ export default function PlayPage() {
 
     socket.on("room:state", (state) => {
       setRoomState(state);
-      const p = state.players.find((pl) => pl.id === playerId);
+      const p = state.players.find((pl) => pl.id === savedPlayerId);
       if (p?.teamId) myTeamIdRef.current = p.teamId;
     });
 

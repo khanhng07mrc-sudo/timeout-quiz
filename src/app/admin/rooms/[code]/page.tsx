@@ -529,28 +529,79 @@ export default function AdminRoomPage() {
 
       {/* Players/Teams grid */}
       <div className="glass rounded-2xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-lg">
-            👥 {roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}
-          </h2>
-        </div>
+        {(() => {
+          const offlineCount = (roomState?.players ?? []).filter((p) => !p.isOnline).length;
+          return (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <h2 className="font-bold text-lg">
+                👥 {roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}
+              </h2>
+              {roomState?.status === "LOBBY" && offlineCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Dọn dẹp và xoá tất cả ${offlineCount} thí sinh offline khỏi phòng?`)) {
+                      socketRef.current?.emit("admin:clean:offline", (res) => {
+                        if (res?.success) alert(`Đã dọn dẹp ${res.count ?? offlineCount} thí sinh offline`);
+                      });
+                    }
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-bold transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <span>🧹</span> Dọn dẹp thí sinh offline ({offlineCount})
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Warning if any players have not picked a team yet */}
         {roomState?.teamMode === "TEAM" && (() => {
           const unassigned = roomState.players.filter((p) => !p.teamId);
           if (unassigned.length === 0) return null;
           return (
-            <div className="mb-4 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-base">⚠️</span>
-                <span>
-                  <strong>Thí sinh chưa chọn đội ({unassigned.length}):</strong>{" "}
-                  {unassigned.map((p) => p.name).join(", ")}
+            <div className="mb-4 p-3.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-200 text-sm flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">⚠️</span>
+                  <span>
+                    <strong>Thí sinh chưa chọn đội ({unassigned.length}):</strong>
+                  </span>
+                </div>
+                <span className="text-xs text-yellow-400/80 italic">
+                  (Thí sinh cần bấm &quot;Vào đội này&quot; trên thiết bị của họ)
                 </span>
               </div>
-              <span className="text-xs text-yellow-400/80 italic">
-                (Thí sinh cần bấm &quot;Vào đội này&quot; trên màn hình điện thoại/máy tính của họ)
-              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {unassigned.map((p) => (
+                  <span
+                    key={p.id}
+                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium border ${
+                      p.isOnline
+                        ? "bg-yellow-500/20 text-yellow-200 border-yellow-500/30"
+                        : "bg-red-500/10 text-muted-foreground border-red-500/30"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${p.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
+                    <span>{p.name}</span>
+                    {!p.isOnline && <span className="text-[10px] text-red-400">(offline)</span>}
+                    {roomState?.status === "LOBBY" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Xoá thí sinh "${p.name}" khỏi phòng?`)) {
+                            socketRef.current?.emit("admin:kick:player", { playerId: p.id });
+                          }
+                        }}
+                        className="ml-1 text-muted-foreground hover:text-red-400 cursor-pointer"
+                        title="Xoá thí sinh này"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
             </div>
           );
         })()}
@@ -585,14 +636,34 @@ export default function AdminRoomPage() {
                     </span>
                   </div>
 
-                  <div className="flex flex-wrap gap-1 min-h-[28px]">
+                  <div className="flex flex-wrap gap-1.5 min-h-[28px]">
                     {members.length > 0 ? (
                       members.map((m) => (
                         <span
                           key={m.id}
-                          className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/60 text-foreground border border-border/50"
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                            m.isOnline
+                              ? "bg-muted/60 text-foreground border-border/50"
+                              : "bg-red-500/10 text-muted-foreground border-red-500/20"
+                          }`}
                         >
-                          {m.name}
+                          <span className={`w-1.5 h-1.5 rounded-full ${m.isOnline ? "bg-green-400" : "bg-gray-500"}`} />
+                          <span>{m.name}</span>
+                          {!m.isOnline && <span className="text-[9px] text-red-400 font-normal">(off)</span>}
+                          {roomState?.status === "LOBBY" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`Xoá thí sinh "${m.name}" khỏi phòng?`)) {
+                                  socketRef.current?.emit("admin:kick:player", { playerId: m.id });
+                                }
+                              }}
+                              title="Xoá thí sinh này"
+                              className="ml-0.5 text-muted-foreground hover:text-red-400 transition cursor-pointer"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </span>
                       ))
                     ) : (
@@ -607,15 +678,35 @@ export default function AdminRoomPage() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {(roomState?.players ?? []).map((entry) => (
-              <div key={entry.id} className="glass rounded-xl p-3 text-center">
+              <div key={entry.id} className="glass rounded-xl p-3 text-center relative group">
+                {roomState?.status === "LOBBY" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Xoá thí sinh "${entry.name}" khỏi phòng?`)) {
+                        socketRef.current?.emit("admin:kick:player", { playerId: entry.id });
+                      }
+                    }}
+                    title="Xoá thí sinh này"
+                    className="absolute top-2 right-2 text-xs text-muted-foreground hover:text-red-400 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
                 <div
-                  className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-white"
+                  className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center font-bold text-white relative"
                   style={{ background: "#6366f1" }}
                 >
                   {entry.name.charAt(0).toUpperCase()}
+                  <span
+                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border border-black ${
+                      entry.isOnline ? "bg-green-400" : "bg-gray-500"
+                    }`}
+                  />
                 </div>
                 <p className="text-sm font-medium truncate">{entry.name}</p>
                 <p className="text-xs text-cyan-400 font-bold">{entry.score} pts</p>
+                {!entry.isOnline && <p className="text-[10px] text-muted-foreground">(offline)</p>}
               </div>
             ))}
           </div>

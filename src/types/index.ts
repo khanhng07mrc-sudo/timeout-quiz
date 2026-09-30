@@ -194,6 +194,7 @@ export interface QuestionState {
 export interface JoinResult {
   success: boolean;
   playerId?: string;
+  teamId?: string;
   roomState?: RoomState;
   error?: string;
 }
@@ -281,7 +282,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
-  "room:join": (payload: { code: string; playerName: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
+  "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
   "room:leave": () => void;
   "game:answer:submit": (payload: { questionId: string; answer: string | string[] }) => void;
   "game:buzz": () => void;
@@ -299,6 +300,8 @@ export interface ClientToServerEvents {
   "admin:bounceback:start_steal_answer": () => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
+  "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;
   "player:select:team": (payload: { teamId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "display:join": (code: string) => void;
 }

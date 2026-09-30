@@ -108,6 +108,8 @@ export interface GameConfig {
   bouncebackQuestionsPerTurn?: number;
   bouncebackCycles?: number;
   answerMethod?: "DEVICE" | "MC";
+  eliminationDeepScoring?: boolean;
+  eliminationIntervalQuestions?: number;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────

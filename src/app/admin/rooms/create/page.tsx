@@ -53,6 +53,8 @@ export default function CreateRoomPage() {
   const [bouncebackQuestionsPerTurn, setBouncebackQuestionsPerTurn] = useState(1);
   const [bouncebackCycles, setBouncebackCycles] = useState(1);
   const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
+  const [eliminationDeepScoring, setEliminationDeepScoring] = useState(true);
+  const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
 
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([
@@ -92,6 +94,9 @@ export default function CreateRoomPage() {
     setLoading(true);
     setError("");
     try {
+      const isDeviceOnly = mode === "CLASSIC" || mode === "ELIMINATION";
+      const finalAnswerMethod = isDeviceOnly ? "DEVICE" : answerMethod;
+
       const res = await fetch("/api/rooms", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,12 +113,15 @@ export default function CreateRoomPage() {
             powerupCountShared,
             powerupCountPerTeam,
             allowedPowerups,
-            timeBonusEnabled,
+            // Mode Classic là mode DUY NHẤT có bonus thời gian
+            timeBonusEnabled: mode === "CLASSIC" ? timeBonusEnabled : false,
             penaltyForWrong,
             penaltyPoints,
             bouncebackQuestionsPerTurn,
             bouncebackCycles,
-            answerMethod,
+            answerMethod: finalAnswerMethod,
+            eliminationDeepScoring: mode === "ELIMINATION" ? eliminationDeepScoring : false,
+            eliminationIntervalQuestions,
           },
         }),
       });
@@ -195,7 +203,13 @@ export default function CreateRoomPage() {
               {GAME_MODES.map((m) => (
                 <button
                   key={m.value}
-                  onClick={() => setMode(m.value)}
+                  type="button"
+                  onClick={() => {
+                    setMode(m.value);
+                    if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
+                      setAnswerMethod("DEVICE");
+                    }
+                  }}
                   className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
                     mode === m.value ? "border-purple-500 bg-purple-500/10" : "border-border hover:border-purple-400"
                   }`}
@@ -243,8 +257,57 @@ export default function CreateRoomPage() {
             </div>
           )}
 
+          {mode === "ELIMINATION" && (
+            <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">❌</span>
+                <h3 className="font-bold text-sm text-red-300">Cấu hình chế độ Elimination (Loại dần)</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số câu hỏi mỗi đợt loại đội</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={eliminationIntervalQuestions}
+                    onChange={(e) => setEliminationIntervalQuestions(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Cứ sau {eliminationIntervalQuestions} câu, đội có điểm số thấp nhất sẽ bị loại khỏi cuộc chơi.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-[#151728]/80 border border-border flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">Công thức tính điểm sâu</span>
+                      <button
+                        type="button"
+                        onClick={() => setEliminationDeepScoring(!eliminationDeepScoring)}
+                        className={`w-10 h-5 rounded-full transition-colors ${eliminationDeepScoring ? "bg-purple-500" : "bg-muted"}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white m-0.5 transition-transform ${eliminationDeepScoring ? "translate-x-5" : "translate-x-0"}`} />
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {eliminationDeepScoring
+                        ? "Bật: Điểm Bloom + độ hiếm câu hỏi + tỷ lệ thành viên đúng nhóm (không tính điểm thời gian)."
+                        : "Tắt: Chỉ tính điểm đúng/sai thuần túy theo điểm gốc của câu."}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="block text-sm font-medium mb-3">Phương thức trả lời (Tất cả các mode, đặc biệt Buzz & Bounceback)</label>
+            <label className="block text-sm font-medium mb-1">Phương thức trả lời</label>
+            <p className="text-xs text-muted-foreground mb-3">
+              {mode === "CLASSIC" || mode === "ELIMINATION"
+                ? `Mode ${mode === "CLASSIC" ? "Classic" : "Elimination"} bắt buộc mọi đội làm bài đồng thời trên thiết bị thí sinh`
+                : "Cho phép thí sinh trả lời trên thiết bị hoặc trả lời miệng qua Quản trò (MC)"}
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -253,20 +316,50 @@ export default function CreateRoomPage() {
                   answerMethod === "DEVICE" ? "border-purple-500 bg-purple-500/10" : "border-border hover:border-purple-400"
                 }`}
               >
-                <div className="text-2xl mb-1">📱</div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-2xl">📱</span>
+                  {(mode === "CLASSIC" || mode === "ELIMINATION") && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/40">
+                      Bắt buộc
+                    </span>
+                  )}
+                </div>
                 <p className="font-bold text-sm">Trên thiết bị thí sinh</p>
-                <p className="text-xs text-muted-foreground mt-1">Thí sinh bấm chọn đáp án trực tiếp trên điện thoại/máy tính</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Thí sinh bấm chọn đáp án trực tiếp trên điện thoại/máy tính
+                </p>
               </button>
+
               <button
                 type="button"
-                onClick={() => setAnswerMethod("MC")}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
-                  answerMethod === "MC" ? "border-cyan-500 bg-cyan-500/10" : "border-border hover:border-cyan-400"
+                disabled={mode === "CLASSIC" || mode === "ELIMINATION"}
+                onClick={() => {
+                  if (mode !== "CLASSIC" && mode !== "ELIMINATION") setAnswerMethod("MC");
+                }}
+                className={`p-4 rounded-xl border-2 text-left transition-all relative ${
+                  mode === "CLASSIC" || mode === "ELIMINATION"
+                    ? "border-border/40 opacity-40 cursor-not-allowed bg-muted/10"
+                    : answerMethod === "MC"
+                    ? "border-cyan-500 bg-cyan-500/10"
+                    : "border-border hover:border-cyan-400"
                 }`}
               >
-                <div className="text-2xl mb-1">🎙️</div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-2xl">🎙️</span>
+                  {(mode === "CLASSIC" || mode === "ELIMINATION") && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/20 text-destructive border border-destructive/40">
+                      Không hỗ trợ
+                    </span>
+                  )}
+                </div>
                 <p className="font-bold text-sm">Trả lời qua MC / Admin</p>
-                <p className="text-xs text-muted-foreground mt-1">Thí sinh trả lời miệng, quản trò (Admin) click chọn đáp án trên máy</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {mode === "CLASSIC"
+                    ? "Mode Classic yêu cầu thí sinh làm bài đồng loạt trên thiết bị để tính điểm tốc độ"
+                    : mode === "ELIMINATION"
+                    ? "Mode Elimination yêu cầu mọi đội làm bài đồng loạt trên thiết bị để xét loại"
+                    : "Thí sinh trả lời miệng, quản trò (Admin) click chọn đáp án trên máy"}
+                </p>
               </button>
             </div>
           </div>
@@ -393,18 +486,39 @@ export default function CreateRoomPage() {
       {/* Step 4: Scoring */}
       {step === 4 && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between glass rounded-xl p-4">
-            <div>
-              <p className="font-bold">Bonus theo thời gian</p>
-              <p className="text-sm text-muted-foreground">Trả lời nhanh được nhiều điểm hơn</p>
+          {/* Bonus theo thời gian: Chỉ duy nhất mode CLASSIC */}
+          {mode === "CLASSIC" ? (
+            <div className="flex items-center justify-between glass rounded-xl p-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold">Bonus theo thời gian</p>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    Dành riêng Classic
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">Trả lời càng nhanh càng được nhiều điểm thưởng (tối đa +50% điểm)</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTimeBonusEnabled(!timeBonusEnabled)}
+                className={`w-12 h-6 rounded-full transition-colors ${ timeBonusEnabled ? "bg-purple-500" : "bg-muted" }`}
+              >
+                <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ timeBonusEnabled ? "translate-x-6" : "translate-x-0" }`} />
+              </button>
             </div>
-            <button
-              onClick={() => setTimeBonusEnabled(!timeBonusEnabled)}
-              className={`w-12 h-6 rounded-full transition-colors ${ timeBonusEnabled ? "bg-purple-500" : "bg-muted" }`}
-            >
-              <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ timeBonusEnabled ? "translate-x-6" : "translate-x-0" }`} />
-            </button>
-          </div>
+          ) : (
+            <div className="glass rounded-xl p-4 opacity-70 border border-border flex items-center justify-between">
+              <div>
+                <p className="font-bold text-muted-foreground">Bonus theo thời gian</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Không áp dụng cho chế độ {mode}. Chế độ này tính điểm theo câu hỏi (không thưởng tốc độ).
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground px-2.5 py-1 rounded-lg bg-muted/40 border border-border">
+                Không áp dụng
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center justify-between glass rounded-xl p-4">
             <div>

@@ -815,12 +815,18 @@ async function processAnswerSubmission({
   }
   const config = room.config;
   const timeSpent = Date.now() - (roomTimers.get(`${room.id}:startedAt`) ? parseInt(roomTimers.get(`${room.id}:startedAt`)) : Date.now());
+  const effectiveConfig = {
+    ...config,
+    timeBonusEnabled: room.mode === "CLASSIC" ? Boolean(config?.timeBonusEnabled) : false
+  };
   const points = computePointsAwarded({
     basePoints: question.points,
     timeSpent: isAdminOverride ? 0 : timeSpent,
     timeLimit: question.timeLimit,
     isCorrect: isCorrect ?? false,
-    config
+    config: effectiveConfig,
+    multiplier,
+    shielded
   });
   await prisma.answer.create({
     data: {
@@ -865,11 +871,13 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId) {
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!room || !q) return;
+  const config = room.config;
   let teamScoresUpdates = [];
   let teamSummaries = [];
   let roomAccuracy;
   let rarityBonusPercent;
-  if (room.mode === "CLASSIC" && room.teamMode === "TEAM") {
+  const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;
+  if ((room.mode === "CLASSIC" || isEliminationDeep) && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io2, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -877,6 +885,26 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId) {
     rarityBonusPercent = res.rarityBonusPercent;
     if (teamScoresUpdates.length > 0) {
       io2.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
+    }
+  }
+  if (room.mode === "ELIMINATION") {
+    const interval = config?.eliminationIntervalQuestions || 3;
+    if ((room.currentQuestion + 1) % interval === 0) {
+      if (room.teamMode === "TEAM") {
+        const activeTeams = await prisma.team.findMany({
+          where: { roomId: room.id, isEliminated: false },
+          orderBy: { score: "asc" }
+        });
+        if (activeTeams.length > 1) {
+          const toEliminate = activeTeams[0];
+          await prisma.team.update({
+            where: { id: toEliminate.id },
+            data: { isEliminated: true }
+          });
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${roomCode}`).emit("room:state", refreshedState);
+        }
+      }
     }
   }
   const answers = await prisma.answer.findMany({
@@ -1054,13 +1082,17 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
         }
       }
     }
+    const effectiveTeamConfig = {
+      ...room.config,
+      timeBonusEnabled: room.mode === "CLASSIC" ? Boolean(room.config?.timeBonusEnabled) : false
+    };
     const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
       basePoints: question.points,
       timeLimit: question.timeLimit,
       totalOnlineMembers: totalOnline,
       correctMembers: correctAnswers.length,
       correctTimes,
-      config: room.config,
+      config: effectiveTeamConfig,
       multiplier,
       shielded,
       penaltyMultiplier,

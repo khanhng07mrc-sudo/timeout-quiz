@@ -856,12 +856,20 @@ async function processAnswerSubmission({
   const config = room.config as any;
   const timeSpent = Date.now() - (roomTimers.get(`${room.id}:startedAt`) ? parseInt(roomTimers.get(`${room.id}:startedAt`) as any) : Date.now());
 
+  // Chỉ mode CLASSIC mới được phép bật timeBonusEnabled!
+  const effectiveConfig = {
+    ...config,
+    timeBonusEnabled: room.mode === "CLASSIC" ? Boolean(config?.timeBonusEnabled) : false,
+  };
+
   const points = computePointsAwarded({
     basePoints: question.points,
     timeSpent: isAdminOverride ? 0 : timeSpent,
     timeLimit: question.timeLimit,
     isCorrect: isCorrect ?? false,
-    config,
+    config: effectiveConfig,
+    multiplier,
+    shielded,
   });
 
   await prisma.answer.create({
@@ -915,13 +923,15 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!room || !q) return;
 
+  const config = room.config as any;
   let teamScoresUpdates: ScoreUpdate[] = [];
   let teamSummaries: TeamRevealSummary[] = [];
   let roomAccuracy: number | undefined;
   let rarityBonusPercent: number | undefined;
 
-  // Collective team scoring ONLY in CLASSIC mode
-  if (room.mode === "CLASSIC" && room.teamMode === "TEAM") {
+  // Collective team scoring in CLASSIC mode, OR in ELIMINATION mode when device & eliminationDeepScoring are active
+  const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;
+  if ((room.mode === "CLASSIC" || isEliminationDeep) && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -929,6 +939,28 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     rarityBonusPercent = res.rarityBonusPercent;
     if (teamScoresUpdates.length > 0) {
       io.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
+    }
+  }
+
+  // Elimination check: sau mỗi interval câu, loại đội có điểm thấp nhất
+  if (room.mode === "ELIMINATION") {
+    const interval = config?.eliminationIntervalQuestions || 3;
+    if ((room.currentQuestion + 1) % interval === 0) {
+      if (room.teamMode === "TEAM") {
+        const activeTeams = await prisma.team.findMany({
+          where: { roomId: room.id, isEliminated: false },
+          orderBy: { score: "asc" },
+        });
+        if (activeTeams.length > 1) {
+          const toEliminate = activeTeams[0];
+          await prisma.team.update({
+            where: { id: toEliminate.id },
+            data: { isEliminated: true },
+          });
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${roomCode}`).emit("room:state", refreshedState);
+        }
+      }
     }
   }
 
@@ -1152,13 +1184,18 @@ async function resolveQuestionTeamScores(
       }
     }
 
+    const effectiveTeamConfig = {
+      ...(room.config as any),
+      timeBonusEnabled: room.mode === "CLASSIC" ? Boolean((room.config as any)?.timeBonusEnabled) : false,
+    };
+
     const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
       basePoints: question.points,
       timeLimit: question.timeLimit,
       totalOnlineMembers: totalOnline,
       correctMembers: correctAnswers.length,
       correctTimes,
-      config: room.config as any,
+      config: effectiveTeamConfig,
       multiplier,
       shielded,
       penaltyMultiplier,

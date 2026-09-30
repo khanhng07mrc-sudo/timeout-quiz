@@ -18,6 +18,8 @@ const DEFAULT_CONFIG = {
   bouncebackQuestionsPerTurn: 1,
   bouncebackCycles: 1,
   answerMethod: "DEVICE",
+  eliminationDeepScoring: true,
+  eliminationIntervalQuestions: 3,
 };
 
 export async function POST(req: NextRequest) {

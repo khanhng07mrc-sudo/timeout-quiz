@@ -1,0 +1,249 @@
+import type { Server as NetServer, Socket } from "net";
+import type { NextApiResponse } from "next";
+import type { Server as SocketIOServer } from "socket.io";
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+export type QuestionType =
+  | "MC_SINGLE"
+  | "MC_MULTI"
+  | "TRUE_FALSE"
+  | "FILL_BLANK"
+  | "ESSAY"
+  | "MATCHING"
+  | "DRAG_DROP";
+
+export type CardType =
+  | "FIFTY_FIFTY"
+  | "DOUBLE"
+  | "FREEZE"
+  | "ATTACK"
+  | "SKIP"
+  | "TIME_PLUS"
+  | "SHIELD"
+  | "STEAL"
+  | "PENALTY"
+  | "SCORE_X2";
+
+export type GameMode = "CLASSIC" | "BUZZ" | "POWERUP" | "ELIMINATION" | "TOURNAMENT";
+export type TeamMode = "INDIVIDUAL" | "TEAM";
+export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
+
+// ─── Card Metadata ────────────────────────────────────────────────────────────
+
+export const CARD_METADATA: Record<CardType, { emoji: string; name: string; nameVi: string; descriptionVi: string; description: string }> = {
+  FIFTY_FIFTY: { emoji: "🔀", name: "50/50", nameVi: "50/50", description: "Remove 2 wrong answers", descriptionVi: "Loại bỏ 2 đáp án sai" },
+  DOUBLE: { emoji: "✖️2", name: "Double", nameVi: "Nhân đôi", description: "Double points next", descriptionVi: "Nhân đôi điểm câu tiếp theo" },
+  FREEZE: { emoji: "❄️", name: "Freeze", nameVi: "Phong tỏa", description: "Skip another team's turn", descriptionVi: "Bỏ qua lượt của đội khác" },
+  ATTACK: { emoji: "⚔️", name: "Attack", nameVi: "Tấn công", description: "Force team to answer", descriptionVi: "Chỉ định đội khác trả lời, sai bị trừ" },
+  SKIP: { emoji: "🔄", name: "Skip", nameVi: "Đổi câu", description: "Replace question", descriptionVi: "Đổi câu hỏi sang câu khác" },
+  TIME_PLUS: { emoji: "⏱️", name: "Time+", nameVi: "Thêm giờ", description: "Add 15 seconds", descriptionVi: "Thêm 15 giây" },
+  SHIELD: { emoji: "🛡️", name: "Shield", nameVi: "Tái sinh", description: "Protect from penalty once", descriptionVi: "Bảo vệ khỏi trừ điểm 1 lần" },
+  STEAL: { emoji: "💸", name: "Steal", nameVi: "Cướp điểm", description: "Steal points from leader", descriptionVi: "Cướp điểm của đội dẫn đầu" },
+  PENALTY: { emoji: "💥", name: "Penalty", nameVi: "Phạt đôi", description: "Double penalty for target team", descriptionVi: "Nhân đôi điểm trừ của đội mục tiêu" },
+  SCORE_X2: { emoji: "⭐", name: "Score x2", nameVi: "x2 điểm", description: "Correct=x2, Wrong=0 penalty", descriptionVi: "Đúng x2 điểm, sai không bị trừ" },
+};
+
+// ─── Question ─────────────────────────────────────────────────────────────────
+
+export interface Option {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface MatchPair {
+  id: string;
+  left: string;
+  right: string;
+}
+
+export interface Question {
+  id: string;
+  type: QuestionType;
+  content: string;
+  options?: Option[];
+  answer?: string;
+  pairs?: MatchPair[];
+  points: number;
+  timeLimit: number;
+  mediaUrl?: string;
+  mediaType?: "image" | "audio" | "video";
+  hint?: string;
+  order: number;
+}
+
+// ─── Game Config ──────────────────────────────────────────────────────────────
+
+export interface GameConfig {
+  powerupEnabled: boolean;
+  powerupOwnerType: "SHARED" | "TEAM";
+  powerupCountPerTeam: number;
+  powerupCountShared: number;
+  allowedPowerups: CardType[];
+  timeBonusEnabled: boolean;
+  penaltyForWrong: boolean;
+  penaltyPoints: number;
+  maxTeams: number;
+  buzzMode: boolean;
+  eliminationRounds: number;
+}
+
+// ─── State ────────────────────────────────────────────────────────────────────
+
+export interface PowerupCard {
+  id: string;
+  type: CardType;
+  ownerType: "SHARED" | "TEAM";
+  teamId?: string;
+  used: boolean;
+}
+
+export interface TeamState {
+  id: string;
+  name: string;
+  color: string;
+  avatar?: string;
+  score: number;
+  isEliminated: boolean;
+  frozenRounds: number;
+  shieldCount: number;
+  cards: PowerupCard[];
+  playerCount: number;
+}
+
+export interface PlayerState {
+  id: string;
+  name: string;
+  avatar?: string;
+  score: number;
+  teamId?: string;
+  isHost: boolean;
+  isOnline: boolean;
+}
+
+export interface RoomState {
+  id: string;
+  code: string;
+  name: string;
+  mode: GameMode;
+  teamMode: TeamMode;
+  status: RoomStatus;
+  currentQuestionIndex: number;
+  totalQuestions: number;
+  teams: TeamState[];
+  players: PlayerState[];
+  sharedCards: PowerupCard[];
+  config: GameConfig;
+}
+
+export interface ActiveBoost {
+  type: CardType;
+  teamId?: string;
+  targetTeamId?: string;
+  appliedAt: number;
+}
+
+export interface QuestionState {
+  question: Omit<Question, "answer" | "pairs" | "options"> & {
+    options?: Omit<Option, "isCorrect">[];
+    visibleOptionIds?: string[]; // after 50/50 applied
+  };
+  timeLimit: number;
+  startedAt: number;
+  buzzedBy?: string;
+  activeBoosts: ActiveBoost[];
+}
+
+// ─── Socket Events ────────────────────────────────────────────────────────────
+
+export interface JoinResult {
+  success: boolean;
+  playerId?: string;
+  roomState?: RoomState;
+  error?: string;
+}
+
+export interface AnswerRevealPayload {
+  questionId: string;
+  correctAnswer: string | string[];
+  answers: Array<{
+    teamId?: string;
+    playerId?: string;
+    name: string;
+    answer: string | string[];
+    isCorrect: boolean;
+    pointsAwarded: number;
+    timeSpent: number;
+  }>;
+}
+
+export interface ScoreUpdate {
+  teamId?: string;
+  playerId?: string;
+  score: number;
+  delta: number;
+}
+
+export interface PowerupUsedPayload {
+  cardId: string;
+  type: CardType;
+  usedByTeamId?: string;
+  usedByName: string;
+  targetTeamId?: string;
+  targetTeamName?: string;
+  effect: string;
+}
+
+export interface GameEndPayload {
+  leaderboard: Array<{
+    rank: number;
+    teamId?: string;
+    playerId?: string;
+    name: string;
+    score: number;
+    correctAnswers: number;
+    totalAnswers: number;
+  }>;
+}
+
+export interface ServerToClientEvents {
+  "room:state": (state: RoomState) => void;
+  "game:question": (question: QuestionState) => void;
+  "game:timer": (payload: { remaining: number; total: number }) => void;
+  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string }) => void;
+  "game:buzz:closed": () => void;
+  "game:answer:reveal": (payload: AnswerRevealPayload) => void;
+  "game:score:update": (scores: ScoreUpdate[]) => void;
+  "game:powerup:used": (payload: PowerupUsedPayload) => void;
+  "game:ended": (payload: GameEndPayload) => void;
+  "game:paused": () => void;
+  "game:resumed": () => void;
+  "player:joined": (player: PlayerState) => void;
+  "player:left": (playerId: string) => void;
+  "error": (message: string) => void;
+}
+
+export interface ClientToServerEvents {
+  "room:join": (payload: { code: string; playerName: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
+  "room:leave": () => void;
+  "game:answer:submit": (payload: { questionId: string; answer: string | string[] }) => void;
+  "game:buzz": () => void;
+  "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
+  "admin:next": () => void;
+  "admin:pause": () => void;
+  "admin:resume": () => void;
+  "admin:reveal": () => void;
+  "admin:score:manual": (payload: { answerId: string; points: number }) => void;
+  "admin:shuffle:cards": () => void;
+  "admin:lock:cards": (locked: boolean) => void;
+  "display:join": (code: string) => void;
+}
+
+export type NextApiResponseWithSocket = NextApiResponse & {
+  socket: Socket & {
+    server: NetServer & {
+      io?: SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
+    };
+  };
+};

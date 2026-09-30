@@ -1,0 +1,5 @@
+type,content,optionA,optionB,optionC,optionD,correct,points,timeLimit,hint
+MC_SINGLE,"Mặt trời mọc ở hướng nào?","Hướng Đông","Hướng Tây","Hướng Nam","Hướng Bắc",A,10,15,"Phía mặt trời bắt đầu ngày mới"
+MC_SINGLE,"Nước sôi ở bao nhiêu độ C ở áp suất tiêu chuẩn?","90","100","110","120",B,10,15,"Tròn 100 độ"
+MC_SINGLE,"Việt Nam có bao nhiêu tỉnh thành phố trực thuộc trung ương tính đến nay?","61","62","63","64",C,10,20,"63 tỉnh thành"
+MC_SINGLE,"Hành tinh nào gần Mặt trời nhất trong Hệ Mặt trời?","Sao Thủy","Sao Kim","Trái Đất","Sao Hỏa",A,15,20,"Mercury"

@@ -1,0 +1,276 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum QuestionType {
+  MC_SINGLE
+  MC_MULTI
+  TRUE_FALSE
+  FILL_BLANK
+  ESSAY
+  MATCHING
+  DRAG_DROP
+}
+
+enum GameMode {
+  CLASSIC
+  BUZZ
+  POWERUP
+  ELIMINATION
+  TOURNAMENT
+}
+
+enum TeamMode {
+  INDIVIDUAL
+  TEAM
+}
+
+enum RoomStatus {
+  LOBBY
+  PLAYING
+  PAUSED
+  FINISHED
+}
+
+enum CardType {
+  FIFTY_FIFTY
+  DOUBLE
+  FREEZE
+  ATTACK
+  SKIP
+  TIME_PLUS
+  SHIELD
+  STEAL
+  PENALTY
+  SCORE_X2
+}
+
+enum CardOwnerType {
+  SHARED
+  TEAM
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String?
+  image     String?
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quizBanks   QuizBank[]
+  hostedRooms Room[]     @relation("RoomHost")
+  players     Player[]
+  accounts    Account[]
+  sessions    Session[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model QuizBank {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  isPublic    Boolean    @default(false)
+  ownerId     String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  owner     User       @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  questions Question[]
+  rooms     Room[]
+
+  @@index([ownerId])
+}
+
+model Question {
+  id         String       @id @default(cuid())
+  type       QuestionType
+  content    String       @db.Text
+  options    Json?
+  answer     String?      @db.Text
+  pairsLeft  Json?
+  pairsRight Json?
+  points     Int          @default(10)
+  timeLimit  Int          @default(30)
+  mediaUrl   String?
+  mediaType  String?
+  hint       String?      @db.Text
+  order      Int          @default(0)
+  quizBankId String
+  createdAt  DateTime     @default(now())
+
+  quizBank QuizBank @relation(fields: [quizBankId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+
+  @@index([quizBankId])
+}
+
+model Room {
+  id              String     @id @default(cuid())
+  code            String     @unique
+  name            String
+  hostId          String
+  quizBankId      String?
+  mode            GameMode   @default(CLASSIC)
+  teamMode        TeamMode   @default(INDIVIDUAL)
+  status          RoomStatus @default(LOBBY)
+  currentQuestion Int        @default(0)
+  config          Json
+  inviteUrl       String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  endedAt         DateTime?
+
+  host         User          @relation("RoomHost", fields: [hostId], references: [id])
+  quizBank     QuizBank?     @relation(fields: [quizBankId], references: [id])
+  teams        Team[]
+  players      Player[]
+  powerupCards PowerupCard[]
+  answers      Answer[]
+  gameLogs     GameLog[]
+
+  @@index([code])
+  @@index([hostId])
+}
+
+model Team {
+  id           String  @id @default(cuid())
+  name         String
+  color        String  @default("#6366f1")
+  avatar       String?
+  roomId       String
+  score        Int     @default(0)
+  isEliminated Boolean @default(false)
+  frozenRounds Int     @default(0)
+  shieldCount  Int     @default(0)
+  createdAt    DateTime @default(now())
+
+  room         Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  players      Player[]
+  powerupCards PowerupCard[]
+  answers      Answer[]
+  usedCards    PowerupCard[] @relation("CardUser")
+
+  @@index([roomId])
+}
+
+model Player {
+  id       String    @id @default(cuid())
+  name     String
+  avatar   String?
+  socketId String?
+  roomId   String
+  teamId   String?
+  userId   String?
+  score    Int       @default(0)
+  isHost   Boolean   @default(false)
+  joinedAt DateTime  @default(now())
+
+  room    Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  team    Team?    @relation(fields: [teamId], references: [id])
+  user    User?    @relation(fields: [userId], references: [id])
+  answers Answer[]
+
+  @@index([roomId])
+  @@index([socketId])
+}
+
+model PowerupCard {
+  id           String        @id @default(cuid())
+  type         CardType
+  ownerType    CardOwnerType @default(SHARED)
+  roomId       String
+  teamId       String?
+  usedByTeamId String?
+  used         Boolean       @default(false)
+  usedAt       DateTime?
+  targetTeamId String?
+  createdAt    DateTime      @default(now())
+
+  room        Room  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  team        Team? @relation(fields: [teamId], references: [id])
+  usedByTeam  Team? @relation("CardUser", fields: [usedByTeamId], references: [id])
+
+  @@index([roomId])
+  @@index([teamId])
+}
+
+model Answer {
+  id            String   @id @default(cuid())
+  roomId        String
+  questionId    String
+  playerId      String?
+  teamId        String?
+  answer        Json
+  isCorrect     Boolean?
+  pointsAwarded Int      @default(0)
+  timeSpent     Int      @default(0)
+  submittedAt   DateTime @default(now())
+
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id])
+  player   Player?  @relation(fields: [playerId], references: [id])
+  team     Team?    @relation(fields: [teamId], references: [id])
+
+  @@index([roomId, questionId])
+}
+
+model GameLog {
+  id        String   @id @default(cuid())
+  roomId    String
+  event     String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}

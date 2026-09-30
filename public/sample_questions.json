@@ -1,0 +1,55 @@
+[
+  {
+    "type": "MC_SINGLE",
+    "content": "Thủ đô của Việt Nam là thành phố nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      { "id": "A", "text": "TP. Hồ Chí Minh", "isCorrect": false },
+      { "id": "B", "text": "Hà Nội", "isCorrect": true },
+      { "id": "C", "text": "Đà Nẵng", "isCorrect": false },
+      { "id": "D", "text": "Cần Thơ", "isCorrect": false }
+    ],
+    "hint": "Thành phố nằm bên sông Hồng nghìn năm văn hiến."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những ngôn ngữ lập trình nào thường được dùng cho phát triển Web Frontend?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      { "id": "A", "text": "JavaScript", "isCorrect": true },
+      { "id": "B", "text": "TypeScript", "isCorrect": true },
+      { "id": "C", "text": "C++", "isCorrect": false },
+      { "id": "D", "text": "Assembly", "isCorrect": false }
+    ],
+    "hint": "Hai ngôn ngữ chạy trực tiếp hoặc biên dịch ra mã chạy trên trình duyệt."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Render hỗ trợ triển khai ứng dụng Node.js và WebSockets trên Free Tier.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
+      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+    ],
+    "hint": "Render hỗ trợ full WebSocket và Web Service miễn phí."
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Tên giao thức thời gian thực hai chiều giữa client và server là gì?",
+    "answer": "WebSocket",
+    "points": 20,
+    "timeLimit": 25,
+    "hint": "Bắt đầu bằng chữ 'WebS...'"
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy nêu ngắn gọn ưu điểm của việc chia đội và sử dụng thẻ hỗ trợ trong các cuộc thi đố vui kiến thức.",
+    "points": 25,
+    "timeLimit": 60,
+    "answer": "Gợi ý: Tăng tính tương tác, kịch tính, chiến thuật phối hợp đồng đội và khả năng lật kèo điểm số.",
+    "hint": "Tập trung vào yếu tố đồng đội và chiến thuật."
+  }
+]

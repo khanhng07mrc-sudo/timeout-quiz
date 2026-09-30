@@ -60,7 +60,8 @@ export default function GameQuestion({
   const isBuzzedTeam = myTeamId && buzzedBy?.teamId ? myTeamId === buzzedBy.teamId : false;
 
   const canAnswerThisQuestion = () => {
-    if (answered || !!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
+    if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
+    if (timer && timer.remaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
       if (stealBuzzedTeam) return isStealTeam;
       if (isStealPhase) return false; // In steal buzz phase, only buzzing is allowed
@@ -75,6 +76,7 @@ export default function GameQuestion({
   const handleOptionClick = (optId: string) => {
     if (!canAnswerThisQuestion() || hiddenOptionIds?.includes(optId)) return;
     if (q.type === "MC_SINGLE" || q.type === "TRUE_FALSE") {
+      setSelected([optId]);
       onAnswer(optId);
     } else if (q.type === "MC_MULTI") {
       const next = selected.includes(optId)
@@ -345,7 +347,10 @@ export default function GameQuestion({
       ) : null}
 
       {answered && !revealPayload && (
-        <div className="text-center py-2 text-green-400 font-bold">✓ Đã ghi nhận câu trả lời — Chờ kết quả...</div>
+        <div className="text-center py-2 text-green-400 font-bold flex items-center justify-center gap-1.5 text-sm">
+          <span>✓ Đã chọn đáp án</span>
+          <span className="text-xs text-muted-foreground font-normal">(Có thể đổi đáp án khác trước khi hết giờ)</span>
+        </div>
       )}
 
       {/* Answer Reveal Section */}

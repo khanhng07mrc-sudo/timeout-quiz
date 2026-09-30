@@ -297,7 +297,7 @@ export default function PlayPage() {
   const handleBuzz = () => socketRef.current?.emit("game:buzz");
 
   const handleAnswer = (answer: string | string[]) => {
-    if (!currentQuestion || answered) return;
+    if (!currentQuestion || revealPayload) return;
     setAnswered(true);
     socketRef.current?.emit("game:answer:submit", {
       questionId: currentQuestion.question.id,

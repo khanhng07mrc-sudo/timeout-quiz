@@ -36,6 +36,10 @@ export default function AdminRoomPage() {
   const [currentBankInfo, setCurrentBankInfo] = useState<{ id: string; title: string; questionsCount: number } | null>(null);
   const [updatingBank, setUpdatingBank] = useState(false);
 
+  const [adminTargetTeamId, setAdminTargetTeamId] = useState<string>("");
+  const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
+  const [adminSelectedAnswerId, setAdminSelectedAnswerId] = useState<string | null>(null);
+
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -158,6 +162,11 @@ export default function AdminRoomPage() {
       setBuzzedTeam(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
+      setTeamSelectedAnswers({});
+      setAdminSelectedAnswerId(null);
+      if (q.primaryTeamId) {
+        setAdminTargetTeamId(q.primaryTeamId);
+      }
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(0);
       }
@@ -165,6 +174,9 @@ export default function AdminRoomPage() {
     socket.on("game:timer", setTimer);
     socket.on("game:buzz", (p) => {
       setBuzzedTeam(p);
+      if (p.teamId) {
+        setAdminTargetTeamId(p.teamId);
+      }
       if (soundEnabledRef.current) {
         soundManager.playBuzz();
       }
@@ -176,6 +188,9 @@ export default function AdminRoomPage() {
     socket.on("game:bounceback:steal_buzzed", (p) => {
       setIsStealOpen(false);
       setStealBuzzed(p);
+      if (p.teamId) {
+        setAdminTargetTeamId(p.teamId);
+      }
       if (soundEnabledRef.current) {
         soundManager.playBuzz();
       }
@@ -245,8 +260,16 @@ export default function AdminRoomPage() {
 
   const handleAdminSubmitAnswer = (answerId: string) => {
     if (!currentQuestion) return;
+    const effTeamId = adminTargetTeamId || currentQuestion.primaryTeamId || buzzedTeam?.teamId || stealBuzzed?.teamId || roomState?.teams[0]?.id;
+    
+    if (effTeamId) {
+      setTeamSelectedAnswers((prev) => ({ ...prev, [effTeamId]: answerId }));
+    }
+    setAdminSelectedAnswerId(answerId);
+
     emit("admin:submit:answer", {
       questionId: currentQuestion.question.id,
+      teamId: effTeamId || undefined,
       answer: answerId,
     });
   };
@@ -538,31 +561,118 @@ export default function AdminRoomPage() {
               <p className="font-medium">{currentQuestion.question.content}</p>
 
               {/* Direct Answer Click on Admin screen (MC mode / Fail-safe override) */}
-              {currentQuestion.question.options && (
-                <div className="space-y-2 pt-3 border-t border-border/60">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-cyan-300">🎙️ Click chọn đáp án trên máy Admin:</span>
-                    <span className="text-[10px] text-green-400 font-medium">Luôn chọn được kể cả khi hết giờ</span>
+              {currentQuestion.question.options && (() => {
+                const effTargetTeamId = adminTargetTeamId || currentQuestion?.primaryTeamId || buzzedTeam?.teamId || stealBuzzed?.teamId || roomState?.teams[0]?.id || "";
+                const currentTargetAnswerId = effTargetTeamId ? (teamSelectedAnswers[effTargetTeamId] ?? adminSelectedAnswerId) : adminSelectedAnswerId;
+
+                return (
+                  <div className="space-y-3 pt-3 border-t border-border/60">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-bold text-xs text-cyan-300 flex items-center gap-1.5">
+                        <span>🎙️ Chọn đáp án trên máy Host:</span>
+                        <span className="text-[10px] text-green-400 font-normal">(Đổi đáp án liên tục khi còn thời gian)</span>
+                      </span>
+                      {currentTargetAnswerId && !revealPayload && (
+                        <span className="text-[11px] text-green-400 font-bold flex items-center gap-1">
+                          <span>✓ Đang chọn</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Team Selector Pills if room has teams */}
+                    {roomState?.teamMode === "TEAM" && (roomState.teams?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-card/60 border border-border">
+                        <span className="text-xs text-muted-foreground font-semibold">Chấm cho đội:</span>
+                        <div className="flex flex-wrap gap-1.5 flex-1">
+                          {roomState?.teams.map((t) => {
+                            const isTarget = effTargetTeamId === t.id;
+                            const chosenAnsId = teamSelectedAnswers[t.id];
+                            const chosenIndex = chosenAnsId
+                              ? currentQuestion.question.options?.findIndex((o) => o.id === chosenAnsId)
+                              : -1;
+                            const chosenLetter = chosenIndex !== undefined && chosenIndex >= 0 ? ["A", "B", "C", "D"][chosenIndex] : null;
+
+                            return (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => {
+                                  setAdminTargetTeamId(t.id);
+                                  setAdminSelectedAnswerId(teamSelectedAnswers[t.id] ?? null);
+                                }}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                                  isTarget
+                                    ? "border-cyan-400 bg-cyan-500/20 text-cyan-200 ring-1 ring-cyan-400"
+                                    : "border-border bg-background/50 hover:border-border/80 text-muted-foreground"
+                                }`}
+                              >
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                                <span className="truncate max-w-[100px]">{t.name}</span>
+                                {chosenLetter && (
+                                  <span className="px-1.5 py-0.2 rounded bg-cyan-500 text-black text-[10px] font-black">
+                                    {chosenLetter}
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Direct options click */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {currentQuestion.question.options.map((opt, i) => {
+                        const labels = ["A", "B", "C", "D"];
+                        const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
+                        const isSelected = currentTargetAnswerId === opt.id;
+
+                        let btnStyle = "border-border hover:border-cyan-400 hover:bg-cyan-500/10 text-muted-foreground hover:text-foreground";
+                        if (revealPayload) {
+                          if (isRevealed) {
+                            btnStyle = "border-green-500 bg-green-500/20 text-green-300 font-bold shadow-md";
+                          } else if (isSelected) {
+                            btnStyle = "border-red-500/60 bg-red-500/10 text-red-300 opacity-60";
+                          } else {
+                            btnStyle = "border-border opacity-40";
+                          }
+                        } else if (isSelected) {
+                          btnStyle = "border-cyan-400 bg-cyan-500/25 text-cyan-200 ring-2 ring-cyan-400/60 shadow-lg font-bold";
+                        }
+
+                        return (
+                          <button
+                            key={opt.id}
+                            onClick={() => handleAdminSubmitAnswer(opt.id)}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left text-sm transition-all active:scale-95 group ${btnStyle}`}
+                          >
+                            <span
+                              className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black shrink-0 ${
+                                isSelected
+                                  ? "bg-cyan-400 text-black"
+                                  : "bg-muted text-muted-foreground group-hover:bg-cyan-500 group-hover:text-black"
+                              }`}
+                            >
+                              {labels[i] ?? i + 1}
+                            </span>
+                            <span className="truncate flex-1">{opt.text}</span>
+                            {isSelected && !revealPayload && (
+                              <span className="px-1.5 py-0.5 rounded bg-cyan-400 text-black text-[10px] font-black uppercase tracking-wider shrink-0">
+                                ✓ Đang chọn
+                              </span>
+                            )}
+                            {revealPayload && isRevealed && (
+                              <span className="px-1.5 py-0.5 rounded bg-green-500 text-black text-[10px] font-black uppercase tracking-wider shrink-0">
+                                ✓ Đúng
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {currentQuestion.question.options.map((opt, i) => {
-                      const labels = ["A", "B", "C", "D"];
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => handleAdminSubmitAnswer(opt.id)}
-                          className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border hover:border-cyan-400 hover:bg-cyan-500/10 text-left text-sm transition-all active:scale-95 group"
-                        >
-                          <span className="w-6 h-6 rounded bg-muted flex items-center justify-center text-xs font-black group-hover:bg-cyan-500 group-hover:text-black">
-                            {labels[i] ?? i + 1}
-                          </span>
-                          <span className="truncate flex-1">{opt.text}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 

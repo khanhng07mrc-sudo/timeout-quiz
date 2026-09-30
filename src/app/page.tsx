@@ -22,49 +22,63 @@ export default function HomePage() {
           Nền tảng thi đấu câu hỏi realtime · Thẻ bài chiến thuật · Đa hình thức & Đa chế độ
         </p>
 
-        {/* Action Buttons with distinct styling and healthy 24px gap */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full max-w-md mb-20">
+        {/* Action Buttons with distinct styling and healthy gap */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mb-16">
           <Link
             href="/play"
-            className="btn-gradient w-full py-4 px-8 text-center text-lg flex items-center justify-center gap-3"
+            className="btn-gradient w-full py-4 px-6 text-center text-lg flex items-center justify-center gap-2.5"
           >
             <span className="text-2xl">🎮</span>
             <span>Tham gia phòng</span>
           </Link>
 
           <Link
+            href="/display"
+            className="w-full py-4 px-6 rounded-2xl bg-[#181d36] hover:bg-cyan-600/20 text-cyan-300 hover:text-white border-2 border-cyan-500/40 hover:border-cyan-400 font-bold text-lg text-center transition-all shadow-lg flex items-center justify-center gap-2.5"
+          >
+            <span className="text-2xl">📺</span>
+            <span>Màn hình chiếu</span>
+          </Link>
+
+          <Link
             href="/admin"
-            className="btn-glass w-full py-4 px-8 text-center text-lg flex items-center justify-center gap-3"
+            className="btn-glass w-full py-4 px-6 text-center text-lg flex items-center justify-center gap-2.5"
           >
             <span className="text-2xl">👨‍💼</span>
             <span>Quản lý (Admin)</span>
           </Link>
         </div>
 
-        {/* 4 Feature Cards with generous padding and spacing */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full">
+        {/* 5 Feature Cards with generous padding and spacing */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5 w-full">
           <div className="quiz-card p-6 text-center">
             <div className="text-4xl mb-4">🃏</div>
-            <div className="font-bold text-lg text-white mb-2">Thẻ hỗ trợ</div>
-            <div className="text-sm text-slate-400">10 loại thẻ chiến thuật đa năng cướp điểm, phong tỏa, nhân đôi</div>
+            <div className="font-bold text-base text-white mb-2">Thẻ hỗ trợ</div>
+            <div className="text-xs text-slate-400">10 loại thẻ chiến thuật đa năng cướp điểm, phong tỏa, nhân đôi</div>
           </div>
 
           <div className="quiz-card p-6 text-center">
             <div className="text-4xl mb-4">⚡</div>
-            <div className="font-bold text-lg text-white mb-2">Realtime</div>
-            <div className="text-sm text-slate-400">Đồng bộ tức thì qua WebSocket, bấm Buzz cướp quyền nhạy bén</div>
+            <div className="font-bold text-base text-white mb-2">Realtime</div>
+            <div className="text-xs text-slate-400">Đồng bộ tức thì qua WebSocket, bấm Buzz cướp quyền nhạy bén</div>
+          </div>
+
+          <div className="quiz-card p-6 text-center border-cyan-500/30 bg-cyan-950/10">
+            <div className="text-4xl mb-4">📺</div>
+            <div className="font-bold text-base text-cyan-300 mb-2">Màn hình chiếu</div>
+            <div className="text-xs text-slate-400">Chế độ TV/Projector tối ưu hội trường, hiển thị câu hỏi & bảng điểm sống động</div>
           </div>
 
           <div className="quiz-card p-6 text-center">
             <div className="text-4xl mb-4">👥</div>
-            <div className="font-bold text-lg text-white mb-2">Đội nhóm</div>
-            <div className="text-sm text-slate-400">Chơi cá nhân hoặc tổ chức theo đội không giới hạn thành viên</div>
+            <div className="font-bold text-base text-white mb-2">Đội nhóm</div>
+            <div className="text-xs text-slate-400">Chơi cá nhân hoặc tổ chức theo đội không giới hạn thành viên</div>
           </div>
 
           <div className="quiz-card p-6 text-center">
             <div className="text-4xl mb-4">🏆</div>
-            <div className="font-bold text-lg text-white mb-2">Đa chế độ</div>
-            <div className="text-sm text-slate-400">Classic, Buzz, Elimination loại trực tiếp, và Tournament</div>
+            <div className="font-bold text-base text-white mb-2">Đa chế độ</div>
+            <div className="text-xs text-slate-400">Classic, Buzz, Bounceback cướp lượt, và Elimination</div>
           </div>
         </div>
       </div>

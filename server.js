@@ -219,7 +219,7 @@ function registerSocketHandlers(io2) {
               data: {
                 name: finalName,
                 socketId: socket.id,
-                ...teamId && !existingById.teamId ? { teamId } : {}
+                ...teamId ? { teamId } : {}
               }
             });
             await prisma.player.deleteMany({
@@ -250,7 +250,7 @@ function registerSocketHandlers(io2) {
               where: { id: offlineSameName.id },
               data: {
                 socketId: socket.id,
-                ...teamId && !offlineSameName.teamId ? { teamId } : {}
+                ...teamId ? { teamId } : {}
               }
             });
             await prisma.player.deleteMany({
@@ -388,19 +388,22 @@ function registerSocketHandlers(io2) {
         callback?.({ success: false, error: "L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7" });
       }
     });
-    socket.on("player:select:team", async ({ teamId }, callback) => {
+    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId }, callback) => {
       try {
-        const playerId = playerSockets.get(socket.id);
+        const playerId = clientPlayerId || playerSockets.get(socket.id);
         if (!playerId) {
-          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ng\u01B0\u1EDDi ch\u01A1i" });
+          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xF4ng tin th\xED sinh" });
         }
+        playerSockets.set(socket.id, playerId);
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true }
         });
         if (!player || !player.room) {
-          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ng\u01B0\u1EDDi ch\u01A1i ho\u1EB7c ph\xF2ng" });
+          return callback?.({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y th\xED sinh trong ph\xF2ng n\xE0y" });
         }
+        socket.join(`room:${player.room.code}`);
+        socket.join(`room:${player.room.code}:players`);
         const team = await prisma.team.findFirst({
           where: { id: teamId, roomId: player.room.id }
         });
@@ -409,10 +412,14 @@ function registerSocketHandlers(io2) {
         }
         await prisma.player.update({
           where: { id: playerId },
-          data: { teamId }
+          data: {
+            teamId,
+            socketId: socket.id
+          }
         });
         const state = await buildRoomState(player.room.id);
         io2.to(`room:${player.room.code}`).emit("room:state", state);
+        socket.emit("room:state", state);
         callback?.({ success: true });
       } catch (err) {
         console.error("[player:select:team]", err);

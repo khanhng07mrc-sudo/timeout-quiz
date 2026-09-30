@@ -132,7 +132,7 @@ export function registerSocketHandlers(io: IO) {
               data: {
                 name: finalName,
                 socketId: socket.id,
-                ...(teamId && !existingById.teamId ? { teamId } : {}),
+                ...(teamId ? { teamId } : {}),
               },
             });
 
@@ -167,7 +167,7 @@ export function registerSocketHandlers(io: IO) {
               where: { id: offlineSameName.id },
               data: {
                 socketId: socket.id,
-                ...(teamId && !offlineSameName.teamId ? { teamId } : {}),
+                ...(teamId ? { teamId } : {}),
               },
             });
 
@@ -333,20 +333,27 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Player Select Team ───────────────────────────────────────────────────
-    socket.on("player:select:team", async ({ teamId }, callback) => {
+    socket.on("player:select:team", async ({ teamId, playerId: clientPlayerId }, callback) => {
       try {
-        const playerId = playerSockets.get(socket.id);
+        const playerId = clientPlayerId || playerSockets.get(socket.id);
         if (!playerId) {
-          return callback?.({ success: false, error: "Không tìm thấy người chơi" });
+          return callback?.({ success: false, error: "Không tìm thấy thông tin thí sinh" });
         }
+
+        // Always re-associate socket.id with playerId
+        playerSockets.set(socket.id, playerId);
 
         const player = await prisma.player.findUnique({
           where: { id: playerId },
           include: { room: true },
         });
         if (!player || !player.room) {
-          return callback?.({ success: false, error: "Không tìm thấy người chơi hoặc phòng" });
+          return callback?.({ success: false, error: "Không tìm thấy thí sinh trong phòng này" });
         }
+
+        // Re-join socket to rooms in case of transport upgrade or reconnect
+        socket.join(`room:${player.room.code}`);
+        socket.join(`room:${player.room.code}:players`);
 
         const team = await prisma.team.findFirst({
           where: { id: teamId, roomId: player.room.id },
@@ -357,11 +364,15 @@ export function registerSocketHandlers(io: IO) {
 
         await prisma.player.update({
           where: { id: playerId },
-          data: { teamId },
+          data: {
+            teamId,
+            socketId: socket.id,
+          },
         });
 
         const state = await buildRoomState(player.room.id);
         io.to(`room:${player.room.code}`).emit("room:state", state);
+        socket.emit("room:state", state);
         callback?.({ success: true });
       } catch (err) {
         console.error("[player:select:team]", err);

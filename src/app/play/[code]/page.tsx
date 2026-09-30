@@ -211,11 +211,22 @@ export default function PlayPage() {
   };
 
   const handleSelectTeam = (teamId: string) => {
+    const currentPid = playerIdRef.current || playerId;
     myTeamIdRef.current = teamId;
-    socketRef.current?.emit("player:select:team", { teamId }, (res) => {
+
+    // Optimistically update local roomState immediately
+    setRoomState((prev) => {
+      if (!prev) return prev;
+      const updatedPlayers = prev.players.map((p) =>
+        p.id === currentPid ? { ...p, teamId } : p
+      );
+      return { ...prev, players: updatedPlayers };
+    });
+
+    socketRef.current?.emit("player:select:team", { teamId, playerId: currentPid }, (res) => {
       if (res?.error) {
         setErrorMessage(res.error);
-        setTimeout(() => setErrorMessage(null), 4000);
+        setTimeout(() => setErrorMessage(null), 5000);
       }
     });
   };
@@ -236,7 +247,14 @@ export default function PlayPage() {
   }
 
   if (roomState?.status === "LOBBY") {
-    return <PlayerLobby roomState={roomState} playerId={playerId} onSelectTeam={handleSelectTeam} />;
+    return (
+      <PlayerLobby
+        roomState={roomState}
+        playerId={playerId}
+        onSelectTeam={handleSelectTeam}
+        errorMessage={errorMessage}
+      />
+    );
   }
 
   const myTeam = roomState?.teams.find((t) =>

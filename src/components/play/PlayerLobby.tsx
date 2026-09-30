@@ -6,15 +6,23 @@ interface Props {
   roomState: RoomState;
   playerId: string;
   onSelectTeam?: (teamId: string) => void;
+  errorMessage?: string | null;
 }
 
-export default function PlayerLobby({ roomState, playerId, onSelectTeam }: Props) {
+export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMessage }: Props) {
   const me = roomState.players.find((p) => p.id === playerId);
   const myTeam = me?.teamId ? roomState.teams.find((t) => t.id === me.teamId) : null;
   const isTeamMode = roomState.teamMode === "TEAM";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 max-w-4xl mx-auto w-full">
+      {/* Error notification */}
+      {errorMessage && (
+        <div className="w-full mb-4 p-3.5 rounded-xl bg-red-600/90 text-white font-bold text-center animate-bounce-in shadow-lg border border-red-400">
+          ⚠️ {errorMessage}
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center mb-6">
         <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
@@ -138,6 +146,7 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam }: Props
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => onSelectTeam?.(team.id)}
                           className="w-full py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white shadow transition-all active:scale-95 cursor-pointer"
                         >

@@ -13,8 +13,8 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* 3 Main Action Cards with high visibility, padding, and interaction */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* 4 Main Action Cards with high visibility, padding, and interaction */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         <Link
           href="/admin/quiz-bank"
           className="quiz-card-interactive p-8 flex flex-col justify-between group"
@@ -67,11 +67,31 @@ export default function AdminDashboard() {
               Phòng của tôi
             </h2>
             <p className="text-sm text-slate-400 leading-relaxed mb-6">
-              Xem danh sách các phòng thi, mở giao diện máy chiếu (Projector) hoặc vào bàn điều khiển host trực tiếp.
+              Xem danh sách các phòng thi, mở giao diện điều khiển của Host hoặc giám sát thí sinh trong phòng.
             </p>
           </div>
           <span className="text-sm font-bold text-emerald-400 group-hover:text-emerald-300 flex items-center gap-1.5 pt-4 border-t border-[#232747]">
             Xem danh sách phòng ➔
+          </span>
+        </Link>
+
+        <Link
+          href="/display"
+          className="quiz-card-interactive p-8 flex flex-col justify-between group"
+        >
+          <div>
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
+              📺
+            </div>
+            <h2 className="text-2xl font-black text-white group-hover:text-amber-300 transition-colors mb-2">
+              Màn hình chiếu (Display)
+            </h2>
+            <p className="text-sm text-slate-400 leading-relaxed mb-6">
+              Mở giao diện màn hình lớn cho Máy chiếu hoặc TV hội trường: tự động hiển thị câu hỏi, đồng hồ đếm ngược, chuông Buzz & bảng xếp hạng thời gian thực.
+            </p>
+          </div>
+          <span className="text-sm font-bold text-amber-400 group-hover:text-amber-300 flex items-center gap-1.5 pt-4 border-t border-[#232747]">
+            Mở cổng màn hình chiếu ➔
           </span>
         </Link>
       </div>

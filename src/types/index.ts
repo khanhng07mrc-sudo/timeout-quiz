@@ -302,7 +302,7 @@ export interface ClientToServerEvents {
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
   "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;
-  "player:select:team": (payload: { teamId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "player:select:team": (payload: { teamId: string; playerId?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "display:join": (code: string) => void;
 }
 

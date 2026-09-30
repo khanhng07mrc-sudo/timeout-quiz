@@ -70,6 +70,7 @@ export default function CreateRoomPage() {
   const [gridCaroEnabled, setGridCaroEnabled] = useState(true);
   const [gridCaroBonusPoints, setGridCaroBonusPoints] = useState(30);
   const [gridPreviewDuration, setGridPreviewDuration] = useState(5);
+  const [gridMaxRounds, setGridMaxRounds] = useState(3);
   // Modal state
   const [showRulesModal, setShowRulesModal] = useState(false);
   // Dice Race config
@@ -77,6 +78,8 @@ export default function CreateRoomPage() {
   // Wager config
   const [wagerTimeSeconds, setWagerTimeSeconds] = useState(15);
   const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
+  const [wagerInitialPoints, setWagerInitialPoints] = useState(50);
+  const [wagerBailoutLimit, setWagerBailoutLimit] = useState(1);
 
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([

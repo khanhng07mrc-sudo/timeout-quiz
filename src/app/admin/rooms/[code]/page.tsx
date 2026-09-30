@@ -17,6 +17,8 @@ import Link from "next/link";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import { soundManager } from "@/lib/sound-manager";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import GridCaroBoard from "@/components/modes/GridCaroBoard";
+import WagerPanel from "@/components/modes/WagerPanel";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
@@ -615,55 +617,15 @@ export default function AdminRoomPage() {
           )}
 
           {/* GRID_CARO Mode Admin Panel */}
-          {roomState?.mode === "GRID_CARO" && (
-            <div className="p-4 rounded-xl bg-purple-900/20 border border-purple-500/30 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🏁</span>
-                  <div>
-                    <span className="font-bold text-sm text-purple-300">Bảng Chọn Ô & Caro</span>
-                    {roomState.gridCaroState?.currentTurnTeamName && (
-                      <p className="text-xs text-muted-foreground">
-                        Lượt chọn: <strong className="text-white">{roomState.gridCaroState.currentTurnTeamName}</strong>
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <button
-                  onClick={() => emit("admin:grid:preview:start")}
-                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow transition-all active:scale-95"
-                >
-                  👁️ Xem trước độ khó
-                </button>
-              </div>
-
-              {roomState.gridCaroState && !currentQuestion && (
-                <div className="pt-2 border-t border-border/50">
-                  <p className="text-[11px] text-muted-foreground mb-1.5 font-semibold">
-                    Admin có thể chọn ô thay cho đội đang tới lượt:
-                  </p>
-                  <div
-                    className="grid gap-1.5"
-                    style={{ gridTemplateColumns: `repeat(${roomState.gridCaroState.cols}, minmax(0, 1fr))` }}
-                  >
-                    {roomState.gridCaroState.cells.map((cell) => (
-                      <button
-                        key={cell.id}
-                        disabled={cell.isCompleted}
-                        onClick={() => emit("admin:grid:select:manual", { cellId: cell.id })}
-                        className={`p-2 rounded-lg text-xs font-bold border transition-all text-center ${
-                          cell.isCompleted
-                            ? "opacity-50 cursor-not-allowed border-border"
-                            : "bg-purple-500/20 border-purple-500/40 hover:bg-purple-500/40 text-purple-200"
-                        }`}
-                        style={cell.claimedByTeamColor ? { background: `${cell.claimedByTeamColor}30`, borderColor: cell.claimedByTeamColor } : undefined}
-                      >
-                        #{cell.id} ({cell.points}đ)
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {roomState?.mode === "GRID_CARO" && roomState.gridCaroState && (
+            <div className="space-y-3">
+              <GridCaroBoard
+                gridState={roomState.gridCaroState}
+                isAdmin={true}
+                canSelect={!currentQuestion && !roomState.gridCaroState.selectedCellAnimation}
+                onSelectCell={(cellId) => emit("admin:grid:select:manual", { cellId })}
+                onAdvanceNow={() => emit("admin:grid:advance_now")}
+              />
             </div>
           )}
 
@@ -699,19 +661,19 @@ export default function AdminRoomPage() {
           )}
 
           {/* WAGER Mode Admin Panel */}
-          {roomState?.mode === "WAGER" && (
-            <div className="p-4 rounded-xl bg-amber-900/20 border border-amber-500/30 space-y-3">
-              <div className="flex items-center justify-between">
+          {roomState?.mode === "WAGER" && roomState.wagerState && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-amber-900/20 border border-amber-500/30">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">💰</span>
                   <div>
-                    <span className="font-bold text-sm text-amber-300">Cược Điểm Bí Mật</span>
+                    <span className="font-bold text-sm text-amber-300">Điều khiển Cược Điểm</span>
                     <p className="text-xs text-muted-foreground">
-                      Giai đoạn: <strong>{roomState.wagerState?.phase === "WAGER_PERIOD" ? "Đang cược bí mật (15s)" : roomState.wagerState?.phase === "QUESTION_PERIOD" ? "Đang trả lời câu hỏi" : "Công bố đáp án & điểm cược"}</strong>
+                      Giai đoạn: <strong>{roomState.wagerState.phase === "WAGER_PERIOD" ? "Đang cược bí mật (15s)" : roomState.wagerState.phase === "QUESTION_PERIOD" ? "Đang trả lời câu hỏi" : "Công bố đáp án & điểm cược"}</strong>
                     </p>
                   </div>
                 </div>
-                {roomState.wagerState?.phase === "WAGER_PERIOD" && (
+                {roomState.wagerState.phase === "WAGER_PERIOD" && (
                   <button
                     onClick={() => emit("admin:wager:skip_timer")}
                     className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
@@ -720,20 +682,14 @@ export default function AdminRoomPage() {
                   </button>
                 )}
               </div>
-              {roomState.wagerState?.teamWagers && (
-                <div className="flex flex-wrap gap-2 pt-1 border-t border-border/50 text-xs">
-                  {Object.values(roomState.wagerState.teamWagers).map((w) => (
-                    <span
-                      key={w.teamId}
-                      className={`px-2 py-0.5 rounded-md border ${
-                        w.submitted ? "bg-green-500/20 border-green-500/40 text-green-300" : "bg-card border-border text-muted-foreground"
-                      }`}
-                    >
-                      {w.teamName}: {w.submitted ? (roomState.wagerState?.phase === "WAGER_PERIOD" ? "Đã cược bí mật ✓" : `${w.amount}đ`) : "Chưa cược"}
-                    </span>
-                  ))}
-                </div>
-              )}
+
+              <WagerPanel
+                wagerState={roomState.wagerState}
+                isAdmin={true}
+                teams={roomState.teams}
+                positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+                onGrantBailout={(teamId) => emit("admin:wager:grant_bailout", { teamId })}
+              />
             </div>
           )}
 

@@ -1171,15 +1171,31 @@ export function registerSocketHandlers(io: IO) {
           initialWagers[t.id] = { teamId: t.id, teamName: t.name, amount: 10, submitted: false };
         });
 
+        const prevWagerState = roomWagers.get(room.id);
+        const bailoutMax = config?.wagerBailoutLimit ?? 1;
+        const teamBailouts = prevWagerState?.teamBailouts ?? {};
+        teams.forEach((t) => {
+          if (!teamBailouts[t.id]) {
+            teamBailouts[t.id] = { remaining: bailoutMax, max: bailoutMax };
+          }
+        });
+
         const wagerState: WagerState = {
           phase: "WAGER_PERIOD",
           wagerTimeRemaining: wagerTime,
           wagerTimeTotal: wagerTime,
-          minWager: 10,
+          minWager: 5,
+          currentHighestWager: 0,
+          lastWagerTeamId: undefined,
+          wagerHistory: [],
           allowanceMinScore: config?.wagerMinAllowance || 50,
+          initialPoints: config?.wagerInitialPoints || 50,
           topicPreview: q.hint || "Tổng hợp kiến thức",
           difficultyPreview: bloomLevel,
           teamWagers: initialWagers,
+          teamBailouts,
+          bailoutQueue: prevWagerState?.bailoutQueue ?? [],
+          currentQuestionBailoutUsed: false,
         };
         roomWagers.set(room.id, wagerState);
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
@@ -1369,17 +1385,24 @@ export function registerSocketHandlers(io: IO) {
           const cols = config?.gridCols || 4;
           const streakK = config?.gridStreakTargetK || 3;
           const bonusPts = config?.gridCaroBonusPoints || 30;
-          const prevSecs = config?.gridPreviewDuration || 5;
           const totalCells = rows * cols;
           const isCaroEligible = rows >= 4 && cols >= 4;
           const caroEnabled = isCaroEligible && config?.gridCaroEnabled !== false && questions.length >= totalCells;
+
+          // Available points from quiz bank questions (e.g. 10, 15, 30)
+          const availablePoints: number[] = Array.from(new Set<number>(questions.map((q: any) => Number(q.points) || 10))).sort((a, b) => a - b);
+          const pointPalette: number[] = availablePoints.length > 0 ? availablePoints : [10, 20, 30];
 
           const cells: GridCell[] = [];
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
               const cellId = r * cols + c + 1;
-              const pts = 10 + ((r + c) % 4) * 10;
-              const diff = pts <= 10 ? "DỄ" : pts <= 20 ? "TRUNG BÌNH" : pts <= 30 ? "KHÓ" : "CỰC KHÓ";
+              const pts = Number(pointPalette[(r * cols + c) % pointPalette.length]);
+              const bloom = getBloomLevelFromPoints(pts);
+              const diff: "DỄ" | "TRUNG BÌNH" | "KHÓ" | "CỰC KHÓ" =
+                bloom === "REMEMBER" ? "DỄ" :
+                bloom === "APPLY" ? "TRUNG BÌNH" : "KHÓ";
+
               cells.push({
                 id: cellId,
                 row: r,
@@ -1392,35 +1415,31 @@ export function registerSocketHandlers(io: IO) {
             }
           }
 
+          const numTeams = Math.max(1, teams.length);
+          const configuredRounds = config?.gridRoundsPerTeam || 3;
+          const maxPossibleRounds = Math.max(1, Math.floor(questions.length / numTeams));
+          const maxRounds = Math.min(configuredRounds, maxPossibleRounds);
+          const maxTurns = maxRounds * numTeams;
+
           const gridCaroState: GridCaroState = {
             rows,
             cols,
             totalCells,
             cells,
-            previewActive: true,
-            previewRemaining: prevSecs,
+            previewActive: false,
+            previewRemaining: 0,
             currentTurnTeamId: teams[0]?.id,
             currentTurnTeamName: teams[0]?.name,
+            currentRound: 1,
+            maxRounds,
+            turnsCompleted: 0,
+            maxTurns,
             caroEnabled,
             streakTargetK: streakK,
             caroAchievedTeams: [],
             caroBonusPoints: bonusPts,
           };
           roomGridCaros.set(room.id, gridCaroState);
-
-          let rem = prevSecs;
-          const gTimer = setInterval(() => {
-            rem--;
-            gridCaroState.previewRemaining = rem;
-            if (rem <= 0) {
-              clearInterval(gTimer);
-              gridCaroState.previewActive = false;
-              io.to(`room:${room.code}`).emit("game:grid:update", gridCaroState);
-            } else {
-              io.to(`room:${room.code}`).emit("game:grid:update", gridCaroState);
-            }
-          }, 1000);
-          roomGridTimers.set(room.id, gTimer);
         } else if (room.mode === "DICE_RACE") {
           const totalTiles = config?.diceTrackTotalTiles || 30;
           const tiles = generateDiceTiles(totalTiles);
@@ -1444,6 +1463,33 @@ export function registerSocketHandlers(io: IO) {
             isRolling: false,
             dicePendingAnswer: false,
             finishLeaderboard: [],
+          });
+        } else if (room.mode === "WAGER") {
+          const initPoints = Math.max(30, config?.wagerInitialPoints || 50);
+          const bailoutMax = config?.wagerBailoutLimit ?? 1;
+          for (const team of teams) {
+            await prisma.team.update({
+              where: { id: team.id },
+              data: { score: initPoints },
+            });
+            team.score = initPoints;
+          }
+          const teamBailouts: Record<string, { remaining: number; max: number }> = {};
+          teams.forEach((t) => {
+            teamBailouts[t.id] = { remaining: bailoutMax, max: bailoutMax };
+          });
+          roomWagers.set(room.id, {
+            phase: "WAGER_PERIOD",
+            wagerTimeRemaining: config?.wagerTimeSeconds || 15,
+            wagerTimeTotal: config?.wagerTimeSeconds || 15,
+            minWager: 5,
+            currentHighestWager: 0,
+            lastWagerTeamId: undefined,
+            wagerHistory: [],
+            allowanceMinScore: config?.wagerMinAllowance || 50,
+            initialPoints: initPoints,
+            teamWagers: {},
+            teamBailouts,
           });
         }
 
@@ -1740,33 +1786,23 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Grid Caro Events ──────────────────────────────────────────────────────
-    socket.on("game:grid:select", async ({ cellId }) => {
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } },
-      });
-      if (!player || !player.room || !player.teamId) return;
-
-      const room = player.room;
-      if (room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
-
+    async function handleGridCellSelect(room: any, cellId: number) {
       const gridState = roomGridCaros.get(room.id);
-      if (!gridState || gridState.previewActive || gridState.selectedCellId || roomPrepareStates.has(room.id)) return;
-
-      if (gridState.currentTurnTeamId !== player.teamId) {
-        socket.emit("error", "Chưa tới lượt chọn ô của đội bạn!");
-        return;
-      }
+      if (!gridState || gridState.selectedCellId || roomPrepareStates.has(room.id)) return;
 
       const cell = gridState.cells.find((c) => c.id === cellId);
-      if (!cell || cell.isCompleted) {
-        socket.emit("error", "Ô này đã được hoàn thành hoặc không hợp lệ!");
-        return;
+      if (!cell || cell.isCompleted) return;
+
+      const autoAdvanceKey = `${room.id}:auto_advance`;
+      if (roomGridTimers.has(autoAdvanceKey)) {
+        clearInterval(roomGridTimers.get(autoAdvanceKey)!);
+        roomGridTimers.delete(autoAdvanceKey);
       }
+      gridState.autoAdvanceSeconds = undefined;
 
       gridState.selectedCellId = cellId;
+      gridState.selectedCellAnimation = true;
+      io.to(`room:${room.code}`).emit("game:grid:update", gridState);
 
       let usedSet = roomUsedQuestions.get(room.id);
       if (!usedSet) {
@@ -1775,23 +1811,46 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const rawQuestions = room.quizBank?.questions ?? [];
-      const questions = gridState.caroEnabled
-        ? rawQuestions.slice(0, gridState.totalCells)
-        : rawQuestions;
-      const unusedQ = questions.find((q: any) => !usedSet!.has(q.id));
-
-      if (!unusedQ) {
-        socket.emit("error", "Đã hết câu hỏi khả dụng trong bàn cờ!");
-        return;
+      // Prefer unused question with matching cell.points
+      let targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id) && q.points === cell.points);
+      if (!targetQ) {
+        targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id));
       }
+      if (!targetQ) {
+        targetQ = rawQuestions.find((q: any) => q.points === cell.points) || rawQuestions[0];
+      }
+      if (!targetQ) return;
 
-      usedSet.add(unusedQ.id);
+      usedSet.add(targetQ.id);
+      cell.questionId = targetQ.id;
 
-      const qIndex = rawQuestions.findIndex((q: any) => q.id === unusedQ.id);
-      room.currentQuestion = qIndex;
-      io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+      const qIndex = rawQuestions.findIndex((q: any) => q.id === targetQ!.id);
+      room.currentQuestion = qIndex >= 0 ? qIndex : 0;
 
-      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
+      // 2-second highlight animation before starting question prepare
+      setTimeout(async () => {
+        gridState.selectedCellAnimation = false;
+        io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        await startQuestionPrepareAndLaunch(room, rawQuestions, room.currentQuestion);
+      }, 2000);
+    }
+
+    socket.on("game:grid:select", async ({ cellId }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } } },
+      });
+      if (!player || !player.room || player.room.mode !== "GRID_CARO" || player.room.status !== "PLAYING") return;
+
+      const gridState = roomGridCaros.get(player.room.id);
+      if (!gridState) return;
+
+      // In Sandbox mode, bot on current turn can select:
+      if (gridState.currentTurnTeamId === player.teamId) {
+        await handleGridCellSelect(player.room, cellId);
+      }
     });
 
     // ── Dice Race Events ──────────────────────────────────────────────────────
@@ -1850,22 +1909,82 @@ export function registerSocketHandlers(io: IO) {
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
 
-      const effectiveMax = team.score > 0 ? team.score : wagerState.allowanceMinScore;
-      const clampedAmount = Math.max(wagerState.minWager, Math.min(amount, effectiveMax));
+      // 1. "tránh việc spam cược, mỗi đội không được cược từ 2 lần liên tiếp trở lên"
+      if (wagerState.lastWagerTeamId === team.id) {
+        socket.emit("error", "Đội bạn vừa đặt cược! Không được cược 2 lần liên tiếp, vui lòng chờ đội khác cược trước.");
+        return;
+      }
+
+      // 2. "mỗi đội không được cược số điểm vượt quá điểm hiện tại của đội"
+      if (amount > team.score) {
+        socket.emit("error", `Không được cược số điểm (${amount}đ) vượt quá điểm hiện tại của đội bạn (${team.score}đ)!`);
+        return;
+      }
+
+      // 3. "ô nhỏ nhất lớn hơn số điểm hiện tại 5 điểm, các ô cược cách nhau 5 điểm, tránh cược quá tay"
+      const currentHighest = wagerState.currentHighestWager || 0;
+      const minOption = currentHighest + 5;
+      const maxOption = currentHighest + 60;
+      const isValidStep = (amount - currentHighest) % 5 === 0;
+
+      if (amount < minOption || amount > maxOption || !isValidStep) {
+        socket.emit("error", `Mức cược không hợp lệ. Vui lòng chọn 1 trong 12 ô cược từ ${minOption}đ đến ${maxOption}đ.`);
+        return;
+      }
+
+      // 4. "khi số điểm cược hiện lên đã vượt quá điểm đội mình, đội mình sẽ mất quyền cược trong câu hỏi đó"
+      if (team.score < minOption) {
+        socket.emit("error", `Mức cược tối thiểu (${minOption}đ) đã vượt quá điểm đội bạn (${team.score}đ). Đội bạn đã mất quyền cược trong câu hỏi này!`);
+        return;
+      }
+
+      // Apply the bet
+      wagerState.currentHighestWager = amount;
+      wagerState.lastWagerTeamId = team.id;
+      if (!wagerState.wagerHistory) wagerState.wagerHistory = [];
+      const order = wagerState.wagerHistory.length + 1;
+      wagerState.wagerHistory.push({
+        order,
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color,
+        amount,
+        timestamp: Date.now(),
+      });
 
       wagerState.teamWagers[team.id] = {
         teamId: team.id,
         teamName: team.name,
-        amount: clampedAmount,
+        amount,
         submitted: true,
+        order,
       };
 
+      // Check which teams are now disqualified because next minimum bet > team.score
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const nextMinOption = amount + 5;
+      allTeams.forEach((t) => {
+        if (!wagerState.teamWagers[t.id]?.submitted && t.score < nextMinOption) {
+          wagerState.teamWagers[t.id] = {
+            teamId: t.id,
+            teamName: t.name,
+            amount: 0,
+            submitted: false,
+            disqualified: true,
+          };
+        }
+      });
+
+      // Broadcast update
       io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
 
-      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const allDone = allTeams.every((t) => wagerState.teamWagers[t.id]?.submitted);
+      // Check if any other team can still make a valid bet
+      const canAnyOtherTeamBet = allTeams.some((t) =>
+        t.id !== wagerState.lastWagerTeamId && t.score >= nextMinOption
+      );
 
-      if (allDone) {
+      if (!canAnyOtherTeamBet) {
+        // No other team can possibly bet further! Advance to question!
         const wTimer = roomWagerTimers.get(room.id);
         if (wTimer) {
           clearTimeout(wTimer);
@@ -1924,34 +2043,14 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("admin:grid:select:manual", async ({ cellId }) => {
       const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
+      await handleGridCellSelect(room, cellId);
+    });
+
+    socket.on("admin:grid:advance_now", async () => {
+      const room = await getAdminRoom(socket);
       if (!room || room.mode !== "GRID_CARO") return;
-      const gridState = roomGridCaros.get(room.id);
-      if (!gridState || gridState.selectedCellId || gridState.previewActive || roomPrepareStates.has(room.id)) return;
-
-      const cell = gridState.cells.find((c) => c.id === cellId);
-      if (!cell || cell.isCompleted) return;
-
-      gridState.selectedCellId = cellId;
-
-      let usedSet = roomUsedQuestions.get(room.id);
-      if (!usedSet) {
-        usedSet = new Set<string>();
-        roomUsedQuestions.set(room.id, usedSet);
-      }
-
-      const rawQuestions = room.quizBank?.questions ?? [];
-      const questions = gridState.caroEnabled
-        ? rawQuestions.slice(0, gridState.totalCells)
-        : rawQuestions;
-      const unusedQ = questions.find((q: any) => !usedSet!.has(q.id));
-      if (!unusedQ) return;
-
-      usedSet.add(unusedQ.id);
-      const qIndex = rawQuestions.findIndex((q: any) => q.id === unusedQ.id);
-      room.currentQuestion = qIndex;
-      io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-
-      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
+      await advanceGridToBoard(io, room.id, room.code);
     });
 
     socket.on("admin:dice:roll:manual", async () => {
@@ -2019,6 +2118,76 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:question", questionState);
         startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
       }
+    });
+
+    socket.on("admin:wager:grant_bailout", async ({ teamId }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "WAGER") return;
+
+      const wagerState = roomWagers.get(room.id);
+      if (!wagerState) return;
+
+      if (wagerState.currentQuestionBailoutUsed) {
+        socket.emit("error", "Chỉ có thể kích hoạt trợ cấp cho 1 đội trong mỗi câu hỏi! Vui lòng đợi câu tiếp theo.");
+        return;
+      }
+
+      if (!wagerState.bailoutQueue || wagerState.bailoutQueue.length === 0) {
+        socket.emit("error", "Hiện không có đội nào trong hàng đợi trợ cấp!");
+        return;
+      }
+
+      // Check priority: Must grant according to death order (head of queue)
+      const topQueueItem = wagerState.bailoutQueue[0];
+      if (topQueueItem.teamId !== teamId) {
+        socket.emit("error", `Phải ưu tiên trợ cấp theo thứ tự rơi điểm: Đội ${topQueueItem.teamName} cần được cứu trước!`);
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: teamId } });
+      if (!team || team.score > 0) return;
+
+      const bailoutInfo = wagerState.teamBailouts?.[teamId] ?? { remaining: 1, max: 1 };
+      if (bailoutInfo.remaining <= 0) {
+        socket.emit("error", "Đội này đã hết lượt trợ cấp!");
+        return;
+      }
+
+      // Quyền trợ cấp chỉ sử dụng được khi còn ít nhất 2 đội có điểm lớn hơn 0
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const positiveScores = allTeams.filter((t) => t.score > 0).map((t) => t.score);
+      if (positiveScores.length < 2) {
+        socket.emit("error", "Quyền trợ cấp chỉ sử dụng được khi còn ít nhất 2 đội có điểm lớn hơn 0!");
+        return;
+      }
+
+      const lowestPositiveScore = Math.min(...positiveScores);
+
+      // Reset team's score to lowestPositiveScore (erasing negative, giving fresh start)
+      await prisma.team.update({
+        where: { id: teamId },
+        data: { score: lowestPositiveScore },
+      });
+
+      bailoutInfo.remaining--;
+      if (!wagerState.teamBailouts) wagerState.teamBailouts = {};
+      wagerState.teamBailouts[teamId] = bailoutInfo;
+
+      // Remove from bailout queue
+      wagerState.bailoutQueue.shift();
+      // Mark current question bailout used
+      wagerState.currentQuestionBailoutUsed = true;
+
+      io.to(`room:${room.code}`).emit("game:score:update", [
+        { teamId, score: lowestPositiveScore, delta: lowestPositiveScore - team.score },
+      ]);
+      io.to(`room:${room.code}`).emit("game:wager:bailout_granted", {
+        teamId,
+        teamName: team.name,
+        newScore: lowestPositiveScore,
+        bailoutsRemaining: bailoutInfo.remaining,
+      });
+      io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
     });
 
     socket.on("admin:timer:set", async ({ seconds }: { seconds: number }) => {
@@ -2436,6 +2605,35 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 }
 
+async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
+  const autoAdvanceKey = `${roomId}:auto_advance`;
+  if (roomGridTimers.has(autoAdvanceKey)) {
+    clearInterval(roomGridTimers.get(autoAdvanceKey)!);
+    roomGridTimers.delete(autoAdvanceKey);
+  }
+
+  const gridState = roomGridCaros.get(roomId);
+  if (!gridState) return;
+
+  gridState.autoAdvanceSeconds = undefined;
+  gridState.selectedCellId = undefined;
+  gridState.selectedCellAnimation = false;
+
+  const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
+
+  if (isMatchOver) {
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { status: "FINISHED", endedAt: new Date() },
+    });
+    const leaderboard = await buildLeaderboard(roomId);
+    io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+  } else {
+    io.to(`room:${roomCode}`).emit("game:question:clear");
+    io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+  }
+}
+
 async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
@@ -2496,9 +2694,18 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
       });
       scoreUpdates.push({ teamId: currentTeam.id, score: upd.score, delta: awardedPoints });
     } else {
-      cell.attemptCount++;
+      cell.isCompleted = false;
+      cell.claimedByTeamId = undefined;
+      cell.claimedByTeamName = undefined;
+      cell.claimedByTeamColor = undefined;
+      cell.attemptCount = (cell.attemptCount || 0) + 1;
+      cell.questionId = undefined; // Cleared so next selection gets fresh unused question with same points
     }
   }
+
+  gridState.turnsCompleted = (gridState.turnsCompleted || 0) + 1;
+  const numTeams = Math.max(1, room.teams.length);
+  gridState.currentRound = Math.min(gridState.maxRounds, Math.floor(gridState.turnsCompleted / numTeams) + 1);
 
   if (room.teams.length > 0) {
     const curIdx = room.teams.findIndex((t) => t.id === currentTeamId);
@@ -2513,6 +2720,29 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
   }
   io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
+
+  // 6-second auto-advance countdown back to the board
+  let remSeconds = 6;
+  gridState.autoAdvanceSeconds = remSeconds;
+  io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+
+  const autoAdvanceKey = `${roomId}:auto_advance`;
+  if (roomGridTimers.has(autoAdvanceKey)) {
+    clearInterval(roomGridTimers.get(autoAdvanceKey)!);
+  }
+
+  const advanceTimer = setInterval(async () => {
+    remSeconds--;
+    gridState.autoAdvanceSeconds = remSeconds;
+    if (remSeconds <= 0) {
+      clearInterval(advanceTimer);
+      roomGridTimers.delete(autoAdvanceKey);
+      await advanceGridToBoard(io, roomId, roomCode);
+    } else {
+      io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+    }
+  }, 1000);
+  roomGridTimers.set(autoAdvanceKey, advanceTimer);
 }
 
 async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
@@ -2605,13 +2835,14 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   const scoreUpdates: ScoreUpdate[] = [];
 
   for (const team of room.teams) {
-    const wager = wagerState.teamWagers[team.id]?.amount ?? wagerState.minWager ?? 10;
+    const wagerInfo = wagerState.teamWagers[team.id];
+    const wager = (wagerInfo?.submitted && !wagerInfo?.disqualified) ? wagerInfo.amount : 0;
     const ans = await prisma.answer.findFirst({
       where: { roomId, questionId, teamId: team.id },
     });
 
     const isCorrect = ans?.isCorrect === true;
-    const delta = isCorrect ? wager : -wager;
+    const delta = wager > 0 ? (isCorrect ? wager : -wager) : 0;
 
     const upd = await prisma.team.update({
       where: { id: team.id },
@@ -2619,6 +2850,23 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     });
 
     scoreUpdates.push({ teamId: team.id, score: upd.score, delta });
+
+    if (!wagerState.bailoutQueue) wagerState.bailoutQueue = [];
+    const bailoutsRem = wagerState.teamBailouts?.[team.id]?.remaining ?? 1;
+
+    if (upd.score <= 0) {
+      if (bailoutsRem > 0 && !wagerState.bailoutQueue.some((item) => item.teamId === team.id)) {
+        wagerState.bailoutQueue.push({
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color,
+          score: upd.score,
+          questionIndex: room.currentQuestion + 1,
+        });
+      }
+    } else {
+      wagerState.bailoutQueue = wagerState.bailoutQueue.filter((item) => item.teamId !== team.id);
+    }
   }
 
   if (scoreUpdates.length > 0) {
@@ -2626,6 +2874,22 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   }
   io.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
+
+  // Check Sudden Victory (Knockout Win):
+  // Nếu chỉ còn 1 đội có điểm > 0, đội đó thắng ngay lập tức!
+  const updatedTeams = await prisma.team.findMany({ where: { roomId } });
+  if (updatedTeams.length > 1) {
+    const positiveTeams = updatedTeams.filter((t) => t.score > 0);
+
+    if (positiveTeams.length === 1) {
+      await prisma.room.update({
+        where: { id: roomId },
+        data: { status: "FINISHED", endedAt: new Date() },
+      });
+      const leaderboard = await buildLeaderboard(roomId);
+      io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+    }
+  }
 }
 
 async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: string, questionId: string): Promise<boolean> {
@@ -2969,6 +3233,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
         used: c.used,
       })),
       playerCount: teamPlayers.length,
+      bailoutsRemaining: roomWagers.get(room.id)?.teamBailouts?.[t.id]?.remaining,
     };
   });
 

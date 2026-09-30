@@ -541,6 +541,10 @@ export default function PlayPage() {
                 <WagerPanel
                   wagerState={roomState.wagerState}
                   myTeamId={effectiveTeamId}
+                  myTeamScore={myTeam?.score ?? mePlayer?.score ?? 0}
+                  myTeamName={myTeam?.name ?? mePlayer?.name}
+                  teams={roomState.teams}
+                  positiveTeamsCount={roomState?.teams.filter((t) => t.score > 0).length}
                 />
               </div>
             )}
@@ -583,8 +587,7 @@ export default function PlayPage() {
                   gridState={roomState.gridCaroState}
                   myTeamId={effectiveTeamId}
                   isMyTurn={roomState.gridCaroState.currentTurnTeamId === effectiveTeamId}
-                  canSelect={roomState.gridCaroState.currentTurnTeamId === effectiveTeamId}
-                  onSelectCell={handleSelectGridCell}
+                  canSelect={false}
                 />
               </div>
             ) : roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (
@@ -604,7 +607,9 @@ export default function PlayPage() {
                   myTeamId={effectiveTeamId}
                   myTeamScore={myTeam?.score ?? mePlayer?.score ?? 0}
                   myTeamName={myTeam?.name ?? mePlayer?.name}
+                  teams={roomState.teams}
                   onSubmitWager={handleSubmitWager}
+                  positiveTeamsCount={roomState?.teams.filter((t) => t.score > 0).length}
                 />
               </div>
             ) : (

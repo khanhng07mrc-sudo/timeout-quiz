@@ -7,7 +7,9 @@ interface Props {
   myTeamId?: string;
   isMyTurn?: boolean;
   canSelect?: boolean;
+  isAdmin?: boolean;
   onSelectCell?: (cellId: number) => void;
+  onAdvanceNow?: () => void;
   isDisplay?: boolean;
 }
 
@@ -16,7 +18,9 @@ export default function GridCaroBoard({
   myTeamId,
   isMyTurn = false,
   canSelect = false,
+  isAdmin = false,
   onSelectCell,
+  onAdvanceNow,
   isDisplay = false,
 }: Props) {
   if (!gridState || gridState.cells.length === 0) {
@@ -32,12 +36,17 @@ export default function GridCaroBoard({
     rows,
     cols,
     cells,
-    previewActive,
-    previewRemaining,
+    currentRound = 1,
+    maxRounds = 3,
+    turnsCompleted = 0,
+    maxTurns = 6,
     currentTurnTeamName,
+    selectedCellId,
+    selectedCellAnimation,
+    autoAdvanceSeconds,
     streakTargetK,
     caroBonusPoints,
-    caroAchievedTeams,
+    caroAchievedTeams = [],
   } = gridState;
 
   const ticTacToeActive = !!gridState.caroEnabled && rows >= 4 && cols >= 4;
@@ -58,32 +67,26 @@ export default function GridCaroBoard({
           <div>
             <h3 className={`font-black ${isDisplay ? "text-2xl" : "text-lg"} text-white flex items-center gap-2`}>
               {ticTacToeActive ? `Lưới Câu Hỏi & Đấu Caro ${rows}×${cols}` : `Lưới Chọn Ô Câu Hỏi ${rows}×${cols}`}
-              {ticTacToeActive ? (
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
+                Vòng {currentRound}/{maxRounds} · Lượt {turnsCompleted}/{maxTurns}
+              </span>
+              {ticTacToeActive && (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Caro ({streakTargetK} ô thẳng hàng · Thưởng điểm chuỗi)
-                </span>
-              ) : (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
-                  Chọn ô tự do
+                  Caro ({streakTargetK} ô thẳng hàng · Thưởng chuỗi)
                 </span>
               )}
             </h3>
             <p className="text-xs text-muted-foreground">
               {ticTacToeActive
-                ? `Chọn ô điểm số · Đúng chiếm ô màu đội · Xếp liền ${streakTargetK} ô (ngang/dọc/chéo) nhận thưởng Caro!`
-                : "Chọn ô điểm số · Trả lời đúng nhận trọn điểm ô · Sai không trừ điểm và ô mở lại với câu hỏi mới"}
+                ? `Chọn ô điểm số · Đúng chiếm ô màu đội · Xếp liền ${streakTargetK} ô nhận thưởng Caro · Sai ô vẫn mở cho lượt sau!`
+                : "Chọn ô điểm số · Trả lời đúng nhận trọn điểm ô · Sai ô vẫn mở với câu hỏi mới cùng mức điểm!"}
             </p>
           </div>
         </div>
 
         {/* Status Badges */}
         <div className="flex items-center gap-2">
-          {previewActive ? (
-            <div className="px-3 py-1.5 rounded-xl bg-cyan-500/20 border border-cyan-500/50 text-cyan-300 font-bold text-sm animate-pulse flex items-center gap-2">
-              <span>👁️ Đang xem trước độ khó:</span>
-              <span className="text-white font-mono font-black text-base">{previewRemaining}s</span>
-            </div>
-          ) : currentTurnTeamName ? (
+          {currentTurnTeamName ? (
             <div className={`px-4 py-1.5 rounded-xl font-bold text-sm flex items-center gap-2 ${
               isMyTurn ? "bg-yellow-500/20 border border-yellow-500 text-yellow-300 animate-bounce" : "bg-white/10 text-white"
             }`}>
@@ -95,6 +98,28 @@ export default function GridCaroBoard({
         </div>
       </div>
 
+      {/* Auto-Advance Countdown Banner */}
+      {autoAdvanceSeconds !== undefined && autoAdvanceSeconds > 0 && (
+        <div className="p-3.5 rounded-xl bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/60 flex items-center justify-between animate-pulse shadow-lg">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⏱️</span>
+            <span className="font-bold text-sm text-purple-200">
+              Tự động trở về bàn cờ sau: <strong className="text-white font-mono text-base">{autoAdvanceSeconds}s</strong>
+            </span>
+          </div>
+          {isAdmin && onAdvanceNow && (
+            <button
+              type="button"
+              onClick={onAdvanceNow}
+              className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-black text-xs shadow transition active:scale-95 flex items-center gap-1"
+            >
+              <span>⚡</span>
+              <span>Trở về bàn cờ ngay</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Grid of Rectangles */}
       <div
         className="grid gap-3 select-none"
@@ -104,7 +129,8 @@ export default function GridCaroBoard({
       >
         {cells.map((cell: GridCell) => {
           const isClaimed = cell.isCompleted && cell.claimedByTeamId;
-          const isClickable = !previewActive && canSelect && !isClaimed;
+          const isSelectedAnim = Boolean(selectedCellAnimation && cell.id === selectedCellId);
+          const isClickable = (isAdmin || canSelect) && !isClaimed && !selectedCellAnimation;
           const diffStyle = difficultyColors[cell.difficulty] || "text-purple-300 border-purple-500/30 bg-purple-500/10";
 
           return (
@@ -113,64 +139,68 @@ export default function GridCaroBoard({
               type="button"
               disabled={!isClickable}
               onClick={() => onSelectCell && onSelectCell(cell.id)}
-              className={`relative rounded-xl border-2 transition-all flex flex-col items-center justify-center p-3 text-center min-h-[90px] ${
-                isClaimed
+              className={`relative rounded-xl border-2 transition-all flex flex-col items-center justify-center p-3 text-center min-h-[95px] ${
+                isSelectedAnim
+                  ? "border-yellow-400 bg-yellow-500/30 scale-105 shadow-2xl animate-pulse ring-4 ring-yellow-400/50"
+                  : isClaimed
                   ? "shadow-lg scale-[0.98] cursor-default font-bold"
                   : isClickable
                   ? "cursor-pointer hover:border-cyan-400 hover:scale-105 active:scale-95 glass bg-card/60 glow-cyan"
                   : "cursor-default opacity-85 glass bg-card/30"
               }`}
               style={{
-                borderColor: isClaimed ? cell.claimedByTeamColor || "#10b981" : undefined,
-                background: isClaimed
+                borderColor: isSelectedAnim
+                  ? "#facc15"
+                  : isClaimed
+                  ? cell.claimedByTeamColor || "#10b981"
+                  : undefined,
+                background: isSelectedAnim
+                  ? "rgba(234, 179, 8, 0.25)"
+                  : isClaimed
                   ? `linear-gradient(135deg, ${cell.claimedByTeamColor || "#10b981"}33, ${cell.claimedByTeamColor || "#10b981"}88)`
                   : undefined,
               }}
             >
               {/* Cell Number Badge */}
-              <span className="absolute top-1.5 left-2 text-[11px] font-mono text-muted-foreground/80 font-bold">
+              <span className="absolute top-1.5 left-2 text-[11px] font-mono text-muted-foreground/90 font-bold">
                 #{cell.id}
               </span>
 
-              {/* Claimed content */}
-              {isClaimed ? (
+              {/* Selection Animation Banner */}
+              {isSelectedAnim ? (
+                <div className="flex flex-col items-center justify-center gap-1 animate-bounce">
+                  <span className="text-xl">⚡</span>
+                  <span className="text-xs font-black text-yellow-300 uppercase tracking-widest">
+                    ĐÃ CHỌN!
+                  </span>
+                  <span className="text-sm font-bold text-white font-mono">
+                    {cell.points}đ · {cell.difficulty}
+                  </span>
+                </div>
+              ) : isClaimed ? (
+                /* Claimed content */
                 <div className="flex flex-col items-center justify-center gap-1 z-10">
                   <span className="text-xl">⭐</span>
                   <span className="text-xs font-black text-white truncate max-w-[95%]">
                     {cell.claimedByTeamName}
                   </span>
-                  <span className="text-[10px] text-white/80 font-mono font-bold">
+                  <span className="text-[10px] text-white/90 font-mono font-bold">
                     +{cell.points}đ
                   </span>
                 </div>
               ) : (
-                /* Unclaimed cell content */
-                <div className="flex flex-col items-center justify-center gap-1">
-                  {/* If in preview period or admin view, reveal difficulty & points */}
-                  {previewActive ? (
-                    <div className="flex flex-col items-center gap-0.5 animate-fadeIn">
-                      <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase border ${diffStyle}`}>
-                        {cell.difficulty}
-                      </span>
-                      <span className="text-lg font-black text-cyan-300 font-mono">
-                        {cell.points} pts
-                      </span>
-                    </div>
-                  ) : (
-                    /* In-game view */
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-2xl font-black text-white font-mono">
-                        {cell.points}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
-                        {cell.difficulty}
-                      </span>
-                      {cell.attemptCount > 0 && (
-                        <span className="text-[9px] text-yellow-400/80 font-medium">
-                          (Đổi câu mới)
-                        </span>
-                      )}
-                    </div>
+                /* Unclaimed cell content - Always shows points and difficulty */
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-2xl font-black text-white font-mono">
+                    {cell.points}đ
+                  </span>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase border ${diffStyle}`}>
+                    {cell.difficulty}
+                  </span>
+                  {cell.attemptCount > 0 && (
+                    <span className="text-[9px] text-amber-300 font-semibold bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/30">
+                      🔄 Mở lại (Câu mới)
+                    </span>
                   )}
                 </div>
               )}
@@ -184,7 +214,7 @@ export default function GridCaroBoard({
         <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-xs flex items-center gap-2 animate-bounce-in">
           <span>🎉</span>
           <span className="font-bold">Đã đạt liên hoàn Caro:</span>
-          <span>{caroAchievedTeams.join(", ")} (Đã nhận thưởng điểm Caro chuỗi!)</span>
+          <span>{caroAchievedTeams.join(", ")} (Đã nhận thưởng điểm chuỗi Caro!)</span>
         </div>
       )}
     </div>

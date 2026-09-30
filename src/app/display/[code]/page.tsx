@@ -157,6 +157,19 @@ export default function DisplayPage() {
       }
     });
 
+    socket.on("game:question:clear", () => {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      setBuzzed(null);
+      setStealBuzzed(null);
+      setIsStealOpen(false);
+      soundManager.stopMusic();
+    });
+    socket.on("game:wager:bailout_granted", () => {
+      soundManager.playCorrect();
+    });
+
     socket.on("game:grid:update", (gridCaroState) => {
       setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
     });
@@ -730,7 +743,12 @@ export default function DisplayPage() {
             )}
             {revealPayload && roomState.mode === "WAGER" && roomState.wagerState && (
               <div className="mt-4">
-                <WagerPanel wagerState={roomState.wagerState} isDisplay={true} />
+                <WagerPanel
+                  wagerState={roomState.wagerState}
+                  isDisplay={true}
+                  teams={roomState.teams}
+                  positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+                />
               </div>
             )}
           </div>
@@ -765,7 +783,12 @@ export default function DisplayPage() {
               </div>
             ) : roomState.mode === "WAGER" && roomState.wagerState ? (
               <div className="w-full">
-                <WagerPanel wagerState={roomState.wagerState} isDisplay={true} />
+                <WagerPanel
+                  wagerState={roomState.wagerState}
+                  isDisplay={true}
+                  teams={roomState.teams}
+                  positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+                />
               </div>
             ) : (
               <p className="text-3xl text-muted-foreground">⏳ Chờ câu hỏi tiếp theo...</p>

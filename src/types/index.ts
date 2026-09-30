@@ -174,20 +174,23 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "GRID_CARO",
     nameVi: "Chọn ô & Caro (Grid Caro)",
     emoji: "🏁",
-    taglineVi: "Lưới 1-X ô, độ khó bí ẩn & Caro liên tiếp",
-    summaryVi: "Bàn cờ ma trận R × C ô số. Các đội luân phiên chọn ô theo chiến thuật, giải mã câu hỏi để đánh dấu chiếm lĩnh ô màu đội mình.",
+    taglineVi: "Lưới 1-X ô, điểm cố định theo ô, chọn thủ công & Caro liên tiếp",
+    summaryVi: "Bàn cờ ma trận R × C ô số (#1 - #X) gắn cứng mức điểm và độ khó. Quản trò (Admin) chọn ô thủ công theo lượt các đội, giải mã câu hỏi để đánh dấu chiếm lĩnh ô màu đội mình.",
     mechanicsVi: [
-      "Xem trước độ khó: 5-10 giây đầu trận hiển thị điểm số và độ khó ẩn của các ô.",
-      "Chọn ô theo lượt: Đội đến lượt bấm chọn ô mong muốn trên thiết bị.",
-      "Câu hỏi dùng 1 lần duy nhất: Mỗi câu hỏi chỉ xuất hiện tối đa 1 lần. Nếu đội trả lời sai, không bị phạt điểm và ô đó vẫn mở cho các đội sau chọn lại với một câu hỏi mới.",
-      "Tính năng Caro (Tic-Tac-Toe): Chỉ kích hoạt khi lưới tối thiểu 4×4 và được quản trò bật. Đội đầu tiên xếp được K ô liên tiếp (ngang, dọc, chéo) sẽ ăn trọn thưởng Caro.",
+      "Chọn ô thủ công: Quản trò chọn ô từ bảng điều khiển theo yêu cầu của đội tới lượt, tránh xung đột hệ thống.",
+      "Điểm số & độ khó gắn cứng: Mỗi ô từ #1 đến #X được hiển thị rõ ràng số thứ tự, mức điểm và huy hiệu độ khó tương ứng.",
+      "Ô chưa ăn vẫn mở: Nếu đội trả lời SAI, ô đó vẫn mở (chưa ai chiếm). Lượt sau các đội khác vẫn có thể chọn lại ô đó, hệ thống sẽ bốc một câu hỏi MỚI có cùng độ khó/mức điểm gắn với ô đó.",
+      "Giới hạn số vòng chơi: Trận đấu diễn ra trong số vòng quy định (mặc định 3 vòng), các đội không nhất thiết phải lật hết sạch mọi ô.",
+      "Tính năng Caro (Tic-Tac-Toe): Kích hoạt khi lưới từ 4×4 trở lên. Đội đầu tiên xếp được K ô liên tiếp (ngang, dọc, chéo) nhận thưởng Caro Bonus.",
     ],
     scoringVi: [
-      "Điểm ô: Trả lời đúng nhận trọn điểm số của ô đã chọn (10đ - 30đ).",
-      "Thưởng Caro Bonus: Bằng trung bình cộng điểm số của K ô tạo nên chuỗi liên tiếp (làm tròn bội số 5 gần nhất).",
+      "Điểm ô: Trả lời đúng nhận trọn điểm số gắn với ô đã chọn (10đ - 30đ).",
+      "Trả lời sai: Không bị trừ điểm, ô giữ nguyên trạng thái mở cho lượt sau.",
+      "Thưởng Caro Bonus: Trung bình cộng điểm số các ô tạo thành chuỗi liên tiếp.",
     ],
     tipsVi: [
-      "Quan sát bàn cờ để vừa lập chuỗi ô màu cho đội mình vừa chặn đứng đường tiến của đối thủ!",
+      "Nếu một ô điểm cao bị trả lời sai, hãy nhanh chóng chọn lại ô đó ở lượt sau để gặt hái điểm số!",
+      "Tính toán số vòng giới hạn để tối ưu hóa việc chọn ô điểm cao hoặc tạo chuỗi Caro.",
     ],
   },
   DICE_RACE: {
@@ -214,20 +217,23 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "WAGER",
     nameVi: "Cược điểm Bí mật (Secret Wager)",
     emoji: "💰",
-    taglineVi: "Cân não All-in & bảo toàn điểm số",
-    summaryVi: "Đấu trí chiến thuật trước mỗi câu hỏi. Biết trước chủ đề & độ khó nhưng chưa biết câu hỏi, các đội bí mật đặt cược số điểm của mình.",
+    taglineVi: "Tặng 50đ khởi đầu, Cược bí mật, Trợ cấp hồi sinh & Thắng Knockout",
+    summaryVi: "Đấu trí chiến thuật trước mỗi câu hỏi. Mỗi đội được tặng trước 50 điểm khởi đầu. Biết trước chủ đề & độ khó Bloom, các đội bí mật đặt cược số điểm của mình với cơ chế trợ cấp kịch tính.",
     mechanicsVi: [
-      "Xem trước chủ đề & độ khó Bloom trong 15 giây.",
-      "Cược điểm bí mật: Mỗi đội kéo thanh trượt cược số điểm mình tự tin (tối thiểu 10đ, 25%, 50%, hoặc ALL-IN 100% điểm). Đội âm hoặc 0 điểm được cấp 50đ để cược.",
-      "Trả lời câu hỏi: Sau khi hết thời gian cược, câu hỏi chính thức lộ diện cho toàn bộ các đội cùng tranh tài.",
-      "Công bố kết quả: Toàn bộ mức cược và điểm thưởng/phạt của các đội được hé lộ cùng đáp án.",
+      "Điểm khởi đầu: Mỗi đội được tặng trước 50 điểm ngay khi bắt đầu vòng thi.",
+      "Cược điểm bí mật: Trong 15 giây, mỗi đội chọn cược số điểm mình tự tin (tối thiểu 10đ đến All-in 100% điểm). Đội âm hoặc 0 điểm có thể cược hạn mức tối thiểu.",
+      "Cứu trợ Hồi sinh (Bailout): Khi điểm số tụt xuống ≤ 0 trong cuộc chơi, đội được phép kích hoạt trợ cấp để hồi sinh bằng điểm của đội thấp nhất (đang có điểm > 0). Giới hạn tối đa 1 lần dùng/đội.",
+      "Thứ tự chết & Ưu tiên trợ cấp: Admin chỉ có thể kích hoạt trợ cấp cho duy nhất 1 đội theo đúng thứ tự rơi điểm (đội rơi ≤ 0 trước được cứu trước). Mỗi câu hỏi chỉ cứu tối đa 1 đội, các đội sau phải đợi các câu tiếp theo.",
+      "Điều kiện công bằng & Thắng Knockout: Quyền trợ cấp CHỈ sử dụng được khi còn ít nhất 2 đội có điểm > 0. Nếu chỉ còn duy nhất 1 đội có điểm > 0, đội đó lập tức CHIẾN THẮNG ngay (Knockout Win)!",
     ],
     scoringVi: [
       "Trả lời đúng: Nhận thêm đúng số điểm đã cược (+Wager).",
-      "Trả lời sai: Bị trừ sạch số điểm đã cược (-Wager).",
+      "Trả lời sai: Bị trừ đúng số điểm đã cược (-Wager).",
+      "Trợ cấp: Hồi sinh về mức điểm bằng đội thấp nhất còn dương điểm (> 0).",
     ],
     tipsVi: [
-      "All-in ở những câu hỏi sở trường để bứt phá ngoạn mục, và cược thận trọng ở những câu hỏi hóc búa!",
+      "Hãy cẩn trọng khi điểm số xuống thấp vì mỗi câu Admin chỉ cứu được 1 đội theo thứ tự chết!",
+      "Tận dụng cơ hội Knockout bằng cách cược thông minh để loại dần các đối thủ về ≤ 0 điểm.",
     ],
   },
 };
@@ -453,11 +459,15 @@ export interface GameConfig {
   gridCaroEnabled?: boolean;
   gridCaroBonusPoints?: number;
   gridPreviewDuration?: number;
+  gridRoundsPerTeam?: number;
+  gridMaxQuestions?: number;
   // Dice Race config
   diceTrackTotalTiles?: number;
   // Wager config
   wagerTimeSeconds?: number;
   wagerMinAllowance?: number;
+  wagerInitialPoints?: number;
+  wagerBailoutLimit?: number;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -481,6 +491,7 @@ export interface TeamState {
   shieldCount: number;
   cards: PowerupCard[];
   playerCount: number;
+  bailoutsRemaining?: number;
 }
 
 export interface PlayerState {
@@ -530,6 +541,7 @@ export interface GridCell {
   col: number;
   points: number;
   difficulty: "DỄ" | "TRUNG BÌNH" | "KHÓ" | "CỰC KHÓ";
+  questionId?: string;
   claimedByTeamId?: string;
   claimedByTeamName?: string;
   claimedByTeamColor?: string;
@@ -548,6 +560,12 @@ export interface GridCaroState {
   currentTurnTeamId?: string;
   currentTurnTeamName?: string;
   selectedCellId?: number;
+  selectedCellAnimation?: boolean;
+  autoAdvanceSeconds?: number;
+  currentRound: number;
+  maxRounds: number;
+  turnsCompleted: number;
+  maxTurns: number;
   caroEnabled: boolean;
   streakTargetK: number;
   caroAchievedTeams: string[];
@@ -589,11 +607,30 @@ export interface DiceRaceState {
 
 // ─── Secret Wager Mode ───────────────────────────────────────────────────────
 
+export interface WagerHistoryItem {
+  order: number;
+  teamId: string;
+  teamName: string;
+  teamColor?: string;
+  amount: number;
+  timestamp: number;
+}
+
 export interface TeamWager {
   teamId: string;
   teamName: string;
   amount: number;
   submitted: boolean;
+  order?: number;
+  disqualified?: boolean;
+}
+
+export interface WagerBailoutQueueItem {
+  teamId: string;
+  teamName: string;
+  teamColor?: string;
+  score: number;
+  questionIndex: number;
 }
 
 export interface WagerState {
@@ -601,10 +638,17 @@ export interface WagerState {
   wagerTimeRemaining: number;
   wagerTimeTotal: number;
   minWager: number;
+  currentHighestWager: number;
+  lastWagerTeamId?: string;
+  wagerHistory: WagerHistoryItem[];
   allowanceMinScore: number;
+  initialPoints?: number;
   topicPreview?: string;
   difficultyPreview?: string;
   teamWagers: Record<string, TeamWager>;
+  teamBailouts?: Record<string, { remaining: number; max: number }>;
+  bailoutQueue?: WagerBailoutQueueItem[];
+  currentQuestionBailoutUsed?: boolean;
 }
 
 export interface RoomState {
@@ -771,6 +815,7 @@ export interface ServerToClientEvents {
   "game:dice:rolled": (payload: { teamId: string; teamName: string; roll: number }) => void;
   "game:dice:update": (state: DiceRaceState) => void;
   "game:wager:update": (state: WagerState) => void;
+  "game:wager:bailout_granted": (payload: { teamId: string; teamName: string; newScore: number; bailoutsRemaining: number }) => void;
   "game:tournament:update": (state: TournamentState) => void;
   "game:question:clear": () => void;
 }
@@ -805,9 +850,11 @@ export interface ClientToServerEvents {
   "game:wager:submit": (payload: { amount: number }) => void;
   "admin:grid:preview:start": () => void;
   "admin:grid:select:manual": (payload: { cellId: number }) => void;
+  "admin:grid:advance_now": () => void;
   "admin:dice:roll:manual": () => void;
   "admin:tournament:advance": () => void;
   "admin:wager:skip_timer": () => void;
+  "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }

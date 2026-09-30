@@ -13,6 +13,7 @@ import type {
 } from "@/types";
 import { BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import Link from "next/link";
+import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
@@ -252,39 +253,48 @@ export default function AdminRoomPage() {
 
       {/* Lobby Quiz Bank selector */}
       {roomState?.status === "LOBBY" && (
-        <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📚</span>
-              <h3 className="font-bold text-base">Bộ đề câu hỏi gán cho phòng</h3>
+        <div className="space-y-3">
+          <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📚</span>
+                <h3 className="font-bold text-base">Bộ đề câu hỏi gán cho phòng</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {currentBankInfo
+                  ? `Đang dùng: ${currentBankInfo.title} (${currentBankInfo.questionsCount} câu hỏi)`
+                  : "⚠️ Chưa gán bộ đề nào — hãy chọn bộ đề dưới đây trước khi bắt đầu"}
+              </p>
             </div>
-            <p className="text-sm text-muted-foreground">
-              {currentBankInfo
-                ? `Đang dùng: ${currentBankInfo.title} (${currentBankInfo.questionsCount} câu hỏi)`
-                : "⚠️ Chưa gán bộ đề nào — hãy chọn bộ đề dưới đây trước khi bắt đầu"}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <select
+                value={currentBankInfo?.id ?? ""}
+                onChange={(e) => handleAssignQuizBank(e.target.value)}
+                disabled={updatingBank}
+                className="px-3 py-2 rounded-xl bg-[#151728] border border-border text-sm font-medium focus:ring-2 focus:ring-ring text-white"
+              >
+                <option value="" className="bg-[#151728] text-white">— Chọn bộ đề câu hỏi —</option>
+                {quizBanks.map((b) => (
+                  <option key={b.id} value={b.id} className="bg-[#151728] text-white">
+                    {b.title} {b._count ? `(${b._count.questions} câu)` : ""}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/admin/quiz-bank"
+                className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 text-xs font-semibold whitespace-nowrap transition"
+              >
+                + Quản lý bộ đề
+              </Link>
+            </div>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <select
-              value={currentBankInfo?.id ?? ""}
-              onChange={(e) => handleAssignQuizBank(e.target.value)}
-              disabled={updatingBank}
-              className="px-3 py-2 rounded-xl bg-input border border-border text-sm font-medium focus:ring-2 focus:ring-ring"
-            >
-              <option value="">— Chọn bộ đề câu hỏi —</option>
-              {quizBanks.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.title} {b._count ? `(${b._count.questions} câu)` : ""}
-                </option>
-              ))}
-            </select>
-            <Link
-              href="/admin/quiz-bank"
-              className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 text-xs font-semibold whitespace-nowrap transition"
-            >
-              + Quản lý bộ đề
-            </Link>
-          </div>
+
+          {currentBankInfo?.id && (
+            <QuizBankQuickSummary
+              bankId={currentBankInfo.id}
+              showClearButton={false}
+            />
+          )}
         </div>
       )}
 

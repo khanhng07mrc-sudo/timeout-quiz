@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng trả lời, chấm điểm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮" },
@@ -161,19 +162,29 @@ export default function CreateRoomPage() {
             <select
               value={quizBankId}
               onChange={(e) => setQuizBankId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
+              className="w-full px-4 py-3 rounded-xl bg-[#151728] border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm text-white"
             >
-              <option value="">— Chưa chọn bộ đề —</option>
+              <option value="" className="bg-[#151728] text-white">— Chưa chọn bộ đề —</option>
               {quizBanks.map((bank) => (
-                <option key={bank.id} value={bank.id}>
+                <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
                   {bank.title}{bank._count ? ` (${bank._count.questions} câu)` : ""}
                 </option>
               ))}
             </select>
+
+            {quizBankId && (
+              <div className="mt-3">
+                <QuizBankQuickSummary
+                  bankId={quizBankId}
+                  onClear={() => setQuizBankId("")}
+                />
+              </div>
+            )}
+
             {quizBanks.length === 0 && (
               <p className="text-xs text-muted-foreground mt-1">
                 Chưa có bộ đề nào.{" "}
-                <a href="/admin/quiz-bank/new" className="text-purple-400 underline">Tạo bộ đề mới</a>
+                <a href="/admin/quiz-bank" className="text-purple-400 underline">Tạo bộ đề mới</a>
               </p>
             )}
           </div>

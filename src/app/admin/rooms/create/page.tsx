@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import PowerupIcon from "@/components/ui/PowerupIcon";
+import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import { GameMode } from "@/types";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng trả lời, chấm điểm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮" },
@@ -65,8 +67,11 @@ export default function CreateRoomPage() {
   const [gridRows, setGridRows] = useState(4);
   const [gridCols, setGridCols] = useState(4);
   const [gridStreakTargetK, setGridStreakTargetK] = useState(3);
-  const [gridCaroBonusPoints, setGridCaroBonusPoints] = useState(100);
+  const [gridCaroEnabled, setGridCaroEnabled] = useState(true);
+  const [gridCaroBonusPoints, setGridCaroBonusPoints] = useState(30);
   const [gridPreviewDuration, setGridPreviewDuration] = useState(5);
+  // Modal state
+  const [showRulesModal, setShowRulesModal] = useState(false);
   // Dice Race config
   const [diceTrackTotalTiles, setDiceTrackTotalTiles] = useState(30);
   // Wager config
@@ -147,7 +152,8 @@ export default function CreateRoomPage() {
             gridRows: mode === "GRID_CARO" ? gridRows : 4,
             gridCols: mode === "GRID_CARO" ? gridCols : 4,
             gridStreakTargetK: mode === "GRID_CARO" ? gridStreakTargetK : 3,
-            gridCaroBonusPoints: mode === "GRID_CARO" ? gridCaroBonusPoints : 100,
+            gridCaroEnabled: mode === "GRID_CARO" ? (gridRows >= 4 && gridCols >= 4 && gridCaroEnabled) : false,
+            gridCaroBonusPoints: mode === "GRID_CARO" ? gridCaroBonusPoints : 30,
             gridPreviewDuration: mode === "GRID_CARO" ? gridPreviewDuration : 5,
             // Dice Race config
             diceTrackTotalTiles: mode === "DICE_RACE" ? diceTrackTotalTiles : 30,
@@ -230,7 +236,17 @@ export default function CreateRoomPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-3">Chế độ chơi</label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-sm font-medium">Chế độ chơi</label>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(true)}
+                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 p-1.5 rounded-lg glass border border-cyan-500/30 hover:bg-cyan-500/10"
+              >
+                <span>📖</span>
+                <span>Xem chi tiết thể lệ 8 chế độ</span>
+              </button>
+            </div>
             <div className="grid grid-cols-1 gap-3">
               {GAME_MODES.map((m) => (
                 <button
@@ -364,76 +380,148 @@ export default function CreateRoomPage() {
             </div>
           )}
 
-          {mode === "GRID_CARO" && (
-            <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🎯</span>
-                <h3 className="font-bold text-sm text-purple-300">Cấu hình Lưới câu hỏi & Caro (Tic-Tac-Toe)</h3>
+          {mode === "GRID_CARO" && (() => {
+            const canEnableCaro = gridRows >= 4 && gridCols >= 4;
+            const selectedBank = quizBanks.find((b) => b.id === quizBankId);
+            const bankQuestionsCount = selectedBank?._count?.questions ?? 0;
+            const totalCells = gridRows * gridCols;
+            const notEnoughQuestions = bankQuestionsCount > 0 && bankQuestionsCount < totalCells;
+            const hasExcessQuestions = bankQuestionsCount > 0 && bankQuestionsCount > totalCells;
+
+            return (
+              <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-500/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎯</span>
+                    <h3 className="font-bold text-sm text-purple-300">Cấu hình Lưới câu hỏi & Caro (Tic-Tac-Toe)</h3>
+                  </div>
+
+                  {/* Optional Caro Streak Toggle */}
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xs font-semibold text-foreground">
+                      Thưởng Caro liên tiếp:
+                    </span>
+                    <button
+                      type="button"
+                      disabled={!canEnableCaro || notEnoughQuestions}
+                      onClick={() => setGridCaroEnabled(!gridCaroEnabled)}
+                      className={`w-10 h-5 rounded-full transition-colors ${
+                        canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "bg-purple-500" : "bg-muted opacity-60 cursor-not-allowed"
+                      }`}
+                    >
+                      <div
+                        className={`w-4 h-4 rounded-full bg-white m-0.5 transition-transform ${
+                          canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className={`text-[11px] font-bold ${canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "text-green-400" : "text-muted-foreground"}`}>
+                      {canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "BẬT" : "TẮT"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Số hàng ({gridRows})</label>
+                    <input
+                      type="number"
+                      min={3}
+                      max={6}
+                      value={gridRows}
+                      onChange={(e) => {
+                        const r = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
+                        setGridRows(r);
+                        if (r < 4 || gridCols < 4) setGridCaroEnabled(false);
+                        const maxK = Math.min(r, gridCols) - 1;
+                        if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Số cột ({gridCols})</label>
+                    <input
+                      type="number"
+                      min={3}
+                      max={6}
+                      value={gridCols}
+                      onChange={(e) => {
+                        const c = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
+                        setGridCols(c);
+                        if (gridRows < 4 || c < 4) setGridCaroEnabled(false);
+                        const maxK = Math.min(gridRows, c) - 1;
+                        if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">
+                      Số ô Caro liên tiếp (K)
+                    </label>
+                    <input
+                      type="number"
+                      disabled={!canEnableCaro || !gridCaroEnabled || notEnoughQuestions}
+                      min={3}
+                      max={Math.max(3, Math.min(gridRows, gridCols) - 1)}
+                      value={gridStreakTargetK}
+                      onChange={(e) => {
+                        const maxK = Math.max(3, Math.min(gridRows, gridCols) - 1);
+                        setGridStreakTargetK(Math.min(maxK, Math.max(3, parseInt(e.target.value) || 3)));
+                      }}
+                      className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Thời gian xem trước (s)</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={15}
+                      value={gridPreviewDuration}
+                      onChange={(e) => setGridPreviewDuration(Math.min(15, Math.max(5, parseInt(e.target.value) || 5)))}
+                      className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                    />
+                  </div>
+                </div>
+
+                {/* Status & Validation Banners */}
+                <div className="space-y-2 text-[11px]">
+                  {!canEnableCaro ? (
+                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
+                      ⚠️ Bảng hiện tại là {gridRows}×{gridCols} ({totalCells} ô). <strong>Tính năng thưởng Caro liên tiếp yêu cầu bảng tối thiểu từ 4×4 trở lên</strong>. Chế độ này sẽ hoạt động như Lưới chọn ô câu hỏi thông thường.
+                    </div>
+                  ) : notEnoughQuestions ? (
+                    <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
+                      ❌ Bộ đề đã chọn chỉ có {bankQuestionsCount} câu, không đủ {totalCells} câu cho bảng {gridRows}×{gridCols}. Vui lòng chọn bộ đề có ít nhất {totalCells} câu để kích hoạt Caro!
+                    </div>
+                  ) : !gridCaroEnabled ? (
+                    <div className="p-2.5 rounded-lg bg-card/60 border border-border text-muted-foreground">
+                      ℹ️ Tính năng thưởng Caro liên tiếp đang TẮT (Optional). Các đội tự do chọn ô câu hỏi để ghi điểm mà không tính chuỗi hàng/cột/chéo.
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-200 space-y-1">
+                      <p>
+                        🎯 <strong>Thưởng Caro liên tiếp đang BẬT:</strong> Đội đầu tiên xếp được {gridStreakTargetK} ô liên tiếp cùng hàng, cột hoặc đường chéo sẽ nhận <strong>thưởng Caro Bonus</strong>.
+                      </p>
+                      <p className="text-cyan-300">
+                        ✨ <em>Điểm thưởng Caro được tính bằng trung bình cộng điểm số của {gridStreakTargetK} ô tạo nên chuỗi (làm tròn về số chia hết cho 5 gần nhất).</em>
+                      </p>
+                      {hasExcessQuestions && (
+                        <p className="text-amber-300 text-[10px] mt-1 pt-1 border-t border-purple-500/30">
+                          📌 Bộ đề có {bankQuestionsCount} câu. Bàn cờ sẽ sử dụng đúng {totalCells} câu đầu tiên và bỏ qua {bankQuestionsCount - totalCells} câu dư thừa.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-muted-foreground">
+                    Quy tắc câu hỏi duy nhất: Mỗi câu hỏi chỉ xuất hiện tối đa 1 lần. Trả lời sai không bị trừ điểm và ô đó vẫn mở cho các đội sau chọn lại với câu hỏi mới!
+                  </p>
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-xs font-medium mb-1">Số hàng ({gridRows})</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={6}
-                    value={gridRows}
-                    onChange={(e) => {
-                      const r = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
-                      setGridRows(r);
-                      const maxK = Math.min(r, gridCols) - 1;
-                      if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Số cột ({gridCols})</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={6}
-                    value={gridCols}
-                    onChange={(e) => {
-                      const c = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
-                      setGridCols(c);
-                      const maxK = Math.min(gridRows, c) - 1;
-                      if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Số ô Caro liên tiếp (K)</label>
-                  <input
-                    type="number"
-                    min={3}
-                    max={Math.max(3, Math.min(gridRows, gridCols) - 1)}
-                    value={gridStreakTargetK}
-                    onChange={(e) => {
-                      const maxK = Math.max(3, Math.min(gridRows, gridCols) - 1);
-                      setGridStreakTargetK(Math.min(maxK, Math.max(3, parseInt(e.target.value) || 3)));
-                    }}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium mb-1">Thời gian xem trước (s)</label>
-                  <input
-                    type="number"
-                    min={5}
-                    max={15}
-                    value={gridPreviewDuration}
-                    onChange={(e) => setGridPreviewDuration(Math.min(15, Math.max(5, parseInt(e.target.value) || 5)))}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
-                  />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Tổng {gridRows * gridCols} ô câu hỏi. Khi bảng từ 4×4 trở lên, hoàn thành {gridStreakTargetK} ô liên tiếp cùng hàng, cột hoặc đường chéo sẽ kích hoạt thưởng Caro +{gridCaroBonusPoints} điểm. Sai không bị phạt điểm và ô được quyền chọn lại với câu hỏi mới!
-              </p>
-            </div>
-          )}
+            );
+          })()}
 
           {mode === "DICE_RACE" && (
             <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-4">
@@ -781,6 +869,13 @@ export default function CreateRoomPage() {
           </button>
         )}
       </div>
+
+      {/* Rules Modal */}
+      <GameModeRulesModal
+        mode={mode as GameMode}
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

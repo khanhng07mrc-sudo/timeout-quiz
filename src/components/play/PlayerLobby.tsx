@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { RoomState } from "@/types";
+import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 
 interface Props {
   roomState: RoomState;
@@ -10,6 +13,7 @@ interface Props {
 }
 
 export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMessage }: Props) {
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const me = roomState.players.find((p) => p.id === playerId);
   const myTeam = me?.teamId ? roomState.teams.find((t) => t.id === me.teamId) : null;
   const isTeamMode = roomState.teamMode === "TEAM";
@@ -24,7 +28,7 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMe
       )}
 
       {/* Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-5">
         <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
           Chế độ: {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
         </span>
@@ -32,6 +36,11 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMe
           {roomState.name}
         </h1>
         <p className="text-muted-foreground text-sm mt-1">Đang chờ chủ phòng bắt đầu trận đấu...</p>
+      </div>
+
+      {/* Game Rules Inline Summary */}
+      <div className="w-full mb-5">
+        <GameModeRulesCard mode={roomState.mode} onOpenModal={() => setShowRulesModal(true)} />
       </div>
 
       {isTeamMode ? (
@@ -212,6 +221,13 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMe
         <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
         Kết nối thành công · Mã phòng: <span className="font-mono font-bold text-foreground">{roomState.code}</span>
       </div>
+
+      {/* Rules Modal */}
+      <GameModeRulesModal
+        mode={roomState.mode}
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

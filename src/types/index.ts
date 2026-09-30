@@ -38,6 +38,200 @@ export type GameMode =
 export type TeamMode = "INDIVIDUAL" | "TEAM";
 export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
+// ─── Mode Rules Metadata ──────────────────────────────────────────────────────
+
+export interface ModeRuleDetail {
+  mode: GameMode;
+  nameVi: string;
+  emoji: string;
+  taglineVi: string;
+  summaryVi: string;
+  mechanicsVi: string[];
+  scoringVi: string[];
+  tipsVi: string[];
+}
+
+export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
+  CLASSIC: {
+    mode: "CLASSIC",
+    nameVi: "Truyền thống (Classic)",
+    emoji: "⚡",
+    taglineVi: "Đua điểm đồng đội tiêu chuẩn",
+    summaryVi: "Chế độ thi đấu trắc nghiệm kinh điển. Tất cả các đội cùng trả lời đồng thời từng câu hỏi trong thời gian quy định.",
+    mechanicsVi: [
+      "Mỗi câu hỏi có giới hạn thời gian (thường 20-30 giây).",
+      "Các thành viên trong cùng một đội cùng thảo luận và nộp đáp án trên thiết bị cá nhân hoặc đọc qua MC.",
+      "Tất cả đội trả lời đúng đều nhận được điểm số của câu hỏi.",
+    ],
+    scoringVi: [
+      "Điểm cơ bản: Từ 10 đến 30 điểm tuỳ theo cấp độ nhận thức Bloom.",
+      "Thưởng tốc độ: Trả lời càng nhanh càng nhận thêm tối đa 50% điểm thưởng thời gian.",
+      "Thẻ nhân đôi (x2) và Thẻ hỗ trợ có hiệu lực trực tiếp.",
+    ],
+    tipsVi: [
+      "Nhanh tay nộp đáp án để tối đa hóa điểm tốc độ!",
+      "Hãy phối hợp chặt chẽ với đồng đội để tránh trả lời sai.",
+    ],
+  },
+  BUZZ: {
+    mode: "BUZZ",
+    nameVi: "Chuông bấm (Buzz)",
+    emoji: "🔔",
+    taglineVi: "Tranh quyền trả lời duy nhất",
+    summaryVi: "Chế độ chuông bấm cực kỳ kịch tính. Sau khi câu hỏi hiển thị, đội nào nhấn chuông trước sẽ giành quyền trả lời độc quyền.",
+    mechanicsVi: [
+      "Sau khi câu hỏi xuất hiện, nút bấm chuông sẽ kích hoạt cho tất cả các đội.",
+      "Đội bấm chuông nhanh nhất (tính bằng mili-giây) sẽ được cấp 15 giây độc quyền để chọn đáp án.",
+      "Các đội bấm chậm hơn sẽ chuyển sang chế độ quan sát lượt của đối thủ.",
+    ],
+    scoringVi: [
+      "Nếu đội chuông trả lời ĐÚNG: Nhận trọn vẹn 100% điểm câu hỏi.",
+      "Nếu đội chuông trả lời SAI: Bị trừ điểm phạt tương ứng (nếu phòng bật phạt điểm).",
+    ],
+    tipsVi: [
+      "Đọc lướt nhanh từ khóa câu hỏi để bấm chuông dứt khoát!",
+      "Cẩn trọng vì bấm nhanh mà trả lời sai sẽ bị mất điểm quý giá.",
+    ],
+  },
+  BOUNCEBACK: {
+    mode: "BOUNCEBACK",
+    nameVi: "Bật nảy & Cướp lượt (Bounceback)",
+    emoji: "🎯",
+    taglineVi: "Lượt chính luân phiên & Chuông cướp lượt",
+    summaryVi: "Mỗi câu hỏi chỉ định 1 đội trả lời chính. Nếu đội chính thất bại, chuông cướp lượt mở ra cho các đội còn lại phục kích.",
+    mechanicsVi: [
+      "Vòng 1 (Lượt chính): Đội được chỉ định có toàn bộ thời gian quy định để đưa ra đáp án.",
+      "Nếu đội chính đúng: Ghi điểm và câu hỏi kết thúc.",
+      "Vòng 2 (Cướp lượt): Nếu đội chính trả lời SAI hoặc hết giờ, hệ thống mở chuông cướp lượt trong 5 giây cho các đội khác.",
+      "Đội bấm chuông nhanh nhất sẽ có 15 giây để lật ngược thế cờ.",
+    ],
+    scoringVi: [
+      "Đội chính trả lời đúng: +100% điểm câu hỏi.",
+      "Đội cướp lượt trả lời đúng: +100% điểm thưởng.",
+      "Đội cướp lượt trả lời sai: Bị trừ 50% điểm câu hỏi.",
+    ],
+    tipsVi: [
+      "Tập trung cao độ ngay cả khi không phải lượt của mình để sẵn sàng bấm chuông cướp lượt!",
+    ],
+  },
+  POWERUP: {
+    mode: "POWERUP",
+    nameVi: "Thẻ Hỗ Trợ (Power-up)",
+    emoji: "🃏",
+    taglineVi: "Chiến thuật thẻ bài biến hóa",
+    summaryVi: "Chế độ kết hợp các thẻ quyền năng đặc biệt: Phong tỏa, Đổi câu, Cướp điểm, Nhân đôi, Tái sinh...",
+    mechanicsVi: [
+      "Mỗi đội được phát các thẻ hỗ trợ ngẫu nhiên khi vào trận.",
+      "Sử dụng thẻ chiến thuật đúng thời điểm để gia tăng lợi thế hoặc kìm chân đối thủ.",
+    ],
+    scoringVi: [
+      "Điểm số kết hợp với hiệu ứng các thẻ bài nhân đôi hoặc trừ phạt.",
+    ],
+    tipsVi: [
+      "Giữ thẻ Tái sinh cho các câu hỏi khó để tránh bị mất điểm!",
+    ],
+  },
+  ELIMINATION: {
+    mode: "ELIMINATION",
+    nameVi: "Đấu trường Sinh tồn (Elimination)",
+    emoji: "❌",
+    taglineVi: "Loại dần đội điểm thấp nhất",
+    summaryVi: "Đấu trường khắc nghiệt mô phỏng Battle Royale. Sau mỗi đợt câu hỏi cố định, đội xếp cuối bảng điểm sẽ lập tức bị loại.",
+    mechanicsVi: [
+      "Cứ sau mỗi chu kỳ (mặc định 3 câu hỏi), hệ thống sẽ tổng kết bảng điểm.",
+      "Đội có điểm số thấp nhất sẽ nhận thông báo 'BỊ LOẠI' và chuyển thành khán giả.",
+      "Trận đấu tiếp diễn cho đến khi tìm ra đội sống sót duy nhất.",
+    ],
+    scoringVi: [
+      "Tính điểm theo công thức sâu (Bloom + độ hiếm câu hỏi + độ đồng thuận nhóm).",
+      "Sai không bị trừ điểm trực tiếp nhưng tụt hạng sẽ dẫn đến việc bị loại.",
+    ],
+    tipsVi: [
+      "Mỗi câu hỏi đều sống còn! Duy trì vị trí an toàn ở nửa trên bảng xếp hạng.",
+    ],
+  },
+  TOURNAMENT: {
+    mode: "TOURNAMENT",
+    nameVi: "Đấu loại trực tiếp 1v1 (Tournament)",
+    emoji: "🏆",
+    taglineVi: "Phân nhánh Tứ kết, Bán kết, Chung kết",
+    summaryVi: "Giải đấu cây nhánh đối kháng trực tiếp 1v1. Hai đội chạm trán nhau trong một số câu hỏi nhất định, đội thắng giành vé vào vòng trong.",
+    mechanicsVi: [
+      "Hệ thống tự động xếp nhánh thi đấu (Tứ kết, Bán kết, Chung kết).",
+      "Mỗi trận đấu gồm M câu hỏi (mặc định 3 câu). Chỉ 2 đội trong cặp đấu mới có quyền trả lời và ghi điểm trận.",
+      "Các đội chưa đến lượt sẽ theo dõi diễn biến trận đấu trực tiếp trên màn hình.",
+      "Đội ghi nhiều điểm hơn sau M câu sẽ bước tiếp vào vòng sau; đội thua bị loại.",
+    ],
+    scoringVi: [
+      "Điểm số trong trận quyết định người chiến thắng của cặp đấu.",
+      "Đội chiến thắng trận Chung kết sẽ đăng quang Ngôi Vô Địch 👑.",
+    ],
+    tipsVi: [
+      "Nắm chắc điểm từng câu trong cặp đấu 1v1 vì khoảng cách chỉ 1 câu đúng có thể định đoạt số phận trận đấu!",
+    ],
+  },
+  GRID_CARO: {
+    mode: "GRID_CARO",
+    nameVi: "Chọn ô & Caro (Grid Caro)",
+    emoji: "🏁",
+    taglineVi: "Lưới 1-X ô, độ khó bí ẩn & Caro liên tiếp",
+    summaryVi: "Bàn cờ ma trận R × C ô số. Các đội luân phiên chọn ô theo chiến thuật, giải mã câu hỏi để đánh dấu chiếm lĩnh ô màu đội mình.",
+    mechanicsVi: [
+      "Xem trước độ khó: 5-10 giây đầu trận hiển thị điểm số và độ khó ẩn của các ô.",
+      "Chọn ô theo lượt: Đội đến lượt bấm chọn ô mong muốn trên thiết bị.",
+      "Câu hỏi dùng 1 lần duy nhất: Mỗi câu hỏi chỉ xuất hiện tối đa 1 lần. Nếu đội trả lời sai, không bị phạt điểm và ô đó vẫn mở cho các đội sau chọn lại với một câu hỏi mới.",
+      "Tính năng Caro (Tic-Tac-Toe): Chỉ kích hoạt khi lưới tối thiểu 4×4 và được quản trò bật. Đội đầu tiên xếp được K ô liên tiếp (ngang, dọc, chéo) sẽ ăn trọn thưởng Caro.",
+    ],
+    scoringVi: [
+      "Điểm ô: Trả lời đúng nhận trọn điểm số của ô đã chọn (10đ - 30đ).",
+      "Thưởng Caro Bonus: Bằng trung bình cộng điểm số của K ô tạo nên chuỗi liên tiếp (làm tròn bội số 5 gần nhất).",
+    ],
+    tipsVi: [
+      "Quan sát bàn cờ để vừa lập chuỗi ô màu cho đội mình vừa chặn đứng đường tiến của đối thủ!",
+    ],
+  },
+  DICE_RACE: {
+    mode: "DICE_RACE",
+    nameVi: "Đua cờ Xí ngầu (Dice Race)",
+    emoji: "🎲",
+    taglineVi: "Đường đua 30-50 ô, đổ xí ngầu & sự kiện",
+    summaryVi: "Đua cờ tỷ phú kết hợp trả lời câu hỏi. Tung xí ngầu 1-6 nút và trả lời đúng để quân cờ linh vật tiến bước vượt chướng ngại vật về đích.",
+    mechanicsVi: [
+      "Lượt tung xúc xắc: Đội đến lượt bấm đổ xúc xắc 3D ngẫu nhiên từ 1 đến 6 nút.",
+      "Giải câu đố: Đội phải trả lời câu hỏi tương ứng với lượt tung.",
+      "Tiến bước: Trả lời đúng, quân cờ tiến số bước bằng đúng số nút xúc xắc. Trả lời sai, quân cờ đứng yên tại chỗ.",
+      "Ô sự kiện: Dừng chân tại các ô đặc biệt sẽ kích hoạt: Tăng tốc (+2 bước), Bẫy (-2 bước), Ngọc thưởng (+150đ), Hoán đổi vị trí với đội dẫn đầu, hoặc Về đích!",
+    ],
+    scoringVi: [
+      "Điểm thưởng ngọc: +150đ khi dẫm trúng ô Gem.",
+      "Thưởng về đích: Đội cán đích Top 1 (+300đ), Top 2 (+200đ), Top 3 (+100đ).",
+    ],
+    tipsVi: [
+      "Đổ xí ngầu may mắn kết hợp trả lời chuẩn xác sẽ giúp bạn bay thẳng về đích!",
+    ],
+  },
+  WAGER: {
+    mode: "WAGER",
+    nameVi: "Cược điểm Bí mật (Secret Wager)",
+    emoji: "💰",
+    taglineVi: "Cân não All-in & bảo toàn điểm số",
+    summaryVi: "Đấu trí chiến thuật trước mỗi câu hỏi. Biết trước chủ đề & độ khó nhưng chưa biết câu hỏi, các đội bí mật đặt cược số điểm của mình.",
+    mechanicsVi: [
+      "Xem trước chủ đề & độ khó Bloom trong 15 giây.",
+      "Cược điểm bí mật: Mỗi đội kéo thanh trượt cược số điểm mình tự tin (tối thiểu 10đ, 25%, 50%, hoặc ALL-IN 100% điểm). Đội âm hoặc 0 điểm được cấp 50đ để cược.",
+      "Trả lời câu hỏi: Sau khi hết thời gian cược, câu hỏi chính thức lộ diện cho toàn bộ các đội cùng tranh tài.",
+      "Công bố kết quả: Toàn bộ mức cược và điểm thưởng/phạt của các đội được hé lộ cùng đáp án.",
+    ],
+    scoringVi: [
+      "Trả lời đúng: Nhận thêm đúng số điểm đã cược (+Wager).",
+      "Trả lời sai: Bị trừ sạch số điểm đã cược (-Wager).",
+    ],
+    tipsVi: [
+      "All-in ở những câu hỏi sở trường để bứt phá ngoạn mục, và cược thận trọng ở những câu hỏi hóc búa!",
+    ],
+  },
+};
+
 // ─── Card Metadata ────────────────────────────────────────────────────────────
 
 export interface CardDetail {
@@ -256,6 +450,7 @@ export interface GameConfig {
   gridRows?: number;
   gridCols?: number;
   gridStreakTargetK?: number;
+  gridCaroEnabled?: boolean;
   gridCaroBonusPoints?: number;
   gridPreviewDuration?: number;
   // Dice Race config
@@ -353,6 +548,7 @@ export interface GridCaroState {
   currentTurnTeamId?: string;
   currentTurnTeamName?: string;
   selectedCellId?: number;
+  caroEnabled: boolean;
   streakTargetK: number;
   caroAchievedTeams: string[];
   caroBonusPoints: number;

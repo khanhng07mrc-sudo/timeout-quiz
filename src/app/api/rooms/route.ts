@@ -27,7 +27,8 @@ const DEFAULT_CONFIG = {
   gridRows: 4,
   gridCols: 4,
   gridStreakTargetK: 3,
-  gridCaroBonusPoints: 100,
+  gridCaroEnabled: true,
+  gridCaroBonusPoints: 30,
   gridPreviewDuration: 5,
   // Dice Race defaults
   diceTrackTotalTiles: 30,

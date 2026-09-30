@@ -21,6 +21,8 @@ import TournamentBracket from "@/components/modes/TournamentBracket";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
+import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -40,6 +42,7 @@ export default function DisplayPage() {
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [soundMuted, setSoundMuted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -389,8 +392,15 @@ export default function DisplayPage() {
     const isTeamMode = roomState?.teamMode === "TEAM";
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-6xl mx-auto relative" onClick={handleUnlockAudio}>
-        {/* Floating Sound Toggle */}
-        <div className="absolute top-6 right-6 z-20">
+        {/* Floating Sound and Rule Controls */}
+        <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 text-cyan-300 hover:text-white hover:bg-white/10 transition"
+          >
+            <span>📖</span>
+            <span>Thể lệ luật chơi</span>
+          </button>
           <button
             onClick={(e) => { e.stopPropagation(); toggleSound(); }}
             className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition"
@@ -409,7 +419,7 @@ export default function DisplayPage() {
           </div>
         )}
 
-        <div className="text-center mb-10">
+        <div className="text-center mb-8">
           <span className="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
             {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
           </span>
@@ -424,6 +434,13 @@ export default function DisplayPage() {
             Truy cập <span className="text-white font-bold font-mono">/play/{code}</span> để tham gia
           </p>
         </div>
+
+        {/* Detailed Game Rules Card */}
+        {roomState && (
+          <div className="w-full max-w-4xl mb-6">
+            <GameModeRulesCard mode={roomState.mode} onOpenModal={() => setShowRulesModal(true)} />
+          </div>
+        )}
 
         {isTeamMode ? (
           <div className="w-full space-y-4">
@@ -752,12 +769,21 @@ export default function DisplayPage() {
       <div className="glass rounded-2xl p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-bold">🏆 Bảng điểm</h3>
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
-            className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 hover:bg-white/10 transition"
-          >
-            {soundMuted ? "🔇 Tắt" : "🔊 Bật"}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 text-cyan-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1"
+            >
+              <span>📖</span>
+              <span>Luật</span>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 hover:bg-white/10 transition"
+            >
+              {soundMuted ? "🔇 Tắt" : "🔊 Bật"}
+            </button>
+          </div>
         </div>
         {sortedTeams.map((entry: any, i) => (
           <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
@@ -769,6 +795,13 @@ export default function DisplayPage() {
           </div>
         ))}
       </div>
+
+      {/* Rules Modal */}
+      <GameModeRulesModal
+        mode={roomState?.mode}
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

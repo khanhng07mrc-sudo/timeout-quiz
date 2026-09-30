@@ -89,65 +89,71 @@ function checkGridCaroStreak(
   cols: number,
   teamId: string,
   targetK: number
-): boolean {
-  if (rows < 4 || cols < 4 || targetK < 3) return false;
+): GridCell[] | null {
+  if (rows < 4 || cols < 4 || targetK < 3) return null;
 
-  const board: (string | null)[][] = Array.from({ length: rows }, () => Array(cols).fill(null));
+  const cellMap = new Map<string, GridCell>();
   cells.forEach((c) => {
-    if (c.isCompleted && c.claimedByTeamId) {
-      board[c.row][c.col] = c.claimedByTeamId;
-    }
+    cellMap.set(`${c.row},${c.col}`, c);
   });
 
   // Check rows
   for (let r = 0; r < rows; r++) {
-    let streak = 0;
-    for (let c = 0; c < cols; c++) {
-      if (board[r][c] === teamId) {
-        streak++;
-        if (streak >= targetK) return true;
-      } else {
-        streak = 0;
+    for (let c = 0; c <= cols - targetK; c++) {
+      const streakCells: GridCell[] = [];
+      for (let k = 0; k < targetK; k++) {
+        const cell = cellMap.get(`${r},${c + k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
+      if (streakCells.length === targetK) return streakCells;
     }
   }
 
   // Check columns
   for (let c = 0; c < cols; c++) {
-    let streak = 0;
-    for (let r = 0; r < rows; r++) {
-      if (board[r][c] === teamId) {
-        streak++;
-        if (streak >= targetK) return true;
-      } else {
-        streak = 0;
+    for (let r = 0; r <= rows - targetK; r++) {
+      const streakCells: GridCell[] = [];
+      for (let k = 0; k < targetK; k++) {
+        const cell = cellMap.get(`${r + k},${c}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
+      if (streakCells.length === targetK) return streakCells;
     }
   }
 
   // Check diagonals (top-left to bottom-right)
   for (let r = 0; r <= rows - targetK; r++) {
     for (let c = 0; c <= cols - targetK; c++) {
-      let streak = 0;
+      const streakCells: GridCell[] = [];
       for (let k = 0; k < targetK; k++) {
-        if (board[r + k][c + k] === teamId) streak++;
+        const cell = cellMap.get(`${r + k},${c + k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
-      if (streak === targetK) return true;
+      if (streakCells.length === targetK) return streakCells;
     }
   }
 
   // Check anti-diagonals (top-right to bottom-left)
   for (let r = 0; r <= rows - targetK; r++) {
     for (let c = targetK - 1; c < cols; c++) {
-      let streak = 0;
+      const streakCells: GridCell[] = [];
       for (let k = 0; k < targetK; k++) {
-        if (board[r + k][c - k] === teamId) streak++;
+        const cell = cellMap.get(`${r + k},${c - k}`);
+        if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+          streakCells.push(cell);
+        }
       }
-      if (streak === targetK) return true;
+      if (streakCells.length === targetK) return streakCells;
     }
   }
 
-  return false;
+  return null;
 }
 
 function buildTournamentMatches(teams: any[], questionsPerMatch: number): TournamentMatch[] {
@@ -1347,8 +1353,11 @@ export function registerSocketHandlers(io: IO) {
           const rows = config?.gridRows || 4;
           const cols = config?.gridCols || 4;
           const streakK = config?.gridStreakTargetK || 3;
-          const bonusPts = config?.gridCaroBonusPoints || 100;
+          const bonusPts = config?.gridCaroBonusPoints || 30;
           const prevSecs = config?.gridPreviewDuration || 5;
+          const totalCells = rows * cols;
+          const isCaroEligible = rows >= 4 && cols >= 4;
+          const caroEnabled = isCaroEligible && config?.gridCaroEnabled !== false && questions.length >= totalCells;
 
           const cells: GridCell[] = [];
           for (let r = 0; r < rows; r++) {
@@ -1371,12 +1380,13 @@ export function registerSocketHandlers(io: IO) {
           const gridCaroState: GridCaroState = {
             rows,
             cols,
-            totalCells: rows * cols,
+            totalCells,
             cells,
             previewActive: true,
             previewRemaining: prevSecs,
             currentTurnTeamId: teams[0]?.id,
             currentTurnTeamName: teams[0]?.name,
+            caroEnabled,
             streakTargetK: streakK,
             caroAchievedTeams: [],
             caroBonusPoints: bonusPts,
@@ -1704,21 +1714,24 @@ export function registerSocketHandlers(io: IO) {
         roomUsedQuestions.set(room.id, usedSet);
       }
 
-      const questions = room.quizBank?.questions ?? [];
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const questions = gridState.caroEnabled
+        ? rawQuestions.slice(0, gridState.totalCells)
+        : rawQuestions;
       const unusedQ = questions.find((q: any) => !usedSet!.has(q.id));
 
       if (!unusedQ) {
-        socket.emit("error", "Đã hết câu hỏi khả dụng trong bộ đề!");
+        socket.emit("error", "Đã hết câu hỏi khả dụng trong bàn cờ!");
         return;
       }
 
       usedSet.add(unusedQ.id);
 
-      const qIndex = questions.findIndex((q: any) => q.id === unusedQ.id);
+      const qIndex = rawQuestions.findIndex((q: any) => q.id === unusedQ.id);
       room.currentQuestion = qIndex;
       io.to(`room:${room.code}`).emit("game:grid:update", gridState);
 
-      await startQuestionPrepareAndLaunch(room, questions, qIndex);
+      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
     });
 
     // ── Dice Race Events ──────────────────────────────────────────────────────
@@ -1866,16 +1879,19 @@ export function registerSocketHandlers(io: IO) {
         roomUsedQuestions.set(room.id, usedSet);
       }
 
-      const questions = room.quizBank?.questions ?? [];
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const questions = gridState.caroEnabled
+        ? rawQuestions.slice(0, gridState.totalCells)
+        : rawQuestions;
       const unusedQ = questions.find((q: any) => !usedSet!.has(q.id));
       if (!unusedQ) return;
 
       usedSet.add(unusedQ.id);
-      const qIndex = questions.findIndex((q: any) => q.id === unusedQ.id);
+      const qIndex = rawQuestions.findIndex((q: any) => q.id === unusedQ.id);
       room.currentQuestion = qIndex;
       io.to(`room:${room.code}`).emit("game:grid:update", gridState);
 
-      await startQuestionPrepareAndLaunch(room, questions, qIndex);
+      await startQuestionPrepareAndLaunch(room, rawQuestions, qIndex);
     });
 
     socket.on("admin:dice:roll:manual", async () => {
@@ -2359,22 +2375,29 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
 
       let awardedPoints = cell.points;
 
-      const wonCaro = checkGridCaroStreak(
-        gridState.cells,
-        gridState.rows,
-        gridState.cols,
-        currentTeam.id,
-        gridState.streakTargetK
-      );
+      if (gridState.caroEnabled) {
+        const winningStreak = checkGridCaroStreak(
+          gridState.cells,
+          gridState.rows,
+          gridState.cols,
+          currentTeam.id,
+          gridState.streakTargetK
+        );
 
-      if (wonCaro && !gridState.caroAchievedTeams.includes(currentTeam.name)) {
-        gridState.caroAchievedTeams.push(currentTeam.name);
-        awardedPoints += gridState.caroBonusPoints;
-        io.to(`room:${roomCode}`).emit("game:grid:caro:celebrate", {
-          teamId: currentTeam.id,
-          teamName: currentTeam.name,
-          bonusPoints: gridState.caroBonusPoints,
-        });
+        if (winningStreak && winningStreak.length > 0 && !gridState.caroAchievedTeams.includes(currentTeam.name)) {
+          const streakPtsSum = winningStreak.reduce((acc, c) => acc + c.points, 0);
+          const avgPts = streakPtsSum / winningStreak.length;
+          // Tính bằng trung bình cộng điểm số của K ô tạo nên chuỗi (làm tròn về số chia hết cho 5 gần nhất, tối thiểu 10)
+          const dynamicBonus = Math.max(10, Math.round(avgPts / 5) * 5);
+
+          gridState.caroAchievedTeams.push(currentTeam.name);
+          awardedPoints += dynamicBonus;
+          io.to(`room:${roomCode}`).emit("game:grid:caro:celebrate", {
+            teamId: currentTeam.id,
+            teamName: currentTeam.name,
+            bonusPoints: dynamicBonus,
+          });
+        }
       }
 
       const upd = await prisma.team.update({

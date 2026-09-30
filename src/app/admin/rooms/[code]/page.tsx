@@ -16,6 +16,7 @@ import { BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import Link from "next/link";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import { soundManager } from "@/lib/sound-manager";
+import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
@@ -43,6 +44,7 @@ export default function AdminRoomPage() {
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const soundEnabledRef = useRef(false);
 
   const toggleSound = () => {
@@ -366,6 +368,14 @@ export default function AdminRoomPage() {
           >
             <span>{soundEnabled ? "🔊" : "🔇"}</span>
             <span>{soundEnabled ? "Âm thanh: BẬT" : "Âm thanh"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowRulesModal(true)}
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-cyan-300 hover:text-white"
+          >
+            <span>📖</span>
+            <span>Luật chơi</span>
           </button>
           <Link
             href={`/display/${code}`}
@@ -1125,6 +1135,13 @@ export default function AdminRoomPage() {
           </div>
         )}
       </div>
+
+      {/* Rules Modal */}
+      <GameModeRulesModal
+        mode={roomState?.mode}
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

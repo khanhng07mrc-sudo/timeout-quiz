@@ -40,7 +40,7 @@ export default function GridCaroBoard({
     caroAchievedTeams,
   } = gridState;
 
-  const ticTacToeActive = rows >= 4 && cols >= 4;
+  const ticTacToeActive = !!gridState.caroEnabled && rows >= 4 && cols >= 4;
 
   const difficultyColors: Record<string, string> = {
     "DỄ": "text-green-400 border-green-500/40 bg-green-500/10",
@@ -57,15 +57,21 @@ export default function GridCaroBoard({
           <span className="text-3xl">🎯</span>
           <div>
             <h3 className={`font-black ${isDisplay ? "text-2xl" : "text-lg"} text-white flex items-center gap-2`}>
-              Lưới Câu Hỏi & Đấu Caro {rows}×{cols}
-              {ticTacToeActive && (
+              {ticTacToeActive ? `Lưới Câu Hỏi & Đấu Caro ${rows}×${cols}` : `Lưới Chọn Ô Câu Hỏi ${rows}×${cols}`}
+              {ticTacToeActive ? (
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40">
-                  Tic-Tac-Toe ({streakTargetK} ô thẳng hàng +{caroBonusPoints}đ)
+                  Caro ({streakTargetK} ô thẳng hàng · Thưởng điểm chuỗi)
+                </span>
+              ) : (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  Chọn ô tự do
                 </span>
               )}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Chọn ô điểm số · Đúng được khắc màu đội · Sai không bị phạt điểm
+              {ticTacToeActive
+                ? `Chọn ô điểm số · Đúng chiếm ô màu đội · Xếp liền ${streakTargetK} ô (ngang/dọc/chéo) nhận thưởng Caro!`
+                : "Chọn ô điểm số · Trả lời đúng nhận trọn điểm ô · Sai không trừ điểm và ô mở lại với câu hỏi mới"}
             </p>
           </div>
         </div>
@@ -174,11 +180,11 @@ export default function GridCaroBoard({
       </div>
 
       {/* Footer Instructions / Caro Winners */}
-      {caroAchievedTeams.length > 0 && (
-        <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-xs flex items-center gap-2">
+      {ticTacToeActive && caroAchievedTeams.length > 0 && (
+        <div className="p-3 rounded-xl bg-yellow-500/10 border border-yellow-500/40 text-yellow-300 text-xs flex items-center gap-2 animate-bounce-in">
           <span>🎉</span>
           <span className="font-bold">Đã đạt liên hoàn Caro:</span>
-          <span>{caroAchievedTeams.join(", ")} (+{caroBonusPoints}đ thưởng)</span>
+          <span>{caroAchievedTeams.join(", ")} (Đã nhận thưởng điểm Caro chuỗi!)</span>
         </div>
       )}
     </div>

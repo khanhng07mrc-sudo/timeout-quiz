@@ -5,10 +5,26 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "A", "text": "Thấu hiểu nghiệp vụ (Business Understanding)", "isCorrect": false },
-      { "id": "B", "text": "Chuẩn bị và làm sạch dữ liệu (Data Preparation)", "isCorrect": true },
-      { "id": "C", "text": "Xây dựng mô hình (Modeling)", "isCorrect": false },
-      { "id": "D", "text": "Triển khai hệ thống (Deployment)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Thấu hiểu nghiệp vụ (Business Understanding)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Chuẩn bị và làm sạch dữ liệu (Data Preparation)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Xây dựng mô hình (Modeling)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Triển khai hệ thống (Deployment)",
+        "isCorrect": false
+      }
     ],
     "hint": "Khâu xử lý dữ liệu khuyết, lọc ngoại lai, mã hóa biến và chuẩn hóa thang đo."
   },
@@ -18,11 +34,31 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Dự báo giá bán nhà ở dựa trên diện tích và vị trí", "isCorrect": false },
-      { "id": "B", "text": "Phân cụm khách hàng thành các nhóm hành vi mua sắm bằng K-Means", "isCorrect": false },
-      { "id": "C", "text": "Dự đoán khả năng khách hàng vỡ nợ tín dụng (Vỡ nợ / Không vỡ nợ)", "isCorrect": true },
-      { "id": "D", "text": "Rút gọn số chiều dữ liệu bằng phương pháp PCA", "isCorrect": false },
-      { "id": "A", "text": "A", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Dự báo giá bán nhà ở dựa trên diện tích và vị trí",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Phân cụm khách hàng thành các nhóm hành vi mua sắm bằng K-Means",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Dự đoán khả năng khách hàng vỡ nợ tín dụng (Vỡ nợ / Không vỡ nợ)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Rút gọn số chiều dữ liệu bằng phương pháp PCA",
+        "isCorrect": false
+      },
+      {
+        "id": "A",
+        "text": "A",
+        "isCorrect": false
+      }
     ],
     "hint": "Đầu ra là nhãn danh mục rời rạc (Nhị phân: Có/Không)."
   },
@@ -32,10 +68,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Precision (Độ chuẩn xác)", "isCorrect": true },
-      { "id": "B", "text": "Recall (Độ nhạy / Độ bao phủ)", "isCorrect": true },
-      { "id": "C", "text": "F1-Score (Trung bình điều hòa của Precision và Recall)", "isCorrect": true },
-      { "id": "D", "text": "R-squared (Hệ số xác định)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Precision (Độ chuẩn xác)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Recall (Độ nhạy / Độ bao phủ)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "F1-Score (Trung bình điều hòa của Precision và Recall)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "R-squared (Hệ số xác định)",
+        "isCorrect": false
+      }
     ],
     "hint": "R-squared dùng cho hồi quy tuyến tính; 3 chỉ số còn lại phân tích từ Confusion Matrix."
   },
@@ -45,10 +97,26 @@
     "points": 15,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Mô hình hoạt động kém trên cả tập huấn luyện (Train) lẫn tập kiểm thử (Test)", "isCorrect": false },
-      { "id": "B", "text": "Mô hình ghi nhớ quá mức nhiễu trên tập huấn luyện dẫn đến độ chính xác cao trên Train nhưng rất thấp trên Test", "isCorrect": true },
-      { "id": "C", "text": "Mô hình có quá ít tham số để học các quy luật dữ liệu", "isCorrect": false },
-      { "id": "D", "text": "Kích thước tập dữ liệu quá lớn so với dung lượng RAM", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Mô hình hoạt động kém trên cả tập huấn luyện (Train) lẫn tập kiểm thử (Test)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Mô hình ghi nhớ quá mức nhiễu trên tập huấn luyện dẫn đến độ chính xác cao trên Train nhưng rất thấp trên Test",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Mô hình có quá ít tham số để học các quy luật dữ liệu",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Kích thước tập dữ liệu quá lớn so với dung lượng RAM",
+        "isCorrect": false
+      }
     ],
     "hint": "Học vẹt dữ liệu cũ khiến khả năng tổng quát hóa dữ liệu mới bị suy giảm trầm trọng."
   },
@@ -66,8 +134,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
-      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": false
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": true
+      }
     ],
     "hint": "Hệ số tương quan r mới từ -1 đến +1. Trong hồi quy OLS chuẩn, R-squared dao động từ 0 đến 1 (tỷ lệ giải thích biến thiên)."
   },
@@ -77,10 +153,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Trung vị (Median)", "isCorrect": true },
-      { "id": "B", "text": "Phương sai (Variance)", "isCorrect": false },
-      { "id": "C", "text": "Độ lệch chuẩn (Standard Deviation)", "isCorrect": false },
-      { "id": "D", "text": "Số lớn nhất (Maximum)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Trung vị (Median)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phương sai (Variance)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Độ lệch chuẩn (Standard Deviation)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Số lớn nhất (Maximum)",
+        "isCorrect": false
+      }
     ],
     "hint": "Giá trị nằm chính giữa chuỗi số liệu được sắp xếp, không bị kéo lệch bởi các giá trị ngoại lai dị biệt."
   },
@@ -90,8 +182,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Chia dữ liệu thành k phần bằng nhau, luân phiên dùng 1 phần để kiểm tra và k-1 phần để huấn luyện."
   },
@@ -101,10 +201,26 @@
     "points": 15,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Chỉ số Gini (Gini Impurity)", "isCorrect": true },
-      { "id": "B", "text": "Khoảng cách Euclidean", "isCorrect": false },
-      { "id": "C", "text": "Khoảng cách Manhattan", "isCorrect": false },
-      { "id": "D", "text": "Độ tương đồng Cosine", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Chỉ số Gini (Gini Impurity)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Khoảng cách Euclidean",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Khoảng cách Manhattan",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Độ tương đồng Cosine",
+        "isCorrect": false
+      }
     ],
     "hint": "Chỉ số bằng 0 khi tất cả các phần tử tại nút đều thuộc về cùng một nhóm duy nhất."
   },
@@ -114,11 +230,432 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Recall (Độ nhạy) của lớp gian lận và chỉ số F1-Score / PR-AUC", "isCorrect": true },
-      { "id": "B", "text": "Hệ số xác định R-squared (R2) và Sai số bình phương trung bình (MSE)", "isCorrect": false },
-      { "id": "C", "text": "Độ chính xác thô (Overall Accuracy) kết hợp kiểm định Chi-square", "isCorrect": false },
-      { "id": "D", "text": "Thời gian huấn luyện mô hình (Training time)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Recall (Độ nhạy) của lớp gian lận và chỉ số F1-Score / PR-AUC",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Hệ số xác định R-squared (R2) và Sai số bình phương trung bình (MSE)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Độ chính xác thô (Overall Accuracy) kết hợp kiểm định Chi-square",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thời gian huấn luyện mô hình (Training time)",
+        "isCorrect": false
+      }
     ],
     "hint": "Với dữ liệu mất cân bằng nghiêm trọng, Recall (tránh bỏ lọt gian lận) và F1-Score phản ánh chất lượng mô hình chính xác hơn Accuracy."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong mô hình hồi quy tuyến tính cổ điển OLS, hệ số phóng đại phương sai VIF (Variance Inflation Factor) của một biến độc lập vượt quá 10 là dấu hiệu cảnh báo khuyết tật gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phương sai sai số thay đổi (Heteroskedasticity)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Hiện tượng đa cộng tuyến nghiêm trọng (Multicollinearity)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hiện tượng tự tương quan chuỗi thời gian",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Mô hình thiếu biến quan trọng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "VIF > 5 hoặc 10 cho thấy biến độc lập có tương quan tuyến tính rất mạnh với các biến giải thích khác."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Để kiểm định hiện tượng Tự tương quan bậc 1 (Autocorrelation) trong phần dư của mô hình hồi quy chuỗi thời gian, đại lượng thống kê nào được sử dụng phổ biến nhất?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thống kê Durbin-Watson (DW)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Kiểm định Shapiro-Wilk",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chỉ số Kurtosis",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Hệ số tương quan Pearson",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Giá trị thống kê DW dao động quanh mức 2 cho thấy phần dư không có tự tương quan bậc 1."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong bài toán phân loại nhị phân (Binary Classification), diện tích dưới đường cong ROC (ROC-AUC) bằng 0.5 phản ánh mô hình có khả năng phân biệt tương đương với việc tung đồng xu ngẫu nhiên.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "AUC = 1 là phân loại hoàn hảo; AUC = 0.5 là dự đoán hoàn toàn ngẫu nhiên không có giá trị phân biệt."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi tập dữ liệu gặp tình trạng mất cân bằng lớp nghiêm trọng (ví dụ 99.5% giao dịch bình thường, chỉ 0.5% giao dịch gian lận thẻ tín dụng), chỉ số đánh giá mô hình nào đáng tin cậy hơn Accuracy?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Accuracy thông thường",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "F1-Score / PR-AUC (Precision-Recall Curve)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "R-squared",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Sai số bình phương trung bình MSE",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mô hình ngây thơ đoán tất cả là 'bình thường' vẫn đạt Accuracy 99.5% nhưng bỏ sót 100% gian lận."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong thuật toán Cây quyết định (Decision Tree), chỉ số nào thường được sử dụng để đo lường mức độ hỗn loạn (độ bất thuần) của dữ liệu tại mỗi nút phân chia?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hệ số tương quan Spearman",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Entropy hoặc Chỉ số Gini (Gini Impurity)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Khoảng biến thiên Range",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Phân vị vị trí Quartile",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mục tiêu phân nhánh là tối đa hóa độ giảm bất thuần (Information Gain hoặc Gini Gain)."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những kỹ thuật nào dưới đây thường được áp dụng hiệu quả để khắc phục hiện tượng Quá khớp (Overfitting) trong các mô hình máy học?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Áp dụng hiệu chỉnh phạt trọng số L1 (Lasso) hoặc L2 (Ridge)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tăng kích thước và tính đa dạng của tập dữ liệu huấn luyện",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Giảm độ sâu tối đa và tỉa cành cây quyết định (Pruning)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tăng độ phức tạp của mô hình lên vô hạn",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Overfitting xảy ra khi mô hình học thuộc lòng cả nhiễu; cần đơn giản hóa mô hình và phạt trọng số."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Thuật toán Hồi quy Lasso (L1 Regularization) có đặc tính co các hệ số hồi quy của các biến không quan trọng về đúng bằng 0, nhờ đó có thể sử dụng làm công cụ tự động lựa chọn biến (Feature Selection).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hình phạt chuẩn L1 tạo ra các nghiệm góc (sparse solution), triệt tiêu các biến không có ý nghĩa."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong thuật toán phân cụm K-Means, phương pháp trực quan đồ thị nào thường được sử dụng phổ biến nhất để xác định số lượng cụm K tối ưu?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Biểu đồ phân tán Scatter Plot",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Phương pháp Điểm khuỷu tay (Elbow Method)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Biểu đồ bánh Pie Chart",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Sơ đồ mạng PERT",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đồ thị vẽ tổng bình phương khoảng cách nội cụm (WCSS) theo K; điểm uốn khuỷu tay là K hợp lý."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Kỹ thuật Giảm chiều dữ liệu Phân tích thành phần chính (PCA) tìm kiếm các trục tọa độ mới nhằm mục tiêu tối ưu hóa điều gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tối đa hóa phương sai (độ phân tán thông tin) của dữ liệu trên các thành phần trực giao mới",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tối đa hóa số lượng cột trong bảng dữ liệu",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Làm tròn tất cả các số thực thành số nguyên",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xóa bỏ ngẫu nhiên 50% số dòng quan sát",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thành phần chính thứ nhất giữ lại nhiều phương sai nhất, các thành phần sau trực giao và giảm dần."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Kỹ thuật Kiểm định chéo K-Fold (K-Fold Cross-Validation) có mục đích chính là gì trong quy trình học máy?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tăng tốc độ tính toán của bộ vi xử lý",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Đánh giá khả năng tổng quát hóa và độ ổn định của mô hình trên các tập dữ liệu độc lập chưa từng thấy",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tự động điền dữ liệu khuyết thiếu",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xác định mã định danh khách hàng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chia dữ liệu thành K phần, luân phiên dùng K-1 phần huấn luyện và 1 phần kiểm định."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những phương pháp tiền xử lý nào dưới đây thường được áp dụng để phát hiện và xử lý giá trị ngoại lai (Outliers)?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Quy tắc khoảng liên phần tư (Interquartile Range - 1.5 × IQR)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Điểm chuẩn hóa Z-score (vượt quá ngưỡng |Z| > 3)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Kỹ thuật cắt ngọn Winsorization (thay thế bằng giá trị bách phân vị biên)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tăng gấp đôi giá trị ngoại lai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "IQR và Z-score là hai kỹ thuật thống kê chuẩn xác định điểm dị biệt."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Phương pháp chuẩn hóa Min-Max Scaling biến đổi dữ liệu về khoảng giá trị cố định [0, 1], trong khi Standard Scaling đưa biến về phân phối có giá trị trung bình bằng 0 và độ lệch chuẩn bằng 1.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Min-Max: (x - min) / (max - min); Standard: (x - mean) / std."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong mô hình hồi quy Logistic, hàm số toán học nào có vai trò ánh xạ giá trị đầu ra tuyến tính thành xác suất nằm trong khoảng (0, 1)?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hàm Sigmoid (Logistic Function)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Hàm bậc hai Parabol",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hàm lượng giác Sin / Cos",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Hàm bậc ba Đa thức",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Sigmoid: f(z) = 1 / (1 + e^(-z)) nén giá trị thực (-∞, +∞) về (0, 1)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong bài toán phát hiện giao dịch gian lận ngân hàng, chỉ số Độ nhạy (Recall) đo lường điều gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tỷ lệ các giao dịch thực sự gian lận được mô hình phát hiện chính xác (TP / (TP + FN))",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tỷ lệ các dự đoán gian lận thực tế là đúng (TP / (TP + FP))",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tổng thời gian máy tính chạy thuật toán",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Số lượng cây trong rừng ngẫu nhiên",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Recall cao nghĩa là bỏ sót rất ít trường hợp gian lận thực tế."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một sàn thương mại điện tử muốn phân nhóm 500.000 khách hàng thành các phân khúc tiếp thị đặc thù dựa trên 3 tiêu chí: Độ mới giao dịch (Recency), Tần suất mua hàng (Frequency) và Tổng chi tiêu (Monetary). Do dữ liệu khách hàng chưa có nhãn phân loại sẵn trước, thuật toán học máy nào là lựa chọn phù hợp nhất?",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hồi quy tuyến tính đa biến OLS",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Phân cụm K-Means hoặc Phân cụm phân cấp (Học không giám sát)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Mô hình hồi quy Logistic nhị phân",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cây quyết định nhị phân có giám sát",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bài toán gom nhóm tự động không có nhãn đầu ra là bài toán kinh điển của Học không giám sát (Clustering)."
   }
 ]

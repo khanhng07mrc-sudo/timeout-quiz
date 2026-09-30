@@ -25,6 +25,7 @@ import TournamentBracket from "@/components/modes/TournamentBracket";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
+import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
@@ -48,6 +49,7 @@ export default function PlayPage() {
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
   const soundEnabledRef = useRef(false);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
@@ -462,6 +464,13 @@ export default function PlayPage() {
           <ScoreDisplay roomState={roomState} playerId={playerId} />
         </div>
         <button
+          onClick={() => setShowRulesModal(true)}
+          title="Xem thể lệ và luật chơi"
+          className="p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-base shrink-0 text-cyan-300"
+        >
+          📖
+        </button>
+        <button
           onClick={toggleSound}
           title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
           className="p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-base shrink-0"
@@ -605,6 +614,13 @@ export default function PlayPage() {
           onUse={handleUsePowerup}
         />
       )}
+
+      {/* Rules Modal */}
+      <GameModeRulesModal
+        mode={roomState?.mode}
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+      />
     </div>
   );
 }

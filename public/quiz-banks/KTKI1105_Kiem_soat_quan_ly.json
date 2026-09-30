@@ -5,10 +5,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Trung tâm chi phí (Cost Center)", "isCorrect": false },
-      { "id": "B", "text": "Trung tâm doanh thu (Revenue Center)", "isCorrect": false },
-      { "id": "C", "text": "Trung tâm lợi nhuận (Profit Center)", "isCorrect": false },
-      { "id": "D", "text": "Trung tâm đầu tư (Investment Center)", "isCorrect": true }
+      {
+        "id": "A",
+        "text": "Trung tâm chi phí (Cost Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Trung tâm doanh thu (Revenue Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trung tâm lợi nhuận (Profit Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trung tâm đầu tư (Investment Center)",
+        "isCorrect": true
+      }
     ],
     "hint": "Cấp độ trung tâm trách nhiệm tài chính cao nhất, đánh giá hiệu quả bằng chỉ số ROI hoặc RI."
   },
@@ -18,10 +34,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Tài chính - Khách hàng - Quy trình nội bộ - Học hỏi & Phát triển", "isCorrect": true },
-      { "id": "B", "text": "Doanh thu - Chi phí - Lợi nhuận - Thuế", "isCorrect": false },
-      { "id": "C", "text": "Sản xuất - Bán hàng - Nhân sự - Tài chính", "isCorrect": false },
-      { "id": "D", "text": "Chiến lược - Kế hoạch - Thực hiện - Kiểm tra", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Tài chính - Khách hàng - Quy trình nội bộ - Học hỏi & Phát triển",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Doanh thu - Chi phí - Lợi nhuận - Thuế",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Sản xuất - Bán hàng - Nhân sự - Tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chiến lược - Kế hoạch - Thực hiện - Kiểm tra",
+        "isCorrect": false
+      }
     ],
     "hint": "Mô hình do Kaplan & Norton phát triển nhằm cân bằng giữa chỉ số tài chính quá khứ và động lực phi tài chính tương lai."
   },
@@ -31,10 +63,26 @@
     "points": 15,
     "timeLimit": 35,
     "options": [
-      { "id": "A", "text": "Môi trường kiểm soát (Control Environment)", "isCorrect": true },
-      { "id": "B", "text": "Đánh giá rủi ro (Risk Assessment)", "isCorrect": true },
-      { "id": "C", "text": "Hoạt động giám sát (Monitoring Activities)", "isCorrect": true },
-      { "id": "D", "text": "Tối đa hóa lợi nhuận cổ đông (Profit Maximization)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Môi trường kiểm soát (Control Environment)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Đánh giá rủi ro (Risk Assessment)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hoạt động giám sát (Monitoring Activities)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tối đa hóa lợi nhuận cổ đông (Profit Maximization)",
+        "isCorrect": false
+      }
     ],
     "hint": "COSO bao gồm 5 trụ cột quản trị rủi ro và tuân thủ quy trình, không xem việc tối đa hóa lợi nhuận là một bộ phận kiểm soát."
   },
@@ -44,10 +92,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "RI = Lợi nhuận hoạt động - (Vốn đầu tư × Tỷ suất lợi nhuận yêu cầu tối thiểu)", "isCorrect": true },
-      { "id": "B", "text": "RI = Lợi nhuận hoạt động / Vốn đầu tư trung bình", "isCorrect": false },
-      { "id": "C", "text": "RI = Tổng doanh thu - Tổng chi phí biến đổi", "isCorrect": false },
-      { "id": "D", "text": "RI = Lợi nhuận sau thuế - Chi phí lãi vay", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "RI = Lợi nhuận hoạt động - (Vốn đầu tư × Tỷ suất lợi nhuận yêu cầu tối thiểu)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "RI = Lợi nhuận hoạt động / Vốn đầu tư trung bình",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "RI = Tổng doanh thu - Tổng chi phí biến đổi",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "RI = Lợi nhuận sau thuế - Chi phí lãi vay",
+        "isCorrect": false
+      }
     ],
     "hint": "Phần lợi nhuận dôi ra sau khi đã trừ đi chi phí sử dụng vốn đầu tư tối thiểu."
   },
@@ -57,8 +121,16 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "ROI dễ dẫn đến hiện tượng cận thị (sub-optimization), trong khi RI khuyến khích nhận dự án sinh lời vượt chi phí vốn."
   },
@@ -76,10 +148,26 @@
     "points": 15,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Giá theo chi phí biến đổi", "isCorrect": false },
-      { "id": "B", "text": "Giá theo chi phí toàn bộ (Full Cost)", "isCorrect": false },
-      { "id": "C", "text": "Giá thị trường (Market-based Transfer Price)", "isCorrect": true },
-      { "id": "D", "text": "Giá do công ty mẹ áp đặt chủ quan", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Giá theo chi phí biến đổi",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Giá theo chi phí toàn bộ (Full Cost)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Giá thị trường (Market-based Transfer Price)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Giá do công ty mẹ áp đặt chủ quan",
+        "isCorrect": false
+      }
     ],
     "hint": "Dùng giá niêm yết công khai trên thị trường cạnh tranh làm căn cứ minh bạch nhất."
   },
@@ -89,8 +177,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
-      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": false
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": true
+      }
     ],
     "hint": "Kiểm soát hành vi tập trung vào việc tuân thủ quy tắc, thao tác, quy trình thực hiện; kiểm soát kết quả mới là đo đầu ra (Results Control)."
   },
@@ -100,10 +196,26 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "A", "text": "Lắp đặt camera giám sát dây chuyền sản xuất", "isCorrect": false },
-      { "id": "B", "text": "Đánh giá doanh số bán hàng cuối tháng", "isCorrect": false },
-      { "id": "C", "text": "Tuyển dụng nhân viên có hệ giá trị phù hợp và xây dựng văn hóa tin cậy", "isCorrect": true },
-      { "id": "D", "text": "Phân chia hạn mức chi tiêu ngân sách bằng chữ ký", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Lắp đặt camera giám sát dây chuyền sản xuất",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Đánh giá doanh số bán hàng cuối tháng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tuyển dụng nhân viên có hệ giá trị phù hợp và xây dựng văn hóa tin cậy",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Phân chia hạn mức chi tiêu ngân sách bằng chữ ký",
+        "isCorrect": false
+      }
     ],
     "hint": "Dựa trên sự tự giác, đạo đức nghề nghiệp và chuẩn mực văn hóa doanh nghiệp."
   },
@@ -113,11 +225,432 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Hành vi đối phó / thao túng hệ thống (Gaming the system) do hệ thống kiểm soát kết quả quá nặng về chỉ tiêu tài chính ngắn hạn", "isCorrect": true },
-      { "id": "B", "text": "Khả năng ứng biến linh hoạt và tối ưu chi phí của nhà quản trị sản xuất", "isCorrect": false },
-      { "id": "C", "text": "Áp dụng đúng chuẩn mực kế toán dồn tích (Accrual accounting)", "isCorrect": false },
-      { "id": "D", "text": "Phát huy tối đa văn hóa tự chủ theo mô hình Thẻ điểm cân bằng (BSC)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Hành vi đối phó / thao túng hệ thống (Gaming the system) do hệ thống kiểm soát kết quả quá nặng về chỉ tiêu tài chính ngắn hạn",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Khả năng ứng biến linh hoạt và tối ưu chi phí của nhà quản trị sản xuất",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Áp dụng đúng chuẩn mực kế toán dồn tích (Accrual accounting)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Phát huy tối đa văn hóa tự chủ theo mô hình Thẻ điểm cân bằng (BSC)",
+        "isCorrect": false
+      }
     ],
     "hint": "Hiện tượng hy sinh lợi ích dài hạn để làm đẹp số liệu báo cáo tài chính ngắn hạn nhằm hoàn thành KPI."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo báo cáo COSO 2013, thành tố nào đóng vai trò là nền tảng cốt lõi định hình văn hóa liêm chính và kỷ luật cho toàn bộ hệ thống kiểm soát nội bộ?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đánh giá rủi ro (Risk Assessment)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Môi trường kiểm soát (Control Environment)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hoạt động giám sát (Monitoring Activities)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Hệ thống công nghệ thông tin",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Môi trường kiểm soát thể hiện 'giai điệu từ người đứng đầu' (Tone at the top) và cam kết về tính liêm chính."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một trung tâm trách nhiệm mà nhà quản lý có toàn quyền tự chủ và chịu trách nhiệm về Doanh thu, Chi phí lẫn các quyết định phân bổ Vốn đầu tư vào tài sản được gọi là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Trung tâm chi phí (Cost Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Trung tâm doanh thu (Revenue Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trung tâm lợi nhuận (Profit Center)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trung tâm đầu tư (Investment Center)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Trung tâm đầu tư có phạm vi quyền hạn và trách nhiệm rộng lớn nhất trong hệ thống kế toán trách nhiệm."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số Thu nhập thặng dư (Residual Income - RI) dùng để đo lường hiệu quả trung tâm đầu tư được xác định theo công thức nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "RI = Lợi nhuận hoạt động ÷ Tổng tài sản",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "RI = Lợi nhuận hoạt động - (Tỷ suất sinh lời tối thiểu đòi hỏi × Tài sản hoạt động bình quân)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "RI = Doanh thu thuần - Chi phí biến đổi",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "RI = Vốn chủ sở hữu × Chi phí vốn cổ phần",
+        "isCorrect": false
+      }
+    ],
+    "hint": "RI đo lường phần lợi nhuận dôi ra vượt trên mức sinh lời tối thiểu mà tập đoàn mong muốn từ khối tài sản đầu tư."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Chỉ số ROI (Return on Investment) có nhược điểm cố hữu là có thể khiến nhà quản lý từ chối các dự án đầu tư sinh lời có tỷ suất cao hơn chi phí vốn tập đoàn nhưng thấp hơn mức ROI trung bình hiện tại của bộ phận mình (hiện tượng cận thị mục tiêu).",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đây là lý do chỉ số Thu nhập thặng dư (RI) và EVA thường được khuyến nghị thay thế để đạt sự tương thích mục tiêu."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số Giá trị kinh tế gia tăng (Economic Value Added - EVA) khác biệt căn bản so với Lợi nhuận kế toán ở điểm mấu chốt nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "EVA không trừ chi phí lãi vay ngân hàng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "EVA khấu trừ toàn bộ chi phí sử dụng vốn (bao gồm cả chi phí nợ vay lẫn chi phí cơ hội của vốn chủ sở hữu - WACC)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "EVA chỉ tính trên dòng tiền vào",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "EVA luôn luôn lớn hơn doanh thu",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kế toán thông thường bỏ qua chi phí cơ hội của vốn chủ sở hữu; EVA tính đủ toàn bộ chi phí vốn."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC) của Kaplan và Norton, 4 góc nhìn thước đo chiến lược bao gồm những khía cạnh nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khía cạnh Tài chính (Financial Perspective)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Khía cạnh Khách hàng (Customer Perspective)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Khía cạnh Quy trình kinh doanh nội bộ (Internal Business Processes)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Khía cạnh Học hỏi và Phát triển tổ chức (Learning & Growth)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "4 khía cạnh cân bằng giữa ngắn hạn và dài hạn, tài chính và phi tài chính, bên trong và bên ngoài."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong chuỗi quan hệ nguyên nhân - kết quả của BSC, việc nâng cao năng lực nhân sự và văn hóa học hỏi (Học hỏi & Phát triển) là cội nguồn nền tảng thúc đẩy hoàn thiện các quy trình nội bộ, từ đó tạo ra giá trị vượt trội cho khách hàng và dẫn tới thành công tài chính.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đây là luận điểm cốt lõi tạo nên sức mạnh liên kết chiến lược của Thẻ điểm cân bằng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi chuyển nhượng sản phẩm giữa hai bộ phận trong cùng một tập đoàn và có một thị trường bên ngoài hoàn hảo, cạnh tranh gay gắt, phương pháp định giá chuyển nhượng nào tối ưu hóa lợi ích của toàn tập đoàn?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giá chi phí toàn bộ cộng thêm lãi định mức",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Giá thị trường bên ngoài (Market-based transfer price)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Giá do giám đốc bộ phận mua áp đặt",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chuyển giao miễn phí 0 đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khi thị trường hoàn hảo, giá thị trường bảo đảm tính tự chủ và đo lường chính xác hiệu quả từng đơn vị."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi bộ phận bán còn dư thừa năng lực sản xuất (không thể bán hết công suất ra ngoài thị trường), mức giá chuyển nhượng nội bộ tối thiểu mà bộ phận bán có thể chấp nhận là bao nhiêu?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Bằng Chi phí biến đổi phát sinh thêm của sản phẩm",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Bằng Giá bán lẻ trên thị trường",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Bằng Chi phí cố định toàn phần",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Bằng Chi phí vốn WACC",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Vì dư thừa năng lực nên chi phí cơ hội bằng 0, giá sàn chuyển nhượng chỉ cần bù đắp biến phí gia tăng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Nguyên tắc 'Bất kiêm nhiệm / Phân chia trách nhiệm' (Segregation of Duties) trong kiểm soát nội bộ đòi hỏi phải tách biệt các chức năng nào để ngăn ngừa rủi ro gian lận và sai sót?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phê duyệt giao dịch, Thực hiện giao dịch, Ghi chép sổ sách và Bảo quản tài sản vật chất",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chức năng tuyển dụng và chức năng đào tạo nhân viên",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chức năng tiếp thị trực tuyến và tiếp thị trực tiếp",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chức năng trực điện thoại và chức năng gửi thư điện tử",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Nếu một người vừa nắm tài sản vừa ghi sổ kế toán vừa phê duyệt sẽ rất dễ biển thủ mà không ai phát hiện."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những chỉ tiêu tài chính nào dưới đây thường được áp dụng phù hợp để đánh giá trách nhiệm của Trưởng Trung tâm Lợi nhuận (Profit Center)?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Số dư đảm phí / Lợi nhuận đóng góp (Contribution Margin)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Lợi nhuận bộ phận có thể kiểm soát được (Controllable Segment Margin)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Lợi nhuận trước lãi vay và thuế (EBIT của bộ phận)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tỷ suất hoàn vốn đầu tư ROI trên tài sản mua sắm trụ sở chính",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Trung tâm lợi nhuận chỉ chịu trách nhiệm về doanh thu và các chi phí do họ kiểm soát được, không chịu trách nhiệm về vốn đầu tư tài sản dài hạn."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Mục tiêu tối thượng của Hệ thống kiểm soát quản lý (Management Control System) là đạt được sự tương thích về mục tiêu (Goal Congruence) - nghĩa là thúc đẩy các cá nhân hành động vì lợi ích cá nhân của họ mà đồng thời cũng phục vụ tốt nhất lợi ích của tổ chức.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Sự đồng thuận và tương thích mục tiêu giữa các cấp là cốt lõi của kiểm soát quản lý hiện đại."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Hình thức kiểm soát tập trung vào việc giám sát và đánh giá trực tiếp các hành vi và sự tuân thủ quy chuẩn thao tác của nhân viên tại nơi làm việc được gọi là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Kiểm soát kết quả đầu ra (Results Control)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Kiểm soát hành vi / hành động (Action / Behavioral Control)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Kiểm soát tài chính thuần túy",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Kiểm soát xã hội",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kiểm soát hành vi đảm bảo nhân viên thực hiện đúng quy trình thao tác chuẩn (SOP)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khái niệm 'Ngân sách linh hoạt' (Flexible Budget) có ưu điểm nổi bật nào so với 'Ngân sách tĩnh' (Static Budget) khi phân tích biến động chi phí?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Cho phép tùy tiện thay đổi số liệu bất kỳ lúc nào mà không cần lý do",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Tự động điều chỉnh dự toán chi phí phù hợp với mức sản lượng thực tế đạt được, giúp so sánh đúng mức độ tiết kiệm",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Không cần thu thập số liệu thực tế",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chỉ tính toán một mức doanh thu duy nhất",
+        "isCorrect": false
+      }
+    ],
+    "hint": "So sánh chi phí thực tế với ngân sách linh hoạt theo sản lượng thực tế giúp đánh giá hiệu quả chi phí khách quan."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Bộ phận Y có Lợi nhuận hoạt động thuần trong năm là 150 triệu đồng, Tài sản hoạt động bình quân là 1.000 triệu đồng. Ban Giám đốc tập đoàn quy định tỷ suất sinh lời tối thiểu đối với tài sản đầu tư là 12%. Thu nhập thặng dư (RI) của Bộ phận Y trong năm là bao nhiêu?",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "A",
+        "text": "20 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "30 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "45 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "120 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chi phí vốn tối thiểu = 1.000 triệu × 12% = 120 triệu. RI = 150 - 120 = 30 triệu đồng."
   }
 ]

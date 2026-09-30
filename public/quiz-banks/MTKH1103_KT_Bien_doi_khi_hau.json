@@ -5,10 +5,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Do sự thiếu hụt tài chính công của các quốc gia đang phát triển", "isCorrect": false },
-      { "id": "B", "text": "Do phát thải khí nhà kính là một ngoại ứng tiêu cực toàn cầu và bầu khí quyển là tài sản chung không có quyền sở hữu xác định", "isCorrect": true },
-      { "id": "C", "text": "Do chi phí năng lượng tái tạo luôn cao hơn nhiên liệu hóa thạch", "isCorrect": false },
-      { "id": "D", "text": "Do các doanh nghiệp không thể tính toán được chi phí biên sản xuất", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Do sự thiếu hụt tài chính công của các quốc gia đang phát triển",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Do phát thải khí nhà kính là một ngoại ứng tiêu cực toàn cầu và bầu khí quyển là tài sản chung không có quyền sở hữu xác định",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Do chi phí năng lượng tái tạo luôn cao hơn nhiên liệu hóa thạch",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Do các doanh nghiệp không thể tính toán được chi phí biên sản xuất",
+        "isCorrect": false
+      }
     ],
     "hint": "Người gây ô nhiễm không phải gánh chịu toàn bộ chi phí thiệt hại môi trường mà họ gây ra cho xã hội (ngoại ứng tiêu cực)."
   },
@@ -18,10 +34,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Thuế Carbon (Carbon Tax)", "isCorrect": true },
-      { "id": "B", "text": "Hệ thống mua bán hạn ngạch phát thải (Cap-and-Trade / ETS)", "isCorrect": false },
-      { "id": "C", "text": "Trợ cấp tiêu dùng năng lượng sạch", "isCorrect": false },
-      { "id": "D", "text": "Tiêu chuẩn kỹ thuật bắt buộc", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Thuế Carbon (Carbon Tax)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Hệ thống mua bán hạn ngạch phát thải (Cap-and-Trade / ETS)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trợ cấp tiêu dùng năng lượng sạch",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Tiêu chuẩn kỹ thuật bắt buộc",
+        "isCorrect": false
+      }
     ],
     "hint": "Cơ chế dựa trên giá (Price-based instrument), đem lại sự ổn định và chắc chắn về chi phí cho doanh nghiệp."
   },
@@ -31,10 +63,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Giá giao dịch của 1 tín chỉ carbon", "isCorrect": false },
-      { "id": "B", "text": "Tổng lượng phát thải trần cho phép của toàn bộ nền kinh tế (Cap)", "isCorrect": true },
-      { "id": "C", "text": "Lợi nhuận tối đa của các nhà máy công nghiệp", "isCorrect": false },
-      { "id": "D", "text": "Tỷ suất thuế giá trị gia tăng đối với năng lượng", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Giá giao dịch của 1 tín chỉ carbon",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Tổng lượng phát thải trần cho phép của toàn bộ nền kinh tế (Cap)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Lợi nhuận tối đa của các nhà máy công nghiệp",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Tỷ suất thuế giá trị gia tăng đối với năng lượng",
+        "isCorrect": false
+      }
     ],
     "hint": "Nhà nước khóa trần tổng lượng khí thải (Quantity-based); giá thị trường do cung - cầu hạn ngạch tự quyết định."
   },
@@ -44,10 +92,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Chuyển đổi từ điện than sang điện gió và điện mặt trời", "isCorrect": true },
-      { "id": "B", "text": "Trồng và phục hồi rừng đầu nguồn để hấp thụ CO2", "isCorrect": true },
-      { "id": "C", "text": "Xây dựng đê biển kiên cố chống xâm nhập mặn và triều cường", "isCorrect": false },
-      { "id": "D", "text": "Cải tiến giống lúa chịu mặn để đối phó với nước biển dâng", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Chuyển đổi từ điện than sang điện gió và điện mặt trời",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Trồng và phục hồi rừng đầu nguồn để hấp thụ CO2",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Xây dựng đê biển kiên cố chống xâm nhập mặn và triều cường",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cải tiến giống lúa chịu mặn để đối phó với nước biển dâng",
+        "isCorrect": false
+      }
     ],
     "hint": "Xây đê và đổi giống lúa là 'Thích ứng' (Adaptation); năng lượng tái tạo và trồng rừng là 'Giảm nhẹ' (Mitigation)."
   },
@@ -65,8 +129,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Đường MAC thường dốc lên: việc cắt giảm những tấn phát thải đầu tiên thường rẻ, càng về sau càng tốn kém công nghệ cao."
   },
@@ -76,10 +148,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Ngăn chặn hiện tượng 'Rò rỉ carbon' (Carbon Leakage) khi doanh nghiệp di dời sản xuất sang các nước có quy định môi trường lỏng lẻo", "isCorrect": true },
-      { "id": "B", "text": "Cấm hoàn toàn việc nhập khẩu hàng hóa công nghiệp từ Châu Á", "isCorrect": false },
-      { "id": "C", "text": "Tài trợ 100% kinh phí cho các dự án thủy điện tại các nước đang phát triển", "isCorrect": false },
-      { "id": "D", "text": "Xóa bỏ thuế nhập khẩu đối với tất cả các sản phẩm thép và xi măng", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Ngăn chặn hiện tượng 'Rò rỉ carbon' (Carbon Leakage) khi doanh nghiệp di dời sản xuất sang các nước có quy định môi trường lỏng lẻo",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cấm hoàn toàn việc nhập khẩu hàng hóa công nghiệp từ Châu Á",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tài trợ 100% kinh phí cho các dự án thủy điện tại các nước đang phát triển",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xóa bỏ thuế nhập khẩu đối với tất cả các sản phẩm thép và xi măng",
+        "isCorrect": false
+      }
     ],
     "hint": "Đánh thuế tương đương hàm lượng carbon vào hàng nhập khẩu để bảo vệ sự công bằng cạnh tranh với nhà sản xuất nội khối EU."
   },
@@ -89,8 +177,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Mục tiêu định lượng toàn cầu được hơn 190 quốc gia thông qua tại COP21."
   },
@@ -100,10 +196,26 @@
     "points": 15,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Chi phí xây dựng một nhà máy điện hạt nhân mới", "isCorrect": false },
-      { "id": "B", "text": "Tổng giá trị thiệt hại kinh tế quy về hiện tại do 1 tấn CO2 bổ sung phát thải vào khí quyển gây ra", "isCorrect": true },
-      { "id": "C", "text": "Mức giá niêm yết của cổ phiếu ngành dầu khí", "isCorrect": false },
-      { "id": "D", "text": "Thu nhập bình quân của các chuyên gia môi trường", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Chi phí xây dựng một nhà máy điện hạt nhân mới",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Tổng giá trị thiệt hại kinh tế quy về hiện tại do 1 tấn CO2 bổ sung phát thải vào khí quyển gây ra",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Mức giá niêm yết của cổ phiếu ngành dầu khí",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thu nhập bình quân của các chuyên gia môi trường",
+        "isCorrect": false
+      }
     ],
     "hint": "Chỉ số kinh tế quan trọng để cân nhắc mức thuế carbon hoặc phân tích lợi ích - chi phí (CBA) của các chính sách khí hậu."
   },
@@ -113,11 +225,432 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Vấn đề 'Kẻ đi nhờ xe' (Free-rider problem) bắt nguồn từ tính chất hàng hóa công cộng thuần túy (không có tính loại trừ) của bầu khí quyển", "isCorrect": true },
-      { "id": "B", "text": "Nghịch lý Leontief trong thương mại quốc tế", "isCorrect": false },
-      { "id": "C", "text": "Hiệu ứng bẫy thanh khoản của chính sách tiền tệ", "isCorrect": false },
-      { "id": "D", "text": "Quy luật lợi suất giảm dần trong nông nghiệp", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Vấn đề 'Kẻ đi nhờ xe' (Free-rider problem) bắt nguồn từ tính chất hàng hóa công cộng thuần túy (không có tính loại trừ) của bầu khí quyển",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Nghịch lý Leontief trong thương mại quốc tế",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hiệu ứng bẫy thanh khoản của chính sách tiền tệ",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Quy luật lợi suất giảm dần trong nông nghiệp",
+        "isCorrect": false
+      }
     ],
     "hint": "Tận hưởng thành quả bảo vệ môi trường do người khác bỏ tiền chi trả mà bản thân không phải chịu chi phí."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong kinh tế học môi trường, hiện tượng biến đổi khí hậu do phát thải khí nhà kính toàn cầu được coi là ví dụ điển hình nhất của loại thất bại thị trường nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Độc quyền tự nhiên",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Ngoại ứng tiêu cực toàn cầu (Global Negative Externality)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Thông tin bất đối xứng vi mô",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thị trường cạnh tranh hoàn hảo",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hành vi phát thải gây hại cho cộng đồng và khí hậu toàn cầu mà bên phát thải không phải trả tiền bồi thường."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chi phí xã hội biên (Marginal Social Cost - MSC) của hoạt động phát thải carbon bằng tổng của hai thành phần nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chi phí tư nhân biên (MPC) + Chi phí thiệt hại ngoại ứng biên (MEC)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chi phí cố định biên + Lợi nhuận gộp",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Doanh thu biên + Chi phí biên",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thuế thu nhập doanh nghiệp + Lãi vay",
+        "isCorrect": false
+      }
+    ],
+    "hint": "MSC phản ánh đầy đủ tổng chi phí mà toàn xã hội phải gánh chịu: MSC = MPC + MEC."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Theo Định lý Coase (Coase Theorem), nếu chi phí giao dịch bằng 0 và quyền tài sản môi trường được luật pháp xác lập rõ ràng, các bên liên quan có thể tự thương lượng để đạt mức phát thải tối ưu xã hội mà không cần sự can thiệp của chính phủ.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Định lý Nobel của Ronald Coase chỉ ra giải pháp phân định quyền sở hữu thị trường khi chi phí giao dịch không đáng kể."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Mức thuế Carbon tối ưu theo lý thuyết kinh tế Pigou (Pigouvian Tax) nên được ấn định bằng đúng đại lượng nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chi phí thiệt hại xã hội biên của một tấn carbon (Social Cost of Carbon - SCC)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Mức lương tối thiểu của người lao động",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Doanh thu bình quân của doanh nghiệp năng lượng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Bằng 0 USD",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thuế Pigou nội hóa chính xác chi phí thiệt hại ngoại ứng biên: Tax = MEC = SCC."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo phân tích của Martin Weitzman về 'Giá cả và Số lượng' (Prices vs. Quantities), điểm khác biệt mấu chốt giữa Thuế Carbon và Hệ thống trao đổi hạn ngạch phát thải (ETS / Cap-and-Trade) là gì?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thuế Carbon cố định mức giá và để thị trường quyết định lượng phát thải; ETS cố định tổng hạn ngạch phát thải và để thị trường xác định giá tín chỉ",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Thuế Carbon chỉ áp dụng cho người đi xe đạp",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "ETS cấm hoàn toàn hoạt động sản xuất công nghiệp",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cả hai công cụ đều kiểm soát đồng thời cả giá và số lượng một cách cứng nhắc",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thuế mang lại sự ổn định về giá; ETS mang lại sự chắc chắn về mục tiêu môi trường (tổng lượng khí thải tối đa)."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo Thỏa thuận Paris năm 2015 về biến đổi khí hậu, các quốc gia tham gia cam kết những nghĩa vụ cốt lõi nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giữ mức tăng nhiệt độ toàn cầu dưới 2°C và nỗ lực hướng tới giới hạn 1.5°C so với tiền công nghiệp",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Xây dựng và cập nhật định kỳ bản Đóng góp do quốc gia tự quyết định (NDC)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hướng tới mục tiêu đạt mức phát thải ròng bằng 0 (Net Zero) vào giữa thế kỷ 21",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Cấm hoàn toàn việc sử dụng máy vi tính tại các cơ quan nhà nước",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thỏa thuận Paris là văn kiện pháp lý toàn cầu mang tính bước ngoặt về khí hậu."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Đường chi phí giảm phát thải biên (Marginal Abatement Cost - MAC) thể hiện chi phí tài chính gia tăng cần thiết để cắt giảm thêm một đơn vị phát thải khí nhà kính tương ứng với các giải pháp công nghệ khác nhau.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đường cong MAC sắp xếp các công nghệ từ chi phí âm (tiết kiệm năng lượng) đến chi phí dương cao (thu giữ carbon)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Báo cáo Stern Review (2006) của nhà kinh tế học Nicholas Stern đã đưa ra kết luận mang tính bước ngoặt nào về mặt kinh tế?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Không cần làm gì vì biến đổi khí hậu sẽ tự biến mất",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Chi phí đầu tư hành động sớm để cắt giảm khí thải (khoảng 1% GDP) thấp hơn rất nhiều so với tổn thất kinh tế khổng lồ nếu không hành động (5% - 20% GDP hàng năm)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Biến đổi khí hậu mang lại lợi nhuận khổng lồ cho mọi quốc gia",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Nên hoãn hành động đến năm 2100",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Báo cáo khẳng định: 'Hành động ngay có chi phí kinh tế rẻ hơn rất nhiều so với việc chần chừ chịu đựng thảm họa'."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Cơ chế Điều chỉnh Biên giới Carbon (CBAM) do Liên minh Châu Âu (EU) ban hành nhằm giải quyết mục tiêu chính sách nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Ngăn chặn hiện tượng 'Rò rỉ carbon' (Carbon Leakage) bằng cách đánh phí carbon tương đương lên hàng nhập khẩu thâm dụng phát thải",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Miễn thuế nhập khẩu hoàn toàn cho thép và xi măng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Ngăn chặn người lao động nhập cư",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trợ cấp xuất khẩu nông sản châu Âu",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CBAM tạo sân chơi bình đẳng, ngăn doanh nghiệp chuyển nhà máy sang các nước có quy định phát thải lỏng lẻo."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Việc lựa chọn tỷ lệ chiết khấu xã hội (Social Discount Rate) rất thấp (khoảng 1.4% của Stern) khi đánh giá các dự án khí hậu phản ánh quan điểm triết lý kinh tế nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chỉ quan tâm đến phúc lợi của thế hệ hiện tại",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Công bằng liên thế hệ (Intergenerational Equity) - coi trọng quyền lợi và sự sống còn của thế hệ tương lai bình đẳng như hiện tại",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tối đa hóa lợi nhuận ngân hàng thương mại ngắn hạn",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thúc đẩy tiêu dùng xả láng trước mắt",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tỷ lệ chiết khấu càng thấp thì thiệt hại kinh tế ở tương lai 50-100 năm sau càng có giá trị hiện tại lớn, thôi thúc hành động ngay."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những giải pháp kinh tế - kỹ thuật nào dưới đây thuộc nhóm 'Thích ứng với biến đổi khí hậu' (Climate Adaptation)?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Xây dựng hệ thống đê biển, đê sông và hồ điều hòa chống ngập lụt đô thị",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chuyển đổi giống cây trồng sang các giống lúa chịu hạn và chịu xâm nhập mặn",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Lắp đặt hệ thống cảm biến cảnh báo sớm bão lũ và sạt lở đất",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Thay thế nhà máy nhiệt điện than bằng điện gió ngoài khơi",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thay thế điện than là biện pháp 'Giảm nhẹ phát thải' (Mitigation), các phương án còn lại là 'Thích ứng' (Adaptation)."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Một Tín chỉ carbon chuẩn (Carbon Credit) tương đương với quyền phát thải hoặc việc cắt giảm / hấp thụ được chính xác 1 tấn khí nhà kính quy đổi tương đương CO2 (1 tCO2e).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "1 carbon credit = 1 metric ton of CO2 equivalent (tCO2e)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khái niệm 'Nghịch lý Jevons' (Jevons Paradox) trong kinh tế học tài nguyên và năng lượng cảnh báo điều gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khi hiệu quả sử dụng năng lượng tăng lên (tiết kiệm hơn), tổng tiêu thụ năng lượng thực tế có thể tăng lên do chi phí rẻ đi kích thích nhu cầu sử dụng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Năng lượng tái tạo không bao giờ tạo ra điện",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Giá dầu mỏ luôn luôn giảm về 0",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Tiết kiệm năng lượng luôn làm suy thoái kinh tế",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hiệu quả công nghệ làm giảm chi phí cận biên, dẫn đến hiệu ứng bật lại (rebound effect) làm tiêu thụ tăng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Thuật ngữ 'Tài sản mắc kẹt' (Stranded Assets) trong tiến trình chuyển đổi năng lượng xanh đề cập đến hiện tượng nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tàu thuyền bị mắc cạn ở kênh đào Suez",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Các tài sản, mỏ than, dàn khoan dầu khí bị mất giá trị sớm hoặc phải dừng hoạt động trước thời hạn do quy định khí hậu khắt khe",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Bất động sản bỏ hoang do tranh chấp thừa kế",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Các cổ phiếu công nghệ bị tụt giá",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khi thế giới cam kết Net Zero, hàng nghìn tỷ USD dự án nhiên liệu hóa thạch có nguy cơ bị đóng cửa sớm."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Hai nhà máy X và Y có hàm chi phí giảm phát thải biên lần lượt là MACx = 10Qx và MACy = 20Qy (USD/tấn). Để cắt giảm tổng cộng 30 tấn CO2 với tổng chi phí xã hội thấp nhất thông qua cơ chế thị trường mua bán hạn ngạch phát thải, nhà máy X và Y sẽ cắt giảm tương ứng là bao nhiêu?",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "A",
+        "text": "Qx = 15 tấn, Qy = 15 tấn",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Qx = 20 tấn, Qy = 10 tấn (với mức giá thị trường cân bằng 200 USD/tấn)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Qx = 10 tấn, Qy = 20 tấn",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Qx = 25 tấn, Qy = 5 tấn",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hiệu quả tối ưu đạt được khi MACx = MACy: 10Qx = 20Qy => Qx = 2Qy. Kết hợp Qx + Qy = 30 => Qy = 10, Qx = 20."
   }
 ]

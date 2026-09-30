@@ -4,7 +4,7 @@
     "title": "Quản lý học 1 (QLKT1101)",
     "description": "Các trường phái quản lý, 4 chức năng hoạch định - tổ chức - lãnh đạo - kiểm soát, động viên nhân sự và kỹ năng quản trị",
     "file": "/quiz-banks/QLKT1101_Quan_ly_hoc_1.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Nguyễn Nguyệt Minh"
   },
   {
@@ -12,7 +12,7 @@
     "title": "Lập kế hoạch (QLKT1120)",
     "description": "Quy trình lập kế hoạch chiến lược và tác nghiệp, mục tiêu SMART, ma trận SWOT/BCG, phương pháp dự báo và ngân sách",
     "file": "/quiz-banks/QLKT1120_Lap_ke_hoach.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Mai Anh Bảo"
   },
   {
@@ -20,7 +20,7 @@
     "title": "Quản lý chương trình và dự án (QLKT1110)",
     "description": "Tam giác ràng buộc, WBS, sơ đồ mạng CPM/PERT đường găng, phương pháp giá trị thu được EVM, quản trị rủi ro dự án",
     "file": "/quiz-banks/QLKT1110_Quan_ly_du_an.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Vũ Tri Tuấn"
   },
   {
@@ -28,7 +28,7 @@
     "title": "Kiểm soát quản lý (KTKI1105)",
     "description": "Hệ thống kiểm soát nội bộ COSO, các trung tâm trách nhiệm tài chính (ROI, RI, EVA), thẻ điểm cân bằng BSC và giá chuyển nhượng",
     "file": "/quiz-banks/KTKI1105_Kiem_soat_quan_ly.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Bùi Thị Minh Hải"
   },
   {
@@ -36,7 +36,7 @@
     "title": "Khoa học dữ liệu trong kinh tế và kinh doanh (TOKT1138)",
     "description": "Quy trình CRISP-DM, hồi quy tuyến tính OLS, phân loại Logistic/Cây quyết định, phân cụm K-Means, tiền xử lý và đánh giá mô hình",
     "file": "/quiz-banks/TOKT1138_Khoa_hoc_du_lieu.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Nguyễn Ngọc Tuấn"
   },
   {
@@ -44,7 +44,7 @@
     "title": "Kinh tế học biến đổi khí hậu (MTKH1103)",
     "description": "Ngoại ứng tiêu cực môi trường, hàng hóa công, thuế Carbon vs Cap-and-Trade (ETS), chi phí biên MAC, Thỏa thuận Paris và Net Zero",
     "file": "/quiz-banks/MTKH1103_KT_Bien_doi_khi_hau.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Vũ Thị Hoài Thu"
   },
   {
@@ -52,7 +52,7 @@
     "title": "Kinh tế đô thị (MTDT1115)",
     "description": "Tính kinh tế tập tụ, mô hình thành phố đơn tâm Alonso, đường giá thầu địa tô, thất bại thị trường giao thông, thu phí kẹt xe và TOD",
     "file": "/quiz-banks/MTDT1115_Kinh_te_do_thi.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Nguyễn Kim Hoàng"
   },
   {
@@ -60,7 +60,7 @@
     "title": "Nguyên lý kế toán (KTKE1101)",
     "description": "Phương trình kế toán, nguyên tắc dồn tích và thận trọng, ghi sổ kép Nợ/Có, hệ thống báo cáo tài chính, tính giá xuất kho FIFO",
     "file": "/quiz-banks/KTKE1101_Nguyen_ly_ke_toan.json",
-    "totalQuestions": 10,
+    "totalQuestions": 25,
     "lecturer": "Lê Quỳnh Liên"
   }
 ]

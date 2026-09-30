@@ -5,10 +5,26 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "A", "text": "Thời gian - Chi phí - Phạm vi / Chất lượng", "isCorrect": true },
-      { "id": "B", "text": "Nhân sự - Công nghệ - Tài chính", "isCorrect": false },
-      { "id": "C", "text": "Mục tiêu - Kế hoạch - Kiểm tra", "isCorrect": false },
-      { "id": "D", "text": "Rủi ro - Lợi nhuận - Thị phần", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Thời gian - Chi phí - Phạm vi / Chất lượng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Nhân sự - Công nghệ - Tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Mục tiêu - Kế hoạch - Kiểm tra",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Rủi ro - Lợi nhuận - Thị phần",
+        "isCorrect": false
+      }
     ],
     "hint": "Bất kỳ sự thay đổi nào ở một cạnh sẽ ảnh hưởng trực tiếp đến hai cạnh còn lại."
   },
@@ -18,10 +34,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Đường có thời gian thực hiện ngắn nhất trong dự án", "isCorrect": false },
-      { "id": "B", "text": "Đường nối các công việc có chi phí cao nhất", "isCorrect": false },
-      { "id": "C", "text": "Đường dài nhất xuyên suốt sơ đồ mạng, quyết định tổng thời gian hoàn thành dự án", "isCorrect": true },
-      { "id": "D", "text": "Đường chứa các công việc có độ trễ tự do lớn nhất", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Đường có thời gian thực hiện ngắn nhất trong dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Đường nối các công việc có chi phí cao nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Đường dài nhất xuyên suốt sơ đồ mạng, quyết định tổng thời gian hoàn thành dự án",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Đường chứa các công việc có độ trễ tự do lớn nhất",
+        "isCorrect": false
+      }
     ],
     "hint": "Bất kỳ sự chậm trễ nào của các công việc trên đường này đều sẽ làm trễ tiến độ toàn bộ dự án."
   },
@@ -31,10 +63,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Dự án đang bị vượt ngân sách (bội chi)", "isCorrect": false },
-      { "id": "B", "text": "Dự án đang tiết kiệm chi phí (dưới ngân sách dự toán)", "isCorrect": true },
-      { "id": "C", "text": "Dự án đang bị trễ tiến độ thời gian", "isCorrect": false },
-      { "id": "D", "text": "Dự án có nguy cơ rủi ro cao", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Dự án đang bị vượt ngân sách (bội chi)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Dự án đang tiết kiệm chi phí (dưới ngân sách dự toán)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Dự án đang bị trễ tiến độ thời gian",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Dự án có nguy cơ rủi ro cao",
+        "isCorrect": false
+      }
     ],
     "hint": "Giá trị công việc hoàn thành (EV) lớn hơn chi phí thực tế đã bỏ ra (AC)."
   },
@@ -52,10 +100,26 @@
     "points": 15,
     "timeLimit": 35,
     "options": [
-      { "id": "A", "text": "Né tránh (Avoidance)", "isCorrect": true },
-      { "id": "B", "text": "Chuyển giao (Transference - như mua bảo hiểm)", "isCorrect": true },
-      { "id": "C", "text": "Giảm nhẹ (Mitigation)", "isCorrect": true },
-      { "id": "D", "text": "Khai thác (Exploit)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Né tránh (Avoidance)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chuyển giao (Transference - như mua bảo hiểm)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Giảm nhẹ (Mitigation)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Khai thác (Exploit)",
+        "isCorrect": false
+      }
     ],
     "hint": "Khai thác là chiến lược dùng cho cơ hội (rủi ro tích cực), không phải rủi ro tiêu cực."
   },
@@ -65,8 +129,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Công thức trọng số phân phối Beta chuẩn phổ biến trong quản lý dự án."
   },
@@ -76,10 +148,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Cơ cấu ma trận yếu (Weak Matrix)", "isCorrect": false },
-      { "id": "B", "text": "Cơ cấu chức năng truyền thống (Functional)", "isCorrect": false },
-      { "id": "C", "text": "Cơ cấu chuyên trách dự án (Projectized)", "isCorrect": true },
-      { "id": "D", "text": "Cơ cấu ma trận cân bằng (Balanced Matrix)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Cơ cấu ma trận yếu (Weak Matrix)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Cơ cấu chức năng truyền thống (Functional)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Cơ cấu chuyên trách dự án (Projectized)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Cơ cấu ma trận cân bằng (Balanced Matrix)",
+        "isCorrect": false
+      }
     ],
     "hint": "Các thành viên trong nhóm dự án được điều động toàn thời gian dưới sự chỉ huy trực tiếp của Project Manager."
   },
@@ -89,8 +177,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": false },
-      { "id": "false", "text": "Sai (False)", "isCorrect": true }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": false
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": true
+      }
     ],
     "hint": "SV = EV - PV (Planned Value). Còn EV - AC là CV (Cost Variance - Chênh lệch chi phí)."
   },
@@ -100,10 +196,26 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "A", "text": "Khởi tạo dự án (Initiating)", "isCorrect": false },
-      { "id": "B", "text": "Lập kế hoạch dự án (Planning)", "isCorrect": false },
-      { "id": "C", "text": "Thực hiện dự án (Executing)", "isCorrect": true },
-      { "id": "D", "text": "Đóng dự án (Closing)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Khởi tạo dự án (Initiating)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Lập kế hoạch dự án (Planning)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Thực hiện dự án (Executing)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Đóng dự án (Closing)",
+        "isCorrect": false
+      }
     ],
     "hint": "Giai đoạn triển khai các gói công việc cụ thể để tạo ra sản phẩm bàn giao thực tế."
   },
@@ -113,11 +225,432 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Hiện tượng 'Phình phạm vi' (Scope Creep) - Thiếu quy trình kiểm soát thay đổi (Change Control Process) dẫn đến vượt tầm kiểm soát về thời gian và chi phí", "isCorrect": true },
-      { "id": "B", "text": "Hiện tượng 'Đường găng kéo dài' (Critical Path Delay) do năng suất lập trình viên kém", "isCorrect": false },
-      { "id": "C", "text": "Hiện tượng 'Phá vỡ cấu trúc phân chia công việc' (WBS Breakdown)", "isCorrect": false },
-      { "id": "D", "text": "Xung đột ma trận trách nhiệm RACI giữa các bên liên quan", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Hiện tượng 'Phình phạm vi' (Scope Creep) - Thiếu quy trình kiểm soát thay đổi (Change Control Process) dẫn đến vượt tầm kiểm soát về thời gian và chi phí",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Hiện tượng 'Đường găng kéo dài' (Critical Path Delay) do năng suất lập trình viên kém",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hiện tượng 'Phá vỡ cấu trúc phân chia công việc' (WBS Breakdown)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xung đột ma trận trách nhiệm RACI giữa các bên liên quan",
+        "isCorrect": false
+      }
     ],
     "hint": "Scope Creep xảy ra khi các thay đổi không được kiểm soát chặt chẽ qua thủ tục đề xuất thay đổi chính thức (Change Request)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong quản trị dự án bằng phương pháp Sơ đồ mạng CPM, 'Đường găng' (Critical Path) được định nghĩa là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chuỗi các công việc ngắn nhất trong sơ đồ mạng dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Chuỗi các công việc dài nhất từ điểm khởi đầu đến kết thúc dự án, quyết định thời gian hoàn thành ngắn nhất của dự án",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Chuỗi công việc có chi phí tài chính đắt đỏ nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Đường đi của các công việc phụ trợ không bắt buộc",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bất kỳ sự chậm trễ nào trên đường găng đều làm dự án bị trễ hạn tương ứng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Độ dự trữ toàn phần (Total Float / Total Slack) của các công việc nằm trên Đường găng luôn bằng bao nhiêu?",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Bằng 0",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Bằng 1 tuần",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Bằng tổng thời gian dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Bằng vô cực",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Công việc găng không có thời gian dự trữ linh hoạt (Total Float = LS - ES = 0)."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Nếu một công việc không nằm trên đường găng bị chậm trễ trong phạm vi Độ dự trữ tự do (Free Float), nó sẽ không làm ảnh hưởng đến thời điểm bắt đầu sớm nhất của bất kỳ công việc tiếp theo nào.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Free Float là khoảng thời gian công việc có thể trễ mà không ảnh hưởng đến Early Start của công việc sau."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp Quản lý giá trị thu được (EVM), công thức chuẩn để tính Chênh lệch chi phí (Cost Variance - CV) là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "CV = PV - AC",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "CV = EV - AC",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "CV = EV - PV",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "CV = BAC - EAC",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CV = Giá trị thu được (EV) trừ đi Chi phí thực tế đã bỏ ra (AC)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một dự án tại thời điểm kiểm tra có Chỉ số hiệu quả tiến độ SPI = 0.85 và Chỉ số hiệu quả chi phí CPI = 1.15. Dự án đang ở tình trạng nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Vượt tiến độ và bội chi ngân sách",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Chậm tiến độ nhưng đang tiết kiệm chi phí so với kế hoạch",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Đúng tiến độ và đúng ngân sách",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chậm tiến độ và bội chi ngân sách nghiêm trọng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "SPI < 1 là chậm tiến độ; CPI > 1 là sử dụng chi phí hiệu quả (dưới ngân sách)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp ước lượng PERT 3 điểm, công thức tính Thời gian kỳ vọng (Te) từ thời gian Lạc quan (o), Thường gặp (m) và Bi quan (p) là gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Te = (o + m + p) / 3",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Te = (o + 4m + p) / 6",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Te = (2o + 3m + p) / 6",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Te = (o + 6m + p) / 8",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Ước lượng theo phân phối Beta gán trọng số 4 cho giá trị thường gặp nhất (m)."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo hướng dẫn chuẩn của PMBOK, Đường cơ sở phạm vi dự án (Scope Baseline) bao gồm những tài liệu phê duyệt nào?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Bản tuyên bố phạm vi dự án (Project Scope Statement)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cấu trúc phân chia công việc (Work Breakdown Structure - WBS)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Từ điển WBS (WBS Dictionary)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Hóa đơn thanh toán tài chính của nhà thầu phụ",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bộ 3 tài liệu: Scope Statement, WBS và WBS Dictionary tạo thành Scope Baseline."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hiện tượng 'Bành trướng phạm vi' (Scope Creep) xảy ra khi phạm vi dự án bị mở rộng thêm các tính năng mà không thông qua quy trình kiểm soát thay đổi chính thức và không được điều chỉnh thời gian, chi phí tương ứng.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Scope Creep là một trong những nguyên nhân hàng đầu khiến dự án thất bại về thời gian và ngân sách."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Biểu đồ Gantt (Gantt Chart) có ưu điểm trực quan nổi bật nhất trong quản trị dự án là gì?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tính toán chính xác rủi ro dòng tiền",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Hiển thị trực quan lịch trình công việc theo dòng thời gian ngang và mức độ gối đầu giữa chúng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Thay thế hoàn toàn hợp đồng pháp lý của dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Tự động phân bổ lại thuế giá trị gia tăng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phát minh bởi Henry Gantt, hiển thị các thanh công việc trên trục hoành thời gian."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Kỹ thuật 'Theo dõi nhanh' (Fast-tracking) nhằm rút ngắn tiến độ dự án được thực hiện bằng cách nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Bổ sung thêm ngân sách và nhân lực vào công việc trên đường găng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Cho các công việc vốn dự kiến thực hiện tuần tự chuyển sang làm song song hoặc gối đầu lên nhau",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Cắt giảm bớt các tính năng chất lượng bắt buộc của dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Kéo dài thời hạn dự án thêm 6 tháng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Fast-tracking làm song song các công việc nhưng có thể làm gia tăng rủi ro phải làm lại (rework)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Kỹ thuật 'Đâm nén tiến độ' (Crashing) khác với 'Theo dõi nhanh' (Fast-tracking) ở điểm căn bản nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Crashing chấp nhận tăng thêm chi phí để bổ sung nguồn lực rút ngắn thời gian công việc găng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Crashing không làm tăng thêm chi phí tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Crashing chỉ áp dụng cho các công việc không nằm trên đường găng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Crashing là hủy bỏ toàn bộ dự án",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Crashing đánh đổi chi phí để lấy thời gian bằng cách trả thêm lương làm thêm giờ hoặc thuê thêm thiết bị."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một sự kiện rủi ro có xác suất xảy ra là 20% và nếu xảy ra sẽ gây tổn thất tài chính 500 triệu đồng. Giá trị tiền tệ kỳ vọng (Expected Monetary Value - EMV) của rủi ro này là bao nhiêu?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "-50 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "-100 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "-250 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "+100 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "EMV = Xác suất × Tác động = 20% × (-500 triệu) = -100 triệu đồng."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những chiến lược nào dưới đây được sử dụng để ứng phó với các rủi ro tiêu cực (đe dọa) trong quản lý dự án?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Né tránh rủi ro (Avoid)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chuyển giao rủi ro (Transfer - ví dụ mua bảo hiểm, thuê ngoài)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Giảm thiểu tác động / xác suất (Mitigate)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Chấp nhận chủ động hoặc thụ động (Accept)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "4 chiến lược ứng phó rủi ro tiêu cực kinh điển: Avoid, Transfer, Mitigate, Accept."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hợp đồng trọn gói giá cố định (Firm Fixed Price - FFP) đẩy phần lớn rủi ro phát sinh vượt chi phí sang cho Bên nhận thầu (nhà thầu).",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Trong hợp đồng trọn gói, nhà thầu phải tự gánh chịu mọi chi phí vượt định mức đã ký."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Dự án phát triển phần mềm có Tổng ngân sách phê duyệt BAC = 600 triệu đồng. Tại ngày kiểm toán, Giá trị thu được EV = 240 triệu, Chi phí thực tế đã thanh toán AC = 300 triệu. Giả định hiệu quả chi phí từ nay đến khi kết thúc dự án vẫn giữ nguyên tỷ lệ CPI hiện tại, Tổng chi phí dự báo khi hoàn thành (EAC) là bao nhiêu?",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "A",
+        "text": "660 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "750 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "800 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "700 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CPI = EV / AC = 240 / 300 = 0.8. EAC = BAC / CPI = 600 / 0.8 = 750 triệu đồng."
   }
 ]

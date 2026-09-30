@@ -5,10 +5,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Phân bổ ngân sách tài chính", "isCorrect": false },
-      { "id": "B", "text": "Nhận thức cơ hội và đánh giá hiện trạng", "isCorrect": true },
-      { "id": "C", "text": "Lựa chọn phương án tối ưu", "isCorrect": false },
-      { "id": "D", "text": "Xây dựng các kế hoạch tác nghiệp", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Phân bổ ngân sách tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Nhận thức cơ hội và đánh giá hiện trạng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Lựa chọn phương án tối ưu",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xây dựng các kế hoạch tác nghiệp",
+        "isCorrect": false
+      }
     ],
     "hint": "Cần thấu hiểu bối cảnh thị trường, điểm mạnh/yếu trước khi định hình mục tiêu."
   },
@@ -18,10 +34,26 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "A", "text": "Motivated (Có tính thúc đẩy)", "isCorrect": false },
-      { "id": "B", "text": "Measurable (Đo lường được)", "isCorrect": true },
-      { "id": "C", "text": "Manageable (Quản lý được)", "isCorrect": false },
-      { "id": "D", "text": "Meaningful (Có ý nghĩa sâu sắc)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Motivated (Có tính thúc đẩy)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Measurable (Đo lường được)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Manageable (Quản lý được)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Meaningful (Có ý nghĩa sâu sắc)",
+        "isCorrect": false
+      }
     ],
     "hint": "Mục tiêu phải gắn liền với chỉ số định lượng cụ thể để kiểm tra kết quả."
   },
@@ -31,10 +63,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Kỹ thuật Delphi", "isCorrect": true },
-      { "id": "B", "text": "Phương pháp điều tra khảo sát chuyên gia độc lập", "isCorrect": true },
-      { "id": "C", "text": "Phân tích hồi quy chuỗi thời gian", "isCorrect": false },
-      { "id": "D", "text": "Phương pháp san bằng số mũ (Exponential smoothing)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Kỹ thuật Delphi",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phương pháp điều tra khảo sát chuyên gia độc lập",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Phân tích hồi quy chuỗi thời gian",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Phương pháp san bằng số mũ (Exponential smoothing)",
+        "isCorrect": false
+      }
     ],
     "hint": "Hai phương án định tính dựa trên trí tuệ tập thể chuyên gia mà không cần họp mặt trực tiếp."
   },
@@ -44,10 +92,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Ngân sách gia tăng (Incremental Budgeting)", "isCorrect": false },
-      { "id": "B", "text": "Ngân sách gốc 0 (Zero-based Budgeting - ZBB)", "isCorrect": true },
-      { "id": "C", "text": "Ngân sách cố định (Static Budgeting)", "isCorrect": false },
-      { "id": "D", "text": "Ngân sách linh hoạt (Flexible Budgeting)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Ngân sách gia tăng (Incremental Budgeting)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Ngân sách gốc 0 (Zero-based Budgeting - ZBB)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Ngân sách cố định (Static Budgeting)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Ngân sách linh hoạt (Flexible Budgeting)",
+        "isCorrect": false
+      }
     ],
     "hint": "Bắt đầu mỗi chu kỳ từ con số 0 để loại trừ các khoản lãng phí tồn dư của quá khứ."
   },
@@ -57,8 +121,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Phân biệt kế hoạch chiến lược dài hạn với kế hoạch tác nghiệp ngắn hạn phục vụ công việc hàng ngày."
   },
@@ -76,10 +148,26 @@
     "points": 10,
     "timeLimit": 25,
     "options": [
-      { "id": "A", "text": "Chiến lược SO (Tấn công / Tận dụng tối đa)", "isCorrect": true },
-      { "id": "B", "text": "Chiến lược WO (Khắc phục điểm yếu đón cơ hội)", "isCorrect": false },
-      { "id": "C", "text": "Chiến lược ST (Phòng thủ trước nguy cơ)", "isCorrect": false },
-      { "id": "D", "text": "Chiến lược WT (Cắt giảm thiệt hại / Rút lui)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Chiến lược SO (Tấn công / Tận dụng tối đa)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chiến lược WO (Khắc phục điểm yếu đón cơ hội)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chiến lược ST (Phòng thủ trước nguy cơ)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chiến lược WT (Cắt giảm thiệt hại / Rút lui)",
+        "isCorrect": false
+      }
     ],
     "hint": "Sử dụng ưu thế nội lực để nắm bắt thời cơ vàng từ thị trường."
   },
@@ -89,8 +177,16 @@
     "points": 10,
     "timeLimit": 20,
     "options": [
-      { "id": "true", "text": "Đúng (True)", "isCorrect": true },
-      { "id": "false", "text": "Sai (False)", "isCorrect": false }
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
     ],
     "hint": "Kế hoạch Phương án B (Plan B) phòng khi hoàn cảnh môi trường biến động lớn."
   },
@@ -100,10 +196,26 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Ngôi sao (Stars)", "isCorrect": false },
-      { "id": "B", "text": "Bò sữa (Cash Cows)", "isCorrect": true },
-      { "id": "C", "text": "Dấu hỏi (Question Marks)", "isCorrect": false },
-      { "id": "D", "text": "Chó mực (Dogs)", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Ngôi sao (Stars)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Bò sữa (Cash Cows)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Dấu hỏi (Question Marks)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chó mực (Dogs)",
+        "isCorrect": false
+      }
     ],
     "hint": "Tạo ra dòng tiền dồi dào để nuôi dưỡng các mảng kinh doanh khác mà không cần tái đầu tư lớn."
   },
@@ -113,11 +225,432 @@
     "points": 15,
     "timeLimit": 30,
     "options": [
-      { "id": "A", "text": "Doanh nghiệp lập kế hoạch quá cứng nhắc, thiếu tính thích ứng động và không xây dựng các kịch bản dự phòng với biến động môi trường", "isCorrect": true },
-      { "id": "B", "text": "Doanh nghiệp chi quá nhiều kinh phí cho việc nghiên cứu thị trường ban đầu", "isCorrect": false },
-      { "id": "C", "text": "Doanh nghiệp phân bổ sai thẩm quyền giữa ban giám đốc và các cửa hàng trưởng", "isCorrect": false },
-      { "id": "D", "text": "Doanh nghiệp áp dụng sai cấu trúc ma trận SWOT khi đánh giá năng lực nội bộ", "isCorrect": false }
+      {
+        "id": "A",
+        "text": "Doanh nghiệp lập kế hoạch quá cứng nhắc, thiếu tính thích ứng động và không xây dựng các kịch bản dự phòng với biến động môi trường",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Doanh nghiệp chi quá nhiều kinh phí cho việc nghiên cứu thị trường ban đầu",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Doanh nghiệp phân bổ sai thẩm quyền giữa ban giám đốc và các cửa hàng trưởng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Doanh nghiệp áp dụng sai cấu trúc ma trận SWOT khi đánh giá năng lực nội bộ",
+        "isCorrect": false
+      }
     ],
     "hint": "Tính linh hoạt và khả năng thích ứng với biến động môi trường là yếu tố sống còn của lập kế hoạch."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong ma trận phân tích SWOT, chiến lược WO (Weaknesses - Opportunities) hướng đến mục tiêu hành động nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Sử dụng điểm mạnh nội bộ để nắm bắt cơ hội bên ngoài",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Tận dụng các cơ hội từ môi trường bên ngoài để khắc phục và hóa giải các điểm yếu nội bộ",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tối thiểu hóa điểm yếu để tránh né các nguy cơ đe dọa",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Sử dụng điểm mạnh để phòng thủ trước các nguy cơ cạnh tranh",
+        "isCorrect": false
+      }
+    ],
+    "hint": "WO là chiến lược cải thiện điểm yếu bằng cách đón đầu cơ hội mở ra trên thị trường."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong ma trận danh mục đầu tư BCG của Boston Consulting Group, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao trong một ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Ngôi sao (Star)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Bò sữa tiền mặt (Cash Cow)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Dấu hỏi (Question Mark)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chó mực (Dog)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bò sữa sinh ra dòng tiền mặt dồi dào mà không đòi hỏi tái đầu tư vốn quá nhiều."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo ma trận phát triển thị trường - sản phẩm của Igor Ansoff, chiến lược bán các sản phẩm hiện có vào các thị trường địa lý mới được gọi là gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thâm nhập thị trường (Market Penetration)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Phát triển thị trường (Market Development)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Phát triển sản phẩm (Product Development)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Đa dạng hóa (Diversification)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Sản phẩm cũ + Thị trường mới = Phát triển thị trường."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo nguyên tắc thiết lập mục tiêu SMART, những chữ cái nào đại diện đúng cho các thuộc tính chuẩn hóa?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "S - Specific (Cụ thể, rõ ràng)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "M - Measurable (Đo lường được bằng chỉ số định lượng)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "A - Achievable (Khả thi, có thể đạt được)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "T - Time-bound (Có khung thời hạn hoàn thành xác định)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Tất cả các thuộc tính trên đều là thành phần cấu thành cốt lõi của nguyên tắc SMART."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Phương pháp dự báo theo chuỗi thời gian (Time-series Forecasting) dựa trên giả định căn bản rằng các quy luật và xu hướng biến động trong quá khứ sẽ tiếp tục lặp lại trong tương lai.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chuỗi thời gian phân tích quá khứ để phóng chiếu xu hướng tương lai."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Phương pháp lập ngân sách từ số 0 (Zero-Based Budgeting - ZBB) có đặc trưng ưu việt nào so với phương pháp lập ngân sách gia tăng truyền thống?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Mặc định cộng thêm một tỷ lệ phần trăm lạm phát vào ngân sách năm trước",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Mọi khoản chi tiêu trong kỳ mới đều phải được giải trình và chứng minh hiệu quả từ đầu bắt đầu từ con số 0",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Chỉ dành riêng cho việc mua sắm trang thiết bị văn phòng nhỏ lẻ",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Không cần sự phê duyệt của giám đốc tài chính",
+        "isCorrect": false
+      }
+    ],
+    "hint": "ZBB xóa bỏ tư duy chi tiêu quán tính, yêu cầu bảo vệ từng đồng ngân sách từ mức 0."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Các công cụ kế hoạch như chính sách công ty (Policies), quy trình chuẩn (SOPs) và nội quy quy chế được xếp vào loại kế hoạch nào?",
+    "points": 10,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Kế hoạch đơn dụng dùng một lần (Single-use plans)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Kế hoạch thường trực (Standing plans)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Kế hoạch bất khả thi",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Kế hoạch tình huống khẩn cấp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kế hoạch thường trực được áp dụng lặp đi lặp lại cho các tình huống phát sinh thường xuyên."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kế hoạch dự phòng (Contingency Planning) là việc xác định trước các phương án hành động thay thế khả dĩ khi xảy ra những biến cố bất ngờ làm gián đoạn kế hoạch tác nghiệp ban đầu.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": true
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kế hoạch B/C giúp doanh nghiệp chủ động ứng phó rủi ro đứt gãy hoạt động."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp dự báo san bằng mũ (Exponential Smoothing), trọng số lớn nhất được gán cho đại lượng nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Số liệu thực tế của kỳ xa nhất trong lịch sử",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Số liệu thực tế của kỳ gần nhất vừa diễn ra",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Trung bình cộng của toàn bộ số liệu 10 năm trước",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Số liệu dự báo trung bình ngành",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Các quan sát càng mới càng chứa nhiều thông tin cập nhật nên nhận trọng số mũ cao nhất."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong ma trận 9 ô GE-McKinsey dùng để lập kế hoạch danh mục kinh doanh, hai trục đánh giá bao gồm những yếu tố nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thị phần tương đối và Tốc độ tăng trưởng thị trường",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sức hấp dẫn của ngành và Sức mạnh cạnh tranh của đơn vị kinh doanh",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Doanh thu thuần và Chi phí vận hành",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chỉ số P/E và Vốn hóa thị trường",
+        "isCorrect": false
+      }
+    ],
+    "hint": "GE-McKinsey là bước phát triển đa chiều toàn diện hơn so với ma trận 4 ô của BCG."
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo mô hình 5 áp lực cạnh tranh của Michael Porter (Five Forces), những yếu tố nào quyết định mức độ hấp dẫn và tỷ suất sinh lời của ngành?",
+    "points": 15,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Cường độ cạnh tranh giữa các đối thủ hiện tại trong ngành",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Nguy cơ đe dọa xâm nhập từ các đối thủ tiềm năng mới",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Quyền lực thương lượng đàm phán của nhà cung cấp và khách hàng",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Mối đe dọa từ các sản phẩm và dịch vụ thay thế",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Cả 5 lực lượng này tạo nên cấu trúc cạnh tranh toàn diện của một ngành kinh doanh."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chiến lược 'Tích hợp ngược về phía sau' (Backward Vertical Integration) trong hoạch định chiến lược kinh doanh có nghĩa là gì?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Mua lại các kênh phân phối bán lẻ đưa sản phẩm tới tay người dùng cuối",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Đầu tư kiểm soát hoặc sáp nhập các nhà cung ứng nguyên vật liệu đầu vào của chính mình",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Thu hẹp quy mô sản xuất để bán bớt nhà máy",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Đa dạng hóa sang lĩnh vực hoàn toàn không liên quan",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đi ngược về nguồn cung ứng để chủ động giá thành và chuỗi cung ứng vật tư."
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Phương pháp Quản trị theo mục tiêu (MBO - Management by Objectives) là quá trình trong đó mục tiêu do Tổng giám đốc đơn phương ấn định và áp đặt hoàn toàn từ trên xuống mà không cần thảo luận với cấp dưới.",
+    "points": 10,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "true",
+        "text": "Đúng (True)",
+        "isCorrect": false
+      },
+      {
+        "id": "false",
+        "text": "Sai (False)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Bản chất cốt lõi của MBO là sự tham gia hiệp thương cùng xác lập mục tiêu giữa cấp trên và cấp dưới."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Phương pháp lập kế hoạch theo kịch bản (Scenario Planning) phát huy giá trị cao nhất trong điều kiện môi trường nào?",
+    "points": 15,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Môi trường ổn định hoàn toàn có thể dự báo chính xác bằng một con số duy nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Môi trường có độ phức tạp và bất định cao, xuất hiện nhiều biến số khó lường",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Khi công ty chuẩn bị giải thể",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Khi công ty độc quyền tuyệt đối",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kịch bản giúp chuẩn bị cho nhiều tương lai khả dĩ khác nhau (kịch bản lạc quan, cơ sở, bi quan)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một tập đoàn bán lẻ điện máy lập kế hoạch mở thêm 30 siêu thị mới trong năm tài chính. Khi phân tích ngân sách dự án vốn đầu tư (CapEx), chỉ số tài chính nào cho biết tỷ suất sinh lời thực tế làm cho Giá trị hiện giá thuần (NPV) của dự án bằng đúng 0?",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thời gian hoàn vốn giản đơn (Payback Period)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Tỷ suất hoàn vốn nội bộ (Internal Rate of Return - IRR)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hệ số thanh toán hiện hành (Current Ratio)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chỉ số biên lợi nhuận ròng (Net Profit Margin)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "IRR là tỷ lệ chiết khấu mà tại đó NPV = 0; nếu IRR > chi phí sử dụng vốn WACC thì dự án đáng giá để đầu tư."
   }
 ]

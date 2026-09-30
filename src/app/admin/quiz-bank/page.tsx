@@ -38,6 +38,12 @@ export default function QuizBankPage() {
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
 
+  // Edit Bank Modal State
+  const [showEditBankModal, setShowEditBankModal] = useState(false);
+  const [editBankTitle, setEditBankTitle] = useState("");
+  const [editBankDesc, setEditBankDesc] = useState("");
+  const [savingBank, setSavingBank] = useState(false);
+
   // New Question Form State
   const [showNewQModal, setShowNewQModal] = useState(false);
   const [qType, setQType] = useState("MC_SINGLE");
@@ -47,11 +53,28 @@ export default function QuizBankPage() {
   const [qHint, setQHint] = useState("");
   const [qAnswer, setQAnswer] = useState("");
   const [qOptions, setQOptions] = useState([
-    { id: "1", text: "", isCorrect: true },
-    { id: "2", text: "", isCorrect: false },
-    { id: "3", text: "", isCorrect: false },
-    { id: "4", text: "", isCorrect: false },
+    { id: "A", text: "", isCorrect: true },
+    { id: "B", text: "", isCorrect: false },
+    { id: "C", text: "", isCorrect: false },
+    { id: "D", text: "", isCorrect: false },
   ]);
+
+  // Edit Question Modal State
+  const [showEditQModal, setShowEditQModal] = useState(false);
+  const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
+  const [editQType, setEditQType] = useState("MC_SINGLE");
+  const [editQContent, setEditQContent] = useState("");
+  const [editQPoints, setEditQPoints] = useState(10);
+  const [editQTimeLimit, setEditQTimeLimit] = useState(30);
+  const [editQHint, setEditQHint] = useState("");
+  const [editQAnswer, setEditQAnswer] = useState("");
+  const [editQOptions, setEditQOptions] = useState([
+    { id: "A", text: "", isCorrect: true },
+    { id: "B", text: "", isCorrect: false },
+    { id: "C", text: "", isCorrect: false },
+    { id: "D", text: "", isCorrect: false },
+  ]);
+  const [savingQuestion, setSavingQuestion] = useState(false);
 
   const fetchBanks = async () => {
     try {
@@ -198,6 +221,129 @@ export default function QuizBankPage() {
     }
   };
 
+  const openEditBank = (bank?: QuizBank) => {
+    const target = bank || selectedBank;
+    if (!target) return;
+    setEditBankTitle(target.title);
+    setEditBankDesc(target.description || "");
+    setShowEditBankModal(true);
+  };
+
+  const handleUpdateBank = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBank || !editBankTitle.trim()) return;
+    setSavingBank(true);
+    try {
+      const res = await fetch(`/api/quiz-bank/${selectedBank.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: editBankTitle.trim(),
+          description: editBankDesc.trim(),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = data.bank;
+        setSelectedBank((prev) => (prev ? { ...prev, title: updated.title, description: updated.description } : prev));
+        setBanks((prev) =>
+          prev.map((b) => (b.id === selectedBank.id ? { ...b, title: updated.title, description: updated.description } : b))
+        );
+        setShowEditBankModal(false);
+      } else {
+        alert("Lỗi khi cập nhật bộ đề!");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi kết nối!");
+    } finally {
+      setSavingBank(false);
+    }
+  };
+
+  const openEditQuestion = (q: QuestionItem) => {
+    setEditingQuestionId(q.id || null);
+    setEditQType(q.type || "MC_SINGLE");
+    setEditQContent(q.content || "");
+    setEditQPoints(q.points || 10);
+    setEditQTimeLimit(q.timeLimit || 30);
+    setEditQHint(q.hint || "");
+    setEditQAnswer(q.answer || "");
+
+    if (q.options && q.options.length > 0) {
+      const existing = q.options.map((opt, idx) => ({
+        id: opt.id || String.fromCharCode(65 + idx),
+        text: opt.text || "",
+        isCorrect: !!opt.isCorrect,
+      }));
+      while (existing.length < 4) {
+        existing.push({
+          id: String.fromCharCode(65 + existing.length),
+          text: "",
+          isCorrect: false,
+        });
+      }
+      setEditQOptions(existing);
+    } else {
+      setEditQOptions([
+        { id: "A", text: "", isCorrect: true },
+        { id: "B", text: "", isCorrect: false },
+        { id: "C", text: "", isCorrect: false },
+        { id: "D", text: "", isCorrect: false },
+      ]);
+    }
+    setShowEditQModal(true);
+  };
+
+  const handleUpdateQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBank || !editingQuestionId || !editQContent.trim()) return;
+    setSavingQuestion(true);
+
+    const rawPoints = Math.max(10, Math.round((Number(editQPoints) || 10) / 10) * 10);
+    const payload: any = {
+      type: editQType,
+      content: editQContent.trim(),
+      points: rawPoints,
+      timeLimit: Number(editQTimeLimit) || 30,
+      hint: editQHint.trim() || null,
+    };
+
+    if (editQType === "MC_SINGLE" || editQType === "MC_MULTI") {
+      payload.options = editQOptions.filter((o) => o.text.trim() !== "");
+      payload.answer = null;
+    } else if (editQType === "TRUE_FALSE") {
+      payload.options = [
+        { id: "true", text: "Đúng (True)", isCorrect: editQAnswer === "true" },
+        { id: "false", text: "Sai (False)", isCorrect: editQAnswer === "false" },
+      ];
+      payload.answer = editQAnswer;
+    } else if (editQType === "FILL_BLANK" || editQType === "ESSAY") {
+      payload.options = null;
+      payload.answer = editQAnswer.trim();
+    }
+
+    try {
+      const res = await fetch(`/api/quiz-bank/${selectedBank.id}/questions/${editingQuestionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        setShowEditQModal(false);
+        setEditingQuestionId(null);
+        await selectBank(selectedBank);
+      } else {
+        alert("Lỗi khi cập nhật câu hỏi!");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi kết nối!");
+    } finally {
+      setSavingQuestion(false);
+    }
+  };
+
   // Import File Handler (CSV, Excel XLSX, JSON)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -329,17 +475,29 @@ export default function QuizBankPage() {
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-bold text-base flex-1">{b.title}</p>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteBank(b);
-                      }}
-                      disabled={deletingBankId === b.id}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition"
-                      title="Xóa bộ đề"
-                    >
-                      {deletingBankId === b.id ? "..." : "🗑️"}
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditBank(b);
+                        }}
+                        className="p-1 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground text-xs transition"
+                        title="Sửa thông tin bộ đề"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteBank(b);
+                        }}
+                        disabled={deletingBankId === b.id}
+                        className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition"
+                        title="Xóa bộ đề"
+                      >
+                        {deletingBankId === b.id ? "..." : "🗑️"}
+                      </button>
+                    </div>
                   </div>
                   {b.description && (
                     <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{b.description}</p>
@@ -360,7 +518,17 @@ export default function QuizBankPage() {
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
                 <div>
-                  <h2 className="text-xl font-black">{selectedBank.title}</h2>
+                  <div className="flex items-center gap-2.5">
+                    <h2 className="text-xl font-black">{selectedBank.title}</h2>
+                    <button
+                      onClick={() => openEditBank(selectedBank)}
+                      className="px-2.5 py-1 rounded-lg bg-card hover:bg-muted border border-border text-xs text-purple-300 hover:text-white flex items-center gap-1 transition"
+                      title="Sửa tên và mô tả bộ đề"
+                    >
+                      <span>✏️</span>
+                      <span>Sửa đề</span>
+                    </button>
+                  </div>
                   <p className="text-sm text-muted-foreground">{questions.length} câu hỏi hiện có</p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -410,14 +578,24 @@ export default function QuizBankPage() {
                           <span>⏱️ {q.timeLimit}s</span>
                           <span>⭐ {q.points}đ</span>
                           {q.id && (
-                            <button
-                              onClick={() => handleDeleteQuestion(q.id!)}
-                              disabled={deletingQuestionId === q.id}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/20 text-destructive text-xs transition"
-                              title="Xóa câu hỏi này"
-                            >
-                              {deletingQuestionId === q.id ? "..." : "🗑️"}
-                            </button>
+                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition">
+                              <button
+                                onClick={() => openEditQuestion(q)}
+                                className="px-2 py-0.5 rounded bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 text-xs font-semibold flex items-center gap-1 transition"
+                                title="Sửa câu hỏi này"
+                              >
+                                <span>✏️</span>
+                                <span>Sửa</span>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteQuestion(q.id!)}
+                                disabled={deletingQuestionId === q.id}
+                                className="p-1 rounded hover:bg-destructive/20 text-destructive text-xs transition"
+                                title="Xóa câu hỏi này"
+                              >
+                                {deletingQuestionId === q.id ? "..." : "🗑️"}
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -667,6 +845,242 @@ export default function QuizBankPage() {
                 className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold"
               >
                 Lưu câu hỏi
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal: Edit Bank */}
+      {showEditBankModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+          <form
+            onSubmit={handleUpdateBank}
+            className="glass rounded-2xl p-6 w-full max-w-md space-y-4 border border-border"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">✏️ Chỉnh sửa bộ câu hỏi</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditBankModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Tiêu đề bộ đề *</label>
+              <input
+                type="text"
+                required
+                value={editBankTitle}
+                onChange={(e) => setEditBankTitle(e.target.value)}
+                placeholder="VD: Kiểm tra kiến thức Khoa học tự nhiên"
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Mô tả tóm tắt</label>
+              <textarea
+                value={editBankDesc}
+                onChange={(e) => setEditBankDesc(e.target.value)}
+                placeholder="Mô tả nội dung, chủ đề hoặc mức độ khó..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring resize-none"
+              />
+            </div>
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEditBankModal(false)}
+                className="px-4 py-2 rounded-xl border border-border hover:bg-muted"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={savingBank || !editBankTitle.trim()}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition disabled:opacity-50"
+              >
+                {savingBank ? "Đang lưu..." : "Lưu thay đổi"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal: Edit Question */}
+      {showEditQModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
+          <form
+            onSubmit={handleUpdateQuestion}
+            className="glass rounded-2xl p-6 w-full max-w-xl space-y-4 border border-border my-8"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">✏️ Chỉnh sửa câu hỏi</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditQModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">Loại câu hỏi</label>
+                <select
+                  value={editQType}
+                  onChange={(e) => setEditQType(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                >
+                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án</option>
+                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án</option>
+                  <option value="TRUE_FALSE">Đúng / Sai</option>
+                  <option value="FILL_BLANK">Điền từ</option>
+                  <option value="ESSAY">Tự luận</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Điểm số (bội số 10)</label>
+                <input
+                  type="number"
+                  min={10}
+                  step={10}
+                  value={editQPoints}
+                  onChange={(e) => setEditQPoints(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                />
+                <p className="text-[10px] text-muted-foreground mt-0.5">Bắt buộc chia hết cho 10 (10, 20, 30...)</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
+                <input
+                  type="number"
+                  value={editQTimeLimit}
+                  onChange={(e) => setEditQTimeLimit(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Nội dung câu hỏi *</label>
+              <textarea
+                required
+                value={editQContent}
+                onChange={(e) => setEditQContent(e.target.value)}
+                placeholder="Nhập nội dung câu hỏi..."
+                rows={3}
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* Answer inputs according to question type */}
+            {(editQType === "MC_SINGLE" || editQType === "MC_MULTI") && (
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Các phương án lựa chọn (chọn đáp án đúng)</label>
+                {editQOptions.map((opt, idx) => (
+                  <div key={opt.id} className="flex items-center gap-2">
+                    <input
+                      type={editQType === "MC_SINGLE" ? "radio" : "checkbox"}
+                      name="edit-correct-option"
+                      checked={opt.isCorrect}
+                      onChange={(e) => {
+                        if (editQType === "MC_SINGLE") {
+                          setEditQOptions(editQOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
+                        } else {
+                          setEditQOptions(editQOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
+                        }
+                      }}
+                      className="w-4 h-4 cursor-pointer"
+                    />
+                    <span className="font-bold text-sm w-4">{String.fromCharCode(65 + idx)}</span>
+                    <input
+                      type="text"
+                      value={opt.text}
+                      onChange={(e) => {
+                        const newOpts = [...editQOptions];
+                        newOpts[idx].text = e.target.value;
+                        setEditQOptions(newOpts);
+                      }}
+                      placeholder={`Lựa chọn ${String.fromCharCode(65 + idx)}`}
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {editQType === "TRUE_FALSE" && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_tf_answer"
+                      value="true"
+                      checked={editQAnswer === "true"}
+                      onChange={(e) => setEditQAnswer(e.target.value)}
+                    />
+                    <span>Đúng (True)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_tf_answer"
+                      value="false"
+                      checked={editQAnswer === "false"}
+                      onChange={(e) => setEditQAnswer(e.target.value)}
+                    />
+                    <span>Sai (False)</span>
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {(editQType === "FILL_BLANK" || editQType === "ESSAY") && (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {editQType === "FILL_BLANK" ? "Từ/Cụm từ chuẩn đáp án" : "Gợi ý đáp án / Tiêu chí chấm"}
+                </label>
+                <input
+                  type="text"
+                  value={editQAnswer}
+                  onChange={(e) => setEditQAnswer(e.target.value)}
+                  placeholder="Nhập đáp án chuẩn..."
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Gợi ý câu hỏi (Hint)</label>
+              <input
+                type="text"
+                value={editQHint}
+                onChange={(e) => setEditQHint(e.target.value)}
+                placeholder="Gợi ý nếu đội dùng thẻ gợi ý..."
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowEditQModal(false)}
+                className="px-4 py-2 rounded-xl border border-border hover:bg-muted"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={savingQuestion || !editQContent.trim()}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition disabled:opacity-50"
+              >
+                {savingQuestion ? "Đang lưu..." : "Cập nhật câu hỏi"}
               </button>
             </div>
           </form>

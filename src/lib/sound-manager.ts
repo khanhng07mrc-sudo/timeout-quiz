@@ -40,9 +40,30 @@ class SoundManager {
     }
   }
 
+  // Safe cleanup helper to prevent dangling Web Audio nodes in audio graph
+  private safeStopAndDisconnect(osc: OscillatorNode, gain: GainNode, stopTime: number) {
+    try {
+      osc.stop(stopTime);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
+    } catch {
+      try {
+        osc.disconnect();
+        gain.disconnect();
+      } catch {}
+    }
+  }
+
   public setMuted(muted: boolean) {
     this.isMuted = muted;
     this.updateGain();
+    if (muted && this.isMusicPlaying) {
+      this.stopMusic();
+    }
   }
 
   public getMuted(): boolean {
@@ -96,7 +117,7 @@ class SoundManager {
       osc.connect(gain);
       gain.connect(this.sfxGainNode);
       osc.start(now);
-      osc.stop(now + 0.35);
+      this.safeStopAndDisconnect(osc, gain, now + 0.35);
     } else {
       // 3, 2, 1 rhythm tick
       const freq = remaining === 1 ? 660 : 440;
@@ -106,7 +127,7 @@ class SoundManager {
       osc.connect(gain);
       gain.connect(this.sfxGainNode);
       osc.start(now);
-      osc.stop(now + 0.15);
+      this.safeStopAndDisconnect(osc, gain, now + 0.15);
     }
   }
 
@@ -134,8 +155,8 @@ class SoundManager {
 
     osc1.start(now);
     osc2.start(now);
-    osc1.stop(now + 0.4);
-    osc2.stop(now + 0.4);
+    this.safeStopAndDisconnect(osc1, gain, now + 0.4);
+    this.safeStopAndDisconnect(osc2, gain, now + 0.4);
   }
 
   // Correct answer chime (triumphant major chord arpeggio)
@@ -159,7 +180,7 @@ class SoundManager {
       gain.connect(this.sfxGainNode!);
 
       osc.start(now);
-      osc.stop(now + 0.5);
+      this.safeStopAndDisconnect(osc, gain, now + 0.5);
     });
   }
 
@@ -183,7 +204,7 @@ class SoundManager {
     gain.connect(this.sfxGainNode);
 
     osc.start(now);
-    osc.stop(now + 0.45);
+    this.safeStopAndDisconnect(osc, gain, now + 0.45);
   }
 
   // Power-up card activation (mystical ascending frequency sweep)
@@ -206,7 +227,7 @@ class SoundManager {
     gain.connect(this.sfxGainNode);
 
     osc.start(now);
-    osc.stop(now + 0.4);
+    this.safeStopAndDisconnect(osc, gain, now + 0.4);
   }
 
   // Victory fanfare for leaderboard
@@ -239,7 +260,7 @@ class SoundManager {
       gain.connect(this.sfxGainNode!);
 
       osc.start(now);
-      osc.stop(now + d);
+      this.safeStopAndDisconnect(osc, gain, now + d);
     });
   }
 
@@ -257,6 +278,7 @@ class SoundManager {
 
   // Start Lobby BGM (relaxing, modern upbeat melodic pulse)
   public playLobbyMusic() {
+    if (this.isMuted) return;
     if (this.currentMusicType === "LOBBY" && this.isMusicPlaying) return;
     this.stopMusic();
     this.initContext();
@@ -292,7 +314,7 @@ class SoundManager {
         osc.connect(gain);
         gain.connect(this.musicGainNode!);
         osc.start(now);
-        osc.stop(now + 1.8);
+        this.safeStopAndDisconnect(osc, gain, now + 1.8);
       });
 
       // Bass note
@@ -305,7 +327,7 @@ class SoundManager {
       bassOsc.connect(bassGain);
       bassGain.connect(this.musicGainNode);
       bassOsc.start(now);
-      bassOsc.stop(now + 0.9);
+      this.safeStopAndDisconnect(bassOsc, bassGain, now + 0.9);
 
       step++;
     };
@@ -314,8 +336,9 @@ class SoundManager {
     this.activeMusicInterval = setInterval(playChordStep, 2000);
   }
 
-  // Start Question Suspense BGM (Who Wants to Be a Millionaire / Kahoot style suspense pulse)
+  // Start Question Suspense BGM
   public playQuestionMusic(remainingSeconds: number = 30) {
+    if (this.isMuted) return;
     if (this.currentMusicType === "QUESTION" && this.isMusicPlaying) return;
     this.stopMusic();
     this.initContext();
@@ -342,7 +365,7 @@ class SoundManager {
       kickOsc.connect(kickGain);
       kickGain.connect(this.musicGainNode);
       kickOsc.start(now);
-      kickOsc.stop(now + 0.2);
+      this.safeStopAndDisconnect(kickOsc, kickGain, now + 0.2);
 
       // Tension tick on offbeat
       if (beat % 2 === 1) {
@@ -355,7 +378,7 @@ class SoundManager {
         tickOsc.connect(tickGain);
         tickGain.connect(this.musicGainNode);
         tickOsc.start(now + 0.25);
-        tickOsc.stop(now + 0.35);
+        this.safeStopAndDisconnect(tickOsc, tickGain, now + 0.35);
       }
 
       beat++;

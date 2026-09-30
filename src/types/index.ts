@@ -31,17 +31,148 @@ export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
 // ─── Card Metadata ────────────────────────────────────────────────────────────
 
-export const CARD_METADATA: Record<CardType, { emoji: string; name: string; nameVi: string; descriptionVi: string; description: string }> = {
-  FIFTY_FIFTY: { emoji: "🔀", name: "50/50", nameVi: "50/50", description: "Remove 2 wrong answers", descriptionVi: "Loại bỏ 2 đáp án sai" },
-  DOUBLE: { emoji: "✖️2", name: "Double", nameVi: "Nhân đôi", description: "Double points next", descriptionVi: "Nhân đôi điểm câu tiếp theo" },
-  FREEZE: { emoji: "❄️", name: "Freeze", nameVi: "Phong tỏa", description: "Skip another team's turn", descriptionVi: "Bỏ qua lượt của đội khác" },
-  ATTACK: { emoji: "⚔️", name: "Attack", nameVi: "Tấn công", description: "Force team to answer", descriptionVi: "Chỉ định đội khác trả lời, sai bị trừ" },
-  SKIP: { emoji: "🔄", name: "Skip", nameVi: "Đổi câu", description: "Replace question", descriptionVi: "Đổi câu hỏi sang câu khác" },
-  TIME_PLUS: { emoji: "⏱️", name: "Time+", nameVi: "Thêm giờ", description: "Add 15 seconds", descriptionVi: "Thêm 15 giây" },
-  SHIELD: { emoji: "🛡️", name: "Shield", nameVi: "Tái sinh", description: "Protect from penalty once", descriptionVi: "Bảo vệ khỏi trừ điểm 1 lần" },
-  STEAL: { emoji: "💸", name: "Steal", nameVi: "Cướp điểm", description: "Steal points from leader", descriptionVi: "Cướp điểm của đội dẫn đầu" },
-  PENALTY: { emoji: "💥", name: "Penalty", nameVi: "Phạt đôi", description: "Double penalty for target team", descriptionVi: "Nhân đôi điểm trừ của đội mục tiêu" },
-  SCORE_X2: { emoji: "⭐", name: "Score x2", nameVi: "x2 điểm", description: "Correct=x2, Wrong=0 penalty", descriptionVi: "Đúng x2 điểm, sai không bị trừ" },
+export interface CardDetail {
+  emoji: string;
+  name: string;
+  nameVi: string;
+  summaryVi: string;
+  descriptionVi: string;
+  description: string;
+  detailVi: string;
+  correctEffectVi?: string;
+  wrongEffectVi?: string;
+  requiresTarget: boolean;
+  tag: string;
+  color: string;
+}
+
+export const CARD_METADATA: Record<CardType, CardDetail> = {
+  FIFTY_FIFTY: {
+    emoji: "🔀",
+    name: "50/50",
+    nameVi: "50/50",
+    summaryVi: "Bỏ 2 đáp án sai",
+    descriptionVi: "Loại bỏ 2 phương án sai",
+    description: "Remove 2 wrong answers",
+    detailVi: "Hệ thống tự động gạch bỏ ngẫu nhiên 2 phương án sai, giúp tăng xác suất chọn đúng lên 50%.",
+    requiresTarget: false,
+    tag: "Hỗ trợ",
+    color: "#3b82f6",
+  },
+  DOUBLE: {
+    emoji: "✖️2",
+    name: "Double",
+    nameVi: "Nhân đôi",
+    summaryVi: "Đúng x2 / Sai bị phạt",
+    descriptionVi: "Đúng x2 điểm, Sai bị trừ điểm phạt",
+    description: "Double points next, penalty on wrong",
+    detailVi: "Thẻ cược mạo hiểm: Trả lời ĐÚNG được nhân đôi số điểm (+200%). Nhưng nếu trả lời SAI vẫn bị trừ điểm phạt bình thường!",
+    correctEffectVi: "+200% số điểm câu hỏi (x2)",
+    wrongEffectVi: "-50% số điểm câu hỏi (Bị phạt)",
+    requiresTarget: false,
+    tag: "Mạo hiểm",
+    color: "#f59e0b",
+  },
+  SCORE_X2: {
+    emoji: "⭐",
+    name: "Score x1.5",
+    nameVi: "x1.5 điểm",
+    summaryVi: "Đúng x1.5 / Miễn phạt",
+    descriptionVi: "Đúng x1.5 điểm, Sai không bị trừ (bảo toàn điểm)",
+    description: "Correct=x1.5, Wrong=0 penalty",
+    detailVi: "Thẻ an toàn tích lũy: Trả lời ĐÚNG được nhân 1.5 lần số điểm (+150%). Nếu trả lời SAI sẽ được miễn toàn bộ điểm phạt (0 điểm, bảo toàn điểm số).",
+    correctEffectVi: "+150% số điểm câu hỏi (x1.5)",
+    wrongEffectVi: "0 điểm (Không bị phạt trừ điểm)",
+    requiresTarget: false,
+    tag: "An toàn",
+    color: "#10b981",
+  },
+  FREEZE: {
+    emoji: "❄️",
+    name: "Freeze",
+    nameVi: "Phong tỏa",
+    summaryVi: "Đóng băng 1 đội đối thủ",
+    descriptionVi: "Bỏ qua lượt của đội khác",
+    description: "Skip another team's turn",
+    detailVi: "Chỉ định 1 đội đối thủ bị đóng băng trong câu này, tước quyền nộp đáp án hoặc quyền bấm chuông của họ.",
+    requiresTarget: true,
+    tag: "Khống chế",
+    color: "#60a5fa",
+  },
+  ATTACK: {
+    emoji: "⚔️",
+    name: "Attack",
+    nameVi: "Tấn công",
+    summaryVi: "Ép đối thủ trả lời",
+    descriptionVi: "Chỉ định đội khác trả lời, sai bị trừ",
+    description: "Force team to answer",
+    detailVi: "Chỉ định 1 đội đối thủ buộc phải trả lời câu hỏi này. Nếu họ trả lời SAI, họ sẽ bị trừ điểm phạt ngay lập tức!",
+    requiresTarget: true,
+    tag: "Tấn công",
+    color: "#ef4444",
+  },
+  SKIP: {
+    emoji: "🔄",
+    name: "Skip",
+    nameVi: "Đổi câu",
+    summaryVi: "Đổi câu hỏi sang câu khác",
+    descriptionVi: "Đổi câu hỏi sang câu khác",
+    description: "Replace question",
+    detailVi: "Bỏ qua câu hỏi hiện tại nếu câu quá hóc búa để chuyển sang một câu hỏi khác trong bộ đề mà không bị mất điểm.",
+    requiresTarget: false,
+    tag: "Chiến thuật",
+    color: "#8b5cf6",
+  },
+  TIME_PLUS: {
+    emoji: "⏱️",
+    name: "Time+",
+    nameVi: "Thêm giờ",
+    summaryVi: "+15 giây suy nghĩ",
+    descriptionVi: "Thêm 15 giây",
+    description: "Add 15 seconds",
+    detailVi: "Kéo dài thời gian suy nghĩ thêm 15 giây cho cả đội có thêm cơ hội thảo luận và đưa ra đáp án chính xác.",
+    requiresTarget: false,
+    tag: "Thời gian",
+    color: "#ec4899",
+  },
+  SHIELD: {
+    emoji: "🛡️",
+    name: "Shield",
+    nameVi: "Tái sinh (Khiên)",
+    summaryVi: "Miễn trừ điểm phạt 1 lần",
+    descriptionVi: "Bảo vệ khỏi bị trừ điểm 1 lần",
+    description: "Protect from penalty once",
+    detailVi: "Kích hoạt khiên bảo hộ: Nếu câu này trả lời SAI, đội sẽ được miễn trừ 100% điểm phạt (nhận 0 điểm thay vì bị trừ).",
+    correctEffectVi: "Tính điểm đúng như bình thường",
+    wrongEffectVi: "0 điểm (Miễn trừ phạt)",
+    requiresTarget: false,
+    tag: "Phòng thủ",
+    color: "#06b6d4",
+  },
+  STEAL: {
+    emoji: "💸",
+    name: "Steal",
+    nameVi: "Cướp điểm",
+    summaryVi: "Cướp điểm đội dẫn đầu",
+    descriptionVi: "Cướp điểm của đội dẫn đầu",
+    description: "Steal points from leader",
+    detailVi: "Cướp một lượng điểm từ đội đang dẫn đầu bảng xếp hạng để cộng trực tiếp vào tổng điểm của đội bạn.",
+    requiresTarget: false,
+    tag: "Cướp bóc",
+    color: "#eab308",
+  },
+  PENALTY: {
+    emoji: "💥",
+    name: "Penalty",
+    nameVi: "Phạt đôi",
+    summaryVi: "Nhân đôi điểm trừ đối thủ",
+    descriptionVi: "Nhân đôi điểm trừ của đội mục tiêu",
+    description: "Double penalty for target team",
+    detailVi: "Chỉ định 1 đội đối thủ. Nếu đội đó trả lời SAI ở câu này, họ sẽ bị nhân đôi mức điểm phạt (-100% điểm câu hỏi)!",
+    requiresTarget: true,
+    tag: "Phạt nặng",
+    color: "#dc2626",
+  },
 };
 
 export type BloomLevel = "REMEMBER" | "APPLY" | "ANALYZE";

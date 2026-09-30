@@ -13,16 +13,16 @@ const GAME_MODES = [
 ];
 
 const POWERUP_TYPES = [
-  { value: "FIFTY_FIFTY", emoji: "🔀", label: "50/50" },
-  { value: "DOUBLE", emoji: "✖️2", label: "Nhân đôi" },
-  { value: "FREEZE", emoji: "❄️", label: "Phong tỏa" },
-  { value: "ATTACK", emoji: "⚔️", label: "Tấn công" },
-  { value: "SKIP", emoji: "🔄", label: "Đổi câu" },
-  { value: "TIME_PLUS", emoji: "⏱️", label: "Thêm giờ" },
-  { value: "SHIELD", emoji: "🛡️", label: "Tái sinh" },
-  { value: "STEAL", emoji: "💸", label: "Cướp điểm" },
-  { value: "PENALTY", emoji: "💥", label: "Phạt đôi" },
-  { value: "SCORE_X2", emoji: "⭐", label: "x2 điểm" },
+  { value: "FIFTY_FIFTY", emoji: "🔀", label: "50/50", desc: "Bỏ 2 đáp án sai" },
+  { value: "DOUBLE", emoji: "✖️2", label: "Nhân đôi (x2)", desc: "Đúng x2 điểm, Sai bị phạt" },
+  { value: "SCORE_X2", emoji: "⭐", label: "x1.5 điểm", desc: "Đúng x1.5 điểm, Sai miễn phạt" },
+  { value: "SHIELD", emoji: "🛡️", label: "Tái sinh (Khiên)", desc: "Miễn trừ điểm phạt 1 lần" },
+  { value: "FREEZE", emoji: "❄️", label: "Phong tỏa", desc: "Đóng băng 1 đội đối thủ" },
+  { value: "ATTACK", emoji: "⚔️", label: "Tấn công", desc: "Ép đối thủ trả lời, sai bị trừ" },
+  { value: "SKIP", emoji: "🔄", label: "Đổi câu", desc: "Đổi sang câu hỏi khác" },
+  { value: "TIME_PLUS", emoji: "⏱️", label: "Thêm giờ", desc: "+15 giây suy nghĩ" },
+  { value: "STEAL", emoji: "💸", label: "Cướp điểm", desc: "Cướp điểm đội dẫn đầu" },
+  { value: "PENALTY", emoji: "💥", label: "Phạt đôi", desc: "Nhân đôi điểm trừ đối thủ" },
 ];
 
 const TEAM_COLORS = ["#6366f1", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444", "#8b5cf6", "#f97316"];
@@ -63,10 +63,11 @@ export default function CreateRoomPage() {
   ]);
 
   // Step 3: Power-up config
-  const [powerupEnabled, setPowerupEnabled] = useState(false);
-  const [powerupOwnerType, setPowerupOwnerType] = useState<"SHARED" | "TEAM">("SHARED");
+  const [powerupEnabled, setPowerupEnabled] = useState(true);
+  const [powerupOwnerType, setPowerupOwnerType] = useState<"SHARED" | "TEAM">("TEAM");
   const [powerupCountShared, setPowerupCountShared] = useState(10);
-  const [powerupCountPerTeam, setPowerupCountPerTeam] = useState(3);
+  const [powerupCountPerTeam, setPowerupCountPerTeam] = useState(2);
+  const [maxHandSize, setMaxHandSize] = useState(3);
   const [allowedPowerups, setAllowedPowerups] = useState<string[]>(
     POWERUP_TYPES.map((p) => p.value)
   );
@@ -112,6 +113,7 @@ export default function CreateRoomPage() {
             powerupOwnerType,
             powerupCountShared,
             powerupCountPerTeam,
+            maxHandSize,
             allowedPowerups,
             // Mode Classic là mode DUY NHẤT có bonus thời gian
             timeBonusEnabled: mode === "CLASSIC" ? timeBonusEnabled : false,
@@ -463,17 +465,20 @@ export default function CreateRoomPage() {
 
               <div>
                 <label className="block text-sm font-medium mb-3">Loại thẻ được phép</label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {POWERUP_TYPES.map((pt) => (
                     <button
                       key={pt.value}
                       onClick={() => togglePowerup(pt.value)}
-                      className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-left ${
+                      className={`flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${
                         allowedPowerups.includes(pt.value) ? "border-purple-500 bg-purple-500/10" : "border-border opacity-50"
                       }`}
                     >
-                      <span>{pt.emoji}</span>
-                      <span className="text-sm font-medium">{pt.label}</span>
+                      <span className="text-xl mt-0.5">{pt.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold">{pt.label}</div>
+                        <div className="text-xs text-muted-foreground">{pt.desc}</div>
+                      </div>
                     </button>
                   ))}
                 </div>

@@ -85,8 +85,8 @@ export function resolvePowerup({
     case "SCORE_X2":
       return {
         type: cardType,
-        description: "Correct = x2 points, Wrong = 0 penalty!",
-        descriptionVi: "Đúng x2 điểm, sai không bị trừ!",
+        description: "Correct = x1.5 points, Wrong = 0 penalty!",
+        descriptionVi: "Đúng x1.5 điểm, sai không bị trừ (bảo toàn điểm)!",
         mutations: [
           { kind: "score_x2", teamId: usedByTeam.id },
         ],

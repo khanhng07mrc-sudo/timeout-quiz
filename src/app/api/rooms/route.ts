@@ -4,11 +4,12 @@ import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } f
 import { GameMode, TeamMode } from "@/types";
 
 const DEFAULT_CONFIG = {
-  powerupEnabled: false,
-  powerupOwnerType: "SHARED",
-  powerupCountPerTeam: 3,
-  powerupCountShared: 10,
-  allowedPowerups: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL"],
+  powerupEnabled: true,
+  powerupOwnerType: "TEAM",
+  powerupCountPerTeam: 2,
+  powerupCountShared: 0,
+  maxHandSize: 3,
+  allowedPowerups: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   timeBonusEnabled: true,
   penaltyForWrong: false,
   penaltyPoints: 5,

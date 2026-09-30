@@ -63,13 +63,28 @@ const roomStealBuzzed = new Map<string, { teamId: string; teamName: string; play
 const roomStealTimer = new Map<string, NodeJS.Timeout>(); // qKey -> 5s buzzer timer
 const roomBuzzFirst = new Map<string, { teamId: string; teamName: string; playerId: string; playerName: string }>(); // qKey -> first buzz in BUZZ mode
 
+// In-memory cache for ultra-fast response
+const roomCache = new Map<string, any>(); // roomId -> room with quizBank & questions
+const roomQuestionsCache = new Map<string, any[]>(); // roomId -> questions
+const roomActiveAnswers = new Map<string, Map<string, { teamId?: string; playerId?: string; answer: string | string[]; isCorrect: boolean | null; timeSpent: number; submittedAt: number }>>(); // qKey -> (actorKey -> answerData)
+
 async function getAdminRoom(socket: Sock) {
   const roomId = adminSockets.get(socket.id);
   if (roomId) {
-    return prisma.room.findUnique({
+    const cached = roomCache.get(roomId);
+    if (cached) return cached;
+
+    const r = await prisma.room.findUnique({
       where: { id: roomId },
       include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
     });
+    if (r) {
+      roomCache.set(roomId, r);
+      if (r.quizBank?.questions) {
+        roomQuestionsCache.set(roomId, r.quizBank.questions);
+      }
+    }
+    return r;
   }
 
   // Fallback if legacy connection was used
@@ -877,6 +892,95 @@ export function registerSocketHandlers(io: IO) {
       });
     }
 
+    // ── Fair Card Distribution & Multi-round Replenishment ──────────────────
+    async function ensureInitialTeamPowerups(roomId: string, ioInstance: IO) {
+      try {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { teams: { include: { powerupCards: true } } },
+        });
+        if (!room) return;
+        const config = room.config as any;
+        if (!config?.powerupEnabled) return;
+
+        const allowed = (config.allowedPowerups as string[]) || [
+          "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
+        ];
+        if (allowed.length === 0) return;
+
+        const initialCount = config.powerupCountPerTeam || 2;
+        let addedAny = false;
+
+        for (const team of room.teams) {
+          const activeUnused = team.powerupCards.filter((c) => !c.used).length;
+          const need = Math.max(0, initialCount - activeUnused);
+          for (let i = 0; i < need; i++) {
+            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            await prisma.powerupCard.create({
+              data: {
+                type: randomType as any,
+                ownerType: "TEAM",
+                teamId: team.id,
+                roomId: room.id,
+              },
+            });
+            addedAny = true;
+          }
+        }
+
+        if (addedAny) {
+          const updatedState = await buildRoomState(room.id);
+          ioInstance.to(`room:${room.code}`).emit("room:state", updatedState);
+        }
+      } catch (err) {
+        console.error("[ensureInitialTeamPowerups]", err);
+      }
+    }
+
+    async function replenishTeamPowerups(roomId: string, ioInstance: IO) {
+      try {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { teams: { include: { powerupCards: true } } },
+        });
+        if (!room) return;
+        const config = room.config as any;
+        if (!config?.powerupEnabled) return;
+
+        const allowed = (config.allowedPowerups as string[]) || [
+          "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
+        ];
+        if (allowed.length === 0) return;
+
+        const maxHand = config.maxHandSize || 3;
+        let addedAny = false;
+
+        for (const team of room.teams) {
+          if (team.isEliminated) continue;
+          const activeUnused = team.powerupCards.filter((c) => !c.used).length;
+          if (activeUnused < maxHand) {
+            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            await prisma.powerupCard.create({
+              data: {
+                type: randomType as any,
+                ownerType: "TEAM",
+                teamId: team.id,
+                roomId: room.id,
+              },
+            });
+            addedAny = true;
+          }
+        }
+
+        if (addedAny) {
+          const updatedState = await buildRoomState(room.id);
+          ioInstance.to(`room:${room.code}`).emit("room:state", updatedState);
+        }
+      } catch (err) {
+        console.error("[replenishTeamPowerups]", err);
+      }
+    }
+
     // ── Admin: Next Question ──────────────────────────────────────────────────
     socket.on("admin:next", async () => {
       const room = await getAdminRoom(socket);
@@ -903,7 +1007,14 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (room.status === "LOBBY") {
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } });
+        room.currentQuestion = 0;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } }).catch(console.error);
+
+        // Ensure 2 initial cards distributed per team
+        ensureInitialTeamPowerups(room.id, io).catch(console.error);
+
         const updatedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", updatedState);
 
@@ -933,13 +1044,24 @@ export function registerSocketHandlers(io: IO) {
 
       if (nextIndex >= questions.length) {
         stopQuestionTimer(room.id);
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
         const leaderboard = await buildLeaderboard(room.id);
         io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
         return;
       }
 
-      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } });
+      room.currentQuestion = nextIndex;
+      room.status = "PLAYING";
+      roomCache.set(room.id, room);
+      prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+
+      // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
+      if (nextIndex > 0 && nextIndex % 3 === 0) {
+        replenishTeamPowerups(room.id, io).catch(console.error);
+      }
+
       await startQuestionPrepareAndLaunch(room, questions, nextIndex);
     });
 
@@ -1368,8 +1490,12 @@ async function finalizeBuzzAnswer(io: IO, roomId: string, roomCode: string, ques
   const currentTeamObj = room.teams.find((t) => t.id === effTeamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
   if (activeCard) {
-    if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") multiplier = 2;
-    if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") shielded = true;
+    if (activeCard.type === "DOUBLE") multiplier = 2;
+    if (activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
+      shielded = true;
+    }
+    if (activeCard.type === "SHIELD") shielded = true;
   }
 
   const isCorrect = existingAns?.isCorrect === true;
@@ -1439,8 +1565,10 @@ async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: strin
     const teamCardsMap = roomQuestionTeamCards.get(qKey);
     const activeCard = teamCardsMap?.get(primary.teamId);
     let multiplier = 1;
-    if (activeCard && (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2")) {
+    if (activeCard && activeCard.type === "DOUBLE") {
       multiplier = 2;
+    } else if (activeCard && activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
     }
     const points = Math.floor(question.points * multiplier);
 
@@ -1511,8 +1639,12 @@ async function finalizeBouncebackSteal(io: IO, roomId: string, roomCode: string,
   const currentTeamObj = room.teams.find((t) => t.id === stealInfo.teamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
   if (activeCard) {
-    if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") multiplier = 2;
-    if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") shielded = true;
+    if (activeCard.type === "DOUBLE") multiplier = 2;
+    if (activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
+      shielded = true;
+    }
+    if (activeCard.type === "SHIELD") shielded = true;
   }
 
   const isCorrect = existingAns?.isCorrect === true;
@@ -1615,11 +1747,18 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 async function getRoomQuestions(roomId: string) {
+  if (roomQuestionsCache.has(roomId)) {
+    return roomQuestionsCache.get(roomId)!;
+  }
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
   });
-  return room?.quizBank?.questions ?? [];
+  const questions = room?.quizBank?.questions ?? [];
+  if (questions.length > 0) {
+    roomQuestionsCache.set(roomId, questions);
+  }
+  return questions;
 }
 
 async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, questionId: string) {
@@ -1903,10 +2042,13 @@ async function resolveQuestionTeamScores(
     let multiplier = 1;
     let shielded = team.shieldCount > 0;
     if (activeCard) {
-      if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") {
+      if (activeCard.type === "DOUBLE") {
         multiplier = 2;
+      } else if (activeCard.type === "SCORE_X2") {
+        multiplier = 1.5;
+        shielded = true;
       }
-      if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") {
+      if (activeCard.type === "SHIELD") {
         shielded = true;
       }
     }

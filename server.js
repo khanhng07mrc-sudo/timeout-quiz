@@ -49,22 +49,138 @@ function initSocketServer(httpServer) {
 var import_client = require("@prisma/client");
 var globalForPrisma = globalThis;
 var prisma = globalForPrisma.prisma ?? new import_client.PrismaClient({
-  log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"]
+  log: ["error"]
 });
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
 // src/types/index.ts
 var CARD_METADATA = {
-  FIFTY_FIFTY: { emoji: "\u{1F500}", name: "50/50", nameVi: "50/50", description: "Remove 2 wrong answers", descriptionVi: "Lo\u1EA1i b\u1ECF 2 \u0111\xE1p \xE1n sai" },
-  DOUBLE: { emoji: "\u2716\uFE0F2", name: "Double", nameVi: "Nh\xE2n \u0111\xF4i", description: "Double points next", descriptionVi: "Nh\xE2n \u0111\xF4i \u0111i\u1EC3m c\xE2u ti\u1EBFp theo" },
-  FREEZE: { emoji: "\u2744\uFE0F", name: "Freeze", nameVi: "Phong t\u1ECFa", description: "Skip another team's turn", descriptionVi: "B\u1ECF qua l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c" },
-  ATTACK: { emoji: "\u2694\uFE0F", name: "Attack", nameVi: "T\u1EA5n c\xF4ng", description: "Force team to answer", descriptionVi: "Ch\u1EC9 \u0111\u1ECBnh \u0111\u1ED9i kh\xE1c tr\u1EA3 l\u1EDDi, sai b\u1ECB tr\u1EEB" },
-  SKIP: { emoji: "\u{1F504}", name: "Skip", nameVi: "\u0110\u1ED5i c\xE2u", description: "Replace question", descriptionVi: "\u0110\u1ED5i c\xE2u h\u1ECFi sang c\xE2u kh\xE1c" },
-  TIME_PLUS: { emoji: "\u23F1\uFE0F", name: "Time+", nameVi: "Th\xEAm gi\u1EDD", description: "Add 15 seconds", descriptionVi: "Th\xEAm 15 gi\xE2y" },
-  SHIELD: { emoji: "\u{1F6E1}\uFE0F", name: "Shield", nameVi: "T\xE1i sinh", description: "Protect from penalty once", descriptionVi: "B\u1EA3o v\u1EC7 kh\u1ECFi tr\u1EEB \u0111i\u1EC3m 1 l\u1EA7n" },
-  STEAL: { emoji: "\u{1F4B8}", name: "Steal", nameVi: "C\u01B0\u1EDBp \u0111i\u1EC3m", description: "Steal points from leader", descriptionVi: "C\u01B0\u1EDBp \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i d\u1EABn \u0111\u1EA7u" },
-  PENALTY: { emoji: "\u{1F4A5}", name: "Penalty", nameVi: "Ph\u1EA1t \u0111\xF4i", description: "Double penalty for target team", descriptionVi: "Nh\xE2n \u0111\xF4i \u0111i\u1EC3m tr\u1EEB c\u1EE7a \u0111\u1ED9i m\u1EE5c ti\xEAu" },
-  SCORE_X2: { emoji: "\u2B50", name: "Score x2", nameVi: "x2 \u0111i\u1EC3m", description: "Correct=x2, Wrong=0 penalty", descriptionVi: "\u0110\xFAng x2 \u0111i\u1EC3m, sai kh\xF4ng b\u1ECB tr\u1EEB" }
+  FIFTY_FIFTY: {
+    emoji: "\u{1F500}",
+    name: "50/50",
+    nameVi: "50/50",
+    summaryVi: "B\u1ECF 2 \u0111\xE1p \xE1n sai",
+    descriptionVi: "Lo\u1EA1i b\u1ECF 2 ph\u01B0\u01A1ng \xE1n sai",
+    description: "Remove 2 wrong answers",
+    detailVi: "H\u1EC7 th\u1ED1ng t\u1EF1 \u0111\u1ED9ng g\u1EA1ch b\u1ECF ng\u1EABu nhi\xEAn 2 ph\u01B0\u01A1ng \xE1n sai, gi\xFAp t\u0103ng x\xE1c su\u1EA5t ch\u1ECDn \u0111\xFAng l\xEAn 50%.",
+    requiresTarget: false,
+    tag: "H\u1ED7 tr\u1EE3",
+    color: "#3b82f6"
+  },
+  DOUBLE: {
+    emoji: "\u2716\uFE0F2",
+    name: "Double",
+    nameVi: "Nh\xE2n \u0111\xF4i",
+    summaryVi: "\u0110\xFAng x2 / Sai b\u1ECB ph\u1EA1t",
+    descriptionVi: "\u0110\xFAng x2 \u0111i\u1EC3m, Sai b\u1ECB tr\u1EEB \u0111i\u1EC3m ph\u1EA1t",
+    description: "Double points next, penalty on wrong",
+    detailVi: "Th\u1EBB c\u01B0\u1EE3c m\u1EA1o hi\u1EC3m: Tr\u1EA3 l\u1EDDi \u0110\xDANG \u0111\u01B0\u1EE3c nh\xE2n \u0111\xF4i s\u1ED1 \u0111i\u1EC3m (+200%). Nh\u01B0ng n\u1EBFu tr\u1EA3 l\u1EDDi SAI v\u1EABn b\u1ECB tr\u1EEB \u0111i\u1EC3m ph\u1EA1t b\xECnh th\u01B0\u1EDDng!",
+    correctEffectVi: "+200% s\u1ED1 \u0111i\u1EC3m c\xE2u h\u1ECFi (x2)",
+    wrongEffectVi: "-50% s\u1ED1 \u0111i\u1EC3m c\xE2u h\u1ECFi (B\u1ECB ph\u1EA1t)",
+    requiresTarget: false,
+    tag: "M\u1EA1o hi\u1EC3m",
+    color: "#f59e0b"
+  },
+  SCORE_X2: {
+    emoji: "\u2B50",
+    name: "Score x1.5",
+    nameVi: "x1.5 \u0111i\u1EC3m",
+    summaryVi: "\u0110\xFAng x1.5 / Mi\u1EC5n ph\u1EA1t",
+    descriptionVi: "\u0110\xFAng x1.5 \u0111i\u1EC3m, Sai kh\xF4ng b\u1ECB tr\u1EEB (b\u1EA3o to\xE0n \u0111i\u1EC3m)",
+    description: "Correct=x1.5, Wrong=0 penalty",
+    detailVi: "Th\u1EBB an to\xE0n t\xEDch l\u0169y: Tr\u1EA3 l\u1EDDi \u0110\xDANG \u0111\u01B0\u1EE3c nh\xE2n 1.5 l\u1EA7n s\u1ED1 \u0111i\u1EC3m (+150%). N\u1EBFu tr\u1EA3 l\u1EDDi SAI s\u1EBD \u0111\u01B0\u1EE3c mi\u1EC5n to\xE0n b\u1ED9 \u0111i\u1EC3m ph\u1EA1t (0 \u0111i\u1EC3m, b\u1EA3o to\xE0n \u0111i\u1EC3m s\u1ED1).",
+    correctEffectVi: "+150% s\u1ED1 \u0111i\u1EC3m c\xE2u h\u1ECFi (x1.5)",
+    wrongEffectVi: "0 \u0111i\u1EC3m (Kh\xF4ng b\u1ECB ph\u1EA1t tr\u1EEB \u0111i\u1EC3m)",
+    requiresTarget: false,
+    tag: "An to\xE0n",
+    color: "#10b981"
+  },
+  FREEZE: {
+    emoji: "\u2744\uFE0F",
+    name: "Freeze",
+    nameVi: "Phong t\u1ECFa",
+    summaryVi: "\u0110\xF3ng b\u0103ng 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7",
+    descriptionVi: "B\u1ECF qua l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c",
+    description: "Skip another team's turn",
+    detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7 b\u1ECB \u0111\xF3ng b\u0103ng trong c\xE2u n\xE0y, t\u01B0\u1EDBc quy\u1EC1n n\u1ED9p \u0111\xE1p \xE1n ho\u1EB7c quy\u1EC1n b\u1EA5m chu\xF4ng c\u1EE7a h\u1ECD.",
+    requiresTarget: true,
+    tag: "Kh\u1ED1ng ch\u1EBF",
+    color: "#60a5fa"
+  },
+  ATTACK: {
+    emoji: "\u2694\uFE0F",
+    name: "Attack",
+    nameVi: "T\u1EA5n c\xF4ng",
+    summaryVi: "\xC9p \u0111\u1ED1i th\u1EE7 tr\u1EA3 l\u1EDDi",
+    descriptionVi: "Ch\u1EC9 \u0111\u1ECBnh \u0111\u1ED9i kh\xE1c tr\u1EA3 l\u1EDDi, sai b\u1ECB tr\u1EEB",
+    description: "Force team to answer",
+    detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7 bu\u1ED9c ph\u1EA3i tr\u1EA3 l\u1EDDi c\xE2u h\u1ECFi n\xE0y. N\u1EBFu h\u1ECD tr\u1EA3 l\u1EDDi SAI, h\u1ECD s\u1EBD b\u1ECB tr\u1EEB \u0111i\u1EC3m ph\u1EA1t ngay l\u1EADp t\u1EE9c!",
+    requiresTarget: true,
+    tag: "T\u1EA5n c\xF4ng",
+    color: "#ef4444"
+  },
+  SKIP: {
+    emoji: "\u{1F504}",
+    name: "Skip",
+    nameVi: "\u0110\u1ED5i c\xE2u",
+    summaryVi: "\u0110\u1ED5i c\xE2u h\u1ECFi sang c\xE2u kh\xE1c",
+    descriptionVi: "\u0110\u1ED5i c\xE2u h\u1ECFi sang c\xE2u kh\xE1c",
+    description: "Replace question",
+    detailVi: "B\u1ECF qua c\xE2u h\u1ECFi hi\u1EC7n t\u1EA1i n\u1EBFu c\xE2u qu\xE1 h\xF3c b\xFAa \u0111\u1EC3 chuy\u1EC3n sang m\u1ED9t c\xE2u h\u1ECFi kh\xE1c trong b\u1ED9 \u0111\u1EC1 m\xE0 kh\xF4ng b\u1ECB m\u1EA5t \u0111i\u1EC3m.",
+    requiresTarget: false,
+    tag: "Chi\u1EBFn thu\u1EADt",
+    color: "#8b5cf6"
+  },
+  TIME_PLUS: {
+    emoji: "\u23F1\uFE0F",
+    name: "Time+",
+    nameVi: "Th\xEAm gi\u1EDD",
+    summaryVi: "+15 gi\xE2y suy ngh\u0129",
+    descriptionVi: "Th\xEAm 15 gi\xE2y",
+    description: "Add 15 seconds",
+    detailVi: "K\xE9o d\xE0i th\u1EDDi gian suy ngh\u0129 th\xEAm 15 gi\xE2y cho c\u1EA3 \u0111\u1ED9i c\xF3 th\xEAm c\u01A1 h\u1ED9i th\u1EA3o lu\u1EADn v\xE0 \u0111\u01B0a ra \u0111\xE1p \xE1n ch\xEDnh x\xE1c.",
+    requiresTarget: false,
+    tag: "Th\u1EDDi gian",
+    color: "#ec4899"
+  },
+  SHIELD: {
+    emoji: "\u{1F6E1}\uFE0F",
+    name: "Shield",
+    nameVi: "T\xE1i sinh (Khi\xEAn)",
+    summaryVi: "Mi\u1EC5n tr\u1EEB \u0111i\u1EC3m ph\u1EA1t 1 l\u1EA7n",
+    descriptionVi: "B\u1EA3o v\u1EC7 kh\u1ECFi b\u1ECB tr\u1EEB \u0111i\u1EC3m 1 l\u1EA7n",
+    description: "Protect from penalty once",
+    detailVi: "K\xEDch ho\u1EA1t khi\xEAn b\u1EA3o h\u1ED9: N\u1EBFu c\xE2u n\xE0y tr\u1EA3 l\u1EDDi SAI, \u0111\u1ED9i s\u1EBD \u0111\u01B0\u1EE3c mi\u1EC5n tr\u1EEB 100% \u0111i\u1EC3m ph\u1EA1t (nh\u1EADn 0 \u0111i\u1EC3m thay v\xEC b\u1ECB tr\u1EEB).",
+    correctEffectVi: "T\xEDnh \u0111i\u1EC3m \u0111\xFAng nh\u01B0 b\xECnh th\u01B0\u1EDDng",
+    wrongEffectVi: "0 \u0111i\u1EC3m (Mi\u1EC5n tr\u1EEB ph\u1EA1t)",
+    requiresTarget: false,
+    tag: "Ph\xF2ng th\u1EE7",
+    color: "#06b6d4"
+  },
+  STEAL: {
+    emoji: "\u{1F4B8}",
+    name: "Steal",
+    nameVi: "C\u01B0\u1EDBp \u0111i\u1EC3m",
+    summaryVi: "C\u01B0\u1EDBp \u0111i\u1EC3m \u0111\u1ED9i d\u1EABn \u0111\u1EA7u",
+    descriptionVi: "C\u01B0\u1EDBp \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i d\u1EABn \u0111\u1EA7u",
+    description: "Steal points from leader",
+    detailVi: "C\u01B0\u1EDBp m\u1ED9t l\u01B0\u1EE3ng \u0111i\u1EC3m t\u1EEB \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u b\u1EA3ng x\u1EBFp h\u1EA1ng \u0111\u1EC3 c\u1ED9ng tr\u1EF1c ti\u1EBFp v\xE0o t\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i b\u1EA1n.",
+    requiresTarget: false,
+    tag: "C\u01B0\u1EDBp b\xF3c",
+    color: "#eab308"
+  },
+  PENALTY: {
+    emoji: "\u{1F4A5}",
+    name: "Penalty",
+    nameVi: "Ph\u1EA1t \u0111\xF4i",
+    summaryVi: "Nh\xE2n \u0111\xF4i \u0111i\u1EC3m tr\u1EEB \u0111\u1ED1i th\u1EE7",
+    descriptionVi: "Nh\xE2n \u0111\xF4i \u0111i\u1EC3m tr\u1EEB c\u1EE7a \u0111\u1ED9i m\u1EE5c ti\xEAu",
+    description: "Double penalty for target team",
+    detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7. N\u1EBFu \u0111\u1ED9i \u0111\xF3 tr\u1EA3 l\u1EDDi SAI \u1EDF c\xE2u n\xE0y, h\u1ECD s\u1EBD b\u1ECB nh\xE2n \u0111\xF4i m\u1EE9c \u0111i\u1EC3m ph\u1EA1t (-100% \u0111i\u1EC3m c\xE2u h\u1ECFi)!",
+    requiresTarget: true,
+    tag: "Ph\u1EA1t n\u1EB7ng",
+    color: "#dc2626"
+  }
 };
 function getBloomLevelFromPoints(points, explicitLevel) {
   if (explicitLevel === "REMEMBER" || explicitLevel === "APPLY" || explicitLevel === "ANALYZE") {
@@ -156,13 +272,24 @@ var roomStealPhase = /* @__PURE__ */ new Map();
 var roomStealBuzzed = /* @__PURE__ */ new Map();
 var roomStealTimer = /* @__PURE__ */ new Map();
 var roomBuzzFirst = /* @__PURE__ */ new Map();
+var roomCache = /* @__PURE__ */ new Map();
+var roomQuestionsCache = /* @__PURE__ */ new Map();
 async function getAdminRoom(socket) {
   const roomId = adminSockets.get(socket.id);
   if (roomId) {
-    return prisma.room.findUnique({
+    const cached = roomCache.get(roomId);
+    if (cached) return cached;
+    const r = await prisma.room.findUnique({
       where: { id: roomId },
       include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
     });
+    if (r) {
+      roomCache.set(roomId, r);
+      if (r.quizBank?.questions) {
+        roomQuestionsCache.set(roomId, r.quizBank.questions);
+      }
+    }
+    return r;
   }
   const playerId = playerSockets.get(socket.id);
   if (playerId) {
@@ -827,6 +954,102 @@ function registerSocketHandlers(io2) {
         preparePayload
       });
     }
+    async function ensureInitialTeamPowerups(roomId, ioInstance) {
+      try {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { teams: { include: { powerupCards: true } } }
+        });
+        if (!room) return;
+        const config = room.config;
+        if (!config?.powerupEnabled) return;
+        const allowed = config.allowedPowerups || [
+          "FIFTY_FIFTY",
+          "DOUBLE",
+          "FREEZE",
+          "ATTACK",
+          "SKIP",
+          "TIME_PLUS",
+          "SHIELD",
+          "STEAL",
+          "PENALTY",
+          "SCORE_X2"
+        ];
+        if (allowed.length === 0) return;
+        const initialCount = config.powerupCountPerTeam || 2;
+        let addedAny = false;
+        for (const team of room.teams) {
+          const activeUnused = team.powerupCards.filter((c) => !c.used).length;
+          const need = Math.max(0, initialCount - activeUnused);
+          for (let i = 0; i < need; i++) {
+            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            await prisma.powerupCard.create({
+              data: {
+                type: randomType,
+                ownerType: "TEAM",
+                teamId: team.id,
+                roomId: room.id
+              }
+            });
+            addedAny = true;
+          }
+        }
+        if (addedAny) {
+          const updatedState = await buildRoomState(room.id);
+          ioInstance.to(`room:${room.code}`).emit("room:state", updatedState);
+        }
+      } catch (err) {
+        console.error("[ensureInitialTeamPowerups]", err);
+      }
+    }
+    async function replenishTeamPowerups(roomId, ioInstance) {
+      try {
+        const room = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { teams: { include: { powerupCards: true } } }
+        });
+        if (!room) return;
+        const config = room.config;
+        if (!config?.powerupEnabled) return;
+        const allowed = config.allowedPowerups || [
+          "FIFTY_FIFTY",
+          "DOUBLE",
+          "FREEZE",
+          "ATTACK",
+          "SKIP",
+          "TIME_PLUS",
+          "SHIELD",
+          "STEAL",
+          "PENALTY",
+          "SCORE_X2"
+        ];
+        if (allowed.length === 0) return;
+        const maxHand = config.maxHandSize || 3;
+        let addedAny = false;
+        for (const team of room.teams) {
+          if (team.isEliminated) continue;
+          const activeUnused = team.powerupCards.filter((c) => !c.used).length;
+          if (activeUnused < maxHand) {
+            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            await prisma.powerupCard.create({
+              data: {
+                type: randomType,
+                ownerType: "TEAM",
+                teamId: team.id,
+                roomId: room.id
+              }
+            });
+            addedAny = true;
+          }
+        }
+        if (addedAny) {
+          const updatedState = await buildRoomState(room.id);
+          ioInstance.to(`room:${room.code}`).emit("room:state", updatedState);
+        }
+      } catch (err) {
+        console.error("[replenishTeamPowerups]", err);
+      }
+    }
     socket.on("admin:next", async () => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -847,7 +1070,11 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (room.status === "LOBBY") {
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } });
+        room.currentQuestion = 0;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } }).catch(console.error);
+        ensureInitialTeamPowerups(room.id, io2).catch(console.error);
         const updatedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", updatedState);
         const launchWarmupToFirstQuestion = () => {
@@ -871,12 +1098,20 @@ function registerSocketHandlers(io2) {
       const nextIndex = room.currentQuestion + 1;
       if (nextIndex >= questions.length) {
         stopQuestionTimer(room.id);
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
         const leaderboard = await buildLeaderboard(room.id);
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
         return;
       }
-      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } });
+      room.currentQuestion = nextIndex;
+      room.status = "PLAYING";
+      roomCache.set(room.id, room);
+      prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+      if (nextIndex > 0 && nextIndex % 3 === 0) {
+        replenishTeamPowerups(room.id, io2).catch(console.error);
+      }
       await startQuestionPrepareAndLaunch(room, questions, nextIndex);
     });
     socket.on("admin:skip:prepare", async () => {
@@ -1224,8 +1459,12 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
   const currentTeamObj = room.teams.find((t) => t.id === effTeamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
   if (activeCard) {
-    if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") multiplier = 2;
-    if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") shielded = true;
+    if (activeCard.type === "DOUBLE") multiplier = 2;
+    if (activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
+      shielded = true;
+    }
+    if (activeCard.type === "SHIELD") shielded = true;
   }
   const isCorrect = existingAns?.isCorrect === true;
   let points = 0;
@@ -1283,8 +1522,10 @@ async function finalizeBouncebackPrimary(io2, roomId, roomCode, questionId) {
     const teamCardsMap = roomQuestionTeamCards.get(qKey);
     const activeCard = teamCardsMap?.get(primary.teamId);
     let multiplier = 1;
-    if (activeCard && (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2")) {
+    if (activeCard && activeCard.type === "DOUBLE") {
       multiplier = 2;
+    } else if (activeCard && activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
     }
     const points = Math.floor(question.points * multiplier);
     await prisma.answer.update({
@@ -1345,8 +1586,12 @@ async function finalizeBouncebackSteal(io2, roomId, roomCode, questionId) {
   const currentTeamObj = room.teams.find((t) => t.id === stealInfo.teamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
   if (activeCard) {
-    if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") multiplier = 2;
-    if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") shielded = true;
+    if (activeCard.type === "DOUBLE") multiplier = 2;
+    if (activeCard.type === "SCORE_X2") {
+      multiplier = 1.5;
+      shielded = true;
+    }
+    if (activeCard.type === "SHIELD") shielded = true;
   }
   const isCorrect = existingAns?.isCorrect === true;
   let points = 0;
@@ -1432,11 +1677,18 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
   }
 }
 async function getRoomQuestions(roomId) {
+  if (roomQuestionsCache.has(roomId)) {
+    return roomQuestionsCache.get(roomId);
+  }
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
   });
-  return room?.quizBank?.questions ?? [];
+  const questions = room?.quizBank?.questions ?? [];
+  if (questions.length > 0) {
+    roomQuestionsCache.set(roomId, questions);
+  }
+  return questions;
 }
 async function revealCurrentAnswer(io2, roomId, roomCode, questionId) {
   stopQuestionTimer(roomId);
@@ -1665,10 +1917,13 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
     let multiplier = 1;
     let shielded = team.shieldCount > 0;
     if (activeCard) {
-      if (activeCard.type === "DOUBLE" || activeCard.type === "SCORE_X2") {
+      if (activeCard.type === "DOUBLE") {
         multiplier = 2;
+      } else if (activeCard.type === "SCORE_X2") {
+        multiplier = 1.5;
+        shielded = true;
       }
-      if (activeCard.type === "SHIELD" || activeCard.type === "SCORE_X2") {
+      if (activeCard.type === "SHIELD") {
         shielded = true;
       }
     }

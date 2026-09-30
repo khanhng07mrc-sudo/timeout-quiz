@@ -21,6 +21,10 @@ import PowerupBar from "@/components/play/PowerupBar";
 import ScoreDisplay from "@/components/play/ScoreDisplay";
 import PowerupIcon from "@/components/ui/PowerupIcon";
 import { soundManager } from "@/lib/sound-manager";
+import TournamentBracket from "@/components/modes/TournamentBracket";
+import GridCaroBoard from "@/components/modes/GridCaroBoard";
+import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
+import WagerPanel from "@/components/modes/WagerPanel";
 
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
@@ -276,6 +280,25 @@ export default function PlayPage() {
       }
     });
 
+    socket.on("game:grid:update", (gridCaroState) => {
+      setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
+    });
+    socket.on("game:dice:update", (diceRaceState) => {
+      setRoomState((prev) => (prev ? { ...prev, diceRaceState } : prev));
+    });
+    socket.on("game:wager:update", (wagerState) => {
+      setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
+    });
+    socket.on("game:tournament:update", (tournamentState) => {
+      setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("game:grid:caro:celebrate", () => {
+      if (soundEnabledRef.current) soundManager.playCorrect();
+    });
+    socket.on("game:dice:rolled", () => {
+      if (soundEnabledRef.current) soundManager.playBuzz();
+    });
+
     socket.on("error", (msg) => {
       setErrorMessage(msg);
       setTimeout(() => setErrorMessage(null), 4000);
@@ -308,6 +331,18 @@ export default function PlayPage() {
 
   const handleUsePowerup = (cardId: string, targetTeamId?: string) => {
     socketRef.current?.emit("game:powerup:use", { cardId, targetTeamId });
+  };
+
+  const handleSelectGridCell = (cellId: number) => {
+    socketRef.current?.emit("game:grid:select", { cellId });
+  };
+
+  const handleRollDice = () => {
+    socketRef.current?.emit("game:dice:roll");
+  };
+
+  const handleSubmitWager = (amount: number) => {
+    socketRef.current?.emit("game:wager:submit", { amount });
   };
 
   const handleSelectTeam = (teamId: string) => {
@@ -415,9 +450,9 @@ export default function PlayPage() {
     );
   }
 
-  const myTeam = roomState?.teams.find((t) =>
-    t.cards.some(() => true) && roomState.players.find((p) => p.id === playerId)?.teamId === t.id
-  );
+  const mePlayer = roomState?.players.find((p) => p.id === playerId);
+  const effectiveTeamId = myTeamIdRef.current || mePlayer?.teamId;
+  const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
 
   return (
     <div className="min-h-screen flex flex-col p-4 gap-4">
@@ -462,28 +497,102 @@ export default function PlayPage() {
       {/* Main game area */}
       <div className="flex-1 flex flex-col gap-4">
         {currentQuestion ? (
-          <GameQuestion
-            question={currentQuestion}
-            timer={timer}
-            onAnswer={handleAnswer}
-            onBuzz={handleBuzz}
-            answered={answered}
-            revealPayload={revealPayload}
-            roomStatus={roomState?.status ?? "PLAYING"}
-            hiddenOptionIds={hiddenOptionIds}
-            roomMode={roomState?.mode ?? "CLASSIC"}
-            myTeamId={myTeamIdRef.current}
-            answerMethod={roomState?.config?.answerMethod ?? "DEVICE"}
-            isStealPhase={isStealPhase}
-            stealBuzzedTeam={stealBuzzedTeam}
-            buzzedBy={buzzedBy}
-          />
+          <>
+            <GameQuestion
+              question={currentQuestion}
+              timer={timer}
+              onAnswer={handleAnswer}
+              onBuzz={handleBuzz}
+              answered={answered}
+              revealPayload={revealPayload}
+              roomStatus={roomState?.status ?? "PLAYING"}
+              hiddenOptionIds={hiddenOptionIds}
+              roomMode={roomState?.mode ?? "CLASSIC"}
+              myTeamId={effectiveTeamId}
+              answerMethod={roomState?.config?.answerMethod ?? "DEVICE"}
+              isStealPhase={isStealPhase}
+              stealBuzzedTeam={stealBuzzedTeam}
+              buzzedBy={buzzedBy}
+            />
+
+            {/* Wager Reveal results for players */}
+            {revealPayload && roomState?.mode === "WAGER" && roomState?.wagerState && (
+              <div className="w-full">
+                <WagerPanel
+                  wagerState={roomState.wagerState}
+                  myTeamId={effectiveTeamId}
+                />
+              </div>
+            )}
+
+            {/* In-game board previews for players */}
+            {roomState?.mode === "GRID_CARO" && roomState?.gridCaroState && (
+              <div className="w-full mt-2">
+                <GridCaroBoard
+                  gridState={roomState.gridCaroState}
+                  myTeamId={effectiveTeamId}
+                  isMyTurn={false}
+                  canSelect={false}
+                />
+              </div>
+            )}
+
+            {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (
+              <div className="w-full mt-2">
+                <DiceRaceTrack
+                  diceState={roomState.diceRaceState}
+                  myTeamId={effectiveTeamId}
+                  isMyTurn={false}
+                  canRoll={false}
+                />
+              </div>
+            )}
+          </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-muted-foreground">
-              <div className="text-4xl mb-4">⏳</div>
-              <p>Chờ câu hỏi tiếp theo...</p>
-            </div>
+          <div className="flex-1 flex flex-col items-center justify-center p-2">
+            {roomState?.mode === "TOURNAMENT" && roomState?.tournamentState ? (
+              <div className="w-full">
+                <TournamentBracket
+                  tournamentState={roomState.tournamentState}
+                  myTeamId={effectiveTeamId}
+                />
+              </div>
+            ) : roomState?.mode === "GRID_CARO" && roomState?.gridCaroState ? (
+              <div className="w-full">
+                <GridCaroBoard
+                  gridState={roomState.gridCaroState}
+                  myTeamId={effectiveTeamId}
+                  isMyTurn={roomState.gridCaroState.currentTurnTeamId === effectiveTeamId}
+                  canSelect={roomState.gridCaroState.currentTurnTeamId === effectiveTeamId}
+                  onSelectCell={handleSelectGridCell}
+                />
+              </div>
+            ) : roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (
+              <div className="w-full">
+                <DiceRaceTrack
+                  diceState={roomState.diceRaceState}
+                  myTeamId={effectiveTeamId}
+                  isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
+                  canRoll={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
+                  onRollDice={handleRollDice}
+                />
+              </div>
+            ) : roomState?.mode === "WAGER" && roomState?.wagerState ? (
+              <div className="w-full">
+                <WagerPanel
+                  wagerState={roomState.wagerState}
+                  myTeamId={effectiveTeamId}
+                  myTeamScore={myTeam?.score ?? mePlayer?.score ?? 0}
+                  myTeamName={myTeam?.name ?? mePlayer?.name}
+                  onSubmitWager={handleSubmitWager}
+                />
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground">
+                <div className="text-4xl mb-4">⏳</div>
+                <p>Chờ câu hỏi tiếp theo...</p>
+              </div>
+            )}
           </div>
         )}
       </div>

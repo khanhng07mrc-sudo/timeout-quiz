@@ -29,6 +29,9 @@ enum GameMode {
   POWERUP
   ELIMINATION
   TOURNAMENT
+  GRID_CARO
+  DICE_RACE
+  WAGER
 }
 
 enum TeamMode {

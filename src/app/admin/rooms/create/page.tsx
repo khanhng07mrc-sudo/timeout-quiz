@@ -10,7 +10,10 @@ const GAME_MODES = [
   { value: "BUZZ", label: "Buzz", desc: "Bấm chuông tranh quyền trả lời sớm nhất", emoji: "⚡" },
   { value: "BOUNCEBACK", label: "Bounceback", desc: "1 đội trả lời chính, sai thì mở chuông 5s cho các đội khác cướp lượt", emoji: "🔄" },
   { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất", emoji: "❌" },
-  { value: "TOURNAMENT", label: "Tournament", desc: "Bảng đấu 1v1", emoji: "🏆" },
+  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Bảng đấu đối kháng loại trực tiếp (Tứ kết, Bán kết, Chung kết)", emoji: "🏆" },
+  { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯" },
+  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Bàn cờ đua 30-50 ô, đổ xúc xắc 1-6 và chinh phục ô sự kiện", emoji: "🎲" },
+  { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰" },
 ];
 
 const POWERUP_TYPES = [
@@ -56,6 +59,19 @@ export default function CreateRoomPage() {
   const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
   const [eliminationDeepScoring, setEliminationDeepScoring] = useState(true);
   const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
+  // Tournament config
+  const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
+  // Grid Caro config
+  const [gridRows, setGridRows] = useState(4);
+  const [gridCols, setGridCols] = useState(4);
+  const [gridStreakTargetK, setGridStreakTargetK] = useState(3);
+  const [gridCaroBonusPoints, setGridCaroBonusPoints] = useState(100);
+  const [gridPreviewDuration, setGridPreviewDuration] = useState(5);
+  // Dice Race config
+  const [diceTrackTotalTiles, setDiceTrackTotalTiles] = useState(30);
+  // Wager config
+  const [wagerTimeSeconds, setWagerTimeSeconds] = useState(15);
+  const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
 
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([
@@ -125,6 +141,19 @@ export default function CreateRoomPage() {
             answerMethod: finalAnswerMethod,
             eliminationDeepScoring: mode === "ELIMINATION" ? eliminationDeepScoring : false,
             eliminationIntervalQuestions,
+            // Tournament config
+            tournamentQuestionsPerMatch: mode === "TOURNAMENT" ? tournamentQuestionsPerMatch : 3,
+            // Grid Caro config
+            gridRows: mode === "GRID_CARO" ? gridRows : 4,
+            gridCols: mode === "GRID_CARO" ? gridCols : 4,
+            gridStreakTargetK: mode === "GRID_CARO" ? gridStreakTargetK : 3,
+            gridCaroBonusPoints: mode === "GRID_CARO" ? gridCaroBonusPoints : 100,
+            gridPreviewDuration: mode === "GRID_CARO" ? gridPreviewDuration : 5,
+            // Dice Race config
+            diceTrackTotalTiles: mode === "DICE_RACE" ? diceTrackTotalTiles : 30,
+            // Wager config
+            wagerTimeSeconds: mode === "WAGER" ? wagerTimeSeconds : 15,
+            wagerMinAllowance: mode === "WAGER" ? wagerMinAllowance : 50,
           },
         }),
       });
@@ -299,6 +328,170 @@ export default function CreateRoomPage() {
                         : "Tắt: Chỉ tính điểm đúng/sai thuần túy theo điểm gốc của câu."}
                     </p>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mode === "TOURNAMENT" && (
+            <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏆</span>
+                <h3 className="font-bold text-sm text-yellow-300">Cấu hình Giải đấu Tournament 1v1 (Knockout Bracket)</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số câu hỏi mỗi trận đấu 1v1</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={tournamentQuestionsPerMatch}
+                    onChange={(e) => setTournamentQuestionsPerMatch(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Mỗi cặp đối đầu sẽ tranh tài trong {tournamentQuestionsPerMatch} câu hỏi, đội ghi nhiều điểm hơn sẽ đi tiếp vào vòng sau.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-[#151728]/80 border border-border flex flex-col justify-center">
+                  <p className="text-xs font-bold text-foreground">Sơ đồ nhánh đấu tự động</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Hệ thống sẽ tự sinh nhánh đấu (Tứ kết, Bán kết, Chung kết) dựa theo số lượng đội tham gia. Các đội khác sẽ theo dõi trận đấu trực tiếp.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {mode === "GRID_CARO" && (
+            <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎯</span>
+                <h3 className="font-bold text-sm text-purple-300">Cấu hình Lưới câu hỏi & Caro (Tic-Tac-Toe)</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số hàng ({gridRows})</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={6}
+                    value={gridRows}
+                    onChange={(e) => {
+                      const r = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
+                      setGridRows(r);
+                      const maxK = Math.min(r, gridCols) - 1;
+                      if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số cột ({gridCols})</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={6}
+                    value={gridCols}
+                    onChange={(e) => {
+                      const c = Math.min(6, Math.max(3, parseInt(e.target.value) || 4));
+                      setGridCols(c);
+                      const maxK = Math.min(gridRows, c) - 1;
+                      if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số ô Caro liên tiếp (K)</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={Math.max(3, Math.min(gridRows, gridCols) - 1)}
+                    value={gridStreakTargetK}
+                    onChange={(e) => {
+                      const maxK = Math.max(3, Math.min(gridRows, gridCols) - 1);
+                      setGridStreakTargetK(Math.min(maxK, Math.max(3, parseInt(e.target.value) || 3)));
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Thời gian xem trước (s)</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={15}
+                    value={gridPreviewDuration}
+                    onChange={(e) => setGridPreviewDuration(Math.min(15, Math.max(5, parseInt(e.target.value) || 5)))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Tổng {gridRows * gridCols} ô câu hỏi. Khi bảng từ 4×4 trở lên, hoàn thành {gridStreakTargetK} ô liên tiếp cùng hàng, cột hoặc đường chéo sẽ kích hoạt thưởng Caro +{gridCaroBonusPoints} điểm. Sai không bị phạt điểm và ô được quyền chọn lại với câu hỏi mới!
+              </p>
+            </div>
+          )}
+
+          {mode === "DICE_RACE" && (
+            <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🎲</span>
+                <h3 className="font-bold text-sm text-indigo-300">Cấu hình Đua cờ Xí ngầu (Board Game Track)</h3>
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Độ dài đường đua (Số ô bàn cờ: 30 - 50 ô)</label>
+                <input
+                  type="number"
+                  min={30}
+                  max={50}
+                  value={diceTrackTotalTiles}
+                  onChange={(e) => setDiceTrackTotalTiles(Math.min(50, Math.max(30, parseInt(e.target.value) || 30)))}
+                  className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  Mỗi lượt chơi, đội tung xúc xắc 1-6 bước trên điện thoại/máy tính. Nếu trả lời ĐÚNG, đội sẽ tiến số bước tương ứng. Bàn cờ rải rác các ô đặc biệt: 🚀 Tăng tốc (+2 bước), 💥 Bẫy hụt (-2 bước), 💎 Ngọc thưởng (+150đ), 🔀 Đổi chỗ, và 🏆 Về đích nhận cúp vàng!
+                </p>
+              </div>
+            </div>
+          )}
+
+          {mode === "WAGER" && (
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💰</span>
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình Cược điểm Bí mật (Secret Wager & All-in)</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Thời gian đặt cược bí mật (giây)</label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={30}
+                    value={wagerTimeSeconds}
+                    onChange={(e) => setWagerTimeSeconds(Math.min(30, Math.max(10, parseInt(e.target.value) || 15)))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Các đội có {wagerTimeSeconds}s bí mật chọn số điểm cược (10đ đến All-in 100% điểm) trước khi nội dung câu hỏi xuất hiện.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Mức sàn trợ cấp điểm khi âm/0 điểm</label>
+                  <input
+                    type="number"
+                    min={20}
+                    max={100}
+                    value={wagerMinAllowance}
+                    onChange={(e) => setWagerMinAllowance(Math.max(20, parseInt(e.target.value) || 50))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Đội có điểm số &le; 0 sẽ được cấp sàn {wagerMinAllowance} điểm để tiếp tục đặt cược, không bị bỏ rơi ngoài cuộc chơi.
+                  </p>
                 </div>
               </div>
             </div>

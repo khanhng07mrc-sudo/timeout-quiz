@@ -21,6 +21,19 @@ const DEFAULT_CONFIG = {
   answerMethod: "DEVICE",
   eliminationDeepScoring: true,
   eliminationIntervalQuestions: 3,
+  // Tournament defaults
+  tournamentQuestionsPerMatch: 3,
+  // Grid Caro defaults
+  gridRows: 4,
+  gridCols: 4,
+  gridStreakTargetK: 3,
+  gridCaroBonusPoints: 100,
+  gridPreviewDuration: 5,
+  // Dice Race defaults
+  diceTrackTotalTiles: 30,
+  // Wager defaults
+  wagerTimeSeconds: 15,
+  wagerMinAllowance: 50,
 };
 
 export async function POST(req: NextRequest) {

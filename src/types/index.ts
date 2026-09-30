@@ -25,7 +25,16 @@ export type CardType =
   | "PENALTY"
   | "SCORE_X2";
 
-export type GameMode = "CLASSIC" | "BUZZ" | "BOUNCEBACK" | "POWERUP" | "ELIMINATION" | "TOURNAMENT";
+export type GameMode =
+  | "CLASSIC"
+  | "BUZZ"
+  | "BOUNCEBACK"
+  | "POWERUP"
+  | "ELIMINATION"
+  | "TOURNAMENT"
+  | "GRID_CARO"
+  | "DICE_RACE"
+  | "WAGER";
 export type TeamMode = "INDIVIDUAL" | "TEAM";
 export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
@@ -241,6 +250,19 @@ export interface GameConfig {
   answerMethod?: "DEVICE" | "MC";
   eliminationDeepScoring?: boolean;
   eliminationIntervalQuestions?: number;
+  // Tournament config
+  tournamentQuestionsPerMatch?: number;
+  // Grid Caro config
+  gridRows?: number;
+  gridCols?: number;
+  gridStreakTargetK?: number;
+  gridCaroBonusPoints?: number;
+  gridPreviewDuration?: number;
+  // Dice Race config
+  diceTrackTotalTiles?: number;
+  // Wager config
+  wagerTimeSeconds?: number;
+  wagerMinAllowance?: number;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -276,6 +298,119 @@ export interface PlayerState {
   isOnline: boolean;
 }
 
+// ─── Tournament Mode ─────────────────────────────────────────────────────────
+
+export interface TournamentMatch {
+  id: string; // e.g. "R1-M1", "FINAL"
+  roundIndex: number;
+  roundName: string; // "Tứ kết", "Bán kết", "Chung kết"
+  matchIndex: number;
+  team1Id?: string;
+  team2Id?: string;
+  team1Name?: string;
+  team2Name?: string;
+  team1Color?: string;
+  team2Color?: string;
+  team1Score: number;
+  team2Score: number;
+  winnerTeamId?: string;
+  status: "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
+  currentQuestionInMatch: number;
+  totalQuestionsInMatch: number;
+}
+
+export interface TournamentState {
+  matches: TournamentMatch[];
+  currentMatchId?: string;
+  questionsPerMatch: number;
+  championTeamId?: string;
+  championTeamName?: string;
+}
+
+// ─── Grid Caro Mode ──────────────────────────────────────────────────────────
+
+export interface GridCell {
+  id: number; // 1 to X
+  row: number;
+  col: number;
+  points: number;
+  difficulty: "DỄ" | "TRUNG BÌNH" | "KHÓ" | "CỰC KHÓ";
+  claimedByTeamId?: string;
+  claimedByTeamName?: string;
+  claimedByTeamColor?: string;
+  isCompleted: boolean;
+  questionIndex?: number;
+  attemptCount: number;
+}
+
+export interface GridCaroState {
+  rows: number;
+  cols: number;
+  totalCells: number;
+  cells: GridCell[];
+  previewActive: boolean;
+  previewRemaining: number;
+  currentTurnTeamId?: string;
+  currentTurnTeamName?: string;
+  selectedCellId?: number;
+  streakTargetK: number;
+  caroAchievedTeams: string[];
+  caroBonusPoints: number;
+}
+
+// ─── Dice Race Mode ──────────────────────────────────────────────────────────
+
+export type DiceTileType = "NORMAL" | "BOOST" | "TRAP" | "GEM" | "SWAP" | "FINISH";
+
+export interface DiceTile {
+  index: number;
+  type: DiceTileType;
+  label: string;
+  effectValue?: number;
+}
+
+export interface TeamRaceProgress {
+  teamId: string;
+  teamName: string;
+  teamColor: string;
+  avatar?: string;
+  position: number;
+  hasFinished: boolean;
+  finishRank?: number;
+}
+
+export interface DiceRaceState {
+  totalTiles: number;
+  tiles: DiceTile[];
+  teamPositions: Record<string, TeamRaceProgress>;
+  currentTurnTeamId?: string;
+  currentTurnTeamName?: string;
+  lastDiceRoll?: number;
+  isRolling: boolean;
+  dicePendingAnswer: boolean;
+  finishLeaderboard: string[];
+}
+
+// ─── Secret Wager Mode ───────────────────────────────────────────────────────
+
+export interface TeamWager {
+  teamId: string;
+  teamName: string;
+  amount: number;
+  submitted: boolean;
+}
+
+export interface WagerState {
+  phase: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
+  wagerTimeRemaining: number;
+  wagerTimeTotal: number;
+  minWager: number;
+  allowanceMinScore: number;
+  topicPreview?: string;
+  difficultyPreview?: string;
+  teamWagers: Record<string, TeamWager>;
+}
+
 export interface RoomState {
   id: string;
   code: string;
@@ -289,6 +424,10 @@ export interface RoomState {
   players: PlayerState[];
   sharedCards: PowerupCard[];
   config: GameConfig;
+  tournamentState?: TournamentState;
+  gridCaroState?: GridCaroState;
+  diceRaceState?: DiceRaceState;
+  wagerState?: WagerState;
 }
 
 export interface ActiveBoost {
@@ -318,6 +457,10 @@ export interface QuestionState {
   buzzedTeamId?: string;
   buzzedTeamName?: string;
   answerMethod?: "DEVICE" | "MC";
+  tournamentMatchId?: string;
+  gridCellId?: number;
+  diceRollValue?: number;
+  wagerPhase?: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -426,6 +569,13 @@ export interface ServerToClientEvents {
   "player:joined": (player: PlayerState) => void;
   "player:left": (playerId: string) => void;
   "error": (message: string) => void;
+  // New Mode Events
+  "game:grid:update": (state: GridCaroState) => void;
+  "game:grid:caro:celebrate": (payload: { teamId: string; teamName: string; bonusPoints: number }) => void;
+  "game:dice:rolled": (payload: { teamId: string; teamName: string; roll: number }) => void;
+  "game:dice:update": (state: DiceRaceState) => void;
+  "game:wager:update": (state: WagerState) => void;
+  "game:tournament:update": (state: TournamentState) => void;
 }
 
 export interface ClientToServerEvents {
@@ -452,6 +602,15 @@ export interface ClientToServerEvents {
   "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;
   "player:select:team": (payload: { teamId: string; playerId?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "display:join": (code: string) => void;
+  // New Mode Client Events
+  "game:grid:select": (payload: { cellId: number }) => void;
+  "game:dice:roll": () => void;
+  "game:wager:submit": (payload: { amount: number }) => void;
+  "admin:grid:preview:start": () => void;
+  "admin:grid:select:manual": (payload: { cellId: number }) => void;
+  "admin:dice:roll:manual": () => void;
+  "admin:tournament:advance": () => void;
+  "admin:wager:skip_timer": () => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

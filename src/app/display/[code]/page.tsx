@@ -17,6 +17,10 @@ import type {
 import { CARD_METADATA, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import PowerupIcon from "@/components/ui/PowerupIcon";
 import { soundManager } from "@/lib/sound-manager";
+import TournamentBracket from "@/components/modes/TournamentBracket";
+import GridCaroBoard from "@/components/modes/GridCaroBoard";
+import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
+import WagerPanel from "@/components/modes/WagerPanel";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -148,6 +152,25 @@ export default function DisplayPage() {
       } else {
         soundManager.playWrong();
       }
+    });
+
+    socket.on("game:grid:update", (gridCaroState) => {
+      setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
+    });
+    socket.on("game:dice:update", (diceRaceState) => {
+      setRoomState((prev) => (prev ? { ...prev, diceRaceState } : prev));
+    });
+    socket.on("game:wager:update", (wagerState) => {
+      setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
+    });
+    socket.on("game:tournament:update", (tournamentState) => {
+      setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("game:grid:caro:celebrate", () => {
+      soundManager.playCorrect();
+    });
+    socket.on("game:dice:rolled", () => {
+      soundManager.playBuzz();
     });
     socket.on("game:powerup:used", (p) => {
       setLastPowerup(p);
@@ -577,6 +600,26 @@ export default function DisplayPage() {
                         🎯 Lượt trả lời chính: {currentQuestion.primaryTeamName ?? "..."}
                       </p>
                     )}
+                    {roomState.mode === "TOURNAMENT" && (
+                      <p className="text-lg font-black text-yellow-300 mt-1">
+                        🏆 Đối đầu 1v1: {currentQuestion.primaryTeamName ?? "..."}
+                      </p>
+                    )}
+                    {roomState.mode === "GRID_CARO" && (
+                      <p className="text-lg font-black text-purple-300 mt-1">
+                        🎯 Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của {currentQuestion.primaryTeamName ?? "..."}
+                      </p>
+                    )}
+                    {roomState.mode === "DICE_RACE" && (
+                      <p className="text-lg font-black text-indigo-300 mt-1">
+                        🎲 Xúc xắc: {currentQuestion.diceRollValue ?? "?"} nút — Lượt của {currentQuestion.primaryTeamName ?? "..."}
+                      </p>
+                    )}
+                    {roomState.mode === "WAGER" && (
+                      <p className="text-lg font-black text-amber-300 mt-1">
+                        💰 Cược điểm bí mật — Câu hỏi đang diễn ra!
+                      </p>
+                    )}
                     {roomState.config.answerMethod === "MC" && (
                       <p className="text-xs text-yellow-300 font-medium mt-0.5">
                         🎙️ Chế độ trả lời miệng qua MC / Ban giám khảo
@@ -659,12 +702,48 @@ export default function DisplayPage() {
                 )}
               </div>
             )}
+            {revealPayload && roomState.mode === "WAGER" && roomState.wagerState && (
+              <div className="mt-4">
+                <WagerPanel wagerState={roomState.wagerState} isDisplay={true} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Board tracking widgets when question is active */}
+        {currentQuestion && roomState.mode === "GRID_CARO" && roomState.gridCaroState && (
+          <div className="w-full animate-slide-up">
+            <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
+          </div>
+        )}
+
+        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
+          <div className="w-full animate-slide-up">
+            <DiceRaceTrack diceState={roomState.diceRaceState} isDisplay={true} />
           </div>
         )}
 
         {!currentQuestion && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-3xl text-muted-foreground">⏳ Chờ câu hỏi tiếp theo...</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-2">
+            {roomState.mode === "TOURNAMENT" && roomState.tournamentState ? (
+              <div className="w-full">
+                <TournamentBracket tournamentState={roomState.tournamentState} isDisplay={true} />
+              </div>
+            ) : roomState.mode === "GRID_CARO" && roomState.gridCaroState ? (
+              <div className="w-full">
+                <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
+              </div>
+            ) : roomState.mode === "DICE_RACE" && roomState.diceRaceState ? (
+              <div className="w-full">
+                <DiceRaceTrack diceState={roomState.diceRaceState} isDisplay={true} />
+              </div>
+            ) : roomState.mode === "WAGER" && roomState.wagerState ? (
+              <div className="w-full">
+                <WagerPanel wagerState={roomState.wagerState} isDisplay={true} />
+              </div>
+            ) : (
+              <p className="text-3xl text-muted-foreground">⏳ Chờ câu hỏi tiếp theo...</p>
+            )}
           </div>
         )}
       </div>

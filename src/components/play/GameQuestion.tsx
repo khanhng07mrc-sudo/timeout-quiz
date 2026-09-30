@@ -70,6 +70,9 @@ export default function GameQuestion({
     if (roomMode === "BUZZ") {
       return isBuzzedTeam;
     }
+    if (roomMode === "GRID_CARO" || roomMode === "DICE_RACE") {
+      return isPrimaryTeam;
+    }
     return true;
   };
 
@@ -193,6 +196,75 @@ export default function GameQuestion({
               {isBuzzedTeam && " 👉 Đội bạn đang có quyền trả lời!"}
             </div>
           )}
+        </div>
+      )}
+
+      {/* GRID_CARO Banner */}
+      {roomMode === "GRID_CARO" && (
+        <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-purple-500/15 border-purple-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs uppercase text-purple-300 tracking-wider">🎯 Ô #{question.gridCellId ?? "?"} · Lượt chọn & trả lời: </span>
+              <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang xác định"}</span>
+            </div>
+            {isPrimaryTeam ? (
+              <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30">
+                Lượt của bạn
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Quan sát</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DICE_RACE Banner */}
+      {roomMode === "DICE_RACE" && (
+        <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-indigo-500/15 border-indigo-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs uppercase text-indigo-300 tracking-wider">🎲 Xúc xắc: {question.diceRollValue ?? "?"} bước · Lượt trả lời: </span>
+              <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang xác định"}</span>
+            </div>
+            {isPrimaryTeam ? (
+              <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30">
+                Đúng để tiến bước!
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Quan sát</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TOURNAMENT Banner */}
+      {roomMode === "TOURNAMENT" && (
+        <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-yellow-500/15 border-yellow-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs uppercase text-yellow-300 tracking-wider">🏆 Trận đối đầu 1v1: </span>
+              <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang thi đấu"}</span>
+            </div>
+            {isPrimaryTeam ? (
+              <span className="px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-bold border border-yellow-500/30">
+                Trận của bạn!
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">Khán giả</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* WAGER Banner */}
+      {roomMode === "WAGER" && (
+        <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-amber-500/15 border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-xs uppercase text-amber-300 tracking-wider">💰 Cược điểm bí mật: </span>
+              <span className="font-bold text-foreground">Đúng được số điểm cược, sai bị trừ!</span>
+            </div>
+          </div>
         </div>
       )}
 

@@ -217,6 +217,18 @@ export default function AdminRoomPage() {
         return { ...prev, teams, players };
       });
     });
+    socket.on("game:grid:update", (gridCaroState) => {
+      setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
+    });
+    socket.on("game:dice:update", (diceRaceState) => {
+      setRoomState((prev) => (prev ? { ...prev, diceRaceState } : prev));
+    });
+    socket.on("game:wager:update", (wagerState) => {
+      setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
+    });
+    socket.on("game:tournament:update", (tournamentState) => {
+      setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
     socket.on("game:ended", () => {
       if (soundEnabledRef.current) {
         soundManager.playFanfare();
@@ -540,6 +552,159 @@ export default function AdminRoomPage() {
                 <p className="text-xs text-muted-foreground text-center">
                   ⏳ Đang chờ các đội bấm chuông trên thiết bị...
                 </p>
+              )}
+            </div>
+          )}
+
+          {/* TOURNAMENT Mode Admin Panel */}
+          {roomState?.mode === "TOURNAMENT" && (
+            <div className="p-4 rounded-xl bg-yellow-900/20 border border-yellow-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏆</span>
+                  <span className="font-bold text-sm text-yellow-300">Đấu Loại Trực Tiếp 1v1</span>
+                </div>
+                {roomState.tournamentState?.championTeamName ? (
+                  <span className="px-2.5 py-0.5 rounded-full bg-yellow-500/30 border border-yellow-500 text-yellow-200 text-xs font-bold">
+                    👑 Vô địch: {roomState.tournamentState.championTeamName}
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => emit("admin:tournament:advance")}
+                    className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs shadow transition-all active:scale-95"
+                  >
+                    ➡️ Trận tiếp theo
+                  </button>
+                )}
+              </div>
+              {roomState.tournamentState && (
+                <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+                  <span>Trận đang đấu: <strong>{roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team1Name ?? "?"}</strong> vs <strong>{roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team2Name ?? "?"}</strong></span>
+                  <span>Điểm trận: {roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team1Score ?? 0} - {roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team2Score ?? 0}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* GRID_CARO Mode Admin Panel */}
+          {roomState?.mode === "GRID_CARO" && (
+            <div className="p-4 rounded-xl bg-purple-900/20 border border-purple-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏁</span>
+                  <div>
+                    <span className="font-bold text-sm text-purple-300">Bảng Chọn Ô & Caro</span>
+                    {roomState.gridCaroState?.currentTurnTeamName && (
+                      <p className="text-xs text-muted-foreground">
+                        Lượt chọn: <strong className="text-white">{roomState.gridCaroState.currentTurnTeamName}</strong>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => emit("admin:grid:preview:start")}
+                  className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow transition-all active:scale-95"
+                >
+                  👁️ Xem trước độ khó
+                </button>
+              </div>
+
+              {roomState.gridCaroState && !currentQuestion && (
+                <div className="pt-2 border-t border-border/50">
+                  <p className="text-[11px] text-muted-foreground mb-1.5 font-semibold">
+                    Admin có thể chọn ô thay cho đội đang tới lượt:
+                  </p>
+                  <div
+                    className="grid gap-1.5"
+                    style={{ gridTemplateColumns: `repeat(${roomState.gridCaroState.cols}, minmax(0, 1fr))` }}
+                  >
+                    {roomState.gridCaroState.cells.map((cell) => (
+                      <button
+                        key={cell.id}
+                        disabled={cell.isCompleted}
+                        onClick={() => emit("admin:grid:select:manual", { cellId: cell.id })}
+                        className={`p-2 rounded-lg text-xs font-bold border transition-all text-center ${
+                          cell.isCompleted
+                            ? "opacity-50 cursor-not-allowed border-border"
+                            : "bg-purple-500/20 border-purple-500/40 hover:bg-purple-500/40 text-purple-200"
+                        }`}
+                        style={cell.claimedByTeamColor ? { background: `${cell.claimedByTeamColor}30`, borderColor: cell.claimedByTeamColor } : undefined}
+                      >
+                        #{cell.id} ({cell.points}đ)
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DICE_RACE Mode Admin Panel */}
+          {roomState?.mode === "DICE_RACE" && (
+            <div className="p-4 rounded-xl bg-indigo-900/20 border border-indigo-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎲</span>
+                  <div>
+                    <span className="font-bold text-sm text-indigo-300">Đua Cờ Xí Ngầu</span>
+                    {roomState.diceRaceState?.currentTurnTeamName && (
+                      <p className="text-xs text-muted-foreground">
+                        Lượt tung xúc xắc: <strong className="text-white">{roomState.diceRaceState.currentTurnTeamName}</strong>
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  disabled={roomState.diceRaceState?.dicePendingAnswer}
+                  onClick={() => emit("admin:dice:roll:manual")}
+                  className="px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs shadow transition-all active:scale-95"
+                >
+                  🎲 Tung xúc xắc thay đội
+                </button>
+              </div>
+              {roomState.diceRaceState?.lastDiceRoll && (
+                <p className="text-xs text-indigo-200">
+                  Kết quả xúc xắc gần nhất: <strong className="text-white text-sm">{roomState.diceRaceState.lastDiceRoll} nút</strong>
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* WAGER Mode Admin Panel */}
+          {roomState?.mode === "WAGER" && (
+            <div className="p-4 rounded-xl bg-amber-900/20 border border-amber-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">💰</span>
+                  <div>
+                    <span className="font-bold text-sm text-amber-300">Cược Điểm Bí Mật</span>
+                    <p className="text-xs text-muted-foreground">
+                      Giai đoạn: <strong>{roomState.wagerState?.phase === "WAGER_PERIOD" ? "Đang cược bí mật (15s)" : roomState.wagerState?.phase === "QUESTION_PERIOD" ? "Đang trả lời câu hỏi" : "Công bố đáp án & điểm cược"}</strong>
+                    </p>
+                  </div>
+                </div>
+                {roomState.wagerState?.phase === "WAGER_PERIOD" && (
+                  <button
+                    onClick={() => emit("admin:wager:skip_timer")}
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
+                  >
+                    ⏩ Bỏ qua cược & vào câu hỏi
+                  </button>
+                )}
+              </div>
+              {roomState.wagerState?.teamWagers && (
+                <div className="flex flex-wrap gap-2 pt-1 border-t border-border/50 text-xs">
+                  {Object.values(roomState.wagerState.teamWagers).map((w) => (
+                    <span
+                      key={w.teamId}
+                      className={`px-2 py-0.5 rounded-md border ${
+                        w.submitted ? "bg-green-500/20 border-green-500/40 text-green-300" : "bg-card border-border text-muted-foreground"
+                      }`}
+                    >
+                      {w.teamName}: {w.submitted ? (roomState.wagerState?.phase === "WAGER_PERIOD" ? "Đã cược bí mật ✓" : `${w.amount}đ`) : "Chưa cược"}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}

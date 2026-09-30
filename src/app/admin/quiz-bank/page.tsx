@@ -30,6 +30,8 @@ export default function QuizBankPage() {
   const [selectedBank, setSelectedBank] = useState<QuizBank | null>(null);
   const [questions, setQuestions] = useState<QuestionItem[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [deletingBankId, setDeletingBankId] = useState<string | null>(null);
+  const [deletingQuestionId, setDeletingQuestionId] = useState<string | null>(null);
 
   // New Bank Modal State
   const [showNewBankModal, setShowNewBankModal] = useState(false);
@@ -82,6 +84,46 @@ export default function QuizBankPage() {
       console.error(e);
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  const handleDeleteBank = async (bank: QuizBank) => {
+    if (!confirm(`Xóa bộ đề "${bank.title}" và tất cả ${bank._count?.questions ?? 0} câu hỏi? Không thể hoàn tác!`)) return;
+    setDeletingBankId(bank.id);
+    try {
+      const res = await fetch(`/api/quiz-bank/${bank.id}`, { method: "DELETE" });
+      if (res.ok) {
+        setBanks((prev) => prev.filter((b) => b.id !== bank.id));
+        if (selectedBank?.id === bank.id) {
+          setSelectedBank(null);
+          setQuestions([]);
+        }
+      } else {
+        alert("Lỗi khi xóa bộ đề!");
+      }
+    } catch {
+      alert("Lỗi kết nối!");
+    } finally {
+      setDeletingBankId(null);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!confirm("Xóa câu hỏi này?")) return;
+    setDeletingQuestionId(questionId);
+    try {
+      const res = await fetch(`/api/quiz-bank/${selectedBank?.id}/questions/${questionId}`, { method: "DELETE" });
+      if (res.ok) {
+        setQuestions((prev) => prev.filter((q) => q.id !== questionId));
+        // Update count in bank list
+        setBanks((prev) => prev.map((b) => b.id === selectedBank?.id ? { ...b, _count: { questions: (b._count?.questions ?? 1) - 1 } } : b));
+      } else {
+        alert("Lỗi khi xóa câu hỏi!");
+      }
+    } catch {
+      alert("Lỗi kết nối!");
+    } finally {
+      setDeletingQuestionId(null);
     }
   };
 
@@ -274,13 +316,26 @@ export default function QuizBankPage() {
                 <div
                   key={b.id}
                   onClick={() => selectBank(b)}
-                  className={`p-4 rounded-xl cursor-pointer transition border ${
+                  className={`p-4 rounded-xl cursor-pointer transition border group relative ${
                     selectedBank?.id === b.id
                       ? "border-purple-500 bg-purple-500/10"
                       : "border-border hover:border-purple-400/50"
                   }`}
                 >
-                  <p className="font-bold text-base">{b.title}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-bold text-base flex-1">{b.title}</p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteBank(b);
+                      }}
+                      disabled={deletingBankId === b.id}
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition"
+                      title="Xóa bộ đề"
+                    >
+                      {deletingBankId === b.id ? "..." : "🗑️"}
+                    </button>
+                  </div>
                   {b.description && (
                     <p className="text-xs text-muted-foreground line-clamp-1 mt-1">{b.description}</p>
                   )}
@@ -319,6 +374,14 @@ export default function QuizBankPage() {
                   >
                     + Thêm câu hỏi
                   </button>
+                  <button
+                    onClick={() => handleDeleteBank(selectedBank)}
+                    disabled={deletingBankId === selectedBank.id}
+                    className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive text-sm font-semibold transition"
+                    title="Xóa bộ đề này"
+                  >
+                    🗑️ Xóa bộ đề
+                  </button>
                 </div>
               </div>
 
@@ -333,14 +396,24 @@ export default function QuizBankPage() {
               ) : (
                 <div className="space-y-3 overflow-y-auto max-h-[65vh]">
                   {questions.map((q, i) => (
-                    <div key={q.id || i} className="p-4 rounded-xl border border-border bg-card/40 space-y-2">
+                    <div key={q.id || i} className="p-4 rounded-xl border border-border bg-card/40 space-y-2 relative group">
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
                           {q.type}
                         </span>
-                        <div className="flex gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
                           <span>⏱️ {q.timeLimit}s</span>
                           <span>⭐ {q.points}đ</span>
+                          {q.id && (
+                            <button
+                              onClick={() => handleDeleteQuestion(q.id!)}
+                              disabled={deletingQuestionId === q.id}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/20 text-destructive text-xs transition"
+                              title="Xóa câu hỏi này"
+                            >
+                              {deletingQuestionId === q.id ? "..." : "🗑️"}
+                            </button>
+                          )}
                         </div>
                       </div>
                       <p className="font-semibold text-foreground">

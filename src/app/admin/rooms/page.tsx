@@ -18,6 +18,7 @@ interface RoomItem {
 export default function AdminRoomsListPage() {
   const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchRooms = async () => {
     try {
@@ -31,6 +32,23 @@ export default function AdminRoomsListPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteRoom = async (room: RoomItem) => {
+    if (!confirm(`Xóa phòng "${room.name}" (${room.code})? Không thể hoàn tác!`)) return;
+    setDeletingId(room.code);
+    try {
+      const res = await fetch(`/api/rooms/${room.code}`, { method: "DELETE" });
+      if (res.ok) {
+        setRooms((prev) => prev.filter((r) => r.code !== room.code));
+      } else {
+        alert("Lỗi khi xóa phòng!");
+      }
+    } catch {
+      alert("Lỗi kết nối!");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -127,7 +145,7 @@ export default function AdminRoomsListPage() {
                       className="px-3 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs text-center transition"
                       title="Mở màn chiếu"
                     >
-                      📺 Màn chiếu
+                      📺
                     </Link>
                     <Link
                       href={`/play/${room.code}`}
@@ -135,8 +153,16 @@ export default function AdminRoomsListPage() {
                       className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs text-center transition"
                       title="Vào giao diện thí sinh"
                     >
-                      🎮 Thi đấu
+                      🎮
                     </Link>
+                    <button
+                      onClick={() => handleDeleteRoom(room)}
+                      disabled={deletingId === room.code}
+                      className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50"
+                      title="Xóa phòng"
+                    >
+                      {deletingId === room.code ? "..." : "🗑️"}
+                    </button>
                   </div>
                 </div>
               </div>

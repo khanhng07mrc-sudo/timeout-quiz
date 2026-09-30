@@ -28,6 +28,35 @@ export default function AdminRoomPage() {
   const [stealBuzzed, setStealBuzzed] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const [isStealOpen, setIsStealOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
+  const [currentBankInfo, setCurrentBankInfo] = useState<{ id: string; title: string; questionsCount: number } | null>(null);
+  const [updatingBank, setUpdatingBank] = useState(false);
+
+  const fetchRoomAndBanks = async () => {
+    try {
+      const [resRoom, resBanks] = await Promise.all([
+        fetch(`/api/rooms/${code}`),
+        fetch("/api/quiz-bank?ownerId=demo-host-id"),
+      ]);
+      const dataRoom = await resRoom.json();
+      if (dataRoom.room?.quizBank) {
+        setCurrentBankInfo({
+          id: dataRoom.room.quizBank.id,
+          title: dataRoom.room.quizBank.title,
+          questionsCount: dataRoom.room.quizBank._count?.questions ?? 0,
+        });
+      }
+      const dataBanks = await resBanks.json();
+      if (dataBanks.banks) setQuizBanks(dataBanks.banks);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoomAndBanks();
+  }, [code]);
 
   useEffect(() => {
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({ transports: ["websocket", "polling"] });
@@ -37,6 +66,11 @@ export default function AdminRoomPage() {
       socket.emit("room:join", { code, playerName: "Admin Host" }, (result) => {
         if (result.success) setRoomState(result.roomState ?? null);
       });
+    });
+
+    socket.on("error", (msg) => {
+      setErrorMessage(msg);
+      setTimeout(() => setErrorMessage(""), 6000);
     });
 
     socket.on("room:state", setRoomState);
@@ -119,6 +153,26 @@ export default function AdminRoomPage() {
     });
   };
 
+  const handleAssignQuizBank = async (bankId: string) => {
+    setUpdatingBank(true);
+    try {
+      const res = await fetch(`/api/rooms/${code}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ quizBankId: bankId || null }),
+      });
+      if (res.ok) {
+        await fetchRoomAndBanks();
+      } else {
+        alert("Lỗi khi cập nhật bộ đề!");
+      }
+    } catch {
+      alert("Lỗi kết nối!");
+    } finally {
+      setUpdatingBank(false);
+    }
+  };
+
   const sortedEntries = roomState
     ? (roomState.teamMode === "TEAM" ? [...roomState.teams] : [...roomState.players])
         .sort((a: any, b: any) => b.score - a.score)
@@ -131,6 +185,25 @@ export default function AdminRoomPage() {
 
   return (
     <div className="space-y-6">
+      {/* Back to rooms list */}
+      <Link
+        href="/admin/rooms"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        ← Danh sách phòng
+      </Link>
+
+      {/* Error alert banner */}
+      {errorMessage && (
+        <div className="bg-destructive/15 border border-destructive/40 text-destructive-foreground px-4 py-3 rounded-xl flex items-center justify-between animate-slide-up">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span className="font-semibold text-sm">{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage("")} className="text-xs hover:underline">Đóng</button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -176,6 +249,44 @@ export default function AdminRoomPage() {
           </button>
         </div>
       </div>
+
+      {/* Lobby Quiz Bank selector */}
+      {roomState?.status === "LOBBY" && (
+        <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📚</span>
+              <h3 className="font-bold text-base">Bộ đề câu hỏi gán cho phòng</h3>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {currentBankInfo
+                ? `Đang dùng: ${currentBankInfo.title} (${currentBankInfo.questionsCount} câu hỏi)`
+                : "⚠️ Chưa gán bộ đề nào — hãy chọn bộ đề dưới đây trước khi bắt đầu"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select
+              value={currentBankInfo?.id ?? ""}
+              onChange={(e) => handleAssignQuizBank(e.target.value)}
+              disabled={updatingBank}
+              className="px-3 py-2 rounded-xl bg-input border border-border text-sm font-medium focus:ring-2 focus:ring-ring"
+            >
+              <option value="">— Chọn bộ đề câu hỏi —</option>
+              {quizBanks.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.title} {b._count ? `(${b._count.questions} câu)` : ""}
+                </option>
+              ))}
+            </select>
+            <Link
+              href="/admin/quiz-bank"
+              className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 text-xs font-semibold whitespace-nowrap transition"
+            >
+              + Quản lý bộ đề
+            </Link>
+          </div>
+        </div>
+      )}
 
       {gameEnded && (
         <div className="glass rounded-xl p-6 text-center border border-green-500/50">

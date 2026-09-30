@@ -477,6 +477,12 @@ export function registerSocketHandlers(io: IO) {
 
       const room = player.room;
       const questions = room.quizBank?.questions ?? [];
+
+      if (questions.length === 0) {
+        socket.emit("error", "Phòng chưa có câu hỏi nào! Vui lòng chọn bộ đề câu hỏi trước khi bắt đầu.");
+        return;
+      }
+
       const nextIndex = room.status === "LOBBY" ? 0 : room.currentQuestion + 1;
 
       if (nextIndex >= questions.length) {
@@ -969,6 +975,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       teams: { include: { players: true, powerupCards: true } },
       players: true,
       powerupCards: { where: { ownerType: "SHARED" } },
+      quizBank: { select: { questions: { select: { id: true } } } },
     },
   });
   if (!room) throw new Error("Room not found");
@@ -1014,7 +1021,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     teamMode: room.teamMode as any,
     status: room.status as any,
     currentQuestionIndex: room.currentQuestion,
-    totalQuestions: 0,
+    totalQuestions: room.quizBank?.questions.length ?? 0,
     teams,
     players,
     sharedCards,

@@ -509,6 +509,10 @@ function registerSocketHandlers(io2) {
       if (!player?.room || !player.isHost) return;
       const room = player.room;
       const questions = room.quizBank?.questions ?? [];
+      if (questions.length === 0) {
+        socket.emit("error", "Ph\xF2ng ch\u01B0a c\xF3 c\xE2u h\u1ECFi n\xE0o! Vui l\xF2ng ch\u1ECDn b\u1ED9 \u0111\u1EC1 c\xE2u h\u1ECFi tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u.");
+        return;
+      }
       const nextIndex = room.status === "LOBBY" ? 0 : room.currentQuestion + 1;
       if (nextIndex >= questions.length) {
         await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
@@ -913,7 +917,8 @@ async function buildRoomState(roomId) {
     include: {
       teams: { include: { players: true, powerupCards: true } },
       players: true,
-      powerupCards: { where: { ownerType: "SHARED" } }
+      powerupCards: { where: { ownerType: "SHARED" } },
+      quizBank: { select: { questions: { select: { id: true } } } }
     }
   });
   if (!room) throw new Error("Room not found");
@@ -954,7 +959,7 @@ async function buildRoomState(roomId) {
     teamMode: room.teamMode,
     status: room.status,
     currentQuestionIndex: room.currentQuestion,
-    totalQuestions: 0,
+    totalQuestions: room.quizBank?.questions.length ?? 0,
     teams,
     players,
     sharedCards,

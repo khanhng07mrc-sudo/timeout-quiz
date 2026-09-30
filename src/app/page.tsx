@@ -2,53 +2,81 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-900/20 via-background to-cyan-900/20 pointer-events-none" />
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-16 md:py-24 relative overflow-hidden">
+      {/* Background ambient glowing orbs */}
+      <div className="absolute inset-0 bg-gradient-to-b from-purple-950/20 via-background to-cyan-950/20 pointer-events-none" />
+      <div className="absolute top-1/6 left-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-1/6 right-1/4 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="relative z-10 text-center max-w-2xl">
-        {/* Logo */}
-        <div className="mb-6 inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-purple-600 to-cyan-500 glow-purple">
-          <span className="text-4xl">⚡</span>
+      <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
+        {/* Brand Icon */}
+        <div className="mb-8 inline-flex items-center justify-center w-28 h-28 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 shadow-2xl shadow-purple-500/30 ring-4 ring-purple-500/20 transition-transform duration-300 hover:scale-105">
+          <span className="text-5xl drop-shadow-md">⚡</span>
         </div>
 
-        <h1 className="text-6xl font-black mb-4 bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+        {/* Title & Tagline */}
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-black tracking-tight mb-6 bg-gradient-to-r from-purple-300 via-indigo-200 to-cyan-300 bg-clip-text text-transparent drop-shadow-sm">
           Timeout Quiz
         </h1>
-        <p className="text-xl text-muted-foreground mb-10">
-          Nền tảng thi trả lời câu hỏi realtime · Thẻ hỗ trợ · Nhiều chế độ chơi
+        
+        <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground font-medium max-w-2xl mx-auto mb-12 leading-relaxed">
+          Nền tảng thi đấu câu hỏi realtime · Thẻ bài chiến thuật · Đa hình thức & Đa chế độ
         </p>
 
-        {/* Action buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+        {/* Action Buttons - Khoảng cách lớn, nút to rõ ràng */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full max-w-xl mb-16 px-4">
           <Link
             href="/play"
-            className="px-8 py-4 rounded-xl bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 font-bold text-lg transition-all duration-200 glow-purple hover:scale-105"
+            className="w-full sm:w-1/2 py-5 px-8 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-lg sm:text-xl shadow-xl shadow-purple-600/30 hover:shadow-purple-500/50 hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 border border-purple-400/30"
           >
-            🎮 Tham gia phòng
+            <span className="text-2xl">🎮</span>
+            <span>Tham gia phòng</span>
           </Link>
+
           <Link
             href="/admin"
-            className="px-8 py-4 rounded-xl border border-border hover:border-purple-500 font-bold text-lg transition-all duration-200 hover:bg-card hover:scale-105 glass"
+            className="w-full sm:w-1/2 py-5 px-8 rounded-2xl glass hover:bg-white/10 text-white font-extrabold text-lg sm:text-xl border-2 border-border hover:border-purple-400/80 hover:-translate-y-1 transition-all duration-200 flex items-center justify-center gap-3 shadow-lg"
           >
-            👨💼 Quản lý (Admin)
+            <span className="text-2xl">👨‍💼</span>
+            <span>Quản lý (Admin)</span>
           </Link>
         </div>
 
-        {/* Features */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {/* Feature Cards - Spacing thoáng đãng, rộng rãi */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6 w-full max-w-4xl px-4">
           {[
-            { icon: "🃏", label: "Thẻ hỗ trợ", desc: "10 loại power-up" },
-            { icon: "⚡", label: "Realtime", desc: "WebSocket" },
-            { icon: "👥", label: "Đội nhóm", desc: "Không giới hạn" },
-            { icon: "🏆", label: "Đa chế độ", desc: "5 chế độ chơi" },
-          ].map(({ icon, label, desc }) => (
-            <div key={label} className="glass rounded-xl p-4 text-center">
-              <div className="text-2xl mb-1">{icon}</div>
-              <div className="font-semibold text-sm">{label}</div>
-              <div className="text-xs text-muted-foreground">{desc}</div>
+            {
+              icon: "🃏",
+              label: "Thẻ hỗ trợ",
+              desc: "10 loại thẻ chiến thuật đa năng",
+              color: "hover:border-purple-500/50 hover:shadow-purple-500/10",
+            },
+            {
+              icon: "⚡",
+              label: "Realtime",
+              desc: "Socket.IO đồng bộ siêu tốc",
+              color: "hover:border-cyan-500/50 hover:shadow-cyan-500/10",
+            },
+            {
+              icon: "👥",
+              label: "Đội nhóm",
+              desc: "Cá nhân & Tổ chức không giới hạn",
+              color: "hover:border-indigo-500/50 hover:shadow-indigo-500/10",
+            },
+            {
+              icon: "🏆",
+              label: "Đa chế độ",
+              desc: "Classic, Buzz, Elimination, v.v.",
+              color: "hover:border-yellow-500/50 hover:shadow-yellow-500/10",
+            },
+          ].map(({ icon, label, desc, color }) => (
+            <div
+              key={label}
+              className={`glass rounded-2xl p-6 text-center border border-border/80 transition-all duration-300 hover:-translate-y-1.5 shadow-md ${color}`}
+            >
+              <div className="text-4xl mb-3.5 inline-block">{icon}</div>
+              <div className="font-bold text-base sm:text-lg mb-1.5 text-foreground">{label}</div>
+              <div className="text-xs sm:text-sm text-muted-foreground leading-snug">{desc}</div>
             </div>
           ))}
         </div>

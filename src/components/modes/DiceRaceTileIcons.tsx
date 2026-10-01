@@ -159,6 +159,80 @@ export default function DiceRaceTileIcon({ type, className = "", size = 28 }: Ti
         </svg>
       );
 
+    case "TELEPORT": // 🌀 Cổng Dịch Chuyển Tức Thời (Cosmic Wormhole Stargate)
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 48 48"
+          fill="none"
+          className={`overflow-visible filter drop-shadow-[0_2px_10px_rgba(168,85,247,0.8)] ${className}`}
+        >
+          {/* Outer Stargate celestial ring */}
+          <circle cx="24" cy="24" r="20" stroke="url(#wormhole-ring)" strokeWidth="2.5" strokeDasharray="6 3" />
+          {/* Cosmic accretion disk */}
+          <ellipse cx="24" cy="24" rx="16" ry="7" fill="url(#wormhole-disk)" transform="rotate(-25 24 24)" />
+          {/* Swirling energy vortex arms */}
+          <path
+            d="M 10 20 C 14 10, 30 10, 36 18 C 42 26, 32 38, 22 36 C 14 34, 16 26, 24 24"
+            stroke="#38bdf8"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+          <path
+            d="M 38 28 C 34 38, 18 38, 12 30 C 6 22, 16 10, 26 12 C 34 14, 32 22, 24 24"
+            stroke="#e879f9"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            opacity="0.9"
+          />
+          {/* Singularity core with warp lightning */}
+          <circle cx="24" cy="24" r="6" fill="#ffffff" filter="drop-shadow(0 0 6px #c084fc)" />
+          <path d="M 23 20 L 25 23 L 23 25 L 26 28" stroke="#7e22ce" strokeWidth="1.5" strokeLinecap="round" />
+          <defs>
+            <linearGradient id="wormhole-ring" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#38bdf8" />
+              <stop offset="50%" stopColor="#a855f7" />
+              <stop offset="100%" stopColor="#ec4899" />
+            </linearGradient>
+            <radialGradient id="wormhole-disk" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#f472b6" stopOpacity="0.8" />
+              <stop offset="70%" stopColor="#8b5cf6" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+        </svg>
+      );
+
+    case "TELEPORT_EXIT": // ✨ Cổng Ra Tiếp Đất An Toàn
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 48 48"
+          fill="none"
+          className={`overflow-visible filter drop-shadow-[0_2px_8px_rgba(56,189,248,0.7)] ${className}`}
+        >
+          {/* Safe landing beacon pad */}
+          <ellipse cx="24" cy="28" rx="18" ry="10" fill="#082f49" stroke="#38bdf8" strokeWidth="2" />
+          <ellipse cx="24" cy="26" rx="13" ry="7" fill="#0c4a6e" stroke="#7dd3fc" strokeWidth="1.5" strokeDasharray="4 2" />
+          {/* Starlight beacon beam upward */}
+          <path d="M 16 26 L 24 8 L 32 26 Z" fill="url(#beacon-beam)" opacity="0.6" />
+          {/* Sparkles */}
+          <circle cx="24" cy="14" r="2" fill="#ffffff" filter="drop-shadow(0 0 4px #38bdf8)" />
+          <circle cx="18" cy="18" r="1.2" fill="#bae6fd" />
+          <circle cx="30" cy="18" r="1.2" fill="#bae6fd" />
+          <defs>
+            <linearGradient id="beacon-beam" x1="24" y1="8" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#ffffff" stopOpacity="0.9" />
+              <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+        </svg>
+      );
+
     case "EXTRA_ROLL": // 🎲 x2 Cơ hội gieo xúc xắc
       return (
         <svg

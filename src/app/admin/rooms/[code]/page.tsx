@@ -1094,10 +1094,18 @@ export default function AdminRoomPage() {
               <button
                 onClick={() => emit("admin:next")}
                 disabled={gameEnded}
-                className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap"
+                className={`py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap ${
+                  roomState?.mode === "DICE_RACE" && !currentQuestion ? "animate-pulse ring-2 ring-cyan-400" : ""
+                }`}
               >
                 <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
-                <span className="whitespace-nowrap">{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
+                <span className="whitespace-nowrap">
+                  {roomState?.status === "LOBBY"
+                    ? "Bắt đầu game"
+                    : roomState?.mode === "DICE_RACE" && !currentQuestion
+                    ? "🎯 Hiện câu hỏi"
+                    : "Câu tiếp theo"}
+                </span>
               </button>
             )}
 

@@ -26,6 +26,7 @@ import {
   WagerState,
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
+import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
 import { shuffleArray } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -377,38 +378,8 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
   return matches;
 }
 
-function generateDiceTiles(totalTiles: number): DiceTile[] {
-  const tiles: DiceTile[] = [];
-  let lastExtraRoll = -999;
-
-  for (let i = 0; i < totalTiles; i++) {
-    if (i === 0) {
-      tiles.push({ index: i, type: "NORMAL", label: "Xuất phát" });
-      continue;
-    }
-
-    // Ô x2 Cơ hội (EXTRA_ROLL): mỗi 8 ô hoặc ô cuối, đảm bảo cách nhau ít nhất 7 ô
-    const isCandidateExtraRoll = (i % 8 === 0 || i === totalTiles - 1) && (i - lastExtraRoll >= 7);
-    if (isCandidateExtraRoll) {
-      tiles.push({ index: i, type: "EXTRA_ROLL", label: "🎲x2 Cơ hội" });
-      lastExtraRoll = i;
-      continue;
-    }
-
-    const pct = i / totalTiles;
-    if (Math.abs(pct - 0.2) < 0.04 || Math.abs(pct - 0.8) < 0.04) {
-      tiles.push({ index: i, type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 });
-    } else if (Math.abs(pct - 0.35) < 0.04 || Math.abs(pct - 0.7) < 0.04) {
-      tiles.push({ index: i, type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 });
-    } else if (Math.abs(pct - 0.15) < 0.04 || Math.abs(pct - 0.5) < 0.04) {
-      tiles.push({ index: i, type: "SHIELD", label: "🛡️ Khiên bảo vệ" });
-    } else if (Math.abs(pct - 0.6) < 0.04) {
-      tiles.push({ index: i, type: "SWAP", label: "🔀 Đổi chỗ" });
-    } else {
-      tiles.push({ index: i, type: "NORMAL", label: "⭐" });
-    }
-  }
-  return tiles;
+function generateDiceTiles(totalTiles: number = 30): DiceTile[] {
+  return generateBalancedDiceTiles(totalTiles);
 }
 
 // In-memory cache for ultra-fast response
@@ -1915,29 +1886,12 @@ export function registerSocketHandlers(io: IO) {
         }
 
         if (room.mode === "DICE_RACE") {
-          // Hiện bàn cờ đường đua trước để người chơi và màn chiếu xem toàn cảnh đường đua, sau 6s mới mở câu hỏi 1
-          const launchDiceFirstQuestion = () => {
-            roomPrepareStates.delete(room.id);
-            startQuestionPrepareAndLaunch(room, questions, 0);
-          };
-
-          io.to(`room:${room.code}`).emit("game:starting", {
-            seconds: 6,
-            message: "🏁 Cuộc đua cờ xí ngầu bắt đầu! Chiêm ngưỡng đường đua trước khi vào câu hỏi 1...",
-          });
-
-          const timer = setTimeout(() => {
-            launchDiceFirstQuestion();
-          }, 6000);
-
-          roomPrepareStates.set(room.id, {
-            type: "STARTING",
-            questionIndex: 0,
-            totalQuestions: questions.length,
-            targetTimestamp: Date.now() + 6000,
-            timer,
-            skipCallback: launchDiceFirstQuestion,
-          });
+          // Bắt đầu game: Hiện bàn cờ đường đua trước toàn màn hình.
+          // Chỉ khi admin nhấn 'Hiện câu hỏi' thì mới đếm ngược và lộ câu hỏi.
+          const diceState = roomDiceRaces.get(room.id);
+          if (diceState) {
+            io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+          }
           return;
         }
 
@@ -1984,7 +1938,9 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      const nextIndex = room.currentQuestion + 1;
+      // Với DICE_RACE: Nếu chưa từng khởi động câu hỏi nào (vừa nhấn Bắt đầu ở LOBBY và đang dừng ở bàn cờ) thì bắt đầu từ câu 0
+      const isFirstDiceLaunch = room.mode === "DICE_RACE" && !roomActiveQuestions.has(room.id) && room.currentQuestion === 0;
+      const nextIndex = isFirstDiceLaunch ? 0 : room.currentQuestion + 1;
 
       if (nextIndex >= questions.length) {
         stopQuestionTimer(room.id);
@@ -2301,44 +2257,12 @@ export function registerSocketHandlers(io: IO) {
       const roll = Math.floor(Math.random() * 6) + 1;
       diceState.lastDiceRoll = roll;
 
-      let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
-      const landingTile = diceState.tiles[newPos];
-
-      let grantAnotherRoll = false;
-
-      if (landingTile) {
-        if (landingTile.type === "BOOST") {
-          newPos = Math.min(diceState.totalTiles - 1, newPos + (landingTile.effectValue || 2));
-        } else if (landingTile.type === "TRAP") {
-          if (teamProg.hasShield) {
-            teamProg.hasShield = false; // Khiên hấp thụ bẫy
-          } else {
-            newPos = Math.max(0, newPos + (landingTile.effectValue || -2));
-          }
-        } else if (landingTile.type === "SHIELD") {
-          teamProg.hasShield = true;
-        } else if (landingTile.type === "EXTRA_ROLL") {
-          if (!diceState.extraRollGranted) {
-            grantAnotherRoll = true;
-            diceState.extraRollGranted = true;
-          }
-        } else if (landingTile.type === "SWAP") {
-          const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-          otherTeams.sort((a, b) => b.position - a.position);
-          if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-            const opp = otherTeams[0];
-            if (opp.hasShield) {
-              opp.hasShield = false; // Khiên của đối thủ chặn đổi chỗ
-            } else {
-              const tempPos = opp.position;
-              opp.position = newPos;
-              newPos = tempPos;
-            }
-          }
-        }
-      }
+      const landingResult = handleDiceRaceLanding({ diceState, teamId, roll });
+      const newPos = landingResult.finalPosition;
+      const grantAnotherRoll = landingResult.grantAnotherRoll;
 
       teamProg.position = newPos;
+      teamProg.hasShield = landingResult.hasShield;
 
       // Đồng bộ điểm đội theo vị trí ô để hiển thị trên UI nhất quán
       await prisma.team.update({
@@ -2353,6 +2277,11 @@ export function registerSocketHandlers(io: IO) {
         teamName: teamProg.teamName,
         roll,
       });
+
+      // Log/message if special effect or teleport triggered
+      if (landingResult.effectMessage) {
+        console.log(`[DiceRace] ${teamProg.teamName}: ${landingResult.effectMessage}`);
+      }
 
       // Kiểm tra cán đích
       if (newPos >= diceState.totalTiles - 1 && !teamProg.hasFinished) {

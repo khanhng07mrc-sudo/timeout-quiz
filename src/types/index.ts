@@ -609,13 +609,24 @@ export interface GridCaroState {
 
 // ─── Dice Race Mode ──────────────────────────────────────────────────────────
 
-export type DiceTileType = "NORMAL" | "BOOST" | "TRAP" | "SHIELD" | "SWAP" | "EXTRA_ROLL" | "FINISH";
+export type DiceTileType =
+  | "NORMAL"
+  | "BOOST"
+  | "TRAP"
+  | "SHIELD"
+  | "SWAP"
+  | "EXTRA_ROLL"
+  | "TELEPORT"
+  | "TELEPORT_EXIT"
+  | "FINISH";
 
 export interface DiceTile {
   index: number;
   type: DiceTileType;
   label: string;
   effectValue?: number;
+  teleportTargetIndex?: number; // 0-based destination tile index
+  portalId?: string; // e.g. "Alpha", "Beta"
 }
 
 export interface TeamRaceProgress {

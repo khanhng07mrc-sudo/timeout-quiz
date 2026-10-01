@@ -756,6 +756,17 @@ export default function DisplayPage() {
           </div>
         )}
 
+        {/* DICE_RACE: Mini-Track HUD on top while question is active */}
+        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
+          <div className="w-full shrink-0 animate-slide-up">
+            <DiceRaceTrack
+              diceState={roomState.diceRaceState}
+              isDisplay={true}
+              mode="mini"
+            />
+          </div>
+        )}
+
         {/* Question */}
         {currentQuestion && (
           <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
@@ -949,15 +960,6 @@ export default function DisplayPage() {
         )}
 
         {/* Board tracking widgets when question is active */}
-        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
-          <div className="w-full animate-slide-up">
-            <DiceRaceTrack
-              diceState={roomState.diceRaceState}
-              isDisplay={true}
-              mode={revealPayload ? "full" : "mini"}
-            />
-          </div>
-        )}
 
         {currentQuestion && roomState.mode === "GRID_CARO" && roomState.gridCaroState && (
           <div className="w-full animate-slide-up">

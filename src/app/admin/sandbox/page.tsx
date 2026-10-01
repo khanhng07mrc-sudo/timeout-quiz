@@ -15,6 +15,7 @@ import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
+import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 
 const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
@@ -485,21 +486,10 @@ export default function AdminSandboxPage() {
 
     let diceRaceState: any = undefined;
     if (mode === "DICE_RACE") {
-      const tiles = Array.from({ length: 30 }, (_, idx) => {
-        let type = "NORMAL";
-        let label = `Ô ${idx + 1}`;
-        if (idx === 29) { type = "FINISH"; label = "Về đích"; }
-        else if (idx === 4) { type = "BOOST"; label = "+2 Bước"; }
-        else if (idx === 7) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (idx === 11) { type = "TRAP"; label = "-2 Bước"; }
-        else if (idx === 15) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (idx === 19) { type = "SHIELD"; label = "Khiên"; }
-        else if (idx === 23) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (idx === 26) { type = "SWAP"; label = "Đổi chỗ"; }
-        return { index: idx, type: type as any, label };
-      });
+      const totalTiles = 30;
+      const tiles = generateBalancedDiceTiles(totalTiles);
       diceRaceState = {
-        totalTiles: 30,
+        totalTiles,
         tiles,
         teamPositions: {
           t_red: { teamId: "t_red", teamName: "Đội Đỏ (Bạn)", teamColor: "#ef4444", position: 0, hasFinished: false, hasShield: false },
@@ -756,10 +746,7 @@ export default function AdminSandboxPage() {
       if (roomState?.status === "LOBBY") {
         setRoomState((prev) => prev ? { ...prev, status: "PLAYING" } : prev);
         if (selectedMode === "DICE_RACE") {
-          addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Chiêm ngưỡng đường đua trước khi vào câu hỏi 1... (5s)");
-          setTimeout(() => {
-            launchOfflineQuestion(0);
-          }, 5000);
+          addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Bàn cờ hiển thị toàn màn hình. Nhấn 'Hiện câu hỏi' khi sẵn sàng.");
           return;
         } else if (selectedMode === "GRID_CARO") {
           addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
@@ -971,18 +958,22 @@ export default function AdminSandboxPage() {
         if (!prev || !prev.diceRaceState) return prev;
         const curTurnId = prev.diceRaceState.currentTurnTeamId;
         if (!curTurnId) return prev;
-        const curPos = prev.diceRaceState.teamPositions[curTurnId]?.position || 1;
-        const nextPos = Math.min(30, curPos + roll);
-        const tile = prev.diceRaceState.tiles.find((t: any) => t.position === nextPos);
-        const isExtra = tile?.type === "EXTRA_ROLL";
-        const isBoost = tile?.type === "BOOST";
-        const finalPos = isBoost ? Math.min(30, nextPos + 2) : nextPos;
+
+        const landingResult = handleDiceRaceLanding({
+          diceState: prev.diceRaceState,
+          teamId: curTurnId,
+          roll,
+        });
+
+        const finalPos = landingResult.finalPosition;
+        const isExtra = landingResult.grantAnotherRoll;
 
         const updatedPositions = {
           ...prev.diceRaceState.teamPositions,
           [curTurnId]: {
             ...prev.diceRaceState.teamPositions[curTurnId],
             position: finalPos,
+            hasShield: landingResult.hasShield,
             extraRollGranted: isExtra,
           },
         };
@@ -992,7 +983,7 @@ export default function AdminSandboxPage() {
         const nextTeamId = isExtra ? curTurnId : teamIds[(curIdx + 1) % teamIds.length];
         const nextTeamName = prev.teams.find((t) => t.id === nextTeamId)?.name;
 
-        addLog(`🎲 Đội [${prev.diceRaceState.currentTurnTeamName}] đã gieo xúc xắc: ${roll} điểm! Đến ô #${finalPos} (${tile?.label || "Bình thường"})${isExtra ? " - Nhận thêm lượt đổ x2 Cơ hội!" : ""}`);
+        addLog(`🎲 [${prev.diceRaceState.currentTurnTeamName}] ${landingResult.effectMessage}`);
 
         return {
           ...prev,
@@ -1473,9 +1464,19 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={handleAdminNext}
-                    className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                    className={`px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap ${
+                      roomState?.mode === "DICE_RACE" && !currentQuestion && roomState?.status === "PLAYING"
+                        ? "animate-pulse ring-2 ring-cyan-400 bg-gradient-to-r from-purple-600 to-cyan-600"
+                        : ""
+                    }`}
                   >
-                    <span>{roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "⏩ Câu kế"}</span>
+                    <span>
+                      {roomState?.status === "LOBBY"
+                        ? "🚀 Bắt đầu"
+                        : roomState?.mode === "DICE_RACE" && !currentQuestion
+                        ? "🎯 Hiện câu hỏi"
+                        : "⏩ Câu kế"}
+                    </span>
                   </button>
                 )}
 

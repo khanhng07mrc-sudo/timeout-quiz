@@ -272,6 +272,224 @@ function computeStealAmount(leaderScore, stealerScore) {
   return Math.floor(Math.min(diff * 0.2, leaderScore * 0.1, 50));
 }
 
+// src/lib/game-engine/dice-race.ts
+function generateBalancedDiceTiles(totalTiles = 30) {
+  const count = Math.max(30, Math.min(50, totalTiles || 30));
+  const tiles = [];
+  const specialMap = {};
+  if (count === 30) {
+    specialMap[3] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
+    specialMap[5] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[7] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[10] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[12] = {
+      type: "TELEPORT",
+      label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian",
+      portalId: "Alpha",
+      teleportTargetIndex: 19
+      // Ô #13 -> Ô #20
+    };
+    specialMap[15] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
+    specialMap[17] = { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" };
+    specialMap[19] = {
+      type: "TELEPORT_EXIT",
+      label: "\u2728 C\u1ED5ng Ra An To\xE0n",
+      portalId: "Alpha"
+    };
+    specialMap[22] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[24] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[26] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+  } else {
+    const isLarge = count >= 40;
+    const findSafeIndex = (preferred, minBound = 3, maxBound = count - 4) => {
+      const candidates = [
+        preferred,
+        preferred + 1,
+        preferred - 1,
+        preferred + 2,
+        preferred - 2
+      ].filter((idx) => idx >= minBound && idx <= maxBound);
+      for (const cand of candidates) {
+        const hasAdjacent = Object.keys(specialMap).some(
+          (k) => Math.abs(parseInt(k, 10) - cand) < 2
+        );
+        if (!hasAdjacent) return cand;
+      }
+      return null;
+    };
+    const alphaInPreferred = Math.round(count * 0.35);
+    const alphaOutPreferred = Math.round(count * 0.55);
+    const alphaIn = findSafeIndex(alphaInPreferred);
+    if (alphaIn !== null) {
+      specialMap[alphaIn] = {
+        type: "TELEPORT",
+        label: "\u{1F300} C\u1ED5ng Alpha",
+        portalId: "Alpha"
+      };
+    }
+    const alphaOut = findSafeIndex(alphaOutPreferred);
+    if (alphaOut !== null && alphaIn !== null) {
+      specialMap[alphaOut] = {
+        type: "TELEPORT_EXIT",
+        label: "\u2728 Ra C\u1ED5ng Alpha",
+        portalId: "Alpha"
+      };
+      specialMap[alphaIn].teleportTargetIndex = alphaOut;
+    }
+    if (isLarge) {
+      const betaInPreferred = Math.round(count * 0.65);
+      const betaOutPreferred = Math.round(count * 0.83);
+      const betaIn = findSafeIndex(betaInPreferred);
+      if (betaIn !== null) {
+        specialMap[betaIn] = {
+          type: "TELEPORT",
+          label: "\u{1F300} C\u1ED5ng Beta",
+          portalId: "Beta"
+        };
+      }
+      const betaOut = findSafeIndex(betaOutPreferred);
+      if (betaOut !== null && betaIn !== null) {
+        specialMap[betaOut] = {
+          type: "TELEPORT_EXIT",
+          label: "\u2728 Ra C\u1ED5ng Beta",
+          portalId: "Beta"
+        };
+        specialMap[betaIn].teleportTargetIndex = betaOut;
+      }
+    }
+    const candidatesList = [
+      { pct: 0.1, type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
+      { pct: 0.18, type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
+      { pct: 0.25, type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
+      { pct: 0.44, type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 },
+      { pct: 0.5, type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
+      { pct: 0.6, type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" },
+      { pct: 0.72, type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
+      { pct: 0.78, type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
+      { pct: 0.88, type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 }
+    ];
+    for (const item of candidatesList) {
+      const prefIdx = Math.round(count * item.pct);
+      const safeIdx = findSafeIndex(prefIdx);
+      if (safeIdx !== null) {
+        specialMap[safeIdx] = {
+          type: item.type,
+          label: item.label,
+          effectValue: item.effectValue
+        };
+      }
+    }
+  }
+  for (let i = 0; i < count; i++) {
+    if (i === 0) {
+      tiles.push({ index: 0, type: "NORMAL", label: "Xu\u1EA5t ph\xE1t" });
+      continue;
+    }
+    if (i === count - 1) {
+      tiles.push({ index: count - 1, type: "FINISH", label: "V\u1EC1 \u0111\xEDch" });
+      continue;
+    }
+    if (specialMap[i]) {
+      const spec = specialMap[i];
+      tiles.push({
+        index: i,
+        type: spec.type,
+        label: spec.label,
+        effectValue: spec.effectValue,
+        teleportTargetIndex: spec.teleportTargetIndex,
+        portalId: spec.portalId
+      });
+    } else {
+      tiles.push({
+        index: i,
+        type: "NORMAL",
+        label: `\xD4 ${i + 1}`
+      });
+    }
+  }
+  return tiles;
+}
+function handleDiceRaceLanding({
+  diceState,
+  teamId,
+  roll
+}) {
+  const teamProg = diceState.teamPositions[teamId];
+  if (!teamProg) {
+    return {
+      finalPosition: 0,
+      grantAnotherRoll: false,
+      effectMessage: "",
+      hasShield: false,
+      teleported: false
+    };
+  }
+  let currentShield = !!teamProg.hasShield;
+  let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
+  const landingTile = diceState.tiles[newPos];
+  let grantAnotherRoll = false;
+  let teleported = false;
+  let effectMessage = `Tung x\xFAc x\u1EAFc \u0111\u01B0\u1EE3c ${roll} n\xFAt! \u0110\u1EBFn \xD4 #${newPos + 1}`;
+  let swappedWithTeamId = void 0;
+  if (landingTile) {
+    if (landingTile.type === "TELEPORT" && landingTile.teleportTargetIndex !== void 0) {
+      teleported = true;
+      const targetPos = Math.min(diceState.totalTiles - 1, Math.max(0, landingTile.teleportTargetIndex));
+      effectMessage = `\u{1F300} B\u01B0\u1EDBc v\xE0o C\u1ED5ng Kh\xF4ng Gian ${landingTile.portalId ? `[${landingTile.portalId}]` : ""}! D\u1ECBch chuy\u1EC3n t\u1EE9c th\u1EDDi t\u1EEB \xD4 #${newPos + 1} \u2794 \xD4 #${targetPos + 1}!`;
+      newPos = targetPos;
+    } else if (landingTile.type === "TELEPORT_EXIT") {
+      effectMessage = `\u2728 Ti\u1EBFp \u0111\u1EA5t an to\xE0n t\u1EA1i C\u1ED5ng Ra \xD4 #${newPos + 1}!`;
+    } else if (landingTile.type === "BOOST") {
+      const boostVal = landingTile.effectValue || 2;
+      newPos = Math.min(diceState.totalTiles - 1, newPos + boostVal);
+      effectMessage += ` \u2794 \u{1F680} T\u0103ng t\u1ED1c! Ti\u1EBFn th\xEAm ${boostVal} b\u01B0\u1EDBc \u0111\u1EBFn \xD4 #${newPos + 1}!`;
+    } else if (landingTile.type === "TRAP") {
+      if (currentShield) {
+        currentShield = false;
+        effectMessage += ` \u2794 \u{1F6E1}\uFE0F Khi\xEAn b\u1EA3o v\u1EC7 \u0111\xE3 h\u1EA5p th\u1EE5 B\u1EABy h\u1EE5t (-2 b\u01B0\u1EDBc)! An to\xE0n t\u1EA1i \xD4 #${newPos + 1}.`;
+      } else {
+        const trapVal = landingTile.effectValue || -2;
+        newPos = Math.max(0, newPos + trapVal);
+        effectMessage += ` \u2794 \u{1F4A5} D\u1EABm ph\u1EA3i B\u1EABy h\u1EE5t! L\xF9i ${Math.abs(trapVal)} b\u01B0\u1EDBc v\u1EC1 \xD4 #${newPos + 1}.`;
+      }
+    } else if (landingTile.type === "SHIELD") {
+      currentShield = true;
+      effectMessage += ` \u2794 \u{1F6E1}\uFE0F Nh\u1EADn \u0111\u01B0\u1EE3c Khi\xEAn b\u1EA3o h\u1ED9 th\u1EA7n k\u1EF3!`;
+    } else if (landingTile.type === "EXTRA_ROLL") {
+      if (!diceState.extraRollGranted) {
+        grantAnotherRoll = true;
+        effectMessage += ` \u2794 \u{1F3B2} R\u01A1i v\xE0o \xF4 x2 C\u01A1 h\u1ED9i! \u0110\u01B0\u1EE3c tung x\xFAc x\u1EAFc th\xEAm m\u1ED9t l\u1EA7n n\u1EEFa!`;
+      }
+    } else if (landingTile.type === "SWAP") {
+      const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
+      otherTeams.sort((a, b) => b.position - a.position);
+      if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
+        const opp = otherTeams[0];
+        if (opp.hasShield) {
+          opp.hasShield = false;
+          effectMessage += ` \u2794 \u{1F500} C\u1ED1 ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED v\u1EDBi ${opp.teamName} nh\u01B0ng b\u1ECB Khi\xEAn \u0111\u1ED1i th\u1EE7 ch\u1EB7n \u0111\u1EE9ng!`;
+        } else {
+          const tempPos = opp.position;
+          opp.position = newPos;
+          newPos = tempPos;
+          swappedWithTeamId = opp.teamId;
+          effectMessage += ` \u2794 \u{1F500} Ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED th\u1EA7n th\xE1nh v\u1EDBi ${opp.teamName}! B\u1EA1n v\u1ECDt l\xEAn \xD4 #${newPos + 1}!`;
+        }
+      } else {
+        effectMessage += ` \u2794 \u{1F500} \xD4 \u0110\u1ED5i ch\u1ED7, nh\u01B0ng kh\xF4ng c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o ph\xEDa tr\u01B0\u1EDBc \u0111\u1EC3 ho\xE1n \u0111\u1ED5i.`;
+      }
+    }
+  }
+  return {
+    finalPosition: newPos,
+    grantAnotherRoll,
+    effectMessage,
+    hasShield: currentShield,
+    teleported,
+    swappedWithTeamId
+  };
+}
+
 // src/lib/utils.ts
 function shuffleArray(array) {
   const arr = [...array];
@@ -666,34 +884,8 @@ function buildTournamentMatches(teams, questionsPerMatch) {
   );
   return matches;
 }
-function generateDiceTiles(totalTiles) {
-  const tiles = [];
-  let lastExtraRoll = -999;
-  for (let i = 0; i < totalTiles; i++) {
-    if (i === 0) {
-      tiles.push({ index: i, type: "NORMAL", label: "Xu\u1EA5t ph\xE1t" });
-      continue;
-    }
-    const isCandidateExtraRoll = (i % 8 === 0 || i === totalTiles - 1) && i - lastExtraRoll >= 7;
-    if (isCandidateExtraRoll) {
-      tiles.push({ index: i, type: "EXTRA_ROLL", label: "\u{1F3B2}x2 C\u01A1 h\u1ED9i" });
-      lastExtraRoll = i;
-      continue;
-    }
-    const pct = i / totalTiles;
-    if (Math.abs(pct - 0.2) < 0.04 || Math.abs(pct - 0.8) < 0.04) {
-      tiles.push({ index: i, type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 });
-    } else if (Math.abs(pct - 0.35) < 0.04 || Math.abs(pct - 0.7) < 0.04) {
-      tiles.push({ index: i, type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 });
-    } else if (Math.abs(pct - 0.15) < 0.04 || Math.abs(pct - 0.5) < 0.04) {
-      tiles.push({ index: i, type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn b\u1EA3o v\u1EC7" });
-    } else if (Math.abs(pct - 0.6) < 0.04) {
-      tiles.push({ index: i, type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" });
-    } else {
-      tiles.push({ index: i, type: "NORMAL", label: "\u2B50" });
-    }
-  }
-  return tiles;
+function generateDiceTiles(totalTiles = 30) {
+  return generateBalancedDiceTiles(totalTiles);
 }
 var roomCache = /* @__PURE__ */ new Map();
 var roomQuestionsCache = /* @__PURE__ */ new Map();
@@ -1971,25 +2163,10 @@ function registerSocketHandlers(io2) {
           return;
         }
         if (room.mode === "DICE_RACE") {
-          const launchDiceFirstQuestion = () => {
-            roomPrepareStates.delete(room.id);
-            startQuestionPrepareAndLaunch(room, questions, 0);
-          };
-          io2.to(`room:${room.code}`).emit("game:starting", {
-            seconds: 6,
-            message: "\u{1F3C1} Cu\u1ED9c \u0111ua c\u1EDD x\xED ng\u1EA7u b\u1EAFt \u0111\u1EA7u! Chi\xEAm ng\u01B0\u1EE1ng \u0111\u01B0\u1EDDng \u0111ua tr\u01B0\u1EDBc khi v\xE0o c\xE2u h\u1ECFi 1..."
-          });
-          const timer2 = setTimeout(() => {
-            launchDiceFirstQuestion();
-          }, 6e3);
-          roomPrepareStates.set(room.id, {
-            type: "STARTING",
-            questionIndex: 0,
-            totalQuestions: questions.length,
-            targetTimestamp: Date.now() + 6e3,
-            timer: timer2,
-            skipCallback: launchDiceFirstQuestion
-          });
+          const diceState = roomDiceRaces.get(room.id);
+          if (diceState) {
+            io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+          }
           return;
         }
         const launchWarmupToFirstQuestion = () => {
@@ -2029,7 +2206,8 @@ function registerSocketHandlers(io2) {
           }
         }
       }
-      const nextIndex = room.currentQuestion + 1;
+      const isFirstDiceLaunch = room.mode === "DICE_RACE" && !roomActiveQuestions.has(room.id) && room.currentQuestion === 0;
+      const nextIndex = isFirstDiceLaunch ? 0 : room.currentQuestion + 1;
       if (nextIndex >= questions.length) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
@@ -2288,41 +2466,11 @@ function registerSocketHandlers(io2) {
       if (!teamProg) return;
       const roll = Math.floor(Math.random() * 6) + 1;
       diceState.lastDiceRoll = roll;
-      let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
-      const landingTile = diceState.tiles[newPos];
-      let grantAnotherRoll = false;
-      if (landingTile) {
-        if (landingTile.type === "BOOST") {
-          newPos = Math.min(diceState.totalTiles - 1, newPos + (landingTile.effectValue || 2));
-        } else if (landingTile.type === "TRAP") {
-          if (teamProg.hasShield) {
-            teamProg.hasShield = false;
-          } else {
-            newPos = Math.max(0, newPos + (landingTile.effectValue || -2));
-          }
-        } else if (landingTile.type === "SHIELD") {
-          teamProg.hasShield = true;
-        } else if (landingTile.type === "EXTRA_ROLL") {
-          if (!diceState.extraRollGranted) {
-            grantAnotherRoll = true;
-            diceState.extraRollGranted = true;
-          }
-        } else if (landingTile.type === "SWAP") {
-          const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-          otherTeams.sort((a, b) => b.position - a.position);
-          if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-            const opp = otherTeams[0];
-            if (opp.hasShield) {
-              opp.hasShield = false;
-            } else {
-              const tempPos = opp.position;
-              opp.position = newPos;
-              newPos = tempPos;
-            }
-          }
-        }
-      }
+      const landingResult = handleDiceRaceLanding({ diceState, teamId, roll });
+      const newPos = landingResult.finalPosition;
+      const grantAnotherRoll = landingResult.grantAnotherRoll;
       teamProg.position = newPos;
+      teamProg.hasShield = landingResult.hasShield;
       await prisma.team.update({
         where: { id: teamId },
         data: { score: newPos }
@@ -2333,6 +2481,9 @@ function registerSocketHandlers(io2) {
         teamName: teamProg.teamName,
         roll
       });
+      if (landingResult.effectMessage) {
+        console.log(`[DiceRace] ${teamProg.teamName}: ${landingResult.effectMessage}`);
+      }
       if (newPos >= diceState.totalTiles - 1 && !teamProg.hasFinished) {
         teamProg.hasFinished = true;
         if (!diceState.finishLeaderboard.includes(teamProg.teamName)) {

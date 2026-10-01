@@ -200,6 +200,8 @@ export default function CreateRoomPage() {
             // Wager config
             wagerTimeSeconds: mode === "WAGER" ? wagerTimeSeconds : 15,
             wagerMinAllowance: mode === "WAGER" ? wagerMinAllowance : 50,
+            wagerInitialPoints: mode === "WAGER" ? wagerInitialPoints : 50,
+            wagerBailoutLimit: mode === "WAGER" ? wagerBailoutLimit : 1,
           },
         }),
       });

@@ -864,6 +864,7 @@ export default function AdminRoomPage() {
                 teams={roomState.teams}
                 positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
                 onGrantBailout={(teamId) => emit("admin:wager:grant_bailout", { teamId })}
+                onSetBailoutLimit={(limit) => emit("admin:wager:set_bailout_limit", { limit })}
                 onLaunchQuestion={() => emit("admin:wager:launch_question")}
               />
             </div>

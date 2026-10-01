@@ -12,6 +12,7 @@ interface Props {
   onSubmitWager?: (amount: number) => void;
   isAdmin?: boolean;
   onGrantBailout?: (teamId: string) => void;
+  onSetBailoutLimit?: (limit: number) => void;
   onLaunchQuestion?: () => void;
   isDisplay?: boolean;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
@@ -26,6 +27,7 @@ export default function WagerPanel({
   onSubmitWager,
   isAdmin = false,
   onGrantBailout,
+  onSetBailoutLimit,
   onLaunchQuestion,
   isDisplay = false,
   teams = [],
@@ -38,6 +40,7 @@ export default function WagerPanel({
   const {
     phase,
     wagerSubPhase,
+    autoAssignedTeamId,
     autoAssignedTeamName,
     questionReady,
     wagerTimeRemaining,
@@ -61,11 +64,13 @@ export default function WagerPanel({
   const myBailoutInfo = myTeamId && teamBailouts ? teamBailouts[myTeamId] : undefined;
   const myBailoutsRemaining = myBailoutInfo ? myBailoutInfo.remaining : 1;
 
-  // Rule: "mỗi đội không được cược từ 2 lần liên tiếp trở lên"
-  const isConsecutiveBlocked = Boolean(myTeamId && lastWagerTeamId === myTeamId);
+  // Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp
+  const isAutoAssigned = Boolean(myTeamId && autoAssignedTeamId === myTeamId);
+  // Rule: "mỗi đội không được cược từ 2 lần liên tiếp trở lên" (trừ lần đầu của đội được chỉ định ngẫu nhiên)
+  const isConsecutiveBlocked = Boolean(myTeamId && lastWagerTeamId === myTeamId && !isAutoAssigned);
 
   // Rule: "khi số điểm cược hiện lên đã vượt quá điểm đội mình, đội mình sẽ mất quyền cược trong câu hỏi đó"
-  const hasLostWagerRight = Boolean(myTeamId && myTeamScore < minOption && !myWager?.submitted);
+  const hasLostWagerRight = Boolean(myTeamId && myTeamScore < minOption && !myWager?.submitted && !isAutoAssigned);
   const cannotRaiseFurther = Boolean(myTeamId && myTeamScore < minOption && myWager?.submitted);
 
   const handleSubmit = (amount: number) => {
@@ -128,7 +133,10 @@ export default function WagerPanel({
       {autoAssignedTeamName && (
         <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-200 text-xs sm:text-sm flex items-center gap-2">
           <span className="text-lg">🎲</span>
-          <span>Hệ thống đã chỉ định ngẫu nhiên đội <strong>{autoAssignedTeamName}</strong> cược khởi điểm <strong>10đ</strong>! Các đội kế tiếp có 15s để nâng cược.</span>
+          <span>
+            Hệ thống đã chỉ định ngẫu nhiên đội <strong>{autoAssignedTeamName}</strong> cược khởi điểm <strong>10đ</strong>!
+            {isAutoAssigned ? " Đội bạn vẫn có quyền nâng cược thêm 1 lần kế tiếp!" : " Các đội kế tiếp có 15s để nâng cược."}
+          </span>
         </div>
       )}
 
@@ -157,22 +165,48 @@ export default function WagerPanel({
       {/* Bailout Queue Banner (When any team falls to <= 0) */}
       {bailoutQueue.length > 0 && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-2.5 animate-fadeIn">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">🚑</span>
               <span className="font-bold text-sm text-rose-300">
-                Hàng Đợi Cứu Trợ (Thứ tự rơi điểm):
+                Hàng Đợi Cứu Trợ (Ưu tiên đội rời cuộc chơi sớm hơn):
               </span>
             </div>
-            {currentQuestionBailoutUsed ? (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 font-medium">
-                ⏳ Đã dùng quyền cứu trợ câu này — Đội tiếp theo được cứu ở câu kế tiếp
-              </span>
-            ) : (
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium">
-                ✨ Sẵn sàng cứu trợ 1 đội ở câu này
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {isAdmin && onSetBailoutLimit && (
+                <div className="flex items-center gap-1.5 text-xs bg-white/10 px-2 py-1 rounded-lg border border-white/10">
+                  <span className="text-muted-foreground text-[11px]">Giới hạn:</span>
+                  <button
+                    type="button"
+                    onClick={() => onSetBailoutLimit(Math.max(1, (Object.values(teamBailouts)[0]?.max ?? 1) - 1))}
+                    className="w-4 h-4 flex items-center justify-center rounded bg-white/15 hover:bg-white/25 text-white font-bold text-xs"
+                    title="Giảm số lần trợ cấp tối đa"
+                  >
+                    -
+                  </button>
+                  <span className="font-mono font-bold text-amber-300 text-[11px]">
+                    {Object.values(teamBailouts)[0]?.max ?? 1} lần
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onSetBailoutLimit(Math.min(5, (Object.values(teamBailouts)[0]?.max ?? 1) + 1))}
+                    className="w-4 h-4 flex items-center justify-center rounded bg-white/15 hover:bg-white/25 text-white font-bold text-xs"
+                    title="Tăng số lần trợ cấp tối đa"
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+              {currentQuestionBailoutUsed ? (
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 font-medium">
+                  ⏳ Đã dùng quyền cứu trợ câu này — Đội tiếp theo được cứu ở câu kế tiếp
+                </span>
+              ) : (
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-medium">
+                  ✨ Sẵn sàng cứu trợ 1 đội ở câu này
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -187,14 +221,16 @@ export default function WagerPanel({
                       : "bg-white/5 border-white/10 text-muted-foreground opacity-75"
                   }`}
                 >
-                  <span className="font-mono text-amber-300">#{idx + 1}</span>
+                  <span className="font-mono text-amber-300">
+                    #{idx + 1} {isFirst ? "(Ưu tiên cứu đầu tiên)" : "(Chờ sau)"}
+                  </span>
                   <span style={{ color: item.teamColor }}>{item.teamName}</span>
                   <span className="font-mono text-rose-300">({item.score}đ tại câu {item.questionIndex})</span>
 
                   {isFirst && isAdmin && onGrantBailout && (
-                    positiveTeamsCount !== undefined && positiveTeamsCount < 2 ? (
+                    positiveTeamsCount !== undefined && positiveTeamsCount < 1 ? (
                       <span className="ml-2 text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40">
-                        🔒 Cần &ge;2 đội &gt;0đ
+                        🔒 Cần &ge;2 đội sống
                       </span>
                     ) : (
                       <button
@@ -404,6 +440,19 @@ export default function WagerPanel({
             )}
           </div>
 
+          {/* Auto-assigned notice: Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp */}
+          {isAutoAssigned && (
+            <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2.5 animate-pulse">
+              <span className="text-xl shrink-0">🎲</span>
+              <div>
+                <p className="font-bold">Đội bạn được hệ thống chỉ định cược 10đ khởi điểm!</p>
+                <p className="text-[11px] text-purple-200/90">
+                  Bạn vẫn có quyền chọn nâng cược thêm 1 lần kế tiếp trong phiên này!
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Anti-spam notice: "mỗi đội không được cược từ 2 lần liên tiếp trở lên" */}
           {isConsecutiveBlocked && (
             <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-2.5 animate-pulse">
@@ -553,7 +602,7 @@ export default function WagerPanel({
                       {wager.teamName}
                     </span>
                     <span className="text-[10px] text-purple-300 font-bold">
-                      🛡️ {bailoutsRem}/1
+                      🛡️ {bailoutsRem}/{teamBailouts[teamId]?.max ?? 1}
                     </span>
                   </div>
 

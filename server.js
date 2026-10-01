@@ -1449,25 +1449,38 @@ function registerSocketHandlers(io2) {
             clearInterval(initTimer);
             roomWagerTimers.delete(room.id);
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
-              const eligibleTeams = teams.filter((t) => !t.isEliminated && t.score >= 10);
-              const pool = eligibleTeams.length > 0 ? eligibleTeams : teams.filter((t) => !t.isEliminated);
-              if (pool.length > 0) {
-                const picked = pool[Math.floor(Math.random() * pool.length)];
-                wagerState.currentHighestWager = 10;
-                wagerState.lastWagerTeamId = picked.id;
-                wagerState.autoAssignedTeamName = picked.name;
+              const activeTeams = teams.filter((t) => !t.isEliminated);
+              const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+              let pickedTeam;
+              let assignedWager = 10;
+              if (teamsGte10.length > 0) {
+                pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
+                assignedWager = 10;
+              } else {
+                const teams5 = activeTeams.filter((t) => t.score === 5);
+                const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+                if (pool5.length > 0) {
+                  pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
+                  assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
+                }
+              }
+              if (pickedTeam) {
+                wagerState.currentHighestWager = assignedWager;
+                wagerState.lastWagerTeamId = pickedTeam.id;
+                wagerState.autoAssignedTeamId = pickedTeam.id;
+                wagerState.autoAssignedTeamName = pickedTeam.name;
                 wagerState.wagerHistory = [{
                   order: 1,
-                  teamId: picked.id,
-                  teamName: picked.name,
-                  teamColor: picked.color,
-                  amount: 10,
+                  teamId: pickedTeam.id,
+                  teamName: pickedTeam.name,
+                  teamColor: pickedTeam.color,
+                  amount: assignedWager,
                   timestamp: Date.now()
                 }];
-                wagerState.teamWagers[picked.id] = {
-                  teamId: picked.id,
-                  teamName: picked.name,
-                  amount: 10,
+                wagerState.teamWagers[pickedTeam.id] = {
+                  teamId: pickedTeam.id,
+                  teamName: pickedTeam.name,
+                  amount: assignedWager,
                   submitted: true,
                   order: 1
                 };
@@ -2083,7 +2096,8 @@ function registerSocketHandlers(io2) {
       if (!wagerState || wagerState.phase !== "WAGER_PERIOD") return;
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
-      if (wagerState.lastWagerTeamId === team.id) {
+      const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
+      if (wagerState.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
         socket.emit("error", "\u0110\u1ED9i b\u1EA1n v\u1EEBa \u0111\u1EB7t c\u01B0\u1EE3c! Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c 2 l\u1EA7n li\xEAn ti\u1EBFp, vui l\xF2ng ch\u1EDD \u0111\u1ED9i kh\xE1c c\u01B0\u1EE3c tr\u01B0\u1EDBc.");
         return;
       }
@@ -2105,6 +2119,9 @@ function registerSocketHandlers(io2) {
       }
       wagerState.currentHighestWager = amount;
       wagerState.lastWagerTeamId = team.id;
+      if (isAutoAssignedFirstBid) {
+        wagerState.autoAssignedTeamId = void 0;
+      }
       if (!wagerState.wagerHistory) wagerState.wagerHistory = [];
       const order = wagerState.wagerHistory.length + 1;
       wagerState.wagerHistory.push({
@@ -2140,10 +2157,10 @@ function registerSocketHandlers(io2) {
         startWager15sCountdown(io2, room.id, room.code);
       } else {
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
-        const canAnyOtherTeamBet = allTeams.some(
-          (t) => t.id !== wagerState.lastWagerTeamId && t.score >= nextMinOption
+        const canAnyTeamBet = allTeams.some(
+          (t) => (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) && t.score >= nextMinOption
         );
-        if (!canAnyOtherTeamBet) {
+        if (!canAnyTeamBet) {
           const wTimer = roomWagerTimers.get(room.id);
           if (wTimer) {
             clearTimeout(wTimer);
@@ -2269,25 +2286,38 @@ function registerSocketHandlers(io2) {
       }
       if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-        const eligibleTeams = teams.filter((t) => !t.isEliminated && t.score >= 10);
-        const pool = eligibleTeams.length > 0 ? eligibleTeams : teams.filter((t) => !t.isEliminated);
-        if (pool.length > 0) {
-          const picked = pool[Math.floor(Math.random() * pool.length)];
-          wagerState.currentHighestWager = 10;
-          wagerState.lastWagerTeamId = picked.id;
-          wagerState.autoAssignedTeamName = picked.name;
+        const activeTeams = teams.filter((t) => !t.isEliminated);
+        const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+        let pickedTeam;
+        let assignedWager = 10;
+        if (teamsGte10.length > 0) {
+          pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
+          assignedWager = 10;
+        } else {
+          const teams5 = activeTeams.filter((t) => t.score === 5);
+          const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+          if (pool5.length > 0) {
+            pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
+            assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
+          }
+        }
+        if (pickedTeam) {
+          wagerState.currentHighestWager = assignedWager;
+          wagerState.lastWagerTeamId = pickedTeam.id;
+          wagerState.autoAssignedTeamId = pickedTeam.id;
+          wagerState.autoAssignedTeamName = pickedTeam.name;
           wagerState.wagerHistory = [{
             order: 1,
-            teamId: picked.id,
-            teamName: picked.name,
-            teamColor: picked.color,
-            amount: 10,
+            teamId: pickedTeam.id,
+            teamName: pickedTeam.name,
+            teamColor: pickedTeam.color,
+            amount: assignedWager,
             timestamp: Date.now()
           }];
-          wagerState.teamWagers[picked.id] = {
-            teamId: picked.id,
-            teamName: picked.name,
-            amount: 10,
+          wagerState.teamWagers[pickedTeam.id] = {
+            teamId: pickedTeam.id,
+            teamName: pickedTeam.name,
+            amount: assignedWager,
             submitted: true,
             order: 1
           };
@@ -2341,20 +2371,22 @@ function registerSocketHandlers(io2) {
       }
       const topQueueItem = wagerState.bailoutQueue[0];
       if (topQueueItem.teamId !== teamId) {
-        socket.emit("error", `Ph\u1EA3i \u01B0u ti\xEAn tr\u1EE3 c\u1EA5p theo th\u1EE9 t\u1EF1 r\u01A1i \u0111i\u1EC3m: \u0110\u1ED9i ${topQueueItem.teamName} c\u1EA7n \u0111\u01B0\u1EE3c c\u1EE9u tr\u01B0\u1EDBc!`);
+        socket.emit("error", `Ph\u1EA3i \u01B0u ti\xEAn tr\u1EE3 c\u1EA5p theo th\u1EE9 t\u1EF1 r\u1EDDi cu\u1ED9c ch\u01A1i s\u1EDBm h\u01A1n: \u0110\u1ED9i ${topQueueItem.teamName} (r\u1EDDi cu\u1ED9c ch\u01A1i t\u1EA1i c\xE2u ${topQueueItem.questionIndex}) c\u1EA7n \u0111\u01B0\u1EE3c c\u1EE9u tr\u01B0\u1EDBc!`);
         return;
       }
       const team = await prisma.team.findUnique({ where: { id: teamId } });
       if (!team || team.score > 0) return;
-      const bailoutInfo = wagerState.teamBailouts?.[teamId] ?? { remaining: 1, max: 1 };
+      const config = room.config || {};
+      const bailoutMax = config?.wagerBailoutLimit ?? 1;
+      const bailoutInfo = wagerState.teamBailouts?.[teamId] ?? { remaining: bailoutMax, max: bailoutMax };
       if (bailoutInfo.remaining <= 0) {
         socket.emit("error", "\u0110\u1ED9i n\xE0y \u0111\xE3 h\u1EBFt l\u01B0\u1EE3t tr\u1EE3 c\u1EA5p!");
         return;
       }
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const positiveScores = allTeams.filter((t) => t.score > 0).map((t) => t.score);
-      if (positiveScores.length < 2) {
-        socket.emit("error", "Quy\u1EC1n tr\u1EE3 c\u1EA5p ch\u1EC9 s\u1EED d\u1EE5ng \u0111\u01B0\u1EE3c khi c\xF2n \xEDt nh\u1EA5t 2 \u0111\u1ED9i c\xF3 \u0111i\u1EC3m l\u1EDBn h\u01A1n 0!");
+      if (positiveScores.length < 1) {
+        socket.emit("error", "\u0110i\u1EC1u ki\u1EC7n d\xF9ng tr\u1EE3 c\u1EA5p kh\xF4ng th\u1ECFa m\xE3n: C\u1EA7n c\xF2n \xEDt nh\u1EA5t 2 \u0111\u1ED9i c\xF2n s\u1ED1ng (t\xEDnh c\u1EA3 \u0111\u1ED9i nh\u1EADn tr\u1EE3 c\u1EA5p)!");
         return;
       }
       const lowestPositiveScore = Math.min(...positiveScores);
@@ -2377,6 +2409,35 @@ function registerSocketHandlers(io2) {
         bailoutsRemaining: bailoutInfo.remaining
       });
       io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+    });
+    socket.on("admin:wager:set_bailout_limit", async ({ limit }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "WAGER") return;
+      const newLimit = Math.max(1, Math.min(10, limit));
+      const config = room.config || {};
+      config.wagerBailoutLimit = newLimit;
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config }
+      });
+      const wagerState = roomWagers.get(room.id);
+      if (wagerState) {
+        if (!wagerState.teamBailouts) wagerState.teamBailouts = {};
+        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+        teams.forEach((t) => {
+          const cur = wagerState.teamBailouts[t.id];
+          if (cur) {
+            const used = Math.max(0, cur.max - cur.remaining);
+            cur.max = newLimit;
+            cur.remaining = Math.max(0, newLimit - used);
+          } else {
+            wagerState.teamBailouts[t.id] = { remaining: newLimit, max: newLimit };
+          }
+        });
+        io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+        const roomState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", roomState);
+      }
     });
     socket.on("admin:timer:set", async ({ seconds }) => {
       const room = await getAdminRoom(socket);
@@ -2946,12 +3007,18 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
           teamName: team.name,
           teamColor: team.color,
           score: upd.score,
-          questionIndex: room.currentQuestion + 1
+          questionIndex: room.currentQuestion + 1,
+          eliminatedAt: Date.now()
         });
       }
     } else {
       wagerState.bailoutQueue = wagerState.bailoutQueue.filter((item) => item.teamId !== team.id);
     }
+  }
+  if (wagerState.bailoutQueue) {
+    wagerState.bailoutQueue.sort(
+      (a, b) => a.questionIndex - b.questionIndex || (a.eliminatedAt || 0) - (b.eliminatedAt || 0) || a.score - b.score
+    );
   }
   if (scoreUpdates.length > 0) {
     io2.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
@@ -2962,6 +3029,9 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
   if (updatedTeams.length > 1) {
     const positiveTeams = updatedTeams.filter((t) => t.score > 0);
     if (positiveTeams.length === 1) {
+      wagerState.bailoutQueue = [];
+      wagerState.teamBailouts = {};
+      io2.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
       await prisma.room.update({
         where: { id: roomId },
         data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() }

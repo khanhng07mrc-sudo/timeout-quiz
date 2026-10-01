@@ -643,11 +643,13 @@ export interface WagerBailoutQueueItem {
   teamColor?: string;
   score: number;
   questionIndex: number;
+  eliminatedAt?: number;
 }
 
 export interface WagerState {
   phase: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
   wagerSubPhase?: "INITIAL_5S" | "MAIN_15S";
+  autoAssignedTeamId?: string;
   autoAssignedTeamName?: string;
   questionReady?: boolean;
   wagerTimeRemaining: number;
@@ -879,6 +881,7 @@ export interface ClientToServerEvents {
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
+  "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }

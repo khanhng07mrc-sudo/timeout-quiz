@@ -1352,27 +1352,45 @@ export function registerSocketHandlers(io: IO) {
             clearInterval(initTimer);
             roomWagerTimers.delete(room.id);
 
-            // Nếu không ai tự cược trong 5s, hệ thống chọn ngẫu nhiên 1 đội và gán sẵn 10 điểm mặc định
+            // Nếu không ai tự cược trong 5s, hệ thống chọn ngẫu nhiên 1 đội
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
-              const eligibleTeams = teams.filter((t) => !t.isEliminated && t.score >= 10);
-              const pool = eligibleTeams.length > 0 ? eligibleTeams : teams.filter((t) => !t.isEliminated);
-              if (pool.length > 0) {
-                const picked = pool[Math.floor(Math.random() * pool.length)];
-                wagerState.currentHighestWager = 10;
-                wagerState.lastWagerTeamId = picked.id;
-                wagerState.autoAssignedTeamName = picked.name;
+              const activeTeams = teams.filter((t) => !t.isEliminated);
+              const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+
+              let pickedTeam: typeof activeTeams[0] | undefined;
+              let assignedWager = 10;
+
+              if (teamsGte10.length > 0) {
+                // Đội phải có tối thiểu 10 điểm (nếu chỉ 1 đội duy nhất >= 10đ thì đội đó sẽ được chọn)
+                pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
+                assignedWager = 10;
+              } else {
+                // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
+                const teams5 = activeTeams.filter((t) => t.score === 5);
+                const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+                if (pool5.length > 0) {
+                  pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
+                  assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
+                }
+              }
+
+              if (pickedTeam) {
+                wagerState.currentHighestWager = assignedWager;
+                wagerState.lastWagerTeamId = pickedTeam.id;
+                wagerState.autoAssignedTeamId = pickedTeam.id;
+                wagerState.autoAssignedTeamName = pickedTeam.name;
                 wagerState.wagerHistory = [{
                   order: 1,
-                  teamId: picked.id,
-                  teamName: picked.name,
-                  teamColor: picked.color,
-                  amount: 10,
+                  teamId: pickedTeam.id,
+                  teamName: pickedTeam.name,
+                  teamColor: pickedTeam.color,
+                  amount: assignedWager,
                   timestamp: Date.now(),
                 }];
-                wagerState.teamWagers[picked.id] = {
-                  teamId: picked.id,
-                  teamName: picked.name,
-                  amount: 10,
+                wagerState.teamWagers[pickedTeam.id] = {
+                  teamId: pickedTeam.id,
+                  teamName: pickedTeam.name,
+                  amount: assignedWager,
                   submitted: true,
                   order: 1,
                 };
@@ -2087,7 +2105,9 @@ export function registerSocketHandlers(io: IO) {
       if (!team) return;
 
       // 1. "tránh việc spam cược, mỗi đội không được cược từ 2 lần liên tiếp trở lên"
-      if (wagerState.lastWagerTeamId === team.id) {
+      // Ngoại lệ: Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp
+      const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
+      if (wagerState.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
         socket.emit("error", "Đội bạn vừa đặt cược! Không được cược 2 lần liên tiếp, vui lòng chờ đội khác cược trước.");
         return;
       }
@@ -2118,6 +2138,10 @@ export function registerSocketHandlers(io: IO) {
       // Apply the bet
       wagerState.currentHighestWager = amount;
       wagerState.lastWagerTeamId = team.id;
+      if (isAutoAssignedFirstBid) {
+        // Sau khi đã cược lần kế tiếp thì xóa cờ để các lượt sau tuân thủ quy tắc chống spam cược liên tiếp
+        wagerState.autoAssignedTeamId = undefined;
+      }
       if (!wagerState.wagerHistory) wagerState.wagerHistory = [];
       const order = wagerState.wagerHistory.length + 1;
       wagerState.wagerHistory.push({
@@ -2161,12 +2185,13 @@ export function registerSocketHandlers(io: IO) {
         // Broadcast update
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
 
-        // Check if any other team can still make a valid bet
-        const canAnyOtherTeamBet = allTeams.some((t) =>
-          t.id !== wagerState.lastWagerTeamId && t.score >= nextMinOption
+        // Check if any team can still make a valid bet
+        const canAnyTeamBet = allTeams.some((t) =>
+          (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) &&
+          t.score >= nextMinOption
         );
 
-        if (!canAnyOtherTeamBet) {
+        if (!canAnyTeamBet) {
           // Không còn đội nào có thể cược tiếp: Chốt phiên cược! Chờ Admin chủ động mở câu hỏi.
           const wTimer = roomWagerTimers.get(room.id);
           if (wTimer) {
@@ -2319,28 +2344,45 @@ export function registerSocketHandlers(io: IO) {
         roomWagerTimers.delete(room.id);
       }
 
-      // Nếu chưa có đội nào cược, hệ thống gán ngẫu nhiên 1 đội cược 10đ mặc định
+      // Nếu chưa có đội nào cược, hệ thống gán ngẫu nhiên 1 đội
       if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-        const eligibleTeams = teams.filter((t) => !t.isEliminated && t.score >= 10);
-        const pool = eligibleTeams.length > 0 ? eligibleTeams : teams.filter((t) => !t.isEliminated);
-        if (pool.length > 0) {
-          const picked = pool[Math.floor(Math.random() * pool.length)];
-          wagerState.currentHighestWager = 10;
-          wagerState.lastWagerTeamId = picked.id;
-          wagerState.autoAssignedTeamName = picked.name;
+        const activeTeams = teams.filter((t) => !t.isEliminated);
+        const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+
+        let pickedTeam: typeof activeTeams[0] | undefined;
+        let assignedWager = 10;
+
+        if (teamsGte10.length > 0) {
+          pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
+          assignedWager = 10;
+        } else {
+          // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
+          const teams5 = activeTeams.filter((t) => t.score === 5);
+          const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+          if (pool5.length > 0) {
+            pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
+            assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
+          }
+        }
+
+        if (pickedTeam) {
+          wagerState.currentHighestWager = assignedWager;
+          wagerState.lastWagerTeamId = pickedTeam.id;
+          wagerState.autoAssignedTeamId = pickedTeam.id;
+          wagerState.autoAssignedTeamName = pickedTeam.name;
           wagerState.wagerHistory = [{
             order: 1,
-            teamId: picked.id,
-            teamName: picked.name,
-            teamColor: picked.color,
-            amount: 10,
+            teamId: pickedTeam.id,
+            teamName: pickedTeam.name,
+            teamColor: pickedTeam.color,
+            amount: assignedWager,
             timestamp: Date.now(),
           }];
-          wagerState.teamWagers[picked.id] = {
-            teamId: picked.id,
-            teamName: picked.name,
-            amount: 10,
+          wagerState.teamWagers[pickedTeam.id] = {
+            teamId: pickedTeam.id,
+            teamName: pickedTeam.name,
+            amount: assignedWager,
             submitted: true,
             order: 1,
           };
@@ -2406,27 +2448,33 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      // Check priority: Must grant according to death order (head of queue)
+      // Check priority: Must grant according to death order (head of queue: team that left earlier)
       const topQueueItem = wagerState.bailoutQueue[0];
       if (topQueueItem.teamId !== teamId) {
-        socket.emit("error", `Phải ưu tiên trợ cấp theo thứ tự rơi điểm: Đội ${topQueueItem.teamName} cần được cứu trước!`);
+        socket.emit("error", `Phải ưu tiên trợ cấp theo thứ tự rời cuộc chơi sớm hơn: Đội ${topQueueItem.teamName} (rời cuộc chơi tại câu ${topQueueItem.questionIndex}) cần được cứu trước!`);
         return;
       }
 
       const team = await prisma.team.findUnique({ where: { id: teamId } });
       if (!team || team.score > 0) return;
 
-      const bailoutInfo = wagerState.teamBailouts?.[teamId] ?? { remaining: 1, max: 1 };
+      const config = (room.config as any) || {};
+      const bailoutMax = config?.wagerBailoutLimit ?? 1;
+      const bailoutInfo = wagerState.teamBailouts?.[teamId] ?? { remaining: bailoutMax, max: bailoutMax };
       if (bailoutInfo.remaining <= 0) {
         socket.emit("error", "Đội này đã hết lượt trợ cấp!");
         return;
       }
 
-      // Quyền trợ cấp chỉ sử dụng được khi còn ít nhất 2 đội có điểm lớn hơn 0
+      // Quyền trợ cấp:
+      // 1. Điểm trợ cấp = điểm đội thấp nhất trong các đội còn sống (score > 0)
+      // 2. Còn ít nhất 2 đội còn sống (tính cả đội đã nhận trợ cấp trong câu hỏi hiện tại)
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const positiveScores = allTeams.filter((t) => t.score > 0).map((t) => t.score);
-      if (positiveScores.length < 2) {
-        socket.emit("error", "Quyền trợ cấp chỉ sử dụng được khi còn ít nhất 2 đội có điểm lớn hơn 0!");
+      // Đội nhận trợ cấp sau khi cấp sẽ có điểm > 0. Để còn ít nhất 2 đội sống (tính cả đội này),
+      // số đội đang có điểm > 0 hiện tại phải >= 1
+      if (positiveScores.length < 1) {
+        socket.emit("error", "Điều kiện dùng trợ cấp không thỏa mãn: Cần còn ít nhất 2 đội còn sống (tính cả đội nhận trợ cấp)!");
         return;
       }
 
@@ -2457,6 +2505,37 @@ export function registerSocketHandlers(io: IO) {
         bailoutsRemaining: bailoutInfo.remaining,
       });
       io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+    });
+
+    socket.on("admin:wager:set_bailout_limit", async ({ limit }: { limit: number }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "WAGER") return;
+      const newLimit = Math.max(1, Math.min(10, limit));
+      const config = (room.config as any) || {};
+      config.wagerBailoutLimit = newLimit;
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config },
+      });
+
+      const wagerState = roomWagers.get(room.id);
+      if (wagerState) {
+        if (!wagerState.teamBailouts) wagerState.teamBailouts = {};
+        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+        teams.forEach((t) => {
+          const cur = wagerState.teamBailouts![t.id];
+          if (cur) {
+            const used = Math.max(0, cur.max - cur.remaining);
+            cur.max = newLimit;
+            cur.remaining = Math.max(0, newLimit - used);
+          } else {
+            wagerState.teamBailouts![t.id] = { remaining: newLimit, max: newLimit };
+          }
+        });
+        io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+        const roomState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", roomState);
+      }
     });
 
     socket.on("admin:timer:set", async ({ seconds }: { seconds: number }) => {
@@ -3147,11 +3226,19 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
           teamColor: team.color,
           score: upd.score,
           questionIndex: room.currentQuestion + 1,
+          eliminatedAt: Date.now(),
         });
       }
     } else {
       wagerState.bailoutQueue = wagerState.bailoutQueue.filter((item) => item.teamId !== team.id);
     }
+  }
+
+  // Ưu tiên đội đã rời cuộc chơi sớm hơn (questionIndex nhỏ hơn, eliminatedAt sớm hơn)
+  if (wagerState.bailoutQueue) {
+    wagerState.bailoutQueue.sort(
+      (a, b) => a.questionIndex - b.questionIndex || (a.eliminatedAt || 0) - (b.eliminatedAt || 0) || a.score - b.score
+    );
   }
 
   if (scoreUpdates.length > 0) {
@@ -3161,12 +3248,17 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 
   // Check Sudden Victory (Knockout Win):
-  // Nếu chỉ còn 1 đội có điểm > 0, đội đó thắng ngay lập tức!
+  // Ở bất kỳ câu nào mà chỉ còn 1 đội còn sống, đội duy nhất nghiễm nhiên thắng, quyền trợ cấp bị huỷ hoàn toàn!
   const updatedTeams = await prisma.team.findMany({ where: { roomId } });
   if (updatedTeams.length > 1) {
     const positiveTeams = updatedTeams.filter((t) => t.score > 0);
 
     if (positiveTeams.length === 1) {
+      // Huỷ hoàn toàn quyền trợ cấp
+      wagerState.bailoutQueue = [];
+      wagerState.teamBailouts = {};
+      io.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
+
       await prisma.room.update({
         where: { id: roomId },
         data: { status: "FINISHED", endedAt: new Date() },

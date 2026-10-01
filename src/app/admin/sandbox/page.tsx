@@ -1007,6 +1007,11 @@ export default function AdminSandboxPage() {
   };
 
   const handleDiceRollManual = () => {
+    if (roomState?.diceRaceState && !roomState.diceRaceState.canRollDice) {
+      addLog("⚠️ Chưa đủ điều kiện tung xúc xắc: Đội của lượt này cần trả lời đúng câu hỏi hoặc có ô x2!");
+      return;
+    }
+
     if (isOfflineSandbox) {
       const roll = Math.floor(Math.random() * 6) + 1;
       setRoomState((prev) => {
@@ -1713,7 +1718,17 @@ export default function AdminSandboxPage() {
                     <button
                       type="button"
                       onClick={handleDiceRollManual}
-                      className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                      disabled={!roomState?.diceRaceState?.canRollDice || (Boolean(currentQuestion) && !revealPayload)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black shadow flex items-center gap-1 whitespace-nowrap transition ${
+                        roomState?.diceRaceState?.canRollDice && (!currentQuestion || revealPayload)
+                          ? "bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-500 hover:from-amber-300 text-black animate-pulse cursor-pointer shadow-amber-500/30"
+                          : "bg-white/5 border border-white/10 text-slate-500 opacity-40 cursor-not-allowed"
+                      }`}
+                      title={
+                        roomState?.diceRaceState?.canRollDice && (!currentQuestion || revealPayload)
+                          ? "Tung xúc xắc cho đội của lượt hiện tại"
+                          : "Chưa đủ điều kiện tung xúc xắc (Đội cần trả lời đúng câu hỏi hoặc có ô x2)"
+                      }
                     >
                       <span>🎲</span>
                       <span>Tung xúc xắc</span>

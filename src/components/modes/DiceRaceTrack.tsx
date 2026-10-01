@@ -39,10 +39,12 @@ export default function DiceRaceTrack({
 }: Props) {
   const [forceFullInMini, setForceFullInMini] = useState(false);
 
-  // 3D Dice Roll Animation States
+  // 3D Dice Roll Animation States (Authoritative Synchronized Toss)
   const [isRolling3D, setIsRolling3D] = useState(false);
   const [activeRollValue, setActiveRollValue] = useState<number>(diceState?.lastDiceRoll || 6);
-  const [showDiceModal, setShowDiceModal] = useState(false);
+  const [originCorner, setOriginCorner] = useState<0 | 1 | 2 | 3>(0);
+  const [landingPos, setLandingPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [hasLandedDice, setHasLandedDice] = useState<boolean>(Boolean(diceState?.lastDiceRoll));
 
   // Step-by-step pawn hop animation
   const [animPositions, setAnimPositions] = useState<Record<string, number>>({});
@@ -51,6 +53,8 @@ export default function DiceRaceTrack({
 
   const prevPositionsRef = useRef<Record<string, number>>({});
   const isAnimatingHopRef = useRef(false);
+  const pendingMoveRef = useRef<{ teamId: string; from: number; to: number } | null>(null);
+  const prevLastRollRef = useRef<number | null>(diceState?.lastDiceRoll ?? null);
 
   if (!diceState || diceState.tiles.length === 0) {
     return (
@@ -74,7 +78,29 @@ export default function DiceRaceTrack({
   const teams = Object.values(teamPositions || {});
   const currentTeam = teams.find((t) => t.teamId === currentTurnTeamId);
 
-  // Sync positions & detect movement
+  // Synchronize Authoritative Roll from Engine / Server
+  useEffect(() => {
+    if (lastDiceRoll !== null && lastDiceRoll !== undefined) {
+      if (lastDiceRoll !== prevLastRollRef.current) {
+        prevLastRollRef.current = lastDiceRoll;
+        setActiveRollValue(lastDiceRoll);
+        // Random corner outside board (0: TL, 1: TR, 2: BL, 3: BR)
+        const randCorner = Math.floor(Math.random() * 4) as 0 | 1 | 2 | 3;
+        setOriginCorner(randCorner);
+        // Random landing spot strictly >20% from edges (25%..72%, 26%..68%)
+        const randX = Math.floor(25 + Math.random() * 47);
+        const randY = Math.floor(26 + Math.random() * 42);
+        setLandingPos({ x: randX, y: randY });
+        setIsRolling3D(true);
+        setHasLandedDice(true);
+      }
+    } else {
+      prevLastRollRef.current = null;
+      setHasLandedDice(false);
+    }
+  }, [lastDiceRoll]);
+
+  // Sync positions & detect movement (Delayed until 3D dice lands)
   useEffect(() => {
     const nextAnim: Record<string, number> = {};
     let movedTeam: { teamId: string; from: number; to: number } | null = null;
@@ -88,16 +114,21 @@ export default function DiceRaceTrack({
       prevPositionsRef.current[t.teamId] = t.position;
     });
 
-    // If a team moved, trigger step-by-step hop
+    // If a team moved:
     if (movedTeam && (movedTeam as any).from !== (movedTeam as any).to) {
-      animatePawnHop((movedTeam as any).teamId, (movedTeam as any).from, (movedTeam as any).to);
+      if (isRolling3D) {
+        // Wait for the 3D dice to complete before hopping the pawn!
+        pendingMoveRef.current = movedTeam;
+      } else {
+        animatePawnHop((movedTeam as any).teamId, (movedTeam as any).from, (movedTeam as any).to);
+      }
     } else if (!isAnimatingHopRef.current) {
       teams.forEach((t) => {
         nextAnim[t.teamId] = t.position;
       });
       setAnimPositions(nextAnim);
     }
-  }, [teamPositions]);
+  }, [teamPositions, isRolling3D]);
 
   // Animate pawn jumping tile by tile
   const animatePawnHop = (teamId: string, fromPos: number, toPos: number) => {
@@ -148,11 +179,7 @@ export default function DiceRaceTrack({
 
   const handleRollClick = () => {
     if (!canRoll || isRolling3D || isRolling) return;
-    const roll = Math.floor(Math.random() * 6) + 1;
-    setActiveRollValue(roll);
-    setIsRolling3D(true);
-    setShowDiceModal(true);
-
+    // Request Authoritative Roll from engine. DO NOT pick local random number!
     if (onRollDice) {
       onRollDice();
     }
@@ -160,9 +187,12 @@ export default function DiceRaceTrack({
 
   const handle3DComplete = () => {
     setIsRolling3D(false);
-    setTimeout(() => {
-      setShowDiceModal(false);
-    }, 850);
+    // Release pending pawn movement now that the 3D dice has landed on the Authoritative value!
+    if (pendingMoveRef.current) {
+      const { teamId, from, to } = pendingMoveRef.current;
+      pendingMoveRef.current = null;
+      animatePawnHop(teamId, from, to);
+    }
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -192,19 +222,6 @@ export default function DiceRaceTrack({
               <span className="text-xs font-mono font-black text-amber-300 px-2 py-0.5 rounded bg-black/50 border border-amber-400/40">
                 Xúc xắc: {lastDiceRoll} nút
               </span>
-            )}
-
-            {/* Quick roll button right inside Mini HUD */}
-            {canRoll && isMyTurn && !isDisplay && (
-              <button
-                type="button"
-                onClick={handleRollClick}
-                disabled={isRolling3D || isRolling}
-                className="px-3 py-1 rounded-xl font-black text-[11px] bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-black shadow-lg border border-yellow-200 animate-pulse transition flex items-center gap-1 active:scale-95"
-              >
-                <span>🎲</span>
-                <span>TUNG XÚC XẮC!</span>
-              </button>
             )}
 
             <button
@@ -487,27 +504,18 @@ export default function DiceRaceTrack({
       <div className="absolute bottom-2 left-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
       <div className="absolute bottom-2 right-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
 
-      {/* 3D Tumbling Cube Modal Overlay */}
-      {showDiceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm animate-fade-in">
-          <div className="relative p-8 rounded-3xl bg-gradient-to-b from-[#202238] via-[#141525] to-[#0a0a14] border-2 border-amber-400 shadow-[0_0_50px_rgba(245,158,11,0.5)] flex flex-col items-center">
-            <h4 className="text-sm font-black text-amber-300 uppercase tracking-widest mb-6">
-              🎲 {currentTurnTeamName || "Thí sinh"} Đang Gieo Xúc Xắc...
-            </h4>
-
-            <Dice3DRoller
-              value={activeRollValue}
-              isRolling={isRolling3D}
-              durationMs={2200}
-              onComplete={handle3DComplete}
-              size={84}
-            />
-
-            <p className="mt-8 text-xs text-slate-300 font-semibold animate-pulse">
-              {isRolling3D ? "Đang nhào lộn xúc xắc 3D..." : `Chốt số ${activeRollValue} nút! Chuẩn bị tiến bước...`}
-            </p>
-          </div>
-        </div>
+      {/* 3D Dice Toss Simulated on Real Gameboard (No Black Overlay) */}
+      {hasLandedDice && (
+        <Dice3DRoller
+          value={activeRollValue}
+          isRolling={isRolling3D}
+          durationMs={2300}
+          onComplete={handle3DComplete}
+          simulateToss={true}
+          landingPos={landingPos}
+          originCorner={originCorner}
+          size={70}
+        />
       )}
 
       {/* Landing Event Splash Banner */}

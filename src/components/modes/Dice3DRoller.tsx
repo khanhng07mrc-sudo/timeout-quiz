@@ -1,43 +1,45 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-interface Dice3DRollerProps {
+export interface Dice3DRollerProps {
   value: number; // Final target value (1 to 6)
   isRolling: boolean;
   durationMs?: number; // Rolling duration in ms (default: 2200ms)
   onComplete?: () => void;
   className?: string;
-  size?: number; // Size of dice in px (default: 80)
+  size?: number; // Size of dice in px (default: 68)
+  simulateToss?: boolean;
+  landingPos?: { x: number; y: number }; // Percentage 0-100 on board, guaranteed >20% away from edges
+  originCorner?: 0 | 1 | 2 | 3; // 0: Top-Left, 1: Top-Right, 2: Bottom-Left, 3: Bottom-Right
 }
 
 /**
- * Realistic 3D Cube Dice Roller
+ * Realistic 3D Cube Dice Roller with Corner Toss Physics Simulation
  * Features:
- * - 6-sided 3D perspective cube rendered via CSS 3D transforms
- * - Multi-axis tumbling roll animation with bounce & deceleration physics
- * - Dynamic scaling ground shadow that expands and contracts as the dice tumbles
- * - Dramatic face reveal with golden impact burst when it lands
+ * - 6-sided 3D perspective cube rendered via CSS 3D transforms with rounded edges & pips
+ * - Corner Toss Physics: Flung onto board from random outer corner (TL, TR, BL, BR)
+ * - 2-3 Physical ground bounces with realistic inertia and scaling shadow
+ * - Lands randomly on board while staying strictly >20% away from outer boundaries
+ * - Authoritative Synchronized Roll: stops exactly on target value face
+ * - Remains sitting on the gameboard at its landing spot after rolling completes
  */
 export default function Dice3DRoller({
   value,
   isRolling,
-  durationMs = 2200,
+  durationMs = 2300,
   onComplete,
   className = "",
-  size = 76,
+  size = 68,
+  simulateToss = false,
+  landingPos = { x: 50, y: 50 },
+  originCorner = 0,
 }: Dice3DRollerProps) {
   const [phase, setPhase] = useState<"idle" | "rolling" | "landed">("idle");
   const [displayValue, setDisplayValue] = useState<number>(value || 6);
 
   // Rotation angles for each face to look directly at the camera
-  // Face mapping:
-  // 1: front (rotateX(0deg) rotateY(0deg))
-  // 6: back (rotateX(180deg) rotateY(0deg))
-  // 2: right (rotateY(-90deg))
-  // 5: left (rotateY(90deg))
-  // 3: top (rotateX(-90deg))
-  // 4: bottom (rotateX(90deg))
   const faceRotations: Record<number, { x: number; y: number; z: number }> = {
     1: { x: 0, y: 0, z: 0 },
     2: { x: 0, y: -90, z: 0 },
@@ -52,6 +54,34 @@ export default function Dice3DRoller({
     y: 0,
     z: 0,
   });
+
+  // Clamp target coordinates to guarantee >20% clearance from board edges
+  const safeTarget = useMemo(() => {
+    const x = Math.min(76, Math.max(22, landingPos.x));
+    const y = Math.min(72, Math.max(24, landingPos.y));
+    return { x, y };
+  }, [landingPos.x, landingPos.y]);
+
+  // Corner start coordinates
+  const cornerStarts = useMemo(() => [
+    { x: -15, y: -15 },       // 0: Top-Left
+    { x: 115, y: -15 },       // 1: Top-Right
+    { x: -15, y: 115 },       // 2: Bottom-Left
+    { x: 115, y: 115 },       // 3: Bottom-Right
+  ], []);
+
+  const startCoord = cornerStarts[originCorner] || cornerStarts[0];
+
+  // Intermediate bounce trajectory points
+  const bounce1 = useMemo(() => ({
+    x: startCoord.x + (safeTarget.x - startCoord.x) * 0.7,
+    y: startCoord.y + (safeTarget.y - startCoord.y) * 0.7,
+  }), [startCoord, safeTarget]);
+
+  const bounce2 = useMemo(() => ({
+    x: startCoord.x + (safeTarget.x - startCoord.x) * 0.9,
+    y: startCoord.y + (safeTarget.y - startCoord.y) * 0.9,
+  }), [startCoord, safeTarget]);
 
   useEffect(() => {
     if (!isRolling) {
@@ -68,7 +98,7 @@ export default function Dice3DRoller({
     const target = faceRotations[value] || faceRotations[1];
     const extraSpinsX = (3 + Math.floor(Math.random() * 3)) * 360;
     const extraSpinsY = (3 + Math.floor(Math.random() * 3)) * 360;
-    const extraSpinsZ = (1 + Math.floor(Math.random() * 2)) * 360;
+    const extraSpinsZ = (2 + Math.floor(Math.random() * 2)) * 360;
 
     setCurrentRotation({
       x: target.x + extraSpinsX,
@@ -103,10 +133,9 @@ export default function Dice3DRoller({
 
     return (
       <div
-        className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white via-[#f4f5f8] to-[#d8dce6] p-2.5 flex items-center justify-center border-2 border-[#b0b7c8] select-none"
+        className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white via-[#f3f5f9] to-[#d3d8e5] p-2 flex items-center justify-center border-2 border-[#a4adbe] select-none shadow-[inset_0_2px_4px_rgba(255,255,255,0.9),inset_0_-3px_6px_rgba(0,0,0,0.3)]"
         style={{
           transform: transformStyle,
-          boxShadow: "inset 0 2px 4px rgba(255,255,255,0.9), inset 0 -3px 6px rgba(0,0,0,0.25), 0 0 4px rgba(0,0,0,0.15)",
           backfaceVisibility: "hidden",
         }}
       >
@@ -119,10 +148,10 @@ export default function Dice3DRoller({
                   <div
                     className={`rounded-full shadow-inner ${
                       isPrimaryPip && faceNumber === 1
-                        ? "w-4 h-4 bg-gradient-to-br from-rose-500 to-red-700 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                        ? "w-3.5 h-3.5 bg-gradient-to-br from-rose-500 to-red-700 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
                         : isPrimaryPip && faceNumber === 4
-                        ? "w-3 h-3 bg-gradient-to-br from-rose-500 to-red-700 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
-                        : "w-3 h-3 bg-gradient-to-br from-slate-800 to-black shadow-[inset_0_2px_3px_rgba(255,255,255,0.2)]"
+                        ? "w-2.5 h-2.5 bg-gradient-to-br from-rose-500 to-red-700 shadow-[inset_0_2px_4px_rgba(0,0,0,0.5)]"
+                        : "w-2.5 h-2.5 bg-gradient-to-br from-slate-800 to-black shadow-[inset_0_2px_3px_rgba(255,255,255,0.2)]"
                     }`}
                   />
                 )}
@@ -134,15 +163,15 @@ export default function Dice3DRoller({
     );
   };
 
-  return (
-    <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>
+  const cubeCore = (
+    <div className="relative flex flex-col items-center justify-center select-none pointer-events-none">
       {/* 3D Perspective Canvas */}
       <div
         className="relative"
         style={{
           width: `${size}px`,
           height: `${size}px`,
-          perspective: "900px",
+          perspective: "850px",
         }}
       >
         {/* Tumbling Cube */}
@@ -152,7 +181,7 @@ export default function Dice3DRoller({
             transformStyle: "preserve-3d",
             transform: `rotateX(${currentRotation.x}deg) rotateY(${currentRotation.y}deg) rotateZ(${currentRotation.z}deg)`,
             transition: phase === "rolling"
-              ? `transform ${durationMs}ms cubic-bezier(0.18, 0.89, 0.32, 1.15)`
+              ? `transform ${durationMs}ms cubic-bezier(0.16, 0.88, 0.3, 1.12)`
               : "transform 400ms ease-out",
           }}
         >
@@ -173,20 +202,72 @@ export default function Dice3DRoller({
 
       {/* Dynamic Ground Shadow */}
       <div
-        className="mt-3 h-3 rounded-full bg-black/60 filter blur-sm transition-all duration-300 pointer-events-none"
+        className="mt-2.5 h-2.5 rounded-full bg-black/75 filter blur-[3px] transition-all duration-300 pointer-events-none"
         style={{
-          width: phase === "rolling" ? `${size * 0.7}px` : `${size * 0.9}px`,
-          opacity: phase === "rolling" ? 0.35 : 0.75,
+          width: phase === "rolling" ? `${size * 0.75}px` : `${size * 0.95}px`,
+          opacity: phase === "rolling" ? 0.35 : 0.85,
           transform: phase === "rolling" ? "scale(0.85)" : "scale(1)",
         }}
       />
 
-      {/* Landed Celebration Banner */}
+      {/* Landed Celebration Badge */}
       {phase === "landed" && (
-        <div className="absolute -bottom-7 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-black text-xs shadow-lg border border-yellow-200 animate-bounce whitespace-nowrap z-30">
+        <div className="absolute -bottom-8 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap z-40">
           🎲 {displayValue} NÚT!
         </div>
       )}
+    </div>
+  );
+
+  // If simulateToss is enabled, animate physical trajectory across board
+  if (simulateToss) {
+    const isCurrentlyRolling = phase === "rolling";
+
+    return (
+      <motion.div
+        className={`absolute z-30 pointer-events-none ${className}`}
+        initial={{
+          left: `${startCoord.x}%`,
+          top: `${startCoord.y}%`,
+          scale: 1.5,
+          opacity: 0,
+        }}
+        animate={
+          isCurrentlyRolling
+            ? {
+                left: [`${startCoord.x}%`, `${bounce1.x}%`, `${bounce2.x}%`, `${safeTarget.x}%`],
+                top: [`${startCoord.y}%`, `${bounce1.y}%`, `${bounce2.y}%`, `${safeTarget.y}%`],
+                scale: [1.5, 1.25, 1.1, 1.0],
+                opacity: [1, 1, 1, 1],
+              }
+            : {
+                left: `${safeTarget.x}%`,
+                top: `${safeTarget.y}%`,
+                scale: 1.0,
+                opacity: 1,
+              }
+        }
+        transition={
+          isCurrentlyRolling
+            ? {
+                duration: durationMs / 1000,
+                times: [0, 0.45, 0.75, 1],
+                ease: "easeOut",
+              }
+            : { duration: 0.3 }
+        }
+        style={{
+          transform: "translate(-50%, -50%)",
+        }}
+      >
+        {cubeCore}
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>
+      {cubeCore}
     </div>
   );
 }

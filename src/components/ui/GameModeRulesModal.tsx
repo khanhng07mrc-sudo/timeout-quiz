@@ -10,6 +10,18 @@ interface Props {
   onClose: () => void;
 }
 
+const MODE_TAB_NAMES: Record<GameMode, string> = {
+  CLASSIC: "Truyền thống",
+  BUZZ: "Chuông bấm",
+  BOUNCEBACK: "Bật nảy & Cướp lượt",
+  POWERUP: "Thẻ hỗ trợ",
+  ELIMINATION: "Đấu trường Sinh tồn",
+  TOURNAMENT: "Đấu loại 1v1",
+  GRID_CARO: "Chọn ô & Caro",
+  DICE_RACE: "Đua cờ Xí ngầu",
+  WAGER: "Cược điểm Bí mật",
+};
+
 export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }: Props) {
   const [selectedMode, setSelectedMode] = useState<GameMode>(mode);
 
@@ -64,14 +76,14 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
               <button
                 key={m}
                 onClick={() => setSelectedMode(m)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all ${
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 transition-all whitespace-nowrap ${
                   active
                     ? "bg-gradient-to-r from-purple-600 to-cyan-600 text-white shadow-lg ring-1 ring-white/30"
                     : "glass hover:bg-white/10 text-muted-foreground hover:text-white"
                 }`}
               >
                 <GameModeIcon mode={m} className="w-4 h-4 shrink-0" />
-                <span>{r.nameVi.split(" ")[0]}</span>
+                <span className="whitespace-nowrap">{MODE_TAB_NAMES[m] || r.nameVi.replace(/\s*\(.*?\)/, "").trim() || r.nameVi}</span>
               </button>
             );
           })}

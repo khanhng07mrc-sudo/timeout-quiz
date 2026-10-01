@@ -1033,6 +1033,26 @@ export default function AdminSandboxPage() {
     addLog("Admin: Quay về bảng ô");
   };
 
+  const handleDiceAdvanceToBoard = () => {
+    if (isOfflineSandbox) {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const nextDice = prev.diceRaceState
+          ? { ...prev.diceRaceState, canRollDice: true }
+          : undefined;
+        return { ...prev, diceRaceState: nextDice };
+      });
+      addLog("Admin: Đã chuyển sang bàn cờ đường đua!");
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:dice:advance_to_board");
+    addLog("Admin: Chuyển sang bàn cờ đường đua");
+  };
+
   const handleGridLaunchQuestion = () => {
     if (isOfflineSandbox) {
       handleAdminNext();
@@ -1644,14 +1664,27 @@ export default function AdminSandboxPage() {
                 )}
 
                 {roomState?.mode === "DICE_RACE" && (
-                  <button
-                    type="button"
-                    onClick={handleDiceRollManual}
-                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
-                  >
-                    <span>🎲</span>
-                    <span>Tung xúc xắc</span>
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleDiceRollManual}
+                      className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <span>🎲</span>
+                      <span>Tung xúc xắc</span>
+                    </button>
+                    {revealPayload && (
+                      <button
+                        type="button"
+                        onClick={handleDiceAdvanceToBoard}
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-xs font-black shadow flex items-center gap-1 whitespace-nowrap animate-pulse"
+                        title="Chuyển màn hình hội trường và thí sinh về bàn cờ đường đua"
+                      >
+                        <span>🗺️</span>
+                        <span>Về bàn cờ</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
 

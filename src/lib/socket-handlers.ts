@@ -2572,6 +2572,17 @@ export function registerSocketHandlers(io: IO) {
       await executeDiceRoll(room, diceState, teamId);
     });
 
+    socket.on("admin:dice:advance_to_board", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "DICE_RACE") return;
+      io.to(`room:${room.code}`).emit("game:question:clear");
+      const diceState = roomDiceRaces.get(room.id);
+      if (diceState) {
+        diceState.canRollDice = true;
+        io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+      }
+    });
+
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);

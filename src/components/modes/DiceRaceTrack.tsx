@@ -243,7 +243,7 @@ export default function DiceRaceTrack({
                 <PawnPiece
                   color={team.teamColor}
                   name={team.teamName}
-                  size="sm"
+                  size="xs"
                   hasShield={team.hasShield}
                   isCurrentTurn={team.teamId === currentTurnTeamId}
                   isHopping={hoppingTeamId === team.teamId}
@@ -358,25 +358,25 @@ export default function DiceRaceTrack({
     return (
       <div
         key={tile.index}
-        className={`relative w-full aspect-[4/5] sm:aspect-square rounded-xl sm:rounded-2xl border-2 p-1 sm:p-1.5 flex flex-col items-center justify-between transition-all select-none ${style.border} ${style.bg} ${style.shadow} ${style.glow} ${style.topBevel}`}
+        className={`relative w-full aspect-[4/5] sm:aspect-square rounded-xl sm:rounded-2xl border-2 p-0.5 sm:p-1.5 flex flex-col items-center justify-between transition-all select-none min-h-0 h-full overflow-visible ${style.border} ${style.bg} ${style.shadow} ${style.glow} ${style.topBevel}`}
       >
         {/* Step Tile Number Header */}
-        <div className="w-full flex items-center justify-between text-[8px] sm:text-[9px] font-mono font-black leading-none px-0.5">
-          <span className={isFinish || isStart ? "text-amber-300 font-black text-[9px] sm:text-[10px]" : "text-slate-300 font-bold"}>
+        <div className="w-full flex items-center justify-between text-[7px] sm:text-[9px] font-mono font-black leading-none px-0.5 shrink-0">
+          <span className={isFinish || isStart ? "text-amber-300 font-black text-[8px] sm:text-[10px]" : "text-slate-300 font-bold"}>
             #{tile.index + 1}
           </span>
           {isStart && (
-            <span className="text-[7px] sm:text-[8px] px-1 py-0.2 rounded bg-emerald-500/40 text-emerald-200 font-black uppercase">
+            <span className="text-[6px] sm:text-[8px] px-1 py-0.2 rounded bg-emerald-500/40 text-emerald-200 font-black uppercase">
               XUẤT PHÁT
             </span>
           )}
           {isFinish && (
-            <span className="text-[7px] sm:text-[8px] px-1 py-0.2 rounded bg-amber-400/50 text-amber-100 font-black animate-pulse uppercase">
+            <span className="text-[6px] sm:text-[8px] px-1 py-0.2 rounded bg-amber-400/50 text-amber-100 font-black animate-pulse uppercase">
               ĐÍCH
             </span>
           )}
           {tile.portalId && (
-            <span className={`text-[7px] px-1 py-0.2 rounded font-black uppercase ${
+            <span className={`text-[6px] sm:text-[7.5px] px-1 py-0.2 rounded font-black uppercase ${
               tile.type === "TELEPORT" ? "bg-fuchsia-500/40 text-fuchsia-100" : "bg-teal-500/40 text-teal-100"
             }`}>
               {tile.portalId}
@@ -385,36 +385,58 @@ export default function DiceRaceTrack({
         </div>
 
         {/* Central Illustrated Icon & Label */}
-        <div className="my-0.5 flex flex-col items-center justify-center pointer-events-none">
+        <div className="my-0.5 flex flex-col items-center justify-center pointer-events-none min-h-0 shrink-0">
           <DiceRaceTileIcon
             type={isFinish ? "FINISH" : tile.type}
-            size={isDisplay ? 22 : 18}
+            size={isDisplay ? (rowCount >= 5 ? 16 : 20) : (rowCount >= 5 ? 12 : 16)}
           />
-          <span className={`text-[8px] sm:text-[9px] font-bold block truncate max-w-[48px] sm:max-w-[60px] text-center mt-0.5 leading-tight ${style.text}`}>
+          <span className={`text-[7px] sm:text-[9px] font-bold block truncate max-w-[42px] sm:max-w-[58px] text-center mt-0.5 leading-tight ${style.text}`}>
             {isFinish ? "Về Đích" : isStart ? "Khởi đầu" : tileLabel}
           </span>
         </div>
 
-        {/* Pawns Standing on Tile */}
-        <div className="w-full flex flex-wrap items-center justify-center gap-0.5 min-h-[20px] sm:min-h-[24px] z-20">
-          {teamsHere.map((team, pIdx) => (
-            <div
-              key={team.teamId}
-              style={{
-                transform: teamsHere.length > 1 ? `translateY(${pIdx % 2 === 0 ? "0px" : "-3px"})` : "none",
-              }}
-            >
-              <PawnPiece
-                color={team.teamColor}
-                name={team.teamName}
-                size={teamsHere.length > 2 || rowCount >= 5 ? "sm" : "md"}
-                hasShield={team.hasShield}
-                isCurrentTurn={team.teamId === currentTurnTeamId}
-                isHopping={hoppingTeamId === team.teamId}
-                rank={team.finishRank}
-              />
-            </div>
-          ))}
+        {/* Pawns Standing on Tile - Strictly overlapping with visible colors to prevent cell bulging */}
+        <div className="w-full flex items-end justify-center min-h-[20px] sm:min-h-[26px] h-[20px] sm:h-[26px] relative z-20 shrink-0">
+          <div
+            className={`inline-flex items-end justify-center flex-nowrap relative ${
+              teamsHere.length >= 3
+                ? "-space-x-2 sm:-space-x-2.5"
+                : teamsHere.length === 2
+                ? "-space-x-1.5 sm:-space-x-2"
+                : ""
+            }`}
+          >
+            {teamsHere.map((team, pIdx) => {
+              const yOffset = teamsHere.length > 1 ? (pIdx % 2 === 0 ? "0px" : "-2px") : "0px";
+              return (
+                <div
+                  key={team.teamId}
+                  className="relative transition-transform duration-200 hover:scale-125 hover:z-30 cursor-pointer"
+                  style={{
+                    zIndex: pIdx + 1,
+                    transform: `translateY(${yOffset})`,
+                  }}
+                  title={`${team.teamName}: Ô #${tile.index + 1}`}
+                >
+                  <PawnPiece
+                    color={team.teamColor}
+                    name={team.teamName}
+                    size={
+                      teamsHere.length >= 3 || rowCount >= 5
+                        ? "xs"
+                        : teamsHere.length === 2
+                        ? (isDisplay ? "sm" : "xs")
+                        : (isDisplay ? "md" : "sm")
+                    }
+                    hasShield={team.hasShield}
+                    isCurrentTurn={team.teamId === currentTurnTeamId}
+                    isHopping={hoppingTeamId === team.teamId}
+                    rank={team.finishRank}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -591,11 +613,11 @@ export default function DiceRaceTrack({
                 }}
               >
                 {/* 10-Column Strict Equal Grid */}
-                <div className="grid grid-cols-10 gap-1 sm:gap-2 w-full">
+                <div className="grid grid-cols-10 gap-1 sm:gap-2 w-full items-stretch">
                   {displayTiles.map((tile, tIdx) => {
                     const isLastInThisDisplay = tIdx === displayTiles.length - 1;
                     return (
-                      <div key={tile.index} className="relative flex items-center">
+                      <div key={tile.index} className="relative flex items-stretch min-w-0 w-full h-full">
                         {renderTile(tile, isLastInThisDisplay, tIdx === 0, r)}
 
                         {/* Emerald Glowing Direction Arrow on Road between Tiles */}

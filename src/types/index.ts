@@ -942,6 +942,7 @@ export interface ClientToServerEvents {
   "admin:question:start_timer": () => void;
   "admin:grid:advance_now": () => void;
   "admin:dice:roll:manual": () => void;
+  "admin:dice:advance_to_board": () => void;
   "admin:tournament:advance": () => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;

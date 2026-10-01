@@ -2707,6 +2707,16 @@ function registerSocketHandlers(io2) {
       if (!teamId) return;
       await executeDiceRoll(room, diceState, teamId);
     });
+    socket.on("admin:dice:advance_to_board", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "DICE_RACE") return;
+      io2.to(`room:${room.code}`).emit("game:question:clear");
+      const diceState = roomDiceRaces.get(room.id);
+      if (diceState) {
+        diceState.canRollDice = true;
+        io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+      }
+    });
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;

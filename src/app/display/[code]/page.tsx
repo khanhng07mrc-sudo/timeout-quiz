@@ -42,6 +42,7 @@ export default function DisplayPage() {
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [displayModeTab, setDisplayModeTab] = useState<"QUESTION" | "BOARD">("QUESTION");
   const [soundMuted, setSoundMuted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
@@ -95,9 +96,14 @@ export default function DisplayPage() {
         if (p.roomState !== undefined) setRoomState(p.roomState);
         if (p.currentQuestion !== undefined) {
           setCurrentQuestion(p.currentQuestion);
-          if (p.currentQuestion && !p.currentQuestion.timerPending) {
-            soundManager.playCountdownTick(0);
-            soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
+          if (p.currentQuestion) {
+            setDisplayModeTab("QUESTION");
+            if (!p.currentQuestion.timerPending) {
+              soundManager.playCountdownTick(0);
+              soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
+            }
+          } else {
+            setDisplayModeTab("BOARD");
           }
         }
         if (p.revealPayload !== undefined) {
@@ -169,6 +175,7 @@ export default function DisplayPage() {
       setTimer(null);
       setIsStealOpen(false);
       setStealBuzzed(null);
+      setDisplayModeTab("QUESTION");
       if (!q.timerPending) {
         soundManager.playCountdownTick(0);
         soundManager.playQuestionMusic(q.timeLimit);
@@ -267,6 +274,7 @@ export default function DisplayPage() {
       setBuzzed(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
+      setDisplayModeTab("BOARD");
       soundManager.stopMusic();
     });
     socket.on("game:wager:bailout_granted", () => {
@@ -756,19 +764,20 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* DICE_RACE: Mini-Track HUD on top while question is active */}
+        {/* DICE_RACE: Full Board view if tab selected, or Mini-Track HUD if Question view */}
         {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
           <div className="w-full shrink-0 animate-slide-up">
             <DiceRaceTrack
               diceState={roomState.diceRaceState}
               isDisplay={true}
-              mode="mini"
+              mode={displayModeTab === "BOARD" ? "full" : "mini"}
+              onToggleView={() => setDisplayModeTab((prev) => prev === "BOARD" ? "QUESTION" : "BOARD")}
             />
           </div>
         )}
 
-        {/* Question */}
-        {currentQuestion && (
+        {/* Question (hidden if viewing full board tab in DICE_RACE) */}
+        {currentQuestion && displayModeTab !== "BOARD" && (
           <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
             <div>
               {/* Bounceback Point Selection Notice */}
@@ -829,6 +838,28 @@ export default function DisplayPage() {
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
                           🔥 Streak x{currentQuestion.streakCount} (+{currentQuestion.streakCount === 2 ? 10 : currentQuestion.streakCount === 3 ? 20 : currentQuestion.streakCount === 4 ? 30 : 50}%)
                         </span>
+                      )}
+
+                      {/* Mode tab switch for DICE_RACE */}
+                      {roomState.mode === "DICE_RACE" && (
+                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-amber-500/40 shrink-0 ml-auto shadow">
+                          <button
+                            type="button"
+                            onClick={() => setDisplayModeTab("QUESTION")}
+                            className="px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer bg-purple-600 text-white shadow"
+                          >
+                            <span>📖</span>
+                            <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDisplayModeTab("BOARD")}
+                            className="px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white hover:bg-white/10"
+                          >
+                            <span>🗺️</span>
+                            <span>Bàn cờ</span>
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -936,12 +967,42 @@ export default function DisplayPage() {
                           <div className="text-right shrink-0">
                             <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</p>
                             <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
-                              {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
+                              {roomState.mode === "DICE_RACE"
+                                ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
+                                : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts`}
                             </p>
                           </div>
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* DICE_RACE Advance to board banner & action */}
+                {roomState.mode === "DICE_RACE" && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 via-yellow-500/20 to-orange-500/25 border-2 border-amber-500/60 flex flex-wrap items-center justify-between gap-3 shadow-xl animate-bounce-in">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl">🎲</span>
+                      <div>
+                        <p className="font-black text-base sm:text-lg text-amber-200">
+                          Đã công bố đáp án! Lượt gieo xúc xắc tiếp theo: <strong className="text-yellow-300 underline">{roomState.diceRaceState?.currentTurnTeamName || "Thí sinh"}</strong>
+                        </p>
+                        <p className="text-xs text-amber-300/80 mt-0.5">
+                          MC / Admin bấm &quot;Về bàn cờ&quot; trên điều khiển hoặc bấm nút bên phải để chuyển màn chiếu sang Bàn Cờ Đường Đua.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDisplayModeTab("BOARD");
+                        socketRef.current?.emit("admin:dice:advance_to_board");
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-orange-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black font-black text-sm shadow-xl transition active:scale-95 flex items-center gap-2 whitespace-nowrap cursor-pointer animate-pulse"
+                    >
+                      <span>🗺️</span>
+                      <span>Chuyển qua bàn cờ ngay</span>
+                    </button>
                   </div>
                 )}
               </div>

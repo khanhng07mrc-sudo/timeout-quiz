@@ -5,7 +5,7 @@ import React from "react";
 interface PawnPieceProps {
   color: string;
   name?: string;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   hasShield?: boolean;
   isCurrentTurn?: boolean;
   isHopping?: boolean;
@@ -35,10 +35,11 @@ export default function PawnPiece({
 }: PawnPieceProps) {
   // Dimensions per size variant
   const sizeConfig = {
+    xs: { width: 16, height: 23, labelSize: "text-[6px]", shadowH: 3 },
     sm: { width: 22, height: 32, labelSize: "text-[8px]", shadowH: 4 },
-    md: { width: 32, height: 46, labelSize: "text-[10px]", shadowH: 6 },
-    lg: { width: 44, height: 64, labelSize: "text-xs", shadowH: 8 },
-  }[size];
+    md: { width: 30, height: 44, labelSize: "text-[10px]", shadowH: 5 },
+    lg: { width: 42, height: 60, labelSize: "text-xs", shadowH: 7 },
+  }[size] || { width: 22, height: 32, labelSize: "text-[8px]", shadowH: 4 };
 
   const initial = name ? name.trim().charAt(0).toUpperCase() : "";
 
@@ -164,16 +165,16 @@ export default function PawnPiece({
       {hasShield && (
         <div
           className="absolute -top-1 -right-1 z-20 flex items-center justify-center filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-pulse"
-          style={{ width: `${size === "sm" ? 14 : size === "md" ? 18 : 22}px` }}
+          style={{ width: `${size === "xs" ? 11 : size === "sm" ? 14 : size === "md" ? 18 : 22}px` }}
         >
-          <span className="text-xs">🛡️</span>
+          <span className={size === "xs" ? "text-[8px]" : "text-xs"}>🛡️</span>
         </div>
       )}
 
       {/* Rank Medal if finished */}
       {rank && rank <= 3 && (
         <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 filter drop-shadow">
-          <span className="text-xs">
+          <span className={size === "xs" ? "text-[9px]" : "text-xs"}>
             {rank === 1 ? "🥇" : rank === 2 ? "🥈" : "🥉"}
           </span>
         </div>

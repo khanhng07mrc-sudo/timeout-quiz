@@ -894,7 +894,10 @@ export default function PlayPage() {
                   diceState={roomState.diceRaceState}
                   myTeamId={effectiveTeamId}
                   isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
-                  canRoll={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
+                  canRoll={
+                    roomState.diceRaceState.currentTurnTeamId === effectiveTeamId &&
+                    (Boolean(roomState.diceRaceState.canRollDice) || isSandbox)
+                  }
                   onRollDice={handleRollDice}
                 />
               </div>

@@ -1128,6 +1128,17 @@ export default function AdminRoomPage() {
                 </span>
               </button>
             )}
+
+            {/* Chuyển qua bàn cờ cho DICE_RACE */}
+            {roomState?.mode === "DICE_RACE" && revealPayload && (
+              <button
+                onClick={() => emit("admin:dice:advance_to_board")}
+                className="py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-sm shadow-xl inline-flex items-center justify-center gap-2 whitespace-nowrap transition active:scale-95 animate-pulse cursor-pointer"
+              >
+                <span>🗺️</span>
+                <span className="whitespace-nowrap">Chuyển qua bàn cờ đường đua</span>
+              </button>
+            )}
             {/* Dừng thời gian sớm button */}
             {currentQuestion && !revealPayload && (
               <button
@@ -1441,6 +1452,16 @@ export default function AdminRoomPage() {
         >
           👁️ Mở đáp án
         </button>
+
+        {roomState?.mode === "DICE_RACE" && revealPayload && (
+          <button
+            onClick={() => emit("admin:dice:advance_to_board")}
+            className="py-3 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black text-xs shrink-0 active:scale-95 flex items-center gap-1 shadow animate-pulse"
+          >
+            <span>🗺️</span>
+            <span>Về bàn cờ</span>
+          </button>
+        )}
 
         {roomState?.status === "PLAYING" ? (
           <button

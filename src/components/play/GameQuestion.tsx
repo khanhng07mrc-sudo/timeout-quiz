@@ -582,7 +582,9 @@ export default function GameQuestion({
           <div className="text-center py-2 font-bold text-lg">
             {revealPayload.answers.some((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect) ? (
               <span className="text-green-400">
-                ✓ Đúng rồi! +{revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded ?? 0} điểm
+                {roomMode === "DICE_RACE"
+                  ? "✓ Đúng rồi!"
+                  : `✓ Đúng rồi! +${revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded ?? 0} điểm`}
               </span>
             ) : (
               <span className="text-red-400">✗ Chưa chính xác!</span>
@@ -618,7 +620,9 @@ export default function GameQuestion({
                         <span className="text-amber-400 font-bold text-[10px]">🔥+{Math.round((ts.empiricalMultiplier - 1) * 100)}%</span>
                       )}
                       <span className={ts.pointsAwarded >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-                        {ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts
+                        {roomMode === "DICE_RACE"
+                          ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
+                          : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts`}
                       </span>
                     </div>
                   </div>

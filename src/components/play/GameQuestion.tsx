@@ -455,6 +455,12 @@ export default function GameQuestion({
           <span>⏱️ Hết thời gian! Đang chờ Quản trò công bố kết quả...</span>
         </div>
       )}
+      {(roomMode === "GRID_CARO" || roomMode === "DICE_RACE") && !isPrimaryTeam && !revealPayload && (
+        <div className="text-center py-2 text-muted-foreground text-xs sm:text-sm flex items-center justify-center gap-2 bg-muted/20 border border-border/40 rounded-xl p-3">
+          <span className="text-base">👀</span>
+          <span>Đang là lượt của <strong>{question.primaryTeamName ?? "đội khác"}</strong>. Đội bạn đang ở chế độ quan sát.</span>
+        </div>
+      )}
 
       {/* Answer Reveal Section */}
       {revealPayload && (

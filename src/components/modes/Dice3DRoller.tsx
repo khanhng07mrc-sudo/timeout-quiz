@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export interface Dice3DRollerProps {
   value: number; // Final target value (1 to 6)
   isRolling: boolean;
-  durationMs?: number; // Rolling duration in ms (default: 2200ms)
+  durationMs?: number; // Rolling duration in ms (default: 2100ms)
   onComplete?: () => void;
   className?: string;
   size?: number; // Size of dice in px (default: 68)
@@ -16,19 +16,19 @@ export interface Dice3DRollerProps {
 }
 
 /**
- * Realistic 3D Cube Dice Roller with Corner Toss Physics Simulation
+ * Realistic 3D Cube Dice Roller with Synchronized Mid-Air Flight Physics
  * Features:
  * - 6-sided 3D perspective cube rendered via CSS 3D transforms with rounded edges & pips
- * - Corner Toss Physics: Flung onto board from random outer corner (TL, TR, BL, BR)
- * - 2-3 Physical ground bounces with realistic inertia and scaling shadow
- * - Lands randomly on board while staying strictly >20% away from outer boundaries
- * - Authoritative Synchronized Roll: stops exactly on target value face
+ * - Physical Flight Trajectory: Wild tumbling occurs in mid-air while flying into the board
+ * - Impact & Ground Settle: Bounces twice, decelerates rotation, and comes to a dead stop on the table
+ * - No Post-Landing Spinning: The dice stops spinning BEFORE settling; does NOT spin after landing
+ * - Authoritative Synchronized Roll: Stops exactly on target value face
  * - Remains sitting on the gameboard at its landing spot after rolling completes
  */
 export default function Dice3DRoller({
   value,
   isRolling,
-  durationMs = 2300,
+  durationMs = 2100,
   onComplete,
   className = "",
   size = 68,
@@ -36,7 +36,7 @@ export default function Dice3DRoller({
   landingPos = { x: 50, y: 50 },
   originCorner = 0,
 }: Dice3DRollerProps) {
-  const [phase, setPhase] = useState<"idle" | "rolling" | "landed">("idle");
+  const [phase, setPhase] = useState<"rolling" | "landed">(isRolling ? "rolling" : "landed");
   const [displayValue, setDisplayValue] = useState<number>(value || 6);
 
   // Rotation angles for each face to look directly at the camera
@@ -49,63 +49,99 @@ export default function Dice3DRoller({
     6: { x: 180, y: 0, z: 0 },
   };
 
-  const [currentRotation, setCurrentRotation] = useState<{ x: number; y: number; z: number }>({
-    x: 0,
-    y: 0,
-    z: 0,
-  });
+  const targetRotation = useMemo(() => {
+    return faceRotations[value] || faceRotations[1];
+  }, [value]);
 
   // Clamp target coordinates to guarantee >20% clearance from board edges
   const safeTarget = useMemo(() => {
-    const x = Math.min(76, Math.max(22, landingPos.x));
-    const y = Math.min(72, Math.max(24, landingPos.y));
+    const x = Math.min(75, Math.max(24, landingPos.x));
+    const y = Math.min(70, Math.max(25, landingPos.y));
     return { x, y };
   }, [landingPos.x, landingPos.y]);
 
   // Corner start coordinates
-  const cornerStarts = useMemo(() => [
-    { x: -15, y: -15 },       // 0: Top-Left
-    { x: 115, y: -15 },       // 1: Top-Right
-    { x: -15, y: 115 },       // 2: Bottom-Left
-    { x: 115, y: 115 },       // 3: Bottom-Right
-  ], []);
+  const cornerStarts = useMemo(
+    () => [
+      { x: -12, y: -12 }, // 0: Top-Left
+      { x: 112, y: -12 }, // 1: Top-Right
+      { x: -12, y: 112 }, // 2: Bottom-Left
+      { x: 112, y: 112 }, // 3: Bottom-Right
+    ],
+    []
+  );
 
   const startCoord = cornerStarts[originCorner] || cornerStarts[0];
 
-  // Intermediate bounce trajectory points
-  const bounce1 = useMemo(() => ({
-    x: startCoord.x + (safeTarget.x - startCoord.x) * 0.7,
-    y: startCoord.y + (safeTarget.y - startCoord.y) * 0.7,
-  }), [startCoord, safeTarget]);
+  // Intermediate physical flight trajectory points
+  // Mid-flight (t=0.38): High parabolic arc
+  const midFlight = useMemo(
+    () => ({
+      x: startCoord.x + (safeTarget.x - startCoord.x) * 0.52,
+      y: startCoord.y + (safeTarget.y - startCoord.y) * 0.48 - 6,
+    }),
+    [startCoord, safeTarget]
+  );
 
-  const bounce2 = useMemo(() => ({
-    x: startCoord.x + (safeTarget.x - startCoord.x) * 0.9,
-    y: startCoord.y + (safeTarget.y - startCoord.y) * 0.9,
-  }), [startCoord, safeTarget]);
+  // Ground Impact 1 (t=0.68): Strikes table just 6% before destination
+  const impact1 = useMemo(
+    () => ({
+      x: startCoord.x + (safeTarget.x - startCoord.x) * 0.94,
+      y: startCoord.y + (safeTarget.y - startCoord.y) * 0.94,
+    }),
+    [startCoord, safeTarget]
+  );
+
+  // Rebound Bounce 1 Apex (t=0.80): Hops 2.5% up in air while flipping onto final face
+  const bounceApex = useMemo(
+    () => ({
+      x: startCoord.x + (safeTarget.x - startCoord.x) * 0.98,
+      y: startCoord.y + (safeTarget.y - startCoord.y) * 0.98 - 2.5,
+    }),
+    [startCoord, safeTarget]
+  );
+
+  // Mid-air rapid forward rotation keyframes:
+  // All rapid tumble (1350 deg out of 1440 deg) happens 100% IN FLIGHT (0s to 1.36s).
+  // During first bounce (1.36s to 1.6s), it flips the remaining 90 deg onto the target face.
+  // After 1.6s (when settling and flat on the table), rotation is 100% STOPPED!
+  const spinKeyframes = useMemo(() => {
+    return {
+      x: [
+        targetRotation.x - 1440,
+        targetRotation.x - 540,
+        targetRotation.x - 90,
+        targetRotation.x,
+        targetRotation.x,
+        targetRotation.x,
+      ],
+      y: [
+        targetRotation.y - 1080,
+        targetRotation.y - 360,
+        targetRotation.y - 90,
+        targetRotation.y,
+        targetRotation.y,
+        targetRotation.y,
+      ],
+      z: [
+        targetRotation.z - 720,
+        targetRotation.z - 180,
+        targetRotation.z - 45,
+        targetRotation.z,
+        targetRotation.z,
+        targetRotation.z,
+      ],
+    };
+  }, [targetRotation]);
 
   useEffect(() => {
     if (!isRolling) {
-      const target = faceRotations[value] || faceRotations[1];
-      setCurrentRotation(target);
+      setPhase("landed");
       setDisplayValue(value);
-      setPhase("idle");
       return;
     }
 
     setPhase("rolling");
-
-    // Random extra spins (multiples of 360) + target face angle
-    const target = faceRotations[value] || faceRotations[1];
-    const extraSpinsX = (3 + Math.floor(Math.random() * 3)) * 360;
-    const extraSpinsY = (3 + Math.floor(Math.random() * 3)) * 360;
-    const extraSpinsZ = (2 + Math.floor(Math.random() * 2)) * 360;
-
-    setCurrentRotation({
-      x: target.x + extraSpinsX,
-      y: target.y + extraSpinsY,
-      z: target.z + extraSpinsZ,
-    });
-
     const timer = setTimeout(() => {
       setPhase("landed");
       setDisplayValue(value);
@@ -113,7 +149,7 @@ export default function Dice3DRoller({
     }, durationMs);
 
     return () => clearTimeout(timer);
-  }, [isRolling, value, durationMs]);
+  }, [isRolling, value, durationMs, onComplete]);
 
   // Dot layout for each face (3x3 grid)
   const dotPositions: Record<number, number[]> = {
@@ -163,82 +199,103 @@ export default function Dice3DRoller({
     );
   };
 
-  const cubeCore = (
-    <div className="relative flex flex-col items-center justify-center select-none pointer-events-none">
-      {/* 3D Perspective Canvas */}
-      <div
-        className="relative"
+  // Cube element with Framer Motion 3D rotation synchronized directly to flight timeline
+  const cubeMesh = (
+    <div
+      className="relative select-none pointer-events-none"
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        perspective: "900px",
+      }}
+    >
+      <motion.div
+        className="w-full h-full relative"
         style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          perspective: "850px",
+          transformStyle: "preserve-3d",
         }}
+        animate={
+          phase === "rolling"
+            ? {
+                rotateX: spinKeyframes.x,
+                rotateY: spinKeyframes.y,
+                rotateZ: spinKeyframes.z,
+              }
+            : {
+                rotateX: targetRotation.x,
+                rotateY: targetRotation.y,
+                rotateZ: targetRotation.z,
+              }
+        }
+        transition={
+          phase === "rolling"
+            ? {
+                duration: durationMs / 1000,
+                times: [0, 0.38, 0.68, 0.80, 0.92, 1.0],
+                ease: [0.22, 1, 0.36, 1],
+              }
+            : { duration: 0.1 }
+        }
       >
-        {/* Tumbling Cube */}
-        <div
-          className="w-full h-full relative"
-          style={{
-            transformStyle: "preserve-3d",
-            transform: `rotateX(${currentRotation.x}deg) rotateY(${currentRotation.y}deg) rotateZ(${currentRotation.z}deg)`,
-            transition: phase === "rolling"
-              ? `transform ${durationMs}ms cubic-bezier(0.16, 0.88, 0.3, 1.12)`
-              : "transform 400ms ease-out",
-          }}
-        >
-          {/* Face 1: Front */}
-          {renderFace(1, `translateZ(${half}px)`)}
-          {/* Face 6: Back */}
-          {renderFace(6, `rotateY(180deg) translateZ(${half}px)`)}
-          {/* Face 2: Right */}
-          {renderFace(2, `rotateY(90deg) translateZ(${half}px)`)}
-          {/* Face 5: Left */}
-          {renderFace(5, `rotateY(-90deg) translateZ(${half}px)`)}
-          {/* Face 3: Top */}
-          {renderFace(3, `rotateX(90deg) translateZ(${half}px)`)}
-          {/* Face 4: Bottom */}
-          {renderFace(4, `rotateX(-90deg) translateZ(${half}px)`)}
-        </div>
-      </div>
-
-      {/* Dynamic Ground Shadow */}
-      <div
-        className="mt-2.5 h-2.5 rounded-full bg-black/75 filter blur-[3px] transition-all duration-300 pointer-events-none"
-        style={{
-          width: phase === "rolling" ? `${size * 0.75}px` : `${size * 0.95}px`,
-          opacity: phase === "rolling" ? 0.35 : 0.85,
-          transform: phase === "rolling" ? "scale(0.85)" : "scale(1)",
-        }}
-      />
-
-      {/* Landed Celebration Badge */}
-      {phase === "landed" && (
-        <div className="absolute -bottom-8 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap z-40">
-          🎲 {displayValue} NÚT!
-        </div>
-      )}
+        {/* Face 1: Front */}
+        {renderFace(1, `translateZ(${half}px)`)}
+        {/* Face 6: Back */}
+        {renderFace(6, `rotateY(180deg) translateZ(${half}px)`)}
+        {/* Face 2: Right */}
+        {renderFace(2, `rotateY(90deg) translateZ(${half}px)`)}
+        {/* Face 5: Left */}
+        {renderFace(5, `rotateY(-90deg) translateZ(${half}px)`)}
+        {/* Face 3: Top */}
+        {renderFace(3, `rotateX(90deg) translateZ(${half}px)`)}
+        {/* Face 4: Bottom */}
+        {renderFace(4, `rotateX(-90deg) translateZ(${half}px)`)}
+      </motion.div>
     </div>
   );
 
-  // If simulateToss is enabled, animate physical trajectory across board
+  // If simulateToss is enabled, animate flight across the gameboard
   if (simulateToss) {
     const isCurrentlyRolling = phase === "rolling";
 
     return (
       <motion.div
-        className={`absolute z-30 pointer-events-none ${className}`}
-        initial={{
-          left: `${startCoord.x}%`,
-          top: `${startCoord.y}%`,
-          scale: 1.5,
-          opacity: 0,
-        }}
+        className={`absolute z-30 pointer-events-none flex flex-col items-center justify-center ${className}`}
+        initial={
+          isCurrentlyRolling
+            ? {
+                left: `${startCoord.x}%`,
+                top: `${startCoord.y}%`,
+                scale: 1.85,
+                opacity: 0.95,
+              }
+            : {
+                left: `${safeTarget.x}%`,
+                top: `${safeTarget.y}%`,
+                scale: 1.0,
+                opacity: 1,
+              }
+        }
         animate={
           isCurrentlyRolling
             ? {
-                left: [`${startCoord.x}%`, `${bounce1.x}%`, `${bounce2.x}%`, `${safeTarget.x}%`],
-                top: [`${startCoord.y}%`, `${bounce1.y}%`, `${bounce2.y}%`, `${safeTarget.y}%`],
-                scale: [1.5, 1.25, 1.1, 1.0],
-                opacity: [1, 1, 1, 1],
+                left: [
+                  `${startCoord.x}%`,
+                  `${midFlight.x}%`,
+                  `${impact1.x}%`,
+                  `${bounceApex.x}%`,
+                  `${safeTarget.x}%`,
+                  `${safeTarget.x}%`,
+                ],
+                top: [
+                  `${startCoord.y}%`,
+                  `${midFlight.y}%`,
+                  `${impact1.y}%`,
+                  `${bounceApex.y}%`,
+                  `${safeTarget.y}%`,
+                  `${safeTarget.y}%`,
+                ],
+                scale: [1.85, 1.55, 1.0, 1.1, 1.0, 1.0],
+                opacity: [1, 1, 1, 1, 1, 1],
               }
             : {
                 left: `${safeTarget.x}%`,
@@ -251,23 +308,72 @@ export default function Dice3DRoller({
           isCurrentlyRolling
             ? {
                 duration: durationMs / 1000,
-                times: [0, 0.45, 0.75, 1],
-                ease: "easeOut",
+                times: [0, 0.38, 0.68, 0.80, 0.92, 1.0],
               }
-            : { duration: 0.3 }
+            : { duration: 0.2 }
         }
         style={{
           transform: "translate(-50%, -50%)",
         }}
       >
-        {cubeCore}
+        {cubeMesh}
+
+        {/* Dynamic Ground Shadow that matches height & impacts */}
+        <motion.div
+          className="mt-2.5 h-2.5 rounded-full bg-black/80 filter blur-[3px] pointer-events-none"
+          animate={
+            isCurrentlyRolling
+              ? {
+                  width: [
+                    `${size * 0.4}px`,
+                    `${size * 0.65}px`,
+                    `${size * 1.0}px`,
+                    `${size * 0.8}px`,
+                    `${size * 0.95}px`,
+                    `${size * 0.95}px`,
+                  ],
+                  opacity: [0.15, 0.35, 0.85, 0.5, 0.8, 0.8],
+                  scale: [0.5, 0.7, 1.0, 0.85, 1.0, 1.0],
+                }
+              : {
+                  width: `${size * 0.95}px`,
+                  opacity: 0.8,
+                  scale: 1.0,
+                }
+          }
+          transition={
+            isCurrentlyRolling
+              ? {
+                  duration: durationMs / 1000,
+                  times: [0, 0.38, 0.68, 0.80, 0.92, 1.0],
+                }
+              : { duration: 0.2 }
+          }
+        />
+
+        {/* Landed Celebration Badge (Appears ONLY after complete dead stop) */}
+        {phase === "landed" && (
+          <div className="absolute -bottom-8 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap z-40">
+            🎲 {displayValue} NÚT!
+          </div>
+        )}
       </motion.div>
     );
   }
 
+  // Standalone inline version
   return (
     <div className={`relative flex flex-col items-center justify-center select-none ${className}`}>
-      {cubeCore}
+      {cubeMesh}
+      <div
+        className="mt-2.5 h-2.5 rounded-full bg-black/75 filter blur-[3px] pointer-events-none"
+        style={{ width: `${size * 0.9}px` }}
+      />
+      {phase === "landed" && (
+        <div className="absolute -bottom-8 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap z-40">
+          🎲 {displayValue} NÚT!
+        </div>
+      )}
     </div>
   );
 }

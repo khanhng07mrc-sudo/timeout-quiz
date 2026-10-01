@@ -2256,6 +2256,7 @@ export function registerSocketHandlers(io: IO) {
 
       const roll = Math.floor(Math.random() * 6) + 1;
       diceState.lastDiceRoll = roll;
+      diceState.rollTimestamp = Date.now();
 
       const landingResult = handleDiceRaceLanding({ diceState, teamId, roll });
       const newPos = landingResult.finalPosition;

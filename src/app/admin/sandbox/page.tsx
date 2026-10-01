@@ -1050,6 +1050,7 @@ export default function AdminSandboxPage() {
           diceRaceState: {
             ...prev.diceRaceState,
             lastDiceRoll: roll,
+            rollTimestamp: Date.now(),
             teamPositions: updatedPositions,
             currentTurnTeamId: nextTeamId,
             currentTurnTeamName: nextTeamName,

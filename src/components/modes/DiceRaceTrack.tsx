@@ -40,6 +40,7 @@ export default function DiceRaceTrack({
   const [forceFullInMini, setForceFullInMini] = useState(false);
 
   // 3D Dice Roll Animation States (Authoritative Synchronized Toss)
+  const [rollSessionId, setRollSessionId] = useState(0);
   const [isRolling3D, setIsRolling3D] = useState(false);
   const [activeRollValue, setActiveRollValue] = useState<number>(diceState?.lastDiceRoll || 6);
   const [originCorner, setOriginCorner] = useState<0 | 1 | 2 | 3>(0);
@@ -55,6 +56,9 @@ export default function DiceRaceTrack({
   const isAnimatingHopRef = useRef(false);
   const pendingMoveRef = useRef<{ teamId: string; from: number; to: number } | null>(null);
   const prevLastRollRef = useRef<number | null>(diceState?.lastDiceRoll ?? null);
+  const prevRollTimestampRef = useRef<number | null>(diceState?.rollTimestamp ?? null);
+  const isDiceRollingRef = useRef(false);
+  const hopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   if (!diceState || diceState.tiles.length === 0) {
     return (
@@ -81,26 +85,41 @@ export default function DiceRaceTrack({
   // Synchronize Authoritative Roll from Engine / Server
   useEffect(() => {
     if (lastDiceRoll !== null && lastDiceRoll !== undefined) {
-      if (lastDiceRoll !== prevLastRollRef.current) {
+      const isNewRoll =
+        diceState.rollTimestamp !== undefined
+          ? diceState.rollTimestamp !== prevRollTimestampRef.current
+          : lastDiceRoll !== prevLastRollRef.current;
+
+      if (isNewRoll) {
+        prevRollTimestampRef.current = diceState.rollTimestamp ?? Date.now();
         prevLastRollRef.current = lastDiceRoll;
         setActiveRollValue(lastDiceRoll);
+
         // Random corner outside board (0: TL, 1: TR, 2: BL, 3: BR)
         const randCorner = Math.floor(Math.random() * 4) as 0 | 1 | 2 | 3;
         setOriginCorner(randCorner);
+
         // Random landing spot strictly >20% from edges (25%..72%, 26%..68%)
         const randX = Math.floor(25 + Math.random() * 47);
         const randY = Math.floor(26 + Math.random() * 42);
         setLandingPos({ x: randX, y: randY });
+
+        // Synchronously lock movement until 3D roll finishes
+        isDiceRollingRef.current = true;
         setIsRolling3D(true);
+        setRollSessionId((prev) => prev + 1);
         setHasLandedDice(true);
       }
     } else {
       prevLastRollRef.current = null;
+      prevRollTimestampRef.current = null;
       setHasLandedDice(false);
+      setIsRolling3D(false);
+      isDiceRollingRef.current = false;
     }
-  }, [lastDiceRoll]);
+  }, [lastDiceRoll, diceState.rollTimestamp]);
 
-  // Sync positions & detect movement (Delayed until 3D dice lands)
+  // Sync positions & detect movement (STRICTLY DELAYED until 3D dice lands)
   useEffect(() => {
     const nextAnim: Record<string, number> = {};
     let movedTeam: { teamId: string; from: number; to: number } | null = null;
@@ -110,28 +129,37 @@ export default function DiceRaceTrack({
       if (prev !== undefined && prev !== t.position && !isAnimatingHopRef.current) {
         movedTeam = { teamId: t.teamId, from: prev, to: t.position };
       }
-      nextAnim[t.teamId] = animPositions[t.teamId] ?? t.position;
       prevPositionsRef.current[t.teamId] = t.position;
     });
 
-    // If a team moved:
     if (movedTeam && (movedTeam as any).from !== (movedTeam as any).to) {
-      if (isRolling3D) {
-        // Wait for the 3D dice to complete before hopping the pawn!
+      if (isDiceRollingRef.current) {
+        // Dice is currently rolling/flying in 3D:
+        // Firmly freeze pawn on its previous tile; absolutely DO NOT move yet!
         pendingMoveRef.current = movedTeam;
+        setAnimPositions((prev) => ({ ...prev, [(movedTeam as any).teamId]: (movedTeam as any).from }));
       } else {
         animatePawnHop((movedTeam as any).teamId, (movedTeam as any).from, (movedTeam as any).to);
       }
-    } else if (!isAnimatingHopRef.current) {
+    } else if (!isAnimatingHopRef.current && !isDiceRollingRef.current) {
       teams.forEach((t) => {
         nextAnim[t.teamId] = t.position;
       });
       setAnimPositions(nextAnim);
     }
-  }, [teamPositions, isRolling3D]);
+  }, [teamPositions]);
+
+  // Cleanup hop timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hopTimeoutRef.current) clearTimeout(hopTimeoutRef.current);
+    };
+  }, []);
 
   // Animate pawn jumping tile by tile
   const animatePawnHop = (teamId: string, fromPos: number, toPos: number) => {
+    if (fromPos === toPos) return;
+
     isAnimatingHopRef.current = true;
     setHoppingTeamId(teamId);
 
@@ -187,12 +215,17 @@ export default function DiceRaceTrack({
 
   const handle3DComplete = () => {
     setIsRolling3D(false);
-    // Release pending pawn movement now that the 3D dice has landed on the Authoritative value!
-    if (pendingMoveRef.current) {
-      const { teamId, from, to } = pendingMoveRef.current;
-      pendingMoveRef.current = null;
-      animatePawnHop(teamId, from, to);
-    }
+    isDiceRollingRef.current = false;
+
+    // Release pending pawn movement after dice has completely stopped and players see the result!
+    if (hopTimeoutRef.current) clearTimeout(hopTimeoutRef.current);
+    hopTimeoutRef.current = setTimeout(() => {
+      if (pendingMoveRef.current) {
+        const { teamId, from, to } = pendingMoveRef.current;
+        pendingMoveRef.current = null;
+        animatePawnHop(teamId, from, to);
+      }
+    }, 380);
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -507,9 +540,10 @@ export default function DiceRaceTrack({
       {/* 3D Dice Toss Simulated on Real Gameboard (No Black Overlay) */}
       {hasLandedDice && (
         <Dice3DRoller
+          key={rollSessionId}
           value={activeRollValue}
           isRolling={isRolling3D}
-          durationMs={2300}
+          durationMs={2000}
           onComplete={handle3DComplete}
           simulateToss={true}
           landingPos={landingPos}

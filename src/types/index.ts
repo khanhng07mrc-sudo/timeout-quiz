@@ -647,6 +647,7 @@ export interface DiceRaceState {
   currentTurnTeamId?: string;
   currentTurnTeamName?: string;
   lastDiceRoll?: number;
+  rollTimestamp?: number;
   isRolling: boolean;
   dicePendingAnswer: boolean;
   canRollDice?: boolean;

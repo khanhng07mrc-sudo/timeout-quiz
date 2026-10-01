@@ -105,7 +105,12 @@ export default function DisplayPage() {
           soundManager.stopMusic();
           soundManager.playFanfare();
         }
-        if (p.timer !== undefined) setTimer(p.timer);
+        if (p.timer !== undefined) {
+          setTimer(p.timer);
+          if (p.timer && p.timer.remaining <= 0) {
+            soundManager.stopMusic();
+          }
+        }
         if (p.buzzed !== undefined) setBuzzed(p.buzzed);
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
         if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
@@ -186,9 +191,18 @@ export default function DisplayPage() {
       soundManager.playQuestionMusic(payload?.timeLimit ?? 30);
     });
 
-    socket.on("game:timer", setTimer);
+    socket.on("game:timer", (t) => {
+      setTimer(t);
+      if (t.remaining <= 5 && t.remaining > 0) {
+        soundManager.playCountdownTick(t.remaining);
+      }
+      if (t.remaining <= 0) {
+        soundManager.stopMusic();
+      }
+    });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      soundManager.stopMusic();
       soundManager.playBuzz();
     });
     socket.on("game:buzz", (p) => {

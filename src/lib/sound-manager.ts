@@ -156,15 +156,37 @@ class SoundManager {
     });
   }
 
+  private questionMusicTimeout: NodeJS.Timeout | null = null;
+
   public playLobbyMusic() {
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
     this.playMusicTrack("LOBBY", "lobby", 0.7);
   }
 
   public playQuestionMusic(remainingSeconds: number = 30) {
-    this.playMusicTrack("QUESTION", "question_suspense", 0.85);
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
+    if (remainingSeconds <= 0) {
+      this.stopMusic();
+      return;
+    }
+    this.playMusicTrack("QUESTION", "question_suspense", 0.75);
+    // Auto-stop music strictly when question timer expires - NEVER loop past time limit!
+    this.questionMusicTimeout = setTimeout(() => {
+      this.stopMusic();
+    }, Math.max(1000, remainingSeconds * 1000));
   }
 
   public stopMusic() {
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
     if (this.fadeInterval) {
       clearInterval(this.fadeInterval);
       this.fadeInterval = null;
@@ -174,20 +196,9 @@ class SoundManager {
       this.currentMusicAudio = null;
       this.currentMusicType = null;
       try {
-        let v = audio.volume;
-        const fade = setInterval(() => {
-          v = Math.max(0, v - 0.2);
-          audio.volume = v;
-          if (v <= 0) {
-            clearInterval(fade);
-            audio.pause();
-            audio.currentTime = 0;
-          }
-        }, 25);
-      } catch {
         audio.pause();
         audio.currentTime = 0;
-      }
+      } catch {}
     }
   }
 

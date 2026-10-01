@@ -2664,6 +2664,37 @@ function registerSocketHandlers(io2) {
         });
       }
     });
+    socket.on("admin:timer:stop_early", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.status !== "PLAYING") return;
+      const questions = await getRoomQuestions(room.id);
+      const q = questions[room.currentQuestion];
+      if (q) {
+        await finalizeQuestionOnTimeUp(io2, room.id, room.code, q.id);
+      }
+    });
+    socket.on("game:answer:stop_early", async ({ questionId, answer }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player?.room || player.room.status !== "PLAYING") return;
+      if (answer !== void 0) {
+        await processAnswerSubmission({
+          io: io2,
+          roomId: player.room.id,
+          questionId,
+          playerId,
+          teamId: player.teamId ?? void 0,
+          answer,
+          isAdminOverride: false,
+          socket
+        });
+      }
+      await finalizeQuestionOnTimeUp(io2, player.room.id, player.room.code, questionId);
+    });
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -3658,6 +3689,8 @@ function buildQuestionState(q, extra) {
     buzzedTeamName: extra?.buzzedTeamName,
     answerMethod: extra?.answerMethod,
     tournamentMatchId: extra?.tournamentMatchId,
+    tournamentTeam1Id: extra?.tournamentTeam1Id,
+    tournamentTeam2Id: extra?.tournamentTeam2Id,
     gridCellId: extra?.gridCellId,
     diceRollValue: extra?.diceRollValue,
     wagerPhase: extra?.wagerPhase,
@@ -3779,6 +3812,48 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   }
   return { teamScoresUpdates, teamSummaries, roomAccuracy, rarityBonusPercent };
 }
+async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
+  stopQuestionTimer(roomId);
+  const key = `${roomId}:timer`;
+  roomRemainingTimes.set(key, 0);
+  io2.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30 });
+  io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) return;
+  const qKey = `${roomId}:${questionId}`;
+  if (room.mode === "BOUNCEBACK") {
+    if (roomStealBuzzed.has(qKey)) {
+      await finalizeBouncebackSteal(io2, roomId, roomCode, questionId);
+    } else if (roomPrimaryTeams.has(qKey)) {
+      await finalizeBouncebackPrimary(io2, roomId, roomCode, questionId);
+    }
+  } else if (room.mode === "BUZZ") {
+    if (roomBuzzFirst.has(qKey)) {
+      await finalizeBuzzAnswer(io2, roomId, roomCode, questionId);
+    }
+  } else if (room.mode === "TOURNAMENT") {
+    await finalizeTournamentQuestion(io2, roomId, roomCode, questionId);
+  } else if (room.mode === "GRID_CARO" || room.mode === "WAGER") {
+    const activeQ = roomActiveQuestions.get(roomId);
+    if (activeQ) {
+      activeQ.isExpired = true;
+      activeQ.timerStarted = false;
+    }
+    io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  } else if (room.mode === "DICE_RACE") {
+    await finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId);
+  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
+    if (room.teamMode === "TEAM") {
+      const { teamScoresUpdates } = await resolveQuestionTeamScores(io2, roomId, questionId);
+      if (teamScoresUpdates.length > 0) {
+        io2.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
+      }
+    } else {
+      await finalizeIndividualScores(io2, roomId, roomCode, questionId);
+    }
+    await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+  }
+}
 function startQuestionTimer(io2, roomCode, roomId, questionId, timeLimit) {
   stopQuestionTimer(roomId);
   const key = `${roomId}:timer`;
@@ -3789,42 +3864,7 @@ function startQuestionTimer(io2, roomCode, roomId, questionId, timeLimit) {
     roomRemainingTimes.set(key, remaining);
     io2.to(`room:${roomCode}`).emit("game:timer", { remaining, total: timeLimit });
     if (remaining <= 0) {
-      stopQuestionTimer(roomId);
-      const room = await prisma.room.findUnique({ where: { id: roomId } });
-      if (!room) return;
-      const qKey = `${roomId}:${questionId}`;
-      if (room.mode === "BOUNCEBACK") {
-        if (roomStealBuzzed.has(qKey)) {
-          await finalizeBouncebackSteal(io2, roomId, roomCode, questionId);
-        } else if (roomPrimaryTeams.has(qKey)) {
-          await finalizeBouncebackPrimary(io2, roomId, roomCode, questionId);
-        }
-      } else if (room.mode === "BUZZ") {
-        if (roomBuzzFirst.has(qKey)) {
-          await finalizeBuzzAnswer(io2, roomId, roomCode, questionId);
-        }
-      } else if (room.mode === "TOURNAMENT") {
-        await finalizeTournamentQuestion(io2, roomId, roomCode, questionId);
-      } else if (room.mode === "GRID_CARO" || room.mode === "WAGER") {
-        const activeQ = roomActiveQuestions.get(roomId);
-        if (activeQ) {
-          activeQ.isExpired = true;
-          activeQ.timerStarted = false;
-        }
-        io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
-      } else if (room.mode === "DICE_RACE") {
-        await finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId);
-      } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
-        if (room.teamMode === "TEAM") {
-          const { teamScoresUpdates } = await resolveQuestionTeamScores(io2, roomId, questionId);
-          if (teamScoresUpdates.length > 0) {
-            io2.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
-          }
-        } else {
-          await finalizeIndividualScores(io2, roomId, roomCode, questionId);
-        }
-        await revealCurrentAnswer(io2, roomId, roomCode, questionId);
-      }
+      await finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId);
     }
   }, 1e3));
 }

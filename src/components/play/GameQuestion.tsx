@@ -19,6 +19,7 @@ interface Props {
   stealBuzzedTeam?: { teamId: string; teamName: string; playerId: string; playerName: string } | null;
   buzzedBy?: { playerName: string; teamId?: string; teamName?: string } | null;
   onSelectPoints?: (points: 10 | 20 | 30) => void;
+  onStopEarly?: () => void;
   isSpectator?: boolean;
 }
 
@@ -38,6 +39,7 @@ export default function GameQuestion({
   stealBuzzedTeam = null,
   buzzedBy = null,
   onSelectPoints,
+  onStopEarly,
   isSpectator = false,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
@@ -55,18 +57,26 @@ export default function GameQuestion({
   const isMcMode = (question.answerMethod ?? answerMethod) === "MC";
 
   // In BOUNCEBACK mode:
-  // Primary phase: only primary team can answer
-  const isPrimaryTeam = myTeamId && question.primaryTeamId ? myTeamId === question.primaryTeamId : false;
+  // Primary phase: primary team can answer (if primaryTeamId not defined, allow current active team)
+  const isPrimaryTeam = myTeamId && question.primaryTeamId ? myTeamId === question.primaryTeamId : !question.primaryTeamId;
   // Steal phase: only steal buzzed team can answer
   const isStealTeam = myTeamId && stealBuzzedTeam ? myTeamId === stealBuzzedTeam.teamId : false;
 
   // In BUZZ mode: only buzzed team can answer
-  const isBuzzedTeam = myTeamId && buzzedBy?.teamId ? myTeamId === buzzedBy.teamId : false;
+  const isBuzzedTeam = myTeamId && buzzedBy?.teamId
+    ? myTeamId === buzzedBy.teamId
+    : (myTeamId && question.buzzedTeamId ? myTeamId === question.buzzedTeamId : false);
+
+  // In TOURNAMENT mode: 2 active teams in match can answer
+  const isTournamentCompetitor =
+    question.tournamentTeam1Id && question.tournamentTeam2Id
+      ? (myTeamId === question.tournamentTeam1Id || myTeamId === question.tournamentTeam2Id)
+      : true;
 
   const canAnswerThisQuestion = () => {
     if (isSpectator) return false;
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
-    if (question.timerPending || question.bouncebackSelectPhase) return false;
+    if (question.bouncebackSelectPhase) return false;
     if (timer && timer.remaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
       if (stealBuzzedTeam) return isStealTeam;
@@ -78,6 +88,9 @@ export default function GameQuestion({
     }
     if (roomMode === "GRID_CARO" || roomMode === "DICE_RACE") {
       return isPrimaryTeam;
+    }
+    if (roomMode === "TOURNAMENT") {
+      return isTournamentCompetitor;
     }
     return true;
   };
@@ -534,6 +547,23 @@ export default function GameQuestion({
           </span>
         </div>
       )}
+
+      {/* Early Stop Button for Active Team */}
+      {onStopEarly && !revealPayload && timer && timer.remaining > 0 && canAnswerThisQuestion() && (
+        <button
+          type="button"
+          onClick={onStopEarly}
+          className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-rose-300/30 hover:border-rose-300"
+        >
+          <span className="text-base">⏹️</span>
+          <span>
+            {answered
+              ? `Chốt đáp án & Dừng giờ ngay (${timer.remaining}s)`
+              : `Dừng thời gian sớm (${timer.remaining}s)`}
+          </span>
+        </button>
+      )}
+
       {!answered && !revealPayload && timer && timer.remaining <= 0 && (
         <div className="text-center py-2 text-amber-400 font-bold flex items-center justify-center gap-1.5 text-sm animate-pulse">
           <span>⏱️ Hết thời gian! Đang chờ Quản trò công bố kết quả...</span>

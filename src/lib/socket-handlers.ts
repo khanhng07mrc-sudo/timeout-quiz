@@ -2783,6 +2783,41 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
+    socket.on("admin:timer:stop_early", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.status !== "PLAYING") return;
+      const questions = await getRoomQuestions(room.id);
+      const q = questions[room.currentQuestion];
+      if (q) {
+        await finalizeQuestionOnTimeUp(io, room.id, room.code, q.id);
+      }
+    });
+
+    socket.on("game:answer:stop_early", async ({ questionId, answer }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player?.room || player.room.status !== "PLAYING") return;
+
+      if (answer !== undefined) {
+        await processAnswerSubmission({
+          io,
+          roomId: player.room.id,
+          questionId,
+          playerId,
+          teamId: player.teamId ?? undefined,
+          answer,
+          isAdminOverride: false,
+          socket,
+        });
+      }
+
+      await finalizeQuestionOnTimeUp(io, player.room.id, player.room.code, questionId);
+    });
+
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -3963,6 +3998,8 @@ function buildQuestionState(
     buzzedTeamName?: string;
     answerMethod?: "DEVICE" | "MC";
     tournamentMatchId?: string;
+    tournamentTeam1Id?: string;
+    tournamentTeam2Id?: string;
     gridCellId?: number;
     diceRollValue?: number;
     wagerPhase?: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
@@ -4008,6 +4045,8 @@ function buildQuestionState(
     buzzedTeamName: extra?.buzzedTeamName,
     answerMethod: extra?.answerMethod,
     tournamentMatchId: extra?.tournamentMatchId,
+    tournamentTeam1Id: extra?.tournamentTeam1Id,
+    tournamentTeam2Id: extra?.tournamentTeam2Id,
     gridCellId: extra?.gridCellId,
     diceRollValue: extra?.diceRollValue,
     wagerPhase: extra?.wagerPhase,
@@ -4156,6 +4195,52 @@ async function resolveQuestionTeamScores(
   return { teamScoresUpdates, teamSummaries, roomAccuracy, rarityBonusPercent };
 }
 
+async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string) {
+  stopQuestionTimer(roomId);
+
+  const key = `${roomId}:timer`;
+  roomRemainingTimes.set(key, 0);
+  io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30 });
+  io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+
+  const room = await prisma.room.findUnique({ where: { id: roomId } });
+  if (!room) return;
+  const qKey = `${roomId}:${questionId}`;
+
+  if (room.mode === "BOUNCEBACK") {
+    if (roomStealBuzzed.has(qKey)) {
+      await finalizeBouncebackSteal(io, roomId, roomCode, questionId);
+    } else if (roomPrimaryTeams.has(qKey)) {
+      await finalizeBouncebackPrimary(io, roomId, roomCode, questionId);
+    }
+  } else if (room.mode === "BUZZ") {
+    if (roomBuzzFirst.has(qKey)) {
+      await finalizeBuzzAnswer(io, roomId, roomCode, questionId);
+    }
+  } else if (room.mode === "TOURNAMENT") {
+    await finalizeTournamentQuestion(io, roomId, roomCode, questionId);
+  } else if (room.mode === "GRID_CARO" || room.mode === "WAGER") {
+    const activeQ = roomActiveQuestions.get(roomId);
+    if (activeQ) {
+      activeQ.isExpired = true;
+      activeQ.timerStarted = false;
+    }
+    io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  } else if (room.mode === "DICE_RACE") {
+    await finalizeDiceRaceQuestion(io, roomId, roomCode, questionId);
+  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
+    if (room.teamMode === "TEAM") {
+      const { teamScoresUpdates } = await resolveQuestionTeamScores(io, roomId, questionId);
+      if (teamScoresUpdates.length > 0) {
+        io.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
+      }
+    } else {
+      await finalizeIndividualScores(io, roomId, roomCode, questionId);
+    }
+    await revealCurrentAnswer(io, roomId, roomCode, questionId);
+  }
+}
+
 function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId: string, timeLimit: number) {
   stopQuestionTimer(roomId);
 
@@ -4167,44 +4252,7 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
     roomRemainingTimes.set(key, remaining);
     io.to(`room:${roomCode}`).emit("game:timer", { remaining, total: timeLimit });
     if (remaining <= 0) {
-      stopQuestionTimer(roomId);
-
-      const room = await prisma.room.findUnique({ where: { id: roomId } });
-      if (!room) return;
-      const qKey = `${roomId}:${questionId}`;
-
-      if (room.mode === "BOUNCEBACK") {
-        if (roomStealBuzzed.has(qKey)) {
-          await finalizeBouncebackSteal(io, roomId, roomCode, questionId);
-        } else if (roomPrimaryTeams.has(qKey)) {
-          await finalizeBouncebackPrimary(io, roomId, roomCode, questionId);
-        }
-      } else if (room.mode === "BUZZ") {
-        if (roomBuzzFirst.has(qKey)) {
-          await finalizeBuzzAnswer(io, roomId, roomCode, questionId);
-        }
-      } else if (room.mode === "TOURNAMENT") {
-        await finalizeTournamentQuestion(io, roomId, roomCode, questionId);
-      } else if (room.mode === "GRID_CARO" || room.mode === "WAGER") {
-        const activeQ = roomActiveQuestions.get(roomId);
-        if (activeQ) {
-          activeQ.isExpired = true;
-          activeQ.timerStarted = false;
-        }
-        io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
-      } else if (room.mode === "DICE_RACE") {
-        await finalizeDiceRaceQuestion(io, roomId, roomCode, questionId);
-      } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
-        if (room.teamMode === "TEAM") {
-          const { teamScoresUpdates } = await resolveQuestionTeamScores(io, roomId, questionId);
-          if (teamScoresUpdates.length > 0) {
-            io.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
-          }
-        } else {
-          await finalizeIndividualScores(io, roomId, roomCode, questionId);
-        }
-        await revealCurrentAnswer(io, roomId, roomCode, questionId);
-      }
+      await finalizeQuestionOnTimeUp(io, roomId, roomCode, questionId);
     }
   }, 1000) as unknown as NodeJS.Timeout);
 }

@@ -124,10 +124,28 @@ export default function PlayPage() {
     }
     playerIdRef.current = savedPlayerId;
     setPlayerId(savedPlayerId);
-
     const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
 
     const handlePostMessage = (e: MessageEvent) => {
+      if (e.data?.type === "SWITCH_ACTIVE_TEAM" && e.data.payload) {
+        const { teamId, teamName, teamIndex } = e.data.payload;
+        myTeamIdRef.current = teamId;
+        const currentPid = playerIdRef.current;
+        if (socketRef.current?.connected && teamId) {
+          socketRef.current.emit("player:select:team", { teamId, playerId: currentPid });
+        }
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedPlayers = prev.players.map((p) =>
+            p.id === currentPid
+              ? { ...p, teamId, name: teamIndex === 0 ? "Bạn (Tester)" : `${teamName} 🤖` }
+              : p
+          );
+          return { ...prev, players: updatedPlayers };
+        });
+        setAnswered(false);
+        return;
+      }
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         setConnected(true);
         const p = e.data.payload;
@@ -283,10 +301,16 @@ export default function PlayPage() {
       }
     });
 
-    socket.on("game:timer", (t) => setTimer(t));
+    socket.on("game:timer", (t) => {
+      setTimer(t);
+      if (t.remaining <= 0 && soundEnabledRef.current) {
+        soundManager.stopMusic();
+      }
+    });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
+        soundManager.stopMusic();
         soundManager.playBuzz();
       }
     });
@@ -551,6 +575,22 @@ export default function PlayPage() {
     }
   };
 
+  const handleStopEarly = () => {
+    if (socketRef.current?.connected && currentQuestion) {
+      socketRef.current.emit("game:answer:stop_early", {
+        questionId: currentQuestion.question.id,
+      });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "stop_early",
+        questionId: currentQuestion?.question.id,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
+  };
+
   const handleSelectTeam = (teamId: string) => {
     const currentPid = playerIdRef.current || playerId;
     myTeamIdRef.current = teamId;
@@ -745,6 +785,7 @@ export default function PlayPage() {
               stealBuzzedTeam={stealBuzzedTeam}
               buzzedBy={buzzedBy}
               onSelectPoints={handleSelectPoints}
+              onStopEarly={handleStopEarly}
               isSpectator={isSpectator}
             />
 

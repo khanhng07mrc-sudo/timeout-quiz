@@ -51,8 +51,8 @@ export default function AdminSandboxPage() {
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
 
-  // Bot automation state
-  const [botAutoEnabled, setBotAutoEnabled] = useState(true);
+  // Bot automation state (default: OFF, manual on-demand control)
+  const [botAutoEnabled, setBotAutoEnabled] = useState(false);
   const [botLogs, setBotLogs] = useState<string[]>([]);
 
   // Debug card grant modal
@@ -554,7 +554,9 @@ export default function AdminSandboxPage() {
   useEffect(() => {
     const handlePlayerAction = (e: MessageEvent) => {
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
-      const { action, answer, points, cellId } = e.data;
+      const { action, answer, points, cellId, teamId } = e.data;
+      const targetTeamId = teamId || roomState?.teams[activeTeamIndex]?.id || "t_red";
+      const targetTeamName = roomState?.teams.find((t) => t.id === targetTeamId)?.name || "Bạn (Tester)";
 
       if (action === "answer") {
         if (!currentQuestion) return;
@@ -565,26 +567,39 @@ export default function AdminSandboxPage() {
         const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
         const isCorrect = correctOpt ? correctOpt.id === answer : false;
         const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
-        offlineAnswersRef.current.set("t_red", { answer, isCorrect, points: awarded });
-        addLog(`[Bạn (Tester)] đã nộp đáp án: ${chosenOpt?.text || answer}`);
+        offlineAnswersRef.current.set(targetTeamId, { answer, isCorrect, points: awarded });
+        addLog(`[${targetTeamName}] đã nộp đáp án: ${chosenOpt?.text || answer}`);
       } else if (action === "buzz") {
-        setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: "t_red", buzzedTeamName: "Đội Đỏ (Bạn)" } : prev);
-        addLog("⚡ [Bạn (Tester)] đã BẤM CHUÔNG thành công!");
-        syncToIframes({ buzzed: { playerName: "Đội Đỏ (Bạn)" } });
+        setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: targetTeamId, buzzedTeamName: targetTeamName } : prev);
+        addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG thành công!`);
+        syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
       } else if (action === "bounceback_select_points") {
-        setCurrentQuestion((prev) =>
-          prev
-            ? {
-                ...prev,
-                bouncebackSelectPhase: false,
-                selectedPointLevel: points,
-                question: { ...prev.question, points },
-              }
-            : prev
-        );
-        addLog(`🎯 [Bạn (Tester)] đã chọn gói điểm: ${points}đ`);
+        setCurrentQuestion((prev) => {
+          if (!prev) return prev;
+          const updated = {
+            ...prev,
+            bouncebackSelectPhase: false,
+            selectedPointLevel: points,
+            question: { ...prev.question, points },
+          };
+          syncToIframes({ currentQuestion: updated });
+          return updated;
+        });
+        addLog(`🎯 [${targetTeamName}] đã chọn gói điểm: ${points}đ`);
+      } else if (action === "stop_early") {
+        if (offlineTimerRef.current) {
+          clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
+        }
+        offlineRemainingRef.current = 0;
+        setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30 });
+        syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30 } });
+        addLog(`⏹️ [Dừng giờ sớm] Đội [${targetTeamName}] đã chốt kết thúc thời gian!`);
+        setTimeout(() => {
+          handleAdminReveal();
+        }, 500);
       } else if (action === "grid_select") {
-        addLog(`🏁 [Bạn (Tester)] đã chọn ô #${cellId}`);
+        addLog(`🏁 [${targetTeamName}] đã chọn ô #${cellId}`);
       } else if (action === "dice_roll") {
         handleDiceRollManual();
       }
@@ -592,7 +607,7 @@ export default function AdminSandboxPage() {
 
     window.addEventListener("message", handlePlayerAction);
     return () => window.removeEventListener("message", handlePlayerAction);
-  }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes]);
+  }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams]);
 
   // ── 1-Click Launch ──────────────────────────────────────────────────────────
   const handleLaunchSandbox = async () => {
@@ -673,8 +688,28 @@ export default function AdminSandboxPage() {
         buzzUnlocked: selectedMode === "BUZZ" ? false : true,
         buzzUnlockMode: "MANUAL",
         bouncebackSelectPhase: selectedMode === "BOUNCEBACK",
-        primaryTeamId: selectedMode === "BOUNCEBACK" ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id : undefined,
-        primaryTeamName: selectedMode === "BOUNCEBACK" ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name : undefined,
+        primaryTeamId:
+          selectedMode === "BOUNCEBACK"
+            ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id
+            : selectedMode === "GRID_CARO"
+            ? (roomState?.gridCaroState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
+            : selectedMode === "DICE_RACE"
+            ? (roomState?.diceRaceState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
+            : selectedMode === "TOURNAMENT"
+            ? roomState?.teams[0]?.id
+            : undefined,
+        primaryTeamName:
+          selectedMode === "BOUNCEBACK"
+            ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name
+            : selectedMode === "GRID_CARO"
+            ? (roomState?.gridCaroState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
+            : selectedMode === "DICE_RACE"
+            ? (roomState?.diceRaceState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
+            : selectedMode === "TOURNAMENT"
+            ? `${roomState?.teams[0]?.name || "Đội 1"} vs ${roomState?.teams[1]?.name || "Đội 2"}`
+            : undefined,
+        tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
+        tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
       };
 
       setCurrentQuestion(qState);
@@ -787,6 +822,26 @@ export default function AdminSandboxPage() {
 
     adminSocketRef.current?.emit("admin:timer:set", { seconds: 1 });
     addLog("⚡ Admin tua nhanh: Đặt đếm ngược còn 1s!");
+  };
+
+  const handleAdminStopEarly = () => {
+    if (isOfflineSandbox) {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      offlineRemainingRef.current = 0;
+      setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30 });
+      syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30 } });
+      addLog("⏹️ Admin đã bấm Dừng thời gian sớm!");
+      setTimeout(() => {
+        handleAdminReveal();
+      }, 500);
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:timer:stop_early");
+    addLog("Admin: Dừng thời gian sớm");
   };
 
   const handlePauseResume = () => {
@@ -1054,6 +1109,56 @@ export default function AdminSandboxPage() {
     }
   };
 
+  const handleTriggerAllBotsAnswer = () => {
+    if (!currentQuestion) return;
+    const opts = currentQuestion.question.options || [];
+    if (opts.length === 0) return;
+
+    if (isOfflineSandbox) {
+      (roomState?.teams || []).forEach((t) => {
+        if (t.id === (currentTeam?.id || "t_red")) return;
+        const opt = opts[Math.floor(Math.random() * opts.length)];
+        const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion.question;
+        const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
+        const isCorrect = correctOpt ? correctOpt.id === opt.id : false;
+        const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
+        offlineAnswersRef.current.set(t.id, {
+          answer: opt.id,
+          isCorrect,
+          points: awarded,
+        });
+        addLog(`🤖 Cho Bot [${t.name}] nộp đáp án: ${opt.text}`);
+      });
+      return;
+    }
+
+    botSocketsRef.current.forEach((sock, bTeamId) => {
+      if (bTeamId === currentTeam?.id) return;
+      const opt = opts[Math.floor(Math.random() * opts.length)];
+      sock.emit("game:answer:submit", {
+        questionId: currentQuestion.question.id,
+        answer: opt.id,
+      });
+      const tName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
+      addLog(`🤖 Cho Bot [${tName || bTeamId}] nộp đáp án: ${opt.text}`);
+    });
+  };
+
+  const handleSwitchActiveTeam = (idx: number) => {
+    setActiveTeamIndex(idx);
+    const targetTeam = roomState?.teams[idx];
+    if (!targetTeam) return;
+    const targetName = idx === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
+    playerIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "SWITCH_ACTIVE_TEAM",
+        teamId: targetTeam.id,
+        playerName: targetName,
+      },
+      "*"
+    );
+  };
+
   const handleGrantCard = async () => {
     if (!roomState || !grantTargetTeamId) return;
     if (isOfflineSandbox) {
@@ -1189,14 +1294,27 @@ export default function AdminSandboxPage() {
               <button
                 type="button"
                 onClick={() => setBotAutoEnabled(!botAutoEnabled)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                   botAutoEnabled
                     ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-md"
                     : "glass border-white/10 text-muted-foreground hover:text-white"
                 }`}
+                title="Bật/Tắt cơ chế Bot tự động nộp đáp án (Mặc định: TẮT để tester tự chủ động kiểm thử)"
               >
                 <span>🤖</span>
-                <span className="whitespace-nowrap">Bot: {botAutoEnabled ? "BẬT" : "TẮT"}</span>
+                <span className="whitespace-nowrap">Bot Auto: {botAutoEnabled ? "BẬT" : "TẮT"}</span>
+              </button>
+
+              {/* On-Demand Trigger All Bots */}
+              <button
+                type="button"
+                onClick={handleTriggerAllBotsAnswer}
+                disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
+                className="px-3 py-1.5 rounded-xl border border-blue-500/40 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30 text-xs font-bold transition flex items-center gap-1.5 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                title="Yêu cầu tất cả Bot ảo nộp đáp án ngay lúc này"
+              >
+                <span>⚡</span>
+                <span className="whitespace-nowrap">Bot nộp đáp án</span>
               </button>
 
               {/* Tools Group */}
@@ -1342,11 +1460,25 @@ export default function AdminSandboxPage() {
                 <button
                   type="button"
                   onClick={handleAdminReveal}
-                  className="px-3 py-1.5 rounded-lg glass hover:bg-white/10 border border-white/20 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                  className="px-3 py-1.5 rounded-lg glass hover:bg-white/10 border border-white/20 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
                 >
                   <span>👁️</span>
                   <span>Công bố</span>
                 </button>
+
+                {/* Early Stop */}
+                {currentQuestion && !revealPayload && (
+                  <button
+                    type="button"
+                    onClick={handleAdminStopEarly}
+                    disabled={Boolean(timer && timer.remaining <= 0)}
+                    className="px-3 py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 text-rose-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                    title="Dừng thời gian câu hỏi ngay lập tức"
+                  >
+                    <span>⏹️</span>
+                    <span>Dừng sớm</span>
+                  </button>
+                )}
 
                 {/* Start Timer if pending */}
                 {currentQuestion?.timerPending && (
@@ -1576,8 +1708,8 @@ export default function AdminSandboxPage() {
                     <button
                       key={t.id}
                       type="button"
-                      onClick={() => setActiveTeamIndex(idx)}
-                      className={`p-2 rounded-xl text-left border transition flex flex-col gap-0.5 ${
+                      onClick={() => handleSwitchActiveTeam(idx)}
+                      className={`p-2 rounded-xl text-left border transition flex flex-col gap-0.5 cursor-pointer ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow-lg ring-2 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
@@ -1699,7 +1831,7 @@ export default function AdminSandboxPage() {
               <div className="flex-1 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  key={`${code}-${activeTeamIndex}-${currentTeam?.id}`}
+                  key={code || "sandbox-player"}
                   src={`/play/${code}?sandbox=1&teamIndex=${activeTeamIndex}&teamId=${currentTeam?.id || ""}&name=${encodeURIComponent(activeTeamIndex === 0 ? "Bạn (Tester)" : `${currentTeam?.name || "Đội"} 🤖`)}`}
                   title={`Player ${currentTeam?.name || activeTeamIndex + 1}`}
                   className="w-full h-full border-0"

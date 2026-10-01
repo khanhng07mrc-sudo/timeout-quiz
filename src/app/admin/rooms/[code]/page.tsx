@@ -1120,6 +1120,19 @@ export default function AdminRoomPage() {
                 </span>
               </button>
             )}
+            {/* Dừng thời gian sớm button */}
+            {currentQuestion && !revealPayload && (
+              <button
+                onClick={() => emit("admin:timer:stop_early")}
+                disabled={Boolean(timer && timer.remaining <= 0)}
+                className="py-2.5 rounded-xl border border-rose-500/50 hover:bg-rose-500/20 text-rose-300 font-bold text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                title="Dừng thời gian câu hỏi ngay lập tức"
+              >
+                <span>⏹️</span>
+                <span className="whitespace-nowrap">Dừng giờ sớm</span>
+              </button>
+            )}
+
             {roomState?.status === "PLAYING" ? (
               <button onClick={() => emit("admin:pause")} className="py-2.5 rounded-xl border border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-400 font-medium text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <SystemIcon name="pause" className="w-3.5 h-3.5 shrink-0" />

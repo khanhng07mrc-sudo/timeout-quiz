@@ -741,6 +741,8 @@ export interface QuestionState {
   buzzedTeamName?: string;
   answerMethod?: "DEVICE" | "MC";
   tournamentMatchId?: string;
+  tournamentTeam1Id?: string;
+  tournamentTeam2Id?: string;
   gridCellId?: number;
   diceRollValue?: number;
   wagerPhase?: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
@@ -934,6 +936,8 @@ export interface ClientToServerEvents {
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
   "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
+  "admin:timer:stop_early": () => void;
+  "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }
 

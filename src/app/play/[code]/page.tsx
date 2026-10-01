@@ -655,8 +655,44 @@ export default function PlayPage() {
     );
   }
 
+  const mePlayer = roomState?.players.find((p) => p.id === playerId);
+  const effectiveTeamId = myTeamIdRef.current || mePlayer?.teamId;
+  const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
+  const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
+
   // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
   if (matchStarting) {
+    if (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) {
+      return (
+        <div className="min-h-screen flex flex-col p-3 sm:p-4 gap-3 max-w-4xl mx-auto w-full">
+          <div className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl glass border border-amber-500/40 bg-amber-500/10 shadow animate-slide-up">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-2xl animate-bounce shrink-0">🏁</span>
+              <div className="min-w-0">
+                <p className="font-black text-amber-300 text-xs sm:text-sm truncate">
+                  CUỘC ĐUA CỜ XÍ NGẦU BẮT ĐẦU!
+                </p>
+                <p className="text-[11px] text-amber-200/90 truncate">
+                  Xem toàn cảnh vị trí các quân cờ ở ô xuất phát
+                </p>
+              </div>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-black font-black text-lg flex items-center justify-center shadow shrink-0">
+              {matchStarting.seconds}s
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col justify-center">
+            <DiceRaceTrack
+              diceState={roomState.diceRaceState}
+              myTeamId={effectiveTeamId}
+              mode="full"
+            />
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
@@ -712,12 +748,6 @@ export default function PlayPage() {
       </div>
     );
   }
-
-  const mePlayer = roomState?.players.find((p) => p.id === playerId);
-  const effectiveTeamId = myTeamIdRef.current || mePlayer?.teamId;
-  const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
-  const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
-
   return (
     <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
       {/* Header with score and sound toggle */}
@@ -766,9 +796,23 @@ export default function PlayPage() {
       )}
 
       {/* Main game area */}
-      <div className="flex-1 flex flex-col gap-3 sm:gap-4">
+      <div className="flex-1 flex flex-col gap-2 sm:gap-3">
         {currentQuestion ? (
           <>
+            {/* DICE_RACE: Mini-track on top while answering; Full Board after reveal so team can roll dice */}
+            {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (
+              <div className="w-full animate-slide-up">
+                <DiceRaceTrack
+                  diceState={roomState.diceRaceState}
+                  myTeamId={effectiveTeamId}
+                  isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
+                  canRoll={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId && Boolean(roomState.diceRaceState.canRollDice)}
+                  onRollDice={handleRollDice}
+                  mode={revealPayload ? "full" : "mini"}
+                />
+              </div>
+            )}
+
             <GameQuestion
               question={currentQuestion}
               timer={timer}
@@ -811,17 +855,6 @@ export default function PlayPage() {
                   myTeamId={effectiveTeamId}
                   isMyTurn={false}
                   canSelect={false}
-                />
-              </div>
-            )}
-
-            {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (
-              <div className="w-full mt-2">
-                <DiceRaceTrack
-                  diceState={roomState.diceRaceState}
-                  myTeamId={effectiveTeamId}
-                  isMyTurn={false}
-                  canRoll={false}
                 />
               </div>
             )}

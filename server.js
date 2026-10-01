@@ -1970,6 +1970,28 @@ function registerSocketHandlers(io2) {
           startGridCaroPreview(io2, room.id, room.code, config?.gridPreviewDuration || 5);
           return;
         }
+        if (room.mode === "DICE_RACE") {
+          const launchDiceFirstQuestion = () => {
+            roomPrepareStates.delete(room.id);
+            startQuestionPrepareAndLaunch(room, questions, 0);
+          };
+          io2.to(`room:${room.code}`).emit("game:starting", {
+            seconds: 6,
+            message: "\u{1F3C1} Cu\u1ED9c \u0111ua c\u1EDD x\xED ng\u1EA7u b\u1EAFt \u0111\u1EA7u! Chi\xEAm ng\u01B0\u1EE1ng \u0111\u01B0\u1EDDng \u0111ua tr\u01B0\u1EDBc khi v\xE0o c\xE2u h\u1ECFi 1..."
+          });
+          const timer2 = setTimeout(() => {
+            launchDiceFirstQuestion();
+          }, 6e3);
+          roomPrepareStates.set(room.id, {
+            type: "STARTING",
+            questionIndex: 0,
+            totalQuestions: questions.length,
+            targetTimestamp: Date.now() + 6e3,
+            timer: timer2,
+            skipCallback: launchDiceFirstQuestion
+          });
+          return;
+        }
         const launchWarmupToFirstQuestion = () => {
           roomPrepareStates.delete(room.id);
           startQuestionPrepareAndLaunch(room, questions, 0);

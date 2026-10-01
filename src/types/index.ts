@@ -832,6 +832,7 @@ export interface GameEndPayload {
 
 export interface GameStartingPayload {
   seconds: number;
+  message?: string;
 }
 
 export interface GamePreparePayload {

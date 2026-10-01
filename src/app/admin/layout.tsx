@@ -162,11 +162,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* ── Main workspace content ── */}
-      <main className="lg:ml-64 xl:ml-72 flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen">
-        <div className="max-w-6xl mx-auto w-full">
-          {children}
-        </div>
-      </main>
+      {pathname.startsWith("/admin/sandbox") ? (
+        <main className="lg:ml-64 xl:ml-72 flex-1 h-screen max-h-screen overflow-hidden p-2 pt-16 lg:pt-2 flex flex-col min-h-0">
+          <div className="w-full h-full flex flex-col min-h-0">
+            {children}
+          </div>
+        </main>
+      ) : (
+        <main className="lg:ml-64 xl:ml-72 flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen">
+          <div className="max-w-6xl mx-auto w-full">
+            {children}
+          </div>
+        </main>
+      )}
     </div>
   );
 }

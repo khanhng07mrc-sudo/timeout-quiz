@@ -429,25 +429,47 @@ export default function DisplayPage() {
           </div>
         )}
 
-        <div className="text-center z-10 max-w-2xl space-y-6 animate-slide-up">
-          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-sm font-bold uppercase tracking-widest">
-            ⚡ Chuẩn bị bắt đầu trận đấu
-          </div>
-          <h1 className="text-5xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-            {roomState?.name ?? "Timeout Quiz"}
-          </h1>
-          <p className="text-xl text-white/70">
-            Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
-          </p>
-          <div className="py-6">
-            <div className="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-8xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
-              {matchStarting.seconds}
+        {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (
+          <div className="w-full max-w-6xl space-y-4 animate-slide-up z-10">
+            <div className="flex items-center justify-between p-3.5 sm:p-4 rounded-2xl glass border border-amber-500/40 bg-amber-500/10 shadow-xl">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl animate-bounce">🏁</span>
+                <div className="text-left">
+                  <h2 className="text-xl sm:text-2xl font-black text-amber-300">
+                    BẮT ĐẦU ĐƯỜNG ĐUA CỜ XÍ NGẦU!
+                  </h2>
+                  <p className="text-xs sm:text-sm text-amber-200/90">
+                    Chiêm ngưỡng toàn cảnh các ô và vị trí quân cờ xuất phát trước khi vào câu hỏi 1...
+                  </p>
+                </div>
+              </div>
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 text-black font-black text-2xl shadow-xl border-2 border-amber-300 shrink-0">
+                {matchStarting.seconds}s
+              </div>
             </div>
+            <DiceRaceTrack diceState={roomState.diceRaceState} isDisplay={true} mode="full" />
           </div>
-          <p className="text-sm text-cyan-300 font-mono tracking-wider animate-pulse">
-            Trận đấu sẽ bắt đầu ngay sau tiếng chuông...
-          </p>
-        </div>
+        ) : (
+          <div className="text-center z-10 max-w-2xl space-y-6 animate-slide-up">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-sm font-bold uppercase tracking-widest">
+              ⚡ Chuẩn bị bắt đầu trận đấu
+            </div>
+            <h1 className="text-5xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+              {roomState?.name ?? "Timeout Quiz"}
+            </h1>
+            <p className="text-xl text-white/70">
+              Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
+            </p>
+            <div className="py-6">
+              <div className="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-8xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
+                {matchStarting.seconds}
+              </div>
+            </div>
+            <p className="text-sm text-cyan-300 font-mono tracking-wider animate-pulse">
+              Trận đấu sẽ bắt đầu ngay sau tiếng chuông...
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -927,15 +949,19 @@ export default function DisplayPage() {
         )}
 
         {/* Board tracking widgets when question is active */}
-        {currentQuestion && roomState.mode === "GRID_CARO" && roomState.gridCaroState && (
+        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
           <div className="w-full animate-slide-up">
-            <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
+            <DiceRaceTrack
+              diceState={roomState.diceRaceState}
+              isDisplay={true}
+              mode={revealPayload ? "full" : "mini"}
+            />
           </div>
         )}
 
-        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
+        {currentQuestion && roomState.mode === "GRID_CARO" && roomState.gridCaroState && (
           <div className="w-full animate-slide-up">
-            <DiceRaceTrack diceState={roomState.diceRaceState} isDisplay={true} />
+            <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
           </div>
         )}
 

@@ -62,6 +62,8 @@ export default function AdminSandboxPage() {
 
   // Rule modal
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [showCheatDropdown, setShowCheatDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
 
   // Sockets
@@ -484,27 +486,26 @@ export default function AdminSandboxPage() {
     let diceRaceState: any = undefined;
     if (mode === "DICE_RACE") {
       const tiles = Array.from({ length: 30 }, (_, idx) => {
-        const id = idx + 1;
         let type = "NORMAL";
-        let label = `Ô ${id}`;
-        if (id === 30) { type = "FINISH"; label = "Về đích"; }
-        else if (id === 5) { type = "BOOST"; label = "Tăng tốc +2"; }
-        else if (id === 8) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (id === 12) { type = "TRAP"; label = "Bẫy lùi 2"; }
-        else if (id === 16) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (id === 20) { type = "SHIELD"; label = "Khiên bảo vệ"; }
-        else if (id === 24) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
-        else if (id === 27) { type = "SWAP"; label = "Đổi vị trí"; }
-        return { id, position: id, type, label };
+        let label = `Ô ${idx + 1}`;
+        if (idx === 29) { type = "FINISH"; label = "Về đích"; }
+        else if (idx === 4) { type = "BOOST"; label = "+2 Bước"; }
+        else if (idx === 7) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
+        else if (idx === 11) { type = "TRAP"; label = "-2 Bước"; }
+        else if (idx === 15) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
+        else if (idx === 19) { type = "SHIELD"; label = "Khiên"; }
+        else if (idx === 23) { type = "EXTRA_ROLL"; label = "x2 Cơ hội"; }
+        else if (idx === 26) { type = "SWAP"; label = "Đổi chỗ"; }
+        return { index: idx, type: type as any, label };
       });
       diceRaceState = {
         totalTiles: 30,
         tiles,
         teamPositions: {
-          t_red: { teamId: "t_red", teamName: "Đội Đỏ (Bạn)", color: "#ef4444", position: 1, shields: 0, extraRollGranted: false, isFinished: false },
-          t_blue: { teamId: "t_blue", teamName: "Đội Xanh 🤖", color: "#3b82f6", position: 1, shields: 0, extraRollGranted: false, isFinished: false },
-          t_yellow: { teamId: "t_yellow", teamName: "Đội Vàng 🤖", color: "#eab308", position: 1, shields: 0, extraRollGranted: false, isFinished: false },
-          t_purple: { teamId: "t_purple", teamName: "Đội Tím 🤖", color: "#a855f7", position: 1, shields: 0, extraRollGranted: false, isFinished: false },
+          t_red: { teamId: "t_red", teamName: "Đội Đỏ (Bạn)", teamColor: "#ef4444", position: 0, hasFinished: false, hasShield: false },
+          t_blue: { teamId: "t_blue", teamName: "Đội Xanh 🤖", teamColor: "#3b82f6", position: 0, hasFinished: false, hasShield: false },
+          t_yellow: { teamId: "t_yellow", teamName: "Đội Vàng 🤖", teamColor: "#eab308", position: 0, hasFinished: false, hasShield: false },
+          t_purple: { teamId: "t_purple", teamName: "Đội Tím 🤖", teamColor: "#a855f7", position: 0, hasFinished: false, hasShield: false },
         },
         currentTurnTeamId: "t_red",
         currentTurnTeamName: "Đội Đỏ (Bạn)",
@@ -655,100 +656,120 @@ export default function AdminSandboxPage() {
   };
 
   // ── Host Actions ──────────────────────────────────────────────────────────
-  const handleAdminNext = () => {
-    if (isOfflineSandbox) {
-      if (offlineTimerRef.current) {
-        clearInterval(offlineTimerRef.current);
+  const launchOfflineQuestion = (nextIdx: number) => {
+    if (offlineTimerRef.current) {
+      clearInterval(offlineTimerRef.current);
+      offlineTimerRef.current = null;
+    }
+    offlineAnswersRef.current.clear();
+
+    const questions = offlineQuestionsRef.current;
+    offlineQIndexRef.current = nextIdx;
+    const q = questions[nextIdx] || DEFAULT_OFFLINE_BANK.questions![0];
+
+    const timeLimit = q.timeLimit || 20;
+    const qState: QuestionState = {
+      question: {
+        id: q.id || `q_${nextIdx + 1}`,
+        type: q.type || "MC_SINGLE",
+        content: q.content,
+        options: q.options?.map((o: any) => ({ id: o.id, text: o.text })),
+        points: q.points || 10,
+        timeLimit,
+        hint: q.hint,
+        order: nextIdx + 1,
+      },
+      timeLimit,
+      startedAt: Date.now(),
+      activeBoosts: [],
+      timerPending: false,
+      timerStarted: true,
+      buzzUnlocked: selectedMode === "BUZZ" ? false : true,
+      buzzUnlockMode: "MANUAL",
+      bouncebackSelectPhase: selectedMode === "BOUNCEBACK",
+      primaryTeamId:
+        selectedMode === "BOUNCEBACK"
+          ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id
+          : selectedMode === "GRID_CARO"
+          ? (roomState?.gridCaroState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
+          : selectedMode === "DICE_RACE"
+          ? (roomState?.diceRaceState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
+          : selectedMode === "TOURNAMENT"
+          ? roomState?.teams[0]?.id
+          : undefined,
+      primaryTeamName:
+        selectedMode === "BOUNCEBACK"
+          ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name
+          : selectedMode === "GRID_CARO"
+          ? (roomState?.gridCaroState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
+          : selectedMode === "DICE_RACE"
+          ? (roomState?.diceRaceState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
+          : selectedMode === "TOURNAMENT"
+          ? `${roomState?.teams[0]?.name || "Đội 1"} vs ${roomState?.teams[1]?.name || "Đội 2"}`
+          : undefined,
+      tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
+      tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
+    };
+
+    setCurrentQuestion(qState);
+    setRevealPayload(null);
+    setTimer({ remaining: timeLimit, total: timeLimit });
+    offlineRemainingRef.current = timeLimit;
+
+    setRoomState((prev) => prev ? { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx } : prev);
+
+    offlineTimerRef.current = setInterval(() => {
+      offlineRemainingRef.current -= 1;
+      const rem = offlineRemainingRef.current;
+      setTimer({ remaining: rem, total: timeLimit });
+      if (rem <= 0) {
+        if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
         offlineTimerRef.current = null;
       }
-      offlineAnswersRef.current.clear();
+    }, 1000);
 
-      const questions = offlineQuestionsRef.current;
-      const nextIdx = (offlineQIndexRef.current + 1) % (questions.length || 1);
-      offlineQIndexRef.current = nextIdx;
-      const q = questions[nextIdx] || DEFAULT_OFFLINE_BANK.questions![0];
-
-      const timeLimit = q.timeLimit || 20;
-      const qState: QuestionState = {
-        question: {
-          id: q.id || `q_${nextIdx + 1}`,
-          type: q.type || "MC_SINGLE",
-          content: q.content,
-          options: q.options?.map((o: any) => ({ id: o.id, text: o.text })),
-          points: q.points || 10,
-          timeLimit,
-          hint: q.hint,
-          order: nextIdx + 1,
-        },
-        timeLimit,
-        startedAt: Date.now(),
-        activeBoosts: [],
-        timerPending: false,
-        timerStarted: true,
-        buzzUnlocked: selectedMode === "BUZZ" ? false : true,
-        buzzUnlockMode: "MANUAL",
-        bouncebackSelectPhase: selectedMode === "BOUNCEBACK",
-        primaryTeamId:
-          selectedMode === "BOUNCEBACK"
-            ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id
-            : selectedMode === "GRID_CARO"
-            ? (roomState?.gridCaroState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
-            : selectedMode === "DICE_RACE"
-            ? (roomState?.diceRaceState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
-            : selectedMode === "TOURNAMENT"
-            ? roomState?.teams[0]?.id
-            : undefined,
-        primaryTeamName:
-          selectedMode === "BOUNCEBACK"
-            ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name
-            : selectedMode === "GRID_CARO"
-            ? (roomState?.gridCaroState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
-            : selectedMode === "DICE_RACE"
-            ? (roomState?.diceRaceState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
-            : selectedMode === "TOURNAMENT"
-            ? `${roomState?.teams[0]?.name || "Đội 1"} vs ${roomState?.teams[1]?.name || "Đội 2"}`
-            : undefined,
-        tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
-        tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
-      };
-
-      setCurrentQuestion(qState);
-      setRevealPayload(null);
-      setTimer({ remaining: timeLimit, total: timeLimit });
-      offlineRemainingRef.current = timeLimit;
-
-      setRoomState((prev) => prev ? { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx } : prev);
-
-      offlineTimerRef.current = setInterval(() => {
-        offlineRemainingRef.current -= 1;
-        const rem = offlineRemainingRef.current;
-        setTimer({ remaining: rem, total: timeLimit });
-        if (rem <= 0) {
-          if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
-          offlineTimerRef.current = null;
-        }
-      }, 1000);
-
-      if (botAutoEnabled) {
-        setTimeout(() => {
-          const opts = q.options || [];
-          if (opts.length > 0) {
-            ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
-              const bOpt = opts[Math.floor(Math.random() * opts.length)];
-              const isCorrect = (bOpt as any).isCorrect ?? false;
-              offlineAnswersRef.current.set(bTeamId, {
-                answer: bOpt.id,
-                isCorrect,
-                points: isCorrect ? (q.points || 10) : 0,
-              });
-              const teamName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
-              addLog(`Bot [${teamName}] nộp đáp án: ${bOpt.text}`);
+    if (botAutoEnabled) {
+      setTimeout(() => {
+        const opts = q.options || [];
+        if (opts.length > 0) {
+          ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
+            const bOpt = opts[Math.floor(Math.random() * opts.length)];
+            const isCorrect = (bOpt as any).isCorrect ?? false;
+            offlineAnswersRef.current.set(bTeamId, {
+              answer: bOpt.id,
+              isCorrect,
+              points: isCorrect ? (q.points || 10) : 0,
             });
-          }
-        }, 2200);
+            const teamName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
+            addLog(`Bot [${teamName}] nộp đáp án: ${bOpt.text}`);
+          });
+        }
+      }, 2200);
+    }
+
+    addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
+  };
+
+  const handleAdminNext = () => {
+    if (isOfflineSandbox) {
+      // Khi nhấn Bắt đầu ở LOBBY: Hiện bàn cờ/đường đua trước rồi mới hiện câu hỏi!
+      if (roomState?.status === "LOBBY") {
+        setRoomState((prev) => prev ? { ...prev, status: "PLAYING" } : prev);
+        if (selectedMode === "DICE_RACE") {
+          addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Chiêm ngưỡng đường đua trước khi vào câu hỏi 1... (5s)");
+          setTimeout(() => {
+            launchOfflineQuestion(0);
+          }, 5000);
+          return;
+        } else if (selectedMode === "GRID_CARO") {
+          addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
+          return;
+        }
       }
 
-      addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
+      const questions = offlineQuestionsRef.current;
+      const nextIdx = currentQuestion ? (offlineQIndexRef.current + 1) % (questions.length || 1) : 0;
+      launchOfflineQuestion(nextIdx);
       return;
     }
 
@@ -1178,39 +1199,51 @@ export default function AdminSandboxPage() {
   const currentTeam = roomState?.teams?.[activeTeamIndex] || roomState?.teams?.[0];
 
   return (
-    <div className="space-y-4">
-      {/* ── Top Header Controls ─────────────────────────────────────── */}
-      <div className="glass rounded-2xl p-4 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-xl shadow glow-purple shrink-0">
+    <div className="h-full max-h-full flex flex-col min-h-0 gap-2 overflow-hidden">
+      {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
+      <div className="glass rounded-xl px-3 py-2 border border-white/10 flex flex-wrap items-center justify-between gap-2 shadow-lg shrink-0 bg-[#121424]">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-base shadow glow-purple shrink-0">
             🧪
           </div>
           <div>
-            <h1 className="text-xl font-black text-white flex items-center gap-2 flex-wrap">
-              <span>Sandbox Studio Hợp Nhất</span>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-white whitespace-nowrap">Sandbox Studio</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap">
                 1 Người Điều Khiển
               </span>
               {isOfflineSandbox && (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap animate-pulse">
-                  ⚡ Ngoại tuyến (Offline Mode)
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap animate-pulse">
+                  ⚡ Ngoại tuyến
                 </span>
               )}
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Màn chiếu hội trường trực quan bên trái · Thiết bị thí sinh linh hoạt chuyển đổi bên phải
-            </p>
+              {code && (
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs">
+                  <span className="text-muted-foreground text-[10px]">PIN:</span>
+                  <span className="font-mono font-black text-cyan-300">{code}</span>
+                  <span className="text-purple-300 font-bold inline-flex items-center gap-1 text-[11px]">
+                    <GameModeIcon mode={roomState?.mode || "CLASSIC"} className="w-3 h-3" />
+                    [{roomState?.mode}]
+                  </span>
+                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                    roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"
+                  }`}>
+                    {roomState?.status}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Room Launch or Connected Status */}
-        <div className="flex items-center gap-2 flex-wrap justify-start md:justify-end">
+        {/* Room Launch or Connected Status Controls */}
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           {!code ? (
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <select
                 value={selectedMode}
                 onChange={(e) => setSelectedMode(e.target.value as GameMode)}
-                className="px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
+                className="px-2.5 py-1.5 rounded-lg glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
               >
                 {AVAILABLE_MODES.map((m) => (
                   <option key={m.mode} value={m.mode}>
@@ -1222,14 +1255,14 @@ export default function AdminSandboxPage() {
               <select
                 value={selectedBankId}
                 onChange={(e) => setSelectedBankId(e.target.value)}
-                className="px-3 py-2 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none min-w-[180px] max-w-[260px] truncate"
+                className="px-2.5 py-1.5 rounded-lg glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none min-w-[140px] max-w-[200px] truncate"
               >
                 {quizBanks.length === 0 ? (
-                  <option value="">📚 Bộ đề mặc định (25 câu)</option>
+                  <option value="">📚 Mặc định (25 câu)</option>
                 ) : (
                   quizBanks.map((b) => (
                     <option key={b.id} value={b.id}>
-                      📚 {b.title} ({b._count?.questions ?? 25} câu)
+                      📚 {b.title} ({b._count?.questions ?? 25}c)
                     </option>
                   ))
                 )}
@@ -1239,67 +1272,51 @@ export default function AdminSandboxPage() {
                 type="button"
                 disabled={creating}
                 onClick={handleLaunchSandbox}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow-lg transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50 flex items-center gap-1 whitespace-nowrap"
               >
                 <span>⚡</span>
-                <span>{creating ? "Đang tạo..." : "Khởi chạy Sandbox"}</span>
+                <span>{creating ? "Đang tạo..." : "Chạy Sandbox"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => startOfflineSandbox(selectedMode, selectedBankId)}
-                className="px-3 py-2 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                className="px-2.5 py-1.5 rounded-lg glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
                 title="Chạy mô phỏng trực tiếp trên trình duyệt, không cần máy chủ mạng"
               >
                 <span>🔌</span>
-                <span>Chạy Offline</span>
+                <span>Offline</span>
               </button>
 
-              <div className="text-muted-foreground text-xs px-1">hoặc</div>
-
-              <form onSubmit={handleConnectExisting} className="flex items-center gap-1">
+              <form onSubmit={handleConnectExisting} className="flex items-center gap-1 ml-1">
                 <input
                   type="text"
-                  placeholder="Mã PIN 6 số"
+                  placeholder="PIN 6 số"
                   value={inputCode}
                   onChange={(e) => setInputCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  className="w-24 px-2.5 py-2 rounded-xl glass border border-white/20 text-center font-mono font-bold text-xs text-white bg-[#151728]"
+                  className="w-20 px-2 py-1.5 rounded-lg glass border border-white/20 text-center font-mono font-bold text-xs text-white bg-[#151728]"
                 />
                 <button
                   type="submit"
                   disabled={inputCode.length !== 6}
-                  className="px-3 py-2 rounded-xl glass hover:bg-white/10 text-white font-bold text-xs border border-white/20 disabled:opacity-40 whitespace-nowrap"
+                  className="px-2.5 py-1.5 rounded-lg glass hover:bg-white/10 text-white font-bold text-xs border border-white/20 disabled:opacity-40 whitespace-nowrap"
                 >
-                  Gắn PIN
+                  Gắn
                 </button>
               </form>
             </div>
           ) : (
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="px-3 py-1.5 rounded-xl glass border border-purple-500/40 text-xs flex items-center gap-2 shrink-0">
-                <span className="text-muted-foreground">Phòng:</span>
-                <span className="font-mono font-black text-cyan-300 text-sm">{code}</span>
-                <span className="text-purple-300 font-bold inline-flex items-center gap-1">
-                  <GameModeIcon mode={roomState?.mode || "CLASSIC"} className="w-3.5 h-3.5" />
-                  [{roomState?.mode}]
-                </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                  roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"
-                }`}>
-                  {roomState?.status}
-                </span>
-              </div>
-
+            <div className="flex items-center gap-1.5 flex-wrap">
               {/* Bot Auto Toggle */}
               <button
                 type="button"
                 onClick={() => setBotAutoEnabled(!botAutoEnabled)}
-                className={`px-3 py-1.5 rounded-xl border text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
                   botAutoEnabled
-                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-md"
+                    ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-sm"
                     : "glass border-white/10 text-muted-foreground hover:text-white"
                 }`}
-                title="Bật/Tắt cơ chế Bot tự động nộp đáp án (Mặc định: TẮT để tester tự chủ động kiểm thử)"
+                title="Bật/Tắt cơ chế Bot tự động nộp đáp án"
               >
                 <span>🤖</span>
                 <span className="whitespace-nowrap">Bot Auto: {botAutoEnabled ? "BẬT" : "TẮT"}</span>
@@ -1310,19 +1327,19 @@ export default function AdminSandboxPage() {
                 type="button"
                 onClick={handleTriggerAllBotsAnswer}
                 disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
-                className="px-3 py-1.5 rounded-xl border border-blue-500/40 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30 text-xs font-bold transition flex items-center gap-1.5 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
+                className="px-2.5 py-1 rounded-lg border border-blue-500/40 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30 text-xs font-bold transition flex items-center gap-1 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
                 title="Yêu cầu tất cả Bot ảo nộp đáp án ngay lúc này"
               >
                 <span>⚡</span>
-                <span className="whitespace-nowrap">Bot nộp đáp án</span>
+                <span className="whitespace-nowrap">Bot nộp bài</span>
               </button>
 
               {/* Tools Group */}
-              <div className="flex items-center gap-1.5 p-0.5 rounded-xl glass border border-white/10 shrink-0">
+              <div className="flex items-center gap-1 p-0.5 rounded-lg glass border border-white/10 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowRulesModal(true)}
-                  className="px-2.5 py-1 rounded-lg hover:bg-white/10 text-cyan-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                  className="px-2 py-0.5 rounded hover:bg-white/10 text-cyan-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
                 >
                   <span>📖</span>
                   <span>Luật</span>
@@ -1335,10 +1352,18 @@ export default function AdminSandboxPage() {
                     }
                     setShowCardModal(true);
                   }}
-                  className="px-2.5 py-1 rounded-lg hover:bg-white/10 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                  className="px-2 py-0.5 rounded hover:bg-white/10 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
                 >
                   <span>🃏</span>
                   <span>Cấp thẻ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="px-2 py-0.5 rounded hover:bg-white/10 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                >
+                  <span>📜</span>
+                  <span>Logs ({botLogs.length})</span>
                 </button>
               </div>
 
@@ -1351,7 +1376,7 @@ export default function AdminSandboxPage() {
                   setCurrentQuestion(null);
                   setIsOfflineSandbox(false);
                 }}
-                className="px-2.5 py-1.5 rounded-xl glass hover:bg-red-500/20 text-red-400 text-xs font-bold transition shrink-0 whitespace-nowrap"
+                className="px-2 py-1 rounded-lg glass hover:bg-red-500/20 text-red-400 text-xs font-bold transition shrink-0 whitespace-nowrap"
               >
                 ✕ Đổi phòng
               </button>
@@ -1360,97 +1385,95 @@ export default function AdminSandboxPage() {
         </div>
       </div>
 
-      {/* ── Studio Main Area ────────────────────────────────────── */}
+      {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
       {!code ? (
-        <div className="glass rounded-3xl p-12 text-center border border-white/10 space-y-6 max-w-2xl mx-auto my-12">
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-4xl mx-auto shadow-2xl glow-purple">
-            🧪
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-3xl font-black text-white">Chào mừng tới Studio Hợp Nhất!</h2>
-            <p className="text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-              Môi trường kiểm thử gọn gàng, liền mạch: Màn hình lớn Display bên trái và 1 thiết bị di động thí sinh bên phải với thanh chuyển đổi 4 đội tức thì.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-lg mx-auto pt-2 text-left">
-            <div className="flex-1">
-              <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ chơi (8 Mode)</label>
-              <select
-                value={selectedMode}
-                onChange={(e) => setSelectedMode(e.target.value as GameMode)}
-                className="w-full px-3 py-2.5 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
-              >
-                {AVAILABLE_MODES.map((m) => (
-                  <option key={m.mode} value={m.mode}>
-                    {m.emoji} {m.name} ({m.mode})
-                  </option>
-                ))}
-              </select>
+        <div className="flex-1 overflow-y-auto flex items-center justify-center p-4">
+          <div className="glass rounded-3xl p-8 text-center border border-white/10 space-y-5 max-w-xl mx-auto shadow-2xl">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-3xl mx-auto shadow-xl glow-purple">
+              🧪
             </div>
-            <div className="flex-1">
-              <label className="block text-[11px] font-bold text-slate-400 mb-1">📚 Bộ câu hỏi</label>
-              <select
-                value={selectedBankId}
-                onChange={(e) => setSelectedBankId(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none truncate"
-              >
-                {quizBanks.length === 0 ? (
-                  <option value="">📚 Bộ đề mặc định (25 câu)</option>
-                ) : (
-                  quizBanks.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      📚 {b.title} ({b._count?.questions ?? 25} câu)
+            <div className="space-y-1.5">
+              <h2 className="text-2xl font-black text-white">Studio Kiểm Thử Hợp Nhất</h2>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+                Màn chiếu hội trường Display bên trái · Thiết bị di động thí sinh bên phải với chuyển đổi 4 đội tức thì. Giao diện tự động co giãn vừa vặn màn hình.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-1 text-left">
+              <div className="flex-1">
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ (8 Mode)</label>
+                <select
+                  value={selectedMode}
+                  onChange={(e) => setSelectedMode(e.target.value as GameMode)}
+                  className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
+                >
+                  {AVAILABLE_MODES.map((m) => (
+                    <option key={m.mode} value={m.mode}>
+                      {m.emoji} {m.name} ({m.mode})
                     </option>
-                  ))
-                )}
-              </select>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">📚 Bộ câu hỏi</label>
+                <select
+                  value={selectedBankId}
+                  onChange={(e) => setSelectedBankId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none truncate"
+                >
+                  {quizBanks.length === 0 ? (
+                    <option value="">📚 Bộ đề mặc định (25 câu)</option>
+                  ) : (
+                    quizBanks.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        📚 {b.title} ({b._count?.questions ?? 25} câu)
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
             </div>
-          </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              type="button"
-              disabled={creating}
-              onClick={handleLaunchSandbox}
-              className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-sm shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap"
-            >
-              {creating ? "Đang chuẩn bị phòng..." : `⚡ Khởi chạy Sandbox: ${selectedMode}`}
-            </button>
-            <button
-              type="button"
-              onClick={() => startOfflineSandbox(selectedMode, selectedBankId)}
-              className="px-6 py-3.5 rounded-2xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-sm shadow-xl transition hover:scale-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-2"
-            >
-              <span>🔌</span>
-              <span>Chạy Offline (Không cần mạng)</span>
-            </button>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+              <button
+                type="button"
+                disabled={creating}
+                onClick={handleLaunchSandbox}
+                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap"
+              >
+                {creating ? "Đang chuẩn bị phòng..." : `⚡ Khởi chạy Sandbox: ${selectedMode}`}
+              </button>
+              <button
+                type="button"
+                onClick={() => startOfflineSandbox(selectedMode, selectedBankId)}
+                className="px-5 py-2.5 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow-xl transition hover:scale-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5"
+              >
+                <span>🔌</span>
+                <span>Chạy Offline (Không cần mạng)</span>
+              </button>
+            </div>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden">
           {/* ══════════════════════════════════════════════════════════════════
               LEFT COLUMN (7 cols ~58%): Large Display + Host Master Controls
              ══════════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-7 flex flex-col gap-3">
-            {/* Host Action Bar (Live Triggers) */}
-            <div className="glass rounded-2xl p-2.5 border border-white/10 bg-[#121424] flex flex-wrap items-center gap-2 shadow-lg">
-              {/* Host MC Tag */}
-              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-purple-950/60 border border-purple-500/30 shrink-0">
-                <span className="text-xs font-black text-purple-300 flex items-center gap-1">
+          <div className="lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden">
+            {/* Host Action Bar (Compact Single Line) */}
+            <div className="glass rounded-xl px-2.5 py-1.5 border border-white/10 bg-[#121424] flex flex-wrap items-center justify-between gap-1.5 shadow shrink-0">
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="text-[11px] font-black text-purple-300 flex items-center gap-1 mr-1">
                   <span>🎛️</span>
                   <span>MC:</span>
                 </span>
-              </div>
 
-              {/* Group 1: Core Flow */}
-              <div className="flex items-center gap-1 p-1 rounded-xl glass border border-white/10 shrink-0 flex-wrap">
-                {/* Next Question / Start */}
+                {/* Core Flow */}
                 {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
                   <button
                     type="button"
                     onClick={handleAdminNext}
-                    className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                    className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
                   >
                     <span>{roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "⏩ Câu kế"}</span>
                   </button>
@@ -1460,7 +1483,7 @@ export default function AdminSandboxPage() {
                 <button
                   type="button"
                   onClick={handleAdminReveal}
-                  className="px-3 py-1.5 rounded-lg glass hover:bg-white/10 border border-white/20 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
                 >
                   <span>👁️</span>
                   <span>Công bố</span>
@@ -1472,7 +1495,7 @@ export default function AdminSandboxPage() {
                     type="button"
                     onClick={handleAdminStopEarly}
                     disabled={Boolean(timer && timer.remaining <= 0)}
-                    className="px-3 py-1.5 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 text-rose-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                    className="px-2.5 py-1 rounded-lg bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/40 text-rose-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                     title="Dừng thời gian câu hỏi ngay lập tức"
                   >
                     <span>⏹️</span>
@@ -1485,169 +1508,158 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={handleStartTimer}
-                    className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
                   >
                     <span>⏱️</span>
-                    <span>Bắt đầu đếm giờ</span>
+                    <span>Bắt đầu tính giờ</span>
+                  </button>
+                )}
+
+                {/* Mode-specific actions */}
+                {roomState?.mode === "BUZZ" && currentQuestion && (
+                  <>
+                    {!currentQuestion.buzzUnlocked && (
+                      <button
+                        type="button"
+                        onClick={handleBuzzUnlock}
+                        className="px-2 py-1 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🔔</span>
+                        <span>Mở chuông</span>
+                      </button>
+                    )}
+                    {currentQuestion.buzzedTeamId && (
+                      <button
+                        type="button"
+                        onClick={handleBuzzStartAnswer}
+                        className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🎙️</span>
+                        <span>Cho trả lời 15s</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {roomState?.mode === "BOUNCEBACK" && currentQuestion && (
+                  <>
+                    {currentQuestion.bouncebackSelectPhase && (
+                      <div className="flex items-center gap-1 bg-blue-500/20 border border-blue-500/40 px-1 py-0.5 rounded-lg">
+                        <span className="text-[10px] font-bold text-blue-300">Gói:</span>
+                        {([10, 20, 30] as const).map((pts) => (
+                          <button
+                            key={pts}
+                            type="button"
+                            onClick={() => handleAdminBouncebackSelectPoints(pts)}
+                            className="px-1.5 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black shadow transition active:scale-95 cursor-pointer"
+                          >
+                            {pts}đ
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleBouncebackOpenSteal}
+                      className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                    >
+                      <span>🔔</span>
+                      <span>Mở cướp 5s</span>
+                    </button>
+                    {currentQuestion.stealBuzzedTeamId && (
+                      <button
+                        type="button"
+                        onClick={handleBouncebackStartStealAnswer}
+                        className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🎙️</span>
+                        <span>Cho cướp 15s</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {roomState?.mode === "GRID_CARO" && (
+                  <>
+                    {!currentQuestion && roomState.gridCaroState?.selectedCellId && (
+                      <button
+                        type="button"
+                        onClick={handleGridLaunchQuestion}
+                        className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>📖</span>
+                        <span>Hiện câu (#{roomState.gridCaroState.selectedCellId})</span>
+                      </button>
+                    )}
+                    {!currentQuestion && !roomState.gridCaroState?.previewActive && !roomState.gridCaroState?.selectedCellId && (
+                      <button
+                        type="button"
+                        onClick={handleGridPreviewStart}
+                        className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-purple-500/40 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>👁️</span>
+                        <span>Xem độ khó (5s)</span>
+                      </button>
+                    )}
+                    {!currentQuestion && roomState.gridCaroState?.previewActive && (
+                      <button
+                        type="button"
+                        onClick={handleGridPreviewStop}
+                        className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🙈</span>
+                        <span>Lật úp</span>
+                      </button>
+                    )}
+                    {revealPayload && (
+                      <button
+                        type="button"
+                        onClick={handleGridAdvanceNow}
+                        className="px-2 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🏁</span>
+                        <span>Về bảng ô</span>
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {roomState?.mode === "DICE_RACE" && roomState.diceRaceState?.canRollDice && (
+                  <button
+                    type="button"
+                    onClick={handleDiceRollManual}
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <span>🎲</span>
+                    <span>Tung xúc xắc</span>
                   </button>
                 )}
               </div>
 
-              {/* Group 2: Mode Controls */}
-              {(roomState?.mode === "BUZZ" || roomState?.mode === "BOUNCEBACK" || roomState?.mode === "GRID_CARO" || roomState?.mode === "DICE_RACE") && (
-                <div className="flex items-center gap-1.5 p-1 rounded-xl glass border border-cyan-500/20 bg-cyan-950/20 shrink-0 flex-wrap">
-                  {/* BUZZ Mode Controls */}
-                  {roomState?.mode === "BUZZ" && currentQuestion && (
-                    <>
-                      {!currentQuestion.buzzUnlocked && (
-                        <button
-                          type="button"
-                          onClick={handleBuzzUnlock}
-                          className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>🔔</span>
-                          <span>Mở chuông</span>
-                        </button>
-                      )}
-                      {currentQuestion.buzzedTeamId && (
-                        <button
-                          type="button"
-                          onClick={handleBuzzStartAnswer}
-                          className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>🎙️</span>
-                          <span>Cho trả lời 15s</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* BOUNCEBACK Mode Controls */}
-                  {roomState?.mode === "BOUNCEBACK" && currentQuestion && (
-                    <>
-                      {currentQuestion.bouncebackSelectPhase && (
-                        <div className="flex items-center gap-1 bg-blue-500/20 border border-blue-500/40 p-0.5 rounded-lg">
-                          <span className="text-[10px] font-bold text-blue-300 ml-1">Gói:</span>
-                          {([10, 20, 30] as const).map((pts) => (
-                            <button
-                              key={pts}
-                              type="button"
-                              onClick={() => handleAdminBouncebackSelectPoints(pts)}
-                              className="px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-black shadow transition active:scale-95 cursor-pointer"
-                            >
-                              {pts}đ
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleBouncebackOpenSteal}
-                        className="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                      >
-                        <span>🔔</span>
-                        <span>Mở cướp 5s</span>
-                      </button>
-                      {currentQuestion.stealBuzzedTeamId && (
-                        <button
-                          type="button"
-                          onClick={handleBouncebackStartStealAnswer}
-                          className="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>🎙️</span>
-                          <span>Cho cướp 15s</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* GRID_CARO Controls */}
-                  {roomState?.mode === "GRID_CARO" && (
-                    <>
-                      {!currentQuestion && roomState.gridCaroState?.selectedCellId && (
-                        <button
-                          type="button"
-                          onClick={handleGridLaunchQuestion}
-                          className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>📖</span>
-                          <span>Hiện câu (#{roomState.gridCaroState.selectedCellId})</span>
-                        </button>
-                      )}
-                      {!currentQuestion && !roomState.gridCaroState?.previewActive && !roomState.gridCaroState?.selectedCellId && (
-                        <button
-                          type="button"
-                          onClick={handleGridPreviewStart}
-                          className="px-2.5 py-1.5 rounded-lg glass hover:bg-white/10 border border-purple-500/40 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>👁️</span>
-                          <span>Xem độ khó (5s)</span>
-                        </button>
-                      )}
-                      {!currentQuestion && roomState.gridCaroState?.previewActive && (
-                        <button
-                          type="button"
-                          onClick={handleGridPreviewStop}
-                          className="px-2.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>🙈</span>
-                          <span>Lật úp ngay</span>
-                        </button>
-                      )}
-                      {revealPayload && (
-                        <button
-                          type="button"
-                          onClick={handleGridAdvanceNow}
-                          className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                        >
-                          <span>🏁</span>
-                          <span>Về bảng ô</span>
-                        </button>
-                      )}
-                    </>
-                  )}
-
-                  {/* DICE_RACE Controls */}
-                  {roomState?.mode === "DICE_RACE" && roomState.diceRaceState?.canRollDice && (
-                    <button
-                      type="button"
-                      onClick={handleDiceRollManual}
-                      className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-500 to-amber-500 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
-                    >
-                      <span>🎲</span>
-                      <span>Tung xúc xắc ngay</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Group 3: Utility Controls */}
-              <div className="flex items-center gap-1 p-1 rounded-xl glass border border-white/10 shrink-0 ml-auto">
-                {/* Tua nhanh 1s */}
+              {/* Utility Fast Controls */}
+              <div className="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
                   onClick={handleSkipTimerToOneSecond}
                   title="Giảm thời gian đếm ngược còn 1s"
-                  className="px-2.5 py-1.5 rounded-lg glass hover:bg-white/10 border border-white/20 text-yellow-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
+                  className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-yellow-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap"
                 >
                   <span>⚡</span>
                   <span>Tua 1s</span>
                 </button>
-
-                {/* Pause/Resume */}
                 <button
                   type="button"
                   onClick={handlePauseResume}
-                  className="px-2.5 py-1.5 rounded-lg glass hover:bg-white/10 border border-white/20 text-slate-300 text-xs font-bold transition whitespace-nowrap"
+                  className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-slate-300 text-xs font-bold transition whitespace-nowrap"
                 >
-                  {roomState?.status === "PAUSED" ? "▶️ Tiếp" : "⏸️ Tạm dừng"}
+                  {roomState?.status === "PAUSED" ? "▶️ Tiếp" : "⏸️ Dừng"}
                 </button>
               </div>
             </div>
 
-            {/* Display Iframe Viewport */}
-            <div className="glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl h-[70vh]">
-              <div className="bg-[#151728] px-4 py-2 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300">
+            {/* Display Iframe Viewport (Fills Remaining Height) */}
+            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
+              <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
                 <div className="flex items-center gap-2">
                   <span>📺</span>
                   <span>Màn hình hiển thị hội trường (Display Màn chiếu)</span>
@@ -1660,7 +1672,7 @@ export default function AdminSandboxPage() {
                   Mở tab riêng ↗
                 </Link>
               </div>
-              <div className="flex-1 bg-black">
+              <div className="flex-1 min-h-0 bg-black">
                 <iframe
                   ref={displayIframeRef}
                   src={`/display/${code}`}
@@ -1670,38 +1682,38 @@ export default function AdminSandboxPage() {
               </div>
             </div>
 
-            {/* Live Bot Event Logs */}
-            <div className="glass rounded-2xl p-3 border border-white/10 text-xs bg-[#121424]">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-                  <span>Nhật ký sự kiện Bot ảo:</span>
-                </span>
-                <span className="text-[10px] text-muted-foreground font-mono">
-                  {botLogs.length} events
+            {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
+            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+                <span className="font-bold text-slate-400 text-[11px] shrink-0">Nhật ký:</span>
+                <span className="font-mono text-[11px] text-slate-300 truncate">
+                  {botLogs[0] || "Đang chờ sự kiện đầu tiên..."}
                 </span>
               </div>
-              <div className="max-h-20 overflow-y-auto space-y-1 font-mono text-[11px] text-slate-400 pr-1">
-                {botLogs.map((log, i) => (
-                  <div key={i} className="truncate">{log}</div>
-                ))}
-              </div>
+              <button
+                type="button"
+                onClick={() => setShowLogsModal(true)}
+                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition"
+              >
+                📜 Xem tất cả ({botLogs.length})
+              </button>
             </div>
           </div>
 
           {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-5 flex flex-col gap-3">
-            {/* Team Switcher Tabs */}
-            <div className="glass rounded-2xl p-2 border border-white/10 bg-[#121424]">
-              <div className="text-[11px] font-bold text-slate-400 mb-1.5 px-1 flex items-center justify-between">
-                <span>📱 Chọn Đội để hiển thị trên màn hình điện thoại:</span>
-                <span className="text-cyan-400 font-mono">
-                  Đang xem: {currentTeam?.name || "Đội 1"}
+          <div className="lg:col-span-5 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden">
+            {/* Team Switcher Tabs (Compact) */}
+            <div className="glass rounded-xl p-1.5 border border-white/10 bg-[#121424] shrink-0">
+              <div className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center justify-between">
+                <span>📱 Chọn Đội trên điện thoại:</span>
+                <span className="text-cyan-400 font-mono font-bold">
+                  {currentTeam?.name || "Đội 1"}
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-4 gap-1">
                 {(roomState?.teams || []).map((t, idx) => {
                   const isActive = activeTeamIndex === idx;
                   return (
@@ -1709,21 +1721,21 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`p-2 rounded-xl text-left border transition flex flex-col gap-0.5 cursor-pointer ${
+                      className={`p-1.5 rounded-lg text-left border transition flex flex-col gap-0.5 cursor-pointer ${
                         isActive
-                          ? "bg-purple-600/30 border-purple-500 shadow-lg ring-2 ring-purple-400/50"
+                          ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
                       }`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
-                        <span className="font-bold text-xs truncate text-white">{t.name}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+                        <span className="font-bold text-[11px] truncate text-white">{t.name}</span>
                       </div>
                       <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">
-                          {idx === 0 ? "Bạn (Tester)" : "Bot"}
+                        <span className="text-slate-400 text-[9px]">
+                          {idx === 0 ? "Tester" : "Bot"}
                         </span>
-                        <span className="font-mono font-bold text-cyan-300">
+                        <span className="font-mono font-bold text-cyan-300 text-[10px]">
                           {t.score}đ
                         </span>
                       </div>
@@ -1735,100 +1747,110 @@ export default function AdminSandboxPage() {
 
             {/* Quick Testing Actions for Current Selected Team */}
             {currentTeam && (
-              <div className="glass rounded-2xl p-2.5 border border-white/10 bg-[#151728] space-y-2 text-xs">
+              <div className="glass rounded-xl px-2 py-1.5 border border-white/10 bg-[#151728] shrink-0 flex flex-wrap items-center justify-between gap-1 text-xs">
                 {/* Answer simulation */}
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="font-bold text-slate-400 text-[11px]">Hành động nhanh:</span>
+                <div className="flex items-center gap-1 flex-wrap">
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(true)}
-                    className="px-2.5 py-1 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[11px]"
                   >
                     ✓ Chọn ĐÚNG
                   </button>
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(false)}
-                    className="px-2.5 py-1 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[11px]"
                   >
                     ✗ Chọn SAI
                   </button>
                   <button
                     type="button"
                     onClick={handleForceActiveTeamBuzz}
-                    className="px-2.5 py-1 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[11px]"
                   >
-                    ⚡ Bấm Buzz
+                    ⚡ Buzz
                   </button>
                 </div>
 
-                {/* Secret Wager quick bids (multiples of 5) */}
+                {/* Score Cheat Controls */}
+                <div className="flex items-center gap-1 relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCheatDropdown(!showCheatDropdown)}
+                    className="px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-1"
+                  >
+                    <span>Cheat điểm ({currentTeam.score}đ)</span>
+                    <span>▾</span>
+                  </button>
+
+                  {showCheatDropdown && (
+                    <div className="absolute right-0 top-full mt-1 z-30 p-2 rounded-xl glass border border-white/20 bg-[#151728] shadow-2xl flex flex-col gap-1 w-32">
+                      <button
+                        type="button"
+                        onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
+                        className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono text-[11px]"
+                      >
+                        +20 điểm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleAdjustScore(currentTeam.id, -20); setShowCheatDropdown(false); }}
+                        className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono text-[11px]"
+                      >
+                        -20 điểm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleAdjustScore(currentTeam.id, undefined, 0); setShowCheatDropdown(false); }}
+                        className="px-2 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 text-left font-mono text-[11px]"
+                      >
+                        Set 0 điểm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { handleAdjustScore(currentTeam.id, undefined, 50); setShowCheatDropdown(false); }}
+                        className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-left font-mono text-[11px]"
+                      >
+                        Set 50 điểm
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Secret Wager quick bids if mode is WAGER */}
                 {roomState?.mode === "WAGER" && (
-                  <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/10">
-                    <span className="font-bold text-amber-300 text-[11px]">Cược nhanh (chia hết 5):</span>
+                  <div className="w-full flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
+                    <span className="font-bold text-amber-300 text-[10px]">Cược nhanh:</span>
                     {[10, 15, 20, 25, 30].map((amt) => (
                       <button
                         key={amt}
                         type="button"
                         onClick={() => handleForceActiveTeamWager(amt)}
-                        className="px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-mono font-bold text-[10px]"
+                        className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-mono font-bold text-[9px]"
                       >
                         +{amt}đ
                       </button>
                     ))}
                   </div>
                 )}
-
-                {/* Score Cheat Controls */}
-                <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-white/10">
-                  <span className="font-bold text-slate-400 text-[11px]">Cheat điểm [{currentTeam.name}]:</span>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustScore(currentTeam.id, 20)}
-                    className="px-2 py-0.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-300 hover:bg-green-500/20 font-mono text-[10px]"
-                  >
-                    +20đ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustScore(currentTeam.id, -20)}
-                    className="px-2 py-0.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 hover:bg-red-500/20 font-mono text-[10px]"
-                  >
-                    -20đ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustScore(currentTeam.id, undefined, 0)}
-                    title="Đặt 0đ để kiểm thử cứu trợ WAGER / âm điểm"
-                    className="px-2 py-0.5 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/20 font-mono text-[10px]"
-                  >
-                    Set 0đ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleAdjustScore(currentTeam.id, undefined, 50)}
-                    className="px-2 py-0.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 font-mono text-[10px]"
-                  >
-                    Set 50đ
-                  </button>
-                </div>
               </div>
             )}
 
-            {/* Mobile Device Frame Mockup */}
-            <div className="glass rounded-3xl border-2 border-purple-500/30 overflow-hidden shadow-2xl flex flex-col h-[60vh] bg-[#0b0c16]">
+            {/* Mobile Device Frame Mockup (Fills Remaining Height) */}
+            <div className="flex-1 min-h-0 glass rounded-3xl border-2 border-purple-500/30 overflow-hidden shadow-2xl flex flex-col bg-[#0b0c16]">
               {/* Phone Speaker Notch */}
-              <div className="bg-[#151728] px-4 py-1.5 border-b border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="bg-[#151728] px-3 py-1 border-b border-white/10 flex items-center justify-between text-[10px] text-slate-400 shrink-0">
                 <span className="font-mono">9:41</span>
-                <div className="w-12 h-1.5 rounded-full bg-white/20" />
-                <span className="flex items-center gap-1 font-mono text-[10px]">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+                <span className="flex items-center gap-1 font-mono text-[9px]">
                   <span>5G</span>
                   <span>100%</span>
                 </span>
               </div>
 
               {/* Player Viewport */}
-              <div className="flex-1 bg-[#0f0f1a]">
+              <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
                   key={code || "sandbox-player"}
@@ -1849,29 +1871,29 @@ export default function AdminSandboxPage() {
           onClick={() => setShowCardModal(false)}
         >
           <div
-            className="w-full max-w-md glass rounded-3xl border border-white/20 p-6 flex flex-col gap-5 shadow-2xl bg-[#121324]/95 text-white"
+            className="w-full max-w-md glass rounded-3xl border border-white/20 p-5 flex flex-col gap-4 shadow-2xl bg-[#121324]/95 text-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <h3 className="text-lg font-black flex items-center gap-2">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-base font-black flex items-center gap-2">
                 <span>🃏</span>
                 <span>Cấp thẻ hỗ trợ cho Đội (Debug Card)</span>
               </h3>
               <button
                 onClick={() => setShowCardModal(false)}
-                className="w-8 h-8 rounded-xl glass hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white"
+                className="w-7 h-7 rounded-lg glass hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
+            <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-muted-foreground font-bold mb-1.5">Chọn Đội nhận thẻ:</label>
+                <label className="block text-muted-foreground font-bold mb-1">Chọn Đội nhận thẻ:</label>
                 <select
                   value={grantTargetTeamId}
                   onChange={(e) => setGrantTargetTeamId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-white bg-[#151728] focus:outline-none"
+                  className="w-full px-3 py-1.5 rounded-xl glass border border-white/20 text-white bg-[#151728] focus:outline-none"
                 >
                   {(roomState?.teams || []).map((t) => (
                     <option key={t.id} value={t.id}>
@@ -1882,8 +1904,8 @@ export default function AdminSandboxPage() {
               </div>
 
               <div>
-                <label className="block text-muted-foreground font-bold mb-1.5">Chọn loại thẻ Power-up:</label>
-                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                <label className="block text-muted-foreground font-bold mb-1">Chọn loại thẻ Power-up:</label>
+                <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
                   {(Object.keys(CARD_METADATA) as CardType[]).map((cType) => {
                     const meta = CARD_METADATA[cType];
                     const active = grantCardType === cType;
@@ -1892,13 +1914,13 @@ export default function AdminSandboxPage() {
                         key={cType}
                         type="button"
                         onClick={() => setGrantCardType(cType)}
-                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition ${
+                        className={`p-2 rounded-xl border text-left flex items-center gap-2 transition ${
                           active
                             ? "bg-purple-600/30 border-purple-500 text-white font-bold"
                             : "glass border-white/10 text-slate-300 hover:text-white hover:bg-white/5"
                         }`}
                       >
-                        <span className="text-xl">{meta.emoji}</span>
+                        <span className="text-lg">{meta.emoji}</span>
                         <div className="min-w-0">
                           <p className="truncate font-semibold text-[11px]">{meta.nameVi}</p>
                           <p className="text-[10px] text-muted-foreground truncate">{meta.summaryVi}</p>
@@ -1914,14 +1936,69 @@ export default function AdminSandboxPage() {
               <button
                 type="button"
                 onClick={handleGrantCard}
-                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
+                className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
               >
                 Xác nhận cấp thẻ ngay
               </button>
               <button
                 type="button"
                 onClick={() => setShowCardModal(false)}
-                className="px-4 py-2.5 rounded-xl glass hover:bg-white/10 text-slate-300 font-bold text-xs transition"
+                className="px-4 py-2 rounded-xl glass hover:bg-white/10 text-slate-300 font-bold text-xs transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bot Logs Full Modal ─────────────────────────────────────────── */}
+      {showLogsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowLogsModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl glass rounded-3xl border border-white/20 p-5 flex flex-col gap-3 shadow-2xl bg-[#121324]/95 text-white max-h-[80vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span>📜</span>
+                <span>Toàn bộ nhật ký Bot ảo & Sự kiện ({botLogs.length})</span>
+              </h3>
+              <button
+                onClick={() => setShowLogsModal(false)}
+                className="w-7 h-7 rounded-lg glass hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 font-mono text-xs text-slate-300 pr-1 p-2 rounded-xl bg-black/40 border border-white/5">
+              {botLogs.length === 0 ? (
+                <p className="text-slate-500 text-center py-4">Chưa có nhật ký sự kiện nào.</p>
+              ) : (
+                botLogs.map((log, i) => (
+                  <div key={i} className="py-0.5 border-b border-white/5 last:border-0 leading-relaxed">
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-1 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setBotLogs([])}
+                className="px-3 py-1.5 rounded-lg glass hover:bg-red-500/20 text-red-400 font-bold text-xs transition"
+              >
+                Xóa sạch logs
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogsModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
               >
                 Đóng
               </button>

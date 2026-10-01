@@ -1914,6 +1914,33 @@ export function registerSocketHandlers(io: IO) {
           return;
         }
 
+        if (room.mode === "DICE_RACE") {
+          // Hiện bàn cờ đường đua trước để người chơi và màn chiếu xem toàn cảnh đường đua, sau 6s mới mở câu hỏi 1
+          const launchDiceFirstQuestion = () => {
+            roomPrepareStates.delete(room.id);
+            startQuestionPrepareAndLaunch(room, questions, 0);
+          };
+
+          io.to(`room:${room.code}`).emit("game:starting", {
+            seconds: 6,
+            message: "🏁 Cuộc đua cờ xí ngầu bắt đầu! Chiêm ngưỡng đường đua trước khi vào câu hỏi 1...",
+          });
+
+          const timer = setTimeout(() => {
+            launchDiceFirstQuestion();
+          }, 6000);
+
+          roomPrepareStates.set(room.id, {
+            type: "STARTING",
+            questionIndex: 0,
+            totalQuestions: questions.length,
+            targetTimestamp: Date.now() + 6000,
+            timer,
+            skipCallback: launchDiceFirstQuestion,
+          });
+          return;
+        }
+
         const launchWarmupToFirstQuestion = () => {
           roomPrepareStates.delete(room.id);
           startQuestionPrepareAndLaunch(room, questions, 0);

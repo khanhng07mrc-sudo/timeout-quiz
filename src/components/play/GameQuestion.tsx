@@ -121,7 +121,7 @@ export default function GameQuestion({
   };
 
   return (
-    <div className="glass rounded-2xl p-6 flex flex-col gap-4 animate-slide-up">
+    <div className="glass rounded-2xl p-3 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 animate-slide-up">
       {/* Spectator Mode Notice */}
       {isSpectator && (
         <div className="p-3.5 rounded-2xl bg-purple-900/40 border-2 border-purple-500/50 text-purple-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg">
@@ -433,7 +433,7 @@ export default function GameQuestion({
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
                 disabled={disabled}
-                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] min-h-[54px] sm:min-h-[60px] ${
+                className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.98] min-h-[44px] sm:min-h-[52px] ${
                   isHidden
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
@@ -447,12 +447,12 @@ export default function GameQuestion({
                     : "border-border hover:border-purple-400 hover:bg-white/5 active:bg-purple-500/10 cursor-pointer"
                 }`}
               >
-                <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 shadow ${
+                <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black shrink-0 shadow ${
                   badgeClasses[i % badgeClasses.length]
                 }`}>
                   {labels[i] ?? i + 1}
                 </span>
-                <span className="flex-1 text-sm sm:text-base font-semibold leading-snug">{opt.text}</span>
+                <span className="flex-1 text-xs sm:text-sm font-semibold leading-snug">{opt.text}</span>
                 {isHidden && (
                   <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
                     50/50
@@ -479,7 +479,7 @@ export default function GameQuestion({
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
                 disabled={disabled}
-                className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3 rounded-xl border-2 text-left transition-all ${
                   isHidden
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
@@ -493,11 +493,11 @@ export default function GameQuestion({
                     : "border-border hover:border-purple-400"
                 }`}
               >
-                <span className="w-8 h-8 rounded border-2 flex items-center justify-center shrink-0">
+                <span className="w-7 h-7 sm:w-8 sm:h-8 rounded border-2 flex items-center justify-center shrink-0">
                   {isSelected && "✓"}
                 </span>
-                <span className="font-bold w-6">{labels[i]}</span>
-                <span className="flex-1">{opt.text}</span>
+                <span className="font-bold w-5 sm:w-6 text-xs sm:text-sm">{labels[i]}</span>
+                <span className="flex-1 text-xs sm:text-sm font-semibold">{opt.text}</span>
                 {isHidden && (
                   <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
                     50/50
@@ -510,7 +510,7 @@ export default function GameQuestion({
             <button
               onClick={handleSubmitMulti}
               disabled={selected.length === 0}
-              className="mt-2 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition-colors disabled:opacity-50"
+              className="mt-1.5 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50"
             >
               Xác nhận ({selected.length} đã chọn)
             </button>

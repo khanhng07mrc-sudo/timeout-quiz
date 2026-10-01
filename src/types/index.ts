@@ -221,18 +221,18 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     summaryVi: "Đấu trí chiến thuật trước mỗi câu hỏi. Mỗi đội được tặng trước 50 điểm khởi đầu. Biết trước chủ đề & độ khó Bloom, các đội bí mật đặt cược số điểm của mình với cơ chế trợ cấp kịch tính.",
     mechanicsVi: [
       "Điểm khởi đầu: Mỗi đội được tặng trước 50 điểm ngay khi bắt đầu vòng thi.",
-      "Cược điểm bí mật: Trong 15 giây, mỗi đội chọn cược số điểm mình tự tin (tối thiểu 10đ đến All-in 100% điểm). Đội âm hoặc 0 điểm có thể cược hạn mức tối thiểu.",
+      "Cược mở màn & 15s nâng cược: Hệ thống đếm 5s mở màn; nếu không ai cược, hệ thống tự gán ngẫu nhiên 1 đội cược 10đ mặc định. Sau đó các đội có 15s để nâng cược.",
+      "Chủ động mở câu hỏi: Sau khi chốt phiên cược, câu hỏi chỉ hiện lên khi Quản trò chủ động bấm mở, tránh vội vã.",
       "Cứu trợ Hồi sinh (Bailout): Khi điểm số tụt xuống ≤ 0 trong cuộc chơi, đội được phép kích hoạt trợ cấp để hồi sinh bằng điểm của đội thấp nhất (đang có điểm > 0). Giới hạn tối đa 1 lần dùng/đội.",
-      "Thứ tự chết & Ưu tiên trợ cấp: Admin chỉ có thể kích hoạt trợ cấp cho duy nhất 1 đội theo đúng thứ tự rơi điểm (đội rơi ≤ 0 trước được cứu trước). Mỗi câu hỏi chỉ cứu tối đa 1 đội, các đội sau phải đợi các câu tiếp theo.",
       "Điều kiện công bằng & Thắng Knockout: Quyền trợ cấp CHỈ sử dụng được khi còn ít nhất 2 đội có điểm > 0. Nếu chỉ còn duy nhất 1 đội có điểm > 0, đội đó lập tức CHIẾN THẮNG ngay (Knockout Win)!",
     ],
     scoringVi: [
-      "Trả lời đúng: Nhận thêm đúng số điểm đã cược (+Wager).",
-      "Trả lời sai: Bị trừ đúng số điểm đã cược (-Wager).",
+      "Đội cược cuối cùng: Đúng = Nhận đúng số điểm cược; Sai = Bị trừ đúng số điểm cược.",
+      "Các đội còn lại: Đúng = Nhận 1/2 điểm câu hỏi (làm tròn lên số chia hết cho 5 gần nhất); Sai = Không mất điểm (0đ).",
       "Trợ cấp: Hồi sinh về mức điểm bằng đội thấp nhất còn dương điểm (> 0).",
     ],
     tipsVi: [
-      "Hãy cẩn trọng khi điểm số xuống thấp vì mỗi câu Admin chỉ cứu được 1 đội theo thứ tự chết!",
+      "Đội cược cuối gánh rủi ro cao nhất nên hãy cân nhắc kỹ giữa việc giành trọn điểm cược hay giữ an toàn hưởng 1/2 điểm câu hỏi!",
       "Tận dụng cơ hội Knockout bằng cách cược thông minh để loại dần các đối thủ về ≤ 0 điểm.",
     ],
   },
@@ -647,6 +647,9 @@ export interface WagerBailoutQueueItem {
 
 export interface WagerState {
   phase: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
+  wagerSubPhase?: "INITIAL_5S" | "MAIN_15S";
+  autoAssignedTeamName?: string;
+  questionReady?: boolean;
   wagerTimeRemaining: number;
   wagerTimeTotal: number;
   minWager: number;
@@ -874,6 +877,7 @@ export interface ClientToServerEvents {
   "admin:dice:roll:manual": () => void;
   "admin:tournament:advance": () => void;
   "admin:wager:skip_timer": () => void;
+  "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;

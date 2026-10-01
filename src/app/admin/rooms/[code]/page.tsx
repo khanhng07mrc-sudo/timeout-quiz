@@ -844,7 +844,16 @@ export default function AdminRoomPage() {
                     onClick={() => emit("admin:wager:skip_timer")}
                     className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
                   >
-                    ⏩ Bỏ qua cược & vào câu hỏi
+                    ⏩ Bỏ qua cược & chốt cược
+                  </button>
+                )}
+                {roomState.wagerState.phase === "QUESTION_PERIOD" && !roomState.wagerState.questionReady && (
+                  <button
+                    onClick={() => emit("admin:wager:launch_question")}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-black text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 animate-pulse flex items-center gap-2"
+                  >
+                    <span>📢</span>
+                    <span>Mở câu hỏi cho thí sinh</span>
                   </button>
                 )}
               </div>
@@ -855,6 +864,7 @@ export default function AdminRoomPage() {
                 teams={roomState.teams}
                 positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
                 onGrantBailout={(teamId) => emit("admin:wager:grant_bailout", { teamId })}
+                onLaunchQuestion={() => emit("admin:wager:launch_question")}
               />
             </div>
           )}

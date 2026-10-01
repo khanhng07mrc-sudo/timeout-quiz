@@ -12,6 +12,7 @@ interface Props {
   onSubmitWager?: (amount: number) => void;
   isAdmin?: boolean;
   onGrantBailout?: (teamId: string) => void;
+  onLaunchQuestion?: () => void;
   isDisplay?: boolean;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
@@ -25,6 +26,7 @@ export default function WagerPanel({
   onSubmitWager,
   isAdmin = false,
   onGrantBailout,
+  onLaunchQuestion,
   isDisplay = false,
   teams = [],
 }: Props) {
@@ -35,6 +37,9 @@ export default function WagerPanel({
 
   const {
     phase,
+    wagerSubPhase,
+    autoAssignedTeamName,
+    questionReady,
     wagerTimeRemaining,
     currentHighestWager = 0,
     lastWagerTeamId,
@@ -91,7 +96,7 @@ export default function WagerPanel({
               </span>
             </h3>
             <p className="text-xs text-muted-foreground">
-              Công khai thời gian thực · 12 ô cược (+5đ/ô) · Không cược 2 lần liên tiếp · Quá điểm mất quyền cược
+              Đội cược cuối: Đúng = +điểm cược, Sai = -điểm cược · Các đội khác: Đúng = +1/2 điểm câu hỏi (làm tròn lên chia hết cho 5), Sai = 0đ
             </p>
           </div>
         </div>
@@ -100,16 +105,54 @@ export default function WagerPanel({
         <div className="flex items-center gap-2">
           {phase === "WAGER_PERIOD" ? (
             <div className="px-4 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/60 text-amber-300 font-bold text-sm flex items-center gap-2 animate-pulse">
-              <span>⏳ Thời gian cược:</span>
+              <span>{wagerSubPhase === "INITIAL_5S" ? "⏱️ Mở màn:" : "⏳ Thời gian cược:"}</span>
               <span className="text-white font-mono font-black text-lg">{wagerTimeRemaining}s</span>
             </div>
           ) : (
             <div className="px-3 py-1 rounded-xl bg-purple-500/20 text-purple-300 text-xs font-semibold">
-              {phase === "QUESTION_PERIOD" ? "Đang trả lời câu hỏi" : "Bảng cược công khai"}
+              {phase === "QUESTION_PERIOD" ? (questionReady ? "Đang trả lời câu hỏi" : "Chờ MC mở câu hỏi") : "Bảng cược công khai"}
             </div>
           )}
         </div>
       </div>
+
+      {/* Initial 5s Alert */}
+      {phase === "WAGER_PERIOD" && wagerSubPhase === "INITIAL_5S" && (
+        <div className="p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-200 text-xs sm:text-sm flex items-center gap-2">
+          <span className="text-lg">⚡</span>
+          <span><strong>5 giây mở màn:</strong> Đội nào cược đầu tiên sẽ kích hoạt 15s đếm ngược. Nếu không có đội nào cược, hệ thống sẽ ngẫu nhiên chọn 1 đội cược 10đ mặc định!</span>
+        </div>
+      )}
+
+      {/* Auto Assigned Notification */}
+      {autoAssignedTeamName && (
+        <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-200 text-xs sm:text-sm flex items-center gap-2">
+          <span className="text-lg">🎲</span>
+          <span>Hệ thống đã chỉ định ngẫu nhiên đội <strong>{autoAssignedTeamName}</strong> cược khởi điểm <strong>10đ</strong>! Các đội kế tiếp có 15s để nâng cược.</span>
+        </div>
+      )}
+
+      {/* Finished Bidding / Waiting for Admin to Launch Question */}
+      {phase === "QUESTION_PERIOD" && !questionReady && (
+        <div className="p-4 rounded-xl bg-amber-500/20 border-2 border-amber-400 text-amber-100 flex flex-col sm:flex-row items-center justify-between gap-3 animate-fadeIn">
+          <div>
+            <p className="font-black text-base text-amber-300">🎉 ĐÃ CHỐT MỨC CƯỢC THÀNH CÔNG!</p>
+            <p className="text-xs text-amber-200/90 mt-0.5">
+              Đội chốt cược cuối cùng: <strong>{wagerHistory[wagerHistory.length - 1]?.teamName ?? "Đội cược"}</strong> ({currentHighestWager}đ).
+              {isAdmin ? " Bấm nút bên dưới để mở câu hỏi cho thí sinh." : " Đang chờ Quản trò mở câu hỏi..."}
+            </p>
+          </div>
+          {isAdmin && onLaunchQuestion && (
+            <button
+              onClick={onLaunchQuestion}
+              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-sm shadow-lg shadow-emerald-500/30 transition-all active:scale-95 animate-pulse shrink-0 flex items-center gap-2"
+            >
+              <span>📢</span>
+              <span>Mở câu hỏi cho thí sinh</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Bailout Queue Banner (When any team falls to <= 0) */}
       {bailoutQueue.length > 0 && (
@@ -481,21 +524,32 @@ export default function WagerPanel({
       {/* Reveal Phase Results Summary */}
       {phase === "REVEAL_PERIOD" && (
         <div className="space-y-2 pt-2 border-t border-white/10">
-          <span className="text-xs font-bold text-muted-foreground uppercase">
-            Kết quả cược công khai toàn phòng:
-          </span>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-xs font-bold text-muted-foreground uppercase">
+              Kết quả cược & tính điểm câu này:
+            </span>
+            <span className="text-[11px] text-amber-300 font-semibold">
+              👑 Đội cược cuối: Đúng +{currentHighestWager}đ / Sai -{currentHighestWager}đ · Các đội còn lại: Đúng +1/2 câu hỏi, Sai 0đ
+            </span>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {Object.entries(teamWagers).map(([teamId, wager]) => {
               const bailoutsRem = teamBailouts[teamId]?.remaining ?? 1;
               const isDisqualified = wager.disqualified;
+              const isLastWager = teamId === lastWagerTeamId;
 
               return (
                 <div
                   key={teamId}
-                  className="p-3 rounded-xl bg-card/50 border border-border/60 flex flex-col gap-1 text-xs"
+                  className={`p-3 rounded-xl border flex flex-col gap-1 text-xs ${
+                    isLastWager
+                      ? "bg-amber-500/20 border-amber-500/60 ring-1 ring-amber-400"
+                      : "bg-card/50 border-border/60"
+                  }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-white truncate max-w-[90px]">
+                    <span className="font-semibold text-white truncate max-w-[90px] flex items-center gap-1">
+                      {isLastWager && <span>👑</span>}
                       {wager.teamName}
                     </span>
                     <span className="text-[10px] text-purple-300 font-bold">
@@ -506,12 +560,16 @@ export default function WagerPanel({
                   <div className="flex items-center justify-between mt-1">
                     {isDisqualified ? (
                       <span className="text-red-400 font-bold text-xs">🚫 Mất quyền cược</span>
+                    ) : isLastWager ? (
+                      <span className="font-mono font-black text-amber-300 text-sm">
+                        {currentHighestWager} pts (Chốt cược)
+                      </span>
                     ) : wager.submitted ? (
-                      <span className="font-mono font-black text-yellow-300 text-sm">
-                        {wager.amount.toLocaleString()} pts (Thứ tự #{wager.order ?? 1})
+                      <span className="font-mono font-medium text-yellow-300/80 text-xs">
+                        Đã nâng {wager.amount}đ
                       </span>
                     ) : (
-                      <span className="text-muted-foreground italic text-xs">Không cược (0đ)</span>
+                      <span className="text-muted-foreground italic text-xs">Không cược</span>
                     )}
                   </div>
                 </div>

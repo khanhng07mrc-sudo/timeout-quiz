@@ -51,6 +51,12 @@ export default function AdminRoomPage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const soundEnabledRef = useRef(false);
 
+  // Security & Host Key
+  const [currentHostKey, setCurrentHostKey] = useState<string>("");
+  const [authRequired, setAuthRequired] = useState(false);
+  const [hostKeyInput, setHostKeyInput] = useState("");
+  const [copiedHostLink, setCopiedHostLink] = useState(false);
+
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
@@ -93,9 +99,15 @@ export default function AdminRoomPage() {
 
   const fetchRoomAndBanks = async () => {
     try {
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const hostKey = currentHostKey || localStorage.getItem(`host_key_${code}`);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (hostKey) headers["x-host-key"] = hostKey;
+
       const [resRoom, resBanks] = await Promise.all([
-        fetch(`/api/rooms/${code}`),
-        fetch("/api/quiz-bank?ownerId=demo-host-id"),
+        fetch(`/api/rooms/${code}`, { headers }),
+        fetch("/api/quiz-bank?ownerId=demo-host-id", { headers }),
       ]);
       const dataRoom = await resRoom.json();
       if (dataRoom.room?.quizBank) {
@@ -114,20 +126,44 @@ export default function AdminRoomPage() {
 
   useEffect(() => {
     fetchRoomAndBanks();
-  }, [code]);
+  }, [code, currentHostKey]);
 
   useEffect(() => {
     soundManager.setMuted(true);
 
-    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({ transports: ["websocket", "polling"] });
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlKey = searchParams.get("key");
+    const storedKey = urlKey || localStorage.getItem(`host_key_${code}`) || "";
+    if (urlKey) {
+      localStorage.setItem(`host_key_${code}`, urlKey);
+    }
+    if (storedKey) {
+      setCurrentHostKey(storedKey);
+    }
+
+    const adminToken = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+    const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
+      transports: ["websocket", "polling"],
+      auth: { token: adminToken },
+    });
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      socket.emit("admin:join", code, (result) => {
-        if (result?.success && result.roomState) {
-          setRoomState(result.roomState);
-        } else if (result?.error) {
-          setErrorMessage(result.error);
+      socket.emit("admin:join", { code, hostKey: storedKey } as any, (result: any) => {
+        if (result?.success) {
+          setAuthRequired(false);
+          if (result.hostKey) {
+            setCurrentHostKey(result.hostKey);
+            localStorage.setItem(`host_key_${code}`, result.hostKey);
+          }
+          if (result.roomState) {
+            setRoomState(result.roomState);
+          }
+        } else {
+          if (result?.requiresAuth || result?.error) {
+            setAuthRequired(true);
+            setErrorMessage(result.error || "Cần quyền Host để điều khiển phòng thi này");
+          }
         }
       });
     });
@@ -268,11 +304,48 @@ export default function AdminRoomPage() {
     emit("admin:lock:cards", locked);
   };
 
+  const handleUnlockHost = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hostKeyInput.trim()) return;
+    const cleanKey = hostKeyInput.trim();
+    localStorage.setItem(`host_key_${code}`, cleanKey);
+    setCurrentHostKey(cleanKey);
+
+    socketRef.current?.emit("admin:join", { code, hostKey: cleanKey } as any, (result: any) => {
+      if (result?.success) {
+        setAuthRequired(false);
+        setErrorMessage("");
+        if (result.hostKey) {
+          setCurrentHostKey(result.hostKey);
+          localStorage.setItem(`host_key_${code}`, result.hostKey);
+        }
+        if (result.roomState) setRoomState(result.roomState);
+      } else {
+        setErrorMessage(result?.error || "Khóa bảo mật Host không chính xác!");
+      }
+    });
+  };
+
+  const handleCopyHostLink = () => {
+    const key = currentHostKey || localStorage.getItem(`host_key_${code}`) || "";
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    const url = key ? `${origin}/admin/rooms/${code}?key=${key}` : `${origin}/admin/rooms/${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedHostLink(true);
+    setTimeout(() => setCopiedHostLink(false), 3000);
+  };
+
   const handleDelete = async () => {
     if (!confirm(`Xóa phòng "${roomState?.name ?? code}"? Hành động này không thể hoàn tác!`)) return;
     setDeleteLoading(true);
     try {
-      const res = await fetch(`/api/rooms/${code}`, { method: "DELETE" });
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const hostKey = currentHostKey || localStorage.getItem(`host_key_${code}`);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (hostKey) headers["x-host-key"] = hostKey;
+
+      const res = await fetch(`/api/rooms/${code}`, { method: "DELETE", headers });
       if (res.ok) {
         socketRef.current?.disconnect();
         router.push("/admin/rooms");
@@ -305,9 +378,15 @@ export default function AdminRoomPage() {
   const handleAssignQuizBank = async (bankId: string) => {
     setUpdatingBank(true);
     try {
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const hostKey = currentHostKey || localStorage.getItem(`host_key_${code}`);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (hostKey) headers["x-host-key"] = hostKey;
+
       const res = await fetch(`/api/rooms/${code}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ quizBankId: bankId || null }),
       });
       if (res.ok) {
@@ -378,55 +457,106 @@ export default function AdminRoomPage() {
         </div>
         <div className="flex gap-2 flex-wrap sm:justify-end">
           <button
+            onClick={handleCopyHostLink}
+            title="Sao chép link điều khiển bí mật có chứa Host Key"
+            className="px-3.5 py-2 rounded-xl bg-purple-600/20 border border-purple-500/40 hover:bg-purple-600/30 text-purple-300 hover:text-white font-medium text-sm transition-colors flex items-center gap-1.5 whitespace-nowrap shadow-sm shrink-0"
+          >
+            <span>🔑</span>
+            <span className="whitespace-nowrap">{copiedHostLink ? "Đã chép link Host!" : "Sao chép Link Host"}</span>
+          </button>
+          <button
             onClick={toggleSound}
             title={soundEnabled ? "Tắt âm thanh máy Host" : "Bật âm thanh máy Host"}
-            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-amber-400 font-medium text-sm transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-amber-400 font-medium text-sm transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <SystemIcon name={soundEnabled ? "sound_on" : "sound_off"} className="w-4 h-4 shrink-0 text-amber-400" />
-            <span>{soundEnabled ? "Âm thanh: BẬT" : "Âm thanh"}</span>
+            <span className="whitespace-nowrap">{soundEnabled ? "Âm thanh: BẬT" : "Âm thanh"}</span>
           </button>
           <button
             type="button"
             onClick={() => setShowRulesModal(true)}
-            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-cyan-300 hover:text-white"
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-cyan-300 hover:text-white whitespace-nowrap shrink-0"
           >
             <span>📖</span>
-            <span>Luật chơi</span>
+            <span className="whitespace-nowrap">Luật chơi</span>
           </button>
           <Link
             href={`/admin/sandbox?code=${code}`}
             target="_blank"
-            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-fuchsia-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-fuchsia-300 hover:text-white"
+            className="px-3.5 py-2 rounded-xl glass border border-border hover:border-fuchsia-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-fuchsia-300 hover:text-white whitespace-nowrap shrink-0"
           >
             <SystemIcon name="sandbox" className="w-4 h-4 shrink-0" />
-            <span>Mở Sandbox</span>
+            <span className="whitespace-nowrap">Mở Sandbox</span>
           </Link>
           <Link
             href={`/display/${code}`}
             target="_blank"
-            className="px-4 py-2 rounded-xl glass border border-border hover:border-purple-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl glass border border-border hover:border-purple-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <SystemIcon name="display" className="w-4 h-4 shrink-0 text-cyan-400" />
-            <span>Màn chiếu</span>
+            <span className="whitespace-nowrap">Màn chiếu</span>
           </Link>
           <a
             href={`/play/${code}`}
             target="_blank"
-            className="px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <SystemIcon name="device" className="w-4 h-4 shrink-0 text-purple-400" />
-            <span>Link tham gia</span>
+            <span className="whitespace-nowrap">Link tham gia</span>
           </a>
           <button
             onClick={handleDelete}
             disabled={deleteLoading}
-            className="px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/40 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/40 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <SystemIcon name="trash" className="w-4 h-4 shrink-0 text-red-400" />
-            <span>{deleteLoading ? "Đang xóa..." : "Xóa phòng"}</span>
+            <span className="whitespace-nowrap">{deleteLoading ? "Đang xóa..." : "Xóa phòng"}</span>
           </button>
         </div>
       </div>
+
+      {/* Auth Guard Modal for Unauthorized Visitors */}
+      {authRequired && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="glass max-w-md w-full p-8 rounded-3xl border border-purple-500/50 shadow-2xl space-y-6 animate-slide-up text-center">
+            <div className="w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center mx-auto text-3xl">
+              🔐
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-white whitespace-nowrap">Yêu cầu quyền Host</h2>
+              <p className="text-sm text-slate-400 mt-2">
+                Phòng thi này được bảo vệ bí mật. Vui lòng nhập Khóa bí mật của Host hoặc Mật khẩu Quản trị để mở quyền điều khiển.
+              </p>
+            </div>
+            <form onSubmit={handleUnlockHost} className="space-y-4">
+              <input
+                type="password"
+                value={hostKeyInput}
+                onChange={(e) => setHostKeyInput(e.target.value)}
+                placeholder="Nhập Host Key (hk_...) hoặc Master Passcode"
+                className="input-box w-full py-3 px-4 text-center text-base font-mono font-semibold"
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/admin/rooms")}
+                  className="flex-1 py-3 px-4 rounded-xl border border-border text-slate-400 hover:text-white text-sm font-semibold whitespace-nowrap"
+                >
+                  Quay lại
+                </button>
+                <button
+                  type="submit"
+                  disabled={!hostKeyInput.trim()}
+                  className="flex-1 btn-gradient py-3 px-4 text-sm font-bold disabled:opacity-50 whitespace-nowrap"
+                >
+                  Mở khóa Host
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Lobby Quiz Bank selector */}
       {roomState?.status === "LOBBY" && (
@@ -837,27 +967,27 @@ export default function AdminRoomPage() {
             <button
               onClick={() => emit("admin:next")}
               disabled={gameEnded}
-              className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2"
+              className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap"
             >
               <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
-              <span>{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
+              <span className="whitespace-nowrap">{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
             </button>
             <button
               onClick={() => emit("admin:reveal")}
               disabled={!currentQuestion}
-              className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+              className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5 whitespace-nowrap"
             >
-              <span>👁️ Tiết lộ đáp án</span>
+              <span className="whitespace-nowrap">👁️ Tiết lộ đáp án</span>
             </button>
             {roomState?.status === "PLAYING" ? (
-              <button onClick={() => emit("admin:pause")} className="py-2.5 rounded-xl border border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-400 font-medium text-sm inline-flex items-center justify-center gap-1.5">
+              <button onClick={() => emit("admin:pause")} className="py-2.5 rounded-xl border border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-400 font-medium text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <SystemIcon name="pause" className="w-3.5 h-3.5 shrink-0" />
-                <span>Tạm dừng</span>
+                <span className="whitespace-nowrap">Tạm dừng</span>
               </button>
             ) : roomState?.status === "PAUSED" ? (
-              <button onClick={() => emit("admin:resume")} className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm inline-flex items-center justify-center gap-1.5">
+              <button onClick={() => emit("admin:resume")} className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap">
                 <SystemIcon name="play" className="w-3.5 h-3.5 shrink-0" />
-                <span>Tiếp tục</span>
+                <span className="whitespace-nowrap">Tiếp tục</span>
               </button>
             ) : <div />}
           </div>
@@ -866,17 +996,17 @@ export default function AdminRoomPage() {
           {roomState?.config.powerupEnabled && (
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm font-medium">🃏 Thẻ hỗ trợ (Đã bật cho phòng)</p>
+                <p className="text-sm font-medium whitespace-nowrap">🃏 Thẻ hỗ trợ (Đã bật cho phòng)</p>
                 <button
                   onClick={() => handleToggleCards(!cardsLocked)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold ${ cardsLocked ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400" }`}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap ${ cardsLocked ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400" }`}
                 >
                   {cardsLocked ? "🔒 Đang khóa" : "🔓 Đang mở"}
                 </button>
               </div>
               <button
                 onClick={() => emit("admin:shuffle:cards")}
-                className="mt-2 w-full py-2 rounded-xl border border-border hover:border-purple-500 text-sm font-medium transition-colors"
+                className="mt-2 w-full py-2 rounded-xl border border-border hover:border-purple-500 text-sm font-medium transition-colors whitespace-nowrap"
               >
                 🔀 Xáo lại thẻ
               </button>

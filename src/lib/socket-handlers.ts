@@ -27,6 +27,8 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount } from "./game-engine/scoring";
 import { shuffleArray } from "./utils";
+import { verifyAdminToken, sanitizePlayerName } from "./security";
+import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
 
 type IO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -324,38 +326,22 @@ const roomActiveAnswers = new Map<string, Map<string, { teamId?: string; playerI
 
 async function getAdminRoom(socket: Sock) {
   const roomId = adminSockets.get(socket.id);
-  if (roomId) {
-    const cached = roomCache.get(roomId);
-    if (cached) return cached;
+  if (!roomId) return null;
 
-    const r = await prisma.room.findUnique({
-      where: { id: roomId },
-      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
-    });
-    if (r) {
-      roomCache.set(roomId, r);
-      if (r.quizBank?.questions) {
-        roomQuestionsCache.set(roomId, r.quizBank.questions);
-      }
-    }
-    return r;
-  }
+  const cached = roomCache.get(roomId);
+  if (cached) return cached;
 
-  // Fallback if legacy connection was used
-  const playerId = playerSockets.get(socket.id);
-  if (playerId) {
-    const player = await prisma.player.findUnique({
-      where: { id: playerId },
-      include: {
-        room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } },
-      },
-    });
-    if (player?.isHost && player.room) {
-      return player.room;
+  const r = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+  });
+  if (r) {
+    roomCache.set(roomId, r);
+    if (r.quizBank?.questions) {
+      roomQuestionsCache.set(roomId, r.quizBank.questions);
     }
   }
-
-  return null;
+  return r;
 }
 
 export function registerSocketHandlers(io: IO) {
@@ -367,6 +353,12 @@ export function registerSocketHandlers(io: IO) {
     // ── Join Room ────────────────────────────────────────────────────────────
     socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
       try {
+        const clientIp = (socket.handshake.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
+        const joinLimit = checkPlayerJoinLimit(clientIp);
+        if (!joinLimit.allowed) {
+          return callback({ success: false, error: `Bạn đang gửi yêu cầu quá nhanh. Vui lòng thử lại sau ${joinLimit.retryAfterSeconds}s.` });
+        }
+
         const room = await prisma.room.findUnique({
           where: { code },
           include: {
@@ -390,7 +382,16 @@ export function registerSocketHandlers(io: IO) {
           pendingDisconnects.delete(playerId);
         }
 
-        const trimmedName = (playerName || "Thí sinh").trim();
+        const cleanedName = sanitizePlayerName(playerName || "Thí sinh");
+        if (!cleanedName || cleanedName.length === 0) {
+          return callback({ success: false, error: "Tên người chơi không hợp lệ (không chứa mã độc hoặc rỗng)" });
+        }
+
+        // Capacity check
+        if (room.players.length >= MAX_PLAYERS_PER_ROOM && !playerId) {
+          return callback({ success: false, error: `Phòng thi đã đạt giới hạn tối đa (${MAX_PLAYERS_PER_ROOM} người tham gia)` });
+        }
+
         let player: any = null;
 
         // 1. Try reconnecting via persistent playerId
@@ -405,8 +406,8 @@ export function registerSocketHandlers(io: IO) {
               pendingDisconnects.delete(existingById.id);
             }
 
-            const finalName = (trimmedName && trimmedName !== "Player" && trimmedName !== "Thí sinh")
-              ? trimmedName
+            const finalName = (cleanedName && cleanedName !== "Player" && cleanedName !== "Thí sinh")
+              ? cleanedName
               : existingById.name;
 
             player = await prisma.player.update({
@@ -435,7 +436,7 @@ export function registerSocketHandlers(io: IO) {
           const offlineSameName = await prisma.player.findFirst({
             where: {
               roomId: room.id,
-              name: trimmedName,
+              name: cleanedName,
               socketId: null,
             },
           });
@@ -457,7 +458,7 @@ export function registerSocketHandlers(io: IO) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: cleanedName,
                 id: { not: offlineSameName.id },
                 socketId: null,
               },
@@ -472,7 +473,7 @@ export function registerSocketHandlers(io: IO) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: cleanedName,
                 socketId: null,
               },
             }).catch(() => {});
@@ -482,7 +483,7 @@ export function registerSocketHandlers(io: IO) {
           player = await prisma.player.create({
             data: {
               id: newId,
-              name: trimmedName,
+              name: cleanedName,
               socketId: socket.id,
               roomId: room.id,
               teamId: teamId ?? null,
@@ -556,14 +557,47 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Admin Join ───────────────────────────────────────────────────────────
-    socket.on("admin:join", async (code, callback) => {
+    socket.on("admin:join", async (arg1: any, arg2?: any, arg3?: any) => {
+      let callback: any;
       try {
+        let code = "";
+        let hostKey: string | undefined;
+
+        if (typeof arg1 === "object" && arg1 !== null) {
+          code = arg1.code;
+          hostKey = arg1.hostKey;
+          callback = typeof arg2 === "function" ? arg2 : undefined;
+        } else if (typeof arg1 === "string") {
+          code = arg1;
+          if (typeof arg2 === "string") {
+            hostKey = arg2;
+            callback = typeof arg3 === "function" ? arg3 : undefined;
+          } else if (typeof arg2 === "function") {
+            callback = arg2;
+          }
+        }
+
         const room = await prisma.room.findUnique({
           where: { code },
           include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
         });
         if (!room) {
           return callback?.({ success: false, error: "Phòng không tồn tại" });
+        }
+
+        // Verify Host Authorization:
+        // 1. Check if token in handshake/auth is valid Admin Master Passcode
+        const authHeader = (socket.handshake.auth?.token as string) || (socket.handshake.headers["authorization"] as string);
+        const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
+        // 2. Check if hostKey matches room.hostKey
+        const isHostKeyValid = room.hostKey ? (hostKey === room.hostKey) : true;
+
+        if (!isAdminTokenValid && !isHostKeyValid) {
+          return callback?.({
+            success: false,
+            error: "Khóa bảo mật Host không hợp lệ. Vui lòng sử dụng đúng liên kết Host hoặc nhập Master Admin Passcode.",
+            requiresAuth: true,
+          });
         }
 
         // Clean up any ghost host players in this room
@@ -629,7 +663,7 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
-        callback?.({ success: true, roomState });
+        callback?.({ success: true, hostKey: room.hostKey, roomState });
       } catch (err) {
         console.error("[admin:join]", err);
         callback?.({ success: false, error: "Lỗi kết nối máy chủ" });
@@ -743,6 +777,8 @@ export function registerSocketHandlers(io: IO) {
 
     // ── Submit Answer (Player Device) ─────────────────────────────────────────
     socket.on("game:answer:submit", async ({ questionId, answer }) => {
+      if (!checkActionDebounce(socket.id, 200)) return;
+
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
 
@@ -805,6 +841,8 @@ export function registerSocketHandlers(io: IO) {
 
     // ── Buzz ────────────────────────────────────────────────────────────────
     socket.on("game:buzz", async () => {
+      if (!checkActionDebounce(socket.id, 300)) return;
+
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({

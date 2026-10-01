@@ -156,9 +156,13 @@ export default function CreateRoomPage() {
       const isDeviceOnly = mode === "CLASSIC" || mode === "ELIMINATION";
       const finalAnswerMethod = isDeviceOnly ? "DEVICE" : answerMethod;
 
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/rooms", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           name: roomName,
           mode,
@@ -201,7 +205,12 @@ export default function CreateRoomPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      router.push(`/admin/rooms/${data.room.code}`);
+      if (data.hostKey) {
+        localStorage.setItem(`host_key_${data.room.code}`, data.hostKey);
+        router.push(`/admin/rooms/${data.room.code}?key=${data.hostKey}`);
+      } else {
+        router.push(`/admin/rooms/${data.room.code}`);
+      }
     } catch (err: any) {
       setError(err.message ?? "Lỗi khi tạo phòng");
       setLoading(false);
@@ -287,40 +296,40 @@ export default function CreateRoomPage() {
                     type="button"
                     onClick={() => handleSetModeLayout("GRID")}
                     title="Bố cục Lưới thẻ (2-4 cột trực quan)"
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
                       modeLayout === "GRID"
                         ? "bg-purple-600 text-white shadow-md glow-purple"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                     }`}
                   >
                     <span>⊞</span>
-                    <span className="text-[11px]">Lưới</span>
+                    <span className="text-[11px] whitespace-nowrap">Lưới</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSetModeLayout("LIST")}
                     title="Bố cục Danh sách chi tiết (1 cột)"
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
                       modeLayout === "LIST"
                         ? "bg-purple-600 text-white shadow-md glow-purple"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                     }`}
                   >
                     <span>☰</span>
-                    <span className="text-[11px]">Danh sách</span>
+                    <span className="text-[11px] whitespace-nowrap">Danh sách</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSetModeLayout("COMPACT")}
                     title="Bố cục Thẻ nhỏ tinh gọn (Chips ngang)"
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
                       modeLayout === "COMPACT"
                         ? "bg-purple-600 text-white shadow-md glow-purple"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                     }`}
                   >
                     <span>🏷️</span>
-                    <span className="text-[11px]">Tinh gọn</span>
+                    <span className="text-[11px] whitespace-nowrap">Tinh gọn</span>
                   </button>
                 </div>
 
@@ -328,10 +337,10 @@ export default function CreateRoomPage() {
                 <button
                   type="button"
                   onClick={() => setShowRulesModal(true)}
-                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-cyan-500/30 hover:bg-cyan-500/10 shrink-0"
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-cyan-500/30 hover:bg-cyan-500/10 shrink-0 whitespace-nowrap"
                 >
                   <span>📖</span>
-                  <span className="hidden sm:inline">Chi tiết thể lệ</span>
+                  <span className="hidden sm:inline whitespace-nowrap">Chi tiết thể lệ</span>
                 </button>
               </div>
             </div>
@@ -358,14 +367,14 @@ export default function CreateRoomPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-1 mb-2">
-                        <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow" />
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${m.badgeColor}`}>
+                        <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow shrink-0" />
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${m.badgeColor}`}>
                           {m.badge}
                         </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-black text-sm group-hover:text-purple-300 transition-colors flex items-center gap-1">
-                          <span>{m.label}</span>
+                        <p className="font-black text-sm group-hover:text-purple-300 transition-colors flex items-center gap-1 whitespace-nowrap">
+                          <span className="whitespace-nowrap">{m.label}</span>
                           {isSelected && <span className="text-purple-400 text-xs font-black">✓</span>}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
@@ -432,14 +441,14 @@ export default function CreateRoomPage() {
                             setAnswerMethod("DEVICE");
                           }
                         }}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 ${
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap shrink-0 ${
                           isSelected
                             ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"
                             : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
                         }`}
                       >
                         <GameModeIcon mode={m.value} className="w-5 h-5 shrink-0" />
-                        <span>{m.label}</span>
+                        <span className="whitespace-nowrap">{m.label}</span>
                         {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
                       </button>
                     );
@@ -454,9 +463,9 @@ export default function CreateRoomPage() {
                     <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-3 animate-slide-up">
                       <GameModeIcon mode={currentModeObj.value} className="w-12 h-12 shrink-0 drop-shadow" />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-purple-200">{currentModeObj.label}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${currentModeObj.badgeColor}`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-purple-200 whitespace-nowrap">{currentModeObj.label}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${currentModeObj.badgeColor}`}>
                             {currentModeObj.badge}
                           </span>
                         </div>

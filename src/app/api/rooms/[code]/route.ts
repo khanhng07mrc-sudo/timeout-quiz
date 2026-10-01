@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { verifyHostOrAdmin, verifyAdminRequest } from "@/lib/security";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
@@ -17,10 +18,16 @@ export async function GET(
   });
 
   if (!room) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy phòng" }, { status: 404 });
   }
 
-  return NextResponse.json({ room });
+  // Never leak hostKey to public clients unless verified Host or Admin
+  const isAuthorized = verifyHostOrAdmin(req, room.hostKey);
+  const { hostKey, ...safeRoom } = room;
+
+  return NextResponse.json({
+    room: isAuthorized ? room : safeRoom,
+  });
 }
 
 export async function PATCH(
@@ -28,29 +35,50 @@ export async function PATCH(
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
-  const body = await req.json();
+  const room = await prisma.room.findUnique({ where: { code } });
+  if (!room) {
+    return NextResponse.json({ error: "Không tìm thấy phòng" }, { status: 404 });
+  }
 
-  const room = await prisma.room.update({
+  if (!verifyHostOrAdmin(req, room.hostKey)) {
+    return NextResponse.json(
+      { error: "Yêu cầu quyền Host hoặc Quản trị viên (Forbidden)" },
+      { status: 403 }
+    );
+  }
+
+  const body = await req.json();
+  // Prevent overriding critical immutable fields
+  const { id: _id, code: _c, hostKey: _hk, hostId: _hid, ...safeUpdates } = body;
+
+  const updatedRoom = await prisma.room.update({
     where: { code },
-    data: body,
+    data: safeUpdates,
   });
 
-  return NextResponse.json({ room });
+  return NextResponse.json({ room: updatedRoom });
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
   const { code } = await params;
 
   const room = await prisma.room.findUnique({ where: { code } });
   if (!room) {
-    return NextResponse.json({ error: "Room not found" }, { status: 404 });
+    return NextResponse.json({ error: "Không tìm thấy phòng" }, { status: 404 });
   }
 
-  // Cascade delete handled by Prisma schema (onDelete: Cascade on all relations)
+  if (!verifyHostOrAdmin(req, room.hostKey)) {
+    return NextResponse.json(
+      { error: "Yêu cầu quyền Host hoặc Quản trị viên (Forbidden)" },
+      { status: 403 }
+    );
+  }
+
+  // Cascade delete handled by Prisma schema
   await prisma.room.delete({ where: { code } });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, message: "Đã xóa phòng thành công" });
 }

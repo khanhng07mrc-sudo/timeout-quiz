@@ -77,10 +77,17 @@ export default function QuizBankPage() {
   ]);
   const [savingQuestion, setSavingQuestion] = useState(false);
 
+  const getAuthHeaders = (extra: Record<string, string> = {}) => {
+    const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")) : null;
+    const headers: Record<string, string> = { ...extra };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  };
+
   const fetchBanks = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/quiz-bank?ownerId=demo-host-id");
+      const res = await fetch("/api/quiz-bank?ownerId=demo-host-id", { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.banks) {
         setBanks(data.banks);
@@ -99,7 +106,7 @@ export default function QuizBankPage() {
     setSelectedBank(bank);
     setLoadingQuestions(true);
     try {
-      const res = await fetch(`/api/quiz-bank/${bank.id}/questions`);
+      const res = await fetch(`/api/quiz-bank/${bank.id}/questions`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.questions) {
         setQuestions(data.questions);
@@ -115,7 +122,7 @@ export default function QuizBankPage() {
     if (!confirm(`Xóa bộ đề "${bank.title}" và tất cả ${bank._count?.questions ?? 0} câu hỏi? Không thể hoàn tác!`)) return;
     setDeletingBankId(bank.id);
     try {
-      const res = await fetch(`/api/quiz-bank/${bank.id}`, { method: "DELETE" });
+      const res = await fetch(`/api/quiz-bank/${bank.id}`, { method: "DELETE", headers: getAuthHeaders() });
       if (res.ok) {
         setBanks((prev) => prev.filter((b) => b.id !== bank.id));
         if (selectedBank?.id === bank.id) {
@@ -136,7 +143,7 @@ export default function QuizBankPage() {
     if (!confirm("Xóa câu hỏi này?")) return;
     setDeletingQuestionId(questionId);
     try {
-      const res = await fetch(`/api/quiz-bank/${selectedBank?.id}/questions/${questionId}`, { method: "DELETE" });
+      const res = await fetch(`/api/quiz-bank/${selectedBank?.id}/questions/${questionId}`, { method: "DELETE", headers: getAuthHeaders() });
       if (res.ok) {
         setQuestions((prev) => prev.filter((q) => q.id !== questionId));
         // Update count in bank list
@@ -162,7 +169,7 @@ export default function QuizBankPage() {
     try {
       const res = await fetch("/api/quiz-bank", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           title: newTitle,
           description: newDesc,
@@ -207,7 +214,7 @@ export default function QuizBankPage() {
     try {
       const res = await fetch(`/api/quiz-bank/${selectedBank.id}/questions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       });
       if (res.ok) {
@@ -237,7 +244,7 @@ export default function QuizBankPage() {
     try {
       const res = await fetch(`/api/quiz-bank/${selectedBank.id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           title: editBankTitle.trim(),
           description: editBankDesc.trim(),
@@ -327,7 +334,7 @@ export default function QuizBankPage() {
     try {
       const res = await fetch(`/api/quiz-bank/${selectedBank.id}/questions/${editingQuestionId}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
       });
       if (res.ok) {
@@ -424,7 +431,7 @@ export default function QuizBankPage() {
     try {
       const res = await fetch(`/api/quiz-bank/${selectedBank.id}/questions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(normalizedItems),
       });
       if (res.ok) {
@@ -441,26 +448,26 @@ export default function QuizBankPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black">Ngân hàng câu hỏi (Quiz Bank)</h1>
-          <p className="text-muted-foreground mt-1">Tạo, chỉnh sửa và nhập file câu hỏi (Excel/CSV/JSON)</p>
+          <h1 className="text-2xl sm:text-3xl font-black whitespace-nowrap">Ngân hàng câu hỏi (Quiz Bank)</h1>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Tạo, chỉnh sửa và nhập file câu hỏi (Excel/CSV/JSON)</p>
         </div>
         <button
           onClick={() => setShowNewBankModal(true)}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2"
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2 whitespace-nowrap self-start sm:self-auto"
         >
           <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-          <span>Tạo bộ câu hỏi mới</span>
+          <span className="whitespace-nowrap">Tạo bộ câu hỏi mới</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Col: List of Banks */}
         <div className="glass rounded-2xl p-4 flex flex-col gap-3">
-          <h2 className="font-bold text-lg px-2 flex items-center gap-2">
+          <h2 className="font-bold text-lg px-2 flex items-center gap-2 whitespace-nowrap">
             <SystemIcon name="quiz_bank" className="w-5 h-5 text-purple-400 shrink-0" />
-            <span>Danh sách bộ câu hỏi</span>
+            <span className="whitespace-nowrap">Danh sách bộ câu hỏi</span>
           </h2>
           {loading ? (
             <p className="text-muted-foreground p-3">Đang tải...</p>
@@ -527,17 +534,17 @@ export default function QuizBankPage() {
                     <h2 className="text-xl font-black">{selectedBank.title}</h2>
                     <button
                       onClick={() => openEditBank(selectedBank)}
-                      className="px-2.5 py-1 rounded-lg bg-card hover:bg-muted border border-border text-xs text-purple-300 hover:text-white flex items-center gap-1 transition"
+                      className="px-2.5 py-1 rounded-lg bg-card hover:bg-muted border border-border text-xs text-purple-300 hover:text-white flex items-center gap-1 transition whitespace-nowrap"
                       title="Sửa tên và mô tả bộ đề"
                     >
                       <span>✏️</span>
-                      <span>Sửa đề</span>
+                      <span className="whitespace-nowrap">Sửa đề</span>
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground">{questions.length} câu hỏi hiện có</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 text-sm font-semibold transition">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="cursor-pointer px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 text-sm font-semibold transition whitespace-nowrap">
                     📂 Import (Excel/CSV/JSON)
                     <input
                       type="file"
@@ -548,18 +555,18 @@ export default function QuizBankPage() {
                   </label>
                   <button
                     onClick={() => setShowNewQModal(true)}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition"
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition whitespace-nowrap"
                   >
                     + Thêm câu hỏi
                   </button>
                   <button
                     onClick={() => handleDeleteBank(selectedBank)}
                     disabled={deletingBankId === selectedBank.id}
-                    className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive text-sm font-semibold transition inline-flex items-center gap-1.5"
+                    className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive text-sm font-semibold transition inline-flex items-center gap-1.5 whitespace-nowrap"
                     title="Xóa bộ đề này"
                   >
                     <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                    <span>Xóa bộ đề</span>
+                    <span className="whitespace-nowrap">Xóa bộ đề</span>
                   </button>
                 </div>
               </div>

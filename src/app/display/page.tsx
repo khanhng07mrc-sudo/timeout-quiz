@@ -87,11 +87,11 @@ export default function DisplayIndexPage() {
           <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-cyan-500/20 border border-cyan-400/30">
             <SystemIcon name="display" className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-white tracking-tight whitespace-nowrap">
             Màn hình trình chiếu (Display)
           </h1>
-          <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto mt-2.5">
-            Dành cho máy chiếu, màn hình TV hội trường hoặc màn hình phụ của Host
+          <p className="text-slate-400 text-sm sm:text-base max-w-xl mx-auto mt-2.5">
+            Dành cho máy chiếu, TV hội trường hoặc màn hình phụ của Host
           </p>
         </div>
 
@@ -99,7 +99,7 @@ export default function DisplayIndexPage() {
         <div className="quiz-card p-6 sm:p-8">
           <form onSubmit={handleOpenDisplay} className="space-y-6">
             <div>
-              <label className="block text-sm font-bold text-slate-300 mb-2">
+              <label className="block text-sm font-bold text-slate-300 mb-2 whitespace-nowrap">
                 Nhập mã phòng thi (PIN)
               </label>
               <div className="flex flex-col sm:flex-row gap-3">
@@ -115,14 +115,14 @@ export default function DisplayIndexPage() {
                 <button
                   type="submit"
                   disabled={loading || pin.length !== 6}
-                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
                 >
                   {loading ? (
-                    <span>Đang kết nối...</span>
+                    <span className="whitespace-nowrap">Đang kết nối...</span>
                   ) : (
                     <>
                       <SystemIcon name="display" className="w-4 h-4 shrink-0 text-white" />
-                      <span>Mở màn chiếu</span>
+                      <span className="whitespace-nowrap font-bold">Mở màn chiếu</span>
                     </>
                   )}
                 </button>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import BrandLogo from "@/components/ui/BrandLogo";
 import SystemIcon, { SystemIconName } from "@/components/ui/SystemIcon";
+import AdminAuthGuard, { useAdminAuth } from "@/components/admin/AdminAuthGuard";
 
 const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: string }[] = [
   { href: "/admin", icon: "dashboard", label: "Dashboard", desc: "Tổng quan" },
@@ -15,9 +16,16 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { logout } = useAdminAuth();
+
+  const handleLogout = async () => {
+    if (confirm("Bạn có chắc chắn muốn đăng xuất và khóa lại quyền quản trị?")) {
+      await logout();
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#0b0c16] text-foreground">
@@ -89,6 +97,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
                 <span>Về trang chủ</span>
               </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition text-left"
+              >
+                <SystemIcon name="logout" className="w-4 h-4 shrink-0 text-rose-400" />
+                <span>Khóa & Đăng xuất</span>
+              </button>
             </div>
           </div>
         </div>
@@ -126,14 +142,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
 
         {/* Bottom Actions */}
-        <div className="border-t border-[#222642] pt-4 flex flex-col gap-2">
+        <div className="border-t border-[#222642] pt-4 flex flex-col gap-1.5">
           <Link
             href="/"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors"
           >
             <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
             <span>Về trang chủ</span>
           </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full text-left cursor-pointer"
+          >
+            <SystemIcon name="logout" className="w-4 h-4 shrink-0 text-rose-400" />
+            <span>Khóa & Đăng xuất</span>
+          </button>
         </div>
       </aside>
 
@@ -144,5 +168,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </main>
     </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <AdminAuthGuard>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AdminAuthGuard>
   );
 }

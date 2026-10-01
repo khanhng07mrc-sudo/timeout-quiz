@@ -255,6 +255,105 @@ function shuffleArray(array) {
   return arr;
 }
 
+// src/lib/security.ts
+var import_crypto = __toESM(require("crypto"));
+var TOKEN_SECRET = process.env.NEXTAUTH_SECRET || "timeout_quiz_super_secret_key_2026";
+var TOKEN_TTL_MS = 24 * 60 * 60 * 1e3;
+function verifyAdminToken(token) {
+  if (!token || typeof token !== "string") return false;
+  const parts = token.split(".");
+  if (parts.length !== 2) return false;
+  const [payloadEncoded, signature] = parts;
+  const expectedSignature = import_crypto.default.createHmac("sha256", TOKEN_SECRET).update(payloadEncoded).digest("base64url");
+  const sigBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expectedSignature);
+  if (sigBuffer.length !== expectedBuffer.length || !import_crypto.default.timingSafeEqual(sigBuffer, expectedBuffer)) {
+    return false;
+  }
+  try {
+    const payload = JSON.parse(
+      Buffer.from(payloadEncoded, "base64url").toString("utf8")
+    );
+    if (payload.role !== "admin") return false;
+    if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+function sanitizePlayerName(rawName) {
+  if (!rawName || typeof rawName !== "string") return "";
+  let cleaned = rawName.replace(/[\u200B-\u200D\uFEFF\u00A0\u200E\u200F\u202A-\u202E]/g, "").replace(/<[^>]*>/g, "").replace(/[\x00-\x1F\x7F]/g, "").replace(/\s+/g, " ").trim();
+  if (cleaned.length > 25) {
+    cleaned = cleaned.slice(0, 25).trim();
+  }
+  return cleaned;
+}
+
+// src/lib/rate-limiter.ts
+var rateLimitStore = /* @__PURE__ */ new Map();
+if (typeof setInterval !== "undefined") {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, record] of rateLimitStore.entries()) {
+      if (record.blockedUntil && record.blockedUntil > now) continue;
+      record.timestamps = record.timestamps.filter((t) => now - t < 6e5);
+      if (record.timestamps.length === 0 && (!record.blockedUntil || record.blockedUntil <= now)) {
+        rateLimitStore.delete(key);
+      }
+    }
+  }, 12e4);
+}
+function checkRateLimit(key, limit, windowMs, blockDurationMs = windowMs) {
+  const now = Date.now();
+  let record = rateLimitStore.get(key);
+  if (!record) {
+    record = { timestamps: [] };
+    rateLimitStore.set(key, record);
+  }
+  if (record.blockedUntil && record.blockedUntil > now) {
+    const retryAfterSeconds = Math.ceil((record.blockedUntil - now) / 1e3);
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds
+    };
+  }
+  record.timestamps = record.timestamps.filter((t) => now - t < windowMs);
+  if (record.timestamps.length >= limit) {
+    record.blockedUntil = now + blockDurationMs;
+    const retryAfterSeconds = Math.ceil(blockDurationMs / 1e3);
+    return {
+      allowed: false,
+      remaining: 0,
+      retryAfterSeconds
+    };
+  }
+  record.timestamps.push(now);
+  const remaining = Math.max(0, limit - record.timestamps.length);
+  return {
+    allowed: true,
+    remaining,
+    retryAfterSeconds: 0
+  };
+}
+function checkPlayerJoinLimit(identifier) {
+  return checkRateLimit(`join:${identifier}`, 6, 1e4, 3e4);
+}
+function checkActionDebounce(key, cooldownMs = 500) {
+  const now = Date.now();
+  const record = rateLimitStore.get(`debounce:${key}`);
+  if (record && record.timestamps.length > 0) {
+    const last = record.timestamps[record.timestamps.length - 1];
+    if (now - last < cooldownMs) {
+      return false;
+    }
+  }
+  rateLimitStore.set(`debounce:${key}`, { timestamps: [now] });
+  return true;
+}
+var MAX_PLAYERS_PER_ROOM = 100;
+
 // src/lib/socket-handlers.ts
 var globalIO;
 var pendingDisconnects = /* @__PURE__ */ new Map();
@@ -494,34 +593,20 @@ var roomCache = /* @__PURE__ */ new Map();
 var roomQuestionsCache = /* @__PURE__ */ new Map();
 async function getAdminRoom(socket) {
   const roomId = adminSockets.get(socket.id);
-  if (roomId) {
-    const cached = roomCache.get(roomId);
-    if (cached) return cached;
-    const r = await prisma.room.findUnique({
-      where: { id: roomId },
-      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-    });
-    if (r) {
-      roomCache.set(roomId, r);
-      if (r.quizBank?.questions) {
-        roomQuestionsCache.set(roomId, r.quizBank.questions);
-      }
-    }
-    return r;
-  }
-  const playerId = playerSockets.get(socket.id);
-  if (playerId) {
-    const player = await prisma.player.findUnique({
-      where: { id: playerId },
-      include: {
-        room: { include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } } }
-      }
-    });
-    if (player?.isHost && player.room) {
-      return player.room;
+  if (!roomId) return null;
+  const cached = roomCache.get(roomId);
+  if (cached) return cached;
+  const r = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+  });
+  if (r) {
+    roomCache.set(roomId, r);
+    if (r.quizBank?.questions) {
+      roomQuestionsCache.set(roomId, r.quizBank.questions);
     }
   }
-  return null;
+  return r;
 }
 function registerSocketHandlers(io2) {
   globalIO = io2;
@@ -529,6 +614,11 @@ function registerSocketHandlers(io2) {
     console.log(`[Socket] Connected: ${socket.id}`);
     socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
       try {
+        const clientIp = socket.handshake.headers["x-forwarded-for"]?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
+        const joinLimit = checkPlayerJoinLimit(clientIp);
+        if (!joinLimit.allowed) {
+          return callback({ success: false, error: `B\u1EA1n \u0111ang g\u1EEDi y\xEAu c\u1EA7u qu\xE1 nhanh. Vui l\xF2ng th\u1EED l\u1EA1i sau ${joinLimit.retryAfterSeconds}s.` });
+        }
         const room = await prisma.room.findUnique({
           where: { code },
           include: {
@@ -548,7 +638,13 @@ function registerSocketHandlers(io2) {
           clearTimeout(pendingDisconnects.get(playerId));
           pendingDisconnects.delete(playerId);
         }
-        const trimmedName = (playerName || "Th\xED sinh").trim();
+        const cleanedName = sanitizePlayerName(playerName || "Th\xED sinh");
+        if (!cleanedName || cleanedName.length === 0) {
+          return callback({ success: false, error: "T\xEAn ng\u01B0\u1EDDi ch\u01A1i kh\xF4ng h\u1EE3p l\u1EC7 (kh\xF4ng ch\u1EE9a m\xE3 \u0111\u1ED9c ho\u1EB7c r\u1ED7ng)" });
+        }
+        if (room.players.length >= MAX_PLAYERS_PER_ROOM && !playerId) {
+          return callback({ success: false, error: `Ph\xF2ng thi \u0111\xE3 \u0111\u1EA1t gi\u1EDBi h\u1EA1n t\u1ED1i \u0111a (${MAX_PLAYERS_PER_ROOM} ng\u01B0\u1EDDi tham gia)` });
+        }
         let player = null;
         if (playerId) {
           const existingById = await prisma.player.findFirst({
@@ -559,7 +655,7 @@ function registerSocketHandlers(io2) {
               clearTimeout(pendingDisconnects.get(existingById.id));
               pendingDisconnects.delete(existingById.id);
             }
-            const finalName = trimmedName && trimmedName !== "Player" && trimmedName !== "Th\xED sinh" ? trimmedName : existingById.name;
+            const finalName = cleanedName && cleanedName !== "Player" && cleanedName !== "Th\xED sinh" ? cleanedName : existingById.name;
             player = await prisma.player.update({
               where: { id: existingById.id },
               data: {
@@ -583,7 +679,7 @@ function registerSocketHandlers(io2) {
           const offlineSameName = await prisma.player.findFirst({
             where: {
               roomId: room.id,
-              name: trimmedName,
+              name: cleanedName,
               socketId: null
             }
           });
@@ -602,7 +698,7 @@ function registerSocketHandlers(io2) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: cleanedName,
                 id: { not: offlineSameName.id },
                 socketId: null
               }
@@ -615,7 +711,7 @@ function registerSocketHandlers(io2) {
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
-                name: trimmedName,
+                name: cleanedName,
                 socketId: null
               }
             }).catch(() => {
@@ -625,7 +721,7 @@ function registerSocketHandlers(io2) {
           player = await prisma.player.create({
             data: {
               id: newId,
-              name: trimmedName,
+              name: cleanedName,
               socketId: socket.id,
               roomId: room.id,
               teamId: teamId ?? null
@@ -685,14 +781,40 @@ function registerSocketHandlers(io2) {
         callback({ success: false, error: "L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7" });
       }
     });
-    socket.on("admin:join", async (code, callback) => {
+    socket.on("admin:join", async (arg1, arg2, arg3) => {
+      let callback;
       try {
+        let code = "";
+        let hostKey;
+        if (typeof arg1 === "object" && arg1 !== null) {
+          code = arg1.code;
+          hostKey = arg1.hostKey;
+          callback = typeof arg2 === "function" ? arg2 : void 0;
+        } else if (typeof arg1 === "string") {
+          code = arg1;
+          if (typeof arg2 === "string") {
+            hostKey = arg2;
+            callback = typeof arg3 === "function" ? arg3 : void 0;
+          } else if (typeof arg2 === "function") {
+            callback = arg2;
+          }
+        }
         const room = await prisma.room.findUnique({
           where: { code },
           include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
         });
         if (!room) {
           return callback?.({ success: false, error: "Ph\xF2ng kh\xF4ng t\u1ED3n t\u1EA1i" });
+        }
+        const authHeader = socket.handshake.auth?.token || socket.handshake.headers["authorization"];
+        const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
+        const isHostKeyValid = room.hostKey ? hostKey === room.hostKey : true;
+        if (!isAdminTokenValid && !isHostKeyValid) {
+          return callback?.({
+            success: false,
+            error: "Kh\xF3a b\u1EA3o m\u1EADt Host kh\xF4ng h\u1EE3p l\u1EC7. Vui l\xF2ng s\u1EED d\u1EE5ng \u0111\xFAng li\xEAn k\u1EBFt Host ho\u1EB7c nh\u1EADp Master Admin Passcode.",
+            requiresAuth: true
+          });
         }
         await prisma.player.deleteMany({
           where: {
@@ -748,7 +870,7 @@ function registerSocketHandlers(io2) {
             socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
           }
         }
-        callback?.({ success: true, roomState });
+        callback?.({ success: true, hostKey: room.hostKey, roomState });
       } catch (err) {
         console.error("[admin:join]", err);
         callback?.({ success: false, error: "L\u1ED7i k\u1EBFt n\u1ED1i m\xE1y ch\u1EE7" });
@@ -843,6 +965,7 @@ function registerSocketHandlers(io2) {
       }
     });
     socket.on("game:answer:submit", async ({ questionId, answer }) => {
+      if (!checkActionDebounce(socket.id, 200)) return;
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({
@@ -895,6 +1018,7 @@ function registerSocketHandlers(io2) {
       });
     });
     socket.on("game:buzz", async () => {
+      if (!checkActionDebounce(socket.id, 300)) return;
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({

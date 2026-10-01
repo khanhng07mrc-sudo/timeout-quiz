@@ -145,7 +145,7 @@ export default function GameQuestion({
               {!isPrimaryTeam && (
                 <button
                   onClick={onBuzz}
-                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-lg rounded-xl shadow-lg active:scale-95 animate-pulse"
+                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
                 >
                   🔔 BẤM CHUÔNG!
                 </button>
@@ -163,11 +163,11 @@ export default function GameQuestion({
                 <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang xác định"}</span>
               </div>
               {isPrimaryTeam ? (
-                <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30">
+                <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30 whitespace-nowrap shrink-0">
                   Lượt của bạn
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground">Chờ đội chính</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Chờ đội chính</span>
               )}
             </div>
           )}
@@ -185,7 +185,7 @@ export default function GameQuestion({
               </div>
               <button
                 onClick={onBuzz}
-                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl shadow-lg active:scale-95 animate-pulse"
+                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
               >
                 🔔 BẤM CHUÔNG!
               </button>
@@ -281,17 +281,17 @@ export default function GameQuestion({
       {/* Question metadata & Bloom Difficulty */}
       <div>
         <div className="flex flex-wrap items-center gap-2 mb-2">
-          <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold whitespace-nowrap">
             {q.type === "MC_SINGLE" ? "Trắc nghiệm" : q.type === "MC_MULTI" ? "Nhiều đáp án" : q.type === "TRUE_FALSE" ? "Đúng/Sai" : q.type === "FILL_BLANK" ? "Điền vào chỗ trống" : q.type === "ESSAY" ? "Tự luận" : "Câu hỏi"}
           </span>
           <span className="text-xs text-muted-foreground">·</span>
           <span
-            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border"
+            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border whitespace-nowrap"
             style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}40`, background: bloomMeta.bg }}
           >
             <span>{bloomMeta.emoji}</span>
-            <span>{bloomMeta.labelVi}</span>
-            <span className="opacity-75">({q.points}đ)</span>
+            <span className="whitespace-nowrap">{bloomMeta.labelVi}</span>
+            <span className="opacity-75 whitespace-nowrap">({q.points}đ)</span>
           </span>
         </div>
 

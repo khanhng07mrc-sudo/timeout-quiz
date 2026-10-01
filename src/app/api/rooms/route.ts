@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
-import { GameMode, TeamMode } from "@/types";
+import { generateRoomCode, generateInviteUrl, generateCardDeck } from "@/lib/utils";
+import { verifyAdminRequest, generateHostKey, sanitizeInput } from "@/lib/security";
 
 const DEFAULT_CONFIG = {
   powerupEnabled: true,
@@ -38,12 +38,16 @@ const DEFAULT_CONFIG = {
 };
 
 export async function POST(req: NextRequest) {
+  if (!verifyAdminRequest(req)) {
+    return NextResponse.json({ error: "Yêu cầu quyền Quản trị viên (Unauthorized)" }, { status: 401 });
+  }
+
   try {
     const body = await req.json();
     const { name, quizBankId, mode, teamMode, config, hostId, teams } = body;
 
     if (!name || !hostId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
     }
 
     // Generate unique PIN
@@ -58,12 +62,14 @@ export async function POST(req: NextRequest) {
 
     const mergedConfig = { ...DEFAULT_CONFIG, ...config };
     const inviteUrl = generateInviteUrl(code);
+    const hostKey = generateHostKey();
 
     const room = await prisma.room.create({
       data: {
         code,
-        name,
+        name: sanitizeInput(name, 100),
         hostId,
+        hostKey,
         quizBankId: quizBankId || null,
         mode: mode ?? "CLASSIC",
         teamMode: teamMode ?? "INDIVIDUAL",
@@ -73,13 +79,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-
     // Create teams if provided
     if (teams && Array.isArray(teams)) {
       for (const team of teams) {
         await prisma.team.create({
           data: {
-            name: team.name,
+            name: sanitizeInput(team.name, 50),
             color: team.color ?? "#6366f1",
             roomId: room.id,
           },
@@ -100,7 +105,6 @@ export async function POST(req: NextRequest) {
           })),
         });
       } else {
-        // Per-team cards (will be assigned when teams are confirmed)
         const createdTeams = await prisma.team.findMany({ where: { roomId: room.id } });
         for (const team of createdTeams) {
           const deck = generateCardDeck(allowedTypes, mergedConfig.powerupCountPerTeam);
@@ -116,21 +120,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ room }, { status: 201 });
+    return NextResponse.json({ room, hostKey }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/rooms]", err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi tạo phòng thi" }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
+  if (!verifyAdminRequest(req)) {
+    return NextResponse.json({ error: "Yêu cầu quyền Quản trị viên (Unauthorized)" }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const hostId = searchParams.get("hostId");
-    if (!hostId) return NextResponse.json({ error: "Missing hostId" }, { status: 400 });
 
     const rooms = await prisma.room.findMany({
-      where: { hostId },
+      where: hostId ? { hostId } : undefined,
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { players: true, teams: true } },
@@ -140,6 +147,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ rooms });
   } catch (err) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[GET /api/rooms]", err);
+    return NextResponse.json({ error: "Lỗi tải danh sách phòng" }, { status: 500 });
   }
 }

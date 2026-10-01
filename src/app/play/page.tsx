@@ -53,17 +53,17 @@ export default function JoinPage() {
           <div className="mb-4">
             <BrandLogo variant="compact" size="lg" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white">
+          <h1 className="text-2xl sm:text-3xl font-black text-white whitespace-nowrap">
             Tham gia phòng thi
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-slate-400 mt-1 whitespace-nowrap">
             Nhập mã PIN 6 số được chiếu trên màn hình
           </p>
         </div>
 
         <form onSubmit={handleJoin} className="quiz-card p-8 sm:p-10 space-y-6">
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-300 mb-2 whitespace-nowrap">
               Mã phòng (PIN)
             </label>
             <input
@@ -79,7 +79,7 @@ export default function JoinPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-2">
+            <label className="block text-sm font-semibold text-slate-300 mb-2 whitespace-nowrap">
               Tên hiển thị của bạn
             </label>
             <input
@@ -101,14 +101,14 @@ export default function JoinPage() {
           <button
             type="submit"
             disabled={loading || pin.length !== 6 || !name.trim()}
-            className="btn-gradient w-full py-4 text-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="btn-gradient w-full py-4 text-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
           >
             {loading ? (
-              <span>Đang kết nối...</span>
+              <span className="whitespace-nowrap font-bold">Đang kết nối...</span>
             ) : (
               <>
                 <SystemIcon name="device" className="w-5 h-5 shrink-0 text-white" />
-                <span>Vào phòng ngay</span>
+                <span className="whitespace-nowrap font-bold">Vào phòng ngay</span>
               </>
             )}
           </button>

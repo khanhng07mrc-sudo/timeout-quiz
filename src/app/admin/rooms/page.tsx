@@ -25,7 +25,10 @@ export default function AdminRoomsListPage() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/rooms?hostId=demo-host-id");
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/rooms?hostId=demo-host-id", { headers });
       const data = await res.json();
       if (data.rooms) {
         setRooms(data.rooms);
@@ -41,7 +44,13 @@ export default function AdminRoomsListPage() {
     if (!confirm(`Xóa phòng "${room.name}" (${room.code})? Không thể hoàn tác!`)) return;
     setDeletingId(room.code);
     try {
-      const res = await fetch(`/api/rooms/${room.code}`, { method: "DELETE" });
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const hostKey = localStorage.getItem(`host_key_${room.code}`);
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (hostKey) headers["x-host-key"] = hostKey;
+
+      const res = await fetch(`/api/rooms/${room.code}`, { method: "DELETE", headers });
       if (res.ok) {
         setRooms((prev) => prev.filter((r) => r.code !== room.code));
       } else {
@@ -77,7 +86,7 @@ export default function AdminRoomsListPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black">Danh sách phòng đấu (Rooms)</h1>
+          <h1 className="text-2xl sm:text-3xl font-black whitespace-nowrap">Danh sách phòng đấu (Rooms)</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-1">Quản lý và điều phối các phòng đang mở hoặc đã diễn ra</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
@@ -87,35 +96,36 @@ export default function AdminRoomsListPage() {
               type="button"
               onClick={() => handleSetRoomsLayout("GRID")}
               title="Bố cục Lưới thẻ (Cards)"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
                 roomsLayout === "GRID"
                   ? "bg-purple-600 text-white shadow-md glow-purple"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
             >
               <span>⊞</span>
-              <span className="text-xs">Lưới</span>
+              <span className="text-xs whitespace-nowrap">Lưới</span>
             </button>
             <button
               type="button"
               onClick={() => handleSetRoomsLayout("LIST")}
               title="Bố cục Danh sách dòng (Dense list)"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
                 roomsLayout === "LIST"
                   ? "bg-purple-600 text-white shadow-md glow-purple"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
             >
               <span>☰</span>
-              <span className="text-xs">Danh sách</span>
+              <span className="text-xs whitespace-nowrap">Danh sách</span>
             </button>
           </div>
 
           <Link
             href="/admin/rooms/create"
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md whitespace-nowrap"
           >
-            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" /> Tạo phòng mới
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap">Tạo phòng mới</span>
           </Link>
         </div>
       </div>

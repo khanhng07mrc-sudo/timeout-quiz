@@ -51,6 +51,8 @@ export default function PlayPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
+  const [activeTeamId, setActiveTeamId] = useState<string>("");
+  const [activePlayerName, setActivePlayerName] = useState<string>("");
   const soundEnabledRef = useRef(false);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
@@ -129,23 +131,30 @@ export default function PlayPage() {
     const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
 
     const handlePostMessage = (e: MessageEvent) => {
-      if (e.data?.type === "SWITCH_ACTIVE_TEAM" && e.data.payload) {
-        const { teamId, teamName, teamIndex } = e.data.payload;
-        myTeamIdRef.current = teamId;
-        const currentPid = playerIdRef.current;
-        if (socketRef.current?.connected && teamId) {
-          socketRef.current.emit("player:select:team", { teamId, playerId: currentPid });
+      if (e.data?.type === "SWITCH_ACTIVE_TEAM") {
+        const teamId = e.data.payload?.teamId || e.data.teamId;
+        const teamName = e.data.payload?.teamName || e.data.teamName || e.data.playerName || "";
+        const teamIndex = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
+        if (teamId) {
+          myTeamIdRef.current = teamId;
+          setActiveTeamId(teamId);
+          if (teamName) setActivePlayerName(teamName);
+
+          const currentPid = playerIdRef.current;
+          if (socketRef.current?.connected) {
+            socketRef.current.emit("player:select:team", { teamId, playerId: currentPid });
+          }
+          setRoomState((prev) => {
+            if (!prev) return prev;
+            const updatedPlayers = prev.players.map((p) =>
+              p.id === currentPid
+                ? { ...p, teamId, name: teamIndex === 0 ? "Bạn (Tester)" : `${teamName} 🤖` }
+                : p
+            );
+            return { ...prev, players: updatedPlayers };
+          });
+          setAnswered(false);
         }
-        setRoomState((prev) => {
-          if (!prev) return prev;
-          const updatedPlayers = prev.players.map((p) =>
-            p.id === currentPid
-              ? { ...p, teamId, name: teamIndex === 0 ? "Bạn (Tester)" : `${teamName} 🤖` }
-              : p
-          );
-          return { ...prev, players: updatedPlayers };
-        });
-        setAnswered(false);
         return;
       }
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
@@ -658,7 +667,7 @@ export default function PlayPage() {
   }
 
   const mePlayer = roomState?.players.find((p) => p.id === playerId);
-  const effectiveTeamId = myTeamIdRef.current || mePlayer?.teamId;
+  const effectiveTeamId = activeTeamId || myTeamIdRef.current || mePlayer?.teamId || roomState?.teams[0]?.id;
   const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
   const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
 
@@ -755,7 +764,12 @@ export default function PlayPage() {
       {/* Header with score and sound toggle */}
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
-          <ScoreDisplay roomState={roomState} playerId={playerId} />
+          <ScoreDisplay
+            roomState={roomState}
+            playerId={playerId}
+            teamId={effectiveTeamId}
+            overridePlayerName={activePlayerName}
+          />
         </div>
         <button
           onClick={() => setShowRulesModal(true)}
@@ -810,7 +824,7 @@ export default function PlayPage() {
                   isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
                   canRoll={
                     roomState.diceRaceState.currentTurnTeamId === effectiveTeamId &&
-                    (Boolean(roomState.diceRaceState.canRollDice) || isSandbox || Boolean(revealPayload))
+                    Boolean(roomState.diceRaceState.canRollDice)
                   }
                   onRollDice={handleRollDice}
                   mode={revealPayload ? "full" : "mini"}
@@ -896,7 +910,7 @@ export default function PlayPage() {
                   isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
                   canRoll={
                     roomState.diceRaceState.currentTurnTeamId === effectiveTeamId &&
-                    (Boolean(roomState.diceRaceState.canRollDice) || isSandbox)
+                    Boolean(roomState.diceRaceState.canRollDice)
                   }
                   onRollDice={handleRollDice}
                 />

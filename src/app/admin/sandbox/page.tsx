@@ -514,7 +514,7 @@ export default function AdminSandboxPage() {
         currentTurnTeamId: "t_red",
         currentTurnTeamName: "Đội Đỏ (Bạn)",
         currentTurnIndex: 0,
-        canRollDice: true,
+        canRollDice: false,
         finishLeaderboard: [],
       };
     }
@@ -720,7 +720,13 @@ export default function AdminSandboxPage() {
     setTimer({ remaining: timeLimit, total: timeLimit });
     offlineRemainingRef.current = timeLimit;
 
-    setRoomState((prev) => prev ? { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx } : prev);
+    setRoomState((prev) => {
+      if (!prev) return prev;
+      const nextDice = prev.diceRaceState
+        ? { ...prev.diceRaceState, canRollDice: false }
+        : undefined;
+      return { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx, diceRaceState: nextDice };
+    });
 
     offlineTimerRef.current = setInterval(() => {
       offlineRemainingRef.current -= 1;
@@ -815,6 +821,10 @@ export default function AdminSandboxPage() {
         answers,
       };
 
+      const curTurnTeamId = roomState?.diceRaceState?.currentTurnTeamId;
+      const curTeamAnswer = answers.find((a) => a.teamId === curTurnTeamId);
+      const isCurTeamCorrect = Boolean(curTeamAnswer?.isCorrect);
+
       setRevealPayload(payload);
 
       setRoomState((prev) => {
@@ -823,11 +833,39 @@ export default function AdminSandboxPage() {
           const delta = scoreDeltas.find((d) => d.teamId === t.id)?.delta || 0;
           return { ...t, score: t.score + delta };
         });
-        const nextDice = prev.diceRaceState
-          ? { ...prev.diceRaceState, canRollDice: true }
-          : undefined;
+
+        let nextDice = prev.diceRaceState;
+        if (prev.diceRaceState) {
+          const teamIds = (prev.teams || []).map((t) => t.id);
+          const curIdx = curTurnTeamId ? teamIds.indexOf(curTurnTeamId) : 0;
+          const nextTeamId = teamIds[(curIdx + 1) % (teamIds.length || 1)];
+          const nextTeamName = prev.teams.find((t) => t.id === nextTeamId)?.name;
+
+          nextDice = {
+            ...prev.diceRaceState,
+            canRollDice: isCurTeamCorrect,
+            // If team was WRONG, advance turn to next team for the next question:
+            currentTurnTeamId: isCurTeamCorrect ? prev.diceRaceState.currentTurnTeamId : nextTeamId,
+            currentTurnTeamName: isCurTeamCorrect ? prev.diceRaceState.currentTurnTeamName : nextTeamName,
+          };
+        }
+
         return { ...prev, teams: updatedTeams, diceRaceState: nextDice };
       });
+
+      if (selectedMode === "DICE_RACE") {
+        const curName = roomState?.diceRaceState?.currentTurnTeamName || curTurnTeamId;
+        if (isCurTeamCorrect) {
+          addLog(`🎲 [${curName}] trả lời ĐÚNG! Đã mở quyền gieo xúc xắc!`);
+          if (botAutoEnabled && curTurnTeamId && curTurnTeamId !== "t_red") {
+            setTimeout(() => {
+              handleDiceRollManual();
+            }, 1800);
+          }
+        } else {
+          addLog(`❌ [${curName}] trả lời SAI! Mất lượt đổ xúc xắc.`);
+        }
+      }
 
       addLog(`Admin: Đã công bố đáp án câu hỏi #${offlineQIndexRef.current + 1}`);
       return;
@@ -1010,7 +1048,7 @@ export default function AdminSandboxPage() {
             teamPositions: updatedPositions,
             currentTurnTeamId: nextTeamId,
             currentTurnTeamName: nextTeamName,
-            canRollDice: true,
+            canRollDice: isExtra ? true : false,
           },
         };
       });
@@ -1041,7 +1079,7 @@ export default function AdminSandboxPage() {
       setRoomState((prev) => {
         if (!prev) return prev;
         const nextDice = prev.diceRaceState
-          ? { ...prev.diceRaceState, canRollDice: true }
+          ? { ...prev.diceRaceState }
           : undefined;
         return { ...prev, diceRaceState: nextDice };
       });
@@ -1203,10 +1241,17 @@ export default function AdminSandboxPage() {
       {
         type: "SWITCH_ACTIVE_TEAM",
         teamId: targetTeam.id,
-        playerName: targetName,
+        teamName: targetName,
+        teamIndex: idx,
+        payload: {
+          teamId: targetTeam.id,
+          teamName: targetName,
+          teamIndex: idx,
+        },
       },
       "*"
     );
+    addLog(`📱 Chuyển thiết bị điện thoại sang điều khiển: [${targetTeam.name}]`);
   };
 
   const handleGrantCard = async () => {
@@ -1905,9 +1950,30 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  key={code || "sandbox-player"}
-                  src={`/play/${code}?sandbox=1&teamIndex=${activeTeamIndex}&teamId=${currentTeam?.id || ""}&name=${encodeURIComponent(activeTeamIndex === 0 ? "Bạn (Tester)" : `${currentTeam?.name || "Đội"} 🤖`)}`}
-                  title={`Player ${currentTeam?.name || activeTeamIndex + 1}`}
+                  src={`/play/${code}?sandbox=1`}
+                  onLoad={() => {
+                    if (isOfflineSandbox) {
+                      syncToIframes();
+                    }
+                    const targetTeam = roomState?.teams[activeTeamIndex] || roomState?.teams[0];
+                    if (targetTeam) {
+                      playerIframeRef.current?.contentWindow?.postMessage(
+                        {
+                          type: "SWITCH_ACTIVE_TEAM",
+                          teamId: targetTeam.id,
+                          teamName: activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`,
+                          teamIndex: activeTeamIndex,
+                          payload: {
+                            teamId: targetTeam.id,
+                            teamName: activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`,
+                            teamIndex: activeTeamIndex,
+                          },
+                        },
+                        "*"
+                      );
+                    }
+                  }}
+                  title="Player Viewport"
                   className="w-full h-full border-0"
                 />
               </div>

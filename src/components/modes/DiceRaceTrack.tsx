@@ -268,6 +268,7 @@ export default function DiceRaceTrack({
     const isFinish = tile.index === totalTiles - 1;
     const isStart = tile.index === 0;
     const teamsHere = teams.filter((t) => (animPositions[t.teamId] ?? t.position) === tile.index);
+    const hasPawns = teamsHere.length > 0;
     const isEvenRow = rowIdx % 2 === 0;
 
     // Distinct 3D Stepping Stone Themes (Thick extruded borders, rich highlights)
@@ -316,7 +317,7 @@ export default function DiceRaceTrack({
         border: "border-emerald-400 border-b-[4.5px] border-b-emerald-800",
         bg: "bg-gradient-to-b from-emerald-800/90 via-[#0f3d28] to-[#072417]",
         text: "text-emerald-200",
-        shadow: "shadow-[0_4px_12px_rgba(16,185,129,0.45)]",
+        shadow: "shadow-[0_4px_12px_rgba(160,185,129,0.45)]",
         glow: "ring-1 ring-emerald-400/50",
         topBevel: "border-t border-emerald-200/40",
       },
@@ -358,20 +359,20 @@ export default function DiceRaceTrack({
     return (
       <div
         key={tile.index}
-        className={`relative w-full aspect-[4/5] sm:aspect-square rounded-xl sm:rounded-2xl border-2 p-0.5 sm:p-1.5 flex flex-col items-center justify-between transition-all select-none min-h-0 h-full overflow-visible ${style.border} ${style.bg} ${style.shadow} ${style.glow} ${style.topBevel}`}
+        className={`relative w-full aspect-[3/4] sm:aspect-[4/5] min-h-[64px] sm:min-h-[80px] rounded-xl sm:rounded-2xl border-2 p-0.5 sm:p-1 flex flex-col items-center justify-between transition-all select-none overflow-hidden ${style.border} ${style.bg} ${style.shadow} ${style.glow} ${style.topBevel}`}
       >
         {/* Step Tile Number Header */}
-        <div className="w-full flex items-center justify-between text-[7px] sm:text-[9px] font-mono font-black leading-none px-0.5 shrink-0">
+        <div className="w-full flex items-center justify-between text-[7px] sm:text-[9px] font-mono font-black leading-none px-0.5 shrink-0 z-10">
           <span className={isFinish || isStart ? "text-amber-300 font-black text-[8px] sm:text-[10px]" : "text-slate-300 font-bold"}>
             #{tile.index + 1}
           </span>
           {isStart && (
-            <span className="text-[6px] sm:text-[8px] px-1 py-0.2 rounded bg-emerald-500/40 text-emerald-200 font-black uppercase">
+            <span className="text-[6px] sm:text-[7.5px] px-1 py-0.2 rounded bg-emerald-500/40 text-emerald-200 font-black uppercase">
               XUẤT PHÁT
             </span>
           )}
           {isFinish && (
-            <span className="text-[6px] sm:text-[8px] px-1 py-0.2 rounded bg-amber-400/50 text-amber-100 font-black animate-pulse uppercase">
+            <span className="text-[6px] sm:text-[7.5px] px-1 py-0.2 rounded bg-amber-400/50 text-amber-100 font-black animate-pulse uppercase">
               ĐÍCH
             </span>
           )}
@@ -382,62 +383,79 @@ export default function DiceRaceTrack({
               {tile.portalId}
             </span>
           )}
+          {!isStart && !isFinish && !tile.portalId && hasPawns && (
+            <span className="opacity-80 scale-90 sm:scale-100">
+              <DiceRaceTileIcon type={tile.type} size={10} />
+            </span>
+          )}
         </div>
 
-        {/* Central Illustrated Icon & Label */}
-        <div className="my-0.5 flex flex-col items-center justify-center pointer-events-none min-h-0 shrink-0">
-          <DiceRaceTileIcon
-            type={isFinish ? "FINISH" : tile.type}
-            size={isDisplay ? (rowCount >= 5 ? 16 : 20) : (rowCount >= 5 ? 12 : 16)}
-          />
-          <span className={`text-[7px] sm:text-[9px] font-bold block truncate max-w-[42px] sm:max-w-[58px] text-center mt-0.5 leading-tight ${style.text}`}>
-            {isFinish ? "Về Đích" : isStart ? "Khởi đầu" : tileLabel}
-          </span>
-        </div>
-
-        {/* Pawns Standing on Tile - Strictly overlapping with visible colors to prevent cell bulging */}
-        <div className="w-full flex items-end justify-center min-h-[20px] sm:min-h-[26px] h-[20px] sm:h-[26px] relative z-20 shrink-0">
-          <div
-            className={`inline-flex items-end justify-center flex-nowrap relative ${
-              teamsHere.length >= 3
-                ? "-space-x-2 sm:-space-x-2.5"
-                : teamsHere.length === 2
-                ? "-space-x-1.5 sm:-space-x-2"
-                : ""
-            }`}
-          >
-            {teamsHere.map((team, pIdx) => {
-              const yOffset = teamsHere.length > 1 ? (pIdx % 2 === 0 ? "0px" : "-2px") : "0px";
-              return (
-                <div
-                  key={team.teamId}
-                  className="relative transition-transform duration-200 hover:scale-125 hover:z-30 cursor-pointer"
-                  style={{
-                    zIndex: pIdx + 1,
-                    transform: `translateY(${yOffset})`,
-                  }}
-                  title={`${team.teamName}: Ô #${tile.index + 1}`}
-                >
-                  <PawnPiece
-                    color={team.teamColor}
-                    name={team.teamName}
-                    size={
-                      teamsHere.length >= 3 || rowCount >= 5
-                        ? "xs"
-                        : teamsHere.length === 2
-                        ? (isDisplay ? "sm" : "xs")
-                        : (isDisplay ? "md" : "sm")
-                    }
-                    hasShield={team.hasShield}
-                    isCurrentTurn={team.teamId === currentTurnTeamId}
-                    isHopping={hoppingTeamId === team.teamId}
-                    rank={team.finishRank}
-                  />
-                </div>
-              );
-            })}
+        {/* Central Illustrated Icon & Label (When NO pawns occupy this tile) */}
+        {!hasPawns && (
+          <div className="flex-1 w-full my-auto flex flex-col items-center justify-center pointer-events-none min-h-0">
+            <DiceRaceTileIcon
+              type={isFinish ? "FINISH" : tile.type}
+              size={isDisplay ? (rowCount >= 5 ? 16 : 20) : (rowCount >= 5 ? 12 : 16)}
+            />
+            <span className={`text-[7px] sm:text-[8.5px] font-bold block truncate max-w-[42px] sm:max-w-[58px] text-center mt-0.5 leading-tight ${style.text}`}>
+              {isFinish ? "Về Đích" : isStart ? "Khởi đầu" : tileLabel}
+            </span>
           </div>
-        </div>
+        )}
+
+        {/* Central & Floor Area (When pawns are standing on this tile) */}
+        {hasPawns && (
+          <>
+            {/* Subtle Watermark Icon in background of stone */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-15 overflow-hidden">
+              <DiceRaceTileIcon type={isFinish ? "FINISH" : tile.type} size={36} />
+            </div>
+
+            {/* Pawns Standing Proudly on Stone Surface - Inside tile floor */}
+            <div className="flex-1 w-full flex items-end justify-center pb-1 sm:pb-1.5 relative z-20 min-h-0">
+              <div
+                className={`inline-flex items-end justify-center flex-nowrap relative ${
+                  teamsHere.length >= 3
+                    ? "-space-x-2 sm:-space-x-2.5"
+                    : teamsHere.length === 2
+                    ? "-space-x-1.5 sm:-space-x-2"
+                    : ""
+                }`}
+              >
+                {teamsHere.map((team, pIdx) => {
+                  const yOffset = teamsHere.length > 1 ? (pIdx % 2 === 0 ? "0px" : "-2px") : "0px";
+                  return (
+                    <div
+                      key={team.teamId}
+                      className="relative transition-transform duration-200 hover:scale-110 cursor-pointer"
+                      style={{
+                        zIndex: pIdx + 1,
+                        transform: `translateY(${yOffset})`,
+                      }}
+                      title={`${team.teamName}: Ô #${tile.index + 1}`}
+                    >
+                      <PawnPiece
+                        color={team.teamColor}
+                        name={team.teamName}
+                        size={
+                          teamsHere.length >= 3 || rowCount >= 5
+                            ? "xs"
+                            : teamsHere.length === 2
+                            ? (isDisplay ? "sm" : "xs")
+                            : (isDisplay ? "md" : "sm")
+                        }
+                        hasShield={team.hasShield}
+                        isCurrentTurn={team.teamId === currentTurnTeamId}
+                        isHopping={hoppingTeamId === team.teamId}
+                        rank={team.finishRank}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   };

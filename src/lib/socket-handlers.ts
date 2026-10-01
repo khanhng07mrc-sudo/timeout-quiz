@@ -2315,8 +2315,7 @@ export function registerSocketHandlers(io: IO) {
           diceState.currentTurnTeamName = teams[nextIdx].name;
         }
 
-        const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
-        diceState.canRollDice = isSandboxRoom || !roomActiveQuestions.get(room.id);
+        diceState.canRollDice = false;
       }
 
       io.to(`room:${room.code}`).emit("game:dice:update", diceState);
@@ -2335,8 +2334,7 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
 
       const diceState = roomDiceRaces.get(room.id);
-      const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
-      if (!diceState || (!diceState.canRollDice && !isSandboxRoom)) {
+      if (!diceState || !diceState.canRollDice) {
         socket.emit("error", "Chưa được phép gieo xúc xắc hoặc bạn chưa trả lời đúng câu hỏi!");
         return;
       }
@@ -2578,7 +2576,6 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:question:clear");
       const diceState = roomDiceRaces.get(room.id);
       if (diceState) {
-        diceState.canRollDice = true;
         io.to(`room:${room.code}`).emit("game:dice:update", diceState);
       }
     });
@@ -3460,8 +3457,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
       diceState.currentTurnTeamId = room.teams[nextIdx].id;
       diceState.currentTurnTeamName = room.teams[nextIdx].name;
     }
-    const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
-    diceState.canRollDice = isSandboxRoom ? true : false;
+    diceState.canRollDice = false;
   }
 
   io.to(`room:${roomCode}`).emit("game:dice:update", diceState);

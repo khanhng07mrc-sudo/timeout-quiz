@@ -5,13 +5,16 @@ import { RoomState } from "@/types";
 interface Props {
   roomState: RoomState | null;
   playerId: string;
+  teamId?: string;
+  overridePlayerName?: string;
 }
 
-export default function ScoreDisplay({ roomState, playerId }: Props) {
+export default function ScoreDisplay({ roomState, playerId, teamId, overridePlayerName }: Props) {
   if (!roomState) return null;
 
   const me = roomState.players.find((p) => p.id === playerId);
-  const myTeam = me?.teamId ? roomState.teams.find((t) => t.id === me.teamId) : null;
+  const targetTeamId = teamId || me?.teamId;
+  const myTeam = targetTeamId ? roomState.teams.find((t) => t.id === targetTeamId) : null;
 
   const sorted = roomState.teamMode === "TEAM"
     ? [...roomState.teams].sort((a, b) => b.score - a.score)
@@ -19,6 +22,7 @@ export default function ScoreDisplay({ roomState, playerId }: Props) {
 
   const myRank = sorted.findIndex((e) => e.id === (myTeam?.id ?? me?.id)) + 1;
   const scoreVal = myTeam ? myTeam.score : (me?.score ?? 0);
+  const displayName = overridePlayerName || me?.name || "Bạn";
 
   return (
     <div className="glass rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 border border-white/10 shadow-sm">
@@ -29,7 +33,7 @@ export default function ScoreDisplay({ roomState, playerId }: Props) {
         </p>
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="font-bold truncate text-xs sm:text-sm text-foreground whitespace-nowrap">
-            {me?.name ?? "Bạn"}
+            {displayName}
           </span>
           {myTeam && (
             <span

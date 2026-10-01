@@ -35,11 +35,11 @@ export default function PawnPiece({
 }: PawnPieceProps) {
   // Dimensions per size variant
   const sizeConfig = {
-    xs: { width: 16, height: 23, labelSize: "text-[6px]", shadowH: 3 },
-    sm: { width: 22, height: 32, labelSize: "text-[8px]", shadowH: 4 },
-    md: { width: 30, height: 44, labelSize: "text-[10px]", shadowH: 5 },
-    lg: { width: 42, height: 60, labelSize: "text-xs", shadowH: 7 },
-  }[size] || { width: 22, height: 32, labelSize: "text-[8px]", shadowH: 4 };
+    xs: { width: 14, height: 20, labelSize: "text-[6px]", shadowH: 2 },
+    sm: { width: 18, height: 26, labelSize: "text-[7px]", shadowH: 3 },
+    md: { width: 22, height: 32, labelSize: "text-[8px]", shadowH: 4 },
+    lg: { width: 32, height: 46, labelSize: "text-xs", shadowH: 5 },
+  }[size] || { width: 18, height: 26, labelSize: "text-[7px]", shadowH: 3 };
 
   const initial = name ? name.trim().charAt(0).toUpperCase() : "";
 

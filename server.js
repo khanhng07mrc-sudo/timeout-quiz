@@ -697,6 +697,87 @@ function generateDiceTiles(totalTiles) {
 }
 var roomCache = /* @__PURE__ */ new Map();
 var roomQuestionsCache = /* @__PURE__ */ new Map();
+var roomActiveAnswers = /* @__PURE__ */ new Map();
+function cleanupRoomInMemory(roomId) {
+  try {
+    for (const [key, timer] of roomTimers.entries()) {
+      if (key === roomId || key.startsWith(`${roomId}:`)) {
+        clearInterval(timer);
+        roomTimers.delete(key);
+      }
+    }
+    const wagerTimer = roomWagerTimers.get(roomId);
+    if (wagerTimer) {
+      clearInterval(wagerTimer);
+      roomWagerTimers.delete(roomId);
+    }
+    const gridTimer = roomGridTimers.get(roomId);
+    if (gridTimer) {
+      clearInterval(gridTimer);
+      roomGridTimers.delete(roomId);
+    }
+    for (const [key, timer] of roomStealTimer.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomStealTimer.delete(key);
+      }
+    }
+    for (const [key, timer] of roomBuzzDelayTimers.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomBuzzDelayTimers.delete(key);
+      }
+    }
+    roomActiveQuestions.delete(roomId);
+    roomRemainingTimes.delete(roomId);
+    roomPrepareStates.delete(roomId);
+    roomTournaments.delete(roomId);
+    roomGridCaros.delete(roomId);
+    roomDiceRaces.delete(roomId);
+    roomWagers.delete(roomId);
+    roomUsedQuestions.delete(roomId);
+    roomCache.delete(roomId);
+    roomQuestionsCache.delete(roomId);
+    const prefix = `${roomId}:`;
+    for (const key of roomQuestionTeamCards.keys()) {
+      if (key.startsWith(prefix)) roomQuestionTeamCards.delete(key);
+    }
+    for (const key of roomFrozenTeams.keys()) {
+      if (key.startsWith(prefix)) roomFrozenTeams.delete(key);
+    }
+    for (const key of roomFiftyFifty.keys()) {
+      if (key.startsWith(prefix)) roomFiftyFifty.delete(key);
+    }
+    for (const key of roomQuestionProcessed) {
+      if (key.startsWith(prefix)) roomQuestionProcessed.delete(key);
+    }
+    for (const key of roomPrimaryTeams.keys()) {
+      if (key.startsWith(prefix)) roomPrimaryTeams.delete(key);
+    }
+    for (const key of roomStealPhase.keys()) {
+      if (key.startsWith(prefix)) roomStealPhase.delete(key);
+    }
+    for (const key of roomStealBuzzed.keys()) {
+      if (key.startsWith(prefix)) roomStealBuzzed.delete(key);
+    }
+    for (const key of roomBuzzFirst.keys()) {
+      if (key.startsWith(prefix)) roomBuzzFirst.delete(key);
+    }
+    for (const key of roomBuzzUnlocked.keys()) {
+      if (key.startsWith(prefix)) roomBuzzUnlocked.delete(key);
+    }
+    for (const key of roomBouncebackSelectedPoints.keys()) {
+      if (key.startsWith(prefix)) roomBouncebackSelectedPoints.delete(key);
+    }
+    for (const key of roomActiveAnswers.keys()) {
+      if (key.startsWith(prefix)) roomActiveAnswers.delete(key);
+    }
+  } catch (err) {
+    console.error(`[cleanupRoomInMemory] Error clearing room ${roomId}:`, err);
+  }
+}
+var globalForSockets = globalThis;
+globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
 async function getAdminRoom(socket) {
   const roomId = adminSockets.get(socket.id);
   if (!roomId) return null;
@@ -3931,6 +4012,90 @@ async function buildLeaderboard(roomId) {
   }
 }
 
+// src/lib/room-cleanup.ts
+async function cleanupStaleRooms(options = {}) {
+  const {
+    finishedMaxAgeHours = 2,
+    sandboxMaxAgeHours = 1,
+    lobbyMaxAgeHours = 6,
+    playingMaxAgeHours = 12,
+    emptyMaxAgeHours = 2,
+    forceAllFinished = false
+  } = options;
+  const now = /* @__PURE__ */ new Date();
+  const finishedCutoff = new Date(now.getTime() - finishedMaxAgeHours * 60 * 60 * 1e3);
+  const sandboxCutoff = new Date(now.getTime() - sandboxMaxAgeHours * 60 * 60 * 1e3);
+  const lobbyCutoff = new Date(now.getTime() - lobbyMaxAgeHours * 60 * 60 * 1e3);
+  const playingCutoff = new Date(now.getTime() - playingMaxAgeHours * 60 * 60 * 1e3);
+  const emptyCutoff = new Date(now.getTime() - emptyMaxAgeHours * 60 * 60 * 1e3);
+  const orConditions = [
+    // 1. Finished rooms older than cutoff
+    {
+      status: "FINISHED",
+      OR: [
+        { endedAt: { lte: finishedCutoff } },
+        { updatedAt: { lte: finishedCutoff } }
+      ]
+    },
+    // 2. Sandbox rooms older than cutoff
+    {
+      name: { startsWith: "[Sandbox]" },
+      createdAt: { lte: sandboxCutoff }
+    },
+    // 3. Stale unplayed lobbies
+    {
+      status: "LOBBY",
+      createdAt: { lte: lobbyCutoff }
+    },
+    // 4. Stale abandoned games
+    {
+      status: { in: ["PLAYING", "PAUSED"] },
+      updatedAt: { lte: playingCutoff }
+    },
+    // 5. Empty rooms with 0 players
+    {
+      players: { none: {} },
+      createdAt: { lte: emptyCutoff }
+    }
+  ];
+  if (forceAllFinished) {
+    orConditions.push({ status: "FINISHED" });
+  }
+  const staleRooms = await prisma.room.findMany({
+    where: {
+      OR: orConditions
+    },
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      status: true,
+      createdAt: true,
+      endedAt: true
+    }
+  });
+  if (staleRooms.length === 0) {
+    return { deletedCount: 0, roomsDeleted: [] };
+  }
+  const globalForSockets2 = globalThis;
+  const roomsDeleted = [];
+  for (const r of staleRooms) {
+    try {
+      globalForSockets2.cleanupRoomInMemory?.(r.id);
+      await prisma.room.delete({
+        where: { id: r.id }
+      });
+      roomsDeleted.push(r);
+    } catch (err) {
+      console.error(`[room-cleanup] Failed to delete room ${r.code} (${r.id}):`, err);
+    }
+  }
+  return {
+    deletedCount: roomsDeleted.length,
+    roomsDeleted
+  };
+}
+
 // server.ts
 var dev = process.env.NODE_ENV !== "production";
 var hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -3950,6 +4115,21 @@ app.prepare().then(() => {
   });
   const io2 = initSocketServer(httpServer);
   registerSocketHandlers(io2);
+  const CLEANUP_INTERVAL_MS = 15 * 60 * 1e3;
+  setTimeout(() => {
+    cleanupStaleRooms().then((res) => {
+      if (res.deletedCount > 0) {
+        console.log(`[Room Cleanup] Initial boot cleanup purged ${res.deletedCount} stale room(s).`);
+      }
+    }).catch((err) => console.error("[Room Cleanup] Initial error:", err));
+    setInterval(() => {
+      cleanupStaleRooms().then((res) => {
+        if (res.deletedCount > 0) {
+          console.log(`[Room Cleanup] Periodic cleanup purged ${res.deletedCount} stale room(s).`);
+        }
+      }).catch((err) => console.error("[Room Cleanup] Periodic error:", err));
+    }, CLEANUP_INTERVAL_MS);
+  }, 1e4);
   httpServer.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://${hostname}:${port}`);
     console.log(`> Socket.IO server initialized`);

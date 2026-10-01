@@ -111,6 +111,25 @@ export async function POST(req: NextRequest) {
 
     const inviteUrl = generateInviteUrl(code);
 
+    // Prune stale sandbox test rooms older than 30 minutes to prevent database bloat
+    try {
+      const staleCutoff = new Date(Date.now() - 30 * 60 * 1000);
+      const staleSandboxRooms = await prisma.room.findMany({
+        where: {
+          name: { startsWith: "[Sandbox]" },
+          createdAt: { lte: staleCutoff },
+        },
+        select: { id: true },
+      });
+      const globalForSockets = globalThis as unknown as {
+        cleanupRoomInMemory?: (roomId: string) => void;
+      };
+      for (const sr of staleSandboxRooms) {
+        globalForSockets.cleanupRoomInMemory?.(sr.id);
+        await prisma.room.delete({ where: { id: sr.id } }).catch(() => {});
+      }
+    } catch {}
+
     const room = await prisma.room.create({
       data: {
         code,

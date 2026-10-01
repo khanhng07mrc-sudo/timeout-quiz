@@ -77,7 +77,13 @@ export async function DELETE(
     );
   }
 
-  // Cascade delete handled by Prisma schema
+  // 1. Release in-memory timers and state structures
+  const globalForSockets = globalThis as unknown as {
+    cleanupRoomInMemory?: (roomId: string) => void;
+  };
+  globalForSockets.cleanupRoomInMemory?.(room.id);
+
+  // 2. Cascade delete handled by Prisma schema
   await prisma.room.delete({ where: { code } });
 
   return NextResponse.json({ success: true, message: "Đã xóa phòng thành công" });

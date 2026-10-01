@@ -21,6 +21,59 @@ export default function AdminRoomsListPage() {
   const [rooms, setRooms] = useState<RoomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showCleanupModal, setShowCleanupModal] = useState(false);
+  const [cleaningUp, setCleaningUp] = useState(false);
+  const [cleanupStats, setCleanupStats] = useState<{
+    finishedCount: number;
+    sandboxCount: number;
+    staleLobbyCount: number;
+    stalePlayingCount: number;
+    emptyCount: number;
+    totalStaleCount: number;
+  } | null>(null);
+  const [cleanupToast, setCleanupToast] = useState<string | null>(null);
+
+  const fetchCleanupStats = async () => {
+    try {
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = {};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/rooms/cleanup", { headers });
+      const data = await res.json();
+      if (data.stats) {
+        setCleanupStats(data.stats);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRunCleanup = async (forceAllFinished: boolean = false) => {
+    try {
+      setCleaningUp(true);
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/rooms/cleanup", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ forceAllFinished }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowCleanupModal(false);
+        setCleanupToast(`Đã dọn dẹp ${data.deletedCount} phòng cũ thành công!`);
+        setTimeout(() => setCleanupToast(null), 5000);
+        await fetchRooms();
+      } else {
+        alert(data.error || "Lỗi dọn dẹp phòng!");
+      }
+    } catch {
+      alert("Lỗi kết nối khi dọn dẹp phòng!");
+    } finally {
+      setCleaningUp(false);
+    }
+  };
 
   const fetchRooms = async () => {
     try {
@@ -120,6 +173,20 @@ export default function AdminRoomsListPage() {
             </button>
           </div>
 
+          {/* Dọn dẹp phòng cũ */}
+          <button
+            type="button"
+            onClick={() => {
+              fetchCleanupStats();
+              setShowCleanupModal(true);
+            }}
+            className="px-4 py-2.5 rounded-xl border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-bold transition inline-flex items-center justify-center gap-2 text-sm shadow-sm whitespace-nowrap cursor-pointer active:scale-95"
+            title="Dọn dẹp các phòng cũ, phòng đã kết thúc hoặc bị bỏ rơi"
+          >
+            <span>🧹</span>
+            <span className="whitespace-nowrap">Dọn dẹp phòng cũ</span>
+          </button>
+
           <Link
             href="/admin/rooms/create"
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md whitespace-nowrap"
@@ -129,6 +196,93 @@ export default function AdminRoomsListPage() {
           </Link>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {cleanupToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-emerald-600/95 border border-emerald-400 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold text-sm animate-bounce-in flex items-center gap-2">
+          <span>✓</span>
+          <span>{cleanupToast}</span>
+        </div>
+      )}
+
+      {/* Cleanup Modal */}
+      {showCleanupModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => !cleaningUp && setShowCleanupModal(false)}
+        >
+          <div
+            className="w-full max-w-lg glass rounded-3xl border border-white/20 p-6 flex flex-col gap-5 shadow-2xl bg-[#121324]/95 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <h3 className="text-lg font-black flex items-center gap-2">
+                <span>🧹</span>
+                <span>Dọn dẹp phòng cũ & giải phóng hệ thống</span>
+              </h3>
+              <button
+                type="button"
+                disabled={cleaningUp}
+                onClick={() => setShowCleanupModal(false)}
+                className="w-8 h-8 rounded-full glass hover:bg-white/10 flex items-center justify-center text-sm font-bold text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Hệ thống sẽ quét và thu hồi các phòng thi đã diễn ra xong, phòng thử nghiệm hoặc bị bỏ rơi quá lâu để giải phóng bộ nhớ RAM và cơ sở dữ liệu.
+            </p>
+
+            {/* Stats Breakdown */}
+            <div className="grid grid-cols-2 gap-2 text-xs bg-black/40 p-3.5 rounded-2xl border border-white/10">
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                <span className="text-slate-400">Đã kết thúc (&gt;2h):</span>
+                <span className="font-mono font-bold text-amber-300">{cleanupStats?.finishedCount ?? "..."}</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                <span className="text-slate-400">Sandbox test (&gt;1h):</span>
+                <span className="font-mono font-bold text-blue-300">{cleanupStats?.sandboxCount ?? "..."}</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                <span className="text-slate-400">Phòng chờ bỏ quên (&gt;6h):</span>
+                <span className="font-mono font-bold text-purple-300">{cleanupStats?.staleLobbyCount ?? "..."}</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
+                <span className="text-slate-400">Phòng trống (0 người):</span>
+                <span className="font-mono font-bold text-cyan-300">{cleanupStats?.emptyCount ?? "..."}</span>
+              </div>
+              <div className="col-span-2 flex items-center justify-between p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-200 font-bold mt-1">
+                <span>Tổng số phòng có thể dọn dẹp:</span>
+                <span className="font-mono text-base text-rose-300">{cleanupStats?.totalStaleCount ?? "..."} phòng</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={cleaningUp}
+                onClick={() => handleRunCleanup(false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>🧹</span>
+                <span>{cleaningUp ? "Đang dọn dẹp..." : "Dọn dẹp phòng cũ & bỏ rơi"}</span>
+              </button>
+              <button
+                type="button"
+                disabled={cleaningUp}
+                onClick={() => handleRunCleanup(true)}
+                className="py-3 px-4 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/50 text-rose-200 font-bold text-xs sm:text-sm shadow transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Xóa tất cả các phòng có trạng thái FINISHED không kể thời gian"
+              >
+                <span>🗑️</span>
+                <span>Xóa hết phòng FINISHED</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
@@ -166,9 +320,21 @@ export default function AdminRoomsListPage() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${statusColor}`}>
-                      {room.status}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${statusColor}`}>
+                        {room.status === "FINISHED" ? "Đã kết thúc" : room.status}
+                      </span>
+                      {room.name.startsWith("[Sandbox]") && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                          Sandbox
+                        </span>
+                      )}
+                      {Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (3600 * 1000)) >= 24 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" title="Phòng đã tồn tại hơn 24 giờ">
+                          ⚠️ Cũ
+                        </span>
+                      )}
+                    </div>
                     <span className="font-mono text-xl font-black text-foreground tracking-wider">
                       {room.code}
                     </span>
@@ -259,8 +425,18 @@ export default function AdminRoomsListPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-base font-bold text-foreground truncate">{room.name}</h3>
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusColor}`}>
-                        {room.status}
+                        {room.status === "FINISHED" ? "Đã kết thúc" : room.status}
                       </span>
+                      {room.name.startsWith("[Sandbox]") && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
+                          Sandbox
+                        </span>
+                      )}
+                      {Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (3600 * 1000)) >= 24 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold" title="Phòng đã tồn tại hơn 24 giờ">
+                          ⚠️ Cũ
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
                       <span className="flex items-center gap-1.5">

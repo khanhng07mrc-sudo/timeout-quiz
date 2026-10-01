@@ -416,6 +416,100 @@ const roomCache = new Map<string, any>(); // roomId -> room with quizBank & ques
 const roomQuestionsCache = new Map<string, any[]>(); // roomId -> questions
 const roomActiveAnswers = new Map<string, Map<string, { teamId?: string; playerId?: string; answer: string | string[]; isCorrect: boolean | null; timeSpent: number; submittedAt: number }>>(); // qKey -> (actorKey -> answerData)
 
+export function cleanupRoomInMemory(roomId: string) {
+  try {
+    // 1. Clear question timers
+    for (const [key, timer] of roomTimers.entries()) {
+      if (key === roomId || key.startsWith(`${roomId}:`)) {
+        clearInterval(timer);
+        roomTimers.delete(key);
+      }
+    }
+
+    // 2. Clear wager and grid timers
+    const wagerTimer = roomWagerTimers.get(roomId);
+    if (wagerTimer) {
+      clearInterval(wagerTimer);
+      roomWagerTimers.delete(roomId);
+    }
+    const gridTimer = roomGridTimers.get(roomId);
+    if (gridTimer) {
+      clearInterval(gridTimer);
+      roomGridTimers.delete(roomId);
+    }
+
+    // 3. Clear steal and buzz delay timers
+    for (const [key, timer] of roomStealTimer.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomStealTimer.delete(key);
+      }
+    }
+    for (const [key, timer] of roomBuzzDelayTimers.entries()) {
+      if (key.startsWith(`${roomId}:`)) {
+        clearTimeout(timer);
+        roomBuzzDelayTimers.delete(key);
+      }
+    }
+
+    // 4. Delete room-level entries
+    roomActiveQuestions.delete(roomId);
+    roomRemainingTimes.delete(roomId);
+    roomPrepareStates.delete(roomId);
+    roomTournaments.delete(roomId);
+    roomGridCaros.delete(roomId);
+    roomDiceRaces.delete(roomId);
+    roomWagers.delete(roomId);
+    roomUsedQuestions.delete(roomId);
+    roomCache.delete(roomId);
+    roomQuestionsCache.delete(roomId);
+
+    // 5. Delete qKey-level entries (qKey starts with `${roomId}:`)
+    const prefix = `${roomId}:`;
+    for (const key of roomQuestionTeamCards.keys()) {
+      if (key.startsWith(prefix)) roomQuestionTeamCards.delete(key);
+    }
+    for (const key of roomFrozenTeams.keys()) {
+      if (key.startsWith(prefix)) roomFrozenTeams.delete(key);
+    }
+    for (const key of roomFiftyFifty.keys()) {
+      if (key.startsWith(prefix)) roomFiftyFifty.delete(key);
+    }
+    for (const key of roomQuestionProcessed) {
+      if (key.startsWith(prefix)) roomQuestionProcessed.delete(key);
+    }
+    for (const key of roomPrimaryTeams.keys()) {
+      if (key.startsWith(prefix)) roomPrimaryTeams.delete(key);
+    }
+    for (const key of roomStealPhase.keys()) {
+      if (key.startsWith(prefix)) roomStealPhase.delete(key);
+    }
+    for (const key of roomStealBuzzed.keys()) {
+      if (key.startsWith(prefix)) roomStealBuzzed.delete(key);
+    }
+    for (const key of roomBuzzFirst.keys()) {
+      if (key.startsWith(prefix)) roomBuzzFirst.delete(key);
+    }
+    for (const key of roomBuzzUnlocked.keys()) {
+      if (key.startsWith(prefix)) roomBuzzUnlocked.delete(key);
+    }
+    for (const key of roomBouncebackSelectedPoints.keys()) {
+      if (key.startsWith(prefix)) roomBouncebackSelectedPoints.delete(key);
+    }
+    for (const key of roomActiveAnswers.keys()) {
+      if (key.startsWith(prefix)) roomActiveAnswers.delete(key);
+    }
+  } catch (err) {
+    console.error(`[cleanupRoomInMemory] Error clearing room ${roomId}:`, err);
+  }
+}
+
+// Register on globalThis for cross-module accessibility in Node.js
+const globalForSockets = globalThis as unknown as {
+  cleanupRoomInMemory?: (roomId: string) => void;
+};
+globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
+
 async function getAdminRoom(socket: Sock) {
   const roomId = adminSockets.get(socket.id);
   if (!roomId) return null;

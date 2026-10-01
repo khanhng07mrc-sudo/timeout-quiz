@@ -3,6 +3,7 @@ import { parse } from "url";
 import next from "next";
 import { initSocketServer } from "./src/lib/socket-server";
 import { registerSocketHandlers } from "./src/lib/socket-handlers";
+import { cleanupStaleRooms } from "./src/lib/room-cleanup";
 
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -25,6 +26,28 @@ app.prepare().then(() => {
 
   const io = initSocketServer(httpServer);
   registerSocketHandlers(io);
+
+  // Periodic room garbage collection every 15 minutes
+  const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+  setTimeout(() => {
+    cleanupStaleRooms()
+      .then((res) => {
+        if (res.deletedCount > 0) {
+          console.log(`[Room Cleanup] Initial boot cleanup purged ${res.deletedCount} stale room(s).`);
+        }
+      })
+      .catch((err) => console.error("[Room Cleanup] Initial error:", err));
+
+    setInterval(() => {
+      cleanupStaleRooms()
+        .then((res) => {
+          if (res.deletedCount > 0) {
+            console.log(`[Room Cleanup] Periodic cleanup purged ${res.deletedCount} stale room(s).`);
+          }
+        })
+        .catch((err) => console.error("[Room Cleanup] Periodic error:", err));
+    }, CLEANUP_INTERVAL_MS);
+  }, 10000);
 
   httpServer.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://${hostname}:${port}`);

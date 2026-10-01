@@ -1,0 +1,17 @@
+{
+  "name": "Timeout Quiz",
+  "short_name": "TimeoutQuiz",
+  "description": "Nền tảng thi đấu trả lời câu hỏi realtime đa chế độ, hỗ trợ online và offline",
+  "start_url": "/admin/sandbox",
+  "display": "standalone",
+  "background_color": "#0f0f1a",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

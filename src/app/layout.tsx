@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
+import OfflineBanner from "@/components/ui/OfflineBanner";
+
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
   title: "Timeout Quiz — Realtime Quiz Arena",
   description: "Nền tảng thi đấu trắc nghiệm realtime đa chế độ, thẻ bài chiến thuật & đấu trường đỉnh cao",
+  manifest: "/manifest.json",
   icons: {
     icon: [
       { url: "/brand/icon.svg", type: "image/svg+xml" },
@@ -21,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <body className={`${inter.className} bg-background text-foreground`}>
+        <OfflineBanner />
         {children}
       </body>
     </html>

@@ -167,15 +167,16 @@ export default function GameQuestion({
                     Đội bạn đang là đội trả lời chính. Vui lòng chọn mức điểm câu hỏi (10, 20 hoặc 30 điểm):
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-3 w-full max-w-sm mt-1">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-sm mt-1">
                   {([10, 20, 30] as const).map((pts) => (
                     <button
                       key={pts}
                       type="button"
                       onClick={() => onSelectPoints?.(pts)}
-                      className="py-3 px-4 rounded-xl font-black text-base bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg active:scale-95 transition-all cursor-pointer border border-indigo-300/40 hover:border-indigo-300"
+                      className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg active:scale-95 transition-all cursor-pointer border border-indigo-300/40 hover:border-indigo-300 flex items-center justify-center gap-1"
                     >
-                      {pts} Điểm
+                      <span className="font-mono text-base sm:text-lg">{pts}</span>
+                      <span className="text-xs sm:text-sm font-semibold opacity-90">Điểm</span>
                     </button>
                   ))}
                 </div>
@@ -203,7 +204,7 @@ export default function GameQuestion({
               {!isPrimaryTeam && (
                 <button
                   onClick={onBuzz}
-                  className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-base sm:text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
                 >
                   🔔 BẤM CHUÔNG!
                 </button>
@@ -265,7 +266,7 @@ export default function GameQuestion({
               <button
                 onClick={onBuzz}
                 disabled={!question.buzzUnlocked}
-                className={`px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
+                className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
                   question.buzzUnlocked
                     ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg shadow-amber-500/30 active:scale-95 animate-pulse cursor-pointer"
                     : "bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-60"

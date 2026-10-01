@@ -89,6 +89,38 @@ export default function DisplayPage() {
     soundManager.setMuted(false);
     soundManager.setVolume(0.8);
 
+    const handlePostMessage = (e: MessageEvent) => {
+      if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
+        const p = e.data.payload;
+        if (p.roomState !== undefined) setRoomState(p.roomState);
+        if (p.currentQuestion !== undefined) {
+          setCurrentQuestion(p.currentQuestion);
+          if (p.currentQuestion && !p.currentQuestion.timerPending) {
+            soundManager.playCountdownTick(0);
+            soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
+          }
+        }
+        if (p.revealPayload !== undefined) {
+          setRevealPayload(p.revealPayload);
+          soundManager.stopMusic();
+          soundManager.playFanfare();
+        }
+        if (p.timer !== undefined) setTimer(p.timer);
+        if (p.buzzed !== undefined) setBuzzed(p.buzzed);
+        if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
+        if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
+        if (p.questionPrepare !== undefined) setQuestionPrepare(p.questionPrepare);
+        if (p.isStealOpen !== undefined) setIsStealOpen(p.isStealOpen);
+        if (p.stealBuzzed !== undefined) setStealBuzzed(p.stealBuzzed);
+        if (p.eliminationNotice !== undefined) setEliminationNotice(p.eliminationNotice);
+        if (p.gameEnd !== undefined) {
+          setGameEnd(p.gameEnd);
+          soundManager.playFanfare();
+        }
+      }
+    };
+    window.addEventListener("message", handlePostMessage);
+
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
     });
@@ -295,6 +327,7 @@ export default function DisplayPage() {
     });
 
     return () => {
+      window.removeEventListener("message", handlePostMessage);
       soundManager.stopMusic();
       socket.disconnect();
     };
@@ -480,46 +513,54 @@ export default function DisplayPage() {
   if (!roomState || roomState.status === "LOBBY") {
     const isTeamMode = roomState?.teamMode === "TEAM";
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-8 max-w-6xl mx-auto relative" onClick={handleUnlockAudio}>
-        {/* Floating Sound and Rule Controls */}
-        <div className="absolute top-6 right-6 z-20 flex items-center gap-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
-            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 text-cyan-300 hover:text-white hover:bg-white/10 transition"
-          >
-            <span>📖</span>
-            <span>Thể lệ luật chơi</span>
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleSound(); }}
-            className="px-4 py-2 rounded-xl glass border border-white/20 text-sm font-bold flex items-center gap-2 hover:bg-white/10 transition"
-          >
-            {soundMuted ? "🔇 Đã tắt âm" : "🔊 Nhạc nền: BẬT"}
-          </button>
+      <div className="min-h-screen flex flex-col p-4 sm:p-6 max-w-6xl mx-auto w-full relative" onClick={handleUnlockAudio}>
+        {/* Top Navigation & Status Bar - Guarantees NO overlapping */}
+        <div className="w-full flex flex-wrap items-center justify-between gap-3 mb-6 z-20 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 whitespace-nowrap">
+              {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
+            </span>
+            <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 whitespace-nowrap">
+              [{roomState?.mode}]
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
+              className="px-3.5 py-1.5 rounded-xl glass border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-1.5 text-cyan-300 hover:text-white hover:bg-white/10 transition whitespace-nowrap"
+            >
+              <span>📖</span>
+              <span>Thể lệ luật chơi</span>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); toggleSound(); }}
+              className="px-3.5 py-1.5 rounded-xl glass border border-white/20 text-xs sm:text-sm font-bold flex items-center gap-1.5 hover:bg-white/10 transition whitespace-nowrap"
+            >
+              {soundMuted ? "🔇 Đã tắt âm" : "🔊 Nhạc nền: BẬT"}
+            </button>
+          </div>
         </div>
 
         {!audioUnlocked && (
           <div
             onClick={handleUnlockAudio}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce text-center max-w-[90vw]"
           >
             <span>🔊</span>
             <span>Nhấp chuột bất kỳ đâu để bật nhạc nền và âm thanh hội trường</span>
           </div>
         )}
 
-        <div className="text-center mb-8">
-          <span className="px-4 py-1.5 rounded-full text-sm font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-            {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
-          </span>
-          <h1 className="text-6xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mt-3">
+        <div className="text-center mb-6">
+          <h1 className="text-4xl sm:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
             {roomState?.name ?? "Timeout Quiz"}
           </h1>
-          <p className="text-xl text-muted-foreground mt-4">Mã phòng tham gia</p>
-          <div className="inline-block mt-2 px-8 py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">
-            <p className="text-7xl sm:text-8xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2">Mã phòng tham gia</p>
+          <div className="inline-block mt-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">
+            <p className="text-5xl sm:text-7xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
           </div>
-          <p className="text-muted-foreground mt-4 text-lg">
+          <p className="text-muted-foreground mt-3 text-sm sm:text-base">
             Truy cập <span className="text-white font-bold font-mono">/play/{code}</span> để tham gia
           </p>
         </div>

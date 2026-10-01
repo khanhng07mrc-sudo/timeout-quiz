@@ -5,6 +5,7 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
 import SystemIcon from "@/components/ui/SystemIcon";
+import { offlineStorage, OfflineQuizBank } from "@/lib/offline-storage";
 
 interface QuestionItem {
   id?: string;
@@ -88,15 +89,26 @@ export default function QuizBankPage() {
     try {
       setLoading(true);
       const res = await fetch("/api/quiz-bank?ownerId=demo-host-id", { headers: getAuthHeaders() });
-      const data = await res.json();
-      if (data.banks) {
-        setBanks(data.banks);
-        if (data.banks.length > 0 && !selectedBank) {
-          selectBank(data.banks[0]);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.banks) {
+          const localOnly = offlineStorage.getLocalBanks().filter((b: OfflineQuizBank) => b.isLocalOnly);
+          const combined = [...localOnly, ...data.banks];
+          setBanks(combined);
+          if (combined.length > 0 && !selectedBank) {
+            selectBank(combined[0]);
+          }
+          return;
         }
       }
-    } catch (e) {
-      console.error(e);
+      throw new Error("Offline or server unreachable");
+    } catch {
+      console.warn("[QuizBank] Loading offline banks from local storage");
+      const local = offlineStorage.getLocalBanks();
+      setBanks(local);
+      if (local.length > 0 && !selectedBank) {
+        selectBank(local[0]);
+      }
     } finally {
       setLoading(false);
     }
@@ -105,14 +117,30 @@ export default function QuizBankPage() {
   const selectBank = async (bank: QuizBank) => {
     setSelectedBank(bank);
     setLoadingQuestions(true);
+
+    const local = offlineStorage.getLocalBankById(bank.id);
+    if (local && local.questions && local.questions.length > 0) {
+      setQuestions(local.questions);
+      setLoadingQuestions(false);
+      return;
+    }
+
     try {
       const res = await fetch(`/api/quiz-bank/${bank.id}/questions`, { headers: getAuthHeaders() });
       const data = await res.json();
       if (data.questions) {
         setQuestions(data.questions);
+        // Cache to local
+        offlineStorage.saveLocalBank({
+          ...bank,
+          questions: data.questions,
+          isLocalOnly: false,
+        });
       }
-    } catch (e) {
-      console.error(e);
+    } catch {
+      if (local?.questions) {
+        setQuestions(local.questions);
+      }
     } finally {
       setLoadingQuestions(false);
     }
@@ -122,15 +150,12 @@ export default function QuizBankPage() {
     if (!confirm(`Xóa bộ đề "${bank.title}" và tất cả ${bank._count?.questions ?? 0} câu hỏi? Không thể hoàn tác!`)) return;
     setDeletingBankId(bank.id);
     try {
-      const res = await fetch(`/api/quiz-bank/${bank.id}`, { method: "DELETE", headers: getAuthHeaders() });
-      if (res.ok) {
-        setBanks((prev) => prev.filter((b) => b.id !== bank.id));
-        if (selectedBank?.id === bank.id) {
-          setSelectedBank(null);
-          setQuestions([]);
-        }
-      } else {
-        alert("Lỗi khi xóa bộ đề!");
+      offlineStorage.deleteLocalBank(bank.id);
+      const res = await fetch(`/api/quiz-bank/${bank.id}`, { method: "DELETE", headers: getAuthHeaders() }).catch(() => null);
+      setBanks((prev) => prev.filter((b) => b.id !== bank.id));
+      if (selectedBank?.id === bank.id) {
+        setSelectedBank(null);
+        setQuestions([]);
       }
     } catch {
       alert("Lỗi kết nối!");
@@ -446,6 +471,22 @@ export default function QuizBankPage() {
     }
   };
 
+  const handleImportEntireBankJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const imported = await offlineStorage.importFromJson(file);
+      alert(`Đã nhập thành công bộ đề: "${imported.title}" với ${imported.questions?.length || 0} câu hỏi!`);
+      const local = offlineStorage.getLocalBanks();
+      setBanks(local);
+      selectBank(imported as any);
+    } catch (err: any) {
+      alert("Không thể nhập file JSON: " + (err.message || err));
+    } finally {
+      e.target.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -453,13 +494,25 @@ export default function QuizBankPage() {
           <h1 className="text-2xl sm:text-3xl font-black whitespace-nowrap">Ngân hàng câu hỏi (Quiz Bank)</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-1">Tạo, chỉnh sửa và nhập file câu hỏi (Excel/CSV/JSON)</p>
         </div>
-        <button
-          onClick={() => setShowNewBankModal(true)}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2 whitespace-nowrap self-start sm:self-auto"
-        >
-          <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-          <span className="whitespace-nowrap">Tạo bộ câu hỏi mới</span>
-        </button>
+        <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+          <label className="cursor-pointer px-4 py-2.5 rounded-xl glass border border-purple-500/40 hover:bg-purple-500/10 font-bold text-xs sm:text-sm text-purple-300 transition inline-flex items-center gap-2 whitespace-nowrap">
+            <span>📥</span>
+            <span>Nhập bộ đề (JSON)</span>
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportEntireBankJson}
+              className="hidden"
+            />
+          </label>
+          <button
+            onClick={() => setShowNewBankModal(true)}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2 whitespace-nowrap"
+          >
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
+            <span className="whitespace-nowrap">Tạo bộ câu hỏi mới</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -544,7 +597,7 @@ export default function QuizBankPage() {
                   <p className="text-sm text-muted-foreground">{questions.length} câu hỏi hiện có</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <label className="cursor-pointer px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 text-sm font-semibold transition whitespace-nowrap">
+                  <label className="cursor-pointer px-3.5 py-2 rounded-xl glass border border-border hover:border-cyan-500 text-sm font-semibold transition whitespace-nowrap">
                     📂 Import (Excel/CSV/JSON)
                     <input
                       type="file"
@@ -553,6 +606,20 @@ export default function QuizBankPage() {
                       className="hidden"
                     />
                   </label>
+                  <button
+                    onClick={() => {
+                      if (!selectedBank) return;
+                      offlineStorage.exportToJson({
+                        ...selectedBank,
+                        questions,
+                      });
+                    }}
+                    className="px-3.5 py-2 rounded-xl glass border border-cyan-500/40 hover:bg-cyan-500/10 text-cyan-300 text-sm font-semibold transition whitespace-nowrap inline-flex items-center gap-1.5"
+                    title="Xuất bộ đề ra file JSON để sao lưu hoặc chia sẻ ngoại tuyến"
+                  >
+                    <span>📤</span>
+                    <span>Xuất file JSON</span>
+                  </button>
                   <button
                     onClick={() => setShowNewQModal(true)}
                     className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-sm font-semibold transition whitespace-nowrap"

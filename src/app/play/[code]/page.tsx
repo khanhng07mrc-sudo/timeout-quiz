@@ -127,6 +127,48 @@ export default function PlayPage() {
 
     const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
 
+    const handlePostMessage = (e: MessageEvent) => {
+      if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
+        setConnected(true);
+        const p = e.data.payload;
+        if (p.roomState !== undefined) setRoomState(p.roomState);
+        if (p.currentQuestion !== undefined) {
+          setCurrentQuestion(p.currentQuestion);
+          if (p.currentQuestion !== null) setAnswered(false);
+        }
+        if (p.revealPayload !== undefined) {
+          setRevealPayload(p.revealPayload);
+          setIsStealPhase(false);
+          if (soundEnabledRef.current) {
+            const myAns = p.revealPayload.answers?.find(
+              (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
+            );
+            if (myAns?.isCorrect) {
+              soundManager.playCorrect();
+            } else {
+              soundManager.playWrong();
+            }
+          }
+        }
+        if (p.timer !== undefined) setTimer(p.timer);
+        if (p.buzzedBy !== undefined) setBuzzedBy(p.buzzedBy);
+        if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
+        if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
+        if (p.questionPrepare !== undefined) setQuestionPrepare(p.questionPrepare);
+        if (p.gameEnd !== undefined) {
+          setGameEnd(p.gameEnd);
+          if (soundEnabledRef.current) soundManager.playFanfare();
+        }
+        if (p.isStealOpen !== undefined) setIsStealPhase(p.isStealOpen);
+        if (p.stealBuzzed !== undefined) setStealBuzzedTeam(p.stealBuzzed);
+      }
+    };
+    window.addEventListener("message", handlePostMessage);
+
+    if (code.startsWith("OFFLINE")) {
+      setConnected(true);
+    }
+
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
       query: isSandbox ? { sandbox: "1" } : {},
@@ -401,39 +443,112 @@ export default function PlayPage() {
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
     return () => {
+      window.removeEventListener("message", handlePostMessage);
       socket.disconnect();
     };
   }, [code, router]);
 
-  const handleBuzz = () => socketRef.current?.emit("game:buzz");
+  const handleBuzz = () => {
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:buzz");
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "buzz",
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
+  };
 
   const handleAnswer = (answer: string | string[]) => {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
-    socketRef.current?.emit("game:answer:submit", {
-      questionId: currentQuestion.question.id,
-      answer,
-    });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:answer:submit", {
+        questionId: currentQuestion.question.id,
+        answer,
+      });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "answer",
+        questionId: currentQuestion.question.id,
+        answer,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleUsePowerup = (cardId: string, targetTeamId?: string) => {
-    socketRef.current?.emit("game:powerup:use", { cardId, targetTeamId });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:powerup:use", { cardId, targetTeamId });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "powerup_use",
+        cardId,
+        targetTeamId,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleSelectGridCell = (cellId: number) => {
-    socketRef.current?.emit("game:grid:select", { cellId });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:grid:select", { cellId });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "grid_select",
+        cellId,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleRollDice = () => {
-    socketRef.current?.emit("game:dice:roll");
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:dice:roll");
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "dice_roll",
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleSubmitWager = (amount: number) => {
-    socketRef.current?.emit("game:wager:submit", { amount });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:wager:submit", { amount });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "wager_submit",
+        amount,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleSelectPoints = (points: 10 | 20 | 30) => {
-    socketRef.current?.emit("game:bounceback:select_points", { points });
+    if (socketRef.current?.connected) {
+      socketRef.current.emit("game:bounceback:select_points", { points });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "bounceback_select_points",
+        points,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
   };
 
   const handleSelectTeam = (teamId: string) => {
@@ -474,7 +589,7 @@ export default function PlayPage() {
     );
   }
 
-  if (!connected) {
+  if (!connected && !code.startsWith("OFFLINE")) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

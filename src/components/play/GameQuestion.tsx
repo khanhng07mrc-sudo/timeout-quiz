@@ -304,11 +304,19 @@ export default function GameQuestion({
 
       {/* Answer Area */}
       {roomStatus === "PAUSED" ? (
-        <div className="text-center py-6 text-muted-foreground">⏸️ Game đã tạm dừng</div>
+        <div className="text-center py-6 text-muted-foreground text-sm font-semibold glass rounded-xl">⏸️ Game đã tạm dừng</div>
       ) : q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" ? (
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
           {q.options?.map((opt, i) => {
-            const labels = ["A", "B", "C", "D"];
+            const labels = ["A", "B", "C", "D", "E", "F"];
+            const badgeClasses = [
+              "bg-blue-500 text-white shadow-blue-500/30",
+              "bg-amber-400 text-black shadow-amber-400/30",
+              "bg-emerald-500 text-white shadow-emerald-500/30",
+              "bg-rose-500 text-white shadow-rose-500/30",
+              "bg-purple-500 text-white shadow-purple-500/30",
+              "bg-cyan-500 text-black shadow-cyan-500/30",
+            ];
             const isCorrect = revealPayload?.correctAnswer.includes(opt.id);
             const isSelected = selected.includes(opt.id);
             const isHidden = hiddenOptionIds?.includes(opt.id);
@@ -319,35 +327,40 @@ export default function GameQuestion({
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
                 disabled={disabled}
-                className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
+                className={`flex items-center gap-3 p-3 sm:p-4 rounded-xl border-2 text-left transition-all active:scale-[0.98] min-h-[54px] sm:min-h-[60px] ${
                   isHidden
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
                     ? isCorrect
-                      ? "border-green-500 bg-green-500/20 text-green-300"
-                      : "border-border opacity-50"
+                      ? "border-green-500 bg-green-500/25 text-green-300 ring-2 ring-green-500/50 shadow-lg"
+                      : "border-border opacity-40"
                     : isSelected
-                    ? "border-purple-500 bg-purple-500/20"
+                    ? "border-purple-500 bg-purple-500/25 text-white ring-2 ring-purple-500/60 shadow-lg"
                     : disabled
                     ? "border-border opacity-60 cursor-not-allowed"
-                    : "border-border hover:border-purple-400 active:scale-95"
+                    : "border-border hover:border-purple-400 hover:bg-white/5 active:bg-purple-500/10 cursor-pointer"
                 }`}
               >
-                <span className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-sm font-bold shrink-0">
+                <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black shrink-0 shadow ${
+                  badgeClasses[i % badgeClasses.length]
+                }`}>
                   {labels[i] ?? i + 1}
                 </span>
-                <span className="flex-1">{opt.text}</span>
+                <span className="flex-1 text-sm sm:text-base font-semibold leading-snug">{opt.text}</span>
                 {isHidden && (
                   <span className="text-[10px] px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
                     50/50
                   </span>
+                )}
+                {isSelected && !revealPayload && (
+                  <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse shrink-0" />
                 )}
               </button>
             );
           })}
         </div>
       ) : q.type === "MC_MULTI" ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           {q.options?.map((opt, i) => {
             const labels = ["A", "B", "C", "D"];
             const isCorrect = revealPayload?.correctAnswer.includes(opt.id);

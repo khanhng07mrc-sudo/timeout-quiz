@@ -408,17 +408,17 @@ export default function PlayPage() {
   // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
   if (matchStarting) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-bold uppercase tracking-widest">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
           ⚡ Sẵn sàng thi đấu
         </div>
-        <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
           Trận đấu bắt đầu sau
         </h1>
-        <div className="inline-flex items-center justify-center w-32 h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
+        <div className="inline-flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-5xl sm:text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
           {matchStarting.seconds}
         </div>
-        <p className="text-muted-foreground text-sm max-w-xs">
+        <p className="text-muted-foreground text-xs sm:text-sm max-w-xs">
           Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
         </p>
         <button
@@ -434,24 +434,24 @@ export default function PlayPage() {
   // ── Question Preparation Countdown (3s) ──────────────────────────────────
   if (questionPrepare) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6">
-        <div className="w-full max-w-sm glass rounded-2xl p-6 border-2 border-purple-500/40 space-y-5 animate-slide-up">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
+        <div className="w-full max-w-sm glass rounded-2xl p-5 sm:p-6 border-2 border-purple-500/40 space-y-4 sm:space-y-5 animate-slide-up">
           <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
             <span>CÂU {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}</span>
             <span className="text-cyan-400 font-bold">{questionPrepare.points}đ · {questionPrepare.timeLimit}s</span>
           </div>
-          <h2 className="text-2xl font-black text-white">Chuẩn bị câu hỏi!</h2>
+          <h2 className="text-xl sm:text-2xl font-black text-white">Chuẩn bị câu hỏi!</h2>
           {questionPrepare.primaryTeamName && (
             <p className="text-xs font-bold text-purple-300">
               🎯 Đội trả lời chính: {questionPrepare.primaryTeamName}
             </p>
           )}
-          <div className="py-2">
-            <div className="inline-flex items-center justify-center w-28 h-28 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white text-5xl font-black shadow-xl animate-bounce-in glow-cyan">
+          <div className="py-1 sm:py-2">
+            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white text-4xl sm:text-5xl font-black shadow-xl animate-bounce-in glow-cyan">
               {questionPrepare.seconds}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Đáp án và câu hỏi sẽ mở ngay sau đếm ngược</p>
+          <p className="text-[11px] sm:text-xs text-muted-foreground">Đáp án và câu hỏi sẽ mở ngay sau đếm ngược</p>
         </div>
         <button
           onClick={toggleSound}
@@ -468,23 +468,23 @@ export default function PlayPage() {
   const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
 
   return (
-    <div className="min-h-screen flex flex-col p-4 gap-4">
+    <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
       {/* Header with score and sound toggle */}
       <div className="flex items-center gap-2">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <ScoreDisplay roomState={roomState} playerId={playerId} />
         </div>
         <button
           onClick={() => setShowRulesModal(true)}
           title="Xem thể lệ và luật chơi"
-          className="p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-base shrink-0 text-cyan-300"
+          className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0 text-cyan-300"
         >
           📖
         </button>
         <button
           onClick={toggleSound}
           title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
-          className="p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-base shrink-0"
+          className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0"
         >
           {soundEnabled ? "🔊" : "🔇"}
         </button>
@@ -492,30 +492,30 @@ export default function PlayPage() {
 
       {/* Powerup notification */}
       {lastPowerup && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-6 py-3 text-center animate-bounce-in flex items-center gap-2 border border-purple-500/40 shadow-xl">
-          <PowerupIcon type={lastPowerup.type} className="w-8 h-8 shrink-0 drop-shadow" />
-          <span className="font-bold">{lastPowerup.usedByName}</span>
-          <span className="text-muted-foreground"> dùng thẻ: </span>
-          <span className="font-semibold text-cyan-300">{lastPowerup.effect}</span>
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-4 py-2.5 sm:px-6 sm:py-3 text-center animate-bounce-in flex items-center justify-center gap-2 border border-purple-500/40 shadow-xl w-[92vw] max-w-md">
+          <PowerupIcon type={lastPowerup.type} className="w-6 h-6 sm:w-8 sm:h-8 shrink-0 drop-shadow" />
+          <span className="font-bold text-xs sm:text-sm truncate">{lastPowerup.usedByName}</span>
+          <span className="text-muted-foreground text-xs sm:text-sm"> dùng: </span>
+          <span className="font-semibold text-cyan-300 text-xs sm:text-sm truncate">{lastPowerup.effect}</span>
         </div>
       )}
 
       {/* Error / Alert notification */}
       {errorMessage && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white rounded-xl px-6 py-3 text-center font-bold animate-bounce-in shadow-lg">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white rounded-xl px-4 py-2.5 sm:px-6 sm:py-3 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[92vw] max-w-md">
           ⚠️ {errorMessage}
         </div>
       )}
 
       {/* Buzz notification */}
       {buzzedBy && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black rounded-xl px-6 py-3 text-center font-bold animate-bounce-in">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black rounded-xl px-4 py-2 sm:px-6 sm:py-3 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[90vw] max-w-sm">
           ⚡ {buzzedBy.playerName} đã bấm buzz!
         </div>
       )}
 
       {/* Main game area */}
-      <div className="flex-1 flex flex-col gap-4">
+      <div className="flex-1 flex flex-col gap-3 sm:gap-4">
         {currentQuestion ? (
           <>
             <GameQuestion

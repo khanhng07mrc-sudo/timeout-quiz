@@ -113,7 +113,7 @@ export default function DiceRaceTrack({
       </div>
 
       {/* Board Game Track (Grid / Ribbon of Tiles) */}
-      <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-10 gap-2.5 max-h-[360px] overflow-y-auto p-1">
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-10 gap-1.5 sm:gap-2.5 max-h-[360px] overflow-y-auto p-1">
         {tiles.map((tile: DiceTile) => {
           const config = tileTypeIcons[tile.type] || tileTypeIcons.NORMAL;
           const teamsHere = teams.filter((t) => t.position === tile.index);

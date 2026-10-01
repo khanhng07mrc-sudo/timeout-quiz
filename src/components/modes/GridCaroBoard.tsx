@@ -122,7 +122,7 @@ export default function GridCaroBoard({
 
       {/* Grid of Rectangles */}
       <div
-        className="grid gap-3 select-none"
+        className="grid gap-1.5 sm:gap-3 select-none"
         style={{
           gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         }}
@@ -139,7 +139,7 @@ export default function GridCaroBoard({
               type="button"
               disabled={!isClickable}
               onClick={() => onSelectCell && onSelectCell(cell.id)}
-              className={`relative rounded-xl border-2 transition-all flex flex-col items-center justify-center p-3 text-center min-h-[95px] ${
+              className={`relative rounded-xl border-2 transition-all flex flex-col items-center justify-center p-1.5 sm:p-3 text-center min-h-[64px] sm:min-h-[95px] ${
                 isSelectedAnim
                   ? "border-yellow-400 bg-yellow-500/30 scale-105 shadow-2xl animate-pulse ring-4 ring-yellow-400/50"
                   : isClaimed
@@ -162,39 +162,39 @@ export default function GridCaroBoard({
               }}
             >
               {/* Cell Number Badge */}
-              <span className="absolute top-1.5 left-2 text-[11px] font-mono text-muted-foreground/90 font-bold">
+              <span className="absolute top-1 left-1.5 sm:top-1.5 sm:left-2 text-[9px] sm:text-[11px] font-mono text-muted-foreground/90 font-bold">
                 #{cell.id}
               </span>
 
               {/* Selection Animation Banner */}
               {isSelectedAnim ? (
-                <div className="flex flex-col items-center justify-center gap-1 animate-bounce">
-                  <span className="text-xl">⚡</span>
-                  <span className="text-xs font-black text-yellow-300 uppercase tracking-widest">
+                <div className="flex flex-col items-center justify-center gap-0.5 sm:gap-1 animate-bounce">
+                  <span className="text-base sm:text-xl">⚡</span>
+                  <span className="text-[10px] sm:text-xs font-black text-yellow-300 uppercase tracking-widest">
                     ĐÃ CHỌN!
                   </span>
-                  <span className="text-sm font-bold text-white font-mono">
+                  <span className="text-xs sm:text-sm font-bold text-white font-mono">
                     {cell.points}đ · {cell.difficulty}
                   </span>
                 </div>
               ) : isClaimed ? (
                 /* Claimed content */
-                <div className="flex flex-col items-center justify-center gap-1 z-10">
-                  <span className="text-xl">⭐</span>
-                  <span className="text-xs font-black text-white truncate max-w-[95%]">
+                <div className="flex flex-col items-center justify-center gap-0.5 sm:gap-1 z-10">
+                  <span className="text-base sm:text-xl">⭐</span>
+                  <span className="text-[10px] sm:text-xs font-black text-white truncate max-w-[95%]">
                     {cell.claimedByTeamName}
                   </span>
-                  <span className="text-[10px] text-white/90 font-mono font-bold">
+                  <span className="text-[9px] sm:text-[10px] text-white/90 font-mono font-bold">
                     +{cell.points}đ
                   </span>
                 </div>
               ) : (
                 /* Unclaimed cell content - Always shows points and difficulty */
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-2xl font-black text-white font-mono">
+                <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                  <span className="text-base sm:text-2xl font-black text-white font-mono">
                     {cell.points}đ
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase border ${diffStyle}`}>
+                  <span className={`text-[8px] sm:text-[10px] px-1 sm:px-2 py-0.5 rounded font-bold uppercase border ${diffStyle}`}>
                     {cell.difficulty}
                   </span>
                   {cell.attemptCount > 0 && (

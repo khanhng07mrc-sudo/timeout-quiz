@@ -552,11 +552,11 @@ export default function DisplayPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="min-h-screen grid grid-cols-[1fr_340px] gap-4 p-4 relative" onClick={handleUnlockAudio}>
+    <div className="min-h-screen flex flex-col xl:grid xl:grid-cols-[1fr_340px] gap-3 sm:gap-4 p-3 sm:p-4 relative" onClick={handleUnlockAudio}>
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-6 py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center gap-2 animate-bounce"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-xs sm:text-sm font-bold shadow-xl border border-white/30 cursor-pointer flex items-center justify-center gap-2 animate-bounce max-w-[90vw] text-center"
         >
           <span>🔊</span>
           <span>Nhấp chuột bất kỳ đâu để bật âm thanh hội trường</span>
@@ -564,7 +564,7 @@ export default function DisplayPage() {
       )}
 
       {/* Main content area */}
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
         {/* Powerup notification */}
         {lastPowerup && (
           <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50 shadow-xl">
@@ -598,13 +598,13 @@ export default function DisplayPage() {
 
         {/* Question */}
         {currentQuestion && (
-          <div className="flex-1 glass rounded-2xl p-8 flex flex-col justify-between">
+          <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
             <div>
               {/* Timer & Turn Info */}
-              <div className="flex items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+              <div className="flex items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div className="flex items-center gap-3 sm:gap-4">
                   {timer && (
-                    <svg className="w-16 h-16" viewBox="0 0 64 64">
+                    <svg className="w-12 h-12 sm:w-16 sm:h-16 shrink-0" viewBox="0 0 64 64">
                       <circle cx="32" cy="32" r="28" fill="none" stroke="#2d2d5a" strokeWidth="6" />
                       <circle
                         cx="32" cy="32" r="28"
@@ -621,8 +621,8 @@ export default function DisplayPage() {
                     </svg>
                   )}
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground font-semibold">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
                         Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}
                       </span>
                       <span
@@ -635,27 +635,27 @@ export default function DisplayPage() {
 
                     {/* Mode specific info banner */}
                     {roomState.mode === "BOUNCEBACK" && (
-                      <p className="text-lg font-black text-cyan-300 mt-1">
+                      <p className="text-base sm:text-lg font-black text-cyan-300 mt-1">
                         🎯 Lượt trả lời chính: {currentQuestion.primaryTeamName ?? "..."}
                       </p>
                     )}
                     {roomState.mode === "TOURNAMENT" && (
-                      <p className="text-lg font-black text-yellow-300 mt-1">
+                      <p className="text-base sm:text-lg font-black text-yellow-300 mt-1">
                         🏆 Đối đầu 1v1: {currentQuestion.primaryTeamName ?? "..."}
                       </p>
                     )}
                     {roomState.mode === "GRID_CARO" && (
-                      <p className="text-lg font-black text-purple-300 mt-1">
+                      <p className="text-base sm:text-lg font-black text-purple-300 mt-1">
                         🎯 Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của {currentQuestion.primaryTeamName ?? "..."}
                       </p>
                     )}
                     {roomState.mode === "DICE_RACE" && (
-                      <p className="text-lg font-black text-indigo-300 mt-1">
+                      <p className="text-base sm:text-lg font-black text-indigo-300 mt-1">
                         🎲 Xúc xắc: {currentQuestion.diceRollValue ?? "?"} nút — Lượt của {currentQuestion.primaryTeamName ?? "..."}
                       </p>
                     )}
                     {roomState.mode === "WAGER" && (
-                      <p className="text-lg font-black text-amber-300 mt-1">
+                      <p className="text-base sm:text-lg font-black text-amber-300 mt-1">
                         💰 Cược điểm bí mật — Câu hỏi đang diễn ra!
                       </p>
                     )}
@@ -669,23 +669,23 @@ export default function DisplayPage() {
               </div>
 
               {/* Question content */}
-              <h2 className="text-3xl font-bold mb-6 leading-relaxed">{currentQuestion.question.content}</h2>
+              <h2 className="text-xl sm:text-3xl font-bold mb-4 sm:mb-6 leading-relaxed">{currentQuestion.question.content}</h2>
 
               {currentQuestion.question.mediaUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-64 rounded-xl mb-6 mx-auto" />
+                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-52 sm:max-h-64 rounded-xl mb-4 sm:mb-6 mx-auto" />
               )}
 
               {/* Options */}
               {currentQuestion.question.options && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   {currentQuestion.question.options.map((opt, i) => {
                     const labels = ["A", "B", "C", "D", "E", "F"];
                     const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
                     return (
                       <div
                         key={opt.id}
-                        className={`p-5 rounded-xl border-2 transition-all text-xl font-medium ${
+                        className={`p-3.5 sm:p-5 rounded-xl border-2 transition-all text-base sm:text-xl font-medium ${
                           revealPayload
                             ? isRevealed
                               ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50"
@@ -693,7 +693,7 @@ export default function DisplayPage() {
                             : "border-border glass"
                         }`}
                       >
-                        <span className="font-black mr-3 text-purple-400">{labels[i]}.</span>
+                        <span className="font-black mr-2.5 sm:mr-3 text-purple-400">{labels[i]}.</span>
                         {opt.text}
                       </div>
                     );

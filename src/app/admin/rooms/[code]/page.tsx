@@ -331,7 +331,7 @@ export default function AdminRoomPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24 lg:pb-8">
       {/* Back to rooms list */}
       <Link
         href="/admin/rooms"
@@ -352,10 +352,10 @@ export default function AdminRoomPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-black">{roomState?.name ?? "Phòng đang tải..."}</h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-black">{roomState?.name ?? "Phòng đang tải..."}</h1>
             {roomState?.mode && (
               <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 Mode: {roomState.mode}
@@ -367,12 +367,12 @@ export default function AdminRoomPage() {
               </span>
             )}
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
             Mã: <span className="font-mono font-bold text-white">{code}</span>
             {" "}· Trạng thái: <span className={`font-bold ${ roomState?.status === "PLAYING" ? "text-green-400" : roomState?.status === "PAUSED" ? "text-yellow-400" : roomState?.status === "FINISHED" ? "text-red-400" : "text-cyan-400" }`}>{roomState?.status ?? "..."}</span>
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+        <div className="flex gap-2 flex-wrap sm:justify-end">
           <button
             onClick={toggleSound}
             title={soundEnabled ? "Tắt âm thanh máy Host" : "Bật âm thanh máy Host"}
@@ -1116,6 +1116,41 @@ export default function AdminRoomPage() {
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
       />
+
+      {/* Mobile Floating Action Bar for Host/Admin */}
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-[#0f0f1a]/95 backdrop-blur-md border-t border-border flex items-center gap-2 z-40 lg:hidden shadow-2xl">
+        <button
+          onClick={() => emit("admin:next")}
+          disabled={gameEnded}
+          className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold text-xs sm:text-sm text-white shadow active:scale-95 disabled:opacity-50 truncate"
+        >
+          {roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "➡️ Câu tiếp"}
+        </button>
+
+        <button
+          onClick={() => emit("admin:reveal")}
+          disabled={!currentQuestion}
+          className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95 disabled:opacity-40"
+        >
+          👁️ Mở đáp án
+        </button>
+
+        {roomState?.status === "PLAYING" ? (
+          <button
+            onClick={() => emit("admin:pause")}
+            className="py-3 px-3 rounded-xl border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 font-bold text-xs shrink-0 active:scale-95"
+          >
+            ⏸️ Tạm dừng
+          </button>
+        ) : roomState?.status === "PAUSED" ? (
+          <button
+            onClick={() => emit("admin:resume")}
+            className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95"
+          >
+            ▶️ Tiếp tục
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default function WagerPanel({
   teams = [],
 }: Props) {
   const [hasSubmittedLocal, setHasSubmittedLocal] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"BOTH" | "VUNG1" | "VUNG2">("BOTH");
 
   if (!wagerState) return null;
 
@@ -189,9 +190,36 @@ export default function WagerPanel({
       )}
 
       {/* ─── HAI VÙNG MÀN HÌNH CƯỢC (VÙNG 1 & VÙNG 2) ─── */}
+      {/* Mobile Tab Switcher */}
+      <div className="flex lg:hidden items-center justify-center p-1 rounded-xl bg-white/5 border border-white/10 gap-1 text-xs font-bold">
+        <button
+          type="button"
+          onClick={() => setMobileTab("BOTH")}
+          className={`flex-1 py-1.5 rounded-lg transition ${mobileTab === "BOTH" ? "bg-white/20 text-white shadow" : "text-muted-foreground hover:text-white"}`}
+        >
+          🔄 Tất cả
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("VUNG2")}
+          className={`flex-1 py-1.5 rounded-lg transition ${mobileTab === "VUNG2" ? "bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 shadow" : "text-muted-foreground hover:text-white"}`}
+        >
+          🎯 12 Ô Cược
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab("VUNG1")}
+          className={`flex-1 py-1.5 rounded-lg transition ${mobileTab === "VUNG1" ? "bg-amber-500/30 text-amber-300 border border-amber-500/50 shadow" : "text-muted-foreground hover:text-white"}`}
+        >
+          📋 Thứ Tự ({wagerHistory.length})
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         {/* ─── VÙNG 1: THỨ TỰ NGƯỜI/ĐỘI CƯỢC (CÔNG KHAI) ─── */}
-        <div className="lg:col-span-5 glass rounded-2xl p-4 border border-amber-500/30 flex flex-col gap-3">
+        <div className={`lg:col-span-5 glass rounded-2xl p-3.5 sm:p-4 border border-amber-500/30 flex flex-col gap-3 ${
+          mobileTab === "VUNG2" ? "hidden lg:flex" : "flex"
+        }`}>
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-2">
               <span className="text-xl">📋</span>
@@ -313,7 +341,9 @@ export default function WagerPanel({
         </div>
 
         {/* ─── VÙNG 2: 12 Ô CƯỢC ĐIỂM ─── */}
-        <div className="lg:col-span-7 glass rounded-2xl p-4 border border-cyan-500/30 flex flex-col gap-3">
+        <div className={`lg:col-span-7 glass rounded-2xl p-3.5 sm:p-4 border border-cyan-500/30 flex flex-col gap-3 ${
+          mobileTab === "VUNG1" ? "hidden lg:flex" : "flex"
+        }`}>
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
             <div className="flex items-center gap-2">
               <span className="text-xl">🎯</span>
@@ -372,7 +402,7 @@ export default function WagerPanel({
           )}
 
           {/* 12 Clickable Cells */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-2.5">
             {wagerOptions.map((optValue, idx) => {
               const stepIncrement = 5 * (idx + 1);
               const exceedsMyScore = optValue > myTeamScore;
@@ -391,7 +421,7 @@ export default function WagerPanel({
                   type="button"
                   disabled={isDisabled}
                   onClick={() => handleSubmit(optValue)}
-                  className={`relative p-3 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all duration-200 active:scale-95 ${
+                  className={`relative p-2.5 sm:p-3 min-h-[52px] sm:min-h-[58px] rounded-xl border flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-all duration-200 active:scale-95 ${
                     isCurrentSelected
                       ? "bg-gradient-to-br from-green-500/30 to-emerald-600/30 border-green-400 ring-2 ring-green-400 text-white shadow-lg"
                       : isDisabled

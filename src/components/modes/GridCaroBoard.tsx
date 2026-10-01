@@ -230,18 +230,18 @@ export default function GridCaroBoard({
               type="button"
               disabled={!isClickable}
               onClick={() => onSelectCell && onSelectCell(cell.id)}
-              className={`relative rounded-2xl border-2 transition-all flex flex-col items-center justify-center p-2 sm:p-3 text-center min-h-[72px] sm:min-h-[105px] overflow-hidden ${
+              className={`relative rounded-2xl border-2 border-b-[4.5px] border-t border-white/20 transition-all flex flex-col items-center justify-between p-2 sm:p-2.5 text-center w-full aspect-[4/3] sm:aspect-square overflow-hidden select-none ${
                 isSelectedAnim
-                  ? "animate-flip-360 border-yellow-400 bg-yellow-500/30 shadow-2xl ring-4 ring-yellow-400/60 z-20"
+                  ? "animate-flip-360 border-yellow-400 border-b-yellow-700 bg-yellow-500/35 shadow-2xl ring-4 ring-yellow-400/60 z-20"
                   : isSelected
-                  ? "border-yellow-400 bg-yellow-500/25 shadow-xl scale-102 ring-2 ring-yellow-400/50 z-10"
+                  ? "border-yellow-400 border-b-yellow-700 bg-yellow-500/25 shadow-xl scale-102 ring-2 ring-yellow-400/50 z-10"
                   : isClaimed
-                  ? "shadow-lg scale-[0.98] cursor-default font-bold"
+                  ? "shadow-lg scale-[0.98] cursor-default font-bold border-b-[4px]"
                   : previewActive
-                  ? "animate-flip-reveal glass bg-card/60 cursor-default border-purple-500/40"
+                  ? "animate-flip-reveal bg-[#1e2038] cursor-default border-purple-500/40 border-b-purple-800"
                   : isClickable
-                  ? "cursor-pointer hover:border-cyan-400 hover:scale-105 active:scale-95 glass bg-card/70 hover:bg-purple-900/30 shadow-md hover:shadow-cyan-500/20"
-                  : "cursor-default opacity-90 glass bg-card/40 border-border/60"
+                  ? "cursor-pointer hover:border-cyan-400 hover:scale-[1.03] active:translate-y-0.5 active:border-b-[2px] bg-gradient-to-b from-[#252844] via-[#1b1c31] to-[#111221] border-slate-600/70 border-b-slate-900 shadow-[0_4px_8px_rgba(0,0,0,0.55)] hover:shadow-cyan-500/30"
+                  : "cursor-default opacity-85 bg-[#171829] border-border/60 border-b-slate-900"
               }`}
               style={{
                 borderColor: isSelected
@@ -250,9 +250,9 @@ export default function GridCaroBoard({
                   ? cell.claimedByTeamColor || "#10b981"
                   : undefined,
                 background: isSelected
-                  ? "rgba(234, 179, 8, 0.22)"
+                  ? "rgba(234, 179, 8, 0.25)"
                   : isClaimed
-                  ? `linear-gradient(135deg, ${cell.claimedByTeamColor || "#10b981"}33, ${cell.claimedByTeamColor || "#10b981"}88)`
+                  ? `linear-gradient(180deg, ${cell.claimedByTeamColor || "#10b981"}44, ${cell.claimedByTeamColor || "#10b981"}99)`
                   : undefined,
               }}
             >

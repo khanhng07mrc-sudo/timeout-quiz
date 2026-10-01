@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck } from "@/lib/utils";
 import { verifyAdminRequest, generateHostKey, sanitizeInput } from "@/lib/security";
+import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const DEFAULT_CONFIG = {
   powerupEnabled: true,
@@ -53,7 +54,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
     }
 
-    const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+    const targetMode = mode ?? "CLASSIC";
+    const defaultModeAllowed = getDefaultAllowedPowerupsForMode(targetMode);
+    const mergedConfig = {
+      ...DEFAULT_CONFIG,
+      allowedPowerups: defaultModeAllowed,
+      ...config,
+    };
+    if (config?.allowedPowerups && Array.isArray(config.allowedPowerups)) {
+      const filtered = config.allowedPowerups.filter((c: any) => defaultModeAllowed.includes(c));
+      mergedConfig.allowedPowerups = filtered.length > 0 ? filtered : defaultModeAllowed;
+    }
 
     // ── Strict Validation for GRID_CARO ──────────────────────────────────────────
     if (mode === "GRID_CARO") {

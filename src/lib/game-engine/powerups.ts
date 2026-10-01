@@ -1,5 +1,33 @@
-import { CardType, TeamState, QuestionState } from "@/types";
+import { CardType, TeamState, QuestionState, GameMode } from "@/types";
 import { computeStealAmount } from "./scoring";
+
+/**
+ * Filter power-ups strictly matched to the mechanics and victory conditions of each game mode:
+ * - DICE_RACE: Only allows quiz-helping cards (50/50, TIME_PLUS, SKIP) and turn-freezing (FREEZE).
+ *   Eliminates score penalty/theft cards (PENALTY, STEAL, DOUBLE, SCORE_X2) which are meaningless in race mode.
+ * - BUZZ: Allows score boosts, shields, 50/50 and penalty. Disallows FREEZE and ATTACK to preserve fast reflex buzzer tempo.
+ * - BOUNCEBACK: Olympia style - allows DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
+ * - GRID_CARO: Allows 50/50, TIME_PLUS, SKIP, FREEZE, DOUBLE, SHIELD.
+ * - ELIMINATION: Allows SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL.
+ * - TOURNAMENT: 1v1 bracket - allows 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD.
+ * - CLASSIC / POWERUP: Full 10 cards enabled.
+ * - WAGER: Secret bets - allows 50/50, TIME_PLUS, SKIP, SHIELD.
+ */
+export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
+  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "FREEZE"],
+  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY", "TIME_PLUS"],
+  BOUNCEBACK: ["DOUBLE", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
+  GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "FREEZE", "DOUBLE", "SHIELD"],
+  ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
+  TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
+  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
+  POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
+  WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
+};
+
+export function getDefaultAllowedPowerupsForMode(mode: GameMode): CardType[] {
+  return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
+}
 
 export interface PowerupEffect {
   type: CardType;

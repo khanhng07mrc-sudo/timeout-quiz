@@ -50,6 +50,7 @@ export default function PlayPage() {
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(false);
   const soundEnabledRef = useRef(false);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
@@ -100,7 +101,8 @@ export default function PlayPage() {
     soundManager.setMuted(true);
 
     const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const isSandbox = searchParams?.get("sandbox") === "1";
+    const isSandboxParam = searchParams?.get("sandbox") === "1";
+    if (isSandboxParam) setIsSandbox(true);
     const paramTeamId = searchParams?.get("teamId") || "";
     const paramTeamIndex = searchParams?.get("teamIndex");
     const paramName = searchParams?.get("name") || "";
@@ -806,7 +808,10 @@ export default function PlayPage() {
                   diceState={roomState.diceRaceState}
                   myTeamId={effectiveTeamId}
                   isMyTurn={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId}
-                  canRoll={roomState.diceRaceState.currentTurnTeamId === effectiveTeamId && Boolean(roomState.diceRaceState.canRollDice)}
+                  canRoll={
+                    roomState.diceRaceState.currentTurnTeamId === effectiveTeamId &&
+                    (Boolean(roomState.diceRaceState.canRollDice) || isSandbox || Boolean(revealPayload))
+                  }
                   onRollDice={handleRollDice}
                   mode={revealPayload ? "full" : "mini"}
                 />

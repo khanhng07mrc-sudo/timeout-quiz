@@ -16,6 +16,7 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
+import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
@@ -447,11 +448,24 @@ export default function AdminSandboxPage() {
     offlineQIndexRef.current = -1;
     offlineAnswersRef.current.clear();
 
+    const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
     const teams = [
-      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [], playerCount: 1 },
-      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [], playerCount: 1 },
-      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [], playerCount: 1 },
-      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [], playerCount: 1 },
+      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+        { id: "c_r1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_red", used: false },
+        { id: "c_r2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_red", used: false },
+      ], playerCount: 1 },
+      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+        { id: "c_b1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
+        { id: "c_b2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
+      ], playerCount: 1 },
+      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+        { id: "c_y1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
+        { id: "c_y2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
+      ], playerCount: 1 },
+      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+        { id: "c_p1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
+        { id: "c_p2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
+      ], playerCount: 1 },
     ];
 
     const players = [
@@ -522,7 +536,7 @@ export default function AdminSandboxPage() {
         powerupOwnerType: "TEAM",
         powerupCountPerTeam: 2,
         powerupCountShared: 0,
-        allowedPowerups: ["DOUBLE", "FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "FREEZE", "ATTACK", "STEAL"],
+        allowedPowerups: modeAllowedPowerups,
         timeBonusEnabled: true,
         penaltyForWrong: true,
         penaltyPoints: 10,
@@ -809,7 +823,10 @@ export default function AdminSandboxPage() {
           const delta = scoreDeltas.find((d) => d.teamId === t.id)?.delta || 0;
           return { ...t, score: t.score + delta };
         });
-        return { ...prev, teams: updatedTeams };
+        const nextDice = prev.diceRaceState
+          ? { ...prev.diceRaceState, canRollDice: true }
+          : undefined;
+        return { ...prev, teams: updatedTeams, diceRaceState: nextDice };
       });
 
       addLog(`Admin: Đã công bố đáp án câu hỏi #${offlineQIndexRef.current + 1}`);
@@ -993,6 +1010,7 @@ export default function AdminSandboxPage() {
             teamPositions: updatedPositions,
             currentTurnTeamId: nextTeamId,
             currentTurnTeamName: nextTeamName,
+            canRollDice: true,
           },
         };
       });
@@ -1625,7 +1643,7 @@ export default function AdminSandboxPage() {
                   </>
                 )}
 
-                {roomState?.mode === "DICE_RACE" && roomState.diceRaceState?.canRollDice && (
+                {roomState?.mode === "DICE_RACE" && (
                   <button
                     type="button"
                     onClick={handleDiceRollManual}

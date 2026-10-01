@@ -8,6 +8,7 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import { GameMode } from "@/types";
+import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Đại chúng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
@@ -141,6 +142,14 @@ export default function CreateRoomPage() {
     } catch {}
   };
 
+  const handleSelectMode = (newMode: string) => {
+    setMode(newMode);
+    setAllowedPowerups(getDefaultAllowedPowerupsForMode(newMode as GameMode));
+    if (newMode === "CLASSIC" || newMode === "ELIMINATION") {
+      setAnswerMethod("DEVICE");
+    }
+  };
+
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([
     { name: "Đội 1", color: TEAM_COLORS[0] },
@@ -154,7 +163,7 @@ export default function CreateRoomPage() {
   const [powerupCountPerTeam, setPowerupCountPerTeam] = useState(2);
   const [maxHandSize, setMaxHandSize] = useState(3);
   const [allowedPowerups, setAllowedPowerups] = useState<string[]>(
-    POWERUP_TYPES.map((p) => p.value)
+    getDefaultAllowedPowerupsForMode("CLASSIC")
   );
 
   // Step 4: Other settings
@@ -389,12 +398,7 @@ export default function CreateRoomPage() {
                     <button
                       key={m.value}
                       type="button"
-                      onClick={() => {
-                        setMode(m.value);
-                        if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
-                          setAnswerMethod("DEVICE");
-                        }
-                      }}
+                      onClick={() => handleSelectMode(m.value)}
                       className={`relative flex flex-col justify-between p-3.5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-95 group min-h-[140px] ${
                         isSelected
                           ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-xl glow-purple"
@@ -431,12 +435,7 @@ export default function CreateRoomPage() {
                     <button
                       key={m.value}
                       type="button"
-                      onClick={() => {
-                        setMode(m.value);
-                        if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
-                          setAnswerMethod("DEVICE");
-                        }
-                      }}
+                      onClick={() => handleSelectMode(m.value)}
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
                         isSelected
                           ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-md glow-purple"
@@ -470,12 +469,7 @@ export default function CreateRoomPage() {
                       <button
                         key={m.value}
                         type="button"
-                        onClick={() => {
-                          setMode(m.value);
-                          if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
-                            setAnswerMethod("DEVICE");
-                          }
-                        }}
+                        onClick={() => handleSelectMode(m.value)}
                         className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap shrink-0 ${
                           isSelected
                             ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"

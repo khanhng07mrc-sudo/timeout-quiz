@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
 import { GameMode } from "@/types";
+import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -130,6 +131,12 @@ export async function POST(req: NextRequest) {
       }
     } catch {}
 
+    const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
+    const sandboxConfig = {
+      ...DEFAULT_SANDBOX_CONFIG,
+      allowedPowerups: modeAllowedPowerups,
+    };
+
     const room = await prisma.room.create({
       data: {
         code,
@@ -139,7 +146,7 @@ export async function POST(req: NextRequest) {
         mode,
         teamMode: "TEAM",
         status: "LOBBY",
-        config: DEFAULT_SANDBOX_CONFIG,
+        config: sandboxConfig,
         inviteUrl,
       },
     });
@@ -187,8 +194,8 @@ export async function POST(req: NextRequest) {
       createdPlayers.push(player);
     }
 
-    // Distribute 2 random powerup cards per team
-    const allowedTypes = DEFAULT_SANDBOX_CONFIG.allowedPowerups;
+    // Distribute 2 random powerup cards per team matched strictly to mode
+    const allowedTypes = modeAllowedPowerups;
     for (const team of createdTeams) {
       const deck = generateCardDeck(allowedTypes, 2);
       await prisma.powerupCard.createMany({

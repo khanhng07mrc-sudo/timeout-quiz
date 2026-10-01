@@ -2305,7 +2305,6 @@ export function registerSocketHandlers(io: IO) {
         diceState.dicePendingAnswer = false;
       } else {
         diceState.extraRollGranted = false;
-        diceState.canRollDice = false;
         diceState.dicePendingAnswer = false;
 
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
@@ -2315,6 +2314,9 @@ export function registerSocketHandlers(io: IO) {
           diceState.currentTurnTeamId = teams[nextIdx].id;
           diceState.currentTurnTeamName = teams[nextIdx].name;
         }
+
+        const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
+        diceState.canRollDice = isSandboxRoom || !roomActiveQuestions.get(room.id);
       }
 
       io.to(`room:${room.code}`).emit("game:dice:update", diceState);
@@ -2333,7 +2335,8 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
 
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState || !diceState.canRollDice) {
+      const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
+      if (!diceState || (!diceState.canRollDice && !isSandboxRoom)) {
         socket.emit("error", "Chưa được phép gieo xúc xắc hoặc bạn chưa trả lời đúng câu hỏi!");
         return;
       }
@@ -2561,7 +2564,7 @@ export function registerSocketHandlers(io: IO) {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "DICE_RACE") return;
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState || !diceState.canRollDice) return;
+      if (!diceState) return;
 
       const teamId = diceState.currentTurnTeamId;
       if (!teamId) return;
@@ -3438,8 +3441,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
     diceState.canRollDice = true;
     diceState.dicePendingAnswer = false;
   } else {
-    // Trả lời sai hoặc không trả lời: KHÔNG được gieo xúc xắc, quân cờ đứng yên, chuyển lượt cho đội tiếp theo
-    diceState.canRollDice = false;
+    // Trả lời sai hoặc không trả lời: chuyển lượt cho đội tiếp theo
     diceState.dicePendingAnswer = false;
     if (room.teams.length > 0) {
       const curIdx = room.teams.findIndex((t) => t.id === currentTeamId);
@@ -3447,6 +3449,8 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
       diceState.currentTurnTeamId = room.teams[nextIdx].id;
       diceState.currentTurnTeamName = room.teams[nextIdx].name;
     }
+    const isSandboxRoom = room.name.includes("Sandbox") || Boolean((room.config as any)?.sandbox);
+    diceState.canRollDice = isSandboxRoom ? true : false;
   }
 
   io.to(`room:${roomCode}`).emit("game:dice:update", diceState);

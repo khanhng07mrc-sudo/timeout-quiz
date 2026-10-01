@@ -2501,7 +2501,6 @@ function registerSocketHandlers(io2) {
         diceState.dicePendingAnswer = false;
       } else {
         diceState.extraRollGranted = false;
-        diceState.canRollDice = false;
         diceState.dicePendingAnswer = false;
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         if (teams.length > 0) {
@@ -2510,6 +2509,8 @@ function registerSocketHandlers(io2) {
           diceState.currentTurnTeamId = teams[nextIdx].id;
           diceState.currentTurnTeamName = teams[nextIdx].name;
         }
+        const isSandboxRoom = room.name.includes("Sandbox") || Boolean(room.config?.sandbox);
+        diceState.canRollDice = isSandboxRoom || !roomActiveQuestions.get(room.id);
       }
       io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
     }
@@ -2524,7 +2525,8 @@ function registerSocketHandlers(io2) {
       const room = player.room;
       if (room.mode !== "DICE_RACE" || room.status !== "PLAYING") return;
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState || !diceState.canRollDice) {
+      const isSandboxRoom = room.name.includes("Sandbox") || Boolean(room.config?.sandbox);
+      if (!diceState || !diceState.canRollDice && !isSandboxRoom) {
         socket.emit("error", "Ch\u01B0a \u0111\u01B0\u1EE3c ph\xE9p gieo x\xFAc x\u1EAFc ho\u1EB7c b\u1EA1n ch\u01B0a tr\u1EA3 l\u1EDDi \u0111\xFAng c\xE2u h\u1ECFi!");
         return;
       }
@@ -2700,7 +2702,7 @@ function registerSocketHandlers(io2) {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "DICE_RACE") return;
       const diceState = roomDiceRaces.get(room.id);
-      if (!diceState || !diceState.canRollDice) return;
+      if (!diceState) return;
       const teamId = diceState.currentTurnTeamId;
       if (!teamId) return;
       await executeDiceRoll(room, diceState, teamId);
@@ -3420,7 +3422,6 @@ async function finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId) {
     diceState.canRollDice = true;
     diceState.dicePendingAnswer = false;
   } else {
-    diceState.canRollDice = false;
     diceState.dicePendingAnswer = false;
     if (room.teams.length > 0) {
       const curIdx = room.teams.findIndex((t) => t.id === currentTeamId);
@@ -3428,6 +3429,8 @@ async function finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId) {
       diceState.currentTurnTeamId = room.teams[nextIdx].id;
       diceState.currentTurnTeamName = room.teams[nextIdx].name;
     }
+    const isSandboxRoom = room.name.includes("Sandbox") || Boolean(room.config?.sandbox);
+    diceState.canRollDice = isSandboxRoom ? true : false;
   }
   io2.to(`room:${roomCode}`).emit("game:dice:update", diceState);
   await revealCurrentAnswer(io2, roomId, roomCode, questionId);

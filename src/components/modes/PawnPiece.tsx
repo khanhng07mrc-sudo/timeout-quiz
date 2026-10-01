@@ -8,6 +8,7 @@ interface PawnPieceProps {
   size?: "sm" | "md" | "lg";
   hasShield?: boolean;
   isCurrentTurn?: boolean;
+  isHopping?: boolean;
   className?: string;
   rank?: number;
 }
@@ -28,6 +29,7 @@ export default function PawnPiece({
   size = "md",
   hasShield = false,
   isCurrentTurn = false,
+  isHopping = false,
   className = "",
   rank,
 }: PawnPieceProps) {
@@ -49,7 +51,11 @@ export default function PawnPiece({
   return (
     <div
       className={`relative inline-flex flex-col items-center justify-end select-none transition-transform duration-300 ${
-        isCurrentTurn ? "animate-bounce filter drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]" : ""
+        isHopping
+          ? "animate-pawn-hop filter drop-shadow-[0_0_12px_rgba(250,204,21,0.9)]"
+          : isCurrentTurn
+          ? "animate-bounce filter drop-shadow-[0_0_8px_rgba(250,204,21,0.7)]"
+          : ""
       } ${className}`}
       style={{
         width: `${sizeConfig.width}px`,

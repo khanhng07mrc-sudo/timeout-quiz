@@ -23,6 +23,16 @@ export default function OfflineBanner() {
 
     setIsOnline(navigator.onLine);
 
+    // Initial silent check on mount
+    if (navigator.onLine) {
+      offlineStorage.syncPendingWithServer().then((res) => {
+        if (res.synced > 0) {
+          setSyncNotice(`✅ Đã tự động đồng bộ ${res.synced} bộ đề lên máy chủ!`);
+          setTimeout(() => setSyncNotice(null), 5000);
+        }
+      }).catch(() => {});
+    }
+
     const handleOnline = async () => {
       setIsOnline(true);
       setSyncNotice("🟢 Đã khôi phục kết nối mạng! Đang kiểm tra đồng bộ...");

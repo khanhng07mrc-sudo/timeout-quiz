@@ -82,6 +82,49 @@ const roomWagers = new Map<string, WagerState>();
 const roomUsedQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
 const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager timer
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
+const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
+
+function startGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string, durationSec: number = 5) {
+  const gridState = roomGridCaros.get(roomId);
+  if (!gridState) return;
+
+  const prevTimer = roomGridTimers.get(roomId);
+  if (prevTimer) clearInterval(prevTimer);
+
+  gridState.previewActive = true;
+  gridState.previewRemaining = durationSec;
+  ioInstance.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+
+  let rem = durationSec;
+  const pTimer = setInterval(() => {
+    rem--;
+    gridState.previewRemaining = rem;
+    if (rem <= 0) {
+      clearInterval(pTimer);
+      roomGridTimers.delete(roomId);
+      gridState.previewActive = false;
+      gridState.previewRemaining = 0;
+      ioInstance.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+    } else {
+      ioInstance.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+    }
+  }, 1000);
+  roomGridTimers.set(roomId, pTimer);
+}
+
+function stopGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string) {
+  const gTimer = roomGridTimers.get(roomId);
+  if (gTimer) {
+    clearInterval(gTimer);
+    roomGridTimers.delete(roomId);
+  }
+  const gridState = roomGridCaros.get(roomId);
+  if (gridState) {
+    gridState.previewActive = false;
+    gridState.previewRemaining = 0;
+    ioInstance.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+  }
+}
 
 // ── Helpers for Grid Caro, Tournament, Dice Race ─────────────────────────────
 
@@ -1197,8 +1240,17 @@ export function registerSocketHandlers(io: IO) {
           diceRollValue,
           wagerPhase: room.mode === "WAGER" ? "QUESTION_PERIOD" : undefined,
         });
-        io.to(`room:${room.code}`).emit("game:question", questionState);
-        startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+
+        if (config?.manualTimerStart) {
+          questionState.timerPending = true;
+          questionState.timerStarted = false;
+          roomActiveQuestions.set(room.id, questionState);
+          io.to(`room:${room.code}`).emit("game:question", questionState);
+        } else {
+          roomActiveQuestions.set(room.id, questionState);
+          io.to(`room:${room.code}`).emit("game:question", questionState);
+          startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+        }
       };
 
       if (room.mode === "WAGER") {
@@ -1536,6 +1588,9 @@ export function registerSocketHandlers(io: IO) {
 
         if (room.mode === "GRID_CARO" || room.mode === "DICE_RACE") {
           // Board-based modes wait for turn player's action (cell select / dice roll)
+          if (room.mode === "GRID_CARO") {
+            startGridCaroPreview(io, room.id, room.code, config?.gridPreviewDuration || 5);
+          }
           return;
         }
 
@@ -1840,6 +1895,18 @@ export function registerSocketHandlers(io: IO) {
 
       gridState.selectedCellId = cellId;
       gridState.selectedCellAnimation = true;
+      gridState.questionReady = false;
+
+      const currentTeam = room.teams?.find((t: any) => t.id === gridState.currentTurnTeamId);
+      gridState.selectedCellInfo = {
+        cellId: cell.id,
+        points: cell.points,
+        difficulty: cell.difficulty,
+        teamId: gridState.currentTurnTeamId,
+        teamName: currentTeam?.name || gridState.currentTurnTeamName || "Thí sinh",
+        teamColor: currentTeam?.color,
+      };
+
       io.to(`room:${room.code}`).emit("game:grid:update", gridState);
 
       let usedSet = roomUsedQuestions.get(room.id);
@@ -1865,12 +1932,11 @@ export function registerSocketHandlers(io: IO) {
       const qIndex = rawQuestions.findIndex((q: any) => q.id === targetQ!.id);
       room.currentQuestion = qIndex >= 0 ? qIndex : 0;
 
-      // 2-second highlight animation before starting question prepare
-      setTimeout(async () => {
+      // 1.5-second 3D flip animation completes, staying on board for Admin to click "Hiện câu hỏi"
+      setTimeout(() => {
         gridState.selectedCellAnimation = false;
         io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-        await startQuestionPrepareAndLaunch(room, rawQuestions, room.currentQuestion);
-      }, 2000);
+      }, 1500);
     }
 
     socket.on("game:grid:select", async ({ cellId }) => {
@@ -2054,35 +2120,72 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:grid:preview:start", async () => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "GRID_CARO") return;
-      const gridState = roomGridCaros.get(room.id);
-      if (!gridState) return;
+      const duration = (room.config as any)?.gridPreviewDuration || 5;
+      startGridCaroPreview(io, room.id, room.code, duration);
+    });
 
-      gridState.previewActive = true;
-      gridState.previewRemaining = (room.config as any)?.gridPreviewDuration || 5;
-      io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-
-      const gTimer = roomGridTimers.get(room.id);
-      if (gTimer) clearInterval(gTimer);
-
-      let rem = gridState.previewRemaining;
-      const newTimer = setInterval(() => {
-        rem--;
-        gridState.previewRemaining = rem;
-        if (rem <= 0) {
-          clearInterval(newTimer);
-          gridState.previewActive = false;
-          io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-        } else {
-          io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-        }
-      }, 1000);
-      roomGridTimers.set(room.id, newTimer);
+    socket.on("admin:grid:preview:stop", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "GRID_CARO") return;
+      stopGridCaroPreview(io, room.id, room.code);
     });
 
     socket.on("admin:grid:select:manual", async ({ cellId }) => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
       await handleGridCellSelect(room, cellId);
+    });
+
+    socket.on("admin:grid:launch_question", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
+      const gridState = roomGridCaros.get(room.id);
+      if (!gridState || !gridState.selectedCellId) return;
+
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const q = rawQuestions[room.currentQuestion];
+      if (!q) return;
+
+      gridState.questionReady = true;
+      io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+
+      const bloomLevel = getBloomLevelFromPoints(q.points);
+      const config = room.config as any;
+
+      const questionState = buildQuestionState(q, {
+        primaryTeamId: gridState.currentTurnTeamId,
+        primaryTeamName: gridState.currentTurnTeamName,
+        bloomLevel,
+        answerMethod: config?.answerMethod ?? "DEVICE",
+        gridCellId: gridState.selectedCellId,
+      });
+
+      // Do NOT start timer yet! Await Admin "Bắt đầu tính giờ"!
+      questionState.timerPending = true;
+      questionState.timerStarted = false;
+      roomActiveQuestions.set(room.id, questionState);
+
+      io.to(`room:${room.code}`).emit("game:question", questionState);
+    });
+
+    socket.on("admin:question:start_timer", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.status !== "PLAYING") return;
+
+      const activeQ = roomActiveQuestions.get(room.id);
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const q = rawQuestions[room.currentQuestion];
+      if (!q) return;
+
+      if (activeQ) {
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        activeQ.startedAt = Date.now();
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+      }
+
+      io.to(`room:${room.code}`).emit("game:timer:started", { timeLimit: q.timeLimit });
+      startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
     });
 
     socket.on("admin:grid:advance_now", async () => {
@@ -2364,8 +2467,13 @@ async function processAnswerSubmission({
 
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) return;
-
   const qKey = `${room.id}:${questionId}`;
+
+  const activeQ = roomActiveQuestions.get(room.id);
+  if (activeQ?.timerPending && !isAdminOverride) {
+    if (socket) socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
+    return;
+  }
 
   // Check if team is frozen
   if (teamId) {
@@ -2656,6 +2764,8 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
   gridState.autoAdvanceSeconds = undefined;
   gridState.selectedCellId = undefined;
   gridState.selectedCellAnimation = false;
+  gridState.selectedCellInfo = undefined;
+  gridState.questionReady = false;
 
   const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
 
@@ -2751,36 +2861,17 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
     gridState.currentTurnTeamId = room.teams[nextIdx].id;
     gridState.currentTurnTeamName = room.teams[nextIdx].name;
     gridState.selectedCellId = undefined;
+    gridState.selectedCellInfo = undefined;
+    gridState.questionReady = false;
   }
+
+  gridState.autoAdvanceSeconds = undefined;
 
   if (scoreUpdates.length > 0) {
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
-
-  // 6-second auto-advance countdown back to the board
-  let remSeconds = 6;
-  gridState.autoAdvanceSeconds = remSeconds;
-  io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
-
-  const autoAdvanceKey = `${roomId}:auto_advance`;
-  if (roomGridTimers.has(autoAdvanceKey)) {
-    clearInterval(roomGridTimers.get(autoAdvanceKey)!);
-  }
-
-  const advanceTimer = setInterval(async () => {
-    remSeconds--;
-    gridState.autoAdvanceSeconds = remSeconds;
-    if (remSeconds <= 0) {
-      clearInterval(advanceTimer);
-      roomGridTimers.delete(autoAdvanceKey);
-      await advanceGridToBoard(io, roomId, roomCode);
-    } else {
-      io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
-    }
-  }, 1000);
-  roomGridTimers.set(autoAdvanceKey, advanceTimer);
 }
 
 async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {

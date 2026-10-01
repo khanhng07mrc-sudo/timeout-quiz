@@ -197,6 +197,23 @@ export default function PlayPage() {
       setHiddenOptionIds([]);
       setIsStealPhase(false);
       setStealBuzzedTeam(null);
+      if (soundEnabledRef.current && !q.timerPending) {
+        soundManager.playCountdownTick(0);
+      }
+    });
+
+    socket.on("game:timer:started", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              timerPending: false,
+              timerStarted: true,
+              startedAt: Date.now(),
+              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+            }
+          : prev
+      );
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(0);
       }
@@ -587,7 +604,13 @@ export default function PlayPage() {
                   gridState={roomState.gridCaroState}
                   myTeamId={effectiveTeamId}
                   isMyTurn={roomState.gridCaroState.currentTurnTeamId === effectiveTeamId}
-                  canSelect={false}
+                  canSelect={
+                    roomState.gridCaroState.currentTurnTeamId === effectiveTeamId &&
+                    !roomState.gridCaroState.selectedCellId &&
+                    !roomState.gridCaroState.previewActive &&
+                    !roomState.gridCaroState.selectedCellAnimation
+                  }
+                  onSelectCell={(cellId) => socketRef.current?.emit("game:grid:select", { cellId })}
                 />
               </div>
             ) : roomState?.mode === "DICE_RACE" && roomState?.diceRaceState ? (

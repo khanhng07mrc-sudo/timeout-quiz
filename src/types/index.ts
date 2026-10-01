@@ -461,6 +461,7 @@ export interface GameConfig {
   gridPreviewDuration?: number;
   gridRoundsPerTeam?: number;
   gridMaxQuestions?: number;
+  manualTimerStart?: boolean;
   // Dice Race config
   diceTrackTotalTiles?: number;
   // Wager config
@@ -550,6 +551,15 @@ export interface GridCell {
   attemptCount: number;
 }
 
+export interface SelectedCellInfo {
+  cellId: number;
+  points: number;
+  difficulty: "DỄ" | "TRUNG BÌNH" | "KHÓ" | "CỰC KHÓ";
+  teamId?: string;
+  teamName: string;
+  teamColor?: string;
+}
+
 export interface GridCaroState {
   rows: number;
   cols: number;
@@ -561,6 +571,8 @@ export interface GridCaroState {
   currentTurnTeamName?: string;
   selectedCellId?: number;
   selectedCellAnimation?: boolean;
+  selectedCellInfo?: SelectedCellInfo;
+  questionReady?: boolean;
   autoAdvanceSeconds?: number;
   currentRound: number;
   maxRounds: number;
@@ -701,6 +713,8 @@ export interface QuestionState {
   gridCellId?: number;
   diceRollValue?: number;
   wagerPhase?: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
+  timerPending?: boolean;
+  timerStarted?: boolean;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -818,6 +832,7 @@ export interface ServerToClientEvents {
   "game:wager:bailout_granted": (payload: { teamId: string; teamName: string; newScore: number; bailoutsRemaining: number }) => void;
   "game:tournament:update": (state: TournamentState) => void;
   "game:question:clear": () => void;
+  "game:timer:started": (payload?: { timeLimit?: number }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -849,7 +864,10 @@ export interface ClientToServerEvents {
   "game:dice:roll": () => void;
   "game:wager:submit": (payload: { amount: number }) => void;
   "admin:grid:preview:start": () => void;
+  "admin:grid:preview:stop": () => void;
   "admin:grid:select:manual": (payload: { cellId: number }) => void;
+  "admin:grid:launch_question": () => void;
+  "admin:question:start_timer": () => void;
   "admin:grid:advance_now": () => void;
   "admin:dice:roll:manual": () => void;
   "admin:tournament:advance": () => void;

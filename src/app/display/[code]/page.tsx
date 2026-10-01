@@ -126,8 +126,26 @@ export default function DisplayPage() {
       setTimer(null);
       setIsStealOpen(false);
       setStealBuzzed(null);
+      if (!q.timerPending) {
+        soundManager.playCountdownTick(0);
+        soundManager.playQuestionMusic(q.timeLimit);
+      }
+    });
+
+    socket.on("game:timer:started", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              timerPending: false,
+              timerStarted: true,
+              startedAt: Date.now(),
+              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+            }
+          : prev
+      );
       soundManager.playCountdownTick(0);
-      soundManager.playQuestionMusic(q.timeLimit);
+      soundManager.playQuestionMusic(payload?.timeLimit ?? 30);
     });
 
     socket.on("game:timer", setTimer);
@@ -624,6 +642,12 @@ export default function DisplayPage() {
                         {timer.remaining}
                       </text>
                     </svg>
+                  )}
+                  {currentQuestion.timerPending && !timer && (
+                    <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
+                      <span>⏱️</span>
+                      <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
+                    </div>
                   )}
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">

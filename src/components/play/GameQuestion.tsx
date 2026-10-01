@@ -61,6 +61,7 @@ export default function GameQuestion({
 
   const canAnswerThisQuestion = () => {
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
+    if (question.timerPending) return false;
     if (timer && timer.remaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
       if (stealBuzzedTeam) return isStealTeam;
@@ -103,6 +104,14 @@ export default function GameQuestion({
 
   return (
     <div className="glass rounded-2xl p-6 flex flex-col gap-4 animate-slide-up">
+      {/* Timer Pending Alert */}
+      {question.timerPending && !revealPayload && (
+        <div className="p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 animate-pulse shadow-lg">
+          <span className="text-xl">⏳</span>
+          <span>Lắng nghe câu hỏi — Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
+        </div>
+      )}
+
       {/* Timer */}
       {timer && (
         <div className="flex items-center gap-3">

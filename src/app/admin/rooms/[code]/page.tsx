@@ -209,6 +209,22 @@ export default function AdminRoomPage() {
       if (q.primaryTeamId) {
         setAdminTargetTeamId(q.primaryTeamId);
       }
+      if (soundEnabledRef.current && !q.timerPending) {
+        soundManager.playCountdownTick(0);
+      }
+    });
+    socket.on("game:timer:started", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              timerPending: false,
+              timerStarted: true,
+              startedAt: Date.now(),
+              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+            }
+          : prev
+      );
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(0);
       }
@@ -762,6 +778,9 @@ export default function AdminRoomPage() {
                 canSelect={!currentQuestion && !roomState.gridCaroState.selectedCellAnimation}
                 onSelectCell={(cellId) => emit("admin:grid:select:manual", { cellId })}
                 onAdvanceNow={() => emit("admin:grid:advance_now")}
+                onPreviewStart={() => emit("admin:grid:preview:start")}
+                onPreviewStop={() => emit("admin:grid:preview:stop")}
+                onLaunchQuestion={() => emit("admin:grid:launch_question")}
               />
             </div>
           )}
@@ -964,14 +983,49 @@ export default function AdminRoomPage() {
 
           {/* Control buttons */}
           <div className="grid grid-cols-2 gap-3 pt-2">
-            <button
-              onClick={() => emit("admin:next")}
-              disabled={gameEnded}
-              className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap"
-            >
-              <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap">{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
-            </button>
+            {/* Timer pending manual start button */}
+            {currentQuestion?.timerPending && (
+              <button
+                onClick={() => emit("admin:question:start_timer")}
+                className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 hover:to-green-400 text-black font-black text-base col-span-2 shadow-2xl animate-pulse inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <span>⏱️</span>
+                <span className="whitespace-nowrap">Bắt đầu tính thời gian</span>
+              </button>
+            )}
+
+            {/* In GRID_CARO: Return to Board button after reveal */}
+            {roomState?.mode === "GRID_CARO" && revealPayload && (
+              <button
+                onClick={() => emit("admin:grid:advance_now")}
+                className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-sm col-span-2 shadow-xl inline-flex items-center justify-center gap-2 animate-bounce whitespace-nowrap"
+              >
+                <span>🏁</span>
+                <span className="whitespace-nowrap">Quay về bảng ô (Lượt tiếp theo)</span>
+              </button>
+            )}
+
+            {/* In GRID_CARO: Launch Question when cell is selected and question not open yet */}
+            {roomState?.mode === "GRID_CARO" && !currentQuestion && roomState.gridCaroState?.selectedCellId && (
+              <button
+                onClick={() => emit("admin:grid:launch_question")}
+                className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-base col-span-2 shadow-xl animate-pulse inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <span>📖</span>
+                <span className="whitespace-nowrap">Hiện câu hỏi cho ô #{roomState.gridCaroState.selectedCellId}</span>
+              </button>
+            )}
+
+            {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
+              <button
+                onClick={() => emit("admin:next")}
+                disabled={gameEnded}
+                className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
+                <span className="whitespace-nowrap">{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
+              </button>
+            )}
             <button
               onClick={() => emit("admin:reveal")}
               disabled={!currentQuestion}

@@ -52,6 +52,7 @@ export default function AdminSandboxPage() {
 
   // Rule modal
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [revealPayload, setRevealPayload] = useState<any>(null);
 
   // Sockets
   const adminSocketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
@@ -124,22 +125,23 @@ export default function AdminSandboxPage() {
         );
       });
 
-      // Handle question event for Bot auto-play
-      sock.on("game:question", (q) => {
+      let pendingBotAnswerQ: QuestionState | null = null;
+
+      const triggerBotAnswer = (qState: QuestionState) => {
         if (!botAutoEnabled) return;
-        const qData = q.question;
+        const qData = qState.question;
         const opts = qData.options || [];
         if (opts.length === 0) return;
 
         // If turn-based mode, only answer if it is this bot's turn:
-        if (q.primaryTeamId && q.primaryTeamId !== team.id) {
+        if (qState.primaryTeamId && qState.primaryTeamId !== team.id) {
           return; // It's another team's turn, do not spam answers!
         }
 
         // Human-like thinking delay: 2000ms - 4000ms
         const delay = 2000 + Math.random() * 2000;
         setTimeout(() => {
-          // 80% pick first or correct option, 20% random
+          // Pick an option
           const chosenOpt = opts[Math.floor(Math.random() * opts.length)];
           sock.emit("game:answer:submit", {
             questionId: qData.id,
@@ -147,6 +149,23 @@ export default function AdminSandboxPage() {
           });
           addLog(`Bot [${team.name}] đã nộp đáp án: ${chosenOpt.text}`);
         }, delay);
+      };
+
+      // Handle question event for Bot auto-play
+      sock.on("game:question", (q) => {
+        if (q.timerPending) {
+          pendingBotAnswerQ = q;
+          return;
+        }
+        triggerBotAnswer(q);
+      });
+
+      sock.on("game:timer:started", () => {
+        if (pendingBotAnswerQ) {
+          const q = pendingBotAnswerQ;
+          pendingBotAnswerQ = null;
+          triggerBotAnswer(q);
+        }
       });
 
       // Handle Buzz mode
@@ -195,6 +214,7 @@ export default function AdminSandboxPage() {
     sock.on("room:state", (state) => setRoomState(state));
     sock.on("game:question", (q) => {
       setCurrentQuestion(q);
+      setRevealPayload(null);
       if (pendingBotGridTimerRef.current) {
         clearTimeout(pendingBotGridTimerRef.current);
         pendingBotGridTimerRef.current = null;
@@ -204,6 +224,20 @@ export default function AdminSandboxPage() {
         pendingBotDiceTimerRef.current = null;
       }
       addLog(`Câu hỏi mới: "${q.question.content.slice(0, 30)}..."`);
+    });
+    sock.on("game:timer:started", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              timerPending: false,
+              timerStarted: true,
+              startedAt: Date.now(),
+              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+            }
+          : prev
+      );
+      addLog(`⏱️ Bắt đầu tính thời gian: ${payload?.timeLimit ?? 30}s`);
     });
     sock.on("game:timer", (t) => setTimer(t));
     sock.on("game:grid:update", (grid) => {
@@ -277,11 +311,13 @@ export default function AdminSandboxPage() {
     });
 
     sock.on("game:answer:reveal", (rev) => {
+      setRevealPayload(rev);
       addLog(`Đáp án đã công bố! Câu: ${rev.questionId}`);
     });
 
     sock.on("game:question:clear", () => {
       setCurrentQuestion(null);
+      setRevealPayload(null);
       setTimer(null);
       addLog(`Chuyển về bảng điều khiển / đường đua`);
     });
@@ -358,6 +394,31 @@ export default function AdminSandboxPage() {
       adminSocketRef.current?.emit("admin:pause");
       addLog("Admin bấm: Tạm dừng trận đấu");
     }
+  };
+
+  const handleStartTimer = () => {
+    adminSocketRef.current?.emit("admin:question:start_timer");
+    addLog("Admin bấm: Bắt đầu tính giờ");
+  };
+
+  const handleGridAdvanceNow = () => {
+    adminSocketRef.current?.emit("admin:grid:advance_now");
+    addLog("Admin bấm: Quay về bảng ô");
+  };
+
+  const handleGridLaunchQuestion = () => {
+    adminSocketRef.current?.emit("admin:grid:launch_question");
+    addLog("Admin bấm: Hiện câu hỏi cho ô đang chọn");
+  };
+
+  const handleGridPreviewStart = () => {
+    adminSocketRef.current?.emit("admin:grid:preview:start");
+    addLog("Admin bấm: Xem lại độ khó (5s)");
+  };
+
+  const handleGridPreviewStop = () => {
+    adminSocketRef.current?.emit("admin:grid:preview:stop");
+    addLog("Admin bấm: Dừng xem độ khó");
   };
 
   // ── Bot Manual Trigger Actions ──────────────────────────────────────────────
@@ -494,13 +555,70 @@ export default function AdminSandboxPage() {
               </div>
 
               {/* Action Buttons */}
-              <button
-                type="button"
-                onClick={handleAdminNext}
-                className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1"
-              >
-                <span>{roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "⏩ Next"}</span>
-              </button>
+              {currentQuestion?.timerPending && (
+                <button
+                  type="button"
+                  onClick={handleStartTimer}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 hover:to-green-400 text-black text-xs font-black shadow-lg animate-pulse flex items-center gap-1.5"
+                >
+                  <span>⏱️</span>
+                  <span>Bắt đầu tính giờ</span>
+                </button>
+              )}
+
+              {roomState?.mode === "GRID_CARO" && revealPayload && (
+                <button
+                  type="button"
+                  onClick={handleGridAdvanceNow}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white text-xs font-black shadow-lg animate-bounce flex items-center gap-1.5"
+                >
+                  <span>🏁</span>
+                  <span>Quay về bảng ô</span>
+                </button>
+              )}
+
+              {roomState?.mode === "GRID_CARO" && !currentQuestion && roomState.gridCaroState?.selectedCellId && (
+                <button
+                  type="button"
+                  onClick={handleGridLaunchQuestion}
+                  className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white text-xs font-black shadow-lg animate-pulse flex items-center gap-1.5"
+                >
+                  <span>📖</span>
+                  <span>Hiện câu hỏi (#{roomState.gridCaroState.selectedCellId})</span>
+                </button>
+              )}
+
+              {roomState?.mode === "GRID_CARO" && !currentQuestion && !roomState.gridCaroState?.previewActive && !roomState.gridCaroState?.selectedCellId && (
+                <button
+                  type="button"
+                  onClick={handleGridPreviewStart}
+                  className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 border border-purple-500/40 text-purple-300 text-xs font-bold transition flex items-center gap-1"
+                >
+                  <span>👁️</span>
+                  <span>Xem độ khó (5s)</span>
+                </button>
+              )}
+
+              {roomState?.mode === "GRID_CARO" && !currentQuestion && roomState.gridCaroState?.previewActive && (
+                <button
+                  type="button"
+                  onClick={handleGridPreviewStop}
+                  className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition flex items-center gap-1"
+                >
+                  <span>🙈</span>
+                  <span>Lật úp ngay</span>
+                </button>
+              )}
+
+              {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
+                <button
+                  type="button"
+                  onClick={handleAdminNext}
+                  className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition flex items-center gap-1"
+                >
+                  <span>{roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "⏩ Next"}</span>
+                </button>
+              )}
 
               <button
                 type="button"

@@ -18,6 +18,7 @@ import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import { soundManager } from "@/lib/sound-manager";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import SystemIcon from "@/components/ui/SystemIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
 
@@ -364,8 +365,9 @@ export default function AdminRoomPage() {
               </span>
             )}
             {roomState?.config.answerMethod === "MC" && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-                🎙️ Trả lời qua MC
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 inline-flex items-center gap-1.5">
+                <SystemIcon name="mc" className="w-3.5 h-3.5 shrink-0" />
+                Trả lời qua MC
               </span>
             )}
           </div>
@@ -380,7 +382,7 @@ export default function AdminRoomPage() {
             title={soundEnabled ? "Tắt âm thanh máy Host" : "Bật âm thanh máy Host"}
             className="px-3.5 py-2 rounded-xl glass border border-border hover:border-amber-400 font-medium text-sm transition-colors flex items-center gap-1.5"
           >
-            <span>{soundEnabled ? "🔊" : "🔇"}</span>
+            <SystemIcon name={soundEnabled ? "sound_on" : "sound_off"} className="w-4 h-4 shrink-0 text-amber-400" />
             <span>{soundEnabled ? "Âm thanh: BẬT" : "Âm thanh"}</span>
           </button>
           <button
@@ -396,29 +398,32 @@ export default function AdminRoomPage() {
             target="_blank"
             className="px-3.5 py-2 rounded-xl glass border border-border hover:border-fuchsia-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-fuchsia-300 hover:text-white"
           >
-            <span>🧪</span>
+            <SystemIcon name="sandbox" className="w-4 h-4 shrink-0" />
             <span>Mở Sandbox</span>
           </Link>
           <Link
             href={`/display/${code}`}
             target="_blank"
-            className="px-4 py-2 rounded-xl glass border border-border hover:border-purple-500 font-medium text-sm transition-colors"
+            className="px-4 py-2 rounded-xl glass border border-border hover:border-purple-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5"
           >
-            📺 Màn chiếu
+            <SystemIcon name="display" className="w-4 h-4 shrink-0 text-cyan-400" />
+            <span>Màn chiếu</span>
           </Link>
           <a
             href={`/play/${code}`}
             target="_blank"
-            className="px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 font-medium text-sm transition-colors"
+            className="px-4 py-2 rounded-xl glass border border-border hover:border-cyan-500 font-medium text-sm transition-colors inline-flex items-center gap-1.5"
           >
-            🔗 Link tham gia
+            <SystemIcon name="device" className="w-4 h-4 shrink-0 text-purple-400" />
+            <span>Link tham gia</span>
           </a>
           <button
             onClick={handleDelete}
             disabled={deleteLoading}
-            className="px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/40 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-destructive/10 border border-destructive/40 hover:bg-destructive/20 text-destructive font-medium text-sm transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
           >
-            {deleteLoading ? "Đang xóa..." : "🗑️ Xóa phòng"}
+            <SystemIcon name="trash" className="w-4 h-4 shrink-0 text-red-400" />
+            <span>{deleteLoading ? "Đang xóa..." : "Xóa phòng"}</span>
           </button>
         </div>
       </div>
@@ -429,7 +434,7 @@ export default function AdminRoomPage() {
           <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xl">📚</span>
+                <SystemIcon name="quiz_bank" className="w-5 h-5 text-purple-400 shrink-0" />
                 <h3 className="font-bold text-base">Bộ đề câu hỏi gán cho phòng</h3>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -832,24 +837,27 @@ export default function AdminRoomPage() {
             <button
               onClick={() => emit("admin:next")}
               disabled={gameEnded}
-              className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow"
+              className="py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2"
             >
-              {roomState?.status === "LOBBY" ? "🚀 Bắt đầu game" : "➡️ Câu tiếp theo"}
+              <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
+              <span>{roomState?.status === "LOBBY" ? "Bắt đầu game" : "Câu tiếp theo"}</span>
             </button>
             <button
               onClick={() => emit("admin:reveal")}
               disabled={!currentQuestion}
-              className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm disabled:opacity-50"
+              className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
             >
-              👁️ Tiết lộ đáp án
+              <span>👁️ Tiết lộ đáp án</span>
             </button>
             {roomState?.status === "PLAYING" ? (
-              <button onClick={() => emit("admin:pause")} className="py-2.5 rounded-xl border border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-400 font-medium text-sm">
-                ⏸️ Tạm dừng
+              <button onClick={() => emit("admin:pause")} className="py-2.5 rounded-xl border border-yellow-500/50 hover:bg-yellow-500/10 text-yellow-400 font-medium text-sm inline-flex items-center justify-center gap-1.5">
+                <SystemIcon name="pause" className="w-3.5 h-3.5 shrink-0" />
+                <span>Tạm dừng</span>
               </button>
             ) : roomState?.status === "PAUSED" ? (
-              <button onClick={() => emit("admin:resume")} className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm">
-                ▶️ Tiếp tục
+              <button onClick={() => emit("admin:resume")} className="py-2.5 rounded-xl border border-green-500/50 hover:bg-green-500/10 text-green-400 font-medium text-sm inline-flex items-center justify-center gap-1.5">
+                <SystemIcon name="play" className="w-3.5 h-3.5 shrink-0" />
+                <span>Tiếp tục</span>
               </button>
             ) : <div />}
           </div>
@@ -878,7 +886,10 @@ export default function AdminRoomPage() {
 
         {/* Leaderboard */}
         <div className="glass rounded-2xl p-6">
-          <h2 className="font-bold text-lg mb-4">🏆 Bảng xếp hạng</h2>
+          <h2 className="font-bold text-lg mb-4 inline-flex items-center gap-2">
+            <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>Bảng xếp hạng</span>
+          </h2>
           <div className="space-y-2">
             {sortedEntries.slice(0, 10).map((entry: any, i) => (
               <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
@@ -932,8 +943,9 @@ export default function AdminRoomPage() {
           const offlineCount = (roomState?.players ?? []).filter((p) => !p.isOnline).length;
           return (
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <h2 className="font-bold text-lg">
-                👥 {roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}
+              <h2 className="font-bold text-lg inline-flex items-center gap-2">
+                <SystemIcon name="team" className="w-5 h-5 text-cyan-400 shrink-0" />
+                <span>{roomState?.teamMode === "TEAM" ? `Danh sách Đội (${roomState.teams.length}) · Thí sinh: ${roomState.players.length} người` : `Thí sinh (${roomState?.players.length ?? 0})`}</span>
               </h2>
               {roomState?.status === "LOBBY" && offlineCount > 0 && (
                 <button
@@ -1124,9 +1136,10 @@ export default function AdminRoomPage() {
         <button
           onClick={() => emit("admin:next")}
           disabled={gameEnded}
-          className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold text-xs sm:text-sm text-white shadow active:scale-95 disabled:opacity-50 truncate"
+          className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold text-xs sm:text-sm text-white shadow active:scale-95 disabled:opacity-50 truncate inline-flex items-center justify-center gap-1.5"
         >
-          {roomState?.status === "LOBBY" ? "🚀 Bắt đầu" : "➡️ Câu tiếp"}
+          <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-3.5 h-3.5 shrink-0" />
+          <span>{roomState?.status === "LOBBY" ? "Bắt đầu" : "Câu tiếp"}</span>
         </button>
 
         <button
@@ -1140,16 +1153,18 @@ export default function AdminRoomPage() {
         {roomState?.status === "PLAYING" ? (
           <button
             onClick={() => emit("admin:pause")}
-            className="py-3 px-3 rounded-xl border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 font-bold text-xs shrink-0 active:scale-95"
+            className="py-3 px-3 rounded-xl border border-yellow-500/50 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 font-bold text-xs shrink-0 active:scale-95 inline-flex items-center justify-center gap-1"
           >
-            ⏸️ Tạm dừng
+            <SystemIcon name="pause" className="w-3.5 h-3.5 shrink-0" />
+            <span>Tạm dừng</span>
           </button>
         ) : roomState?.status === "PAUSED" ? (
           <button
             onClick={() => emit("admin:resume")}
-            className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95"
+            className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95 inline-flex items-center justify-center gap-1"
           >
-            ▶️ Tiếp tục
+            <SystemIcon name="play" className="w-3.5 h-3.5 shrink-0" />
+            <span>Tiếp tục</span>
           </button>
         ) : null}
       </div>

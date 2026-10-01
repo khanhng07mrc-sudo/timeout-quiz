@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 interface RoomItem {
   id: string;
@@ -114,7 +115,7 @@ export default function AdminRoomsListPage() {
             href="/admin/rooms/create"
             className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md"
           >
-            <span>➕</span> Tạo phòng mới
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" /> Tạo phòng mới
           </Link>
         </div>
       </div>
@@ -123,13 +124,16 @@ export default function AdminRoomsListPage() {
         <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
       ) : rooms.length === 0 ? (
         <div className="glass rounded-2xl p-12 text-center">
-          <p className="text-5xl mb-3">🚪</p>
+          <div className="flex justify-center mb-3">
+            <SystemIcon name="rooms" className="w-14 h-14 text-purple-400" />
+          </div>
           <h3 className="text-xl font-bold mb-2">Chưa có phòng đấu nào</h3>
           <p className="text-muted-foreground mb-6">Bạn chưa tạo phòng thi nào. Bấm nút dưới để tạo phòng đầu tiên.</p>
           <Link
             href="/admin/rooms/create"
-            className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition inline-block"
+            className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition inline-flex items-center gap-2"
           >
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
             Tạo phòng ngay
           </Link>
         </div>
@@ -186,33 +190,33 @@ export default function AdminRoomsListPage() {
                   <div className="flex gap-2">
                     <Link
                       href={`/admin/rooms/${room.code}`}
-                      className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition"
+                      className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition flex items-center justify-center gap-1.5"
                     >
-                      👨‍💼 Điều khiển
+                      <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                     </Link>
                     <Link
                       href={`/display/${room.code}`}
                       target="_blank"
-                      className="px-3 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs text-center transition"
+                      className="px-3 py-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs text-center transition flex items-center justify-center text-cyan-400"
                       title="Mở màn chiếu"
                     >
-                      📺
+                      <SystemIcon name="display" className="w-3.5 h-3.5 shrink-0" />
                     </Link>
                     <Link
                       href={`/play/${room.code}`}
                       target="_blank"
-                      className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs text-center transition"
+                      className="px-3 py-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs text-center transition flex items-center justify-center text-purple-400"
                       title="Vào giao diện thí sinh"
                     >
-                      🎮
+                      <SystemIcon name="device" className="w-3.5 h-3.5 shrink-0" />
                     </Link>
                     <button
                       onClick={() => handleDeleteRoom(room)}
                       disabled={deletingId === room.code}
-                      className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50"
+                      className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 flex items-center justify-center"
                       title="Xóa phòng"
                     >
-                      {deletingId === room.code ? "..." : "🗑️"}
+                      {deletingId === room.code ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 shrink-0 text-red-400" />}
                     </button>
                   </div>
                 </div>
@@ -266,33 +270,33 @@ export default function AdminRoomsListPage() {
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <Link
                     href={`/admin/rooms/${room.code}`}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition"
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition inline-flex items-center gap-1.5"
                   >
-                    👨‍💼 Điều khiển
+                    <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                   </Link>
                   <Link
                     href={`/display/${room.code}`}
                     target="_blank"
-                    className="p-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs transition"
+                    className="p-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs transition inline-flex items-center text-cyan-400"
                     title="Mở màn chiếu"
                   >
-                    📺
+                    <SystemIcon name="display" className="w-3.5 h-3.5 shrink-0" />
                   </Link>
                   <Link
                     href={`/play/${room.code}`}
                     target="_blank"
-                    className="p-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs transition"
+                    className="p-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs transition inline-flex items-center text-purple-400"
                     title="Vào giao diện thí sinh"
                   >
-                    🎮
+                    <SystemIcon name="device" className="w-3.5 h-3.5 shrink-0" />
                   </Link>
                   <button
                     onClick={() => handleDeleteRoom(room)}
                     disabled={deletingId === room.code}
-                    className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50"
+                    className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 inline-flex items-center"
                     title="Xóa phòng"
                   >
-                    {deletingId === room.code ? "..." : "🗑️"}
+                    {deletingId === room.code ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 shrink-0 text-red-400" />}
                   </button>
                 </div>
               </div>

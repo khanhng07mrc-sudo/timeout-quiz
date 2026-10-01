@@ -1,0 +1,20 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="act_team_lead" x1="10" y1="2" x2="22" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#38bdf8" />
+      <stop offset="100%" stopColor="#818cf8" />
+    </linearGradient>
+  </defs>
+  <!-- Background Member Left -->
+  <circle cx="10" cy="11" r="4" fill="#18182f" stroke="#c084fc" strokeWidth="1.6" />
+  <path d="M4 24C4 20 7 18 10 18C12 18 13.5 19 14.5 20.5" stroke="#c084fc" strokeWidth="1.6" strokeLinecap="round" />
+
+  <!-- Background Member Right -->
+  <circle cx="22" cy="11" r="4" fill="#18182f" stroke="#c084fc" strokeWidth="1.6" />
+  <path d="M17.5 20.5C18.5 19 20 18 22 18C25 18 28 20 28 24" stroke="#c084fc" strokeWidth="1.6" strokeLinecap="round" />
+
+  <!-- Center Leader -->
+  <circle cx="16" cy="9" r="5" fill="#18182f" stroke="url(#act_team_lead)" strokeWidth="2" />
+  <path d="M13 9H19" stroke="#facc15" strokeWidth="1.8" strokeLinecap="round" />
+  <path d="M8 27C8 22 11.5 20 16 20C20.5 20 24 22 24 27" fill="#18182f" stroke="url(#act_team_lead)" strokeWidth="2" strokeLinecap="round" />
+</svg>

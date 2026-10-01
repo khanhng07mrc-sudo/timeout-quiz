@@ -3,14 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import BrandLogo from "@/components/ui/BrandLogo";
+import SystemIcon, { SystemIconName } from "@/components/ui/SystemIcon";
 
-const NAV_ITEMS = [
-  { href: "/admin", icon: "📊", label: "Dashboard", desc: "Tổng quan" },
-  { href: "/admin/quiz-bank", icon: "📚", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
-  { href: "/admin/rooms/create", icon: "➕", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
-  { href: "/admin/rooms", icon: "🚪", label: "Phòng đang có", desc: "Quản lý & Điều phối" },
-  { href: "/admin/sandbox", icon: "🧪", label: "Sandbox Studio", desc: "Test solo 1 người" },
-  { href: "/display", icon: "📺", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
+const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: string }[] = [
+  { href: "/admin", icon: "dashboard", label: "Dashboard", desc: "Tổng quan" },
+  { href: "/admin/quiz-bank", icon: "quiz_bank", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
+  { href: "/admin/rooms/create", icon: "create_room", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
+  { href: "/admin/rooms", icon: "rooms", label: "Phòng đang có", desc: "Quản lý & Điều phối" },
+  { href: "/admin/sandbox", icon: "sandbox", label: "Sandbox Studio", desc: "Test solo 1 người" },
+  { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -21,15 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen flex flex-col lg:flex-row bg-[#0b0c16] text-foreground">
       {/* ── Mobile Top Header (Screens < lg) ── */}
       <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#121424]/95 backdrop-blur-md border-b border-[#222642] px-4 flex items-center justify-between z-40">
-        <Link href="/" className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-base shadow">
-            ⚡
-          </div>
-          <div>
-            <span className="font-black text-sm text-white block">Timeout Quiz</span>
-            <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider block">Admin Portal</span>
-          </div>
-        </Link>
+        <BrandLogo variant="compact" size="sm" subText="ADMIN PORTAL" href="/" />
 
         <button
           type="button"
@@ -52,12 +46,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-[#222642]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center text-base">
-                  ⚡
-                </div>
-                <span className="font-black text-white text-base">Timeout Quiz</span>
-              </div>
+              <BrandLogo variant="compact" size="sm" href="/" />
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(false)}
@@ -81,7 +70,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         : "text-slate-300 hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    <span className="text-xl">{icon}</span>
+                    <SystemIcon name={icon} className="w-5 h-5 shrink-0" />
                     <div>
                       <span className="text-sm block">{label}</span>
                       <span className="text-[10px] text-muted-foreground block">{desc}</span>
@@ -97,7 +86,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5"
               >
-                <span>🏠</span>
+                <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
                 <span>Về trang chủ</span>
               </Link>
             </div>
@@ -108,15 +97,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── Desktop Permanent Sidebar (lg+) ── */}
       <aside className="hidden lg:flex w-64 xl:w-72 bg-[#121424] border-r border-[#222642] flex-col p-6 fixed h-full z-20">
         {/* Brand Header */}
-        <Link href="/" className="flex items-center gap-3 mb-10 px-2 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-xl shadow-md group-hover:scale-105 transition-transform">
-            ⚡
-          </div>
-          <div>
-            <span className="font-black text-xl text-white block">Timeout Quiz</span>
-            <span className="text-xs text-purple-400 font-bold uppercase tracking-wider">Admin Portal</span>
-          </div>
-        </Link>
+        <div className="mb-8 px-1">
+          <BrandLogo variant="compact" size="md" subText="ADMIN PORTAL" href="/" />
+        </div>
 
         {/* Navigation Menu */}
         <nav className="flex flex-col gap-2 flex-1">
@@ -132,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     : "text-slate-300 hover:text-white hover:bg-[#1c203b] border border-transparent hover:border-[#2f355f]"
                 }`}
               >
-                <span className="text-2xl group-hover:scale-110 transition-transform">{icon}</span>
+                <SystemIcon name={icon} className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform" />
                 <div>
                   <span className="font-bold text-sm block">{label}</span>
                   <span className="text-[11px] text-slate-500 block">{desc}</span>
@@ -148,7 +131,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             href="/"
             className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors"
           >
-            <span>🏠</span>
+            <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
             <span>Về trang chủ</span>
           </Link>
         </div>

@@ -1,0 +1,13 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="nav_flask_g" x1="4" y1="3" x2="20" y2="21" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#4ade80" />
+      <stop offset="100%" stopColor="#06b6d4" />
+    </linearGradient>
+  </defs>
+  <path d="M9 3H15M10 3V8.5L5.5 17.5C4.8 18.9 5.8 20.5 7.4 20.5H16.6C18.2 20.5 19.2 18.9 18.5 17.5L14 8.5V3" stroke="#4ade80" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M7 16C9 14.5 11 16.5 13 15C15 13.5 16 15 17 16L16.6 19.5C16.3 20 15.6 20.5 15 20.5H9C8.4 20.5 7.7 20 7.4 19.5L7 16Z" fill="url(#nav_flask_g)" fillOpacity="0.45" />
+  <circle cx="10" cy="18" r="1" fill="#ffffff" />
+  <circle cx="14" cy="17" r="1.5" fill="#facc15" />
+  <circle cx="12" cy="11" r="0.8" fill="#4ade80" />
+</svg>

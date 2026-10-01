@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 interface QuestionItem {
   id?: string;
@@ -447,16 +448,20 @@ export default function QuizBankPage() {
         </div>
         <button
           onClick={() => setShowNewBankModal(true)}
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition"
+          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2"
         >
-          + Tạo bộ câu hỏi mới
+          <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
+          <span>Tạo bộ câu hỏi mới</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Left Col: List of Banks */}
         <div className="glass rounded-2xl p-4 flex flex-col gap-3">
-          <h2 className="font-bold text-lg px-2">Danh sách bộ câu hỏi</h2>
+          <h2 className="font-bold text-lg px-2 flex items-center gap-2">
+            <SystemIcon name="quiz_bank" className="w-5 h-5 text-purple-400 shrink-0" />
+            <span>Danh sách bộ câu hỏi</span>
+          </h2>
           {loading ? (
             <p className="text-muted-foreground p-3">Đang tải...</p>
           ) : banks.length === 0 ? (
@@ -492,10 +497,10 @@ export default function QuizBankPage() {
                           handleDeleteBank(b);
                         }}
                         disabled={deletingBankId === b.id}
-                        className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition"
+                        className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition flex items-center justify-center"
                         title="Xóa bộ đề"
                       >
-                        {deletingBankId === b.id ? "..." : "🗑️"}
+                        {deletingBankId === b.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400" />}
                       </button>
                     </div>
                   </div>
@@ -550,10 +555,11 @@ export default function QuizBankPage() {
                   <button
                     onClick={() => handleDeleteBank(selectedBank)}
                     disabled={deletingBankId === selectedBank.id}
-                    className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive text-sm font-semibold transition"
+                    className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive text-sm font-semibold transition inline-flex items-center gap-1.5"
                     title="Xóa bộ đề này"
                   >
-                    🗑️ Xóa bộ đề
+                    <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                    <span>Xóa bộ đề</span>
                   </button>
                 </div>
               </div>
@@ -590,10 +596,10 @@ export default function QuizBankPage() {
                               <button
                                 onClick={() => handleDeleteQuestion(q.id!)}
                                 disabled={deletingQuestionId === q.id}
-                                className="p-1 rounded hover:bg-destructive/20 text-destructive text-xs transition"
+                                className="p-1 rounded hover:bg-destructive/20 text-destructive text-xs transition flex items-center justify-center"
                                 title="Xóa câu hỏi này"
                               >
-                                {deletingQuestionId === q.id ? "..." : "🗑️"}
+                                {deletingQuestionId === q.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400" />}
                               </button>
                             </div>
                           )}

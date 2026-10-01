@@ -24,6 +24,7 @@ import WagerPanel from "@/components/modes/WagerPanel";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -264,7 +265,10 @@ export default function DisplayPage() {
   if (gameEnd) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-purple-900 to-cyan-900">
-        <h1 className="text-6xl font-black mb-2 text-white">🏆 Kết quả</h1>
+        <h1 className="text-6xl font-black mb-2 text-white inline-flex items-center gap-4">
+          <SystemIcon name="trophy" className="w-14 h-14 text-amber-400 shrink-0" />
+          <span>Kết quả</span>
+        </h1>
         <p className="text-xl text-white/70 mb-12">Game kết thúc!</p>
         <div className="w-full max-w-2xl space-y-4">
           {gameEnd.leaderboard.slice(0, 10).map((entry) => (
@@ -666,8 +670,9 @@ export default function DisplayPage() {
                       </p>
                     )}
                     {roomState.config.answerMethod === "MC" && (
-                      <p className="text-xs text-yellow-300 font-medium mt-0.5">
-                        🎙️ Chế độ trả lời miệng qua MC / Ban giám khảo
+                      <p className="text-xs text-yellow-300 font-medium mt-0.5 inline-flex items-center gap-1.5">
+                        <SystemIcon name="mc" className="w-3.5 h-3.5 shrink-0 text-yellow-300" />
+                        <span>Chế độ trả lời miệng qua MC / Ban giám khảo</span>
                       </p>
                     )}
                   </div>
@@ -806,7 +811,10 @@ export default function DisplayPage() {
       {/* Leaderboard sidebar */}
       <div className="glass rounded-2xl p-4 flex flex-col gap-2">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold">🏆 Bảng điểm</h3>
+          <h3 className="text-lg font-bold inline-flex items-center gap-2">
+            <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
+            <span>Bảng điểm</span>
+          </h3>
           <div className="flex items-center gap-1.5">
             <button
               onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}

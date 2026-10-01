@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import BrandLogo from "@/components/ui/BrandLogo";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 export default function JoinPage() {
   const router = useRouter();
@@ -41,17 +43,20 @@ export default function JoinPage() {
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        <div className="mb-6 text-center">
+        <div className="mb-6 text-center flex flex-col items-center">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
           >
             ← Về trang chủ
           </Link>
-          <h1 className="text-3xl sm:text-4xl font-black text-white">
+          <div className="mb-4">
+            <BrandLogo variant="compact" size="lg" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-white">
             Tham gia phòng thi
           </h1>
-          <p className="text-sm text-slate-400 mt-2">
+          <p className="text-sm text-slate-400 mt-1">
             Nhập mã PIN 6 số được chiếu trên màn hình
           </p>
         </div>
@@ -96,9 +101,16 @@ export default function JoinPage() {
           <button
             type="submit"
             disabled={loading || pin.length !== 6 || !name.trim()}
-            className="btn-gradient w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="btn-gradient w-full py-4 text-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {loading ? "Đang kết nối..." : "🎮 Vào phòng ngay"}
+            {loading ? (
+              <span>Đang kết nối...</span>
+            ) : (
+              <>
+                <SystemIcon name="device" className="w-5 h-5 shrink-0 text-white" />
+                <span>Vào phòng ngay</span>
+              </>
+            )}
           </button>
         </form>
       </div>

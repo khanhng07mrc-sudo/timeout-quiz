@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import PowerupIcon from "@/components/ui/PowerupIcon";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import { GameMode } from "@/types";
 
@@ -843,7 +844,7 @@ export default function CreateRoomPage() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-2xl">📱</span>
+                  <SystemIcon name="device" className="w-7 h-7" />
                   {(mode === "CLASSIC" || mode === "ELIMINATION") && (
                     <span className="px-2 py-0.5 rounded text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/40">
                       Bắt buộc
@@ -871,7 +872,7 @@ export default function CreateRoomPage() {
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-2xl">🎙️</span>
+                  <SystemIcon name="mc" className="w-7 h-7" />
                   {(mode === "CLASSIC" || mode === "ELIMINATION") && (
                     <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-destructive/20 text-destructive border border-destructive/40">
                       Không hỗ trợ
@@ -901,7 +902,9 @@ export default function CreateRoomPage() {
                     teamMode === tm ? "border-cyan-500 bg-cyan-500/10" : "border-border hover:border-cyan-400"
                   }`}
                 >
-                  <div className="text-2xl mb-1">{tm === "INDIVIDUAL" ? "👤" : "👥"}</div>
+                  <div className="flex justify-center mb-1.5">
+                    <SystemIcon name={tm === "INDIVIDUAL" ? "individual" : "team"} className="w-7 h-7" />
+                  </div>
                   <p className="font-bold">{tm === "INDIVIDUAL" ? "Cá nhân" : "Nhóm"}</p>
                 </button>
               ))}

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="act_ind_g" x1="8" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#c084fc" />
+      <stop offset="100%" stopColor="#818cf8" />
+    </linearGradient>
+  </defs>
+  <!-- Head -->
+  <circle cx="16" cy="10" r="6" fill="#18182f" stroke="url(#act_ind_g)" strokeWidth="2" />
+  <!-- Cyber visor -->
+  <path d="M12 10H20" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
+  <!-- Body shoulders -->
+  <path d="M7 26C7 21 11 19 16 19C21 19 25 21 25 26" fill="#18182f" stroke="url(#act_ind_g)" strokeWidth="2" strokeLinecap="round" />
+  <circle cx="16" cy="23" r="1.5" fill="#facc15" />
+</svg>

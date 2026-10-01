@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 interface RoomSummary {
   id: string;
@@ -83,8 +84,8 @@ export default function DisplayIndexPage() {
           >
             ← Về trang chủ
           </Link>
-          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center text-4xl mx-auto mb-4 shadow-xl shadow-cyan-500/20 border border-cyan-400/30">
-            📺
+          <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-cyan-500/20 border border-cyan-400/30">
+            <SystemIcon name="display" className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
             Màn hình trình chiếu (Display)
@@ -120,7 +121,7 @@ export default function DisplayIndexPage() {
                     <span>Đang kết nối...</span>
                   ) : (
                     <>
-                      <span>🚀</span>
+                      <SystemIcon name="display" className="w-4 h-4 shrink-0 text-white" />
                       <span>Mở màn chiếu</span>
                     </>
                   )}
@@ -203,7 +204,7 @@ export default function DisplayIndexPage() {
                       target="_blank"
                       className="w-full py-2.5 rounded-xl bg-[#1c213d] hover:bg-cyan-600 text-cyan-300 hover:text-white font-bold text-sm text-center border border-[#2b3360] hover:border-cyan-500 transition-all flex items-center justify-center gap-2"
                     >
-                      <span>📺</span>
+                      <SystemIcon name="display" className="w-4 h-4 shrink-0" />
                       <span>Mở màn chiếu phòng này</span>
                     </Link>
                   </div>

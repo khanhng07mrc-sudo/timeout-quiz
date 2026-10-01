@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SystemIcon from "@/components/ui/SystemIcon";
 
 export default function AdminDashboard() {
   return (
@@ -20,8 +21,8 @@ export default function AdminDashboard() {
           className="quiz-card-interactive p-8 flex flex-col justify-between group border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-950/20 via-[#16192e] to-[#121424]"
         >
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              🧪
+            <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <SystemIcon name="sandbox" className="w-8 h-8" />
             </div>
             <div className="flex items-center gap-2 mb-2">
               <h2 className="text-2xl font-black text-white group-hover:text-fuchsia-300 transition-colors">
@@ -45,8 +46,8 @@ export default function AdminDashboard() {
           className="quiz-card-interactive p-8 flex flex-col justify-between group"
         >
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              📚
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <SystemIcon name="quiz_bank" className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-black text-white group-hover:text-purple-300 transition-colors mb-2">
               Bộ câu hỏi
@@ -65,8 +66,8 @@ export default function AdminDashboard() {
           className="quiz-card-interactive p-8 flex flex-col justify-between group"
         >
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              🎮
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <SystemIcon name="create_room" className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-black text-white group-hover:text-cyan-300 transition-colors mb-2">
               Tạo phòng thi mới
@@ -85,8 +86,8 @@ export default function AdminDashboard() {
           className="quiz-card-interactive p-8 flex flex-col justify-between group"
         >
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              🚪
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <SystemIcon name="rooms" className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-black text-white group-hover:text-emerald-300 transition-colors mb-2">
               Phòng của tôi
@@ -105,8 +106,8 @@ export default function AdminDashboard() {
           className="quiz-card-interactive p-8 flex flex-col justify-between group"
         >
           <div>
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform">
-              📺
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <SystemIcon name="display" className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-black text-white group-hover:text-amber-300 transition-colors mb-2">
               Màn hình chiếu (Display)

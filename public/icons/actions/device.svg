@@ -1,0 +1,16 @@
+<svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="act_dev_bg" x1="6" y1="2" x2="26" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#818cf8" />
+      <stop offset="100%" stopColor="#a855f7" />
+    </linearGradient>
+  </defs>
+  <rect x="7" y="2" width="18" height="28" rx="5" fill="#18182f" stroke="url(#act_dev_bg)" strokeWidth="2" />
+  <rect x="13" y="4.5" width="6" height="1.5" rx="0.75" fill="#818cf8" />
+  <circle cx="16" cy="26.5" r="1.8" fill="#38bdf8" />
+  <rect x="10" y="8" width="12" height="15" rx="2" fill="url(#act_dev_bg)" fillOpacity="0.25" />
+  <!-- Quiz checkmark -->
+  <path d="M13 15.5L15 17.5L19 13.5" stroke="#4ade80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  <!-- Signal pulse -->
+  <circle cx="25" cy="5" r="1.5" fill="#facc15" />
+</svg>

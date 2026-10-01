@@ -1,0 +1,14 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="nav_book_g" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#38bdf8" />
+      <stop offset="100%" stopColor="#818cf8" />
+    </linearGradient>
+  </defs>
+  <path d="M4 19.5C4 18.12 5.12 17 6.5 17H20V4H6.5C5.12 4 4 5.12 4 6.5V19.5Z" fill="url(#nav_book_g)" fillOpacity="0.25" stroke="#38bdf8" strokeWidth="1.6" strokeLinejoin="round" />
+  <path d="M4 19.5C4 18.12 5.12 17 6.5 17H20" stroke="#38bdf8" strokeWidth="1.6" strokeLinecap="round" />
+  <path d="M6.5 4V17" stroke="#c084fc" strokeWidth="1.6" strokeLinecap="round" />
+  <path d="M9 8H16" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+  <path d="M9 11.5H14" stroke="#c084fc" strokeWidth="1.5" strokeLinecap="round" />
+  <circle cx="17.5" cy="11.5" r="1" fill="#facc15" />
+</svg>

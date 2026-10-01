@@ -1,0 +1,14 @@
+<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="nav_dash_g" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#818cf8" />
+      <stop offset="100%" stopColor="#c084fc" />
+    </linearGradient>
+  </defs>
+  <rect x="3" y="3" width="7" height="9" rx="2" fill="url(#nav_dash_g)" fillOpacity="0.85" stroke="#c084fc" strokeWidth="1.5" />
+  <rect x="14" y="3" width="7" height="5" rx="2" fill="#38bdf8" fillOpacity="0.6" stroke="#38bdf8" strokeWidth="1.5" />
+  <rect x="14" y="12" width="7" height="9" rx="2" fill="url(#nav_dash_g)" fillOpacity="0.85" stroke="#c084fc" strokeWidth="1.5" />
+  <rect x="3" y="16" width="7" height="5" rx="2" fill="#38bdf8" fillOpacity="0.6" stroke="#38bdf8" strokeWidth="1.5" />
+  <circle cx="6.5" cy="7.5" r="1" fill="#ffffff" />
+  <circle cx="17.5" cy="16.5" r="1" fill="#ffffff" />
+</svg>

@@ -149,6 +149,10 @@ export default function DisplayPage() {
     });
 
     socket.on("game:timer", setTimer);
+    socket.on("game:timer:expired", () => {
+      setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      soundManager.playBuzz();
+    });
     socket.on("game:buzz", (p) => {
       setBuzzed({ playerName: p.teamName ?? p.playerName });
       soundManager.playBuzz();
@@ -647,6 +651,12 @@ export default function DisplayPage() {
                     <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
                       <span>⏱️</span>
                       <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
+                    </div>
+                  )}
+                  {timer && timer.remaining === 0 && !revealPayload && (
+                    <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
+                      <span>⏱️</span>
+                      <span>Hết thời gian! Chờ Quản trò công bố kết quả...</span>
                     </div>
                   )}
                   <div>

@@ -443,7 +443,16 @@ export default function GameQuestion({
       {answered && !revealPayload && (
         <div className="text-center py-2 text-green-400 font-bold flex items-center justify-center gap-1.5 text-sm">
           <span>✓ Đã chọn đáp án</span>
-          <span className="text-xs text-muted-foreground font-normal">(Có thể đổi đáp án khác trước khi hết giờ)</span>
+          <span className="text-xs text-muted-foreground font-normal">
+            {timer && timer.remaining <= 0
+              ? "(Hết thời gian — Chờ Quản trò công bố kết quả)"
+              : "(Có thể đổi đáp án khác trước khi hết giờ)"}
+          </span>
+        </div>
+      )}
+      {!answered && !revealPayload && timer && timer.remaining <= 0 && (
+        <div className="text-center py-2 text-amber-400 font-bold flex items-center justify-center gap-1.5 text-sm animate-pulse">
+          <span>⏱️ Hết thời gian! Đang chờ Quản trò công bố kết quả...</span>
         </div>
       )}
 
@@ -451,10 +460,12 @@ export default function GameQuestion({
       {revealPayload && (
         <div className="space-y-3 pt-2">
           <div className="text-center py-2 font-bold text-lg">
-            {revealPayload.answers.find((a) => a.isCorrect) ? (
-              <span className="text-green-400">✓ Đúng rồi!</span>
+            {revealPayload.answers.some((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect) ? (
+              <span className="text-green-400">
+                ✓ Đúng rồi! +{revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded ?? 0} điểm
+              </span>
             ) : (
-              <span className="text-red-400">✗ Sai rồi!</span>
+              <span className="text-red-400">✗ Chưa chính xác!</span>
             )}
           </div>
 

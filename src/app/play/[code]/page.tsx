@@ -242,6 +242,12 @@ export default function PlayPage() {
     });
 
     socket.on("game:timer", (t) => setTimer(t));
+    socket.on("game:timer:expired", () => {
+      setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
+    });
 
     socket.on("game:buzz", (payload) => {
       setBuzzedBy({ playerName: payload.playerName, teamId: payload.teamId, teamName: payload.teamName });

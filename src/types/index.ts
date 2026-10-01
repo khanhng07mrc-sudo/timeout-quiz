@@ -715,6 +715,7 @@ export interface QuestionState {
   wagerPhase?: "WAGER_PERIOD" | "QUESTION_PERIOD" | "REVEAL_PERIOD";
   timerPending?: boolean;
   timerStarted?: boolean;
+  isExpired?: boolean;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -833,6 +834,7 @@ export interface ServerToClientEvents {
   "game:tournament:update": (state: TournamentState) => void;
   "game:question:clear": () => void;
   "game:timer:started": (payload?: { timeLimit?: number }) => void;
+  "game:timer:expired": (payload?: { questionId?: string }) => void;
 }
 
 export interface ClientToServerEvents {

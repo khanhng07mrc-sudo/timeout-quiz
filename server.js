@@ -1046,6 +1046,16 @@ function registerSocketHandlers(io2) {
           effTeamId = effTeamId || buzz.teamId;
           effPlayerId = effPlayerId || buzz.playerId;
         }
+      } else if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState?.currentTurnTeamId) {
+          effTeamId = gridState.currentTurnTeamId;
+        }
+      } else if (room.mode === "DICE_RACE") {
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState?.currentTurnTeamId) {
+          effTeamId = diceState.currentTurnTeamId;
+        }
       }
       await processAnswerSubmission({
         io: io2,
@@ -1699,23 +1709,8 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (room.mode === "GRID_CARO") {
-        const gridState = roomGridCaros.get(room.id);
-        if (gridState) {
-          const uncompleted = gridState.cells.filter((c) => !c.isCompleted);
-          if (uncompleted.length === 0) {
-            stopQuestionTimer(room.id);
-            room.status = "FINISHED";
-            roomCache.set(room.id, room);
-            prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
-            const leaderboard = await buildLeaderboard(room.id);
-            io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
-            return;
-          }
-          gridState.selectedCellId = void 0;
-          io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
-          io2.to(`room:${room.code}`).emit("game:question:clear");
-          return;
-        }
+        await advanceGridToBoard(io2, room.id, room.code);
+        return;
       }
       if (room.mode === "DICE_RACE") {
         const diceState = roomDiceRaces.get(room.id);
@@ -1788,7 +1783,9 @@ function registerSocketHandlers(io2) {
     socket.on("admin:reveal", async () => {
       const room = await getAdminRoom(socket);
       if (!room) return;
-      const q = room.quizBank?.questions[room.currentQuestion];
+      const activeQ = roomActiveQuestions.get(room.id);
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const q = (activeQ ? rawQuestions.find((item) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
       stopQuestionTimer(room.id);
       const qKey = `${room.id}:${q.id}`;
@@ -1963,6 +1960,11 @@ function registerSocketHandlers(io2) {
       cell.questionId = targetQ.id;
       const qIndex = rawQuestions.findIndex((q) => q.id === targetQ.id);
       room.currentQuestion = qIndex >= 0 ? qIndex : 0;
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { currentQuestion: room.currentQuestion }
+      }).catch(console.error);
+      roomCache.delete(room.id);
       setTimeout(() => {
         gridState.selectedCellAnimation = false;
         io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
@@ -2128,9 +2130,18 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "GRID_CARO" || room.status !== "PLAYING") return;
       const gridState = roomGridCaros.get(room.id);
       if (!gridState || !gridState.selectedCellId) return;
+      const cell = gridState.cells.find((c) => c.id === gridState.selectedCellId);
       const rawQuestions = room.quizBank?.questions ?? [];
-      const q = rawQuestions[room.currentQuestion];
+      const q = (cell?.questionId ? rawQuestions.find((item) => item.id === cell.questionId) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
+      const qKey = `${room.id}:${q.id}`;
+      roomQuestionProcessed.delete(qKey);
+      const qIndex = rawQuestions.findIndex((item) => item.id === q.id);
+      if (qIndex >= 0 && room.currentQuestion !== qIndex) {
+        room.currentQuestion = qIndex;
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: qIndex } }).catch(console.error);
+        roomCache.delete(room.id);
+      }
       gridState.questionReady = true;
       io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
       const bloomLevel = getBloomLevelFromPoints(q.points);
@@ -2152,7 +2163,7 @@ function registerSocketHandlers(io2) {
       if (!room || room.status !== "PLAYING") return;
       const activeQ = roomActiveQuestions.get(room.id);
       const rawQuestions = room.quizBank?.questions ?? [];
-      const q = rawQuestions[room.currentQuestion];
+      const q = (activeQ ? rawQuestions.find((item) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
       if (activeQ) {
         activeQ.timerPending = false;
@@ -2389,6 +2400,10 @@ async function processAnswerSubmission({
   const activeQ = roomActiveQuestions.get(room.id);
   if (activeQ?.timerPending && !isAdminOverride) {
     if (socket) socket.emit("error", "Ch\u01B0a \u0111\u1EBFn gi\u1EDD tr\u1EA3 l\u1EDDi! H\xE3y ch\u1EDD Admin b\u1EA5m B\u1EAFt \u0111\u1EA7u t\xEDnh gi\u1EDD.");
+    return;
+  }
+  if (activeQ?.isExpired && !isAdminOverride) {
+    if (socket) socket.emit("error", "\u0110\xE3 h\u1EBFt th\u1EDDi gian tr\u1EA3 l\u1EDDi c\xE2u h\u1ECFi!");
     return;
   }
   if (teamId) {
@@ -2633,12 +2648,23 @@ async function advanceGridToBoard(io2, roomId, roomCode) {
     roomGridTimers.delete(autoAdvanceKey);
   }
   const gridState = roomGridCaros.get(roomId);
-  if (!gridState) return;
+  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  if (!gridState || !room) return;
   gridState.autoAdvanceSeconds = void 0;
   gridState.selectedCellId = void 0;
   gridState.selectedCellAnimation = false;
   gridState.selectedCellInfo = void 0;
   gridState.questionReady = false;
+  roomActiveQuestions.delete(roomId);
+  gridState.turnsCompleted = (gridState.turnsCompleted || 0) + 1;
+  const numTeams = Math.max(1, room.teams.length);
+  gridState.currentRound = Math.min(gridState.maxRounds, Math.floor(gridState.turnsCompleted / numTeams) + 1);
+  if (room.teams.length > 0) {
+    const curIdx = room.teams.findIndex((t) => t.id === gridState.currentTurnTeamId);
+    const nextIdx = (curIdx + 1) % room.teams.length;
+    gridState.currentTurnTeamId = room.teams[nextIdx].id;
+    gridState.currentTurnTeamName = room.teams[nextIdx].name;
+  }
   const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
   if (isMatchOver) {
     await prisma.room.update({
@@ -2695,6 +2721,12 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
           });
         }
       }
+      if (ans) {
+        await prisma.answer.update({
+          where: { id: ans.id },
+          data: { pointsAwarded: awardedPoints }
+        }).catch(console.error);
+      }
       const upd = await prisma.team.update({
         where: { id: currentTeam.id },
         data: { score: { increment: awardedPoints } }
@@ -2708,18 +2740,6 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
       cell.attemptCount = (cell.attemptCount || 0) + 1;
       cell.questionId = void 0;
     }
-  }
-  gridState.turnsCompleted = (gridState.turnsCompleted || 0) + 1;
-  const numTeams = Math.max(1, room.teams.length);
-  gridState.currentRound = Math.min(gridState.maxRounds, Math.floor(gridState.turnsCompleted / numTeams) + 1);
-  if (room.teams.length > 0) {
-    const curIdx = room.teams.findIndex((t) => t.id === currentTeamId);
-    const nextIdx = (curIdx + 1) % room.teams.length;
-    gridState.currentTurnTeamId = room.teams[nextIdx].id;
-    gridState.currentTurnTeamName = room.teams[nextIdx].name;
-    gridState.selectedCellId = void 0;
-    gridState.selectedCellInfo = void 0;
-    gridState.questionReady = false;
   }
   gridState.autoAdvanceSeconds = void 0;
   if (scoreUpdates.length > 0) {
@@ -3357,7 +3377,12 @@ function startQuestionTimer(io2, roomCode, roomId, questionId, timeLimit) {
       } else if (room.mode === "TOURNAMENT") {
         await finalizeTournamentQuestion(io2, roomId, roomCode, questionId);
       } else if (room.mode === "GRID_CARO") {
-        await finalizeGridCaroQuestion(io2, roomId, roomCode, questionId);
+        const activeQ = roomActiveQuestions.get(roomId);
+        if (activeQ) {
+          activeQ.isExpired = true;
+          activeQ.timerStarted = false;
+        }
+        io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
       } else if (room.mode === "DICE_RACE") {
         await finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId);
       } else if (room.mode === "WAGER") {

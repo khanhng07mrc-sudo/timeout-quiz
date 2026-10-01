@@ -45,6 +45,12 @@ export default function DisplayPage() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [eliminationNotice, setEliminationNotice] = useState<{
+    round: number;
+    eliminatedTeamName: string;
+    survivingTeamsCount: number;
+    isGameOver: boolean;
+  } | null>(null);
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -166,6 +172,33 @@ export default function DisplayPage() {
       setIsStealOpen(false);
       setStealBuzzed({ teamName: p.teamName, playerName: p.playerName });
       soundManager.playBuzz();
+    });
+    socket.on("game:bounceback:points_selected", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              bouncebackSelectPhase: false,
+              selectedPointLevel: payload.points,
+              question: {
+                ...prev.question,
+                points: payload.points,
+              },
+            }
+          : prev
+      );
+      soundManager.playCountdownTick(0);
+      soundManager.playQuestionMusic(30);
+    });
+    socket.on("game:elimination:round", (payload) => {
+      setEliminationNotice({
+        round: payload.round ?? 1,
+        eliminatedTeamName: payload.eliminatedTeamName,
+        survivingTeamsCount: payload.survivingTeamsCount ?? 0,
+        isGameOver: payload.isGameOver ?? false,
+      });
+      soundManager.playWrong();
+      setTimeout(() => setEliminationNotice(null), 8000);
     });
     socket.on("game:buzz:closed", () => {
       setIsStealOpen(false);
@@ -597,6 +630,22 @@ export default function DisplayPage() {
         </div>
       )}
 
+      {/* Elimination Notice Popup */}
+      {eliminationNotice && (
+        <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass bg-red-950/95 border-2 border-red-500 rounded-3xl p-8 max-w-xl w-[90vw] text-center shadow-2xl animate-bounce-in">
+          <span className="text-6xl mb-3 block">💀</span>
+          <h2 className="text-3xl font-black text-red-400">VÒNG LOẠI #{eliminationNotice.round}</h2>
+          <p className="text-xl text-white mt-2">
+            Đội <span className="font-black text-yellow-400">{eliminationNotice.eliminatedTeamName}</span> đã bị loại!
+          </p>
+          <p className="text-sm text-red-200/90 mt-2">
+            {eliminationNotice.isGameOver
+              ? "Chỉ còn 1 đội sống sót — Trận đấu kết thúc!"
+              : `Còn lại ${eliminationNotice.survivingTeamsCount} đội tiếp tục sinh tồn.`}
+          </p>
+        </div>
+      )}
+
       {/* Main content area */}
       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
         {/* Powerup notification */}
@@ -634,6 +683,17 @@ export default function DisplayPage() {
         {currentQuestion && (
           <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
             <div>
+              {/* Bounceback Point Selection Notice */}
+              {currentQuestion.bouncebackSelectPhase && (
+                <div className="bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border-2 border-indigo-400 text-white rounded-2xl p-5 text-center animate-pulse shadow-xl mb-4">
+                  <span className="text-3xl mb-1 block">🎯</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-indigo-300">ĐỘI CHÍNH ĐANG CHỌN GÓI CÂU HỎI (10, 20, 30 ĐIỂM)</h3>
+                  <p className="text-sm text-indigo-100 mt-1">
+                    Đội <strong className="text-yellow-400 font-bold">{currentQuestion.primaryTeamName}</strong> đang lựa chọn gói điểm trước khi tính giờ.
+                  </p>
+                </div>
+              )}
+
               {/* Timer & Turn Info */}
               <div className="flex items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <div className="flex items-center gap-3 sm:gap-4">
@@ -654,7 +714,7 @@ export default function DisplayPage() {
                       </text>
                     </svg>
                   )}
-                  {currentQuestion.timerPending && !timer && (
+                  {currentQuestion.timerPending && !timer && !currentQuestion.bouncebackSelectPhase && (
                     <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
                       <span>⏱️</span>
                       <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
@@ -677,6 +737,11 @@ export default function DisplayPage() {
                       >
                         {bloomMeta.emoji} {bloomMeta.labelVi} ({currentQuestion.question.points}đ)
                       </span>
+                      {currentQuestion.streakCount && currentQuestion.streakCount >= 2 && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
+                          🔥 Streak x{currentQuestion.streakCount} (+{currentQuestion.streakCount === 2 ? 10 : currentQuestion.streakCount === 3 ? 20 : currentQuestion.streakCount === 4 ? 30 : 50}%)
+                        </span>
+                      )}
                     </div>
 
                     {/* Mode specific info banner */}

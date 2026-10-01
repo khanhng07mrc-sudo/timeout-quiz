@@ -25,7 +25,7 @@ import {
   TeamWager,
   WagerState,
 } from "@/types";
-import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount } from "./game-engine/scoring";
+import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
 import { shuffleArray } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -85,6 +85,9 @@ const roomUsedQuestions = new Map<string, Set<string>>(); // roomId -> Set(quest
 const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager timer
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
 const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
+const teamStreakMap = new Map<string, number>(); // teamId -> streak count
+const playerStreakMap = new Map<string, number>(); // playerId -> streak count
+const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
 
 function startGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string, durationSec: number = 5) {
   const gridState = roomGridCaros.get(roomId);
@@ -376,24 +379,33 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
 
 function generateDiceTiles(totalTiles: number): DiceTile[] {
   const tiles: DiceTile[] = [];
+  let lastExtraRoll = -999;
+
   for (let i = 0; i < totalTiles; i++) {
     if (i === 0) {
       tiles.push({ index: i, type: "NORMAL", label: "Xuất phát" });
-    } else if (i === totalTiles - 1) {
-      tiles.push({ index: i, type: "FINISH", label: "VỀ ĐÍCH" });
+      continue;
+    }
+
+    // Ô x2 Cơ hội (EXTRA_ROLL): mỗi 8 ô hoặc ô cuối, đảm bảo cách nhau ít nhất 7 ô
+    const isCandidateExtraRoll = (i % 8 === 0 || i === totalTiles - 1) && (i - lastExtraRoll >= 7);
+    if (isCandidateExtraRoll) {
+      tiles.push({ index: i, type: "EXTRA_ROLL", label: "🎲x2 Cơ hội" });
+      lastExtraRoll = i;
+      continue;
+    }
+
+    const pct = i / totalTiles;
+    if (Math.abs(pct - 0.2) < 0.04 || Math.abs(pct - 0.8) < 0.04) {
+      tiles.push({ index: i, type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 });
+    } else if (Math.abs(pct - 0.35) < 0.04 || Math.abs(pct - 0.7) < 0.04) {
+      tiles.push({ index: i, type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 });
+    } else if (Math.abs(pct - 0.15) < 0.04 || Math.abs(pct - 0.5) < 0.04) {
+      tiles.push({ index: i, type: "SHIELD", label: "🛡️ Khiên bảo vệ" });
+    } else if (Math.abs(pct - 0.6) < 0.04) {
+      tiles.push({ index: i, type: "SWAP", label: "🔀 Đổi chỗ" });
     } else {
-      const pct = i / totalTiles;
-      if (Math.abs(pct - 0.2) < 0.04 || Math.abs(pct - 0.5) < 0.04 || Math.abs(pct - 0.8) < 0.04) {
-        tiles.push({ index: i, type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 });
-      } else if (Math.abs(pct - 0.3) < 0.04 || Math.abs(pct - 0.7) < 0.04) {
-        tiles.push({ index: i, type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 });
-      } else if (Math.abs(pct - 0.15) < 0.04 || Math.abs(pct - 0.45) < 0.04 || Math.abs(pct - 0.75) < 0.04) {
-        tiles.push({ index: i, type: "GEM", label: "💎 Ngọc +150đ", effectValue: 150 });
-      } else if (Math.abs(pct - 0.6) < 0.04) {
-        tiles.push({ index: i, type: "SWAP", label: "🔀 Đổi chỗ" });
-      } else {
-        tiles.push({ index: i, type: "NORMAL", label: "⭐" });
-      }
+      tiles.push({ index: i, type: "NORMAL", label: "⭐" });
     }
   }
   return tiles;
@@ -1096,6 +1108,55 @@ export function registerSocketHandlers(io: IO) {
       startQuestionTimer(io, room.code, room.id, currentQ.id, timeLimit);
     });
 
+    // ── Bounceback Select Point Level (Olympia 10, 20, 30đ) ───────────────────
+    const handleBouncebackPointSelect = async (roomId: string, points: 10 | 20 | 30) => {
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } }, teams: true },
+      });
+      if (!room || room.mode !== "BOUNCEBACK") return;
+
+      const q = room.quizBank?.questions[room.currentQuestion];
+      if (!q) return;
+      const qKey = `${room.id}:${q.id}`;
+
+      const validPoints: 10 | 20 | 30 = [10, 20, 30].includes(points) ? points : 20;
+      roomBouncebackSelectedPoints.set(qKey, validPoints);
+
+      const activeQ = roomActiveQuestions.get(room.id);
+      if (activeQ) {
+        activeQ.bouncebackSelectPhase = false;
+        activeQ.selectedPointLevel = validPoints;
+        activeQ.question.points = validPoints;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        activeQ.startedAt = Date.now();
+
+        const primary = roomPrimaryTeams.get(qKey);
+        io.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
+          teamId: primary?.teamId || "",
+          points: validPoints,
+        });
+
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+        startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+      }
+    };
+
+    socket.on("game:bounceback:select_points", async ({ points }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
+      if (!player?.room) return;
+      await handleBouncebackPointSelect(player.room.id, points as any);
+    });
+
+    socket.on("admin:bounceback:select_points", async ({ points }) => {
+      const room = await getAdminRoom(socket);
+      if (!room) return;
+      await handleBouncebackPointSelect(room.id, points as any);
+    });
+
     // ── Use Power-up ─────────────────────────────────────────────────────────
     socket.on("game:powerup:use", async ({ cardId, targetTeamId }) => {
       const playerId = playerSockets.get(socket.id);
@@ -1313,6 +1374,20 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const config = room.config as any;
+
+      let bouncebackSelectPhase = false;
+      const chosenPoints: (10 | 20 | 30) | undefined = roomBouncebackSelectedPoints.get(qKey);
+
+      if (room.mode === "BOUNCEBACK") {
+        if (!chosenPoints) {
+          bouncebackSelectPhase = true;
+        } else {
+          q.points = chosenPoints;
+        }
+      } else if (room.mode === "BUZZ" || room.mode === "TOURNAMENT" || room.mode === "GRID_CARO") {
+        q.points = normalizeToThreeLevels(q.points);
+      }
+
       const bloomLevel = getBloomLevelFromPoints(q.points);
 
       const launchQuestion = () => {
@@ -1336,9 +1411,12 @@ export function registerSocketHandlers(io: IO) {
           buzzAutoDelaySeconds: buzzAutoDelay,
           buzzUnlocked,
           canRollDice: false,
+          bouncebackSelectPhase,
+          selectedPointLevel: chosenPoints,
+          streakCount: primaryTeamId ? (teamStreakMap.get(primaryTeamId) || 0) : undefined,
         });
 
-        if (config?.manualTimerStart) {
+        if (bouncebackSelectPhase || config?.manualTimerStart) {
           questionState.timerPending = true;
           questionState.timerStarted = false;
           roomActiveQuestions.set(room.id, questionState);
@@ -1632,19 +1710,16 @@ export function registerSocketHandlers(io: IO) {
           const isCaroEligible = rows >= 4 && cols >= 4;
           const caroEnabled = isCaroEligible && config?.gridCaroEnabled !== false && questions.length >= totalCells;
 
-          // Available points from quiz bank questions (e.g. 10, 15, 30)
-          const availablePoints: number[] = Array.from(new Set<number>(questions.map((q: any) => Number(q.points) || 10))).sort((a, b) => a - b);
-          const pointPalette: number[] = availablePoints.length > 0 ? availablePoints : [10, 20, 30];
+          // 3 mức điểm chuẩn hoá cho GRID_CARO: 10đ (Dễ), 20đ (Trung bình), 30đ (Khó)
+          const pointPalette: (10 | 20 | 30)[] = [10, 20, 30];
 
           const cells: GridCell[] = [];
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
               const cellId = r * cols + c + 1;
-              const pts = Number(pointPalette[(r * cols + c) % pointPalette.length]);
-              const bloom = getBloomLevelFromPoints(pts);
-              const diff: "DỄ" | "TRUNG BÌNH" | "KHÓ" | "CỰC KHÓ" =
-                bloom === "REMEMBER" ? "DỄ" :
-                bloom === "APPLY" ? "TRUNG BÌNH" : "KHÓ";
+              const pts = pointPalette[(r * cols + c) % pointPalette.length];
+              const diff: "DỄ" | "TRUNG BÌNH" | "KHÓ" =
+                pts === 10 ? "DỄ" : pts === 20 ? "TRUNG BÌNH" : "KHÓ";
 
               cells.push({
                 id: cellId,
@@ -2050,17 +2125,18 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const rawQuestions = room.quizBank?.questions ?? [];
-      // Prefer unused question with matching cell.points
-      let targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id) && q.points === cell.points);
+      // Ưu tiên câu hỏi chưa dùng có điểm chuẩn hoá khớp với điểm của ô
+      let targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id) && normalizeToThreeLevels(q.points) === cell.points);
       if (!targetQ) {
         targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id));
       }
       if (!targetQ) {
-        targetQ = rawQuestions.find((q: any) => q.points === cell.points) || rawQuestions[0];
+        targetQ = rawQuestions.find((q: any) => normalizeToThreeLevels(q.points) === cell.points) || rawQuestions[0];
       }
       if (!targetQ) return;
 
       usedSet.add(targetQ.id);
+      targetQ.points = cell.points; // Đảm bảo điểm câu hỏi chuẩn hoá khớp chính xác ô đã chọn
       cell.questionId = targetQ.id;
 
       const qIndex = rawQuestions.findIndex((q: any) => q.id === targetQ!.id);
@@ -2097,6 +2173,103 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Dice Race Events ──────────────────────────────────────────────────────
+    async function executeDiceRoll(room: any, diceState: DiceRaceState, teamId: string) {
+      const teamProg = diceState.teamPositions[teamId];
+      if (!teamProg) return;
+
+      const roll = Math.floor(Math.random() * 6) + 1;
+      diceState.lastDiceRoll = roll;
+
+      let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
+      const landingTile = diceState.tiles[newPos];
+
+      let grantAnotherRoll = false;
+
+      if (landingTile) {
+        if (landingTile.type === "BOOST") {
+          newPos = Math.min(diceState.totalTiles - 1, newPos + (landingTile.effectValue || 2));
+        } else if (landingTile.type === "TRAP") {
+          if (teamProg.hasShield) {
+            teamProg.hasShield = false; // Khiên hấp thụ bẫy
+          } else {
+            newPos = Math.max(0, newPos + (landingTile.effectValue || -2));
+          }
+        } else if (landingTile.type === "SHIELD") {
+          teamProg.hasShield = true;
+        } else if (landingTile.type === "EXTRA_ROLL") {
+          if (!diceState.extraRollGranted) {
+            grantAnotherRoll = true;
+            diceState.extraRollGranted = true;
+          }
+        } else if (landingTile.type === "SWAP") {
+          const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
+          otherTeams.sort((a, b) => b.position - a.position);
+          if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
+            const opp = otherTeams[0];
+            if (opp.hasShield) {
+              opp.hasShield = false; // Khiên của đối thủ chặn đổi chỗ
+            } else {
+              const tempPos = opp.position;
+              opp.position = newPos;
+              newPos = tempPos;
+            }
+          }
+        }
+      }
+
+      teamProg.position = newPos;
+
+      // Đồng bộ điểm đội theo vị trí ô để hiển thị trên UI nhất quán
+      await prisma.team.update({
+        where: { id: teamId },
+        data: { score: newPos },
+      }).catch(console.error);
+
+      io.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: newPos, delta: 0 }]);
+
+      io.to(`room:${room.code}`).emit("game:dice:rolled", {
+        teamId,
+        teamName: teamProg.teamName,
+        roll,
+      });
+
+      // Kiểm tra cán đích
+      if (newPos >= diceState.totalTiles - 1 && !teamProg.hasFinished) {
+        teamProg.hasFinished = true;
+        if (!diceState.finishLeaderboard.includes(teamProg.teamName)) {
+          diceState.finishLeaderboard.push(teamProg.teamName);
+        }
+        teamProg.finishRank = diceState.finishLeaderboard.length;
+        io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+
+        // Đội đầu tiên cán đích sẽ kết thúc trận đấu và giành chiến thắng ngay lập tức
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
+      }
+
+      if (grantAnotherRoll) {
+        // Ô x2 Cơ hội: được thêm 1 lần gieo nữa trước khi chuyển lượt
+        diceState.canRollDice = true;
+        diceState.dicePendingAnswer = false;
+      } else {
+        diceState.extraRollGranted = false;
+        diceState.canRollDice = false;
+        diceState.dicePendingAnswer = false;
+
+        const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
+        if (teams.length > 0) {
+          const curIdx = teams.findIndex((t) => t.id === teamId);
+          const nextIdx = (curIdx + 1) % teams.length;
+          diceState.currentTurnTeamId = teams[nextIdx].id;
+          diceState.currentTurnTeamName = teams[nextIdx].name;
+        }
+      }
+
+      io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+    }
+
     socket.on("game:dice:roll", async () => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
@@ -2120,71 +2293,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const teamId = player.teamId;
-      const teamProg = diceState.teamPositions[teamId];
-      if (!teamProg) return;
-
-      const roll = Math.floor(Math.random() * 6) + 1;
-      diceState.lastDiceRoll = roll;
-
-      let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
-      const landingTile = diceState.tiles[newPos];
-      let bonusPoints = 0;
-
-      if (landingTile) {
-        if (landingTile.type === "BOOST") {
-          newPos = Math.min(diceState.totalTiles - 1, newPos + (landingTile.effectValue || 2));
-        } else if (landingTile.type === "TRAP") {
-          newPos = Math.max(0, newPos + (landingTile.effectValue || -2));
-        } else if (landingTile.type === "GEM") {
-          bonusPoints += landingTile.effectValue || 150;
-        } else if (landingTile.type === "SWAP") {
-          const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-          otherTeams.sort((a, b) => b.position - a.position);
-          if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-            const opp = otherTeams[0];
-            const tempPos = opp.position;
-            opp.position = newPos;
-            newPos = tempPos;
-          }
-        } else if (landingTile.type === "FINISH" && !teamProg.hasFinished) {
-          teamProg.hasFinished = true;
-          const finishRank = diceState.finishLeaderboard.length + 1;
-          teamProg.finishRank = finishRank;
-          diceState.finishLeaderboard.push(teamProg.teamName);
-          const finishBonus = finishRank === 1 ? 300 : finishRank === 2 ? 200 : 100;
-          bonusPoints += finishBonus;
-        }
-      }
-
-      teamProg.position = newPos;
-
-      if (bonusPoints > 0) {
-        const upd = await prisma.team.update({
-          where: { id: teamId },
-          data: { score: { increment: bonusPoints } },
-        });
-        io.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: upd.score, delta: bonusPoints }]);
-      }
-
-      io.to(`room:${room.code}`).emit("game:dice:rolled", {
-        teamId,
-        teamName: teamProg.teamName,
-        roll,
-      });
-
-      diceState.canRollDice = false;
-      diceState.dicePendingAnswer = false;
-
-      const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
-      if (teams.length > 0) {
-        const curIdx = teams.findIndex((t) => t.id === teamId);
-        const nextIdx = (curIdx + 1) % teams.length;
-        diceState.currentTurnTeamId = teams[nextIdx].id;
-        diceState.currentTurnTeamName = teams[nextIdx].name;
-      }
-
-      io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+      await executeDiceRoll(room, diceState, player.teamId);
     });
 
     // ── Secret Wager Events ───────────────────────────────────────────────────
@@ -2406,70 +2515,8 @@ export function registerSocketHandlers(io: IO) {
 
       const teamId = diceState.currentTurnTeamId;
       if (!teamId) return;
-      const teamProg = diceState.teamPositions[teamId];
-      if (!teamProg) return;
 
-      const roll = Math.floor(Math.random() * 6) + 1;
-      diceState.lastDiceRoll = roll;
-
-      let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
-      const landingTile = diceState.tiles[newPos];
-      let bonusPoints = 0;
-
-      if (landingTile) {
-        if (landingTile.type === "BOOST") {
-          newPos = Math.min(diceState.totalTiles - 1, newPos + (landingTile.effectValue || 2));
-        } else if (landingTile.type === "TRAP") {
-          newPos = Math.max(0, newPos + (landingTile.effectValue || -2));
-        } else if (landingTile.type === "GEM") {
-          bonusPoints += landingTile.effectValue || 150;
-        } else if (landingTile.type === "SWAP") {
-          const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-          otherTeams.sort((a, b) => b.position - a.position);
-          if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-            const opp = otherTeams[0];
-            const tempPos = opp.position;
-            opp.position = newPos;
-            newPos = tempPos;
-          }
-        } else if (landingTile.type === "FINISH" && !teamProg.hasFinished) {
-          teamProg.hasFinished = true;
-          const finishRank = diceState.finishLeaderboard.length + 1;
-          teamProg.finishRank = finishRank;
-          diceState.finishLeaderboard.push(teamProg.teamName);
-          const finishBonus = finishRank === 1 ? 300 : finishRank === 2 ? 200 : 100;
-          bonusPoints += finishBonus;
-        }
-      }
-
-      teamProg.position = newPos;
-
-      if (bonusPoints > 0) {
-        const upd = await prisma.team.update({
-          where: { id: teamId },
-          data: { score: { increment: bonusPoints } },
-        });
-        io.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: upd.score, delta: bonusPoints }]);
-      }
-
-      io.to(`room:${room.code}`).emit("game:dice:rolled", {
-        teamId,
-        teamName: teamProg.teamName,
-        roll,
-      });
-
-      diceState.canRollDice = false;
-      diceState.dicePendingAnswer = false;
-
-      const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
-      if (teams.length > 0) {
-        const curIdx = teams.findIndex((t) => t.id === teamId);
-        const nextIdx = (curIdx + 1) % teams.length;
-        diceState.currentTurnTeamId = teams[nextIdx].id;
-        diceState.currentTurnTeamName = teams[nextIdx].name;
-      }
-
-      io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+      await executeDiceRoll(room, diceState, teamId);
     });
 
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────
@@ -2941,6 +2988,14 @@ async function processAnswerSubmission({
       if (socket) socket.emit("error", "Hiện đang là lượt của đội khác!");
       return;
     }
+  } else if (room.mode === "ELIMINATION" && !isAdminOverride) {
+    if (teamId) {
+      const team = await prisma.team.findUnique({ where: { id: teamId } });
+      if (team?.isEliminated) {
+        if (socket) socket.emit("error", "Đội bạn đã bị loại và đang ở chế độ Khán giả (Spectator)!");
+        return;
+      }
+    }
   }
 
   const timeSpent = Date.now() - (roomTimers.get(`${room.id}:startedAt`) ? parseInt(roomTimers.get(`${room.id}:startedAt`) as any) : Date.now());
@@ -3294,16 +3349,11 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
   const isCorrect = ans?.isCorrect === true;
 
   if (isCorrect && currentTeamId) {
-    // Trả lời đúng: được cộng điểm câu hỏi và ĐƯỢC QUYỀN GIEO XÚC XẮC!
-    const upd = await prisma.team.update({
-      where: { id: currentTeamId },
-      data: { score: { increment: question.points } },
-    });
-    scoreUpdates.push({ teamId: currentTeamId, score: upd.score, delta: question.points });
+    // Trả lời đúng: ĐƯỢC QUYỀN GIEO XÚC XẮC! (Xếp hạng theo vị trí ô đua cờ, không cộng điểm độc lập)
     diceState.canRollDice = true;
     diceState.dicePendingAnswer = false;
   } else {
-    // Trả lời sai hoặc không trả lời: KHÔNG được gieo xúc xắc, quân cờ đứng yên, mất lượt cho đội tiếp theo
+    // Trả lời sai hoặc không trả lời: KHÔNG được gieo xúc xắc, quân cờ đứng yên, chuyển lượt cho đội tiếp theo
     diceState.canRollDice = false;
     diceState.dicePendingAnswer = false;
     if (room.teams.length > 0) {
@@ -3314,9 +3364,6 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
     }
   }
 
-  if (scoreUpdates.length > 0) {
-    io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
-  }
   io.to(`room:${roomCode}`).emit("game:dice:update", diceState);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 }
@@ -3602,20 +3649,36 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
   const config = room.config as any;
   const effectiveConfig = {
     ...config,
-    timeBonusEnabled: room.mode === "CLASSIC" ? Boolean(config?.timeBonusEnabled) : false,
+    timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Boolean(config?.timeBonusEnabled !== false) : false,
   };
+
+  const totalAnswers = answers.length;
+  const correctAnswersTotal = answers.filter((a) => a.isCorrect === true).length;
+  const roomAccuracy = totalAnswers > 0 ? correctAnswersTotal / totalAnswers : 1.0;
 
   const scoreUpdates: ScoreUpdate[] = [];
 
   for (const ans of answers) {
     if (!ans.playerId) continue;
 
+    const isCorrect = ans.isCorrect ?? false;
+    let pStreak = playerStreakMap.get(ans.playerId) || 0;
+    if (isCorrect) {
+      pStreak += 1;
+      playerStreakMap.set(ans.playerId, pStreak);
+    } else {
+      pStreak = 0;
+      playerStreakMap.set(ans.playerId, 0);
+    }
+
     const points = computePointsAwarded({
       basePoints: question.points,
       timeSpent: ans.timeSpent,
       timeLimit: question.timeLimit,
-      isCorrect: ans.isCorrect ?? false,
+      isCorrect,
       config: effectiveConfig,
+      streak: pStreak,
+      roomAccuracy,
     });
 
     await prisma.answer.update({
@@ -3685,23 +3748,63 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     }
   }
 
-  // Elimination check: sau mỗi interval câu, loại đội có điểm thấp nhất
+  // Elimination check: sau mỗi interval câu, loại đội có thành tích thấp nhất theo đa tiêu chí
   if (room.mode === "ELIMINATION") {
-    const interval = config?.eliminationIntervalQuestions || 3;
+    const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
       if (room.teamMode === "TEAM") {
         const activeTeams = await prisma.team.findMany({
           where: { roomId: room.id, isEliminated: false },
-          orderBy: { score: "asc" },
+          include: { answers: { where: { roomId: room.id } } },
         });
+
         if (activeTeams.length > 1) {
+          // Tiêu chí phụ phân định hoà (Tie-breakers):
+          // 1. Điểm tổng thấp nhất
+          // 2. Tỷ lệ câu trả lời đúng (Accuracy) thấp nhất
+          // 3. Thời gian phản xạ trung bình chậm nhất
+          activeTeams.sort((a, b) => {
+            if (a.score !== b.score) return a.score - b.score;
+
+            const totalA = a.answers.length || 0;
+            const corrA = a.answers.filter((x) => x.isCorrect === true).length;
+            const accA = totalA > 0 ? corrA / totalA : 0;
+
+            const totalB = b.answers.length || 0;
+            const corrB = b.answers.filter((x) => x.isCorrect === true).length;
+            const accB = totalB > 0 ? corrB / totalB : 0;
+
+            if (accA !== accB) return accA - accB;
+
+            const timeA = totalA > 0 ? a.answers.reduce((acc, curr) => acc + curr.timeSpent, 0) / totalA : 999999;
+            const timeB = totalB > 0 ? b.answers.reduce((acc, curr) => acc + curr.timeSpent, 0) / totalB : 999999;
+
+            return timeB - timeA; // Sắp xếp thời gian lớn hơn (chậm hơn) lên đầu để loại
+          });
+
           const toEliminate = activeTeams[0];
           await prisma.team.update({
             where: { id: toEliminate.id },
             data: { isEliminated: true },
           });
+
+          io.to(`room:${roomCode}`).emit("game:elimination:round", {
+            eliminatedTeamId: toEliminate.id,
+            eliminatedTeamName: toEliminate.name,
+            reason: `Điểm số thấp nhất sau vòng sinh tồn ${Math.floor((room.currentQuestion + 1) / interval)}`,
+          });
+
           const refreshedState = await buildRoomState(room.id);
           io.to(`room:${roomCode}`).emit("room:state", refreshedState);
+
+          // Nếu chỉ còn duy nhất 1 đội sống sót, đội đó nghiễm nhiên chiến thắng trận đấu!
+          const surviving = activeTeams.filter((t) => t.id !== toEliminate.id);
+          if (surviving.length === 1) {
+            await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
+            const leaderboard = await buildLeaderboard(room.id);
+            io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+            return;
+          }
         }
       }
     }
@@ -3780,6 +3883,8 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       })),
       playerCount: teamPlayers.length,
       bailoutsRemaining: roomWagers.get(room.id)?.teamBailouts?.[t.id]?.remaining,
+      streak: teamStreakMap.get(t.id) || 0,
+      isSpectator: t.isEliminated,
     };
   });
 
@@ -3799,6 +3904,8 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       }
     }
     const isOnline = isConnected || pendingDisconnects.has(p.id);
+    const myTeam = p.teamId ? room.teams.find((t) => t.id === p.teamId) : null;
+    const isSpectator = Boolean(myTeam?.isEliminated) || Boolean((p as any).isSpectator);
 
     return {
       id: p.id,
@@ -3808,6 +3915,8 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       teamId: p.teamId ?? undefined,
       isHost: false,
       isOnline,
+      streak: playerStreakMap.get(p.id) || 0,
+      isSpectator,
     };
   });
 
@@ -3861,6 +3970,11 @@ function buildQuestionState(
     buzzUnlockMode?: "AUTO" | "MANUAL";
     buzzAutoDelaySeconds?: number;
     canRollDice?: boolean;
+    bouncebackSelectPhase?: boolean;
+    selectedPointLevel?: 10 | 20 | 30;
+    streakCount?: number;
+    speedBonusPercent?: number;
+    rarityBonusPercent?: number;
   }
 ): QuestionState {
   const options = q.options as any[] | null;
@@ -3901,6 +4015,11 @@ function buildQuestionState(
     buzzUnlockMode: extra?.buzzUnlockMode,
     buzzAutoDelaySeconds: extra?.buzzAutoDelaySeconds,
     canRollDice: extra?.canRollDice,
+    bouncebackSelectPhase: extra?.bouncebackSelectPhase,
+    selectedPointLevel: extra?.selectedPointLevel,
+    streakCount: extra?.streakCount,
+    speedBonusPercent: extra?.speedBonusPercent,
+    rarityBonusPercent: extra?.rarityBonusPercent,
   };
 }
 
@@ -3926,7 +4045,7 @@ async function resolveQuestionTeamScores(
       teams: { include: { players: true } },
     },
   });
-  if (!room || room.teamMode !== "TEAM" || room.mode !== "CLASSIC") {
+  if (!room || room.teamMode !== "TEAM" || (room.mode !== "CLASSIC" && room.mode !== "ELIMINATION")) {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
 
@@ -3957,6 +4076,15 @@ async function resolveQuestionTeamScores(
     const correctAnswers = teamAnswers.filter((a) => a.isCorrect === true);
     const correctTimes = correctAnswers.map((a) => a.timeSpent);
 
+    let teamStreak = teamStreakMap.get(team.id) || 0;
+    if (correctAnswers.length > 0) {
+      teamStreak += 1;
+      teamStreakMap.set(team.id, teamStreak);
+    } else {
+      teamStreak = 0;
+      teamStreakMap.set(team.id, 0);
+    }
+
     const activeCard = teamCardsMap?.get(team.id);
     let multiplier = 1;
     let shielded = team.shieldCount > 0;
@@ -3983,7 +4111,7 @@ async function resolveQuestionTeamScores(
 
     const effectiveTeamConfig = {
       ...(room.config as any),
-      timeBonusEnabled: room.mode === "CLASSIC" ? Boolean((room.config as any)?.timeBonusEnabled) : false,
+      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
     };
 
     const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
@@ -3997,6 +4125,7 @@ async function resolveQuestionTeamScores(
       shielded,
       penaltyMultiplier,
       roomAccuracy,
+      streak: teamStreak,
     });
 
     const updatedTeam = await prisma.team.update({
@@ -4090,6 +4219,41 @@ async function buildLeaderboard(roomId: string) {
     },
   });
   if (!room) return [];
+
+  if (room.mode === "DICE_RACE") {
+    const diceState = roomDiceRaces.get(roomId);
+    if (diceState) {
+      return room.teams
+        .slice()
+        .sort((a, b) => {
+          const progA = diceState.teamPositions[a.id];
+          const progB = diceState.teamPositions[b.id];
+          if (progA?.hasFinished && progB?.hasFinished) {
+            return (progA.finishRank || 999) - (progB.finishRank || 999);
+          }
+          if (progA?.hasFinished) return -1;
+          if (progB?.hasFinished) return 1;
+          const posA = progA?.position ?? 0;
+          const posB = progB?.position ?? 0;
+          if (posB !== posA) return posB - posA;
+          const corrA = room.answers.filter((ans) => ans.teamId === a.id && ans.isCorrect).length;
+          const corrB = room.answers.filter((ans) => ans.teamId === b.id && ans.isCorrect).length;
+          return corrB - corrA;
+        })
+        .map((t, i) => {
+          const prog = diceState.teamPositions[t.id];
+          const pos = prog?.position ?? 0;
+          return {
+            rank: i + 1,
+            teamId: t.id,
+            name: t.name,
+            score: pos,
+            correctAnswers: room.answers.filter((a) => a.teamId === t.id && a.isCorrect).length,
+            totalAnswers: room.answers.filter((a) => a.teamId === t.id).length,
+          };
+        });
+    }
+  }
 
   if (room.teamMode === "TEAM") {
     return room.teams

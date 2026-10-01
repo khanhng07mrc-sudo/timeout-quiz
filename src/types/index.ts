@@ -56,62 +56,69 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "CLASSIC",
     nameVi: "Truyền thống (Classic)",
     emoji: "⚡",
-    taglineVi: "Đua điểm đồng đội tiêu chuẩn",
-    summaryVi: "Chế độ thi đấu trắc nghiệm kinh điển. Tất cả các đội cùng trả lời đồng thời từng câu hỏi trong thời gian quy định.",
+    taglineVi: "Đua điểm đồng đội đa tiêu chí",
+    summaryVi: "Chế độ thi đấu trắc nghiệm kinh điển tính điểm đa tiêu chí: Đúng/Sai (Điểm gốc) + Tốc độ phản xạ (lên tới +50%) + Chuỗi đúng liên tiếp (Streak Combo lên tới +50%) + Độ hiếm đáp án (thưởng lên tới +45% khi phòng < 30% đúng).",
     mechanicsVi: [
       "Mỗi câu hỏi có giới hạn thời gian (thường 20-30 giây).",
       "Các thành viên trong cùng một đội cùng thảo luận và nộp đáp án trên thiết bị cá nhân hoặc đọc qua MC.",
-      "Tất cả đội trả lời đúng đều nhận được điểm số của câu hỏi.",
+      "Tính điểm đa tiêu chí: Tốc độ phản xạ càng nhanh thưởng càng cao (tối đa +50% điểm).",
+      "Chuỗi đúng liên tiếp (Streak Combo): Đúng 2 câu (+10%), 3 câu (+20%), 4 câu (+30%), 5+ câu (+50%). Trả lời sai đưa chuỗi về 0.",
+      "Độ hiếm đáp án (Empirical Rarity): Khi tỷ lệ cả phòng trả lời đúng < 30%, câu hỏi được đánh giá hóc búa và thưởng thêm tối đa +45%.",
     ],
     scoringVi: [
-      "Điểm cơ bản: Từ 10 đến 30 điểm tuỳ theo cấp độ nhận thức Bloom.",
-      "Thưởng tốc độ: Trả lời càng nhanh càng nhận thêm tối đa 50% điểm thưởng thời gian.",
-      "Thẻ nhân đôi (x2) và Thẻ hỗ trợ có hiệu lực trực tiếp.",
+      "Điểm chuẩn hoá: 10, 20 hoặc 30 điểm tuỳ cấp độ nhận thức Bloom.",
+      "Thưởng tốc độ: Lên tới +50% điểm câu hỏi tuỳ thời gian còn lại.",
+      "Thưởng Streak Combo: +10% đến +50% điểm câu hỏi.",
+      "Thưởng độ hiếm: Lên tới +45% khi dưới 30% phòng giải đúng.",
+      "Sai bị phạt trừ 50% điểm câu hỏi (nếu bật phạt điểm).",
     ],
     tipsVi: [
-      "Nhanh tay nộp đáp án để tối đa hóa điểm tốc độ!",
-      "Hãy phối hợp chặt chẽ với đồng đội để tránh trả lời sai.",
+      "Nhanh tay và duy trì chuỗi đúng liên tiếp để bứt phá điểm số ngoạn mục!",
+      "Hợp tác nhóm để giải các câu hỏi hóc búa nhằm nhận trọn thưởng độ hiếm.",
     ],
   },
   BUZZ: {
     mode: "BUZZ",
     nameVi: "Chuông bấm (Buzz)",
     emoji: "🔔",
-    taglineVi: "Tranh quyền trả lời duy nhất",
-    summaryVi: "Chế độ chuông bấm cực kỳ kịch tính. Sau khi câu hỏi hiển thị, đội nào nhấn chuông trước sẽ giành quyền trả lời độc quyền.",
+    taglineVi: "Tranh quyền trả lời duy nhất - 3 mức điểm 10/20/30",
+    summaryVi: "Chế độ chuông bấm cực kỳ kịch tính với 3 mức điểm cố định (10, 20, 30 điểm phân bổ đều ~33%). Đội bấm chuông sớm nhất giành quyền trả lời duy nhất. Quản trò có thể cài đặt mở chuông thủ công hoặc tự động có đếm ngược trễ (tối thiểu 3s).",
     mechanicsVi: [
-      "Sau khi câu hỏi xuất hiện, nút bấm chuông sẽ kích hoạt cho tất cả các đội.",
-      "Đội bấm chuông nhanh nhất (tính bằng mili-giây) sẽ được cấp 15 giây độc quyền để chọn đáp án.",
-      "Các đội bấm chậm hơn sẽ chuyển sang chế độ quan sát lượt của đối thủ.",
+      "3 mức điểm cố định: 10 điểm (Dễ), 20 điểm (Trung bình), 30 điểm (Khó) phân bổ đều ~33% mỗi mức.",
+      "Mở khoá chuông: Admin có thể chọn mở thủ công sau khi đọc xong câu hỏi, hoặc mở tự động có trễ (tối thiểu 3 giây).",
+      "Đội bấm chuông nhanh nhất giành quyền trả lời độc quyền.",
+      "Các đội bấm chậm hơn sẽ chuyển sang chế độ quan sát.",
     ],
     scoringVi: [
-      "Nếu đội chuông trả lời ĐÚNG: Nhận trọn vẹn 100% điểm câu hỏi.",
-      "Nếu đội chuông trả lời SAI: Bị trừ điểm phạt tương ứng (nếu phòng bật phạt điểm).",
+      "Trả lời ĐÚNG: Nhận trọn vẹn điểm câu hỏi (+10, +20, hoặc +30 điểm).",
+      "Trả lời SAI: Bị trừ 50% điểm câu hỏi (-5, -10, hoặc -15 điểm).",
     ],
     tipsVi: [
-      "Đọc lướt nhanh từ khóa câu hỏi để bấm chuông dứt khoát!",
-      "Cẩn trọng vì bấm nhanh mà trả lời sai sẽ bị mất điểm quý giá.",
+      "Cẩn trọng trước khi bấm chuông vì trả lời sai sẽ bị trừ 50% điểm câu hỏi!",
+      "Tận dụng thời gian đếm ngược trễ để suy nghĩ đáp án trước khi chuông mở.",
     ],
   },
   BOUNCEBACK: {
     mode: "BOUNCEBACK",
-    nameVi: "Bật nảy & Cướp lượt (Bounceback)",
+    nameVi: "Về đích Olympia (Bounceback)",
     emoji: "🎯",
-    taglineVi: "Lượt chính luân phiên & Chuông cướp lượt",
-    summaryVi: "Mỗi câu hỏi chỉ định 1 đội trả lời chính. Nếu đội chính thất bại, chuông cướp lượt mở ra cho các đội còn lại phục kích.",
+    taglineVi: "Chọn mức điểm 10/20/30 & Chuông cướp lượt 5s",
+    summaryVi: "Mô phỏng chân thực phần thi Về đích Đường lên đỉnh Olympia. Đội đến lượt được tự chọn mức điểm câu hỏi (10, 20, hoặc 30 điểm). Nếu đội chính trả lời sai, chuông cướp lượt mở ra trong 5 giây cho các đội còn lại phục kích.",
     mechanicsVi: [
-      "Vòng 1 (Lượt chính): Đội được chỉ định có toàn bộ thời gian quy định để đưa ra đáp án.",
-      "Nếu đội chính đúng: Ghi điểm và câu hỏi kết thúc.",
-      "Vòng 2 (Cướp lượt): Nếu đội chính trả lời SAI hoặc hết giờ, hệ thống mở chuông cướp lượt trong 5 giây cho các đội khác.",
-      "Đội bấm chuông nhanh nhất sẽ có 15 giây để lật ngược thế cờ.",
+      "Chọn mức điểm: Trước mỗi câu trong lượt, đội chính chọn mức điểm mong muốn: 10, 20, hoặc 30 điểm.",
+      "Vòng 1 (Lượt chính): Đội chính trả lời trong thời gian quy định.",
+      "Nếu đội chính đúng: Nhận trọn điểm và câu hỏi kết thúc.",
+      "Vòng 2 (Cướp lượt 5s): Nếu đội chính trả lời sai, chuông cướp lượt mở ra 5s cho các đội khác bấm giành quyền.",
+      "Đội cướp chuông có 15s để đưa ra đáp án lật ngược tình thế.",
     ],
     scoringVi: [
-      "Đội chính trả lời đúng: +100% điểm câu hỏi.",
-      "Đội cướp lượt trả lời đúng: +100% điểm thưởng.",
-      "Đội cướp lượt trả lời sai: Bị trừ 50% điểm câu hỏi.",
+      "Đội chính trả lời đúng: +10, +20, hoặc +30 điểm tương ứng mức đã chọn.",
+      "Đội cướp trả lời đúng: Đội cướp nhận trọn điểm (+10/+20/+30), đội chính bị trừ trọn điểm (-10/-20/-30).",
+      "Đội cướp trả lời sai: Đội cướp bị trừ 50% điểm (-5/-10/-15), đội chính không bị trừ thêm.",
     ],
     tipsVi: [
-      "Tập trung cao độ ngay cả khi không phải lượt của mình để sẵn sàng bấm chuông cướp lượt!",
+      "Cân nhắc chọn mức điểm phù hợp với năng lực của đội để tránh bị đối thủ cướp điểm!",
+      "Luôn sẵn sàng bấm chuông cướp lượt ngay khi đội chính trả lời sai.",
     ],
   },
   POWERUP: {
@@ -134,29 +141,32 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
   ELIMINATION: {
     mode: "ELIMINATION",
     nameVi: "Đấu trường Sinh tồn (Elimination)",
-    emoji: "❌",
-    taglineVi: "Loại dần đội điểm thấp nhất",
-    summaryVi: "Đấu trường khắc nghiệt mô phỏng Battle Royale. Sau mỗi đợt câu hỏi cố định, đội xếp cuối bảng điểm sẽ lập tức bị loại.",
+    emoji: "💀",
+    taglineVi: "Tính điểm đa tiêu chí & Loại dần sau mỗi 3 câu",
+    summaryVi: "Đấu trường sinh tồn khốc liệt. Điểm số tính theo đa tiêu chí (Đúng/Sai + Tốc độ + Chuỗi đúng). Sau mỗi 3 câu hỏi (có thể cấu hình 1-5 câu), đội xếp chót sẽ bị loại và chuyển sang chế độ Khán giả (Spectator). Đội sống sót cuối cùng chiến thắng!",
     mechanicsVi: [
-      "Cứ sau mỗi chu kỳ (mặc định 3 câu hỏi), hệ thống sẽ tổng kết bảng điểm.",
-      "Đội có điểm số thấp nhất sẽ nhận thông báo 'BỊ LOẠI' và chuyển thành khán giả.",
-      "Trận đấu tiếp diễn cho đến khi tìm ra đội sống sót duy nhất.",
+      "Tính điểm đa tiêu chí từng câu: Điểm gốc + Thưởng tốc độ + Thưởng chuỗi đúng (Streak combo).",
+      "Chu kỳ loại: Sau mỗi 3 câu hỏi, hệ thống tổng kết và loại 1 đội có thành tích thấp nhất.",
+      "Tiêu chí phụ phân định hoà (Tie-breakers): Điểm tổng thấp nhất -> Tỷ lệ trả lời đúng (Accuracy) thấp nhất -> Thời gian phản xạ trung bình chậm nhất.",
+      "Chế độ Khán giả (Spectator): Đội bị loại chuyển thành khán giả, vẫn xem được câu hỏi và bảng xếp hạng theo thời gian thực nhưng không được nộp đáp án.",
+      "Đội sống sót duy nhất sau các vòng loại sẽ giành chiến thắng chung cuộc!",
     ],
     scoringVi: [
-      "Tính điểm theo công thức sâu (Bloom + độ hiếm câu hỏi + độ đồng thuận nhóm).",
-      "Sai không bị trừ điểm trực tiếp nhưng tụt hạng sẽ dẫn đến việc bị loại.",
+      "Tính điểm đa tiêu chí: Điểm gốc + Thưởng tốc độ + Thưởng chuỗi đúng liên tiếp.",
+      "Sai không bị trừ điểm trực tiếp nhưng tích luỹ điểm thấp sẽ dẫn đến nguy cơ bị loại.",
     ],
     tipsVi: [
-      "Mỗi câu hỏi đều sống còn! Duy trì vị trí an toàn ở nửa trên bảng xếp hạng.",
+      "Duy trì cả độ chính xác lẫn tốc độ phản xạ để không bị rơi vào nhóm nguy hiểm!",
     ],
   },
   TOURNAMENT: {
     mode: "TOURNAMENT",
     nameVi: "Đấu loại trực tiếp 1v1 (Tournament)",
     emoji: "🏆",
-    taglineVi: "Phân nhánh Tứ kết, Bán kết, Chung kết",
-    summaryVi: "Giải đấu cây nhánh đối kháng trực tiếp 1v1. Hai đội chạm trán nhau trong một số câu hỏi nhất định, đội thắng giành vé vào vòng trong.",
+    taglineVi: "3 mức điểm 10/20/30 & Nhánh Tứ kết - Bán kết - Chung kết",
+    summaryVi: "Giải đấu cây nhánh đối kháng trực tiếp 1v1 với 3 mức điểm 10, 20, 30 điểm phân bổ đều 33%. Hai đội chạm trán nhau trong một số câu hỏi nhất định, đội thắng giành vé vào vòng trong.",
     mechanicsVi: [
+      "3 mức điểm cố định: 10, 20, 30 điểm phân bổ đều mỗi mức 33%.",
       "Hệ thống tự động xếp nhánh thi đấu (Tứ kết, Bán kết, Chung kết).",
       "Mỗi trận đấu gồm M câu hỏi (mặc định 3 câu). Chỉ 2 đội trong cặp đấu mới có quyền trả lời và ghi điểm trận.",
       "Các đội chưa đến lượt sẽ theo dõi diễn biến trận đấu trực tiếp trên màn hình.",
@@ -174,43 +184,45 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "GRID_CARO",
     nameVi: "Chọn ô & Caro (Grid Caro)",
     emoji: "🏁",
-    taglineVi: "Lưới 1-X ô, điểm cố định theo ô, chọn thủ công & Caro liên tiếp",
-    summaryVi: "Bàn cờ ma trận R × C ô số (#1 - #X) gắn cứng mức điểm và độ khó. Quản trò (Admin) chọn ô thủ công theo lượt các đội, giải mã câu hỏi để đánh dấu chiếm lĩnh ô màu đội mình.",
+    taglineVi: "3 mức điểm 10/20/30 gắn cứng, đảm bảo luôn có câu hỏi",
+    summaryVi: "Bàn cờ ma trận R × C ô số (#1 - #X) gắn cứng 3 mức điểm 10, 20, 30 điểm (Dễ, Trung bình, Khó). Hệ thống chuẩn hoá ngân hàng câu hỏi tự động, đảm bảo luôn có câu hỏi không trùng cho bất kỳ ô nào.",
     mechanicsVi: [
-      "Chọn ô thủ công: Quản trò chọn ô từ bảng điều khiển theo yêu cầu của đội tới lượt, tránh xung đột hệ thống.",
-      "Điểm số & độ khó gắn cứng: Mỗi ô từ #1 đến #X được hiển thị rõ ràng số thứ tự, mức điểm và huy hiệu độ khó tương ứng.",
-      "Ô chưa ăn vẫn mở: Nếu đội trả lời SAI, ô đó vẫn mở (chưa ai chiếm). Lượt sau các đội khác vẫn có thể chọn lại ô đó, hệ thống sẽ bốc một câu hỏi MỚI có cùng độ khó/mức điểm gắn với ô đó.",
-      "Giới hạn số vòng chơi: Trận đấu diễn ra trong số vòng quy định (mặc định 3 vòng), các đội không nhất thiết phải lật hết sạch mọi ô.",
-      "Tính năng Caro (Tic-Tac-Toe): Kích hoạt khi lưới từ 4×4 trở lên. Đội đầu tiên xếp được K ô liên tiếp (ngang, dọc, chéo) nhận thưởng Caro Bonus.",
+      "3 mức điểm cố định: Các ô trên bàn cờ gắn cứng 10đ (Dễ), 20đ (Trung bình), 30đ (Khó).",
+      "Chuẩn hoá câu hỏi tự động: Ngân hàng câu hỏi được chuẩn hoá theo 3 mức điểm, luôn đảm bảo có câu hỏi mới phù hợp cho mọi ô được chọn mà không bị trùng lặp.",
+      "Chọn ô thủ công: Quản trò chọn ô từ bảng điều khiển theo yêu cầu của đội tới lượt.",
+      "Ô chưa ăn vẫn mở: Nếu đội trả lời SAI, ô đó vẫn mở cho lượt sau.",
+      "Tính năng Caro: Đội đầu tiên tạo được K ô liên tiếp (ngang, dọc, chéo) nhận thưởng Caro Bonus.",
     ],
     scoringVi: [
-      "Điểm ô: Trả lời đúng nhận trọn điểm số gắn với ô đã chọn (10đ - 30đ).",
+      "Điểm ô: Trả lời đúng nhận trọn điểm số gắn với ô (10đ, 20đ, 30đ).",
       "Trả lời sai: Không bị trừ điểm, ô giữ nguyên trạng thái mở cho lượt sau.",
-      "Thưởng Caro Bonus: Trung bình cộng điểm số các ô tạo thành chuỗi liên tiếp.",
+      "Thưởng Caro Bonus: Thưởng thêm điểm chuỗi khi xếp được hàng Caro.",
     ],
     tipsVi: [
-      "Nếu một ô điểm cao bị trả lời sai, hãy nhanh chóng chọn lại ô đó ở lượt sau để gặt hái điểm số!",
-      "Tính toán số vòng giới hạn để tối ưu hóa việc chọn ô điểm cao hoặc tạo chuỗi Caro.",
+      "Tập trung chọn các ô chiến lược để vừa ghi điểm vừa chặn đường Caro của đối thủ!",
     ],
   },
   DICE_RACE: {
     mode: "DICE_RACE",
     nameVi: "Đua cờ Xí ngầu (Dice Race)",
     emoji: "🎲",
-    taglineVi: "Đường đua 30-50 ô, đổ xí ngầu & sự kiện",
-    summaryVi: "Đua cờ tỷ phú kết hợp trả lời câu hỏi. Tung xí ngầu 1-6 nút và trả lời đúng để quân cờ linh vật tiến bước vượt chướng ngại vật về đích.",
+    taglineVi: "Đua linh vật theo vị trí ô, Khiên bảo vệ & x2 Cơ hội",
+    summaryVi: "Chế độ đua cờ linh vật đặc thù xếp hạng thuần tuý theo vị trí đứng trên đường đua hoặc thứ tự cán đích (không dùng điểm số độc lập). Bao gồm ô Khiên bảo vệ và ô x2 Cơ hội gieo thêm lượt.",
     mechanicsVi: [
-      "Lượt tung xúc xắc: Đội đến lượt bấm đổ xúc xắc 3D ngẫu nhiên từ 1 đến 6 nút.",
-      "Giải câu đố: Đội phải trả lời câu hỏi tương ứng với lượt tung.",
-      "Tiến bước: Trả lời đúng, quân cờ tiến số bước bằng đúng số nút xúc xắc. Trả lời sai, quân cờ đứng yên tại chỗ.",
-      "Ô sự kiện: Dừng chân tại các ô đặc biệt sẽ kích hoạt: Tăng tốc (+2 bước), Bẫy (-2 bước), Ngọc thưởng (+150đ), Hoán đổi vị trí với đội dẫn đầu, hoặc Về đích!",
+      "Xếp hạng theo vị trí: Bảng xếp hạng căn cứ theo số thứ tự ô đang đứng (#X) hoặc thứ tự cán đích đầu tiên.",
+      "Đổ xí ngầu & Trả lời: Đội đến lượt đổ xí ngầu 1-6 nút. Trả lời ĐÚNG để quân cờ tiến bước; trả lời SAI quân cờ đứng yên.",
+      "🛡️ Khiên bảo vệ (Shield): Dừng ở ô Khiên nhận được khiên bảo vệ, giúp vô hiệu hoá bẫy lùi bước hoặc chặn bị đối thủ hoán đổi vị trí.",
+      "🎲x2 Cơ hội (Extra Roll): Dừng ở ô x2 Cơ hội được quyền gieo xí ngầu thêm lần thứ 2 trước khi chuyển lượt (hai ô x2 liên tiếp luôn cách nhau ít nhất 7 ô).",
+      "🚀 Tăng tốc (+2 bước), 💥 Bẫy (-2 bước, trừ khi có khiên), 🔀 Đổi chỗ với đội dẫn đầu.",
+      "Cán đích: Đội đầu tiên tiến tới ô cuối cùng sẽ chiến thắng trận đấu ngay lập tức!",
     ],
     scoringVi: [
-      "Điểm thưởng ngọc: +150đ khi dẫm trúng ô Gem.",
-      "Thưởng về đích: Đội cán đích Top 1 (+300đ), Top 2 (+200đ), Top 3 (+100đ).",
+      "Xếp hạng dựa trên thứ tự ô trên đường đua (#X / Tổng số ô).",
+      "Đội về đích đầu tiên giành chiến thắng tuyệt đối 🏆.",
     ],
     tipsVi: [
-      "Đổ xí ngầu may mắn kết hợp trả lời chuẩn xác sẽ giúp bạn bay thẳng về đích!",
+      "Nhặt Khiên bảo vệ để an tâm vượt qua các ô Bẫy hiểm trở!",
+      "Canh ô x2 Cơ hội để tạo đột phá 2 lần tung xí ngầu liên tiếp.",
     ],
   },
   WAGER: {
@@ -496,6 +508,12 @@ export interface TeamState {
   cards: PowerupCard[];
   playerCount: number;
   bailoutsRemaining?: number;
+  streak?: number;
+  accuracyRatio?: number;
+  averageTimeSpent?: number;
+  correctAnswersCount?: number;
+  totalAnswersCount?: number;
+  isSpectator?: boolean;
 }
 
 export interface PlayerState {
@@ -506,6 +524,8 @@ export interface PlayerState {
   teamId?: string;
   isHost: boolean;
   isOnline: boolean;
+  streak?: number;
+  isSpectator?: boolean;
 }
 
 // ─── Tournament Mode ─────────────────────────────────────────────────────────
@@ -589,7 +609,7 @@ export interface GridCaroState {
 
 // ─── Dice Race Mode ──────────────────────────────────────────────────────────
 
-export type DiceTileType = "NORMAL" | "BOOST" | "TRAP" | "GEM" | "SWAP" | "FINISH";
+export type DiceTileType = "NORMAL" | "BOOST" | "TRAP" | "SHIELD" | "SWAP" | "EXTRA_ROLL" | "FINISH";
 
 export interface DiceTile {
   index: number;
@@ -606,6 +626,7 @@ export interface TeamRaceProgress {
   position: number;
   hasFinished: boolean;
   finishRank?: number;
+  hasShield?: boolean;
 }
 
 export interface DiceRaceState {
@@ -618,6 +639,7 @@ export interface DiceRaceState {
   isRolling: boolean;
   dicePendingAnswer: boolean;
   canRollDice?: boolean;
+  extraRollGranted?: boolean;
   finishLeaderboard: string[];
 }
 
@@ -729,6 +751,11 @@ export interface QuestionState {
   buzzUnlockMode?: "AUTO" | "MANUAL";
   buzzAutoDelaySeconds?: number;
   canRollDice?: boolean;
+  streakCount?: number;
+  speedBonusPercent?: number;
+  rarityBonusPercent?: number;
+  bouncebackSelectPhase?: boolean;
+  selectedPointLevel?: 10 | 20 | 30;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -850,6 +877,16 @@ export interface ServerToClientEvents {
   "game:timer:expired": (payload?: { questionId?: string }) => void;
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
+  "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30 }) => void;
+  "game:elimination:round": (payload: {
+    round?: number;
+    cycleQuestions?: number;
+    eliminatedTeamId: string;
+    eliminatedTeamName: string;
+    survivingTeamsCount?: number;
+    isGameOver?: boolean;
+    reason?: string;
+  }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -871,6 +908,9 @@ export interface ClientToServerEvents {
   "admin:buzz:unlock": () => void;
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": () => void;
+  "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
+  "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
+  "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
   "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
@@ -895,7 +935,6 @@ export interface ClientToServerEvents {
   "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
-  "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

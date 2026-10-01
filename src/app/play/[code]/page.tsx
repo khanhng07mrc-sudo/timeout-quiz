@@ -279,6 +279,28 @@ export default function PlayPage() {
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
     });
 
+    socket.on("game:bounceback:points_selected", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              bouncebackSelectPhase: false,
+              selectedPointLevel: payload.points,
+              question: {
+                ...prev.question,
+                points: payload.points,
+              },
+            }
+          : prev
+      );
+    });
+
+    socket.on("game:elimination:round", () => {
+      if (soundEnabledRef.current) {
+        soundManager.playBuzz();
+      }
+    });
+
     socket.on("game:buzz:closed", () => {
       setIsStealPhase(false);
     });
@@ -410,6 +432,10 @@ export default function PlayPage() {
     socketRef.current?.emit("game:wager:submit", { amount });
   };
 
+  const handleSelectPoints = (points: 10 | 20 | 30) => {
+    socketRef.current?.emit("game:bounceback:select_points", { points });
+  };
+
   const handleSelectTeam = (teamId: string) => {
     const currentPid = playerIdRef.current || playerId;
     myTeamIdRef.current = teamId;
@@ -535,6 +561,7 @@ export default function PlayPage() {
   const mePlayer = roomState?.players.find((p) => p.id === playerId);
   const effectiveTeamId = myTeamIdRef.current || mePlayer?.teamId;
   const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
+  const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
 
   return (
     <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
@@ -602,6 +629,8 @@ export default function PlayPage() {
               isStealPhase={isStealPhase}
               stealBuzzedTeam={stealBuzzedTeam}
               buzzedBy={buzzedBy}
+              onSelectPoints={handleSelectPoints}
+              isSpectator={isSpectator}
             />
 
             {/* Wager Reveal results for players */}

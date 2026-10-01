@@ -153,11 +153,36 @@ export default function AdminSandboxPage() {
       };
 
       sock.on("game:question", (q) => {
+        if (q.bouncebackSelectPhase) {
+          pendingBotAnswerQ = q;
+          if (botAutoEnabled && q.primaryTeamId === team.id) {
+            const levels: (10 | 20 | 30)[] = [10, 20, 30];
+            const picked = levels[Math.floor(Math.random() * levels.length)];
+            setTimeout(() => {
+              sock.emit("game:bounceback:select_points", { points: picked });
+              addLog(`Bot [${team.name}] tự động chọn gói ${picked} điểm (Về đích Olympia)`);
+            }, 1200);
+          }
+          return;
+        }
         if (q.timerPending) {
           pendingBotAnswerQ = q;
           return;
         }
         triggerBotAnswer(q);
+      });
+
+      sock.on("game:bounceback:points_selected", (payload) => {
+        if (pendingBotAnswerQ) {
+          const q = {
+            ...pendingBotAnswerQ,
+            bouncebackSelectPhase: false,
+            selectedPointLevel: payload.points,
+            question: { ...pendingBotAnswerQ.question, points: payload.points },
+          };
+          pendingBotAnswerQ = null;
+          triggerBotAnswer(q);
+        }
       });
 
       sock.on("game:timer:started", () => {
@@ -249,6 +274,22 @@ export default function AdminSandboxPage() {
     sock.on("game:buzz:unlocked", () => {
       setCurrentQuestion((prev) => prev ? { ...prev, buzzUnlocked: true } : prev);
       addLog("🔔 Chuông đã MỞ KHÓA cho tất cả các đội!");
+    });
+    sock.on("game:bounceback:points_selected", (payload) => {
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              bouncebackSelectPhase: false,
+              selectedPointLevel: payload.points,
+              question: { ...prev.question, points: payload.points },
+            }
+          : prev
+      );
+      addLog(`🎯 Đã chọn mức điểm: ${payload.points}đ (Về đích Olympia)`);
+    });
+    sock.on("game:elimination:round", (payload) => {
+      addLog(`💀 Vòng loại #${payload.round}: Đội ${payload.eliminatedTeamName} bị loại! (Còn ${payload.survivingTeamsCount} đội)`);
     });
     sock.on("game:grid:update", (grid) => {
       setRoomState((prev) => prev ? { ...prev, gridCaroState: grid } : prev);
@@ -438,6 +479,11 @@ export default function AdminSandboxPage() {
   const handleBouncebackStartStealAnswer = () => {
     adminSocketRef.current?.emit("admin:bounceback:start_steal_answer");
     addLog("Admin: Bắt đầu 15s trả lời cướp điểm");
+  };
+
+  const handleAdminBouncebackSelectPoints = (points: 10 | 20 | 30) => {
+    adminSocketRef.current?.emit("admin:bounceback:select_points", { points });
+    addLog(`Admin ép chọn gói ${points} điểm cho câu hỏi`);
   };
 
   const handleDiceRollManual = () => {
@@ -806,6 +852,21 @@ export default function AdminSandboxPage() {
               {/* BOUNCEBACK Mode Controls */}
               {roomState?.mode === "BOUNCEBACK" && currentQuestion && (
                 <>
+                  {currentQuestion.bouncebackSelectPhase && (
+                    <div className="flex items-center gap-1.5 bg-blue-500/20 border border-blue-500/40 p-1 rounded-xl">
+                      <span className="text-[11px] font-bold text-blue-300 ml-1">Gói:</span>
+                      {([10, 20, 30] as const).map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => handleAdminBouncebackSelectPoints(pts)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-black shadow transition active:scale-95 cursor-pointer"
+                        >
+                          {pts}đ
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={handleBouncebackOpenSteal}

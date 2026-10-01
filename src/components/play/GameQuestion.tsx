@@ -18,6 +18,8 @@ interface Props {
   isStealPhase?: boolean;
   stealBuzzedTeam?: { teamId: string; teamName: string; playerId: string; playerName: string } | null;
   buzzedBy?: { playerName: string; teamId?: string; teamName?: string } | null;
+  onSelectPoints?: (points: 10 | 20 | 30) => void;
+  isSpectator?: boolean;
 }
 
 export default function GameQuestion({
@@ -35,6 +37,8 @@ export default function GameQuestion({
   isStealPhase = false,
   stealBuzzedTeam = null,
   buzzedBy = null,
+  onSelectPoints,
+  isSpectator = false,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [essayText, setEssayText] = useState("");
@@ -60,8 +64,9 @@ export default function GameQuestion({
   const isBuzzedTeam = myTeamId && buzzedBy?.teamId ? myTeamId === buzzedBy.teamId : false;
 
   const canAnswerThisQuestion = () => {
+    if (isSpectator) return false;
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
-    if (question.timerPending) return false;
+    if (question.timerPending || question.bouncebackSelectPhase) return false;
     if (timer && timer.remaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
       if (stealBuzzedTeam) return isStealTeam;
@@ -104,6 +109,14 @@ export default function GameQuestion({
 
   return (
     <div className="glass rounded-2xl p-6 flex flex-col gap-4 animate-slide-up">
+      {/* Spectator Mode Notice */}
+      {isSpectator && (
+        <div className="p-3.5 rounded-2xl bg-purple-900/40 border-2 border-purple-500/50 text-purple-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg">
+          <span className="text-xl">👀</span>
+          <span>Chế độ Khán giả (Đội đã bị loại) — Bạn có thể theo dõi câu hỏi và bảng điểm trực tiếp nhưng không thể gửi đáp án.</span>
+        </div>
+      )}
+
       {/* Timer Pending Alert */}
       {question.timerPending && !revealPayload && (
         <div className="p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 animate-pulse shadow-lg">
@@ -142,7 +155,43 @@ export default function GameQuestion({
       {/* Mode & Turn Banner */}
       {roomMode === "BOUNCEBACK" && (
         <div className="rounded-xl p-3 border text-sm font-medium transition-all">
-          {isStealPhase ? (
+          {question.bouncebackSelectPhase ? (
+            isPrimaryTeam ? (
+              <div className="flex flex-col items-center justify-center gap-3 bg-indigo-950/60 border-2 border-indigo-400 p-4 rounded-xl text-center">
+                <div>
+                  <p className="font-black text-indigo-300 text-base flex items-center justify-center gap-2">
+                    <span>🎯</span>
+                    <span>CHỌN GÓI ĐIỂM CHO CÂU HỎI (VỀ ĐÍCH OLYMPIA)</span>
+                  </p>
+                  <p className="text-xs text-indigo-200/90 mt-1">
+                    Đội bạn đang là đội trả lời chính. Vui lòng chọn mức điểm câu hỏi (10, 20 hoặc 30 điểm):
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 w-full max-w-sm mt-1">
+                  {([10, 20, 30] as const).map((pts) => (
+                    <button
+                      key={pts}
+                      type="button"
+                      onClick={() => onSelectPoints?.(pts)}
+                      className="py-3 px-4 rounded-xl font-black text-base bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg active:scale-95 transition-all cursor-pointer border border-indigo-300/40 hover:border-indigo-300"
+                    >
+                      {pts} Điểm
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-blue-950/40 border border-blue-500/30 p-3.5 rounded-xl text-center space-y-1">
+                <p className="font-bold text-blue-300 text-sm flex items-center justify-center gap-2">
+                  <span className="animate-spin text-base">⏳</span>
+                  <span>Chờ đội chính chọn gói điểm...</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Đội <strong className="text-yellow-400 font-bold">{question.primaryTeamName ?? "chính"}</strong> đang lựa chọn gói 10, 20 hoặc 30 điểm trước khi tính giờ.
+                </p>
+              </div>
+            )
+          ) : isStealPhase ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-500/20 border border-amber-500/50 p-3 rounded-lg text-amber-300">
               <div className="flex items-center gap-2">
                 <span className="text-2xl animate-bounce">⚡</span>
@@ -328,6 +377,14 @@ export default function GameQuestion({
             <span className="whitespace-nowrap">{bloomMeta.labelVi}</span>
             <span className="opacity-75 whitespace-nowrap">({q.points}đ)</span>
           </span>
+          {question.streakCount && question.streakCount >= 2 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
+              <span>🔥 Streak x{question.streakCount}</span>
+              <span className="text-[10px] text-amber-400 font-bold">
+                (+{question.streakCount === 2 ? 10 : question.streakCount === 3 ? 20 : question.streakCount === 4 ? 30 : 50}%)
+              </span>
+            </span>
+          )}
         </div>
 
         <h2 className="text-xl font-bold leading-relaxed">{q.content}</h2>

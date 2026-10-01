@@ -57,9 +57,10 @@ export default function DiceRaceTrack({
     NORMAL: { icon: "⚪", color: "border-border/40" },
     BOOST: { icon: "🚀", color: "border-cyan-400 bg-cyan-500/10 text-cyan-300" },
     TRAP: { icon: "💥", color: "border-red-400 bg-red-500/10 text-red-300" },
-    GEM: { icon: "💎", color: "border-yellow-400 bg-yellow-500/10 text-yellow-300" },
+    SHIELD: { icon: "🛡️", color: "border-blue-400 bg-blue-500/15 text-blue-300" },
     SWAP: { icon: "🔀", color: "border-purple-400 bg-purple-500/10 text-purple-300" },
-    FINISH: { icon: "🏆", color: "border-amber-400 bg-amber-500/20 text-amber-300" },
+    EXTRA_ROLL: { icon: "🎲x2", color: "border-emerald-400 bg-emerald-500/20 text-emerald-300" },
+    FINISH: { icon: "🏁", color: "border-amber-400 bg-amber-500/20 text-amber-300" },
   };
 
   return (
@@ -73,7 +74,7 @@ export default function DiceRaceTrack({
               Đường Đua Cờ Xí Ngầu ({totalTiles} Ô)
             </h3>
             <p className="text-xs text-muted-foreground">
-              Đổ xí ngầu 1-6 bước · Trả lời đúng để tiến bước · Ô sự kiện bất ngờ
+              Đổ xí ngầu 1-6 bước · Xếp hạng theo vị trí ô · 🛡️ Khiên bảo vệ & 🎲x2 Cơ hội
             </p>
           </div>
         </div>
@@ -87,6 +88,11 @@ export default function DiceRaceTrack({
             }`}>
               <span>Lượt tung xúc xắc:</span>
               <span className="font-black text-cyan-400">{currentTurnTeamName}</span>
+              {diceState.extraRollGranted && (
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 border border-emerald-400/50 text-[10px] font-black animate-pulse">
+                  x2 Cơ hội
+                </span>
+              )}
             </div>
           )}
 
@@ -105,7 +111,7 @@ export default function DiceRaceTrack({
                 disabled={animatingDice || isRolling}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 font-black text-black shadow-lg transition-transform active:scale-95 animate-bounce"
               >
-                🎲 Tung xúc xắc ngay!
+                {diceState.extraRollGranted ? "🎲 Tung xí ngầu lần 2!" : "🎲 Tung xúc xắc ngay!"}
               </button>
             )}
           </div>
@@ -146,11 +152,14 @@ export default function DiceRaceTrack({
                 {teamsHere.map((team) => (
                   <div
                     key={team.teamId}
-                    title={`${team.teamName} (Ô ${tile.index + 1})`}
-                    className="w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center text-[10px] font-black text-white shrink-0 animate-bounce"
+                    title={`${team.teamName} (Ô ${tile.index + 1})${team.hasShield ? " [Đang có Khiên 🛡️]" : ""}`}
+                    className="relative w-5 h-5 rounded-full border-2 border-white shadow-md flex items-center justify-center text-[10px] font-black text-white shrink-0 animate-bounce"
                     style={{ background: team.teamColor }}
                   >
                     {team.teamName.charAt(0).toUpperCase()}
+                    {team.hasShield && (
+                      <span className="absolute -top-1 -right-1 text-[8px] filter drop-shadow">🛡️</span>
+                    )}
                   </div>
                 ))}
               </div>

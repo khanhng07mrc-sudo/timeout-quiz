@@ -8,14 +8,14 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import { GameMode } from "@/types";
 
 const GAME_MODES = [
-  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng trả lời, chấm điểm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮" },
-  { value: "BUZZ", label: "Buzz", desc: "Bấm chuông tranh quyền trả lời sớm nhất", emoji: "⚡" },
-  { value: "BOUNCEBACK", label: "Bounceback", desc: "1 đội trả lời chính, sai thì mở chuông 5s cho các đội khác cướp lượt", emoji: "🔄" },
-  { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất", emoji: "❌" },
-  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Bảng đấu đối kháng loại trực tiếp (Tứ kết, Bán kết, Chung kết)", emoji: "🏆" },
-  { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯" },
-  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Bàn cờ đua 30-50 ô, đổ xúc xắc 1-6 và chinh phục ô sự kiện", emoji: "🎲" },
-  { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰" },
+  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Đại chúng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
+  { value: "BUZZ", label: "Buzz", desc: "Bấm chuông tranh quyền trả lời nhanh nhất", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "BOUNCEBACK", label: "Bounceback", desc: "1 đội trả lời chính, sai thì mở chuông 5s cho các đội khác cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
+  { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
+  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Bảng đấu đối kháng trực tiếp (Tứ kết, Bán kết, Chung kết)", emoji: "🏆", badge: "Đối kháng", badgeColor: "text-yellow-300 bg-yellow-500/20 border-yellow-500/30" },
+  { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
+  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Bàn cờ đua 30-50 ô, đổ xúc xắc 1-6 và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
+  { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
 ];
 
 const POWERUP_TYPES = [
@@ -80,6 +80,37 @@ export default function CreateRoomPage() {
   const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
   const [wagerInitialPoints, setWagerInitialPoints] = useState(50);
   const [wagerBailoutLimit, setWagerBailoutLimit] = useState(1);
+
+  // Layout switcher states
+  const [modeLayout, setModeLayout] = useState<"GRID" | "LIST" | "COMPACT">("GRID");
+  const [powerupLayout, setPowerupLayout] = useState<"GRID" | "COMPACT">("GRID");
+
+  useEffect(() => {
+    try {
+      const savedMode = localStorage.getItem("timeout_admin_mode_layout") as "GRID" | "LIST" | "COMPACT" | null;
+      if (savedMode && ["GRID", "LIST", "COMPACT"].includes(savedMode)) {
+        setModeLayout(savedMode);
+      }
+      const savedPowerup = localStorage.getItem("timeout_admin_powerup_layout") as "GRID" | "COMPACT" | null;
+      if (savedPowerup && ["GRID", "COMPACT"].includes(savedPowerup)) {
+        setPowerupLayout(savedPowerup);
+      }
+    } catch {}
+  }, []);
+
+  const handleSetModeLayout = (layout: "GRID" | "LIST" | "COMPACT") => {
+    setModeLayout(layout);
+    try {
+      localStorage.setItem("timeout_admin_mode_layout", layout);
+    } catch {}
+  };
+
+  const handleSetPowerupLayout = (layout: "GRID" | "COMPACT") => {
+    setPowerupLayout(layout);
+    try {
+      localStorage.setItem("timeout_admin_powerup_layout", layout);
+    } catch {}
+  };
 
   // Step 2: Teams (if teamMode === TEAM)
   const [teams, setTeams] = useState([
@@ -176,7 +207,7 @@ export default function CreateRoomPage() {
   };
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <div className="mb-8">
         <h1 className="text-3xl font-black">Tạo phòng mới</h1>
         <div className="flex gap-2 mt-4">
@@ -239,40 +270,201 @@ export default function CreateRoomPage() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-medium">Chế độ chơi</label>
-              <button
-                type="button"
-                onClick={() => setShowRulesModal(true)}
-                className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 p-1.5 rounded-lg glass border border-cyan-500/30 hover:bg-cyan-500/10"
-              >
-                <span>📖</span>
-                <span>Xem chi tiết thể lệ 8 chế độ</span>
-              </button>
-            </div>
-            <div className="grid grid-cols-1 gap-3">
-              {GAME_MODES.map((m) => (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-bold text-foreground">Chế độ chơi</label>
+                <span className="text-xs text-muted-foreground font-mono bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
+                  {GAME_MODES.length} chế độ
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Segmented layout switcher: Grid, List, Compact */}
+                <div className="flex items-center p-0.5 rounded-xl bg-card/80 border border-border gap-0.5 text-xs shadow-inner">
+                  <button
+                    type="button"
+                    onClick={() => handleSetModeLayout("GRID")}
+                    title="Bố cục Lưới thẻ (2-4 cột trực quan)"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                      modeLayout === "GRID"
+                        ? "bg-purple-600 text-white shadow-md glow-purple"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
+                  >
+                    <span>⊞</span>
+                    <span className="text-[11px]">Lưới</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetModeLayout("LIST")}
+                    title="Bố cục Danh sách chi tiết (1 cột)"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                      modeLayout === "LIST"
+                        ? "bg-purple-600 text-white shadow-md glow-purple"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
+                  >
+                    <span>☰</span>
+                    <span className="text-[11px]">Danh sách</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSetModeLayout("COMPACT")}
+                    title="Bố cục Thẻ nhỏ tinh gọn (Chips ngang)"
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg font-bold transition-all ${
+                      modeLayout === "COMPACT"
+                        ? "bg-purple-600 text-white shadow-md glow-purple"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }`}
+                  >
+                    <span>🏷️</span>
+                    <span className="text-[11px]">Tinh gọn</span>
+                  </button>
+                </div>
+
+                {/* Rules modal button */}
                 <button
-                  key={m.value}
                   type="button"
-                  onClick={() => {
-                    setMode(m.value);
-                    if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
-                      setAnswerMethod("DEVICE");
-                    }
-                  }}
-                  className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                    mode === m.value ? "border-purple-500 bg-purple-500/10" : "border-border hover:border-purple-400"
-                  }`}
+                  onClick={() => setShowRulesModal(true)}
+                  className="text-xs font-bold text-cyan-400 hover:text-cyan-300 transition flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl glass border border-cyan-500/30 hover:bg-cyan-500/10 shrink-0"
                 >
-                  <span className="text-2xl">{m.emoji}</span>
-                  <div>
-                    <p className="font-bold">{m.label}</p>
-                    <p className="text-sm text-muted-foreground">{m.desc}</p>
-                  </div>
+                  <span>📖</span>
+                  <span className="hidden sm:inline">Chi tiết thể lệ</span>
                 </button>
-              ))}
+              </div>
             </div>
+
+            {/* ─── 1. BỐ CỤC LƯỚI THẺ TRỰC QUAN (GRID) ─── */}
+            {modeLayout === "GRID" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-slide-up">
+                {GAME_MODES.map((m) => {
+                  const isSelected = mode === m.value;
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => {
+                        setMode(m.value);
+                        if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
+                          setAnswerMethod("DEVICE");
+                        }
+                      }}
+                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-95 group min-h-[140px] ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-xl glow-purple"
+                          : "border-border hover:border-purple-400 glass bg-card/60 hover:bg-card text-foreground"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-1 mb-2">
+                        <span className="text-3xl drop-shadow">{m.emoji}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${m.badgeColor}`}>
+                          {m.badge}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-black text-sm group-hover:text-purple-300 transition-colors flex items-center gap-1">
+                          <span>{m.label}</span>
+                          {isSelected && <span className="text-purple-400 text-xs font-black">✓</span>}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
+                          {m.desc}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ─── 2. BỐ CỤC DANH SÁCH CHI TIẾT (LIST) ─── */}
+            {modeLayout === "LIST" && (
+              <div className="grid grid-cols-1 gap-2.5 animate-slide-up">
+                {GAME_MODES.map((m) => {
+                  const isSelected = mode === m.value;
+                  return (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => {
+                        setMode(m.value);
+                        if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
+                          setAnswerMethod("DEVICE");
+                        }
+                      }}
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-md glow-purple"
+                          : "border-border hover:border-purple-400 glass bg-card/50"
+                      }`}
+                    >
+                      <span className="text-3xl shrink-0">{m.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-bold text-base">{m.label}</p>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${m.badgeColor}`}>
+                            {m.badge}
+                          </span>
+                          {isSelected && <span className="text-purple-400 text-xs font-black">✓ Đang chọn</span>}
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-0.5">{m.desc}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ─── 3. BỐ CỤC THẺ NHỎ TINH GỌN (COMPACT CHIPS) ─── */}
+            {modeLayout === "COMPACT" && (
+              <div className="space-y-3 animate-slide-up">
+                <div className="flex flex-wrap gap-2">
+                  {GAME_MODES.map((m) => {
+                    const isSelected = mode === m.value;
+                    return (
+                      <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => {
+                          setMode(m.value);
+                          if (m.value === "CLASSIC" || m.value === "ELIMINATION") {
+                            setAnswerMethod("DEVICE");
+                          }
+                        }}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 ${
+                          isSelected
+                            ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"
+                            : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
+                        }`}
+                      >
+                        <span className="text-base">{m.emoji}</span>
+                        <span>{m.label}</span>
+                        {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Active Mode Summary Preview Box */}
+                {(() => {
+                  const currentModeObj = GAME_MODES.find((m) => m.value === mode);
+                  if (!currentModeObj) return null;
+                  return (
+                    <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-3 animate-slide-up">
+                      <span className="text-3xl shrink-0">{currentModeObj.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-purple-200">{currentModeObj.label}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${currentModeObj.badgeColor}`}>
+                            {currentModeObj.badge}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{currentModeObj.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
 
           {mode === "BOUNCEBACK" && (
@@ -749,24 +941,118 @@ export default function CreateRoomPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-3">Loại thẻ được phép</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {POWERUP_TYPES.map((pt) => (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-bold text-foreground">Loại thẻ được phép</label>
+                    <span className="text-xs font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30 font-bold">
+                      {allowedPowerups.length}/{POWERUP_TYPES.length}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Quick Select Buttons */}
                     <button
-                      key={pt.value}
-                      onClick={() => togglePowerup(pt.value)}
-                      className={`flex items-start gap-3 p-3 rounded-xl border transition-all text-left ${
-                        allowedPowerups.includes(pt.value) ? "border-purple-500 bg-purple-500/10" : "border-border opacity-50"
-                      }`}
+                      type="button"
+                      onClick={() => setAllowedPowerups(POWERUP_TYPES.map((p) => p.value))}
+                      className="text-xs font-semibold px-2 py-1 rounded-lg glass border border-border hover:bg-white/10 text-muted-foreground hover:text-white transition"
                     >
-                      <PowerupIcon type={pt.value} className="w-8 h-8 shrink-0 mt-0.5 drop-shadow" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-bold">{pt.label}</div>
-                        <div className="text-xs text-muted-foreground">{pt.desc}</div>
-                      </div>
+                      Chọn tất cả
                     </button>
-                  ))}
+                    <button
+                      type="button"
+                      onClick={() => setAllowedPowerups([])}
+                      className="text-xs font-semibold px-2 py-1 rounded-lg glass border border-border hover:bg-white/10 text-muted-foreground hover:text-white transition"
+                    >
+                      Bỏ chọn
+                    </button>
+
+                    {/* Segmented layout switcher: Grid vs Compact */}
+                    <div className="flex items-center p-0.5 rounded-xl bg-card border border-border gap-0.5 text-xs shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => handleSetPowerupLayout("GRID")}
+                        title="Bố cục Lưới thẻ"
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
+                          powerupLayout === "GRID"
+                            ? "bg-purple-600 text-white shadow"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>⊞</span>
+                        <span className="text-[11px]">Lưới</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSetPowerupLayout("COMPACT")}
+                        title="Bố cục Thẻ nhỏ tinh gọn (Chips)"
+                        className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
+                          powerupLayout === "COMPACT"
+                            ? "bg-purple-600 text-white shadow"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>🏷️</span>
+                        <span className="text-[11px]">Tinh gọn</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {powerupLayout === "GRID" ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-slide-up">
+                    {POWERUP_TYPES.map((pt) => {
+                      const isAllowed = allowedPowerups.includes(pt.value);
+                      return (
+                        <button
+                          key={pt.value}
+                          type="button"
+                          onClick={() => togglePowerup(pt.value)}
+                          className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                            isAllowed
+                              ? "border-purple-500 bg-purple-500/15 shadow-sm text-foreground"
+                              : "border-border opacity-40 hover:opacity-75 glass bg-card/30"
+                          }`}
+                        >
+                          <PowerupIcon type={pt.value} className="w-8 h-8 shrink-0 mt-0.5 drop-shadow" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold">{pt.label}</span>
+                              {isAllowed ? (
+                                <span className="text-xs text-purple-400 font-bold">✓ Bật</span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">Tắt</span>
+                              )}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{pt.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2 animate-slide-up">
+                    {POWERUP_TYPES.map((pt) => {
+                      const isAllowed = allowedPowerups.includes(pt.value);
+                      return (
+                        <button
+                          key={pt.value}
+                          type="button"
+                          onClick={() => togglePowerup(pt.value)}
+                          title={pt.desc}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold active:scale-95 ${
+                            isAllowed
+                              ? "border-purple-500 bg-purple-600 text-white shadow-md glow-purple"
+                              : "border-border/60 bg-card/40 opacity-40 hover:opacity-80 text-muted-foreground"
+                          }`}
+                        >
+                          <PowerupIcon type={pt.value} className="w-5 h-5 shrink-0" />
+                          <span>{pt.label}</span>
+                          {isAllowed && <span className="text-xs font-black text-purple-200">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </>
           )}

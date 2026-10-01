@@ -52,9 +52,24 @@ export default function AdminRoomsListPage() {
     }
   };
 
+  const [roomsLayout, setRoomsLayout] = useState<"GRID" | "LIST">("GRID");
+
   useEffect(() => {
     fetchRooms();
+    try {
+      const saved = localStorage.getItem("timeout_admin_rooms_layout") as "GRID" | "LIST" | null;
+      if (saved && ["GRID", "LIST"].includes(saved)) {
+        setRoomsLayout(saved);
+      }
+    } catch {}
   }, []);
+
+  const handleSetRoomsLayout = (layout: "GRID" | "LIST") => {
+    setRoomsLayout(layout);
+    try {
+      localStorage.setItem("timeout_admin_rooms_layout", layout);
+    } catch {}
+  };
 
   return (
     <div className="space-y-6">
@@ -63,12 +78,44 @@ export default function AdminRoomsListPage() {
           <h1 className="text-2xl sm:text-3xl font-black">Danh sách phòng đấu (Rooms)</h1>
           <p className="text-muted-foreground text-xs sm:text-sm mt-1">Quản lý và điều phối các phòng đang mở hoặc đã diễn ra</p>
         </div>
-        <Link
-          href="/admin/rooms/create"
-          className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 self-start sm:self-auto text-sm"
-        >
-          <span>➕</span> Tạo phòng mới
-        </Link>
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          {/* Segmented layout switcher: Grid vs List */}
+          <div className="flex items-center p-0.5 rounded-xl bg-card border border-border gap-0.5 text-xs shadow-inner">
+            <button
+              type="button"
+              onClick={() => handleSetRoomsLayout("GRID")}
+              title="Bố cục Lưới thẻ (Cards)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+                roomsLayout === "GRID"
+                  ? "bg-purple-600 text-white shadow-md glow-purple"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+            >
+              <span>⊞</span>
+              <span className="text-xs">Lưới</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSetRoomsLayout("LIST")}
+              title="Bố cục Danh sách dòng (Dense list)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all ${
+                roomsLayout === "LIST"
+                  ? "bg-purple-600 text-white shadow-md glow-purple"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+            >
+              <span>☰</span>
+              <span className="text-xs">Danh sách</span>
+            </button>
+          </div>
+
+          <Link
+            href="/admin/rooms/create"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md"
+          >
+            <span>➕</span> Tạo phòng mới
+          </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -85,8 +132,8 @@ export default function AdminRoomsListPage() {
             Tạo phòng ngay
           </Link>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      ) : roomsLayout === "GRID" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up">
           {rooms.map((room) => {
             const statusColor =
               room.status === "PLAYING"
@@ -164,6 +211,82 @@ export default function AdminRoomsListPage() {
                       {deletingId === room.code ? "..." : "🗑️"}
                     </button>
                   </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="space-y-2.5 animate-slide-up">
+          {rooms.map((room) => {
+            const statusColor =
+              room.status === "PLAYING"
+                ? "text-green-400 bg-green-500/10 border-green-500/30"
+                : room.status === "PAUSED"
+                ? "text-yellow-400 bg-yellow-500/10 border-yellow-500/30"
+                : room.status === "FINISHED"
+                ? "text-red-400 bg-red-500/10 border-red-500/30"
+                : "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+
+            return (
+              <div
+                key={room.id}
+                className="glass rounded-xl p-4 border border-border flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-purple-500/50 transition"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="font-mono text-base font-black text-cyan-300 tracking-wider bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0">
+                    {room.code}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="text-base font-bold text-foreground truncate">{room.name}</h3>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusColor}`}>
+                        {room.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                      <span>Chế độ: <strong className="text-foreground">{room.mode}</strong></span>
+                      <span>·</span>
+                      <span>
+                        {room.teamMode === "TEAM" ? `${room._count?.teams ?? 0} Đội` : `${room._count?.players ?? 0} Người`}
+                      </span>
+                      <span>·</span>
+                      <span>{room.quizBank ? room.quizBank.title : "Bộ đề mặc định"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                  <Link
+                    href={`/admin/rooms/${room.code}`}
+                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition"
+                  >
+                    👨‍💼 Điều khiển
+                  </Link>
+                  <Link
+                    href={`/display/${room.code}`}
+                    target="_blank"
+                    className="p-2 rounded-xl glass border border-border hover:border-cyan-400 font-bold text-xs transition"
+                    title="Mở màn chiếu"
+                  >
+                    📺
+                  </Link>
+                  <Link
+                    href={`/play/${room.code}`}
+                    target="_blank"
+                    className="p-2 rounded-xl glass border border-border hover:border-purple-400 font-bold text-xs transition"
+                    title="Vào giao diện thí sinh"
+                  >
+                    🎮
+                  </Link>
+                  <button
+                    onClick={() => handleDeleteRoom(room)}
+                    disabled={deletingId === room.code}
+                    className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50"
+                    title="Xóa phòng"
+                  >
+                    {deletingId === room.code ? "..." : "🗑️"}
+                  </button>
                 </div>
               </div>
             );

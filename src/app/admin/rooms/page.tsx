@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 
 interface RoomItem {
   id: string;
@@ -167,7 +168,10 @@ export default function AdminRoomsListPage() {
                   <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-4 bg-muted/20 p-2.5 rounded-xl">
                     <div>
                       <span className="block font-medium text-foreground">Chế độ:</span>
-                      {room.mode} ({room.teamMode === "TEAM" ? "Đội" : "Cá nhân"})
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <GameModeIcon mode={room.mode} className="w-4 h-4 shrink-0" />
+                        <span className="truncate">{room.mode} ({room.teamMode === "TEAM" ? "Đội" : "Cá nhân"})</span>
+                      </div>
                     </div>
                     <div>
                       <span className="block font-medium text-foreground">Tham gia:</span>
@@ -245,7 +249,10 @@ export default function AdminRoomsListPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      <span>Chế độ: <strong className="text-foreground">{room.mode}</strong></span>
+                      <span className="flex items-center gap-1.5">
+                        <GameModeIcon mode={room.mode} className="w-3.5 h-3.5 shrink-0" />
+                        Chế độ: <strong className="text-foreground">{room.mode}</strong>
+                      </span>
                       <span>·</span>
                       <span>
                         {room.teamMode === "TEAM" ? `${room._count?.teams ?? 0} Đội` : `${room._count?.players ?? 0} Người`}

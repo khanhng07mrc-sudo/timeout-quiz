@@ -1,0 +1,34 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="classic_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#8b5cf6" />
+      <stop offset="100%" stopColor="#4f46e5" />
+    </linearGradient>
+    <linearGradient id="classic_accent" x1="18" y1="18" x2="46" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#c084fc" />
+      <stop offset="100%" stopColor="#818cf8" />
+    </linearGradient>
+    <filter id="classic_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#7c3aed" floodOpacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#classic_bg)" filter="url(#classic_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.2" stroke-width="1.5" />
+
+  <!-- Gamepad Body -->
+  <path d="M16 26C16 21 21 18 26 18H38C43 18 48 21 48 26V37C48 43 43 47 38 45L34 43.5H30L26 45C21 47 16 43 16 37V26Z" fill="#181935" stroke="url(#classic_accent)" stroke-width="2" />
+
+  <!-- D-Pad Left -->
+  <path d="M22 28V36M18 32H26" stroke="#e0e7ff" stroke-width="2.8" stroke-linecap="round" />
+
+  <!-- Action Buttons Right (Kahoot colors: Blue, Yellow, Green, Red) -->
+  <circle cx="39" cy="28.5" r="2" fill="#38bdf8" />
+  <circle cx="43.5" cy="32" r="2" fill="#facc15" />
+  <circle cx="39" cy="35.5" r="2" fill="#4ade80" />
+  <circle cx="34.5" cy="32" r="2" fill="#f87171" />
+
+  <!-- Star Sparkle Top Right -->
+  <path d="M49 11L50.5 14.5L54 16L50.5 17.5L49 21L47.5 17.5L44 16L47.5 14.5L49 11Z" fill="#fef08a" />
+</svg>

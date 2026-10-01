@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { GameMode, MODE_RULES } from "@/types";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 
 interface Props {
   mode?: GameMode;
@@ -29,9 +30,9 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
         {/* Header */}
         <div className="flex items-start justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-3">
-            <span className="text-4xl p-2.5 rounded-2xl bg-white/5 border border-white/10 shadow-inner">
-              {rule.emoji}
-            </span>
+            <div className="p-2 rounded-2xl bg-white/5 border border-white/10 shadow-inner shrink-0">
+              <GameModeIcon mode={currentMode} className="w-10 h-10 drop-shadow" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
@@ -69,7 +70,7 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
                     : "glass hover:bg-white/10 text-muted-foreground hover:text-white"
                 }`}
               >
-                <span>{r.emoji}</span>
+                <GameModeIcon mode={m} className="w-4 h-4 shrink-0" />
                 <span>{r.nameVi.split(" ")[0]}</span>
               </button>
             );

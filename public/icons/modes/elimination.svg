@@ -1,0 +1,33 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="elim_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ef4444" />
+      <stop offset="100%" stopColor="#991b1b" />
+    </linearGradient>
+    <linearGradient id="cross_grad" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="100%" stopColor="#fecaca" />
+    </linearGradient>
+    <filter id="elim_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#dc2626" floodOpacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#elim_bg)" filter="url(#elim_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Shield Shape in Center Background -->
+  <path d="M32 14L46 19V31C46 41 38 47 32 50C26 47 18 41 18 31V19L32 14Z" fill="#450a0a" fill-opacity="0.4" stroke="#fca5a5" stroke-width="1.5" />
+
+  <!-- Elimination Crossed Blades / Red X -->
+  <path d="M20 20L44 44" stroke="url(#cross_grad)" stroke-width="6.5" stroke-linecap="round" />
+  <path d="M44 20L20 44" stroke="url(#cross_grad)" stroke-width="6.5" stroke-linecap="round" />
+
+  <!-- Inner Hazard Dots -->
+  <circle cx="32" cy="32" r="3" fill="#ef4444" stroke="#ffffff" stroke-width="1" />
+
+  <!-- Danger Sparks -->
+  <circle cx="48" cy="16" r="1.5" fill="#fef08a" />
+  <circle cx="16" cy="46" r="1.5" fill="#fef08a" />
+</svg>

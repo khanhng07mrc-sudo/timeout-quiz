@@ -17,6 +17,7 @@ import Link from "next/link";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import { soundManager } from "@/lib/sound-manager";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
 
@@ -357,7 +358,8 @@ export default function AdminRoomPage() {
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-black">{roomState?.name ?? "Phòng đang tải..."}</h1>
             {roomState?.mode && (
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 inline-flex items-center gap-1.5">
+                <GameModeIcon mode={roomState.mode} className="w-3.5 h-3.5 shrink-0" />
                 Mode: {roomState.mode}
               </span>
             )}

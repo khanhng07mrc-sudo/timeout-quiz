@@ -1,0 +1,34 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="buzz_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f59e0b" />
+      <stop offset="100%" stopColor="#d97706" />
+    </linearGradient>
+    <linearGradient id="buzz_bolt" x1="24" y1="14" x2="40" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="60%" stopColor="#fef08a" />
+      <stop offset="100%" stopColor="#facc15" />
+    </linearGradient>
+    <filter id="buzz_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#buzz_bg)" filter="url(#buzz_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Buzzer Base Outer Ring -->
+  <circle cx="32" cy="32" r="22" fill="#78350f" fill-opacity="0.35" stroke="#fef08a" stroke-opacity="0.4" stroke-width="2" />
+  <circle cx="32" cy="32" r="17" fill="#b45309" />
+
+  <!-- Radiating Shockwave Rings -->
+  <path d="M12 24C10 28 10 36 12 40" stroke="#fef08a" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" />
+  <path d="M52 24C54 28 54 36 52 40" stroke="#fef08a" stroke-width="2" stroke-linecap="round" stroke-dasharray="2 2" />
+
+  <!-- Lightning Bolt Symbol -->
+  <path d="M35 15L23 33H33L29 49L43 29H33L35 15Z" fill="url(#buzz_bolt)" stroke="#78350f" stroke-width="1.5" stroke-linejoin="round" />
+
+  <!-- Sparkle Glint -->
+  <circle cx="27" cy="20" r="2" fill="#ffffff" />
+</svg>

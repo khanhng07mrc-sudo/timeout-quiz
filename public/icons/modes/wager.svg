@@ -1,0 +1,40 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wager_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f97316" />
+      <stop offset="100%" stopColor="#9a3412" />
+    </linearGradient>
+    <linearGradient id="pouch_gold" x1="18" y1="20" x2="46" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#fef08a" />
+      <stop offset="40%" stopColor="#facc15" />
+      <stop offset="100%" stopColor="#ca8a04" />
+    </linearGradient>
+    <filter id="wager_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#ea580c" floodOpacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#wager_bg)" filter="url(#wager_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Money Pouch / Treasure Sack -->
+  <!-- Tie Rope / Top Fold -->
+  <path d="M26 18C28 15 36 15 38 18L35 22H29L26 18Z" fill="#78350f" stroke="#fef08a" stroke-width="1.5" />
+  <ellipse cx="32" cy="22" rx="6" ry="2" fill="#ca8a04" stroke="#fef08a" stroke-width="1" />
+
+  <!-- Main Sack Body -->
+  <path d="M29 22C24 23 16 28 17 38C18 47 24 50 32 50C40 50 46 47 47 38C48 28 40 23 35 22H29Z" fill="url(#pouch_gold)" stroke="#78350f" stroke-width="2" />
+
+  <!-- Dollar / Gold Crown Insignia on Sack -->
+  <circle cx="32" cy="37" r="7" fill="#78350f" fill-opacity="0.3" stroke="#ffffff" stroke-width="1.5" />
+  <text x="32" y="41.5" fill="#ffffff" font-size="12" font-weight="900" font-family="sans-serif" text-anchor="middle">$</text>
+
+  <!-- Poker / Betting Chips (Stacked on side) -->
+  <ellipse cx="45" cy="45" rx="7" ry="3.5" fill="#38bdf8" stroke="#ffffff" stroke-width="1" />
+  <ellipse cx="45" cy="42" rx="7" ry="3.5" fill="#ef4444" stroke="#ffffff" stroke-width="1" />
+  <ellipse cx="45" cy="39" rx="7" ry="3.5" fill="#facc15" stroke="#ffffff" stroke-width="1" />
+
+  <!-- Sparkles -->
+  <path d="M15 15L16.5 19L20.5 20.5L16.5 22L15 26L13.5 22L9.5 20.5L13.5 19L15 15Z" fill="#ffffff" />
+</svg>

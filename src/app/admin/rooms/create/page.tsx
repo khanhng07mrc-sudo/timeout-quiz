@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import PowerupIcon from "@/components/ui/PowerupIcon";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import { GameMode } from "@/types";
 
@@ -356,7 +357,7 @@ export default function CreateRoomPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-1 mb-2">
-                        <span className="text-3xl drop-shadow">{m.emoji}</span>
+                        <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow" />
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${m.badgeColor}`}>
                           {m.badge}
                         </span>
@@ -397,7 +398,7 @@ export default function CreateRoomPage() {
                           : "border-border hover:border-purple-400 glass bg-card/50"
                       }`}
                     >
-                      <span className="text-3xl shrink-0">{m.emoji}</span>
+                      <GameModeIcon mode={m.value} className="w-10 h-10 shrink-0 drop-shadow" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-bold text-base">{m.label}</p>
@@ -436,7 +437,7 @@ export default function CreateRoomPage() {
                             : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
                         }`}
                       >
-                        <span className="text-base">{m.emoji}</span>
+                        <GameModeIcon mode={m.value} className="w-5 h-5 shrink-0" />
                         <span>{m.label}</span>
                         {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
                       </button>
@@ -450,7 +451,7 @@ export default function CreateRoomPage() {
                   if (!currentModeObj) return null;
                   return (
                     <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center gap-3 animate-slide-up">
-                      <span className="text-3xl shrink-0">{currentModeObj.emoji}</span>
+                      <GameModeIcon mode={currentModeObj.value} className="w-12 h-12 shrink-0 drop-shadow" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-sm text-purple-200">{currentModeObj.label}</span>
@@ -469,7 +470,10 @@ export default function CreateRoomPage() {
 
           {mode === "BOUNCEBACK" && (
             <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
-              <h3 className="font-bold text-sm text-purple-300">⚙️ Cấu hình lượt chơi Bounceback</h3>
+              <div className="flex items-center gap-2">
+                <GameModeIcon mode="BOUNCEBACK" className="w-6 h-6 shrink-0" />
+                <h3 className="font-bold text-sm text-purple-300">Cấu hình lượt chơi Bounceback</h3>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium mb-1">Số câu mỗi lượt cho mỗi đội</label>
@@ -503,7 +507,7 @@ export default function CreateRoomPage() {
           {mode === "ELIMINATION" && (
             <div className="p-4 rounded-xl border border-red-500/30 bg-red-500/10 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">❌</span>
+                <GameModeIcon mode="ELIMINATION" className="w-6 h-6 shrink-0" />
                 <h3 className="font-bold text-sm text-red-300">Cấu hình chế độ Elimination (Loại dần)</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -547,7 +551,7 @@ export default function CreateRoomPage() {
           {mode === "TOURNAMENT" && (
             <div className="p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🏆</span>
+                <GameModeIcon mode="TOURNAMENT" className="w-6 h-6 shrink-0" />
                 <h3 className="font-bold text-sm text-yellow-300">Cấu hình Giải đấu Tournament 1v1 (Knockout Bracket)</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -587,7 +591,7 @@ export default function CreateRoomPage() {
               <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-500/20 pb-3">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">🎯</span>
+                    <GameModeIcon mode="GRID_CARO" className="w-6 h-6 shrink-0" />
                     <h3 className="font-bold text-sm text-purple-300">Cấu hình Lưới câu hỏi & Caro (Tic-Tac-Toe)</h3>
                   </div>
 
@@ -721,7 +725,7 @@ export default function CreateRoomPage() {
           {mode === "DICE_RACE" && (
             <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🎲</span>
+                <GameModeIcon mode="DICE_RACE" className="w-6 h-6 shrink-0" />
                 <h3 className="font-bold text-sm text-indigo-300">Cấu hình Đua cờ Xí ngầu (Board Game Track)</h3>
               </div>
               <div>
@@ -744,12 +748,12 @@ export default function CreateRoomPage() {
           {mode === "WAGER" && (
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">💰</span>
-                <h3 className="font-bold text-sm text-amber-300">Cấu hình Cược điểm Bí mật (Secret Wager & All-in)</h3>
+                <GameModeIcon mode="WAGER" className="w-6 h-6 shrink-0" />
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình Cược điểm (Wager & Bailout)</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-medium mb-1">Thời gian đặt cược bí mật (giây)</label>
+                  <label className="block text-xs font-medium mb-1">Thời gian đặt cược (giây)</label>
                   <input
                     type="number"
                     min={10}
@@ -759,21 +763,64 @@ export default function CreateRoomPage() {
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Các đội có {wagerTimeSeconds}s bí mật chọn số điểm cược (10đ đến All-in 100% điểm) trước khi nội dung câu hỏi xuất hiện.
+                    Thời gian các đội đặt cược trên bảng 12 ô (10-30s).
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">Mức sàn trợ cấp điểm khi âm/0 điểm</label>
+                  <label className="block text-xs font-medium mb-1">Số điểm tặng ban đầu</label>
                   <input
                     type="number"
-                    min={20}
-                    max={100}
-                    value={wagerMinAllowance}
-                    onChange={(e) => setWagerMinAllowance(Math.max(20, parseInt(e.target.value) || 50))}
+                    min={10}
+                    max={500}
+                    step={5}
+                    value={wagerInitialPoints}
+                    onChange={(e) => setWagerInitialPoints(Math.max(10, parseInt(e.target.value) || 50))}
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Đội có điểm số &le; 0 sẽ được cấp sàn {wagerMinAllowance} điểm để tiếp tục đặt cược, không bị bỏ rơi ngoài cuộc chơi.
+                    Mỗi đội được tặng trước {wagerInitialPoints} điểm khi bắt đầu vòng thi.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số lần nhận trợ cấp tối đa</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={wagerBailoutLimit}
+                    onChange={(e) => setWagerBailoutLimit(Math.min(5, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Mỗi đội được cứu trợ tối đa {wagerBailoutLimit} lần khi tụt xuống &le; 0 điểm.
+                  </p>
+                </div>
+              </div>
+
+              {/* Informative rules explanation box */}
+              <div className="p-3 rounded-lg bg-[#151728]/80 border border-amber-500/20 text-xs text-amber-200/90 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">🏥 Cơ chế Trợ cấp:</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Khi điểm đội xuống <strong>&le; 0 điểm</strong>, quản trò có thể bấm cứu trợ. Mức điểm trợ cấp sẽ <strong>tự động lấy bằng điểm của đội thấp nhất đang có điểm &gt; 0</strong>.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">⚡ Thứ tự ưu tiên cứu:</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Mỗi câu hỏi, Admin chỉ được kích hoạt cứu <strong>duy nhất 1 đội</strong> (ưu tiên đội tụt xuống 0 điểm trước). Đội rơi điểm sau sẽ chờ ở các câu tiếp theo.
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">🏆 Thắng Knockout:</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Quyền trợ cấp chỉ áp dụng khi còn <strong>ít nhất 2 đội có điểm &gt; 0</strong>. Nếu chỉ còn 1 đội có điểm dương, đội đó lập tức <strong>chiến thắng Knockout</strong>!
+                  </p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-amber-400 font-bold shrink-0">🎯 Bảng cược 12 ô:</span>
+                  <p className="text-[11px] leading-relaxed">
+                    Các ô cược cách nhau 5 điểm. Đội không được cược quá số điểm hiện có của mình và <strong>không được cược 2 lần liên tiếp</strong>.
                   </p>
                 </div>
               </div>

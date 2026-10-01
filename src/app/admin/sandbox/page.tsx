@@ -13,6 +13,7 @@ import type {
 import { CARD_METADATA, MODE_RULES } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 
 const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
@@ -481,7 +482,10 @@ export default function AdminSandboxPage() {
               <div className="px-3 py-1.5 rounded-xl glass border border-purple-500/40 text-xs flex items-center gap-2">
                 <span className="text-muted-foreground">Phòng:</span>
                 <span className="font-mono font-black text-cyan-300 text-sm">{code}</span>
-                <span className="text-purple-300 font-bold">[{roomState?.mode}]</span>
+                <span className="text-purple-300 font-bold inline-flex items-center gap-1">
+                  <GameModeIcon mode={roomState?.mode || "CLASSIC"} className="w-3.5 h-3.5" />
+                  [{roomState?.mode}]
+                </span>
                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                   roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"
                 }`}>

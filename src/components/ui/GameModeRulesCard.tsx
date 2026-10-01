@@ -1,6 +1,7 @@
 "use client";
 
 import { GameMode, MODE_RULES } from "@/types";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 
 interface Props {
   mode: GameMode;
@@ -15,7 +16,7 @@ export default function GameModeRulesCard({ mode, onOpenModal, className = "" }:
     <div className={`glass rounded-2xl p-4 border border-white/10 space-y-3 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="text-2xl">{rule.emoji}</span>
+          <GameModeIcon mode={mode} className="w-7 h-7 shrink-0 drop-shadow" />
           <div>
             <h4 className="font-black text-sm text-foreground flex items-center gap-2">
               <span>{rule.nameVi}</span>

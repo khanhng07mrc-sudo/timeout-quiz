@@ -23,6 +23,7 @@ import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
+import GameModeIcon from "@/components/ui/GameModeIcon";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -635,28 +636,33 @@ export default function DisplayPage() {
 
                     {/* Mode specific info banner */}
                     {roomState.mode === "BOUNCEBACK" && (
-                      <p className="text-base sm:text-lg font-black text-cyan-300 mt-1">
-                        🎯 Lượt trả lời chính: {currentQuestion.primaryTeamName ?? "..."}
+                      <p className="text-base sm:text-lg font-black text-cyan-300 mt-1 flex items-center gap-2">
+                        <GameModeIcon mode="BOUNCEBACK" className="w-5 h-5 shrink-0 inline-block" />
+                        <span>Lượt trả lời chính: {currentQuestion.primaryTeamName ?? "..."}</span>
                       </p>
                     )}
                     {roomState.mode === "TOURNAMENT" && (
-                      <p className="text-base sm:text-lg font-black text-yellow-300 mt-1">
-                        🏆 Đối đầu 1v1: {currentQuestion.primaryTeamName ?? "..."}
+                      <p className="text-base sm:text-lg font-black text-yellow-300 mt-1 flex items-center gap-2">
+                        <GameModeIcon mode="TOURNAMENT" className="w-5 h-5 shrink-0 inline-block" />
+                        <span>Đối đầu 1v1: {currentQuestion.primaryTeamName ?? "..."}</span>
                       </p>
                     )}
                     {roomState.mode === "GRID_CARO" && (
-                      <p className="text-base sm:text-lg font-black text-purple-300 mt-1">
-                        🎯 Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của {currentQuestion.primaryTeamName ?? "..."}
+                      <p className="text-base sm:text-lg font-black text-purple-300 mt-1 flex items-center gap-2">
+                        <GameModeIcon mode="GRID_CARO" className="w-5 h-5 shrink-0 inline-block" />
+                        <span>Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của {currentQuestion.primaryTeamName ?? "..."}</span>
                       </p>
                     )}
                     {roomState.mode === "DICE_RACE" && (
-                      <p className="text-base sm:text-lg font-black text-indigo-300 mt-1">
-                        🎲 Xúc xắc: {currentQuestion.diceRollValue ?? "?"} nút — Lượt của {currentQuestion.primaryTeamName ?? "..."}
+                      <p className="text-base sm:text-lg font-black text-indigo-300 mt-1 flex items-center gap-2">
+                        <GameModeIcon mode="DICE_RACE" className="w-5 h-5 shrink-0 inline-block" />
+                        <span>Xúc xắc: {currentQuestion.diceRollValue ?? "?"} nút — Lượt của {currentQuestion.primaryTeamName ?? "..."}</span>
                       </p>
                     )}
                     {roomState.mode === "WAGER" && (
-                      <p className="text-base sm:text-lg font-black text-amber-300 mt-1">
-                        💰 Cược điểm bí mật — Câu hỏi đang diễn ra!
+                      <p className="text-base sm:text-lg font-black text-amber-300 mt-1 flex items-center gap-2">
+                        <GameModeIcon mode="WAGER" className="w-5 h-5 shrink-0 inline-block" />
+                        <span>Cược điểm — Câu hỏi đang diễn ra!</span>
                       </p>
                     )}
                     {roomState.config.answerMethod === "MC" && (

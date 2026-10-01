@@ -1,0 +1,37 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tourn_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#f59e0b" />
+      <stop offset="100%" stopColor="#b45309" />
+    </linearGradient>
+    <linearGradient id="trophy_gold" x1="20" y1="14" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="40%" stopColor="#fef08a" />
+      <stop offset="100%" stopColor="#facc15" />
+    </linearGradient>
+    <filter id="tourn_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#tourn_bg)" filter="url(#tourn_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Trophy Cup Body -->
+  <path d="M22 17H42V29C42 35 37.5 39 32 39C26.5 39 22 35 22 29V17Z" fill="url(#trophy_gold)" stroke="#78350f" stroke-width="2" />
+
+  <!-- Handles -->
+  <path d="M22 21H16C14 21 13 23 13 25C13 29 17 32 22 32" stroke="#fef08a" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  <path d="M42 21H48C50 21 51 23 51 25C51 29 47 32 42 32" stroke="#fef08a" stroke-width="2.5" stroke-linecap="round" fill="none" />
+
+  <!-- Stem & Pedestal Base -->
+  <path d="M30 39H34V45H30V39Z" fill="#facc15" stroke="#78350f" stroke-width="1.5" />
+  <rect x="23" y="45" width="18" height="6" rx="2" fill="#78350f" stroke="#fef08a" stroke-width="1.5" />
+
+  <!-- 1v1 Inscription -->
+  <text x="32" y="28" fill="#78350f" font-size="7" font-weight="900" font-family="sans-serif" text-anchor="middle">1v1</text>
+
+  <!-- Crown / Star on Top -->
+  <polygon points="32,10 34,14 38,14.5 35,17 36,21 32,19 28,21 29,17 26,14.5 30,14" fill="#ffffff" />
+</svg>

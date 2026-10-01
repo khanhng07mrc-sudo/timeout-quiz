@@ -1,0 +1,36 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="caro_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#10b981" />
+      <stop offset="100%" stopColor="#047857" />
+    </linearGradient>
+    <filter id="caro_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#10b981" floodOpacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#caro_bg)" filter="url(#caro_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Grid Board Frame -->
+  <rect x="15" y="15" width="34" height="34" rx="6" fill="#064e3b" fill-opacity="0.6" stroke="#a7f3d0" stroke-width="2" />
+
+  <!-- Grid Lines -->
+  <line x1="26.3" y1="15" x2="26.3" y2="49" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="37.6" y1="15" x2="37.6" y2="49" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="15" y1="26.3" x2="49" y2="26.3" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" />
+  <line x1="15" y1="37.6" x2="49" y2="37.6" stroke="#6ee7b7" stroke-width="1.8" stroke-linecap="round" />
+
+  <!-- Winning "X" (Cyan Neon) -->
+  <path d="M18 18L23 23M23 18L18 23" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M29.5 29.5L34.5 34.5M34.5 29.5L29.5 34.5" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M41 41L46 46M46 41L41 46" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- "O" (Golden Yellow) -->
+  <circle cx="43.5" cy="20.5" r="3.2" stroke="#facc15" stroke-width="2" fill="none" />
+  <circle cx="20.5" cy="43.5" r="3.2" stroke="#facc15" stroke-width="2" fill="none" />
+
+  <!-- Winning Streak Strike Line -->
+  <line x1="16" y1="16" x2="48" y2="48" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-dasharray="3 2" />
+</svg>

@@ -1,0 +1,58 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="dice_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#6366f1" />
+      <stop offset="100%" stopColor="#3730a3" />
+    </linearGradient>
+    <linearGradient id="die_top" x1="18" y1="14" x2="38" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="100%" stopColor="#e0e7ff" />
+    </linearGradient>
+    <linearGradient id="die_left" x1="16" y1="28" x2="32" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#c7d2fe" />
+      <stop offset="100%" stopColor="#818cf8" />
+    </linearGradient>
+    <linearGradient id="die_right" x1="32" y1="28" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#a5b4fc" />
+      <stop offset="100%" stopColor="#6366f1" />
+    </linearGradient>
+    <filter id="dice_shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" floodColor="#4f46e5" floodOpacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background Base Badge -->
+  <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#dice_bg)" filter="url(#dice_shadow)" />
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" />
+
+  <!-- Speed Motion Trails -->
+  <path d="M10 20L18 20" stroke="#a5b4fc" stroke-width="2" stroke-linecap="round" />
+  <path d="M8 26L16 26" stroke="#c7d2fe" stroke-width="2" stroke-linecap="round" />
+  <path d="M11 32L17 32" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
+
+  <!-- 3D Isometric Die -->
+  <!-- Top Face -->
+  <path d="M32 14L46 21L32 28L18 21L32 14Z" fill="url(#die_top)" stroke="#312e81" stroke-width="1.2" stroke-linejoin="round" />
+  <!-- Left Face -->
+  <path d="M18 21L32 28V46L18 39V21Z" fill="url(#die_left)" stroke="#312e81" stroke-width="1.2" stroke-linejoin="round" />
+  <!-- Right Face -->
+  <path d="M32 28L46 21V39L32 46V28Z" fill="url(#die_right)" stroke="#312e81" stroke-width="1.2" stroke-linejoin="round" />
+
+  <!-- Dots (Pips) -->
+  <!-- Top Face (1 center dot) -->
+  <circle cx="32" cy="21" r="2.2" fill="#ef4444" />
+
+  <!-- Left Face (3 dots) -->
+  <circle cx="23" cy="28" r="1.8" fill="#1e1b4b" />
+  <circle cx="25" cy="33.5" r="1.8" fill="#1e1b4b" />
+  <circle cx="27" cy="39" r="1.8" fill="#1e1b4b" />
+
+  <!-- Right Face (5 dots / 4 dots) -->
+  <circle cx="37" cy="30" r="1.8" fill="#ffffff" />
+  <circle cx="41" cy="28" r="1.8" fill="#ffffff" />
+  <circle cx="37" cy="40" r="1.8" fill="#ffffff" />
+  <circle cx="41" cy="38" r="1.8" fill="#ffffff" />
+
+  <!-- Racing Flag Silhouette Top Right -->
+  <path d="M47 11V21M47 11H55L53 14L55 17H47" stroke="#facc15" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

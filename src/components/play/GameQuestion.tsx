@@ -148,7 +148,7 @@ export default function GameQuestion({
                 <span className="text-2xl animate-bounce">⚡</span>
                 <div>
                   <p className="font-bold">CHUÔNG CƯỚP LƯỢT ĐANG MỞ (5s)!</p>
-                  <p className="text-xs text-amber-200/80">Đội nào bấm chuông nhanh nhất sẽ giành quyền trả lời (+100%, sai -50%)</p>
+                  <p className="text-xs text-amber-200/90">Cướp điểm trực tiếp từ đội chính: Đúng +100%đ (đội chính bị trừ 100%đ), Sai -50%đ (đội chính không bị trừ)</p>
                 </div>
               </div>
               {!isPrimaryTeam && (
@@ -189,14 +189,40 @@ export default function GameQuestion({
           {!buzzedBy ? (
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-500/15 border border-amber-500/30 p-3 rounded-lg">
               <div>
-                <p className="font-bold text-amber-300">⚡ Tranh quyền trả lời</p>
-                <p className="text-xs text-muted-foreground">Đội bấm chuông sớm nhất sẽ giành quyền trả lời duy nhất!</p>
+                <p className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <span>⚡ Tranh quyền trả lời</span>
+                  {question.buzzUnlocked ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/40 font-normal animate-pulse">
+                      Chuông đã mở!
+                    </span>
+                  ) : question.buzzUnlockMode === "MANUAL" ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-normal">
+                      🔒 Chờ MC mở chuông
+                    </span>
+                  ) : (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-normal">
+                      🔒 Mở sau {question.buzzAutoDelaySeconds ?? 3}s...
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {question.buzzUnlocked
+                    ? "Đội bấm chuông sớm nhất sẽ giành quyền trả lời duy nhất! (Sai trừ 50% điểm câu hỏi)"
+                    : question.buzzUnlockMode === "MANUAL"
+                    ? "Quản trò sẽ mở khóa chuông sau khi đọc xong câu hỏi."
+                    : `Hệ thống đếm ngược ${question.buzzAutoDelaySeconds ?? 3} giây trước khi mở chuông tự động.`}
+                </p>
               </div>
               <button
                 onClick={onBuzz}
-                className="px-6 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
+                disabled={!question.buzzUnlocked}
+                className={`px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
+                  question.buzzUnlocked
+                    ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg shadow-amber-500/30 active:scale-95 animate-pulse cursor-pointer"
+                    : "bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-60"
+                }`}
               >
-                🔔 BẤM CHUÔNG!
+                {question.buzzUnlocked ? "🔔 BẤM CHUÔNG!" : "🔒 CHUÔNG KHÓA"}
               </button>
             </div>
           ) : (
@@ -232,12 +258,12 @@ export default function GameQuestion({
         <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-indigo-500/15 border-indigo-500/30">
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-xs uppercase text-indigo-300 tracking-wider">🎲 Xúc xắc: {question.diceRollValue ?? "?"} bước · Lượt trả lời: </span>
+              <span className="text-xs uppercase text-indigo-300 tracking-wider">🎲 Đua cờ · Lượt trả lời: </span>
               <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang xác định"}</span>
             </div>
             {isPrimaryTeam ? (
               <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30">
-                Đúng để tiến bước!
+                Đúng để được gieo xúc xắc!
               </span>
             ) : (
               <span className="text-xs text-muted-foreground">Quan sát</span>
@@ -267,12 +293,12 @@ export default function GameQuestion({
 
       {/* WAGER Banner */}
       {roomMode === "WAGER" && (
-        <div className="rounded-xl p-3 border text-sm font-medium transition-all bg-amber-500/15 border-amber-500/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-xs uppercase text-amber-300 tracking-wider">💰 Cược điểm bí mật: </span>
-              <span className="font-bold text-foreground">Đúng được số điểm cược, sai bị trừ!</span>
-            </div>
+        <div className="rounded-xl p-3 border text-xs sm:text-sm font-medium transition-all bg-amber-500/15 border-amber-500/30 text-amber-200">
+          <div className="flex items-center gap-2">
+            <span className="text-base shrink-0">💰</span>
+            <span>
+              <strong>Cược điểm:</strong> 👑 Đội cược cuối: Đúng nhận điểm cược, Sai trừ điểm cược · Các đội khác: Đúng nhận 1/2 điểm câu hỏi (làm tròn lên chia hết cho 5), Sai 0đ
+            </span>
           </div>
         </div>
       )}

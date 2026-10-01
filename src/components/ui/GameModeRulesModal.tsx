@@ -10,11 +10,10 @@ interface Props {
   onClose: () => void;
 }
 
-const MODE_TAB_NAMES: Record<GameMode, string> = {
+const MODE_TAB_NAMES: Partial<Record<GameMode, string>> = {
   CLASSIC: "Truyền thống",
   BUZZ: "Chuông bấm",
   BOUNCEBACK: "Bật nảy & Cướp lượt",
-  POWERUP: "Thẻ hỗ trợ",
   ELIMINATION: "Đấu trường Sinh tồn",
   TOURNAMENT: "Đấu loại 1v1",
   GRID_CARO: "Chọn ô & Caro",
@@ -69,7 +68,7 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
 
         {/* Mode Selector Tabs */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {(Object.keys(MODE_RULES) as GameMode[]).map((m) => {
+          {(Object.keys(MODE_RULES) as GameMode[]).filter((m) => m !== "POWERUP").map((m) => {
             const r = MODE_RULES[m];
             const active = m === currentMode;
             return (

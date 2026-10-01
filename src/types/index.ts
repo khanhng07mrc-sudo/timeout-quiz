@@ -469,6 +469,9 @@ export interface GameConfig {
   wagerMinAllowance?: number;
   wagerInitialPoints?: number;
   wagerBailoutLimit?: number;
+  // Buzz config
+  buzzUnlockMode?: "AUTO" | "MANUAL";
+  buzzAutoDelay?: number;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -614,6 +617,7 @@ export interface DiceRaceState {
   lastDiceRoll?: number;
   isRolling: boolean;
   dicePendingAnswer: boolean;
+  canRollDice?: boolean;
   finishLeaderboard: string[];
 }
 
@@ -721,6 +725,10 @@ export interface QuestionState {
   timerPending?: boolean;
   timerStarted?: boolean;
   isExpired?: boolean;
+  buzzUnlocked?: boolean;
+  buzzUnlockMode?: "AUTO" | "MANUAL";
+  buzzAutoDelaySeconds?: number;
+  canRollDice?: boolean;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -840,6 +848,8 @@ export interface ServerToClientEvents {
   "game:question:clear": () => void;
   "game:timer:started": (payload?: { timeLimit?: number }) => void;
   "game:timer:expired": (payload?: { questionId?: string }) => void;
+  "game:buzz:unlocked": () => void;
+  "game:buzz:locked": () => void;
 }
 
 export interface ClientToServerEvents {
@@ -858,6 +868,7 @@ export interface ClientToServerEvents {
   "admin:lock:cards": (locked: boolean) => void;
   "admin:buzz:clear": () => void;
   "admin:buzz:start_answer": () => void;
+  "admin:buzz:unlock": () => void;
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": () => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
@@ -884,6 +895,7 @@ export interface ClientToServerEvents {
   "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
+  "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

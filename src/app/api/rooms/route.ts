@@ -35,6 +35,9 @@ const DEFAULT_CONFIG = {
   // Wager defaults
   wagerTimeSeconds: 15,
   wagerMinAllowance: 50,
+  // Buzz defaults
+  buzzUnlockMode: "AUTO",
+  buzzAutoDelay: 3,
 };
 
 export async function POST(req: NextRequest) {
@@ -50,6 +53,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
     }
 
+    const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+
+    // ── Strict Validation for GRID_CARO ──────────────────────────────────────────
+    if (mode === "GRID_CARO") {
+      if (!quizBankId) {
+        return NextResponse.json(
+          { error: "Chế độ GRID_CARO bắt buộc phải chọn một bộ câu hỏi!" },
+          { status: 400 }
+        );
+      }
+
+      const quizBank = await prisma.quizBank.findUnique({
+        where: { id: quizBankId },
+        include: { questions: true },
+      });
+
+      if (!quizBank || quizBank.questions.length === 0) {
+        return NextResponse.json(
+          { error: "Bộ câu hỏi đã chọn không có câu hỏi nào!" },
+          { status: 400 }
+        );
+      }
+
+      const gridRows = Number(mergedConfig.gridRows) || 4;
+      const gridCols = Number(mergedConfig.gridCols) || 4;
+      const totalCells = gridRows * gridCols;
+
+      const easyCells = Number(mergedConfig.gridEasyCells) || Math.floor(totalCells / 3);
+      const medCells = Number(mergedConfig.gridMediumCells) || Math.floor(totalCells / 3);
+      const hardCells = Number(mergedConfig.gridHardCells) || (totalCells - easyCells - medCells);
+
+      if (easyCells + medCells + hardCells !== totalCells) {
+        return NextResponse.json(
+          {
+            error: `Tổng số ô các độ khó (${easyCells} Dễ + ${medCells} TB + ${hardCells} Khó = ${easyCells + medCells + hardCells}) không khớp kích thước bàn cờ (${gridRows}×${gridCols} = ${totalCells} ô)!`,
+          },
+          { status: 400 }
+        );
+      }
+
+      const reqEasy = Math.ceil(easyCells * 1.25);
+      const reqMed = Math.ceil(medCells * 1.25);
+      const reqHard = Math.ceil(hardCells * 1.25);
+
+      const easyInBank = quizBank.questions.filter((q) => (q.points || 10) <= 10).length;
+      const medInBank = quizBank.questions.filter((q) => (q.points || 10) > 10 && (q.points || 10) <= 20).length;
+      const hardInBank = quizBank.questions.filter((q) => (q.points || 10) > 20).length;
+
+      const errors: string[] = [];
+      if (easyInBank < reqEasy) {
+        errors.push(`Câu Dễ: cần tối thiểu ${reqEasy} câu (hiện có ${easyInBank}, thiếu ${reqEasy - easyInBank})`);
+      }
+      if (medInBank < reqMed) {
+        errors.push(`Câu Trung bình: cần tối thiểu ${reqMed} câu (hiện có ${medInBank}, thiếu ${reqMed - medInBank})`);
+      }
+      if (hardInBank < reqHard) {
+        errors.push(`Câu Khó: cần tối thiểu ${reqHard} câu (hiện có ${hardInBank}, thiếu ${reqHard - hardInBank})`);
+      }
+
+      if (errors.length > 0) {
+        return NextResponse.json(
+          {
+            error: `Kho câu hỏi không đáp ứng yêu cầu bàn cờ ${gridRows}×${gridCols} (gồm 25% dự phòng): ${errors.join("; ")}. Vui lòng bổ sung câu hỏi hoặc điều chỉnh bàn cờ!`,
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Generate unique PIN
     let code = generateRoomCode();
     let attempts = 0;
@@ -60,7 +132,6 @@ export async function POST(req: NextRequest) {
       attempts++;
     }
 
-    const mergedConfig = { ...DEFAULT_CONFIG, ...config };
     const inviteUrl = generateInviteUrl(code);
     const hostKey = generateHostKey();
 

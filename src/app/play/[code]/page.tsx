@@ -356,6 +356,13 @@ export default function PlayPage() {
     socket.on("game:dice:rolled", () => {
       if (soundEnabledRef.current) soundManager.playBuzz();
     });
+    socket.on("game:buzz:unlocked", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: true } : prev));
+      if (soundEnabledRef.current) soundManager.playBuzz();
+    });
+    socket.on("game:buzz:locked", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
+    });
 
     socket.on("error", (msg) => {
       setErrorMessage(msg);

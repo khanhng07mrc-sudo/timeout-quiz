@@ -46,6 +46,9 @@ const DEFAULT_SANDBOX_CONFIG = {
   // Wager defaults
   wagerTimeSeconds: 15,
   wagerMinAllowance: 50,
+  // Buzz defaults
+  buzzUnlockMode: "AUTO",
+  buzzAutoDelay: 3,
 };
 
 const DEFAULT_TEAMS = [

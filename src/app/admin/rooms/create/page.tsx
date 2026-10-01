@@ -44,15 +44,36 @@ export default function CreateRoomPage() {
   // Quiz banks
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
   const [quizBankId, setQuizBankId] = useState("");
+  const [bankQuestions, setBankQuestions] = useState<any[]>([]);
 
   useEffect(() => {
     fetch("/api/quiz-bank")
       .then((r) => r.json())
       .then((d) => {
-        if (d.banks) setQuizBanks(d.banks);
+        if (d.banks) {
+          setQuizBanks(d.banks);
+          if (d.banks.length > 0 && !quizBankId) {
+            setQuizBankId(d.banks[0].id);
+          }
+        }
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!quizBankId) {
+      setBankQuestions([]);
+      return;
+    }
+    fetch(`/api/quiz-bank/${quizBankId}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.bank?.questions) {
+          setBankQuestions(d.bank.questions);
+        }
+      })
+      .catch(() => setBankQuestions([]));
+  }, [quizBankId]);
 
   // Step 1: Basic settings
   const [roomName, setRoomName] = useState("");
@@ -73,6 +94,9 @@ export default function CreateRoomPage() {
   const [gridCaroBonusPoints, setGridCaroBonusPoints] = useState(30);
   const [gridPreviewDuration, setGridPreviewDuration] = useState(5);
   const [gridMaxRounds, setGridMaxRounds] = useState(3);
+  const [gridEasyCells, setGridEasyCells] = useState(5);
+  const [gridMediumCells, setGridMediumCells] = useState(5);
+  const [gridHardCells, setGridHardCells] = useState(6);
   // Modal state
   const [showRulesModal, setShowRulesModal] = useState(false);
   // Dice Race config
@@ -82,6 +106,9 @@ export default function CreateRoomPage() {
   const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
   const [wagerInitialPoints, setWagerInitialPoints] = useState(50);
   const [wagerBailoutLimit, setWagerBailoutLimit] = useState(1);
+  // Buzz config
+  const [buzzUnlockMode, setBuzzUnlockMode] = useState<"AUTO" | "MANUAL">("AUTO");
+  const [buzzAutoDelay, setBuzzAutoDelay] = useState(3);
 
   // Layout switcher states
   const [modeLayout, setModeLayout] = useState<"GRID" | "LIST" | "COMPACT">("GRID");
@@ -195,6 +222,9 @@ export default function CreateRoomPage() {
             gridCaroEnabled: mode === "GRID_CARO" ? (gridRows >= 4 && gridCols >= 4 && gridCaroEnabled) : false,
             gridCaroBonusPoints: mode === "GRID_CARO" ? gridCaroBonusPoints : 30,
             gridPreviewDuration: mode === "GRID_CARO" ? gridPreviewDuration : 5,
+            gridEasyCells: mode === "GRID_CARO" ? gridEasyCells : undefined,
+            gridMediumCells: mode === "GRID_CARO" ? gridMediumCells : undefined,
+            gridHardCells: mode === "GRID_CARO" ? gridHardCells : undefined,
             // Dice Race config
             diceTrackTotalTiles: mode === "DICE_RACE" ? diceTrackTotalTiles : 30,
             // Wager config
@@ -202,6 +232,9 @@ export default function CreateRoomPage() {
             wagerMinAllowance: mode === "WAGER" ? wagerMinAllowance : 50,
             wagerInitialPoints: mode === "WAGER" ? wagerInitialPoints : 50,
             wagerBailoutLimit: mode === "WAGER" ? wagerBailoutLimit : 1,
+            // Buzz config
+            buzzUnlockMode: mode === "BUZZ" ? buzzUnlockMode : "AUTO",
+            buzzAutoDelay: mode === "BUZZ" ? Math.max(3, buzzAutoDelay) : 3,
           },
         }),
       });
@@ -480,6 +513,73 @@ export default function CreateRoomPage() {
             )}
           </div>
 
+          {mode === "BUZZ" && (
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <GameModeIcon mode="BUZZ" className="w-6 h-6 shrink-0" />
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình chuông bấm (Buzz)</h3>
+              </div>
+              <div className="space-y-3">
+                <label className="block text-xs font-medium text-slate-300">
+                  Cơ chế mở khóa chuông cho các đội:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setBuzzUnlockMode("AUTO")}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      buzzUnlockMode === "AUTO"
+                        ? "border-amber-500 bg-amber-500/20 text-white shadow"
+                        : "border-border glass text-muted-foreground hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-bold text-sm text-amber-300 mb-1">
+                      <span>⏱️</span> Tự động (Auto Delay)
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Chuông tự động mở sau thời gian delay đếm ngược (tối thiểu 3s) để thí sinh kịp đọc câu hỏi.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBuzzUnlockMode("MANUAL")}
+                    className={`p-3 rounded-xl border text-left transition ${
+                      buzzUnlockMode === "MANUAL"
+                        ? "border-amber-500 bg-amber-500/20 text-white shadow"
+                        : "border-border glass text-muted-foreground hover:text-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-bold text-sm text-amber-300 mb-1">
+                      <span>👨‍💼</span> Thủ công (Manual MC)
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Chuông bị khóa mặc định. Quản trò / MC chủ động bấm nút "Mở chuông" trên màn hình khi sẵn sàng.
+                    </p>
+                  </button>
+                </div>
+
+                {buzzUnlockMode === "AUTO" && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-medium mb-1 text-slate-300">
+                      Thời gian delay mở chuông (giây, tối thiểu 3s):
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={3}
+                        max={30}
+                        value={buzzAutoDelay}
+                        onChange={(e) => setBuzzAutoDelay(Math.max(3, parseInt(e.target.value) || 3))}
+                        className="w-32 px-3 py-2 rounded-lg bg-input border border-border text-sm font-bold text-white"
+                      />
+                      <span className="text-xs text-muted-foreground">giây đếm ngược sau khi hiện câu hỏi</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {mode === "BOUNCEBACK" && (
             <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
               <div className="flex items-center gap-2">
@@ -594,44 +694,74 @@ export default function CreateRoomPage() {
           {mode === "GRID_CARO" && (() => {
             const canEnableCaro = gridRows >= 4 && gridCols >= 4;
             const selectedBank = quizBanks.find((b) => b.id === quizBankId);
-            const bankQuestionsCount = selectedBank?._count?.questions ?? 0;
             const totalCells = gridRows * gridCols;
-            const notEnoughQuestions = bankQuestionsCount > 0 && bankQuestionsCount < totalCells;
-            const hasExcessQuestions = bankQuestionsCount > 0 && bankQuestionsCount > totalCells;
+
+            // Bank questions count per difficulty
+            const easyInBank = bankQuestions.filter((q) => (q.points || 10) <= 10).length;
+            const medInBank = bankQuestions.filter((q) => (q.points || 10) > 10 && (q.points || 10) <= 20).length;
+            const hardInBank = bankQuestions.filter((q) => (q.points || 10) > 20).length;
+
+            // Requirements (including 25% buffer for retries on wrong answers)
+            const reqEasy = Math.ceil(gridEasyCells * 1.25);
+            const reqMed = Math.ceil(gridMediumCells * 1.25);
+            const reqHard = Math.ceil(gridHardCells * 1.25);
+
+            const easyValid = easyInBank >= reqEasy;
+            const medValid = medInBank >= reqMed;
+            const hardValid = hardInBank >= reqHard;
+            const totalAllocated = gridEasyCells + gridMediumCells + gridHardCells;
+            const totalMatch = totalAllocated === totalCells;
+            const isPoolSatisfied = !quizBankId || (easyValid && medValid && hardValid && totalMatch);
+
+            const autoBalance = (r: number, c: number) => {
+              const total = r * c;
+              const easy = Math.floor(total / 3);
+              const med = Math.floor(total / 3);
+              const hard = total - easy - med;
+              setGridEasyCells(easy);
+              setGridMediumCells(med);
+              setGridHardCells(hard);
+            };
 
             return (
               <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-500/20 pb-3">
                   <div className="flex items-center gap-2">
                     <GameModeIcon mode="GRID_CARO" className="w-6 h-6 shrink-0" />
-                    <h3 className="font-bold text-sm text-purple-300">Cấu hình Lưới câu hỏi & Caro (Tic-Tac-Toe)</h3>
+                    <div>
+                      <h3 className="font-bold text-sm text-purple-300">Cấu hình Bàn cờ & Kiểm tra Kho đề (GRID_CARO)</h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Bắt buộc kiểm tra kích thước hàng, cột, độ khó từng ô và số lượng câu hỏi có sẵn (+25% dự phòng).
+                      </p>
+                    </div>
                   </div>
 
                   {/* Optional Caro Streak Toggle */}
                   <div className="flex items-center gap-2.5">
                     <span className="text-xs font-semibold text-foreground">
-                      Thưởng Caro liên tiếp:
+                      Thưởng Caro:
                     </span>
                     <button
                       type="button"
-                      disabled={!canEnableCaro || notEnoughQuestions}
+                      disabled={!canEnableCaro || !isPoolSatisfied}
                       onClick={() => setGridCaroEnabled(!gridCaroEnabled)}
                       className={`w-10 h-5 rounded-full transition-colors ${
-                        canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "bg-purple-500" : "bg-muted opacity-60 cursor-not-allowed"
+                        canEnableCaro && gridCaroEnabled && isPoolSatisfied ? "bg-purple-500" : "bg-muted opacity-60 cursor-not-allowed"
                       }`}
                     >
                       <div
                         className={`w-4 h-4 rounded-full bg-white m-0.5 transition-transform ${
-                          canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "translate-x-5" : "translate-x-0"
+                          canEnableCaro && gridCaroEnabled && isPoolSatisfied ? "translate-x-5" : "translate-x-0"
                         }`}
                       />
                     </button>
-                    <span className={`text-[11px] font-bold ${canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "text-green-400" : "text-muted-foreground"}`}>
-                      {canEnableCaro && gridCaroEnabled && !notEnoughQuestions ? "BẬT" : "TẮT"}
+                    <span className={`text-[11px] font-bold ${canEnableCaro && gridCaroEnabled && isPoolSatisfied ? "text-green-400" : "text-muted-foreground"}`}>
+                      {canEnableCaro && gridCaroEnabled && isPoolSatisfied ? "BẬT" : "TẮT"}
                     </span>
                   </div>
                 </div>
 
+                {/* Grid Dimensions */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div>
                     <label className="block text-xs font-medium mb-1">Số hàng ({gridRows})</label>
@@ -646,6 +776,7 @@ export default function CreateRoomPage() {
                         if (r < 4 || gridCols < 4) setGridCaroEnabled(false);
                         const maxK = Math.min(r, gridCols) - 1;
                         if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                        autoBalance(r, gridCols);
                       }}
                       className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                     />
@@ -663,6 +794,7 @@ export default function CreateRoomPage() {
                         if (gridRows < 4 || c < 4) setGridCaroEnabled(false);
                         const maxK = Math.min(gridRows, c) - 1;
                         if (gridStreakTargetK > maxK) setGridStreakTargetK(Math.max(3, maxK));
+                        autoBalance(gridRows, c);
                       }}
                       className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                     />
@@ -673,7 +805,7 @@ export default function CreateRoomPage() {
                     </label>
                     <input
                       type="number"
-                      disabled={!canEnableCaro || !gridCaroEnabled || notEnoughQuestions}
+                      disabled={!canEnableCaro || !gridCaroEnabled}
                       min={3}
                       max={Math.max(3, Math.min(gridRows, gridCols) - 1)}
                       value={gridStreakTargetK}
@@ -697,38 +829,127 @@ export default function CreateRoomPage() {
                   </div>
                 </div>
 
-                {/* Status & Validation Banners */}
+                {/* Difficulty Allocation Inputs */}
+                <div className="bg-[#121424]/90 rounded-xl p-3 border border-white/10 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-slate-200">
+                      🎯 Phân bổ số lượng ô theo từng độ khó ({totalAllocated}/{totalCells} ô):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => autoBalance(gridRows, gridCols)}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 border border-purple-500/40 transition"
+                    >
+                      ⚡ Tự động cân bằng đều
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Easy */}
+                    <div className="p-2.5 rounded-lg border border-green-500/30 bg-green-500/10 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-green-300">🟢 Dễ (10đ)</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${easyValid ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+                          {easyValid ? "✅ ĐỦ" : `❌ Thiếu ${reqEasy - easyInBank}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={totalCells}
+                          value={gridEasyCells}
+                          onChange={(e) => setGridEasyCells(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-20 px-2 py-1 rounded bg-black/40 border border-green-500/40 text-xs font-bold text-white"
+                        />
+                        <span className="text-[11px] text-muted-foreground">ô trên bàn cờ</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Kho có: <strong>{easyInBank}</strong> | Cần tối thiểu: <strong>{reqEasy}</strong> câu (+25% dự phòng)
+                      </p>
+                    </div>
+
+                    {/* Medium */}
+                    <div className="p-2.5 rounded-lg border border-yellow-500/30 bg-yellow-500/10 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-yellow-300">🟡 Trung bình (20đ)</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${medValid ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+                          {medValid ? "✅ ĐỦ" : `❌ Thiếu ${reqMed - medInBank}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={totalCells}
+                          value={gridMediumCells}
+                          onChange={(e) => setGridMediumCells(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-20 px-2 py-1 rounded bg-black/40 border border-yellow-500/40 text-xs font-bold text-white"
+                        />
+                        <span className="text-[11px] text-muted-foreground">ô trên bàn cờ</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Kho có: <strong>{medInBank}</strong> | Cần tối thiểu: <strong>{reqMed}</strong> câu (+25% dự phòng)
+                      </p>
+                    </div>
+
+                    {/* Hard */}
+                    <div className="p-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-purple-300">🟣 Khó (30đ)</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-bold ${hardValid ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>
+                          {hardValid ? "✅ ĐỦ" : `❌ Thiếu ${reqHard - hardInBank}`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={totalCells}
+                          value={gridHardCells}
+                          onChange={(e) => setGridHardCells(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-20 px-2 py-1 rounded bg-black/40 border border-purple-500/40 text-xs font-bold text-white"
+                        />
+                        <span className="text-[11px] text-muted-foreground">ô trên bàn cờ</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400">
+                        Kho có: <strong>{hardInBank}</strong> | Cần tối thiểu: <strong>{reqHard}</strong> câu (+25% dự phòng)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comprehensive Validation Status Banner */}
                 <div className="space-y-2 text-[11px]">
-                  {!canEnableCaro ? (
-                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
-                      ⚠️ Bảng hiện tại là {gridRows}×{gridCols} ({totalCells} ô). <strong>Tính năng thưởng Caro liên tiếp yêu cầu bảng tối thiểu từ 4×4 trở lên</strong>. Chế độ này sẽ hoạt động như Lưới chọn ô câu hỏi thông thường.
+                  {!totalMatch ? (
+                    <div className="p-3 rounded-xl bg-red-500/20 border-2 border-red-500 text-red-200 font-medium">
+                      ❌ <strong>Lỗi phân bổ:</strong> Tổng số ô các độ khó ({totalAllocated} ô) không khớp kích thước bàn cờ ({gridRows}×{gridCols} = {totalCells} ô). Hãy điều chỉnh lại hoặc bấm "Tự động cân bằng đều".
                     </div>
-                  ) : notEnoughQuestions ? (
-                    <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
-                      ❌ Bộ đề đã chọn chỉ có {bankQuestionsCount} câu, không đủ {totalCells} câu cho bảng {gridRows}×{gridCols}. Vui lòng chọn bộ đề có ít nhất {totalCells} câu để kích hoạt Caro!
-                    </div>
-                  ) : !gridCaroEnabled ? (
-                    <div className="p-2.5 rounded-lg bg-card/60 border border-border text-muted-foreground">
-                      ℹ️ Tính năng thưởng Caro liên tiếp đang TẮT (Optional). Các đội tự do chọn ô câu hỏi để ghi điểm mà không tính chuỗi hàng/cột/chéo.
+                  ) : !easyValid || !medValid || !hardValid ? (
+                    <div className="p-3 rounded-xl bg-red-500/20 border-2 border-red-500 text-red-200 space-y-1 font-medium">
+                      <p className="font-bold text-red-100">
+                        ❌ Kho câu hỏi KHÔNG ĐÁP ỨNG ĐỦ cho bàn cờ {gridRows}×{gridCols} ({totalCells} ô + 25% dự phòng):
+                      </p>
+                      <ul className="list-disc list-inside space-y-0.5 text-[11px] text-red-200/90 pl-1">
+                        {!easyValid && <li>Câu Dễ: Có {easyInBank} / Cần tối thiểu {reqEasy} câu (Thiếu {reqEasy - easyInBank} câu)</li>}
+                        {!medValid && <li>Câu Trung bình: Có {medInBank} / Cần tối thiểu {reqMed} câu (Thiếu {reqMed - medInBank} câu)</li>}
+                        {!hardValid && <li>Câu Khó: Có {hardInBank} / Cần tối thiểu {reqHard} câu (Thiếu {reqHard - hardInBank} câu)</li>}
+                      </ul>
+                      <p className="text-amber-300 font-bold text-[10px] pt-1">
+                        👉 Phòng thi không thể tạo khi kho đề bị thiếu! Vui lòng chọn bộ đề khác hoặc giảm số hàng/cột và số ô tương ứng.
+                      </p>
                     </div>
                   ) : (
-                    <div className="p-2.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-200 space-y-1">
-                      <p>
-                        🎯 <strong>Thưởng Caro liên tiếp đang BẬT:</strong> Đội đầu tiên xếp được {gridStreakTargetK} ô liên tiếp cùng hàng, cột hoặc đường chéo sẽ nhận <strong>thưởng Caro Bonus</strong>.
-                      </p>
-                      <p className="text-cyan-300">
-                        ✨ <em>Điểm thưởng Caro được tính bằng trung bình cộng điểm số của {gridStreakTargetK} ô tạo nên chuỗi (làm tròn về số chia hết cho 5 gần nhất).</em>
-                      </p>
-                      {hasExcessQuestions && (
-                        <p className="text-amber-300 text-[10px] mt-1 pt-1 border-t border-purple-500/30">
-                          📌 Bộ đề có {bankQuestionsCount} câu. Bàn cờ sẽ sử dụng đúng {totalCells} câu đầu tiên và bỏ qua {bankQuestionsCount - totalCells} câu dư thừa.
-                        </p>
-                      )}
+                    <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-200 font-medium">
+                      ✅ <strong>Kho câu hỏi đáp ứng HOÀN TOÀN:</strong> Đủ {totalCells} ô cờ và sẵn sàng {reqEasy + reqMed + reqHard - totalCells} câu dự phòng (25%) cho các ô bị trả lời sai. Sẵn sàng tạo phòng!
                     </div>
                   )}
-                  <p className="text-muted-foreground">
-                    Quy tắc câu hỏi duy nhất: Mỗi câu hỏi chỉ xuất hiện tối đa 1 lần. Trả lời sai không bị trừ điểm và ô đó vẫn mở cho các đội sau chọn lại với câu hỏi mới!
-                  </p>
+
+                  {!canEnableCaro && (
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200 text-[10px]">
+                      ℹ️ Bảng {gridRows}×{gridCols} nhỏ hơn 4×4 nên tính năng thưởng Caro tự động tắt (hoạt động như chọn ô tính điểm).
+                    </div>
+                  )}
                 </div>
               </div>
             );

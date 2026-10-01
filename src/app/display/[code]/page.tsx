@@ -212,6 +212,13 @@ export default function DisplayPage() {
     socket.on("game:dice:rolled", () => {
       soundManager.playBuzz();
     });
+    socket.on("game:buzz:unlocked", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: true } : prev));
+      soundManager.playBuzz();
+    });
+    socket.on("game:buzz:locked", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
+    });
     socket.on("game:powerup:used", (p) => {
       setLastPowerup(p);
       soundManager.playPowerup();

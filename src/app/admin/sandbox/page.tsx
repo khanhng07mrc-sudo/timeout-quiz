@@ -108,15 +108,21 @@ export default function AdminSandboxPage() {
     }
 
     // Spawn sockets for Teams 2, 3, 4 (Teams[1], [2], [3])
-    teams.slice(1).forEach((team) => {
+    teams.slice(1).forEach((team, botIdx) => {
       const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
         transports: ["websocket", "polling"],
+        query: { sandbox: "1" },
       });
 
       sock.on("connect", () => {
         sock.emit(
           "room:join",
-          { code: roomCode, playerName: `${team.name} 🤖`, teamId: team.id },
+          {
+            code: roomCode,
+            playerName: `${team.name} 🤖`,
+            playerId: `bot_${roomCode}_t${botIdx + 1}`,
+            teamId: team.id,
+          },
           (result) => {
             if (result.success) {
               addLog(`Bot [${team.name}] đã kết nối thành công vào phòng`);
@@ -877,7 +883,7 @@ export default function AdminSandboxPage() {
                 </div>
                 <div className="flex-1 bg-[#0f0f1a]">
                   <iframe
-                    src={`/play/${code}`}
+                    src={`/play/${code}?sandbox=1&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}${roomState?.teams?.[0]?.id ? `&teamId=${roomState.teams[0].id}` : ""}`}
                     title="Player 1 Preview"
                     className="w-full h-full border-0"
                   />
@@ -929,7 +935,7 @@ export default function AdminSandboxPage() {
                     </div>
                     <div className="flex-1 bg-[#0f0f1a]">
                       <iframe
-                        src={`/play/${code}`}
+                        src={`/play/${code}?sandbox=1&teamIndex=${idx}&teamId=${t.id}&name=${encodeURIComponent(idx === 0 ? "Bạn (Tester)" : `${t.name} 🤖`)}`}
                         title={`Team ${idx + 1}`}
                         className="w-full h-full border-0"
                       />

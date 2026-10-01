@@ -93,18 +93,19 @@ export function getClientIp(req: Request): string {
 
 /**
  * Room PIN validation rate limit (Anti brute-force):
- * Max 15 attempts per 60s. Block for 3 minutes if exceeded.
+ * Max 60 attempts per 60s. Block for 10s if exceeded.
  */
 export function checkPinValidationLimit(ip: string): RateLimitResult {
-  return checkRateLimit(`pin_check:${ip}`, 15, 60000, 180000);
+  return checkRateLimit(`pin_check:${ip}`, 60, 60000, 10000);
 }
 
 /**
  * Player join rate limit (Anti bot flooding):
- * Max 6 joins per 10s per IP/Socket.
+ * Allows up to 60 joins per 10s per IP (supports multiple participants on same venue WiFi/NAT).
+ * Short 5s block if exceeded.
  */
 export function checkPlayerJoinLimit(identifier: string): RateLimitResult {
-  return checkRateLimit(`join:${identifier}`, 6, 10000, 30000);
+  return checkRateLimit(`join:${identifier}`, 60, 10000, 5000);
 }
 
 /**

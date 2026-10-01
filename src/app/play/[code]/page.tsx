@@ -99,34 +99,52 @@ export default function PlayPage() {
     // Default sound MUTED on player devices to prevent room echo
     soundManager.setMuted(true);
 
-    const storageKey = `timeout_player_id_${code}`;
-    let savedPlayerId = sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
+    const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+    const isSandbox = searchParams?.get("sandbox") === "1";
+    const paramTeamId = searchParams?.get("teamId") || "";
+    const paramTeamIndex = searchParams?.get("teamIndex");
+    const paramName = searchParams?.get("name") || "";
+    const paramPlayerId = searchParams?.get("playerId") || "";
+
+    if (paramTeamId) {
+      myTeamIdRef.current = paramTeamId;
+    }
+
+    const storageKey = paramTeamIndex !== null && paramTeamIndex !== undefined
+      ? `timeout_player_id_${code}_t${paramTeamIndex}`
+      : `timeout_player_id_${code}`;
+
+    let savedPlayerId = paramPlayerId || sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
     if (!savedPlayerId) {
-      savedPlayerId = `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      savedPlayerId = paramTeamIndex !== null && paramTeamIndex !== undefined
+        ? `p_sb_${code}_t${paramTeamIndex}_${Math.random().toString(36).slice(2, 7)}`
+        : `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       sessionStorage.setItem(storageKey, savedPlayerId);
       localStorage.setItem(storageKey, savedPlayerId);
     }
     playerIdRef.current = savedPlayerId;
     setPlayerId(savedPlayerId);
 
-    const playerName = sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
+    const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
+      query: isSandbox ? { sandbox: "1" } : {},
     });
     socketRef.current = socket;
 
     const joinRoom = () => {
       const currentPid = playerIdRef.current || savedPlayerId;
-      const currentName = sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
+      const currentName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
 
       socket.emit("room:join", {
         code,
         playerName: currentName,
         playerId: currentPid,
-        teamId: myTeamIdRef.current,
+        teamId: myTeamIdRef.current || (paramTeamId ? paramTeamId : undefined),
       }, (result) => {
         if (result.success) {
+          setErrorMessage(null);
           const finalId = result.playerId || currentPid;
           playerIdRef.current = finalId;
           setPlayerId(finalId);
@@ -140,8 +158,12 @@ export default function PlayPage() {
           }
           if (p?.teamId) myTeamIdRef.current = p.teamId;
         } else {
-          alert(result.error ?? "Không thể vào phòng");
-          router.push("/play");
+          setErrorMessage(result.error ?? "Không thể vào phòng");
+          if (!isSandbox) {
+            setTimeout(() => {
+              router.push("/play");
+            }, 3500);
+          }
         }
       });
     };
@@ -395,6 +417,23 @@ export default function PlayPage() {
       }
     });
   };
+
+  if (errorMessage && !roomState) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass rounded-2xl p-6 max-w-sm text-center border border-red-500/30 space-y-3">
+          <div className="text-3xl">⚠️</div>
+          <p className="text-sm font-bold text-red-300">{errorMessage}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+          >
+            Thử kết nối lại
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!connected) {
     return (

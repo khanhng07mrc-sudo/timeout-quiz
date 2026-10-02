@@ -159,6 +159,7 @@ export async function POST(req: NextRequest) {
           name: t.name,
           color: t.color,
           roomId: room.id,
+          score: mode === "DICE_RACE" ? 1 : 0,
         },
       });
       createdTeams.push(team);
@@ -189,6 +190,7 @@ export async function POST(req: NextRequest) {
           roomId: room.id,
           teamId: createdTeams[p.teamIndex].id,
           isHost: false,
+          score: mode === "DICE_RACE" ? 1 : 0,
         },
       });
       createdPlayers.push(player);

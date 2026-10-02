@@ -169,6 +169,7 @@ export async function POST(req: NextRequest) {
             name: sanitizeInput(team.name, 50),
             color: team.color ?? "#6366f1",
             roomId: room.id,
+            score: (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : 0,
           },
         });
       }

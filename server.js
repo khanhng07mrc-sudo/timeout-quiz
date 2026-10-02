@@ -2650,6 +2650,12 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Ch\u01B0a t\u1EDBi l\u01B0\u1EE3t tung x\xFAc x\u1EAFc c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
+      if (roomActiveQuestions.has(room.id)) {
+        roomActiveQuestions.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
       await executeDiceRoll(room, diceState, player.teamId);
     });
     socket.on("game:wager:submit", async ({ amount }) => {

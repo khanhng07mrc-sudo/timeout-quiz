@@ -2492,6 +2492,14 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      // Tự động chuyển về bàn cờ trước nếu màn hình còn đang hiển thị câu hỏi / đáp án!
+      if (roomActiveQuestions.has(room.id)) {
+        roomActiveQuestions.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+
       await executeDiceRoll(room, diceState, player.teamId);
     });
 

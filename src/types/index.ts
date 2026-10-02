@@ -774,6 +774,9 @@ export interface QuestionState {
   rarityBonusPercent?: number;
   bouncebackSelectPhase?: boolean;
   selectedPointLevel?: 10 | 20 | 30;
+  bouncebackAwaitingJudgment?: "PRIMARY" | "STEAL" | null;
+  bouncebackPrimaryAnswer?: string[];
+  bouncebackStealAnswer?: string[];
   endsAt?: number;
   serverTime?: number;
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
@@ -902,6 +905,7 @@ export interface ServerToClientEvents {
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
   "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30; timeLimit?: number; endsAt?: number }) => void;
+  "game:bounceback:awaiting_judgment": (payload: { phase: "PRIMARY" | "STEAL"; targetTeamId: string; targetTeamName: string; answer?: string | string[]; points: number }) => void;
   "game:answer:ack": (payload: { questionId: string; answer: string | string[]; isUpdate: boolean; success: boolean }) => void;
   "game:answer:received": (payload: { teamId?: string; playerId?: string; playerName: string; teamName?: string; questionId: string; answer?: string | string[]; isUpdate: boolean }) => void;
   "game:elimination:round": (payload: {
@@ -938,6 +942,7 @@ export interface ClientToServerEvents {
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": () => void;
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
+  "admin:bounceback:judge": (payload: { isCorrect: boolean; code?: string }) => void;
   "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[]; code?: string }) => void;

@@ -107,6 +107,7 @@ export default function GameQuestion({
     if (isSingleSubmit && answered) return false;
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
     if (question.bouncebackSelectPhase) return false;
+    if (question.bouncebackAwaitingJudgment) return false;
     if (question.timerPending) return false;
     if (timer && timerDisplayRemaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
@@ -266,31 +267,63 @@ export default function GameQuestion({
               </div>
             )
           ) : isStealPhase ? (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-amber-500/20 border border-amber-500/50 p-3 rounded-lg text-amber-300">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl animate-bounce">⚡</span>
-                <div>
-                  <p className="font-bold">CHUÔNG CƯỚP LƯỢT ĐANG MỞ (5s)!</p>
-                  <p className="text-xs text-amber-200/90">Cướp điểm trực tiếp từ đội chính: Đúng +100%đ (đội chính bị trừ 100%đ), Sai -50%đ (đội chính không bị trừ)</p>
+            !isPrimaryTeam ? (
+              <div className="flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-amber-950/90 to-red-950/90 border-2 border-amber-400 p-6 rounded-2xl text-center shadow-2xl animate-bounce-in my-3">
+                <div className="flex items-center gap-2 text-amber-300 font-black text-sm sm:text-base uppercase tracking-wider">
+                  <span className="text-2xl animate-bounce">⚡</span>
+                  <span>CHUÔNG CƯỚP ĐIỂM ĐANG MỞ (5 GIÂY)!</span>
                 </div>
-              </div>
-              {!isPrimaryTeam && (
+                <p className="text-xs sm:text-sm text-amber-200/90 max-w-md">
+                  Cướp điểm trực tiếp từ đội chính: Đúng +100% điểm (đội chính bị trừ 100% điểm), Sai -50% điểm (đội chính không bị trừ).
+                </p>
                 <button
+                  type="button"
                   onClick={() => {
                     setIsBuzzedLocally(true);
                     onBuzz();
                   }}
                   disabled={isBuzzedLocally}
-                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-base sm:text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0 disabled:opacity-50"
+                  className={`w-48 h-48 sm:w-60 sm:h-60 rounded-full border-4 sm:border-8 border-yellow-300 shadow-[0_0_60px_rgba(245,158,11,0.85)] active:scale-90 transition-transform flex flex-col items-center justify-center gap-2 select-none cursor-pointer my-2 ${
+                    isBuzzedLocally
+                      ? "bg-gradient-to-br from-green-500 to-emerald-700 opacity-90 scale-95"
+                      : "bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 hover:scale-105 animate-pulse"
+                  }`}
                 >
-                  {isBuzzedLocally ? "⚡ ĐÃ BẤM CHUÔNG!" : "🔔 BẤM CHUÔNG!"}
+                  <span className="text-5xl sm:text-7xl drop-shadow-md">
+                    {isBuzzedLocally ? "⚡" : "🔔"}
+                  </span>
+                  <span className="text-white font-black text-xl sm:text-2xl tracking-wider uppercase drop-shadow-lg px-2">
+                    {isBuzzedLocally ? "ĐÃ BẤM CHUÔNG!" : "BẤM CƯỚP ĐIỂM!"}
+                  </span>
+                  <span className="text-yellow-200 text-xs sm:text-sm font-semibold">
+                    {isBuzzedLocally ? "Đang chờ phán quyết..." : "Chạm nhanh để giành quyền!"}
+                  </span>
                 </button>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-3 bg-red-950/70 border-2 border-red-500/60 p-6 rounded-2xl text-center shadow-xl my-3">
+                <div className="w-14 h-14 rounded-full bg-red-500/20 flex items-center justify-center text-3xl">
+                  ❌
+                </div>
+                <p className="text-lg font-black text-red-300">
+                  ĐỘI BẠN ĐÃ TRẢ LỜI SAI!
+                </p>
+                <p className="text-sm text-red-200/90 max-w-md">
+                  Các đội khác đang có 5 giây để bấm chuông giành quyền cướp điểm. Chuông của đội bạn đã bị vô hiệu hoá.
+                </p>
+                <div className="px-3 py-1 rounded-full bg-red-500/20 text-xs font-bold text-red-300 border border-red-500/30 animate-pulse">
+                  ⏳ Cửa sổ cướp 5s đang đếm ngược...
+                </div>
+              </div>
+            )
           ) : stealBuzzedTeam ? (
-            <div className="bg-purple-500/20 border border-purple-500/40 p-3 rounded-lg text-purple-200">
-              <span className="font-bold text-cyan-400">⚡ Đội {stealBuzzedTeam.teamName}</span> đã cướp chuông thành công!
-              {isStealTeam && " 👉 Đội của bạn đang trả lời!"}
+            <div className="bg-purple-500/20 border border-purple-500/40 p-4 rounded-xl text-purple-200 text-center space-y-1">
+              <p className="text-base font-black text-cyan-300">
+                ⚡ Đội <span className="underline">{stealBuzzedTeam.teamName}</span> đã cướp chuông thành công!
+              </p>
+              <p className="text-xs text-purple-300">
+                {isStealTeam ? "👉 Đội của bạn đang trả lời (Chỉ 1 lần chọn duy nhất!)" : "Đang chờ đội cướp trả lời..."}
+              </p>
             </div>
           ) : (
             <div className="bg-blue-500/15 border border-blue-500/30 p-3 rounded-lg flex items-center justify-between">
@@ -305,6 +338,31 @@ export default function GameQuestion({
               ) : (
                 <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Chờ đội chính</span>
               )}
+            </div>
+          )}
+
+          {/* Banner awaiting MC judgment for primary or steal team */}
+          {question.bouncebackAwaitingJudgment === "PRIMARY" && (
+            <div className="mt-3 flex flex-col items-center justify-center gap-2 bg-indigo-950/80 border-2 border-indigo-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
+              <div className="text-3xl">⚖️</div>
+              <p className="text-base sm:text-lg font-black text-indigo-200">
+                {isPrimaryTeam ? "ĐÃ CHỐT ĐÁP ÁN — ĐANG CHỜ PHÁN QUYẾT CỦA MC" : `ĐỘI [${question.primaryTeamName || "CHÍNH"}] ĐÃ CHỐT — CHỜ MC PHÁN QUYẾT`}
+              </p>
+              <p className="text-xs text-indigo-300/80">
+                MC / Ban giám khảo đang xem xét câu trả lời để quyết định Đúng hoặc Sai.
+              </p>
+            </div>
+          )}
+
+          {question.bouncebackAwaitingJudgment === "STEAL" && (
+            <div className="mt-3 flex flex-col items-center justify-center gap-2 bg-amber-950/80 border-2 border-amber-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
+              <div className="text-3xl">⚡⚖️</div>
+              <p className="text-base sm:text-lg font-black text-amber-200">
+                {isStealTeam ? "ĐÃ NỘP CÂU TRẢ LỜI CƯỚP ĐIỂM — ĐANG CHỜ MC PHÁN QUYẾT" : `ĐỘI CƯỚP [${stealBuzzedTeam?.teamName || "CƯỚP"}] ĐÃ TRẢ LỜI — CHỜ MC PHÁN QUYẾT`}
+              </p>
+              <p className="text-xs text-amber-300/80">
+                Đúng: +100% điểm cho đội cướp & -100% điểm đội chính | Sai: -50% điểm đội cướp & đội chính 0đ.
+              </p>
             </div>
           )}
         </div>

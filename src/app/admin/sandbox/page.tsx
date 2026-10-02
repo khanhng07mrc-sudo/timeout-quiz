@@ -238,23 +238,94 @@ export default function AdminSandboxPage() {
     });
   }, [botAutoEnabled, addLog]);
 
+  // ── Session Storage & URL Sync Helpers ─────────────────────────────────────
+  const saveSandboxSession = useCallback((codeStr: string, isOffline: boolean, mode?: GameMode, bankId?: string) => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.setItem("sandbox_current_code", codeStr);
+      if (isOffline) {
+        sessionStorage.setItem("sandbox_is_offline", "1");
+        if (mode) sessionStorage.setItem("sandbox_offline_mode", mode);
+        if (bankId) sessionStorage.setItem("sandbox_offline_bank", bankId);
+      } else {
+        sessionStorage.removeItem("sandbox_is_offline");
+        sessionStorage.removeItem("sandbox_offline_mode");
+        sessionStorage.removeItem("sandbox_offline_bank");
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set("code", codeStr);
+      if (isOffline) {
+        url.searchParams.set("offline", "1");
+        if (mode) url.searchParams.set("mode", mode);
+      } else {
+        url.searchParams.delete("offline");
+        url.searchParams.delete("mode");
+      }
+      window.history.replaceState(null, "", url.toString());
+    } catch {}
+  }, []);
+
+  const clearSandboxSession = useCallback(() => {
+    if (typeof window === "undefined") return;
+    try {
+      sessionStorage.removeItem("sandbox_current_code");
+      sessionStorage.removeItem("sandbox_is_offline");
+      sessionStorage.removeItem("sandbox_offline_mode");
+      sessionStorage.removeItem("sandbox_offline_bank");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("code");
+      url.searchParams.delete("offline");
+      url.searchParams.delete("mode");
+      url.searchParams.delete("key");
+      window.history.replaceState(null, "", url.pathname);
+    } catch {}
+  }, []);
+
   // ── Admin Socket Connection ─────────────────────────────────────────────────
   const connectAdminSocket = useCallback((roomCode: string) => {
     if (adminSocketRef.current) {
       adminSocketRef.current.disconnect();
     }
 
+    const adminToken = typeof window !== "undefined"
+      ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token"))
+      : null;
+    const storedHostKey = typeof window !== "undefined"
+      ? (new URLSearchParams(window.location.search).get("key") || localStorage.getItem(`host_key_${roomCode}`) || "")
+      : "";
+
     const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
+      auth: { token: adminToken },
     });
     adminSocketRef.current = sock;
 
     sock.on("connect", () => {
-      sock.emit("admin:join", roomCode, (res) => {
-        if (res.success && res.roomState) {
+      sock.emit("admin:join", { code: roomCode, hostKey: storedHostKey } as any, (res: any) => {
+        if (res?.success && res.roomState) {
           setRoomState(res.roomState);
+          setSelectedMode(res.roomState.mode);
+          if (res.hostKey) {
+            localStorage.setItem(`host_key_${roomCode}`, res.hostKey);
+          }
+          saveSandboxSession(roomCode, false);
           addLog(`Admin Socket đã gắn vào phòng: ${roomCode}`);
           initBotSockets(roomCode, res.roomState.teams);
+        } else {
+          addLog(`⚠️ Không thể gắn vào phòng ${roomCode}: ${res?.error || "Lỗi tham gia"}`);
+          if (res?.error && typeof res.error === "string" && res.error.includes("không tồn tại")) {
+            clearSandboxSession();
+            setCode("");
+            setRoomState(null);
+          }
+        }
+      });
+    });
+
+    sock.io.on("reconnect", () => {
+      sock.emit("admin:join", { code: roomCode, hostKey: storedHostKey } as any, (res: any) => {
+        if (res?.success && res.roomState) {
+          setRoomState(res.roomState);
         }
       });
     });
@@ -415,7 +486,7 @@ export default function AdminSandboxPage() {
     sock.on("game:ended", () => {
       addLog(`Trận đấu kết thúc!`);
     });
-  }, [botAutoEnabled, initBotSockets, addLog]);
+  }, [botAutoEnabled, initBotSockets, addLog, saveSandboxSession, clearSandboxSession]);
 
   useEffect(() => {
     return () => {
@@ -461,6 +532,7 @@ export default function AdminSandboxPage() {
     setIsOfflineSandbox(true);
     const offlineCode = "OFFLINE";
     setCode(offlineCode);
+    saveSandboxSession(offlineCode, true, mode, bankId);
 
     if (offlineTimerRef.current) {
       clearInterval(offlineTimerRef.current);
@@ -582,7 +654,42 @@ export default function AdminSandboxPage() {
     setRevealPayload(null);
     setTimer(null);
     addLog(`⚡ Đã kích hoạt Sandbox Ngoại tuyến (Offline Mode) - Chế độ: ${mode}`);
-  }, [addLog]);
+  }, [addLog, saveSandboxSession]);
+
+  // ── Auto Restore Sandbox Room on Mount / Browser Refresh (F5) ───────────────
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (typeof window === "undefined") return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlCode = searchParams.get("code");
+    const urlOffline = searchParams.get("offline") === "1";
+    const urlMode = searchParams.get("mode") as GameMode | null;
+
+    const storedCode = sessionStorage.getItem("sandbox_current_code");
+    const storedOffline = sessionStorage.getItem("sandbox_is_offline") === "1";
+    const storedMode = sessionStorage.getItem("sandbox_offline_mode") as GameMode | null;
+    const storedBank = sessionStorage.getItem("sandbox_offline_bank") || "";
+
+    const effectiveCode = urlCode || storedCode;
+    const effectiveOffline = urlOffline || storedOffline || (effectiveCode === "OFFLINE" || (effectiveCode?.startsWith("OFFLINE") ?? false));
+
+    if (effectiveOffline) {
+      const modeToUse = urlMode || storedMode || "GRID_CARO";
+      const bankToUse = storedBank || "";
+      setSelectedMode(modeToUse);
+      setIsOfflineSandbox(true);
+      startOfflineSandbox(modeToUse, bankToUse);
+    } else if (effectiveCode && effectiveCode.trim().length === 6) {
+      const cleanCode = effectiveCode.trim();
+      setCode(cleanCode);
+      setIsOfflineSandbox(false);
+      saveSandboxSession(cleanCode, false);
+      connectAdminSocket(cleanCode);
+    }
+  }, [connectAdminSocket, startOfflineSandbox, saveSandboxSession]);
 
   const checkOfflineEarlyCompletion = () => {
     if (!currentQuestionRef.current) return;
@@ -773,6 +880,7 @@ export default function AdminSandboxPage() {
       if (data.success && data.code) {
         setCode(data.code);
         setIsOfflineSandbox(false);
+        saveSandboxSession(data.code, false);
         connectAdminSocket(data.code);
         addLog(`Đã khởi tạo Sandbox: Phòng ${data.code} (${data.mode})`);
       } else {
@@ -790,9 +898,11 @@ export default function AdminSandboxPage() {
   const handleConnectExisting = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputCode.trim().length === 6) {
-      setCode(inputCode.trim());
+      const clean = inputCode.trim();
+      setCode(clean);
       setIsOfflineSandbox(false);
-      connectAdminSocket(inputCode.trim());
+      saveSandboxSession(clean, false);
+      connectAdminSocket(clean);
     }
   };
 
@@ -1197,6 +1307,131 @@ export default function AdminSandboxPage() {
     addLog("Admin: Bắt đầu 15s trả lời cướp điểm");
   };
 
+  const handleBouncebackJudge = (isCorrect: boolean) => {
+    if (isOfflineSandbox) {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      if (!currentQuestion) return;
+
+      const qRaw = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion.question;
+      const correctOpt = qRaw.options?.find((o: any) => o.isCorrect);
+      const correctId = correctOpt ? correctOpt.id : "A";
+      const chosenPoints = currentQuestion.selectedPointLevel || currentQuestion.question.points || 20;
+
+      const primaryTeamId = currentQuestion.primaryTeamId || roomState?.teams[activeTeamIndex]?.id || "t_red";
+      const primaryTeamName = currentQuestion.primaryTeamName || roomState?.teams.find((t) => t.id === primaryTeamId)?.name || "Đội chính";
+      const stealTeamId = currentQuestion.stealBuzzedTeamId;
+      const stealTeamName = currentQuestion.stealBuzzedTeamName;
+
+      // 1. Phán quyết cho ĐỘI CƯỚP:
+      if (stealTeamId) {
+        const stealPts = isCorrect ? chosenPoints : -Math.floor(chosenPoints * 0.5);
+        const primaryDeduct = isCorrect ? -chosenPoints : 0;
+
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedTeams = prev.teams.map((t) => {
+            if (t.id === stealTeamId) return { ...t, score: t.score + stealPts };
+            if (t.id === primaryTeamId) return { ...t, score: t.score + primaryDeduct };
+            return t;
+          });
+          return { ...prev, teams: updatedTeams };
+        });
+
+        const answers = (roomState?.teams || []).map((t) => ({
+          teamId: t.id,
+          name: t.name,
+          answer: t.id === stealTeamId ? [isCorrect ? correctId : "B"] : [],
+          isCorrect: t.id === stealTeamId ? isCorrect : false,
+          pointsAwarded: t.id === stealTeamId ? stealPts : (t.id === primaryTeamId ? primaryDeduct : 0),
+          timeSpent: 2000,
+        }));
+
+        setRevealPayload({
+          questionId: currentQuestion.question.id,
+          correctAnswer: [correctId],
+          answers,
+        });
+
+        setCurrentQuestion((prev) => prev ? { ...prev, bouncebackAwaitingJudgment: null, isStealPhase: false } : prev);
+        syncToIframes({
+          revealPayload: { questionId: currentQuestion.question.id, correctAnswer: [correctId], answers },
+          isStealOpen: false,
+        });
+
+        if (isCorrect) {
+          addLog(`⚖️ MC chấm: Đội cướp [${stealTeamName}] ĐÚNG! +${chosenPoints}đ cho cướp, -${chosenPoints}đ cho [${primaryTeamName}]!`);
+        } else {
+          addLog(`⚖️ MC chấm: Đội cướp [${stealTeamName}] SAI! -${Math.floor(chosenPoints * 0.5)}đ cho cướp, [${primaryTeamName}] giữ nguyên điểm.`);
+        }
+        return;
+      }
+
+      // 2. Phán quyết cho ĐỘI CHÍNH:
+      if (isCorrect) {
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedTeams = prev.teams.map((t) => {
+            if (t.id === primaryTeamId) return { ...t, score: t.score + chosenPoints };
+            return t;
+          });
+          return { ...prev, teams: updatedTeams };
+        });
+
+        const answers = (roomState?.teams || []).map((t) => ({
+          teamId: t.id,
+          name: t.name,
+          answer: t.id === primaryTeamId ? [correctId] : [],
+          isCorrect: t.id === primaryTeamId ? true : false,
+          pointsAwarded: t.id === primaryTeamId ? chosenPoints : 0,
+          timeSpent: 2000,
+        }));
+
+        setRevealPayload({
+          questionId: currentQuestion.question.id,
+          correctAnswer: [correctId],
+          answers,
+        });
+
+        setCurrentQuestion((prev) => prev ? { ...prev, bouncebackAwaitingJudgment: null } : prev);
+        syncToIframes({
+          revealPayload: { questionId: currentQuestion.question.id, correctAnswer: [correctId], answers },
+          isStealOpen: false,
+        });
+
+        addLog(`⚖️ MC chấm: Đội chính [${primaryTeamName}] ĐÚNG! +${chosenPoints}đ trọn vẹn (không mở cướp).`);
+      } else {
+        // Đội chính sai: Mở chuông cướp 5s!
+        setCurrentQuestion((prev) => prev ? { ...prev, bouncebackAwaitingJudgment: null, isStealPhase: true } : prev);
+        syncToIframes({ isStealOpen: true });
+        addLog(`⚖️ MC chấm: Đội chính [${primaryTeamName}] SAI! Tự động mở chuông cướp 5s cho các đội khác...`);
+
+        // Countdown 5s
+        let steal5s = 5;
+        const sTimer = setInterval(() => {
+          steal5s--;
+          if (steal5s <= 0) {
+            clearInterval(sTimer);
+            setCurrentQuestion((prev) => {
+              if (prev && !prev.stealBuzzedTeamId) {
+                handleAdminReveal();
+                return { ...prev, isStealPhase: false };
+              }
+              return prev;
+            });
+            syncToIframes({ isStealOpen: false });
+          }
+        }, 1000);
+      }
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:bounceback:judge", { isCorrect, code });
+    addLog(`Admin phán quyết Bounceback: ${isCorrect ? "ĐÚNG" : "SAI"}`);
+  };
+
   const handleAdminBouncebackSelectPoints = (points: 10 | 20 | 30) => {
     if (isOfflineSandbox) {
       handleOfflineBouncebackPointsPicked(points);
@@ -1561,13 +1796,13 @@ export default function AdminSandboxPage() {
                   <span className="text-muted-foreground text-[10px]">PIN:</span>
                   <span className="font-mono font-black text-cyan-300">{code}</span>
                   <span className="text-purple-300 font-bold inline-flex items-center gap-1 text-[11px]">
-                    <GameModeIcon mode={roomState?.mode || "CLASSIC"} className="w-3 h-3" />
-                    [{roomState?.mode}]
+                    <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3 h-3" />
+                    [{roomState?.mode || selectedMode}]
                   </span>
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
-                    roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"
+                    roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
                   }`}>
-                    {roomState?.status}
+                    {roomState?.status || "ĐANG KẾT NỐI..."}
                   </span>
                 </div>
               )}
@@ -1714,6 +1949,7 @@ export default function AdminSandboxPage() {
               <button
                 type="button"
                 onClick={() => {
+                  clearSandboxSession();
                   setCode("");
                   setRoomState(null);
                   setCurrentQuestion(null);
@@ -1911,14 +2147,40 @@ export default function AdminSandboxPage() {
                         ))}
                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={handleBouncebackOpenSteal}
-                      className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                    >
-                      <span>🔔</span>
-                      <span>Mở cướp 5s</span>
-                    </button>
+
+                    {!revealPayload && (
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => handleBouncebackJudge(true)}
+                          className="px-2 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95"
+                          title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp ĐÚNG (+100%, đội chính -100%)" : "Phán quyết đội chính ĐÚNG (+100%)"}
+                        >
+                          <span>✓</span>
+                          <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBouncebackJudge(false)}
+                          className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95"
+                          title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp SAI (-50%, đội chính 0đ)" : "Phán quyết đội chính SAI (Mở cướp 5s)"}
+                        >
+                          <span>✗</span>
+                          <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {!currentQuestion.stealBuzzedTeamId && !currentQuestion.isStealPhase && !revealPayload && (
+                      <button
+                        type="button"
+                        onClick={handleBouncebackOpenSteal}
+                        className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <span>🔔</span>
+                        <span>Mở cướp 5s</span>
+                      </button>
+                    )}
                     {currentQuestion.stealBuzzedTeamId && (
                       <button
                         type="button"

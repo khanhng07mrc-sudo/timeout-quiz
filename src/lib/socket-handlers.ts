@@ -1221,7 +1221,35 @@ export function registerSocketHandlers(io: IO) {
         const stealInfo = { teamId, teamName, playerId, playerName: player.name };
         roomStealBuzzed.set(qKey, stealInfo);
 
+        const activeQ = roomActiveQuestions.get(room.id);
+        const questions = await getRoomQuestions(room.id);
+        const currentQ = questions[room.currentQuestion];
+        const isMultipleChoice = currentQ?.type === "MC_SINGLE" || currentQ?.type === "TRUE_FALSE" || currentQ?.type === "MC_MULTI";
+        const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
+        const stealTimeLimit = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
+
+        if (activeQ) {
+          activeQ.isStealPhase = false;
+          activeQ.stealBuzzedTeamId = stealInfo.teamId;
+          activeQ.stealBuzzedTeamName = stealInfo.teamName;
+          activeQ.stealAnsweringActive = true;
+          activeQ.timeLimit = stealTimeLimit;
+          activeQ.startedAt = Date.now();
+          activeQ.endsAt = Date.now() + stealTimeLimit * 1000;
+          activeQ.timerPending = false;
+          activeQ.timerStarted = true;
+          io.to(`room:${room.code}`).emit("game:question", activeQ);
+        }
+
         io.to(`room:${room.code}`).emit("game:bounceback:steal_buzzed", stealInfo);
+        io.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
+          teamId: stealInfo.teamId,
+          teamName: stealInfo.teamName,
+          timeLimit: stealTimeLimit,
+        });
+        if (currentQ) {
+          startQuestionTimer(io, room.code, room.id, currentQ.id, stealTimeLimit);
+        }
       }
     });
 
@@ -1274,24 +1302,33 @@ export function registerSocketHandlers(io: IO) {
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
-      const qKey = `${room.id}:${currentQ.id}`;
-
-      roomStealPhase.set(qKey, true);
-      const timeLimit = 5;
-      io.to(`room:${room.code}`).emit("game:bounceback:open_steal", {
-        questionId: currentQ.id,
-        timeLimit,
-      });
-
-      const timer = setTimeout(() => {
-        roomStealPhase.set(qKey, false);
-        roomStealTimer.delete(qKey);
-        io.to(`room:${room.code}`).emit("game:buzz:closed");
-      }, 5000);
-      roomStealTimer.set(qKey, timer);
+      await openBouncebackStealWindow(io, room.id, room.code, currentQ.id);
     });
 
-    // ── Admin: Bounceback Start Steal Answer (15s) ─────────────────────────────
+    // ── Admin: Bounceback Judge (Primary or Steal) ────────────────────────────
+    socket.on("admin:bounceback:judge", async ({ isCorrect, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "BOUNCEBACK") return;
+
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const activeQ = roomActiveQuestions.get(room.id);
+      const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
+      if (!q) return;
+
+      const qKey = `${room.id}:${q.id}`;
+      if (roomQuestionProcessed.has(qKey)) return;
+
+      const stealInfo = roomStealBuzzed.get(qKey);
+      if (stealInfo) {
+        // Áp dụng lên ĐỘI CƯỚP
+        await finalizeBouncebackSteal(io, room.id, room.code, q.id, isCorrect);
+      } else {
+        // Áp dụng lên ĐỘI CHÍNH
+        await finalizeBouncebackPrimary(io, room.id, room.code, q.id, isCorrect);
+      }
+    });
+
+    // ── Admin: Bounceback Start Steal Answer (Manual Trigger) ─────────────────
     socket.on("admin:bounceback:start_steal_answer", async () => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -1304,7 +1341,21 @@ export function registerSocketHandlers(io: IO) {
       const steal = roomStealBuzzed.get(qKey);
       if (!steal) return;
 
-      const timeLimit = 15;
+      const isMultipleChoice = currentQ.type === "MC_SINGLE" || currentQ.type === "TRUE_FALSE" || currentQ.type === "MC_MULTI";
+      const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
+      const timeLimit = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
+
+      const activeQ = roomActiveQuestions.get(room.id);
+      if (activeQ) {
+        activeQ.stealAnsweringActive = true;
+        activeQ.timeLimit = timeLimit;
+        activeQ.startedAt = Date.now();
+        activeQ.endsAt = Date.now() + timeLimit * 1000;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+      }
+
       io.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
         teamId: steal.teamId,
         teamName: steal.teamName,
@@ -3224,6 +3275,51 @@ export function registerSocketHandlers(io: IO) {
 
       // Nếu tất cả người chơi/đội hợp lệ đã chốt đáp án: Kết thúc vòng tính giờ sớm ngay!
       if (totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+        if (room.mode === "BOUNCEBACK") {
+          stopQuestionTimer(room.id);
+          const stealInfo = roomStealBuzzed.get(qKey);
+          const primary = roomPrimaryTeams.get(qKey);
+          const activeQ = roomActiveQuestions.get(room.id);
+
+          if (stealInfo && (actorId === stealInfo.teamId || actorId === stealInfo.playerId)) {
+            const existingAns = await prisma.answer.findFirst({
+              where: { roomId: room.id, questionId, teamId: stealInfo.teamId },
+            });
+            const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+            if (activeQ) {
+              activeQ.bouncebackAwaitingJudgment = "STEAL";
+              activeQ.bouncebackStealAnswer = ansArr;
+              io.to(`room:${room.code}`).emit("game:question", activeQ);
+            }
+            io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
+              phase: "STEAL",
+              targetTeamId: stealInfo.teamId,
+              targetTeamName: stealInfo.teamName,
+              answer: ansArr,
+              points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+            });
+            return;
+          } else if (primary && (actorId === primary.teamId || actorId === primary.teamId)) {
+            const existingAns = await prisma.answer.findFirst({
+              where: { roomId: room.id, questionId, teamId: primary.teamId },
+            });
+            const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+            if (activeQ) {
+              activeQ.bouncebackAwaitingJudgment = "PRIMARY";
+              activeQ.bouncebackPrimaryAnswer = ansArr;
+              io.to(`room:${room.code}`).emit("game:question", activeQ);
+            }
+            io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
+              phase: "PRIMARY",
+              targetTeamId: primary.teamId,
+              targetTeamName: primary.teamName,
+              answer: ansArr,
+              points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+            });
+            return;
+          }
+        }
+
         io.to(`room:${room.code}`).emit("game:early_completed", {
           questionId,
           reason: "ALL_FINALIZED",
@@ -3579,10 +3675,43 @@ async function processAnswerSubmission({
     isUpdate,
   });
 
-  // 3. Nếu là Đội cướp chuông Bounceback: Chốt ngay lập tức và tính điểm luôn
+  // 3. Nếu là Đội cướp chuông Bounceback: Chốt ngay lập tức và chuyển sang MC phán quyết
   if (isBouncebackSteal && !isAdminOverride) {
     stopQuestionTimer(room.id);
-    await finalizeBouncebackSteal(io, room.id, room.code, questionId);
+    const stealInfo = roomStealBuzzed.get(qKey);
+    const activeQ = roomActiveQuestions.get(room.id);
+    if (activeQ) {
+      activeQ.bouncebackAwaitingJudgment = "STEAL";
+      activeQ.bouncebackStealAnswer = normalizedAnswer;
+      io.to(`room:${room.code}`).emit("game:question", activeQ);
+    }
+    io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
+      phase: "STEAL",
+      targetTeamId: stealInfo?.teamId || "",
+      targetTeamName: stealInfo?.teamName || "",
+      answer: normalizedAnswer,
+      points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+    });
+    return;
+  }
+
+  // 3b. Nếu là Đội chính Bounceback trong chế độ bấm 1 lần: Chốt đáp án và chuyển sang MC phán quyết
+  if (room.mode === "BOUNCEBACK" && !isBouncebackSteal && isSingleSubmitMode && !isAdminOverride) {
+    stopQuestionTimer(room.id);
+    const primary = roomPrimaryTeams.get(qKey);
+    const activeQ = roomActiveQuestions.get(room.id);
+    if (activeQ) {
+      activeQ.bouncebackAwaitingJudgment = "PRIMARY";
+      activeQ.bouncebackPrimaryAnswer = normalizedAnswer;
+      io.to(`room:${room.code}`).emit("game:question", activeQ);
+    }
+    io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
+      phase: "PRIMARY",
+      targetTeamId: primary?.teamId || "",
+      targetTeamName: primary?.teamName || "",
+      answer: normalizedAnswer,
+      points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+    });
     return;
   }
 
@@ -4041,7 +4170,55 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   }
 }
 
-async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: string, questionId: string): Promise<boolean> {
+async function openBouncebackStealWindow(io: IO, roomId: string, roomCode: string, questionId: string) {
+  const qKey = `${roomId}:${questionId}`;
+  if (roomQuestionProcessed.has(qKey)) return;
+
+  if (roomStealTimer.has(qKey)) {
+    clearTimeout(roomStealTimer.get(qKey)!);
+    roomStealTimer.delete(qKey);
+  }
+
+  roomStealPhase.set(qKey, true);
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ) {
+    activeQ.isStealPhase = true;
+    activeQ.stealBuzzedTeamId = undefined;
+    activeQ.stealBuzzedTeamName = undefined;
+    activeQ.bouncebackAwaitingJudgment = null;
+    io.to(`room:${roomCode}`).emit("game:question", activeQ);
+  }
+
+  const timeLimit = 5;
+  io.to(`room:${roomCode}`).emit("game:bounceback:open_steal", {
+    questionId,
+    timeLimit,
+  });
+
+  const timer = setTimeout(async () => {
+    roomStealPhase.set(qKey, false);
+    roomStealTimer.delete(qKey);
+    io.to(`room:${roomCode}`).emit("game:buzz:closed");
+    if (activeQ) {
+      activeQ.isStealPhase = false;
+      io.to(`room:${roomCode}`).emit("game:question", activeQ);
+    }
+    // Hết 5s không ai cướp chuông: Đội chính KHÔNG BỊ TRỪ ĐIỂM (0đ)! Reveal đáp án, kết thúc câu hỏi!
+    if (!roomStealBuzzed.has(qKey) && !roomQuestionProcessed.has(qKey)) {
+      roomQuestionProcessed.add(qKey);
+      await revealCurrentAnswer(io, roomId, roomCode, questionId);
+    }
+  }, 5000);
+  roomStealTimer.set(qKey, timer);
+}
+
+async function finalizeBouncebackPrimary(
+  io: IO,
+  roomId: string,
+  roomCode: string,
+  questionId: string,
+  forceCorrect?: boolean
+): Promise<boolean> {
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return false;
 
@@ -4058,7 +4235,13 @@ async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: strin
     where: { roomId, questionId, teamId: primary.teamId },
   });
 
-  const isCorrect = existingAns?.isCorrect === true;
+  const isCorrect = forceCorrect !== undefined ? forceCorrect : (existingAns?.isCorrect === true);
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ) {
+    activeQ.bouncebackAwaitingJudgment = null;
+  }
+
+  const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
 
   if (isCorrect) {
     roomQuestionProcessed.add(qKey);
@@ -4071,24 +4254,51 @@ async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: strin
     } else if (activeCard && activeCard.type === "SCORE_X2") {
       multiplier = 1.5;
     }
-    const points = Math.floor(question.points * multiplier);
+    const points = Math.floor(chosenPoints * multiplier);
 
-    await prisma.answer.update({
-      where: { id: existingAns!.id },
-      data: { pointsAwarded: points, isCorrect: true },
-    });
+    if (existingAns) {
+      await prisma.answer.update({
+        where: { id: existingAns.id },
+        data: { pointsAwarded: points, isCorrect: true },
+      });
+    } else {
+      await prisma.answer.create({
+        data: {
+          roomId,
+          questionId,
+          teamId: primary.teamId,
+          answer: [],
+          isCorrect: true,
+          pointsAwarded: points,
+          timeSpent: 0,
+        },
+      });
+    }
 
-    const updatedTeam = await prisma.team.update({
-      where: { id: primary.teamId },
-      data: { score: { increment: points } },
-    });
-    io.to(`room:${roomCode}`).emit("game:score:update", [
-      { teamId: primary.teamId, score: updatedTeam.score, delta: points },
-    ]);
+    const playerToUpdate = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
+    if (playerToUpdate) {
+      const updatedPlayer = await prisma.player.update({
+        where: { id: primary.teamId },
+        data: { score: { increment: points } },
+      });
+      io.to(`room:${roomCode}`).emit("game:score:update", [
+        { playerId: primary.teamId, score: updatedPlayer.score, delta: points },
+      ]);
+    } else {
+      const updatedTeam = await prisma.team.update({
+        where: { id: primary.teamId },
+        data: { score: { increment: points } },
+      });
+      io.to(`room:${roomCode}`).emit("game:score:update", [
+        { teamId: primary.teamId, score: updatedTeam.score, delta: points },
+      ]);
+    }
 
     await revealCurrentAnswer(io, roomId, roomCode, questionId);
     return true;
   } else {
+    // Đội chính trả lời sai:
+    // Tạm thời chưa trừ điểm (0đ), cập nhật answer
     if (existingAns) {
       await prisma.answer.update({
         where: { id: existingAns.id },
@@ -4109,11 +4319,19 @@ async function finalizeBouncebackPrimary(io: IO, roomId: string, roomCode: strin
     }
 
     io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: question.timeLimit });
+    // Tự động mở chuông 5s cho các đội khác giành quyền cướp điểm!
+    await openBouncebackStealWindow(io, roomId, roomCode, questionId);
     return false;
   }
 }
 
-async function finalizeBouncebackSteal(io: IO, roomId: string, roomCode: string, questionId: string) {
+async function finalizeBouncebackSteal(
+  io: IO,
+  roomId: string,
+  roomCode: string,
+  questionId: string,
+  forceCorrect?: boolean
+) {
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -4148,12 +4366,14 @@ async function finalizeBouncebackSteal(io: IO, roomId: string, roomCode: string,
     if (activeCard.type === "SHIELD") shielded = true;
   }
 
-  const isCorrect = existingAns?.isCorrect === true;
+  const isCorrect = forceCorrect !== undefined ? forceCorrect : (existingAns?.isCorrect === true);
+  const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
+
   let points = 0;
   if (isCorrect) {
-    points = Math.floor(question.points * multiplier);
+    points = Math.floor(chosenPoints * multiplier);
   } else {
-    points = shielded ? 0 : -Math.floor(question.points * 0.5);
+    points = shielded ? 0 : -Math.floor(chosenPoints * 0.5);
   }
 
   if (existingAns) {
@@ -4169,7 +4389,7 @@ async function finalizeBouncebackSteal(io: IO, roomId: string, roomCode: string,
         teamId: stealInfo.teamId,
         playerId: stealInfo.playerId,
         answer: [],
-        isCorrect: false,
+        isCorrect,
         pointsAwarded: points,
         timeSpent: 0,
       },
@@ -4179,26 +4399,52 @@ async function finalizeBouncebackSteal(io: IO, roomId: string, roomCode: string,
   const scoreUpdates: ScoreUpdate[] = [];
 
   if (points !== 0) {
-    const updatedTeam = await prisma.team.update({
-      where: { id: stealInfo.teamId },
-      data: { score: { increment: points } },
-    });
-    scoreUpdates.push({ teamId: stealInfo.teamId, score: updatedTeam.score, delta: points });
+    const stealPlayer = await prisma.player.findUnique({ where: { id: stealInfo.teamId } }).catch(() => null);
+    if (stealPlayer) {
+      const updatedPlayer = await prisma.player.update({
+        where: { id: stealInfo.teamId },
+        data: { score: { increment: points } },
+      });
+      scoreUpdates.push({ playerId: stealInfo.teamId, score: updatedPlayer.score, delta: points });
+    } else {
+      const updatedTeam = await prisma.team.update({
+        where: { id: stealInfo.teamId },
+        data: { score: { increment: points } },
+      });
+      scoreUpdates.push({ teamId: stealInfo.teamId, score: updatedTeam.score, delta: points });
+    }
   }
 
-  // Olympia Steal: Nếu đội cướp trả lời đúng -> đội cướp ăn trọn điểm, đội chính bị trừ 100% điểm câu hỏi!
+  // Olympia Steal:
+  // Nếu đội cướp đúng -> đội cướp ăn trọn điểm (+chosenPoints), đội chính bị trừ 100% điểm (-chosenPoints)!
+  // Nếu đội cướp sai -> đội cướp bị trừ 50% điểm (-chosenPoints * 0.5), đội chính giữ nguyên điểm (0đ)!
   const primary = roomPrimaryTeams.get(qKey);
   if (isCorrect && primary && primary.teamId !== stealInfo.teamId) {
-    const deductPoints = -question.points;
-    const updatedPrimary = await prisma.team.update({
-      where: { id: primary.teamId },
-      data: { score: { increment: deductPoints } },
-    });
-    scoreUpdates.push({ teamId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+    const deductPoints = -chosenPoints;
+    const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
+    if (primaryPlayer) {
+      const updatedPrimary = await prisma.player.update({
+        where: { id: primary.teamId },
+        data: { score: { increment: deductPoints } },
+      });
+      scoreUpdates.push({ playerId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+    } else {
+      const updatedPrimary = await prisma.team.update({
+        where: { id: primary.teamId },
+        data: { score: { increment: deductPoints } },
+      });
+      scoreUpdates.push({ teamId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+    }
   }
 
   if (scoreUpdates.length > 0) {
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
+  }
+
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ) {
+    activeQ.bouncebackAwaitingJudgment = null;
+    activeQ.isStealPhase = false;
   }
 
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
@@ -4752,10 +4998,46 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
   const qKey = `${roomId}:${questionId}`;
 
   if (room.mode === "BOUNCEBACK") {
-    if (roomStealBuzzed.has(qKey)) {
-      await finalizeBouncebackSteal(io, roomId, roomCode, questionId);
-    } else if (roomPrimaryTeams.has(qKey)) {
-      await finalizeBouncebackPrimary(io, roomId, roomCode, questionId);
+    const stealInfo = roomStealBuzzed.get(qKey);
+    const primary = roomPrimaryTeams.get(qKey);
+    const activeQ = roomActiveQuestions.get(roomId);
+
+    if (stealInfo) {
+      const existingAns = await prisma.answer.findFirst({
+        where: { roomId, questionId, teamId: stealInfo.teamId },
+      });
+      const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+      if (activeQ) {
+        activeQ.bouncebackAwaitingJudgment = "STEAL";
+        activeQ.bouncebackStealAnswer = ansArr;
+        io.to(`room:${roomCode}`).emit("game:question", activeQ);
+      }
+      io.to(`room:${roomCode}`).emit("game:bounceback:awaiting_judgment", {
+        phase: "STEAL",
+        targetTeamId: stealInfo.teamId,
+        targetTeamName: stealInfo.teamName,
+        answer: ansArr,
+        points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+      });
+      return;
+    } else if (primary) {
+      const existingAns = await prisma.answer.findFirst({
+        where: { roomId, questionId, teamId: primary.teamId },
+      });
+      const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+      if (activeQ) {
+        activeQ.bouncebackAwaitingJudgment = "PRIMARY";
+        activeQ.bouncebackPrimaryAnswer = ansArr;
+        io.to(`room:${roomCode}`).emit("game:question", activeQ);
+      }
+      io.to(`room:${roomCode}`).emit("game:bounceback:awaiting_judgment", {
+        phase: "PRIMARY",
+        targetTeamId: primary.teamId,
+        targetTeamName: primary.teamName,
+        answer: ansArr,
+        points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+      });
+      return;
     }
   } else if (room.mode === "BUZZ") {
     if (roomBuzzFirst.has(qKey)) {

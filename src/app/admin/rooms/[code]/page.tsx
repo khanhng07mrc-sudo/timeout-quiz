@@ -606,7 +606,7 @@ export default function AdminRoomPage() {
             <span className="whitespace-nowrap">Luật chơi</span>
           </button>
           <Link
-            href={`/admin/sandbox?code=${code}`}
+            href={`/admin/sandbox?code=${code}${currentHostKey ? `&key=${currentHostKey}` : ""}`}
             target="_blank"
             className="px-3.5 py-2 rounded-xl glass border border-border hover:border-fuchsia-400 font-medium text-sm transition-colors flex items-center gap-1.5 text-fuchsia-300 hover:text-white whitespace-nowrap shrink-0"
           >
@@ -794,13 +794,41 @@ export default function AdminRoomPage() {
                 <span className="text-muted-foreground">🎯 Đội trả lời chính:</span>
                 <span className="font-bold text-cyan-300">{currentQuestion.primaryTeamName ?? "Đang xác định"}</span>
               </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Gói điểm đã chọn:</span>
+                <span className="font-mono font-bold text-yellow-300">{currentQuestion.selectedPointLevel || 20} điểm</span>
+              </div>
 
-              {!stealBuzzed && !isStealOpen && (
+              {!revealPayload && (
+                <div className="space-y-2 pt-1 border-t border-purple-500/20">
+                  <p className="text-xs font-bold text-purple-200">
+                    ⚖️ Phán quyết MC: {stealBuzzed ? `Đội cướp [${stealBuzzed.teamName}]` : `Đội chính [${currentQuestion.primaryTeamName || "Chính"}]`}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                      className="py-2.5 px-2 rounded-xl bg-green-600 hover:bg-green-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition"
+                    >
+                      <span>✓</span>
+                      <span>{stealBuzzed ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
+                    </button>
+                    <button
+                      onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                      className="py-2.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition"
+                    >
+                      <span>✗</span>
+                      <span>{stealBuzzed ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!stealBuzzed && !isStealOpen && !revealPayload && (
                 <button
                   onClick={() => emit("admin:bounceback:open_steal")}
-                  className="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 font-bold text-sm text-black transition-colors flex items-center justify-center gap-2 shadow"
+                  className="w-full py-2 rounded-xl bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/40 font-bold text-xs text-amber-200 transition-colors flex items-center justify-center gap-1.5 shadow"
                 >
-                  🔔 Mở chuông cướp lượt (5s cho các đội còn lại)
+                  🔔 Mở chuông cướp 5s thủ công
                 </button>
               )}
 
@@ -817,9 +845,9 @@ export default function AdminRoomPage() {
                   </p>
                   <button
                     onClick={() => emit("admin:bounceback:start_steal_answer")}
-                    className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-bold text-xs"
+                    className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white"
                   >
-                    ⏱️ Bắt đầu thời gian trả lời cho đội cướp lượt (15s)
+                    ⏱️ Bắt đầu thời gian trả lời cho đội cướp
                   </button>
                 </div>
               )}
@@ -1238,8 +1266,25 @@ export default function AdminRoomPage() {
               </button>
             )}
 
-            {/* Tiết lộ đáp án button */}
-            {(!revealPayload || roomState?.mode !== "GRID_CARO") && (
+            {/* Tiết lộ đáp án button or Bounceback judgment */}
+            {roomState?.mode === "BOUNCEBACK" && currentQuestion && !revealPayload ? (
+              <div className="col-span-2 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                  className="py-3 px-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse"
+                >
+                  <span>✓</span>
+                  <span className="truncate">{stealBuzzed ? "CƯỚP ĐÚNG (+100%)" : "ĐÚNG (+100% ĐIỂM)"}</span>
+                </button>
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                  className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400"
+                >
+                  <span>✗</span>
+                  <span className="truncate">{stealBuzzed ? "CƯỚP SAI (-50%)" : "SAI (MỞ CƯỚP 5S)"}</span>
+                </button>
+              </div>
+            ) : (!revealPayload || roomState?.mode !== "GRID_CARO") ? (
               <button
                 onClick={() => emit("admin:reveal", { code })}
                 disabled={!currentQuestion || !!revealPayload}
@@ -1256,7 +1301,7 @@ export default function AdminRoomPage() {
                     : "Tiết lộ đáp án"}
                 </span>
               </button>
-            )}
+            ) : null}
 
             {/* Chuyển qua bàn cờ cho DICE_RACE */}
             {roomState?.mode === "DICE_RACE" && revealPayload && (
@@ -1574,13 +1619,30 @@ export default function AdminRoomPage() {
           <span>{roomState?.status === "LOBBY" ? "Bắt đầu" : "Câu tiếp"}</span>
         </button>
 
-        <button
-          onClick={() => emit("admin:reveal")}
-          disabled={!currentQuestion}
-          className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95 disabled:opacity-40"
-        >
-          👁️ Mở đáp án
-        </button>
+        {roomState?.mode === "BOUNCEBACK" && currentQuestion && !revealPayload ? (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+              className="py-3 px-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-green-400 flex items-center gap-1"
+            >
+              ✓ {stealBuzzed ? "Cướp Đúng" : "Đúng"}
+            </button>
+            <button
+              onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+              className="py-3 px-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-red-400 flex items-center gap-1"
+            >
+              ✗ {stealBuzzed ? "Cướp Sai" : "Sai (5s)"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => emit("admin:reveal")}
+            disabled={!currentQuestion}
+            className="py-3 px-3 rounded-xl border border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300 font-bold text-xs shrink-0 active:scale-95 disabled:opacity-40"
+          >
+            👁️ Mở đáp án
+          </button>
+        )}
 
         {roomState?.mode === "DICE_RACE" && revealPayload && (
           <button

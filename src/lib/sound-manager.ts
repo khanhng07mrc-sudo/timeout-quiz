@@ -334,10 +334,15 @@ class SoundManager {
     } catch {}
   }
 
+  /**
+   * Only used for pre-match ready countdown (3, 2, 1).
+   * Strictly blocked when question countdown music is playing to keep Olympia tracks completely clean.
+   */
   public playCountdownTick(remaining: number) {
-    if (remaining <= 0) {
-      this.playSFX("go", 0.95);
-    } else {
+    if (this.currentMusicType === "QUESTION") {
+      return;
+    }
+    if (remaining > 0) {
       this.playSFX("tick", 0.75);
     }
   }

@@ -114,9 +114,6 @@ export default function PlayPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.remaining <= 5 && auth.remaining > 0 && soundEnabledRef.current) {
-        soundManager.playCountdownTick(auth.remaining);
-      }
       if (auth.isExpired && soundEnabledRef.current) {
         soundManager.stopMusic();
       }
@@ -326,9 +323,6 @@ export default function PlayPage() {
       } else {
         setTimer(null);
       }
-      if (soundEnabledRef.current && !q.timerPending) {
-        soundManager.playCountdownTick(0);
-      }
     });
 
     socket.on("game:timer:started", (payload) => {
@@ -348,9 +342,6 @@ export default function PlayPage() {
       if (payload?.endsAt) {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
-      }
-      if (soundEnabledRef.current) {
-        soundManager.playCountdownTick(0);
       }
     });
 

@@ -100,9 +100,6 @@ export default function DisplayPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.remaining <= 5 && auth.remaining > 0) {
-        soundManager.playCountdownTick(auth.remaining);
-      }
       if (auth.isExpired) {
         soundManager.stopMusic();
       }
@@ -124,7 +121,6 @@ export default function DisplayPage() {
           if (p.currentQuestion) {
             setDisplayModeTab("QUESTION");
             if (!p.currentQuestion.timerPending && !p.currentQuestion.bouncebackSelectPhase) {
-              soundManager.playCountdownTick(0);
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
             }
           } else {
@@ -212,7 +208,6 @@ export default function DisplayPage() {
         setTimer(null);
       }
       if (!q.timerPending && !q.bouncebackSelectPhase) {
-        soundManager.playCountdownTick(0);
         soundManager.playQuestionMusic(q.timeLimit);
       }
     });
@@ -235,7 +230,6 @@ export default function DisplayPage() {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      soundManager.playCountdownTick(0);
       soundManager.playQuestionMusic(tLimit);
     });
 
@@ -249,9 +243,6 @@ export default function DisplayPage() {
         }
         return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
       });
-      if (t.remaining <= 5 && t.remaining > 0) {
-        soundManager.playCountdownTick(t.remaining);
-      }
       if (t.remaining <= 0) {
         soundManager.stopMusic();
       }

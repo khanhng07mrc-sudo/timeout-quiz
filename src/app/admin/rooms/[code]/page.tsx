@@ -113,9 +113,6 @@ export default function AdminRoomPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.remaining <= 5 && auth.remaining > 0 && soundEnabledRef.current) {
-        soundManager.playCountdownTick(auth.remaining);
-      }
       if (auth.isExpired && soundEnabledRef.current) {
         soundManager.stopMusic();
       }
@@ -254,9 +251,6 @@ export default function AdminRoomPage() {
       if (q.primaryTeamId) {
         setAdminTargetTeamId(q.primaryTeamId);
       }
-      if (soundEnabledRef.current && !q.timerPending) {
-        soundManager.playCountdownTick(0);
-      }
     });
     socket.on("game:timer:started", (payload) => {
       if (payload?.serverTime) calibrateClockFromPacket(payload.serverTime);
@@ -277,9 +271,6 @@ export default function AdminRoomPage() {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      if (soundEnabledRef.current) {
-        soundManager.playCountdownTick(0);
-      }
     });
     socket.on("game:timer", (t) => {
       calibrateClockFromPacket(t.serverTime);
@@ -291,9 +282,6 @@ export default function AdminRoomPage() {
         }
         return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
       });
-      if (t.remaining <= 5 && t.remaining > 0 && soundEnabledRef.current) {
-        soundManager.playCountdownTick(t.remaining);
-      }
     });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));

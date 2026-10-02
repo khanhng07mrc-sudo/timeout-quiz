@@ -530,6 +530,12 @@ export default function PlayPage() {
       }
       setGameEnd(payload);
     });
+    socket.on("game:early_completed", () => {
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
+      if (soundEnabledRef.current) {
+        soundManager.stopMusic();
+      }
+    });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
@@ -652,6 +658,24 @@ export default function PlayPage() {
         type: "OFFLINE_PLAYER_ACTION",
         action: "stop_early",
         questionId: currentQuestion?.question.id,
+        teamId: myTeamIdRef.current,
+        playerId: playerIdRef.current,
+      }, "*");
+    }
+  };
+
+  const handleFinalizeAnswer = (answer?: string | string[]) => {
+    if (socketRef.current?.connected && currentQuestion) {
+      socketRef.current.emit("game:answer:finalize", {
+        questionId: currentQuestion.question.id,
+        answer,
+      });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "finalize_answer",
+        questionId: currentQuestion?.question.id,
+        answer,
         teamId: myTeamIdRef.current,
         playerId: playerIdRef.current,
       }, "*");
@@ -907,6 +931,7 @@ export default function PlayPage() {
               buzzedBy={buzzedBy}
               onSelectPoints={handleSelectPoints}
               onStopEarly={handleStopEarly}
+              onFinalizeAnswer={handleFinalizeAnswer}
               isSpectator={isSpectator}
             />
 

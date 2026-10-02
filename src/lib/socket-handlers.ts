@@ -91,6 +91,8 @@ const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> activ
 const teamStreakMap = new Map<string, number>(); // teamId -> streak count
 const playerStreakMap = new Map<string, number>(); // playerId -> streak count
 const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
+const roomFinalizedActors = new Map<string, Set<string>>(); // qKey -> set of actors who finalized
+const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of actors who submitted at least once
 
 /**
  * Lấy câu hỏi tiếp theo đảm bảo KHÔNG BAO GIỜ bị lặp lại ở tất cả các mode.
@@ -514,6 +516,12 @@ export function cleanupRoomInMemory(roomId: string) {
     }
     for (const key of roomBouncebackSelectedPoints.keys()) {
       if (key.startsWith(prefix)) roomBouncebackSelectedPoints.delete(key);
+    }
+    for (const key of roomFinalizedActors.keys()) {
+      if (key.startsWith(prefix)) roomFinalizedActors.delete(key);
+    }
+    for (const key of roomSubmittedActors.keys()) {
+      if (key.startsWith(prefix)) roomSubmittedActors.delete(key);
     }
     for (const key of roomActiveAnswers.keys()) {
       if (key.startsWith(prefix)) roomActiveAnswers.delete(key);
@@ -1319,32 +1327,62 @@ export function registerSocketHandlers(io: IO) {
 
       const validPoints: 10 | 20 | 30 = [10, 20, 30].includes(points) ? points : 20;
       const timeLimit = validPoints === 10 ? 15 : validPoints === 20 ? 20 : 30;
-      const endsAt = Date.now() + timeLimit * 1000;
       roomBouncebackSelectedPoints.set(qKey, validPoints);
 
       const activeQ = roomActiveQuestions.get(room.id);
+      const primary = roomPrimaryTeams.get(qKey);
+
       if (activeQ) {
         activeQ.bouncebackSelectPhase = false;
         activeQ.selectedPointLevel = validPoints;
         activeQ.timeLimit = timeLimit;
         activeQ.question.points = validPoints;
         activeQ.question.timeLimit = timeLimit;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
+        activeQ.timerPending = true; // Wait for MC to start timer manually!
+        activeQ.timerStarted = false;
         activeQ.startedAt = Date.now();
-        activeQ.endsAt = endsAt;
-
-        const primary = roomPrimaryTeams.get(qKey);
-        io.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
-          teamId: primary?.teamId || "",
-          points: validPoints,
-          timeLimit,
-          endsAt,
-        });
-
-        io.to(`room:${room.code}`).emit("game:question", activeQ);
-        startQuestionTimer(io, room.code, room.id, q.id, timeLimit);
+        activeQ.endsAt = undefined;
       }
+
+      // 1. Emit points selected notification to all clients
+      io.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
+        teamId: primary?.teamId || "",
+        points: validPoints,
+        timeLimit,
+      });
+
+      // 2. Sau khi chọn điểm xong: MỚI ĐẾM 3s chuẩn bị!
+      const totalQuestionsCount = room.quizBank?.questions?.length || 1;
+      const preparePayload: GamePreparePayload = {
+        questionIndex: room.currentQuestion,
+        totalQuestions: totalQuestionsCount,
+        points: validPoints,
+        timeLimit,
+        seconds: 3,
+        bloomLevel: getBloomLevelFromPoints(validPoints),
+        primaryTeamName: primary?.teamName,
+      };
+      io.to(`room:${room.code}`).emit("game:prepare", preparePayload);
+
+      const launchQuestionAfterPrepare = () => {
+        roomPrepareStates.delete(room.id);
+        if (activeQ) {
+          activeQ.timerPending = true;
+          activeQ.timerStarted = false;
+          io.to(`room:${room.code}`).emit("game:question", activeQ);
+        }
+      };
+
+      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3000);
+      roomPrepareStates.set(room.id, {
+        type: "PREPARE",
+        questionIndex: room.currentQuestion,
+        totalQuestions: totalQuestionsCount,
+        targetTimestamp: Date.now() + 3000,
+        timer: prepTimer,
+        skipCallback: launchQuestionAfterPrepare,
+        preparePayload,
+      });
     };
 
     socket.on("game:bounceback:select_points", async ({ points }) => {
@@ -1637,29 +1675,35 @@ export function registerSocketHandlers(io: IO) {
           bouncebackSelectPhase,
           selectedPointLevel: chosenPoints,
           streakCount: primaryTeamId ? (teamStreakMap.get(primaryTeamId) || 0) : undefined,
+          answerSubmissionMode: config?.answerSubmissionMode || "ALLOW_CHANGE",
         });
 
-        if (bouncebackSelectPhase || config?.manualTimerStart) {
+        // Đếm ngược thủ công (Manual Timer) mặc định cho TẤT CẢ các mode
+        // Chỉ tự động đếm ngay nếu config.autoTimerStart === true và không phải giai đoạn chọn điểm Bounceback
+        const isAutoTimer = config?.autoTimerStart === true && !bouncebackSelectPhase;
+        if (!isAutoTimer) {
           questionState.timerPending = true;
           questionState.timerStarted = false;
           roomActiveQuestions.set(room.id, questionState);
           io.to(`room:${room.code}`).emit("game:question", questionState);
         } else {
           const endsAt = Date.now() + q.timeLimit * 1000;
+          questionState.timerPending = false;
+          questionState.timerStarted = true;
           questionState.endsAt = endsAt;
           questionState.serverTime = Date.now();
           roomActiveQuestions.set(room.id, questionState);
           io.to(`room:${room.code}`).emit("game:question", questionState);
           startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
-        }
 
-        if (buzzMode && buzzUnlockMode === "AUTO") {
-          const autoTimer = setTimeout(() => {
-            roomBuzzUnlocked.set(qKey, true);
-            roomBuzzDelayTimers.delete(qKey);
-            io.to(`room:${room.code}`).emit("game:buzz:unlocked");
-          }, buzzAutoDelay * 1000);
-          roomBuzzDelayTimers.set(qKey, autoTimer);
+          if (buzzMode && buzzUnlockMode === "AUTO") {
+            const autoTimer = setTimeout(() => {
+              roomBuzzUnlocked.set(qKey, true);
+              roomBuzzDelayTimers.delete(qKey);
+              io.to(`room:${room.code}`).emit("game:buzz:unlocked");
+            }, buzzAutoDelay * 1000);
+            roomBuzzDelayTimers.set(qKey, autoTimer);
+          }
         }
       };
 
@@ -1762,6 +1806,13 @@ export function registerSocketHandlers(io: IO) {
           }
         }, 1000);
         roomWagerTimers.set(room.id, initTimer);
+        return;
+      }
+
+      if (room.mode === "BOUNCEBACK" && bouncebackSelectPhase) {
+        // Sau 5s khởi động hoặc khi chuyển câu, đội chính chọn luôn mức điểm (10, 20, 30đ) mà KHÔNG đếm 3s trước đó.
+        // Sau khi đội chính chọn mức điểm xong thì mới đếm 3s chuẩn bị!
+        launchQuestion();
         return;
       }
 
@@ -2747,7 +2798,8 @@ export function registerSocketHandlers(io: IO) {
       const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
 
-      const endsAt = Date.now() + q.timeLimit * 1000;
+      const effectiveTimeLimit = activeQ?.timeLimit || q.timeLimit;
+      const endsAt = Date.now() + effectiveTimeLimit * 1000;
       if (activeQ) {
         activeQ.timerPending = false;
         activeQ.timerStarted = true;
@@ -2758,11 +2810,30 @@ export function registerSocketHandlers(io: IO) {
       }
 
       io.to(`room:${room.code}`).emit("game:timer:started", {
-        timeLimit: q.timeLimit,
+        timeLimit: effectiveTimeLimit,
         endsAt,
         serverTime: Date.now(),
       });
-      startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+      startQuestionTimer(io, room.code, room.id, q.id, effectiveTimeLimit);
+
+      // Trong BUZZ mode: Khi bấm tính giờ mới kích hoạt mở chuông bấm
+      if (room.mode === "BUZZ") {
+        const config = room.config as any;
+        const qKey = `${room.id}:${q.id}`;
+        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
+        const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
+        if (buzzUnlockMode === "AUTO") {
+          const autoTimer = setTimeout(() => {
+            roomBuzzUnlocked.set(qKey, true);
+            roomBuzzDelayTimers.delete(qKey);
+            io.to(`room:${room.code}`).emit("game:buzz:unlocked");
+          }, buzzAutoDelay * 1000);
+          roomBuzzDelayTimers.set(qKey, autoTimer);
+        } else {
+          roomBuzzUnlocked.set(qKey, true);
+          io.to(`room:${room.code}`).emit("game:buzz:unlocked");
+        }
+      }
     });
 
     socket.on("admin:grid:advance_now", async () => {
@@ -3106,6 +3177,62 @@ export function registerSocketHandlers(io: IO) {
       await finalizeQuestionOnTimeUp(io, player.room.id, player.room.code, questionId);
     });
 
+    socket.on("game:answer:finalize", async ({ questionId, answer }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true, team: true },
+      });
+      if (!player?.room || player.room.status !== "PLAYING") return;
+
+      const room = player.room;
+      const qKey = `${room.id}:${questionId}`;
+      const actorId = player.teamId || player.id;
+
+      if (answer !== undefined) {
+        await processAnswerSubmission({
+          io,
+          roomId: player.room.id,
+          questionId,
+          playerId,
+          teamId: player.teamId ?? undefined,
+          answer,
+          isAdminOverride: false,
+          socket,
+        });
+      }
+
+      let finSet = roomFinalizedActors.get(qKey);
+      if (!finSet) {
+        finSet = new Set<string>();
+        roomFinalizedActors.set(qKey, finSet);
+      }
+      finSet.add(actorId);
+
+      const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+      const finalizedCount = activeParticipants.filter((id) => finSet?.has(id)).length;
+      const totalParticipantsCount = activeParticipants.length;
+
+      io.to(`room:${room.code}`).emit("game:answer:finalized", {
+        questionId,
+        actorId,
+        actorName: player.team?.name || player.name,
+        finalizedCount,
+        totalParticipantsCount,
+      });
+
+      // Nếu tất cả người chơi/đội hợp lệ đã chốt đáp án: Kết thúc vòng tính giờ sớm ngay!
+      if (totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+        io.to(`room:${room.code}`).emit("game:early_completed", {
+          questionId,
+          reason: "ALL_FINALIZED",
+          message: "Tất cả người chơi đã chốt đáp án!",
+        });
+        await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+      }
+    });
+
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -3204,6 +3331,47 @@ export function registerSocketHandlers(io: IO) {
 }
 
 // ── Answer Processing (Unified for Device & MC Mode) ─────────────────────────
+
+async function getActiveParticipantsForQuestion(room: any, questionId: string): Promise<string[]> {
+  const qKey = `${room.id}:${questionId}`;
+  if (room.mode === "BOUNCEBACK") {
+    const steal = roomStealBuzzed.get(qKey);
+    if (steal) {
+      return [steal.teamId || steal.playerId];
+    }
+    const primary = roomPrimaryTeams.get(qKey);
+    return primary ? [primary.teamId] : [];
+  }
+  if (room.mode === "BUZZ") {
+    const buzz = roomBuzzFirst.get(qKey);
+    return buzz ? [buzz.teamId || buzz.playerId] : [];
+  }
+  if (room.mode === "GRID_CARO") {
+    const gridState = roomGridCaros.get(room.id);
+    return gridState?.currentTurnTeamId ? [gridState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "DICE_RACE") {
+    const diceState = roomDiceRaces.get(room.id);
+    return diceState?.currentTurnTeamId ? [diceState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "TOURNAMENT") {
+    const tournament = roomTournaments.get(room.id);
+    const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
+    return [currentMatch?.team1Id, currentMatch?.team2Id].filter(Boolean) as string[];
+  }
+  // CLASSIC, POWERUP, ELIMINATION, WAGER
+  if (room.teamMode === "TEAM") {
+    const teams = await prisma.team.findMany({
+      where: { roomId: room.id, isEliminated: false },
+    });
+    return teams.map((t) => t.id);
+  } else {
+    const players = await prisma.player.findMany({
+      where: { roomId: room.id, isHost: false },
+    });
+    return players.map((p) => p.id);
+  }
+}
 
 async function processAnswerSubmission({
   io,
@@ -3347,6 +3515,21 @@ async function processAnswerSubmission({
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
 
+  // 1. BOUNCEBACK Steal Team rule: Đội bấm chuông chỉ tính MỘT LẦN TRẢ LỜI DUY NHẤT (Admin không thể chỉnh điều đó)!
+  const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
+  if (isBouncebackSteal && existingAnswer && !isAdminOverride) {
+    if (socket) socket.emit("error", "Đội bấm chuông chỉ được chọn 1 đáp án duy nhất!");
+    return;
+  }
+
+  // 2. Chế độ cấu hình tuỳ chỉnh SINGLE_SUBMIT ở các mode khác:
+  const config = room.config as any;
+  const isSingleSubmitMode = config?.answerSubmissionMode === "SINGLE_SUBMIT";
+  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride) {
+    if (socket) socket.emit("error", "Chế độ này chỉ cho phép chọn 1 lần duy nhất, bạn đã hoàn thành câu hỏi!");
+    return;
+  }
+
   if (existingAnswer) {
     await prisma.answer.update({
       where: { id: existingAnswer.id },
@@ -3395,6 +3578,38 @@ async function processAnswerSubmission({
     answer: normalizedAnswer,
     isUpdate,
   });
+
+  // 3. Nếu là Đội cướp chuông Bounceback: Chốt ngay lập tức và tính điểm luôn
+  if (isBouncebackSteal && !isAdminOverride) {
+    stopQuestionTimer(room.id);
+    await finalizeBouncebackSteal(io, room.id, room.code, questionId);
+    return;
+  }
+
+  // 4. Ghi nhận actor này đã nộp ít nhất 1 lần
+  const actorKey = targetTeamId || targetPlayerId;
+  if (actorKey) {
+    let subSet = roomSubmittedActors.get(qKey);
+    if (!subSet) {
+      subSet = new Set<string>();
+      roomSubmittedActors.set(qKey, subSet);
+    }
+    subSet.add(actorKey);
+  }
+
+  // 5. Nếu chế độ SINGLE_SUBMIT: kiểm tra nếu tất cả thí sinh/đội hợp lệ đã hoàn thành sớm
+  if (isSingleSubmitMode && !isAdminOverride) {
+    const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+    const subSet = roomSubmittedActors.get(qKey);
+    if (activeParticipants.length > 0 && activeParticipants.every((id) => subSet?.has(id))) {
+      io.to(`room:${room.code}`).emit("game:early_completed", {
+        questionId,
+        reason: "ALL_SUBMITTED",
+        message: "Tất cả người chơi đã hoàn thành bài thi!",
+      });
+      await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+    }
+  }
 }
 
 // ── Mode Finalization Helpers (Called on timeout or admin reveal) ─────────────
@@ -4336,6 +4551,7 @@ function buildQuestionState(
     rarityBonusPercent?: number;
     endsAt?: number;
     serverTime?: number;
+    answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
   }
 ): QuestionState {
   const options = q.options as any[] | null;
@@ -4385,6 +4601,7 @@ function buildQuestionState(
     streakCount: extra?.streakCount,
     speedBonusPercent: extra?.speedBonusPercent,
     rarityBonusPercent: extra?.rarityBonusPercent,
+    answerSubmissionMode: extra?.answerSubmissionMode,
   };
 }
 

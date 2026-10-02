@@ -49,6 +49,7 @@ export default function AdminRoomPage() {
   const [adminTargetTeamId, setAdminTargetTeamId] = useState<string>("");
   const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
   const [adminSelectedAnswerId, setAdminSelectedAnswerId] = useState<string | null>(null);
+  const [submissionProgress, setSubmissionProgress] = useState<{ finalizedCount: number; totalCount: number; reason?: string } | null>(null);
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
@@ -242,6 +243,14 @@ export default function AdminRoomPage() {
       setIsStealOpen(false);
       setTeamSelectedAnswers({});
       setAdminSelectedAnswerId(null);
+      if (q.totalParticipantsCount) {
+        setSubmissionProgress({
+          finalizedCount: q.finalizedActors?.length || 0,
+          totalCount: q.totalParticipantsCount,
+        });
+      } else {
+        setSubmissionProgress(null);
+      }
       if (q.primaryTeamId) {
         setAdminTargetTeamId(q.primaryTeamId);
       }
@@ -338,6 +347,24 @@ export default function AdminRoomPage() {
       setIsStealOpen(false);
       setTeamSelectedAnswers({});
       setAdminSelectedAnswerId(null);
+      setSubmissionProgress(null);
+    });
+    socket.on("game:answer:finalized", (payload) => {
+      setSubmissionProgress({
+        finalizedCount: payload.finalizedCount,
+        totalCount: payload.totalParticipantsCount,
+      });
+    });
+    socket.on("game:early_completed", (payload) => {
+      setSubmissionProgress((prev) => ({
+        finalizedCount: prev?.totalCount || 1,
+        totalCount: prev?.totalCount || 1,
+        reason: payload.message || payload.reason,
+      }));
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
+      if (soundEnabledRef.current) {
+        soundManager.stopMusic();
+      }
     });
     socket.on("game:answer:received", (payload: any) => {
       if (payload.teamId && payload.answer) {
@@ -968,6 +995,36 @@ export default function AdminRoomPage() {
                   {bloomMeta.emoji} {bloomMeta.labelVi} ({currentQuestion.question.points}đ)
                 </span>
               </div>
+
+              {/* Submission mode & Realtime Finalized Progress */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2 rounded-lg bg-card/40 border border-border/60 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-muted-foreground">
+                    Cơ chế nộp:{" "}
+                    <strong className="text-white">
+                      {currentQuestion.answerSubmissionMode === "SINGLE_SUBMIT"
+                        ? "🔒 Bấm 1 lần duy nhất"
+                        : "🔄 Cho phép đổi phương án"}
+                    </strong>
+                  </span>
+                </div>
+                {submissionProgress && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className={`px-2 py-0.5 rounded-full font-bold text-[11px] border ${
+                      submissionProgress.reason
+                        ? "bg-green-500/20 text-green-300 border-green-500/40 animate-pulse"
+                        : submissionProgress.finalizedCount >= submissionProgress.totalCount
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                        : "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                    }`}>
+                      {submissionProgress.reason
+                        ? "⚡ Tất cả đã nộp / Dừng sớm!"
+                        : `Đã ${currentQuestion.answerSubmissionMode === "SINGLE_SUBMIT" ? "nộp" : "chốt"}: ${submissionProgress.finalizedCount}/${submissionProgress.totalCount}`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <p className="font-medium">{currentQuestion.question.content}</p>
 
               {/* Direct Answer Click on Admin screen (MC mode / Fail-safe override) */}

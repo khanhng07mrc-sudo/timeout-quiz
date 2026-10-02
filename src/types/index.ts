@@ -484,6 +484,9 @@ export interface GameConfig {
   // Buzz config
   buzzUnlockMode?: "AUTO" | "MANUAL";
   buzzAutoDelay?: number;
+  // Answer submission mode & timer start
+  answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
+  autoTimerStart?: boolean;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -773,6 +776,9 @@ export interface QuestionState {
   selectedPointLevel?: 10 | 20 | 30;
   endsAt?: number;
   serverTime?: number;
+  answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
+  finalizedActors?: string[];
+  totalParticipantsCount?: number;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -907,6 +913,8 @@ export interface ServerToClientEvents {
     isGameOver?: boolean;
     reason?: string;
   }) => void;
+  "game:answer:finalized": (payload: { questionId: string; actorId: string; actorName?: string; finalizedCount: number; totalParticipantsCount: number }) => void;
+  "game:early_completed": (payload: { questionId: string; reason: "ALL_SUBMITTED" | "ALL_FINALIZED"; message: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -958,6 +966,7 @@ export interface ClientToServerEvents {
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:timer:stop_early": (payload?: { code?: string }) => void;
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
+  "game:answer:finalize": (payload: { questionId: string; answer?: string | string[] }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }
 

@@ -44,6 +44,9 @@ const DEFAULT_CONFIG = {
   // Buzz defaults
   buzzUnlockMode: "AUTO",
   buzzAutoDelay: 3,
+  // Answer submission & timer control defaults
+  answerSubmissionMode: "ALLOW_CHANGE",
+  autoTimerStart: false,
 };
 
 export async function POST(req: NextRequest) {

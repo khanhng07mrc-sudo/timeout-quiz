@@ -737,6 +737,8 @@ var roomActiveQuestions = /* @__PURE__ */ new Map();
 var teamStreakMap = /* @__PURE__ */ new Map();
 var playerStreakMap = /* @__PURE__ */ new Map();
 var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
+var roomFinalizedActors = /* @__PURE__ */ new Map();
+var roomSubmittedActors = /* @__PURE__ */ new Map();
 function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
   if (!rawQuestions || rawQuestions.length === 0) return null;
   let usedSet = roomUsedQuestions.get(roomId);
@@ -1092,6 +1094,12 @@ function cleanupRoomInMemory(roomId) {
     }
     for (const key of roomBouncebackSelectedPoints.keys()) {
       if (key.startsWith(prefix)) roomBouncebackSelectedPoints.delete(key);
+    }
+    for (const key of roomFinalizedActors.keys()) {
+      if (key.startsWith(prefix)) roomFinalizedActors.delete(key);
+    }
+    for (const key of roomSubmittedActors.keys()) {
+      if (key.startsWith(prefix)) roomSubmittedActors.delete(key);
     }
     for (const key of roomActiveAnswers.keys()) {
       if (key.startsWith(prefix)) roomActiveAnswers.delete(key);
@@ -1747,29 +1755,54 @@ function registerSocketHandlers(io2) {
       const qKey = `${room.id}:${q.id}`;
       const validPoints = [10, 20, 30].includes(points) ? points : 20;
       const timeLimit = validPoints === 10 ? 15 : validPoints === 20 ? 20 : 30;
-      const endsAt = Date.now() + timeLimit * 1e3;
       roomBouncebackSelectedPoints.set(qKey, validPoints);
       const activeQ = roomActiveQuestions.get(room.id);
+      const primary = roomPrimaryTeams.get(qKey);
       if (activeQ) {
         activeQ.bouncebackSelectPhase = false;
         activeQ.selectedPointLevel = validPoints;
         activeQ.timeLimit = timeLimit;
         activeQ.question.points = validPoints;
         activeQ.question.timeLimit = timeLimit;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
+        activeQ.timerPending = true;
+        activeQ.timerStarted = false;
         activeQ.startedAt = Date.now();
-        activeQ.endsAt = endsAt;
-        const primary = roomPrimaryTeams.get(qKey);
-        io2.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
-          teamId: primary?.teamId || "",
-          points: validPoints,
-          timeLimit,
-          endsAt
-        });
-        io2.to(`room:${room.code}`).emit("game:question", activeQ);
-        startQuestionTimer(io2, room.code, room.id, q.id, timeLimit);
+        activeQ.endsAt = void 0;
       }
+      io2.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
+        teamId: primary?.teamId || "",
+        points: validPoints,
+        timeLimit
+      });
+      const totalQuestionsCount = room.quizBank?.questions?.length || 1;
+      const preparePayload = {
+        questionIndex: room.currentQuestion,
+        totalQuestions: totalQuestionsCount,
+        points: validPoints,
+        timeLimit,
+        seconds: 3,
+        bloomLevel: getBloomLevelFromPoints(validPoints),
+        primaryTeamName: primary?.teamName
+      };
+      io2.to(`room:${room.code}`).emit("game:prepare", preparePayload);
+      const launchQuestionAfterPrepare = () => {
+        roomPrepareStates.delete(room.id);
+        if (activeQ) {
+          activeQ.timerPending = true;
+          activeQ.timerStarted = false;
+          io2.to(`room:${room.code}`).emit("game:question", activeQ);
+        }
+      };
+      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3e3);
+      roomPrepareStates.set(room.id, {
+        type: "PREPARE",
+        questionIndex: room.currentQuestion,
+        totalQuestions: totalQuestionsCount,
+        targetTimestamp: Date.now() + 3e3,
+        timer: prepTimer,
+        skipCallback: launchQuestionAfterPrepare,
+        preparePayload
+      });
     };
     socket.on("game:bounceback:select_points", async ({ points }) => {
       const playerId = playerSockets.get(socket.id);
@@ -2021,28 +2054,32 @@ function registerSocketHandlers(io2) {
           canRollDice: false,
           bouncebackSelectPhase,
           selectedPointLevel: chosenPoints,
-          streakCount: primaryTeamId ? teamStreakMap.get(primaryTeamId) || 0 : void 0
+          streakCount: primaryTeamId ? teamStreakMap.get(primaryTeamId) || 0 : void 0,
+          answerSubmissionMode: config?.answerSubmissionMode || "ALLOW_CHANGE"
         });
-        if (bouncebackSelectPhase || config?.manualTimerStart) {
+        const isAutoTimer = config?.autoTimerStart === true && !bouncebackSelectPhase;
+        if (!isAutoTimer) {
           questionState.timerPending = true;
           questionState.timerStarted = false;
           roomActiveQuestions.set(room.id, questionState);
           io2.to(`room:${room.code}`).emit("game:question", questionState);
         } else {
           const endsAt = Date.now() + q.timeLimit * 1e3;
+          questionState.timerPending = false;
+          questionState.timerStarted = true;
           questionState.endsAt = endsAt;
           questionState.serverTime = Date.now();
           roomActiveQuestions.set(room.id, questionState);
           io2.to(`room:${room.code}`).emit("game:question", questionState);
           startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
-        }
-        if (buzzMode && buzzUnlockMode === "AUTO") {
-          const autoTimer = setTimeout(() => {
-            roomBuzzUnlocked.set(qKey, true);
-            roomBuzzDelayTimers.delete(qKey);
-            io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
-          }, buzzAutoDelay * 1e3);
-          roomBuzzDelayTimers.set(qKey, autoTimer);
+          if (buzzMode && buzzUnlockMode === "AUTO") {
+            const autoTimer = setTimeout(() => {
+              roomBuzzUnlocked.set(qKey, true);
+              roomBuzzDelayTimers.delete(qKey);
+              io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+            }, buzzAutoDelay * 1e3);
+            roomBuzzDelayTimers.set(qKey, autoTimer);
+          }
         }
       };
       if (room.mode === "WAGER") {
@@ -2132,6 +2169,10 @@ function registerSocketHandlers(io2) {
           }
         }, 1e3);
         roomWagerTimers.set(room.id, initTimer);
+        return;
+      }
+      if (room.mode === "BOUNCEBACK" && bouncebackSelectPhase) {
+        launchQuestion();
         return;
       }
       const preparePayload = {
@@ -2957,7 +2998,8 @@ function registerSocketHandlers(io2) {
       const rawQuestions = room.quizBank?.questions ?? [];
       const q = (activeQ ? rawQuestions.find((item) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
-      const endsAt = Date.now() + q.timeLimit * 1e3;
+      const effectiveTimeLimit = activeQ?.timeLimit || q.timeLimit;
+      const endsAt = Date.now() + effectiveTimeLimit * 1e3;
       if (activeQ) {
         activeQ.timerPending = false;
         activeQ.timerStarted = true;
@@ -2967,11 +3009,28 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:question", activeQ);
       }
       io2.to(`room:${room.code}`).emit("game:timer:started", {
-        timeLimit: q.timeLimit,
+        timeLimit: effectiveTimeLimit,
         endsAt,
         serverTime: Date.now()
       });
-      startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
+      startQuestionTimer(io2, room.code, room.id, q.id, effectiveTimeLimit);
+      if (room.mode === "BUZZ") {
+        const config = room.config;
+        const qKey = `${room.id}:${q.id}`;
+        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
+        const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
+        if (buzzUnlockMode === "AUTO") {
+          const autoTimer = setTimeout(() => {
+            roomBuzzUnlocked.set(qKey, true);
+            roomBuzzDelayTimers.delete(qKey);
+            io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+          }, buzzAutoDelay * 1e3);
+          roomBuzzDelayTimers.set(qKey, autoTimer);
+        } else {
+          roomBuzzUnlocked.set(qKey, true);
+          io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+        }
+      }
     });
     socket.on("admin:grid:advance_now", async () => {
       const room = await getAdminRoom(socket);
@@ -3251,6 +3310,54 @@ function registerSocketHandlers(io2) {
       }
       await finalizeQuestionOnTimeUp(io2, player.room.id, player.room.code, questionId);
     });
+    socket.on("game:answer:finalize", async ({ questionId, answer }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true, team: true }
+      });
+      if (!player?.room || player.room.status !== "PLAYING") return;
+      const room = player.room;
+      const qKey = `${room.id}:${questionId}`;
+      const actorId = player.teamId || player.id;
+      if (answer !== void 0) {
+        await processAnswerSubmission({
+          io: io2,
+          roomId: player.room.id,
+          questionId,
+          playerId,
+          teamId: player.teamId ?? void 0,
+          answer,
+          isAdminOverride: false,
+          socket
+        });
+      }
+      let finSet = roomFinalizedActors.get(qKey);
+      if (!finSet) {
+        finSet = /* @__PURE__ */ new Set();
+        roomFinalizedActors.set(qKey, finSet);
+      }
+      finSet.add(actorId);
+      const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+      const finalizedCount = activeParticipants.filter((id) => finSet?.has(id)).length;
+      const totalParticipantsCount = activeParticipants.length;
+      io2.to(`room:${room.code}`).emit("game:answer:finalized", {
+        questionId,
+        actorId,
+        actorName: player.team?.name || player.name,
+        finalizedCount,
+        totalParticipantsCount
+      });
+      if (totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+        io2.to(`room:${room.code}`).emit("game:early_completed", {
+          questionId,
+          reason: "ALL_FINALIZED",
+          message: "T\u1EA5t c\u1EA3 ng\u01B0\u1EDDi ch\u01A1i \u0111\xE3 ch\u1ED1t \u0111\xE1p \xE1n!"
+        });
+        await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+      }
+    });
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -3331,6 +3438,45 @@ function registerSocketHandlers(io2) {
       pendingDisconnects.set(playerId, timer);
     });
   });
+}
+async function getActiveParticipantsForQuestion(room, questionId) {
+  const qKey = `${room.id}:${questionId}`;
+  if (room.mode === "BOUNCEBACK") {
+    const steal = roomStealBuzzed.get(qKey);
+    if (steal) {
+      return [steal.teamId || steal.playerId];
+    }
+    const primary = roomPrimaryTeams.get(qKey);
+    return primary ? [primary.teamId] : [];
+  }
+  if (room.mode === "BUZZ") {
+    const buzz = roomBuzzFirst.get(qKey);
+    return buzz ? [buzz.teamId || buzz.playerId] : [];
+  }
+  if (room.mode === "GRID_CARO") {
+    const gridState = roomGridCaros.get(room.id);
+    return gridState?.currentTurnTeamId ? [gridState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "DICE_RACE") {
+    const diceState = roomDiceRaces.get(room.id);
+    return diceState?.currentTurnTeamId ? [diceState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "TOURNAMENT") {
+    const tournament = roomTournaments.get(room.id);
+    const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
+    return [currentMatch?.team1Id, currentMatch?.team2Id].filter(Boolean);
+  }
+  if (room.teamMode === "TEAM") {
+    const teams = await prisma.team.findMany({
+      where: { roomId: room.id, isEliminated: false }
+    });
+    return teams.map((t) => t.id);
+  } else {
+    const players = await prisma.player.findMany({
+      where: { roomId: room.id, isHost: false }
+    });
+    return players.map((p) => p.id);
+  }
 }
 async function processAnswerSubmission({
   io: io2,
@@ -3448,6 +3594,17 @@ async function processAnswerSubmission({
   }
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
+  const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
+  if (isBouncebackSteal && existingAnswer && !isAdminOverride) {
+    if (socket) socket.emit("error", "\u0110\u1ED9i b\u1EA5m chu\xF4ng ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1ECDn 1 \u0111\xE1p \xE1n duy nh\u1EA5t!");
+    return;
+  }
+  const config = room.config;
+  const isSingleSubmitMode = config?.answerSubmissionMode === "SINGLE_SUBMIT";
+  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride) {
+    if (socket) socket.emit("error", "Ch\u1EBF \u0111\u1ED9 n\xE0y ch\u1EC9 cho ph\xE9p ch\u1ECDn 1 l\u1EA7n duy nh\u1EA5t, b\u1EA1n \u0111\xE3 ho\xE0n th\xE0nh c\xE2u h\u1ECFi!");
+    return;
+  }
   if (existingAnswer) {
     await prisma.answer.update({
       where: { id: existingAnswer.id },
@@ -3491,6 +3648,32 @@ async function processAnswerSubmission({
     answer: normalizedAnswer,
     isUpdate
   });
+  if (isBouncebackSteal && !isAdminOverride) {
+    stopQuestionTimer(room.id);
+    await finalizeBouncebackSteal(io2, room.id, room.code, questionId);
+    return;
+  }
+  const actorKey = targetTeamId || targetPlayerId;
+  if (actorKey) {
+    let subSet = roomSubmittedActors.get(qKey);
+    if (!subSet) {
+      subSet = /* @__PURE__ */ new Set();
+      roomSubmittedActors.set(qKey, subSet);
+    }
+    subSet.add(actorKey);
+  }
+  if (isSingleSubmitMode && !isAdminOverride) {
+    const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+    const subSet = roomSubmittedActors.get(qKey);
+    if (activeParticipants.length > 0 && activeParticipants.every((id) => subSet?.has(id))) {
+      io2.to(`room:${room.code}`).emit("game:early_completed", {
+        questionId,
+        reason: "ALL_SUBMITTED",
+        message: "T\u1EA5t c\u1EA3 ng\u01B0\u1EDDi ch\u01A1i \u0111\xE3 ho\xE0n th\xE0nh b\xE0i thi!"
+      });
+      await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+    }
+  }
 }
 async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
   const qKey = `${roomId}:${questionId}`;
@@ -4287,7 +4470,8 @@ function buildQuestionState(q, extra) {
     selectedPointLevel: extra?.selectedPointLevel,
     streakCount: extra?.streakCount,
     speedBonusPercent: extra?.speedBonusPercent,
-    rarityBonusPercent: extra?.rarityBonusPercent
+    rarityBonusPercent: extra?.rarityBonusPercent,
+    answerSubmissionMode: extra?.answerSubmissionMode
   };
 }
 async function resolveQuestionTeamScores(io2, roomId, questionId) {

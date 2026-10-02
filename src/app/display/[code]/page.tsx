@@ -277,7 +277,6 @@ export default function DisplayPage() {
     });
     socket.on("game:bounceback:points_selected", (payload) => {
       const ptsTimeLimit = payload.timeLimit ?? (payload.points === 10 ? 15 : payload.points === 20 ? 20 : 30);
-      const effectiveEndsAt = payload.endsAt ?? (Date.now() + ptsTimeLimit * 1000);
       setCurrentQuestion((prev) =>
         prev
           ? {
@@ -285,10 +284,8 @@ export default function DisplayPage() {
               bouncebackSelectPhase: false,
               selectedPointLevel: payload.points,
               timeLimit: ptsTimeLimit,
-              startedAt: Date.now(),
-              endsAt: effectiveEndsAt,
-              timerPending: false,
-              timerStarted: true,
+              timerPending: true,
+              timerStarted: false,
               question: {
                 ...prev.question,
                 points: payload.points,
@@ -297,9 +294,10 @@ export default function DisplayPage() {
             }
           : prev
       );
-      setTimer({ remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt: effectiveEndsAt });
-      soundManager.playCountdownTick(0);
-      soundManager.playQuestionMusic(ptsTimeLimit);
+    });
+    socket.on("game:early_completed", () => {
+      soundManager.stopMusic();
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
     });
     socket.on("game:elimination:round", (payload) => {
       setEliminationNotice({

@@ -170,6 +170,8 @@ export default function CreateRoomPage() {
   const [timeBonusEnabled, setTimeBonusEnabled] = useState(true);
   const [penaltyForWrong, setPenaltyForWrong] = useState(false);
   const [penaltyPoints, setPenaltyPoints] = useState(5);
+  const [answerSubmissionMode, setAnswerSubmissionMode] = useState<"ALLOW_CHANGE" | "SINGLE_SUBMIT">("ALLOW_CHANGE");
+  const [autoTimerStart, setAutoTimerStart] = useState(false);
 
   const addTeam = () => {
     if (teams.length >= 20) return;
@@ -249,6 +251,9 @@ export default function CreateRoomPage() {
             // Buzz config
             buzzUnlockMode: mode === "BUZZ" ? buzzUnlockMode : "AUTO",
             buzzAutoDelay: mode === "BUZZ" ? Math.max(3, buzzAutoDelay) : 3,
+            // Answer submission & timer control
+            answerSubmissionMode,
+            autoTimerStart,
           },
         }),
       });
@@ -1438,6 +1443,94 @@ export default function CreateRoomPage() {
               </p>
             </div>
           )}
+
+          {/* Cấu hình Nộp bài: Thay đổi tự do vs Bấm 1 lần duy nhất */}
+          <div className="glass rounded-xl p-5 space-y-4 border border-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-base">Cơ chế nộp câu trả lời</p>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                  Toàn phòng
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Quy định người chơi được đổi phương án hay chỉ được bấm chọn duy nhất một lần
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setAnswerSubmissionMode("ALLOW_CHANGE")}
+                className={`p-3.5 rounded-xl border text-left transition-all ${
+                  answerSubmissionMode === "ALLOW_CHANGE"
+                    ? "border-cyan-400 bg-cyan-500/20 shadow-md ring-1 ring-cyan-400/50"
+                    : "border-border glass hover:border-slate-500 opacity-60 hover:opacity-90"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm text-cyan-200">🔄 Cho phép đổi phương án</span>
+                  {answerSubmissionMode === "ALLOW_CHANGE" && (
+                    <span className="text-xs text-cyan-400 font-black">✓ Mặc định</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Thí sinh đổi đáp án thoải mái suốt thời gian; có nút <strong>[🔒 Chốt đáp án]</strong> để kết thúc sớm. Câu hỏi dừng khi hết giờ hoặc khi tất cả người chơi đã chốt bài.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAnswerSubmissionMode("SINGLE_SUBMIT")}
+                className={`p-3.5 rounded-xl border text-left transition-all ${
+                  answerSubmissionMode === "SINGLE_SUBMIT"
+                    ? "border-purple-400 bg-purple-500/20 shadow-md ring-1 ring-purple-400/50"
+                    : "border-border glass hover:border-slate-500 opacity-60 hover:opacity-90"
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-bold text-sm text-purple-200">🔒 Bấm 1 lần duy nhất</span>
+                  {answerSubmissionMode === "SINGLE_SUBMIT" && (
+                    <span className="text-xs text-purple-400 font-black">✓ Đang chọn</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Bấm chọn đáp án là khóa bài ngay lập tức. Câu hỏi <strong>tự động kết thúc sớm</strong> nếu tất cả người chơi hoàn thành sớm mà không cần chờ hết giờ.
+                </p>
+              </button>
+            </div>
+
+            {mode === "BOUNCEBACK" && (
+              <p className="text-[11px] text-amber-300/90 italic bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
+                💡 <strong>Lưu ý Bounceback:</strong> Đội trả lời chính tuân theo thiết lập này (hoặc đổi tự do), nhưng đội bấm chuông cướp điểm luôn chỉ được tính 1 lần trả lời duy nhất theo luật thi đấu cố định.
+              </p>
+            )}
+          </div>
+
+          {/* Cấu hình khởi động đồng hồ đếm ngược: Thủ công vs Tự động */}
+          <div className="flex items-center justify-between glass rounded-xl p-4 border border-border">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-bold">Đồng hồ đếm ngược thủ công (MC điều khiển)</p>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Khuyên dùng
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {!autoTimerStart
+                  ? "Bật: Mở câu hỏi nhưng tạm dừng tính giờ để MC đọc đề; MC bấm 'Bắt đầu tính giờ' thì đồng hồ và nhạc mới chạy"
+                  : "Tắt: Tự động đếm ngược và phát nhạc ngay khi câu hỏi xuất hiện"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAutoTimerStart(!autoTimerStart)}
+              className={`w-12 h-6 rounded-full transition-colors ${ !autoTimerStart ? "bg-amber-500" : "bg-muted" }`}
+              title={!autoTimerStart ? "Đang bật thủ công" : "Đang bật tự động"}
+            >
+              <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ !autoTimerStart ? "translate-x-6" : "translate-x-0" }`} />
+            </button>
+          </div>
         </div>
       )}
 

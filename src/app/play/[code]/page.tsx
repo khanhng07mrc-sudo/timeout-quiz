@@ -57,6 +57,7 @@ export default function PlayPage() {
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
   const playerIdRef = useRef<string>("");
+  const lastQuestionIdRef = useRef<string | null>(null);
 
   const toggleSound = () => {
     const next = !soundEnabled;
@@ -162,8 +163,11 @@ export default function PlayPage() {
         const p = e.data.payload;
         if (p.roomState !== undefined) setRoomState(p.roomState);
         if (p.currentQuestion !== undefined) {
+          const newQId = p.currentQuestion?.question?.id ?? null;
+          const isDifferentQ = newQId !== lastQuestionIdRef.current;
+          lastQuestionIdRef.current = newQId;
           setCurrentQuestion(p.currentQuestion);
-          if (p.currentQuestion !== null) setAnswered(false);
+          if (isDifferentQ) setAnswered(false);
         }
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
@@ -406,6 +410,10 @@ export default function PlayPage() {
       setHiddenOptionIds([]);
       setIsStealPhase(false);
       setStealBuzzedTeam(null);
+    });
+
+    socket.on("game:answer:ack", (payload) => {
+      setAnswered(true);
     });
 
     socket.on("game:score:update", (scores) => {
@@ -833,6 +841,7 @@ export default function PlayPage() {
             )}
 
             <GameQuestion
+              key={currentQuestion.question.id}
               question={currentQuestion}
               timer={timer}
               onAnswer={handleAnswer}
@@ -843,6 +852,7 @@ export default function PlayPage() {
               hiddenOptionIds={hiddenOptionIds}
               roomMode={roomState?.mode ?? "CLASSIC"}
               myTeamId={effectiveTeamId}
+              playerId={playerId}
               answerMethod={roomState?.config?.answerMethod ?? "DEVICE"}
               isStealPhase={isStealPhase}
               stealBuzzedTeam={stealBuzzedTeam}

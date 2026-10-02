@@ -283,6 +283,12 @@ export default function AdminRoomPage() {
       setTeamSelectedAnswers({});
       setAdminSelectedAnswerId(null);
     });
+    socket.on("game:answer:received", (payload: any) => {
+      if (payload.teamId && payload.answer) {
+        const singleAns = Array.isArray(payload.answer) ? payload.answer[0] : payload.answer;
+        setTeamSelectedAnswers((prev) => ({ ...prev, [payload.teamId]: singleAns }));
+      }
+    });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {
         if (!prev) return prev;
@@ -1092,7 +1098,7 @@ export default function AdminRoomPage() {
 
             {roomState?.mode === "GRID_CARO" && roomState?.status !== "LOBBY" ? null : (
               <button
-                onClick={() => emit("admin:next")}
+                onClick={() => emit("admin:next", { code })}
                 disabled={gameEnded}
                 className={`py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap ${
                   roomState?.mode === "DICE_RACE" && !currentQuestion ? "animate-pulse ring-2 ring-cyan-400" : ""
@@ -1112,7 +1118,7 @@ export default function AdminRoomPage() {
             {/* Tiết lộ đáp án button */}
             {(!revealPayload || roomState?.mode !== "GRID_CARO") && (
               <button
-                onClick={() => emit("admin:reveal")}
+                onClick={() => emit("admin:reveal", { code })}
                 disabled={!currentQuestion || !!revealPayload}
                 className={`py-3 rounded-xl font-bold text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all ${
                   roomState?.mode === "GRID_CARO" && !revealPayload && (timer?.remaining === 0)
@@ -1132,7 +1138,7 @@ export default function AdminRoomPage() {
             {/* Chuyển qua bàn cờ cho DICE_RACE */}
             {roomState?.mode === "DICE_RACE" && revealPayload && (
               <button
-                onClick={() => emit("admin:dice:advance_to_board")}
+                onClick={() => emit("admin:dice:advance_to_board", { code })}
                 className="py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-sm shadow-xl inline-flex items-center justify-center gap-2 whitespace-nowrap transition active:scale-95 animate-pulse cursor-pointer"
               >
                 <span>🗺️</span>

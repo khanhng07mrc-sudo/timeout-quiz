@@ -1,7 +1,7 @@
 "use client";
 
 import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Props {
   question: QuestionState;
@@ -14,10 +14,11 @@ interface Props {
   hiddenOptionIds?: string[];
   roomMode?: string;
   myTeamId?: string;
+  playerId?: string;
   answerMethod?: "DEVICE" | "MC";
   isStealPhase?: boolean;
   stealBuzzedTeam?: { teamId: string; teamName: string; playerId: string; playerName: string } | null;
-  buzzedBy?: { playerName: string; teamId?: string; teamName?: string } | null;
+  buzzedBy?: { playerName: string; teamId?: string; teamName?: string; playerId?: string } | null;
   onSelectPoints?: (points: 10 | 20 | 30) => void;
   onStopEarly?: () => void;
   isSpectator?: boolean;
@@ -34,6 +35,7 @@ export default function GameQuestion({
   hiddenOptionIds,
   roomMode = "CLASSIC",
   myTeamId,
+  playerId,
   answerMethod = "DEVICE",
   isStealPhase = false,
   stealBuzzedTeam = null,
@@ -47,30 +49,41 @@ export default function GameQuestion({
   const [fillText, setFillText] = useState("");
 
   const q = question.question;
+
+  // Clean reset of input and selection states whenever question ID changes
+  useEffect(() => {
+    setSelected([]);
+    setEssayText("");
+    setFillText("");
+  }, [q.id]);
+
   const timerPercent = timer ? (timer.remaining / timer.total) * 100 : 100;
   const timerColor = timerPercent > 50 ? "#06b6d4" : timerPercent > 25 ? "#f59e0b" : "#ef4444";
 
   const bloom: BloomLevel = question.bloomLevel ?? getBloomLevelFromPoints(q.points);
   const bloomMeta = BLOOM_METADATA[bloom];
 
-  // Mode permissions
+  // Mode permissions (supports both TEAM and INDIVIDUAL mode)
   const isMcMode = (question.answerMethod ?? answerMethod) === "MC";
+  const myActorId = myTeamId || playerId;
 
   // In BOUNCEBACK mode:
-  // Primary phase: primary team can answer (if primaryTeamId not defined, allow current active team)
-  const isPrimaryTeam = myTeamId && question.primaryTeamId ? myTeamId === question.primaryTeamId : !question.primaryTeamId;
-  // Steal phase: only steal buzzed team can answer
-  const isStealTeam = myTeamId && stealBuzzedTeam ? myTeamId === stealBuzzedTeam.teamId : false;
+  // Primary phase: primary team/player can answer
+  const isPrimaryTeam = myActorId && question.primaryTeamId ? myActorId === question.primaryTeamId : !question.primaryTeamId;
+  // Steal phase: only steal buzzed team/player can answer
+  const isStealTeam = myActorId && stealBuzzedTeam
+    ? (stealBuzzedTeam.teamId === myActorId || stealBuzzedTeam.playerId === myActorId)
+    : false;
 
-  // In BUZZ mode: only buzzed team can answer
-  const isBuzzedTeam = myTeamId && buzzedBy?.teamId
-    ? myTeamId === buzzedBy.teamId
-    : (myTeamId && question.buzzedTeamId ? myTeamId === question.buzzedTeamId : false);
+  // In BUZZ mode: only buzzed team/player can answer
+  const isBuzzedTeam = myActorId && buzzedBy
+    ? (buzzedBy.teamId === myActorId || (buzzedBy as any).playerId === myActorId)
+    : (myActorId && question.buzzedTeamId ? myActorId === question.buzzedTeamId : false);
 
-  // In TOURNAMENT mode: 2 active teams in match can answer
+  // In TOURNAMENT mode: 2 active competitors in match can answer
   const isTournamentCompetitor =
     question.tournamentTeam1Id && question.tournamentTeam2Id
-      ? (myTeamId === question.tournamentTeam1Id || myTeamId === question.tournamentTeam2Id)
+      ? (myActorId === question.tournamentTeam1Id || myActorId === question.tournamentTeam2Id)
       : true;
 
   const canAnswerThisQuestion = () => {
@@ -506,13 +519,13 @@ export default function GameQuestion({
               </button>
             );
           })}
-          {!answered && !revealPayload && canAnswerThisQuestion() && (
+          {canAnswerThisQuestion() && !revealPayload && (
             <button
               onClick={handleSubmitMulti}
               disabled={selected.length === 0}
-              className="mt-1.5 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50"
+              className="mt-1.5 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50 cursor-pointer"
             >
-              Xác nhận ({selected.length} đã chọn)
+              {answered ? `✓ Cập nhật đáp án (${selected.length} đã chọn)` : `Xác nhận (${selected.length} đã chọn)`}
             </button>
           )}
         </div>
@@ -530,20 +543,39 @@ export default function GameQuestion({
           <button
             onClick={handleSubmitFill}
             disabled={!fillText.trim() || !canAnswerThisQuestion()}
-            className="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50"
+            className="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50 cursor-pointer"
           >
-            Gửi
+            {answered ? "Cập nhật" : "Gửi"}
+          </button>
+        </div>
+      ) : q.type === "ESSAY" ? (
+        <div className="flex flex-col gap-2">
+          <textarea
+            value={essayText}
+            onChange={(e) => setEssayText(e.target.value)}
+            placeholder={isMcMode ? "Đang ở chế độ trả lời qua MC..." : "Viết câu trả lời của bạn..."}
+            rows={3}
+            disabled={!canAnswerThisQuestion()}
+            className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+          />
+          <button
+            onClick={handleSubmitEssay}
+            disabled={!essayText.trim() || !canAnswerThisQuestion()}
+            className="py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50 cursor-pointer"
+          >
+            {answered ? "Cập nhật bài làm" : "Nộp bài"}
           </button>
         </div>
       ) : null}
 
       {answered && !revealPayload && (
-        <div className="text-center py-2 text-green-400 font-bold flex items-center justify-center gap-1.5 text-sm">
-          <span>✓ Đã chọn đáp án</span>
-          <span className="text-xs text-muted-foreground font-normal">
+        <div className="text-center py-2 text-green-400 font-bold flex flex-wrap items-center justify-center gap-1.5 text-xs sm:text-sm bg-green-500/10 border border-green-500/30 rounded-xl px-4 animate-slide-up shadow-sm">
+          <span className="text-base">✓</span>
+          <span>Đã nộp đáp án</span>
+          <span className="text-[11px] sm:text-xs text-green-300/80 font-normal">
             {timer && timer.remaining <= 0
               ? "(Hết thời gian — Chờ Quản trò công bố kết quả)"
-              : "(Có thể đổi đáp án khác trước khi hết giờ)"}
+              : "(Có thể bấm chọn phương án khác để đổi đáp án bất kỳ lúc nào)"}
           </span>
         </div>
       )}

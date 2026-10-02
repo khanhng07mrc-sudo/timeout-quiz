@@ -481,12 +481,71 @@ const globalForSockets = globalThis as unknown as {
 };
 globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
 
-async function getAdminRoom(socket: Sock) {
-  const roomId = adminSockets.get(socket.id);
+async function getAdminRoom(socket: Sock, payloadCode?: string) {
+  let roomId = adminSockets.get(socket.id);
+
+  if (!roomId && payloadCode) {
+    const rByCode = await prisma.room.findUnique({
+      where: { code: payloadCode },
+      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+    });
+    if (rByCode) {
+      roomId = rByCode.id;
+      adminSockets.set(socket.id, roomId);
+      roomCache.set(roomId, rByCode);
+      if (rByCode.quizBank?.questions) {
+        roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
+      }
+      return rByCode;
+    }
+  }
+
+  if (!roomId) {
+    for (const roomName of socket.rooms) {
+      if (roomName.startsWith("room:") && roomName.endsWith(":admin")) {
+        const extractedCode = roomName.replace("room:", "").replace(":admin", "");
+        if (extractedCode) {
+          const rByCode = await prisma.room.findUnique({
+            where: { code: extractedCode },
+            include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+          });
+          if (rByCode) {
+            roomId = rByCode.id;
+            adminSockets.set(socket.id, roomId);
+            roomCache.set(roomId, rByCode);
+            if (rByCode.quizBank?.questions) {
+              roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
+            }
+            return rByCode;
+          }
+        }
+      }
+    }
+  }
+
   if (!roomId) return null;
 
   const cached = roomCache.get(roomId);
-  if (cached) return cached;
+  if (cached) {
+    if (!cached.quizBank?.questions?.length) {
+      const qCached = roomQuestionsCache.get(roomId);
+      if (qCached && qCached.length > 0) {
+        if (!cached.quizBank) cached.quizBank = { questions: qCached };
+        else cached.quizBank.questions = qCached;
+      } else {
+        const r = await prisma.room.findUnique({
+          where: { id: roomId },
+          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+        });
+        if (r) {
+          roomCache.set(roomId, r);
+          if (r.quizBank?.questions) roomQuestionsCache.set(roomId, r.quizBank.questions);
+          return r;
+        }
+      }
+    }
+    return cached;
+  }
 
   const r = await prisma.room.findUnique({
     where: { id: roomId },
@@ -1721,9 +1780,12 @@ export function registerSocketHandlers(io: IO) {
     }
 
     // ── Admin: Next Question ──────────────────────────────────────────────────
-    socket.on("admin:next", async () => {
-      const room = await getAdminRoom(socket);
-      if (!room) return;
+    socket.on("admin:next", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room) {
+        console.warn(`[admin:next] Unable to find admin room for socket ${socket.id}, payload:`, payload);
+        return;
+      }
 
       // Fast-skip if preparation/countdown is already active
       if (roomPrepareStates.has(room.id)) {
@@ -1738,7 +1800,13 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      const questions = room.quizBank?.questions ?? [];
+      let questions = room.quizBank?.questions ?? [];
+      if (questions.length === 0) {
+        questions = await getRoomQuestions(room.id);
+        if (room.quizBank) {
+          room.quizBank.questions = questions;
+        }
+      }
 
       if (questions.length === 0) {
         socket.emit("error", "Phòng chưa có câu hỏi nào! Vui lòng chọn bộ đề câu hỏi trước khi bắt đầu.");
@@ -1965,8 +2033,8 @@ export function registerSocketHandlers(io: IO) {
       await startQuestionPrepareAndLaunch(room, questions, nextIndex);
     });
 
-    socket.on("admin:skip:prepare", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:skip:prepare", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
@@ -1980,8 +2048,8 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("admin:pause", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:pause", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
@@ -1991,16 +2059,19 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:paused");
     });
 
-    socket.on("admin:resume", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:resume", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
       await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } });
       io.to(`room:${room.code}`).emit("game:resumed");
     });
 
-    socket.on("admin:reveal", async () => {
-      const room = await getAdminRoom(socket);
-      if (!room) return;
+    socket.on("admin:reveal", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room) {
+        console.warn(`[admin:reveal] Unable to find admin room for socket ${socket.id}, payload:`, payload);
+        return;
+      }
 
       const activeQ = roomActiveQuestions.get(room.id);
       const rawQuestions = room.quizBank?.questions ?? [];
@@ -2036,7 +2107,12 @@ export function registerSocketHandlers(io: IO) {
       } else if (room.mode === "WAGER") {
         await finalizeWagerQuestion(io, room.id, room.code, q.id);
       } else {
-        if (room.teamMode !== "TEAM") {
+        if (room.teamMode === "TEAM") {
+          const res = await resolveQuestionTeamScores(io, room.id, q.id);
+          if (res.teamScoresUpdates.length > 0) {
+            io.to(`room:${room.code}`).emit("game:score:update", res.teamScoresUpdates);
+          }
+        } else {
           await finalizeIndividualScores(io, room.id, room.code, q.id);
         }
         await revealCurrentAnswer(io, room.id, room.code, q.id);
@@ -2571,9 +2647,10 @@ export function registerSocketHandlers(io: IO) {
       await executeDiceRoll(room, diceState, teamId);
     });
 
-    socket.on("admin:dice:advance_to_board", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:dice:advance_to_board", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "DICE_RACE") return;
+      roomActiveQuestions.delete(room.id);
       io.to(`room:${room.code}`).emit("game:question:clear");
       const diceState = roomDiceRaces.get(room.id);
       if (diceState) {
@@ -3040,7 +3117,9 @@ async function processAnswerSubmission({
     isCorrect = null as any;
   }
 
-  // Mode permissions check
+  // Mode permissions check (supports both TEAM and INDIVIDUAL mode)
+  const actorId = teamId || playerId;
+
   if (room.mode === "BOUNCEBACK") {
     const stealInfo = roomStealBuzzed.get(qKey);
     const primary = roomPrimaryTeams.get(qKey);
@@ -3051,7 +3130,7 @@ async function processAnswerSubmission({
         return;
       }
     } else if (primary) {
-      if (!isAdminOverride && teamId !== primary.teamId) {
+      if (!isAdminOverride && teamId !== primary.teamId && playerId !== primary.teamId) {
         if (socket) socket.emit("error", "Hiện đang là lượt của đội chính!");
         return;
       }
@@ -3069,19 +3148,19 @@ async function processAnswerSubmission({
   } else if (room.mode === "TOURNAMENT") {
     const tournament = roomTournaments.get(room.id);
     const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
-    if (currentMatch && teamId !== currentMatch.team1Id && teamId !== currentMatch.team2Id && !isAdminOverride) {
+    if (currentMatch && actorId !== currentMatch.team1Id && actorId !== currentMatch.team2Id && !isAdminOverride) {
       if (socket) socket.emit("error", "Chỉ 2 đội trong trận đối đầu hiện tại mới được trả lời!");
       return;
     }
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
-    if (gridState && teamId !== gridState.currentTurnTeamId && !isAdminOverride) {
+    if (gridState && actorId !== gridState.currentTurnTeamId && !isAdminOverride) {
       if (socket) socket.emit("error", "Hiện đang là lượt của đội khác!");
       return;
     }
   } else if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
-    if (diceState && teamId !== diceState.currentTurnTeamId && !isAdminOverride) {
+    if (diceState && actorId !== diceState.currentTurnTeamId && !isAdminOverride) {
       if (socket) socket.emit("error", "Hiện đang là lượt của đội khác!");
       return;
     }
@@ -3112,11 +3191,14 @@ async function processAnswerSubmission({
     });
   }
 
+  const isUpdate = Boolean(existingAnswer);
+  const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
+
   if (existingAnswer) {
     await prisma.answer.update({
       where: { id: existingAnswer.id },
       data: {
-        answer: Array.isArray(answer) ? answer : [answer],
+        answer: normalizedAnswer,
         isCorrect: question.type === "ESSAY" ? null : isCorrect,
         timeSpent: isAdminOverride ? 0 : timeSpent,
         submittedAt: new Date(),
@@ -3129,13 +3211,37 @@ async function processAnswerSubmission({
         questionId,
         playerId: targetPlayerId ?? null,
         teamId: targetTeamId ?? null,
-        answer: Array.isArray(answer) ? answer : [answer],
+        answer: normalizedAnswer,
         isCorrect: question.type === "ESSAY" ? null : isCorrect,
         pointsAwarded: 0,
         timeSpent: isAdminOverride ? 0 : timeSpent,
       },
     });
   }
+
+  // 1. Send positive acknowledgment (Ack) to the submitting player
+  if (socket) {
+    socket.emit("game:answer:ack", {
+      questionId,
+      answer: normalizedAnswer,
+      isUpdate,
+      success: true,
+    });
+  }
+
+  // 2. Broadcast live answer notification to Admin Host dashboard
+  const playerObj = playerId ? await prisma.player.findUnique({ where: { id: playerId } }).catch(() => null) : null;
+  const teamObj = teamId ? await prisma.team.findUnique({ where: { id: teamId } }).catch(() => null) : null;
+
+  io.to(`room:${room.code}:admin`).emit("game:answer:received", {
+    teamId,
+    playerId,
+    playerName: playerObj?.name || "Thí sinh",
+    teamName: teamObj?.name,
+    questionId,
+    answer: normalizedAnswer,
+    isUpdate,
+  });
 }
 
 // ── Mode Finalization Helpers (Called on timeout or admin reveal) ─────────────
@@ -3832,9 +3938,9 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   let roomAccuracy: number | undefined;
   let rarityBonusPercent: number | undefined;
 
-  // Collective team scoring in CLASSIC mode, OR in ELIMINATION mode when device & eliminationDeepScoring are active
+  // Collective team scoring in CLASSIC, POWERUP mode, OR in ELIMINATION mode when device & eliminationDeepScoring are active
   const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;
-  if ((room.mode === "CLASSIC" || isEliminationDeep) && room.teamMode === "TEAM") {
+  if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || isEliminationDeep) && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -4146,7 +4252,7 @@ async function resolveQuestionTeamScores(
       teams: { include: { players: true } },
     },
   });
-  if (!room || room.teamMode !== "TEAM" || (room.mode !== "CLASSIC" && room.mode !== "ELIMINATION")) {
+  if (!room || room.teamMode !== "TEAM" || (room.mode !== "CLASSIC" && room.mode !== "ELIMINATION" && room.mode !== "POWERUP")) {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
 
@@ -4212,7 +4318,7 @@ async function resolveQuestionTeamScores(
 
     const effectiveTeamConfig = {
       ...(room.config as any),
-      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
+      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
     };
 
     const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
@@ -4290,13 +4396,19 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
     io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
   } else if (room.mode === "DICE_RACE") {
     await finalizeDiceRaceQuestion(io, roomId, roomCode, questionId);
-  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
+  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP") {
     if (room.teamMode === "TEAM") {
       const { teamScoresUpdates } = await resolveQuestionTeamScores(io, roomId, questionId);
       if (teamScoresUpdates.length > 0) {
         io.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
       }
     } else {
+      await finalizeIndividualScores(io, roomId, roomCode, questionId);
+    }
+    await revealCurrentAnswer(io, roomId, roomCode, questionId);
+  } else {
+    // Catch-all fallback: never leave any mode hanging when countdown reaches 0
+    if (room.teamMode !== "TEAM") {
       await finalizeIndividualScores(io, roomId, roomCode, questionId);
     }
     await revealCurrentAnswer(io, roomId, roomCode, questionId);

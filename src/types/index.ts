@@ -893,6 +893,8 @@ export interface ServerToClientEvents {
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
   "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30 }) => void;
+  "game:answer:ack": (payload: { questionId: string; answer: string | string[]; isUpdate: boolean; success: boolean }) => void;
+  "game:answer:received": (payload: { teamId?: string; playerId?: string; playerName: string; teamName?: string; questionId: string; answer?: string | string[]; isUpdate: boolean }) => void;
   "game:elimination:round": (payload: {
     round?: number;
     cycleQuestions?: number;
@@ -910,11 +912,11 @@ export interface ClientToServerEvents {
   "game:answer:submit": (payload: { questionId: string; answer: string | string[] }) => void;
   "game:buzz": () => void;
   "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
-  "admin:next": () => void;
-  "admin:skip:prepare": () => void;
-  "admin:pause": () => void;
-  "admin:resume": () => void;
-  "admin:reveal": () => void;
+  "admin:next": (payload?: { code?: string }) => void;
+  "admin:skip:prepare": (payload?: { code?: string }) => void;
+  "admin:pause": (payload?: { code?: string }) => void;
+  "admin:resume": (payload?: { code?: string }) => void;
+  "admin:reveal": (payload?: { code?: string }) => void;
   "admin:score:manual": (payload: { answerId: string; points: number }) => void;
   "admin:shuffle:cards": () => void;
   "admin:lock:cards": (locked: boolean) => void;

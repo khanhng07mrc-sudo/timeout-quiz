@@ -1422,8 +1422,8 @@ function registerSocketHandlers(io2) {
         socket
       });
     });
-    socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer, code }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
       const qKey = `${room.id}:${questionId}`;
       let effTeamId = teamId;
@@ -2749,8 +2749,8 @@ function registerSocketHandlers(io2) {
       roomActiveQuestions.set(room.id, questionState);
       io2.to(`room:${room.code}`).emit("game:question", questionState);
     });
-    socket.on("admin:question:start_timer", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:question:start_timer", async (payload) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.status !== "PLAYING") return;
       const activeQ = roomActiveQuestions.get(room.id);
       const rawQuestions = room.quizBank?.questions ?? [];
@@ -3002,8 +3002,8 @@ function registerSocketHandlers(io2) {
         });
       }
     });
-    socket.on("admin:timer:stop_early", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:timer:stop_early", async (payload) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.status !== "PLAYING") return;
       const questions = await getRoomQuestions(room.id);
       const q = questions[room.currentQuestion];

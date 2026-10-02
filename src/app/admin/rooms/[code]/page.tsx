@@ -324,6 +324,23 @@ export default function AdminRoomPage() {
   }, [code]);
 
   const emit = (event: keyof ClientToServerEvents, ...args: any[]) => {
+    if (args.length === 0) {
+      if (
+        event === "admin:next" ||
+        event === "admin:reveal" ||
+        event === "admin:pause" ||
+        event === "admin:resume" ||
+        event === "admin:skip:prepare" ||
+        event === "admin:dice:advance_to_board"
+      ) {
+        (socketRef.current?.emit as any)(event, { code });
+        return;
+      }
+    } else if (args.length === 1 && typeof args[0] === "object" && args[0] !== null) {
+      if (!args[0].code) {
+        args[0] = { ...args[0], code };
+      }
+    }
     (socketRef.current?.emit as any)(event, ...args);
   };
 

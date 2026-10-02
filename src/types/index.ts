@@ -928,7 +928,7 @@ export interface ClientToServerEvents {
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
-  "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[] }) => void;
+  "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[]; code?: string }) => void;
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
   "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;
@@ -942,17 +942,17 @@ export interface ClientToServerEvents {
   "admin:grid:preview:stop": () => void;
   "admin:grid:select:manual": (payload: { cellId: number }) => void;
   "admin:grid:launch_question": () => void;
-  "admin:question:start_timer": () => void;
+  "admin:question:start_timer": (payload?: { code?: string }) => void;
   "admin:grid:advance_now": () => void;
   "admin:dice:roll:manual": () => void;
-  "admin:dice:advance_to_board": () => void;
+  "admin:dice:advance_to_board": (payload?: { code?: string }) => void;
   "admin:tournament:advance": () => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
   "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
   "admin:timer:set": (payload: { seconds: number }) => void;
-  "admin:timer:stop_early": () => void;
+  "admin:timer:stop_early": (payload?: { code?: string }) => void;
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
 }

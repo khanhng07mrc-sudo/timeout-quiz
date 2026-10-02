@@ -1024,8 +1024,8 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Admin Submit Answer (MC Mode / Override / After Timeout) ──────────────
-    socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer, code }: any) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
 
       const qKey = `${room.id}:${questionId}`;
@@ -2609,8 +2609,8 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:question", questionState);
     });
 
-    socket.on("admin:question:start_timer", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:question:start_timer", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.status !== "PLAYING") return;
 
       const activeQ = roomActiveQuestions.get(room.id);
@@ -2922,8 +2922,8 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("admin:timer:stop_early", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:timer:stop_early", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.status !== "PLAYING") return;
       const questions = await getRoomQuestions(room.id);
       const q = questions[room.currentQuestion];

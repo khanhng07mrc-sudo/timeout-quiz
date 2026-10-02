@@ -780,7 +780,7 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    adminSocketRef.current?.emit("admin:next");
+    adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");
   };
 
@@ -871,7 +871,7 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    adminSocketRef.current?.emit("admin:reveal");
+    adminSocketRef.current?.emit("admin:reveal", { code });
     addLog("Admin: Công bố đáp án");
   };
 
@@ -919,10 +919,10 @@ export default function AdminSandboxPage() {
     }
 
     if (roomState?.status === "PAUSED") {
-      adminSocketRef.current?.emit("admin:resume");
+      adminSocketRef.current?.emit("admin:resume", { code });
       addLog("Admin: Tiếp tục trận đấu");
     } else {
-      adminSocketRef.current?.emit("admin:pause");
+      adminSocketRef.current?.emit("admin:pause", { code });
       addLog("Admin: Tạm dừng trận đấu");
     }
   };
@@ -1093,7 +1093,7 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    adminSocketRef.current?.emit("admin:dice:advance_to_board");
+    adminSocketRef.current?.emit("admin:dice:advance_to_board", { code });
     addLog("Admin: Chuyển sang bàn cờ đường đua");
   };
 

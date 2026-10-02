@@ -40,6 +40,15 @@ export default function AdminRoomPage() {
   const [buzzedTeam, setBuzzedTeam] = useState<{ teamId?: string; teamName?: string; playerId: string; playerName: string } | null>(null);
   const [stealBuzzed, setStealBuzzed] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const [isStealOpen, setIsStealOpen] = useState(false);
+  const [awaitingJudgment, setAwaitingJudgment] = useState<{
+    phase: "PRIMARY" | "STEAL";
+    targetTeamId: string;
+    targetTeamName: string;
+    answer?: string | string[];
+    points: number;
+    isAutoCorrect?: boolean;
+    answerText?: string;
+  } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
@@ -238,6 +247,7 @@ export default function AdminRoomPage() {
       setBuzzedTeam(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
+      setAwaitingJudgment(null);
       setTeamSelectedAnswers({});
       setAdminSelectedAnswerId(null);
       if (q.totalParticipantsCount) {
@@ -318,6 +328,7 @@ export default function AdminRoomPage() {
     socket.on("game:answer:reveal", (p) => {
       setRevealPayload(p);
       setIsStealOpen(false);
+      setAwaitingJudgment(null);
       if (soundEnabledRef.current) {
         if (p.answers?.some((a) => a.isCorrect)) {
           soundManager.playCorrect();
@@ -333,9 +344,13 @@ export default function AdminRoomPage() {
       setBuzzedTeam(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
+      setAwaitingJudgment(null);
       setTeamSelectedAnswers({});
       setAdminSelectedAnswerId(null);
       setSubmissionProgress(null);
+    });
+    socket.on("game:bounceback:awaiting_judgment", (p) => {
+      setAwaitingJudgment(p);
     });
     socket.on("game:answer:finalized", (payload) => {
       setSubmissionProgress({
@@ -535,6 +550,28 @@ export default function AdminRoomPage() {
     ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
     : null;
   const timerDisplayRemaining = timerAuth ? timerAuth.remaining : timer?.remaining ?? 0;
+
+  const isDeviceAnswer = (currentQuestion?.answerMethod || roomState?.config.answerMethod || "DEVICE") === "DEVICE";
+  const effectiveAwaiting = awaitingJudgment || (
+    currentQuestion?.bouncebackAwaitingJudgment
+      ? {
+          phase: currentQuestion.bouncebackAwaitingJudgment,
+          targetTeamId: currentQuestion.bouncebackAwaitingJudgment === "STEAL" ? (currentQuestion.stealBuzzedTeamId || stealBuzzed?.teamId || "") : (currentQuestion.primaryTeamId || ""),
+          targetTeamName: currentQuestion.bouncebackAwaitingJudgment === "STEAL" ? (currentQuestion.stealBuzzedTeamName || stealBuzzed?.teamName || "") : (currentQuestion.primaryTeamName || ""),
+          answer: currentQuestion.bouncebackAwaitingJudgment === "STEAL" ? currentQuestion.bouncebackStealAnswer : currentQuestion.bouncebackPrimaryAnswer,
+          points: currentQuestion.selectedPointLevel || 20,
+          isAutoCorrect: currentQuestion.bouncebackAutoCorrect,
+          answerText: currentQuestion.bouncebackAnswerText,
+        }
+      : null
+  );
+
+  const isStealPhaseActive = Boolean(stealBuzzed || effectiveAwaiting?.phase === "STEAL");
+  const targetJudgeName = stealBuzzed
+    ? stealBuzzed.teamName
+    : (effectiveAwaiting?.targetTeamName || currentQuestion?.primaryTeamName || "Đội chính");
+  const isAutoCorrectResult = effectiveAwaiting?.isAutoCorrect === true;
+  const answerSummaryText = effectiveAwaiting?.answerText || (Array.isArray(effectiveAwaiting?.answer) ? effectiveAwaiting.answer.join(", ") : effectiveAwaiting?.answer) || "(Chưa có đáp án)";
 
   return (
     <div className="space-y-6 pb-24 lg:pb-8">
@@ -802,24 +839,78 @@ export default function AdminRoomPage() {
               {!revealPayload && (
                 <div className="space-y-2 pt-1 border-t border-purple-500/20">
                   <p className="text-xs font-bold text-purple-200">
-                    ⚖️ Phán quyết MC: {stealBuzzed ? `Đội cướp [${stealBuzzed.teamName}]` : `Đội chính [${currentQuestion.primaryTeamName || "Chính"}]`}
+                    ⚖️ Phán quyết MC: {isStealPhaseActive ? `Đội cướp [${targetJudgeName}]` : `Đội chính [${targetJudgeName}]`}
                   </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                      className="py-2.5 px-2 rounded-xl bg-green-600 hover:bg-green-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition"
-                    >
-                      <span>✓</span>
-                      <span>{stealBuzzed ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
-                    </button>
-                    <button
-                      onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                      className="py-2.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition"
-                    >
-                      <span>✗</span>
-                      <span>{stealBuzzed ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
-                    </button>
-                  </div>
+
+                  {isDeviceAnswer ? (
+                    <div className="space-y-2">
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-slate-700/60 text-left space-y-1">
+                        <div className="text-[11px] text-slate-400">
+                          Đáp án trên máy: <strong className="text-white font-mono">{answerSummaryText}</strong>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded text-[11px] font-black inline-flex items-center gap-1 ${
+                          isAutoCorrectResult
+                            ? "bg-green-500/20 text-green-300 border border-green-500/40"
+                            : "bg-red-500/20 text-red-300 border border-red-500/40"
+                        }`}>
+                          <span>{isAutoCorrectResult ? "✅ Tự động: ĐÚNG" : "❌ Tự động: SAI"}</span>
+                        </div>
+                      </div>
+
+                      {isAutoCorrectResult ? (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                            className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
+                          >
+                            <span>✓</span>
+                            <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                            className="w-full py-1 text-[11px] text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                            className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
+                          >
+                            <span>✗</span>
+                            <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN: SAI (MỞ CƯỚP 5S)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                            className="w-full py-1 text-[11px] text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                        className="py-2.5 px-2 rounded-xl bg-green-600 hover:bg-green-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition ring-2 ring-green-400 cursor-pointer"
+                      >
+                        <span>✓</span>
+                        <span>{isStealPhaseActive ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
+                      </button>
+                      <button
+                        onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                        className="py-2.5 px-2 rounded-xl bg-red-600 hover:bg-red-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1 active:scale-95 transition ring-2 ring-red-400 cursor-pointer"
+                      >
+                        <span>✗</span>
+                        <span>{isStealPhaseActive ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1268,21 +1359,81 @@ export default function AdminRoomPage() {
 
             {/* Tiết lộ đáp án button or Bounceback judgment */}
             {roomState?.mode === "BOUNCEBACK" && currentQuestion && !revealPayload ? (
-              <div className="col-span-2 grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                  className="py-3 px-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse"
-                >
-                  <span>✓</span>
-                  <span className="truncate">{stealBuzzed ? "CƯỚP ĐÚNG (+100%)" : "ĐÚNG (+100% ĐIỂM)"}</span>
-                </button>
-                <button
-                  onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                  className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400"
-                >
-                  <span>✗</span>
-                  <span className="truncate">{stealBuzzed ? "CƯỚP SAI (-50%)" : "SAI (MỞ CƯỚP 5S)"}</span>
-                </button>
+              <div className="col-span-2 space-y-2">
+                {isDeviceAnswer ? (
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-left space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Đội thi:</span>
+                        <span className="font-bold text-cyan-300">{targetJudgeName}</span>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-slate-400">Đáp án thí sinh đã chọn: </span>
+                        <strong className="text-white font-mono text-sm">{answerSummaryText}</strong>
+                      </div>
+                      <div className={`px-2.5 py-1 rounded text-xs font-black inline-flex items-center gap-1 ${
+                        isAutoCorrectResult
+                          ? "bg-green-500/20 text-green-300 border border-green-500/40"
+                          : "bg-red-500/20 text-red-300 border border-red-500/40"
+                      }`}>
+                        <span>{isAutoCorrectResult ? "✅ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN ĐÚNG" : "❌ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN SAI"}</span>
+                      </div>
+                    </div>
+
+                    {isAutoCorrectResult ? (
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                          className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
+                        >
+                          <span className="text-lg">✓</span>
+                          <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "XÁC NHẬN & CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                          className="w-full py-1 text-xs text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                          className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
+                        >
+                          <span className="text-lg">✗</span>
+                          <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN & MỞ CƯỚP: SAI (5s)"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                          className="w-full py-1 text-xs text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                      className="py-3 px-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
+                    >
+                      <span>✓</span>
+                      <span className="truncate">{isStealPhaseActive ? "CƯỚP ĐÚNG (+100%)" : "ĐÚNG (+100% ĐIỂM)"}</span>
+                    </button>
+                    <button
+                      onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                      className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400 cursor-pointer"
+                    >
+                      <span>✗</span>
+                      <span className="truncate">{isStealPhaseActive ? "CƯỚP SAI (-50%)" : "SAI (MỞ CƯỚP 5S)"}</span>
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (!revealPayload || roomState?.mode !== "GRID_CARO") ? (
               <button
@@ -1621,18 +1772,38 @@ export default function AdminRoomPage() {
 
         {roomState?.mode === "BOUNCEBACK" && currentQuestion && !revealPayload ? (
           <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-              className="py-3 px-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-green-400 flex items-center gap-1"
-            >
-              ✓ {stealBuzzed ? "Cướp Đúng" : "Đúng"}
-            </button>
-            <button
-              onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-              className="py-3 px-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-red-400 flex items-center gap-1"
-            >
-              ✗ {stealBuzzed ? "Cướp Sai" : "Sai (5s)"}
-            </button>
+            {isDeviceAnswer ? (
+              isAutoCorrectResult ? (
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                  className="py-3 px-3 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-green-400 flex items-center gap-1 animate-pulse"
+                >
+                  ✓ {isStealPhaseActive ? "Cướp Đúng (+100%)" : "Đúng (+100%)"}
+                </button>
+              ) : (
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                  className="py-3 px-3 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-red-400 flex items-center gap-1 animate-pulse"
+                >
+                  ✗ {isStealPhaseActive ? "Cướp Sai (-50%)" : "Sai (Mở 5s)"}
+                </button>
+              )
+            ) : (
+              <>
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                  className="py-3 px-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-green-400 flex items-center gap-1"
+                >
+                  ✓ {isStealPhaseActive ? "Cướp Đúng" : "Đúng"}
+                </button>
+                <button
+                  onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                  className="py-3 px-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-xs shrink-0 active:scale-95 shadow ring-1 ring-red-400 flex items-center gap-1"
+                >
+                  ✗ {isStealPhaseActive ? "Cướp Sai" : "Sai (5s)"}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <button

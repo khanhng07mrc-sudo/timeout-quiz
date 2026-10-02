@@ -777,6 +777,8 @@ export interface QuestionState {
   bouncebackAwaitingJudgment?: "PRIMARY" | "STEAL" | null;
   bouncebackPrimaryAnswer?: string[];
   bouncebackStealAnswer?: string[];
+  bouncebackAutoCorrect?: boolean;
+  bouncebackAnswerText?: string;
   endsAt?: number;
   serverTime?: number;
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
@@ -905,7 +907,15 @@ export interface ServerToClientEvents {
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
   "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30; timeLimit?: number; endsAt?: number }) => void;
-  "game:bounceback:awaiting_judgment": (payload: { phase: "PRIMARY" | "STEAL"; targetTeamId: string; targetTeamName: string; answer?: string | string[]; points: number }) => void;
+  "game:bounceback:awaiting_judgment": (payload: {
+    phase: "PRIMARY" | "STEAL";
+    targetTeamId: string;
+    targetTeamName: string;
+    answer?: string | string[];
+    points: number;
+    isAutoCorrect?: boolean;
+    answerText?: string;
+  }) => void;
   "game:answer:ack": (payload: { questionId: string; answer: string | string[]; isUpdate: boolean; success: boolean }) => void;
   "game:answer:received": (payload: { teamId?: string; playerId?: string; playerName: string; teamName?: string; questionId: string; answer?: string | string[]; isUpdate: boolean }) => void;
   "game:elimination:round": (payload: {

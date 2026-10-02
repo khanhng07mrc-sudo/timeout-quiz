@@ -224,8 +224,15 @@ class SoundManager {
       this.currentMusicAudio = nextAudio;
       this.currentMusicType = type;
 
+      nextAudio.loop = false;
       nextAudio.volume = this.isMuted ? 0 : targetVol;
       nextAudio.currentTime = 0;
+      nextAudio.onended = () => {
+        if (this.currentMusicAudio === nextAudio) {
+          this.currentMusicAudio = null;
+          this.currentMusicType = null;
+        }
+      };
       nextAudio.play().catch(() => {});
     } else {
       // For Lobby or ambient music, crossfade smoothly
@@ -254,6 +261,9 @@ class SoundManager {
    * - 16s - 25s: Olympia 9 Về đích (20s)
    * - 26s - 45s: Olympia 22 Về đích (30s)
    * - > 45s: Olympia 10 Khởi động (60s)
+   *
+   * Countdown music plays naturally through to the end of the audio track
+   * to preserve authentic Olympia resolutions and gong/reverb effects.
    */
   public playQuestionMusic(remainingSeconds: number = 30) {
     if (this.questionMusicTimeout) {
@@ -278,11 +288,14 @@ class SoundManager {
 
     this.playMusicTrack("QUESTION", selectedKey, 0.85, 400);
 
-    // Auto-stop music strictly when question timer expires with a smooth fade-out
+    // Audio file plays naturally to its end (chạy tới hết file).
+    // Safety watchdog only to reset state after track completion.
+    const safetyTimeoutMs = Math.max(40000, (remainingSeconds + 20) * 1000);
     this.questionMusicTimeout = setTimeout(() => {
-      this.stopMusic(350);
-      this.playTimeout();
-    }, Math.max(1000, remainingSeconds * 1000));
+      if (this.currentMusicType === "QUESTION") {
+        this.stopMusic(350);
+      }
+    }, safetyTimeoutMs);
   }
 
   /**

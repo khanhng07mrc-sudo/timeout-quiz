@@ -3280,15 +3280,27 @@ export function registerSocketHandlers(io: IO) {
           const stealInfo = roomStealBuzzed.get(qKey);
           const primary = roomPrimaryTeams.get(qKey);
           const activeQ = roomActiveQuestions.get(room.id);
+          const question = await prisma.question.findUnique({ where: { id: questionId } });
+
+          io.to(`room:${room.code}`).emit("game:early_completed", {
+            questionId,
+            reason: "ALL_FINALIZED",
+            message: "Đội thi đã chốt đáp án sớm!",
+          });
+          io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+          io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
 
           if (stealInfo && (actorId === stealInfo.teamId || actorId === stealInfo.playerId)) {
             const existingAns = await prisma.answer.findFirst({
               where: { roomId: room.id, questionId, teamId: stealInfo.teamId },
             });
             const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+            const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, ansArr);
             if (activeQ) {
               activeQ.bouncebackAwaitingJudgment = "STEAL";
               activeQ.bouncebackStealAnswer = ansArr;
+              activeQ.bouncebackAutoCorrect = isAutoCorrect;
+              activeQ.bouncebackAnswerText = answerText;
               io.to(`room:${room.code}`).emit("game:question", activeQ);
             }
             io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
@@ -3297,6 +3309,8 @@ export function registerSocketHandlers(io: IO) {
               targetTeamName: stealInfo.teamName,
               answer: ansArr,
               points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+              isAutoCorrect,
+              answerText,
             });
             return;
           } else if (primary && (actorId === primary.teamId || actorId === primary.teamId)) {
@@ -3304,9 +3318,12 @@ export function registerSocketHandlers(io: IO) {
               where: { roomId: room.id, questionId, teamId: primary.teamId },
             });
             const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+            const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, ansArr);
             if (activeQ) {
               activeQ.bouncebackAwaitingJudgment = "PRIMARY";
               activeQ.bouncebackPrimaryAnswer = ansArr;
+              activeQ.bouncebackAutoCorrect = isAutoCorrect;
+              activeQ.bouncebackAnswerText = answerText;
               io.to(`room:${room.code}`).emit("game:question", activeQ);
             }
             io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
@@ -3315,6 +3332,8 @@ export function registerSocketHandlers(io: IO) {
               targetTeamName: primary.teamName,
               answer: ansArr,
               points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+              isAutoCorrect,
+              answerText,
             });
             return;
           }
@@ -3467,6 +3486,40 @@ async function getActiveParticipantsForQuestion(room: any, questionId: string): 
     });
     return players.map((p) => p.id);
   }
+}
+
+function evaluateAnswerCorrectness(
+  question: any,
+  submittedAnswer: string[]
+): { isAutoCorrect: boolean; answerText: string } {
+  if (!question) {
+    return { isAutoCorrect: false, answerText: "(Không có câu hỏi)" };
+  }
+  const options = (question.options as any[]) || [];
+  if (!submittedAnswer || submittedAnswer.length === 0) {
+    return { isAutoCorrect: false, answerText: "(Chưa chọn đáp án / Hết giờ)" };
+  }
+
+  const selectedOptions = options.filter((o: any) => submittedAnswer.includes(o.id));
+  const answerText = selectedOptions.length > 0
+    ? selectedOptions.map((o: any) => `${o.text}`).join(", ")
+    : submittedAnswer.join(", ");
+
+  let isAutoCorrect = false;
+  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
+    const correctOption = options.find((o: any) => o.isCorrect);
+    isAutoCorrect = correctOption ? submittedAnswer.includes(correctOption.id) : false;
+  } else if (question.type === "MC_MULTI") {
+    const correctIds = options.filter((o: any) => o.isCorrect).map((o: any) => o.id);
+    isAutoCorrect = correctIds.length === submittedAnswer.length &&
+      correctIds.every((id: string) => submittedAnswer.includes(id));
+  } else if (question.type === "FILL_BLANK") {
+    const expected = (question.answer || "").toLowerCase().trim();
+    const actual = (submittedAnswer[0] || "").toLowerCase().trim();
+    isAutoCorrect = expected === actual;
+  }
+
+  return { isAutoCorrect, answerText };
 }
 
 async function processAnswerSubmission({
@@ -3680,9 +3733,21 @@ async function processAnswerSubmission({
     stopQuestionTimer(room.id);
     const stealInfo = roomStealBuzzed.get(qKey);
     const activeQ = roomActiveQuestions.get(room.id);
+    const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, normalizedAnswer);
+
+    io.to(`room:${room.code}`).emit("game:early_completed", {
+      questionId,
+      reason: "ALL_SUBMITTED",
+      message: "Đội cướp chuông đã chốt đáp án duy nhất!",
+    });
+    io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+    io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
+
     if (activeQ) {
       activeQ.bouncebackAwaitingJudgment = "STEAL";
       activeQ.bouncebackStealAnswer = normalizedAnswer;
+      activeQ.bouncebackAutoCorrect = isAutoCorrect;
+      activeQ.bouncebackAnswerText = answerText;
       io.to(`room:${room.code}`).emit("game:question", activeQ);
     }
     io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
@@ -3691,6 +3756,8 @@ async function processAnswerSubmission({
       targetTeamName: stealInfo?.teamName || "",
       answer: normalizedAnswer,
       points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+      isAutoCorrect,
+      answerText,
     });
     return;
   }
@@ -3700,9 +3767,21 @@ async function processAnswerSubmission({
     stopQuestionTimer(room.id);
     const primary = roomPrimaryTeams.get(qKey);
     const activeQ = roomActiveQuestions.get(room.id);
+    const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, normalizedAnswer);
+
+    io.to(`room:${room.code}`).emit("game:early_completed", {
+      questionId,
+      reason: "ALL_SUBMITTED",
+      message: "Đội chính đã chốt đáp án (1 lần duy nhất)!",
+    });
+    io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+    io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
+
     if (activeQ) {
       activeQ.bouncebackAwaitingJudgment = "PRIMARY";
       activeQ.bouncebackPrimaryAnswer = normalizedAnswer;
+      activeQ.bouncebackAutoCorrect = isAutoCorrect;
+      activeQ.bouncebackAnswerText = answerText;
       io.to(`room:${room.code}`).emit("game:question", activeQ);
     }
     io.to(`room:${room.code}`).emit("game:bounceback:awaiting_judgment", {
@@ -3711,6 +3790,8 @@ async function processAnswerSubmission({
       targetTeamName: primary?.teamName || "",
       answer: normalizedAnswer,
       points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+      isAutoCorrect,
+      answerText,
     });
     return;
   }
@@ -5001,15 +5082,19 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
     const stealInfo = roomStealBuzzed.get(qKey);
     const primary = roomPrimaryTeams.get(qKey);
     const activeQ = roomActiveQuestions.get(roomId);
+    const question = await prisma.question.findUnique({ where: { id: questionId } });
 
     if (stealInfo) {
       const existingAns = await prisma.answer.findFirst({
         where: { roomId, questionId, teamId: stealInfo.teamId },
       });
       const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+      const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, ansArr);
       if (activeQ) {
         activeQ.bouncebackAwaitingJudgment = "STEAL";
         activeQ.bouncebackStealAnswer = ansArr;
+        activeQ.bouncebackAutoCorrect = isAutoCorrect;
+        activeQ.bouncebackAnswerText = answerText;
         io.to(`room:${roomCode}`).emit("game:question", activeQ);
       }
       io.to(`room:${roomCode}`).emit("game:bounceback:awaiting_judgment", {
@@ -5018,6 +5103,8 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
         targetTeamName: stealInfo.teamName,
         answer: ansArr,
         points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+        isAutoCorrect,
+        answerText,
       });
       return;
     } else if (primary) {
@@ -5025,9 +5112,12 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
         where: { roomId, questionId, teamId: primary.teamId },
       });
       const ansArr: string[] = existingAns?.answer ? (Array.isArray(existingAns.answer) ? (existingAns.answer as any[]).map(String) : [String(existingAns.answer)]) : [];
+      const { isAutoCorrect, answerText } = evaluateAnswerCorrectness(question, ansArr);
       if (activeQ) {
         activeQ.bouncebackAwaitingJudgment = "PRIMARY";
         activeQ.bouncebackPrimaryAnswer = ansArr;
+        activeQ.bouncebackAutoCorrect = isAutoCorrect;
+        activeQ.bouncebackAnswerText = answerText;
         io.to(`room:${roomCode}`).emit("game:question", activeQ);
       }
       io.to(`room:${roomCode}`).emit("game:bounceback:awaiting_judgment", {
@@ -5036,6 +5126,8 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
         targetTeamName: primary.teamName,
         answer: ansArr,
         points: roomBouncebackSelectedPoints.get(qKey) ?? 20,
+        isAutoCorrect,
+        answerText,
       });
       return;
     }

@@ -100,9 +100,6 @@ export default function DisplayPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.isExpired) {
-        soundManager.stopMusic();
-      }
     }, 100);
     return () => clearInterval(interval);
   }, [timer?.endsAt, timer?.total]);
@@ -243,14 +240,9 @@ export default function DisplayPage() {
         }
         return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
       });
-      if (t.remaining <= 0) {
-        soundManager.stopMusic();
-      }
     });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
-      soundManager.stopMusic();
-      soundManager.playTimeout();
     });
     socket.on("game:buzz", (p) => {
       setBuzzed({ playerName: p.teamName ?? p.playerName });

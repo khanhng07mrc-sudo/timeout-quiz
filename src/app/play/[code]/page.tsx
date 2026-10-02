@@ -26,6 +26,11 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import {
+  syncClockWithServer,
+  calculateAuthoritativeTimer,
+  calibrateClockFromPacket,
+} from "@/lib/clock-sync";
 
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
@@ -38,7 +43,7 @@ export default function PlayPage() {
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
   const [playerId, setPlayerId] = useState("");
-  const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
+  const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string; teamName?: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [answered, setAnswered] = useState(false);
@@ -98,6 +103,26 @@ export default function PlayPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, [questionPrepare]);
+
+  // Authoritative local countdown ticker for 0s lag across screens
+  useEffect(() => {
+    if (!timer?.endsAt) return;
+    const interval = setInterval(() => {
+      const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
+      setTimer((prev) => {
+        if (!prev) return null;
+        if (prev.remaining === auth.remaining) return prev;
+        return { ...prev, remaining: auth.remaining };
+      });
+      if (auth.remaining <= 5 && auth.remaining > 0 && soundEnabledRef.current) {
+        soundManager.playCountdownTick(auth.remaining);
+      }
+      if (auth.isExpired && soundEnabledRef.current) {
+        soundManager.stopMusic();
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [timer?.endsAt, timer?.total]);
 
   useEffect(() => {
     // Default sound MUTED on player devices to prevent room echo
@@ -245,10 +270,12 @@ export default function PlayPage() {
 
     socket.on("connect", () => {
       setConnected(true);
+      syncClockWithServer(socket);
       joinRoom();
     });
 
     socket.io.on("reconnect", () => {
+      syncClockWithServer(socket);
       joinRoom();
     });
 
@@ -290,16 +317,22 @@ export default function PlayPage() {
       setRevealPayload(null);
       setAnswered(false);
       setBuzzedBy(null);
-      setTimer(null);
       setHiddenOptionIds([]);
       setIsStealPhase(false);
       setStealBuzzedTeam(null);
+      if (!q.timerPending && q.endsAt) {
+        const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
+        setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
+      } else {
+        setTimer(null);
+      }
       if (soundEnabledRef.current && !q.timerPending) {
         soundManager.playCountdownTick(0);
       }
     });
 
     socket.on("game:timer:started", (payload) => {
+      const tLimit = payload?.timeLimit ?? 30;
       setCurrentQuestion((prev) =>
         prev
           ? {
@@ -307,23 +340,36 @@ export default function PlayPage() {
               timerPending: false,
               timerStarted: true,
               startedAt: Date.now(),
-              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+              endsAt: payload?.endsAt,
+              timeLimit: tLimit,
             }
           : prev
       );
+      if (payload?.endsAt) {
+        const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
+        setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
+      }
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(0);
       }
     });
 
     socket.on("game:timer", (t) => {
-      setTimer(t);
+      calibrateClockFromPacket(t.serverTime);
+      setTimer((prev) => {
+        const effectiveEndsAt = t.endsAt || prev?.endsAt;
+        if (effectiveEndsAt) {
+          const auth = calculateAuthoritativeTimer(effectiveEndsAt, t.total, t.remaining);
+          return { remaining: auth.remaining, total: t.total, endsAt: effectiveEndsAt };
+        }
+        return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
+      });
       if (t.remaining <= 0 && soundEnabledRef.current) {
         soundManager.stopMusic();
       }
     });
     socket.on("game:timer:expired", () => {
-      setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
         soundManager.stopMusic();
         soundManager.playBuzz();
@@ -339,13 +385,15 @@ export default function PlayPage() {
 
     socket.on("game:buzz:answering", (payload) => {
       setBuzzedBy({ playerName: payload.teamName, teamId: payload.teamId, teamName: payload.teamName });
-      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+      const endsAt = Date.now() + payload.timeLimit * 1000;
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
     });
 
     socket.on("game:bounceback:open_steal", (payload) => {
       setIsStealPhase(true);
       setStealBuzzedTeam(null);
-      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+      const endsAt = Date.now() + payload.timeLimit * 1000;
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
     });
 
     socket.on("game:bounceback:steal_buzzed", (payload) => {

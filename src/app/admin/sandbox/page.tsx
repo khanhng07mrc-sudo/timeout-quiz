@@ -39,7 +39,7 @@ export default function AdminSandboxPage() {
   const [creating, setCreating] = useState(false);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
-  const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
+  const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
 
   // Offline Sandbox Simulator State & Iframe Refs
   const [isOfflineSandbox, setIsOfflineSandbox] = useState(false);
@@ -280,10 +280,14 @@ export default function AdminSandboxPage() {
               timerPending: false,
               timerStarted: true,
               startedAt: Date.now(),
+              endsAt: payload?.endsAt,
               timeLimit: payload?.timeLimit ?? prev.timeLimit,
             }
           : prev
       );
+      if (payload?.endsAt) {
+        setTimer({ remaining: payload?.timeLimit ?? 30, total: payload?.timeLimit ?? 30, endsAt: payload.endsAt });
+      }
       addLog(`⏱️ Bắt đầu tính giờ: ${payload?.timeLimit ?? 30}s`);
     });
     sock.on("game:timer", (t) => setTimer(t));
@@ -411,12 +415,21 @@ export default function AdminSandboxPage() {
     };
   }, []);
 
+  const roomStateRef = useRef(roomState);
+  roomStateRef.current = roomState;
+  const currentQuestionRef = useRef(currentQuestion);
+  currentQuestionRef.current = currentQuestion;
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
+  const revealPayloadRef = useRef(revealPayload);
+  revealPayloadRef.current = revealPayload;
+
   const syncToIframes = useCallback((overrides?: Record<string, any>) => {
     const payload = {
-      roomState,
-      currentQuestion,
-      timer,
-      revealPayload,
+      roomState: roomStateRef.current,
+      currentQuestion: currentQuestionRef.current,
+      timer: timerRef.current,
+      revealPayload: revealPayloadRef.current,
       buzzed: null,
       lastPowerup: null,
       matchStarting: null,
@@ -425,13 +438,13 @@ export default function AdminSandboxPage() {
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
-  }, [roomState, currentQuestion, timer, revealPayload]);
+  }, []);
 
   useEffect(() => {
     if (isOfflineSandbox) {
       syncToIframes();
     }
-  }, [isOfflineSandbox, roomState, currentQuestion, timer, revealPayload, syncToIframes]);
+  }, [isOfflineSandbox, roomState, currentQuestion, revealPayload, syncToIframes]);
 
   // Offline Sandbox Simulator Initialization
   const startOfflineSandbox = useCallback((mode: GameMode, bankId?: string) => {
@@ -601,8 +614,8 @@ export default function AdminSandboxPage() {
           offlineTimerRef.current = null;
         }
         offlineRemainingRef.current = 0;
-        setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30 });
-        syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30 } });
+        setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30, endsAt: 0 });
+        syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30, endsAt: 0 } });
         addLog(`⏹️ [Dừng giờ sớm] Đội [${targetTeamName}] đã chốt kết thúc thời gian!`);
         setTimeout(() => {
           handleAdminReveal();
@@ -676,6 +689,7 @@ export default function AdminSandboxPage() {
     const q = questions[nextIdx] || DEFAULT_OFFLINE_BANK.questions![0];
 
     const timeLimit = q.timeLimit || 20;
+    const endsAt = Date.now() + timeLimit * 1000;
     const qState: QuestionState = {
       question: {
         id: q.id || `q_${nextIdx + 1}`,
@@ -689,6 +703,8 @@ export default function AdminSandboxPage() {
       },
       timeLimit,
       startedAt: Date.now(),
+      endsAt,
+      serverTime: Date.now(),
       activeBoosts: [],
       timerPending: false,
       timerStarted: true,
@@ -721,7 +737,7 @@ export default function AdminSandboxPage() {
 
     setCurrentQuestion(qState);
     setRevealPayload(null);
-    setTimer({ remaining: timeLimit, total: timeLimit });
+    setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
     offlineRemainingRef.current = timeLimit;
 
     setRoomState((prev) => {
@@ -735,7 +751,7 @@ export default function AdminSandboxPage() {
     offlineTimerRef.current = setInterval(() => {
       offlineRemainingRef.current -= 1;
       const rem = offlineRemainingRef.current;
-      setTimer({ remaining: rem, total: timeLimit });
+      setTimer({ remaining: rem, total: timeLimit, endsAt });
       if (rem <= 0) {
         if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
         offlineTimerRef.current = null;
@@ -909,7 +925,9 @@ export default function AdminSandboxPage() {
   const handleSkipTimerToOneSecond = () => {
     if (isOfflineSandbox) {
       offlineRemainingRef.current = 1;
-      setTimer((prev) => prev ? { ...prev, remaining: 1 } : { remaining: 1, total: 30 });
+      const endsAt = Date.now() + 1000;
+      setTimer((prev) => prev ? { ...prev, remaining: 1, endsAt } : { remaining: 1, total: 30, endsAt });
+      syncToIframes({ timer: { remaining: 1, total: currentQuestion?.timeLimit || 30, endsAt } });
       addLog("⚡ Admin tua nhanh: Đặt đếm ngược còn 1s!");
       return;
     }
@@ -925,8 +943,8 @@ export default function AdminSandboxPage() {
         offlineTimerRef.current = null;
       }
       offlineRemainingRef.current = 0;
-      setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30 });
-      syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30 } });
+      setTimer({ remaining: 0, total: currentQuestion?.timeLimit || 30, endsAt: 0 });
+      syncToIframes({ timer: { remaining: 0, total: currentQuestion?.timeLimit || 30, endsAt: 0 } });
       addLog("⏹️ Admin đã bấm Dừng thời gian sớm!");
       setTimeout(() => {
         handleAdminReveal();
@@ -962,15 +980,24 @@ export default function AdminSandboxPage() {
     if (isOfflineSandbox) {
       if (!currentQuestion) return;
       const timeLimit = currentQuestion.timeLimit || 20;
-      setCurrentQuestion((prev) => prev ? { ...prev, timerPending: false, timerStarted: true } : prev);
+      const endsAt = Date.now() + timeLimit * 1000;
+      const updatedQ = {
+        ...currentQuestion,
+        timerPending: false,
+        timerStarted: true,
+        endsAt,
+        serverTime: Date.now(),
+      };
+      setCurrentQuestion(updatedQ);
       offlineRemainingRef.current = timeLimit;
-      setTimer({ remaining: timeLimit, total: timeLimit });
+      setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
+      syncToIframes({ currentQuestion: updatedQ, timer: { remaining: timeLimit, total: timeLimit, endsAt } });
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
         offlineRemainingRef.current -= 1;
         const rem = offlineRemainingRef.current;
-        setTimer({ remaining: rem, total: timeLimit });
+        setTimer({ remaining: rem, total: timeLimit, endsAt });
         if (rem <= 0) {
           if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
           offlineTimerRef.current = null;

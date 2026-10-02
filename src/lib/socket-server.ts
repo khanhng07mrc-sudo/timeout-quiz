@@ -20,8 +20,9 @@ export function initSocketServer(
       credentials: true,
     },
     transports: ["websocket", "polling"],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    pingTimeout: 20000,
+    pingInterval: 10000,
+    perMessageDeflate: false,
   });
 
   return io;

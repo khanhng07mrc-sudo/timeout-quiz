@@ -62,6 +62,7 @@ const playerSockets = new Map<string, string>(); // socketId -> playerId
 const adminSockets = new Map<string, string>(); // socketId -> roomId
 const roomTimers = new Map<string, NodeJS.Timeout>(); // roomId -> timer
 const roomRemainingTimes = new Map<string, number>(); // roomId -> remaining seconds
+const roomTimerEndsAt = new Map<string, number>(); // roomId -> endsAt timestamp (epoch ms)
 const roomQuestionTeamCards = new Map<string, Map<string, ActiveTeamCard>>(); // qKey -> Map(teamId -> ActiveTeamCard)
 const roomFrozenTeams = new Map<string, Set<string>>(); // qKey -> Set(teamId)
 const roomFiftyFifty = new Map<string, Map<string, string[]>>(); // qKey -> Map(teamId -> hiddenOptionIds[])
@@ -471,6 +472,7 @@ export function cleanupRoomInMemory(roomId: string) {
     // 4. Delete room-level entries
     roomActiveQuestions.delete(roomId);
     roomRemainingTimes.delete(roomId);
+    roomTimerEndsAt.delete(roomId);
     roomPrepareStates.delete(roomId);
     roomTournaments.delete(roomId);
     roomGridCaros.delete(roomId);
@@ -610,6 +612,13 @@ export function registerSocketHandlers(io: IO) {
 
   io.on("connection", (socket: Sock) => {
     console.log(`[Socket] Connected: ${socket.id}`);
+
+    // ── Clock Synchronization (NTP-style) ───────────────────────────────────
+    socket.on("time:sync", (clientTime, callback) => {
+      if (typeof callback === "function") {
+        callback({ clientTime, serverTime: Date.now() });
+      }
+    });
 
     // ── Join Room ────────────────────────────────────────────────────────────
     socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
@@ -797,12 +806,18 @@ export function registerSocketHandlers(io: IO) {
               buzzedTeamName: buzzFirst?.teamName,
             });
 
-            socket.emit("game:question", qState);
-
             const timerKey = `${room.id}:timer`;
             const remaining = roomRemainingTimes.get(timerKey);
+            const endsAt = roomTimerEndsAt.get(room.id);
+            if (endsAt) {
+              qState.endsAt = endsAt;
+              qState.serverTime = Date.now();
+            }
+
+            socket.emit("game:question", qState);
+
             if (typeof remaining === "number" && remaining > 0) {
-              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
             }
           }
         }
@@ -911,12 +926,18 @@ export function registerSocketHandlers(io: IO) {
               buzzedTeamName: buzzFirst?.teamName,
             });
 
-            socket.emit("game:question", qState);
-
             const timerKey = `${room.id}:timer`;
             const remaining = roomRemainingTimes.get(timerKey);
+            const endsAt = roomTimerEndsAt.get(room.id);
+            if (endsAt) {
+              qState.endsAt = endsAt;
+              qState.serverTime = Date.now();
+            }
+
+            socket.emit("game:question", qState);
+
             if (typeof remaining === "number" && remaining > 0) {
-              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
             }
           }
         }
@@ -1021,12 +1042,18 @@ export function registerSocketHandlers(io: IO) {
               buzzedTeamName: buzzFirst?.teamName,
             });
 
-            socket.emit("game:question", qState);
-
             const timerKey = `${room.id}:timer`;
             const remaining = roomRemainingTimes.get(timerKey);
+            const endsAt = roomTimerEndsAt.get(room.id);
+            if (endsAt) {
+              qState.endsAt = endsAt;
+              qState.serverTime = Date.now();
+            }
+
+            socket.emit("game:question", qState);
+
             if (typeof remaining === "number" && remaining > 0) {
-              socket.emit("game:timer", { remaining, total: currentQ.timeLimit });
+              socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
             }
           }
         }
@@ -1418,9 +1445,14 @@ export function registerSocketHandlers(io: IO) {
         if (curRem !== undefined) {
           const nextRem = curRem + 15;
           roomRemainingTimes.set(tKey, nextRem);
+          const curEndsAt = roomTimerEndsAt.get(room.id) ?? (Date.now() + curRem * 1000);
+          const newEndsAt = curEndsAt + 15000;
+          roomTimerEndsAt.set(room.id, newEndsAt);
           io.to(`room:${room.code}`).emit("game:timer", {
             remaining: nextRem,
             total: (currentQ?.timeLimit ?? 30) + 15,
+            endsAt: newEndsAt,
+            serverTime: Date.now(),
           });
         }
       } else if (card.type === "STEAL") {
@@ -1601,6 +1633,9 @@ export function registerSocketHandlers(io: IO) {
           roomActiveQuestions.set(room.id, questionState);
           io.to(`room:${room.code}`).emit("game:question", questionState);
         } else {
+          const endsAt = Date.now() + q.timeLimit * 1000;
+          questionState.endsAt = endsAt;
+          questionState.serverTime = Date.now();
           roomActiveQuestions.set(room.id, questionState);
           io.to(`room:${room.code}`).emit("game:question", questionState);
           startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
@@ -2700,14 +2735,21 @@ export function registerSocketHandlers(io: IO) {
       const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
 
+      const endsAt = Date.now() + q.timeLimit * 1000;
       if (activeQ) {
         activeQ.timerPending = false;
         activeQ.timerStarted = true;
         activeQ.startedAt = Date.now();
+        activeQ.endsAt = endsAt;
+        activeQ.serverTime = Date.now();
         io.to(`room:${room.code}`).emit("game:question", activeQ);
       }
 
-      io.to(`room:${room.code}`).emit("game:timer:started", { timeLimit: q.timeLimit });
+      io.to(`room:${room.code}`).emit("game:timer:started", {
+        timeLimit: q.timeLimit,
+        endsAt,
+        serverTime: Date.now(),
+      });
       startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
     });
 
@@ -3006,9 +3048,13 @@ export function registerSocketHandlers(io: IO) {
       if (roomRemainingTimes.has(key)) {
         const newRemaining = Math.max(1, seconds);
         roomRemainingTimes.set(key, newRemaining);
+        const newEndsAt = Date.now() + newRemaining * 1000;
+        roomTimerEndsAt.set(room.id, newEndsAt);
         io.to(`room:${room.code}`).emit("game:timer", {
           remaining: newRemaining,
           total: 30,
+          endsAt: newEndsAt,
+          serverTime: Date.now(),
         });
       }
     });
@@ -4138,6 +4184,7 @@ function stopQuestionTimer(roomId: string) {
     roomTimers.delete(key);
     roomRemainingTimes.delete(key);
   }
+  roomTimerEndsAt.delete(roomId);
 }
 
 async function buildRoomState(roomId: string): Promise<RoomState> {
@@ -4271,6 +4318,8 @@ function buildQuestionState(
     streakCount?: number;
     speedBonusPercent?: number;
     rarityBonusPercent?: number;
+    endsAt?: number;
+    serverTime?: number;
   }
 ): QuestionState {
   const options = q.options as any[] | null;
@@ -4291,6 +4340,8 @@ function buildQuestionState(
     },
     timeLimit: q.timeLimit,
     startedAt: Date.now(),
+    endsAt: extra?.endsAt,
+    serverTime: extra?.serverTime ?? Date.now(),
     activeBoosts: [],
     bloomLevel,
     primaryTeamId: extra?.primaryTeamId,
@@ -4459,7 +4510,8 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
 
   const key = `${roomId}:timer`;
   roomRemainingTimes.set(key, 0);
-  io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30 });
+  roomTimerEndsAt.delete(roomId);
+  io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: 30, endsAt: Date.now(), serverTime: Date.now() });
   io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
@@ -4510,13 +4562,30 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
   stopQuestionTimer(roomId);
 
   const key = `${roomId}:timer`;
+  const endsAt = Date.now() + timeLimit * 1000;
+  roomTimerEndsAt.set(roomId, endsAt);
   roomRemainingTimes.set(key, timeLimit);
+
+  // Broadcast immediate sync tick with authoritative endsAt and server timestamp
+  io.to(`room:${roomCode}`).emit("game:timer", {
+    remaining: timeLimit,
+    total: timeLimit,
+    endsAt,
+    serverTime: Date.now(),
+  });
+
   roomTimers.set(key, setInterval(async () => {
     const cur = roomRemainingTimes.get(key) ?? timeLimit;
     const remaining = cur - 1;
     roomRemainingTimes.set(key, remaining);
-    io.to(`room:${roomCode}`).emit("game:timer", { remaining, total: timeLimit });
+    io.to(`room:${roomCode}`).emit("game:timer", {
+      remaining: Math.max(0, remaining),
+      total: timeLimit,
+      endsAt,
+      serverTime: Date.now(),
+    });
     if (remaining <= 0) {
+      stopQuestionTimer(roomId);
       await finalizeQuestionOnTimeUp(io, roomId, roomCode, questionId);
     }
   }, 1000) as unknown as NodeJS.Timeout);

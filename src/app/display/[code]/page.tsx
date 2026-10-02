@@ -25,6 +25,11 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
+import {
+  syncClockWithServer,
+  calculateAuthoritativeTimer,
+  calibrateClockFromPacket,
+} from "@/lib/clock-sync";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -34,7 +39,7 @@ export default function DisplayPage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
-  const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
+  const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [buzzed, setBuzzed] = useState<{ playerName: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [isStealOpen, setIsStealOpen] = useState(false);
@@ -84,6 +89,26 @@ export default function DisplayPage() {
     }, 1000);
     return () => clearInterval(interval);
   }, [questionPrepare]);
+
+  // Authoritative local countdown ticker for 0s lag across screens
+  useEffect(() => {
+    if (!timer?.endsAt) return;
+    const interval = setInterval(() => {
+      const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
+      setTimer((prev) => {
+        if (!prev) return null;
+        if (prev.remaining === auth.remaining) return prev;
+        return { ...prev, remaining: auth.remaining };
+      });
+      if (auth.remaining <= 5 && auth.remaining > 0) {
+        soundManager.playCountdownTick(auth.remaining);
+      }
+      if (auth.isExpired) {
+        soundManager.stopMusic();
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [timer?.endsAt, timer?.total]);
 
   useEffect(() => {
     // Default sound ON on Display
@@ -138,6 +163,7 @@ export default function DisplayPage() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      syncClockWithServer(socket);
       socket.emit("display:join", code);
     });
 
@@ -172,10 +198,15 @@ export default function DisplayPage() {
       setCurrentQuestion(q);
       setRevealPayload(null);
       setBuzzed(null);
-      setTimer(null);
       setIsStealOpen(false);
       setStealBuzzed(null);
       setDisplayModeTab("QUESTION");
+      if (!q.timerPending && q.endsAt) {
+        const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
+        setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
+      } else {
+        setTimer(null);
+      }
       if (!q.timerPending) {
         soundManager.playCountdownTick(0);
         soundManager.playQuestionMusic(q.timeLimit);
@@ -183,6 +214,7 @@ export default function DisplayPage() {
     });
 
     socket.on("game:timer:started", (payload) => {
+      const tLimit = payload?.timeLimit ?? 30;
       setCurrentQuestion((prev) =>
         prev
           ? {
@@ -190,16 +222,29 @@ export default function DisplayPage() {
               timerPending: false,
               timerStarted: true,
               startedAt: Date.now(),
-              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+              endsAt: payload?.endsAt,
+              timeLimit: tLimit,
             }
           : prev
       );
+      if (payload?.endsAt) {
+        const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
+        setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
+      }
       soundManager.playCountdownTick(0);
-      soundManager.playQuestionMusic(payload?.timeLimit ?? 30);
+      soundManager.playQuestionMusic(tLimit);
     });
 
     socket.on("game:timer", (t) => {
-      setTimer(t);
+      calibrateClockFromPacket(t.serverTime);
+      setTimer((prev) => {
+        const effectiveEndsAt = t.endsAt || prev?.endsAt;
+        if (effectiveEndsAt) {
+          const auth = calculateAuthoritativeTimer(effectiveEndsAt, t.total, t.remaining);
+          return { remaining: auth.remaining, total: t.total, endsAt: effectiveEndsAt };
+        }
+        return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
+      });
       if (t.remaining <= 5 && t.remaining > 0) {
         soundManager.playCountdownTick(t.remaining);
       }
@@ -208,7 +253,7 @@ export default function DisplayPage() {
       }
     });
     socket.on("game:timer:expired", () => {
-      setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       soundManager.stopMusic();
       soundManager.playBuzz();
     });
@@ -695,7 +740,11 @@ export default function DisplayPage() {
     .sort((a: any, b: any) => b.score - a.score)
     .slice(0, 10);
 
-  const timerPercent = timer ? (timer.remaining / timer.total) * 100 : 100;
+  const timerAuth = timer
+    ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
+    : null;
+  const timerDisplayRemaining = timerAuth ? timerAuth.remaining : (timer?.remaining ?? 0);
+  const timerPercent = timerAuth ? timerAuth.percent : (timer ? (timer.remaining / timer.total) * 100 : 100);
   const timerColor = timerPercent > 50 ? "#06b6d4" : timerPercent > 25 ? "#f59e0b" : "#ef4444";
 
   const bloom: BloomLevel = currentQuestion
@@ -807,7 +856,7 @@ export default function DisplayPage() {
                         className="timer-ring transition-all duration-1000"
                       />
                       <text x="32" y="38" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">
-                        {timer.remaining}
+                        {timerDisplayRemaining}
                       </text>
                     </svg>
                   )}
@@ -817,7 +866,7 @@ export default function DisplayPage() {
                       <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
                     </div>
                   )}
-                  {timer && timer.remaining === 0 && !revealPayload && (
+                  {timer && timerDisplayRemaining === 0 && !revealPayload && (
                     <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
                       <span>⏱️</span>
                       <span>Hết thời gian! Chờ Quản trò công bố kết quả...</span>

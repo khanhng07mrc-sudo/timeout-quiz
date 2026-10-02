@@ -2,10 +2,11 @@
 
 import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import { useState, useEffect } from "react";
+import { calculateAuthoritativeTimer } from "@/lib/clock-sync";
 
 interface Props {
   question: QuestionState;
-  timer: { remaining: number; total: number } | null;
+  timer: { remaining: number; total: number; endsAt?: number } | null;
   onAnswer: (answer: string | string[]) => void;
   onBuzz: () => void;
   answered: boolean;
@@ -47,6 +48,7 @@ export default function GameQuestion({
   const [selected, setSelected] = useState<string[]>([]);
   const [essayText, setEssayText] = useState("");
   const [fillText, setFillText] = useState("");
+  const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
 
   const q = question.question;
 
@@ -55,9 +57,14 @@ export default function GameQuestion({
     setSelected([]);
     setEssayText("");
     setFillText("");
+    setIsBuzzedLocally(false);
   }, [q.id]);
 
-  const timerPercent = timer ? (timer.remaining / timer.total) * 100 : 100;
+  const timerAuth = timer
+    ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
+    : null;
+  const timerDisplayRemaining = timerAuth ? timerAuth.remaining : (timer?.remaining ?? 0);
+  const timerPercent = timerAuth ? timerAuth.percent : (timer ? (timer.remaining / timer.total) * 100 : 100);
   const timerColor = timerPercent > 50 ? "#06b6d4" : timerPercent > 25 ? "#f59e0b" : "#ef4444";
 
   const bloom: BloomLevel = question.bloomLevel ?? getBloomLevelFromPoints(q.points);
@@ -90,7 +97,7 @@ export default function GameQuestion({
     if (isSpectator) return false;
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
     if (question.bouncebackSelectPhase) return false;
-    if (timer && timer.remaining <= 0) return false;
+    if (timer && timerDisplayRemaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
       if (stealBuzzedTeam) return isStealTeam;
       if (isStealPhase) return false; // In steal buzz phase, only buzzing is allowed
@@ -167,7 +174,7 @@ export default function GameQuestion({
                 className="timer-ring transition-all duration-1000"
               />
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{timer.remaining}</span>
+            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{timerDisplayRemaining}</span>
           </div>
           <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
             <div
@@ -229,10 +236,14 @@ export default function GameQuestion({
               </div>
               {!isPrimaryTeam && (
                 <button
-                  onClick={onBuzz}
-                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-base sm:text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0"
+                  onClick={() => {
+                    setIsBuzzedLocally(true);
+                    onBuzz();
+                  }}
+                  disabled={isBuzzedLocally}
+                  className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black text-base sm:text-lg rounded-xl shadow-lg active:scale-95 animate-pulse whitespace-nowrap shrink-0 disabled:opacity-50"
                 >
-                  🔔 BẤM CHUÔNG!
+                  {isBuzzedLocally ? "⚡ ĐÃ BẤM CHUÔNG!" : "🔔 BẤM CHUÔNG!"}
                 </button>
               )}
             </div>
@@ -290,15 +301,24 @@ export default function GameQuestion({
                 </p>
               </div>
               <button
-                onClick={onBuzz}
-                disabled={!question.buzzUnlocked}
+                onClick={() => {
+                  setIsBuzzedLocally(true);
+                  onBuzz();
+                }}
+                disabled={!question.buzzUnlocked || isBuzzedLocally}
                 className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
-                  question.buzzUnlocked
+                  isBuzzedLocally
+                    ? "bg-amber-400 text-black shadow-lg shadow-amber-500/30 opacity-80 cursor-default"
+                    : question.buzzUnlocked
                     ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg shadow-amber-500/30 active:scale-95 animate-pulse cursor-pointer"
                     : "bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-60"
                 }`}
               >
-                {question.buzzUnlocked ? "🔔 BẤM CHUÔNG!" : "🔒 CHUÔNG KHÓA"}
+                {isBuzzedLocally
+                  ? "⚡ ĐÃ BẤM CHUÔNG!"
+                  : question.buzzUnlocked
+                  ? "🔔 BẤM CHUÔNG!"
+                  : "🔒 CHUÔNG KHÓA"}
               </button>
             </div>
           ) : (
@@ -573,7 +593,7 @@ export default function GameQuestion({
           <span className="text-base">✓</span>
           <span>Đã nộp đáp án</span>
           <span className="text-[11px] sm:text-xs text-green-300/80 font-normal">
-            {timer && timer.remaining <= 0
+            {timer && timerDisplayRemaining <= 0
               ? "(Hết thời gian — Chờ Quản trò công bố kết quả)"
               : "(Có thể bấm chọn phương án khác để đổi đáp án bất kỳ lúc nào)"}
           </span>
@@ -581,7 +601,7 @@ export default function GameQuestion({
       )}
 
       {/* Early Stop Button for Active Team */}
-      {onStopEarly && !revealPayload && timer && timer.remaining > 0 && canAnswerThisQuestion() && (
+      {onStopEarly && !revealPayload && timer && timerDisplayRemaining > 0 && canAnswerThisQuestion() && (
         <button
           type="button"
           onClick={onStopEarly}
@@ -590,13 +610,13 @@ export default function GameQuestion({
           <span className="text-base">⏹️</span>
           <span>
             {answered
-              ? `Chốt đáp án & Dừng giờ ngay (${timer.remaining}s)`
-              : `Dừng thời gian sớm (${timer.remaining}s)`}
+              ? `Chốt đáp án & Dừng giờ ngay (${timerDisplayRemaining}s)`
+              : `Dừng thời gian sớm (${timerDisplayRemaining}s)`}
           </span>
         </button>
       )}
 
-      {!answered && !revealPayload && timer && timer.remaining <= 0 && (
+      {!answered && !revealPayload && timer && timerDisplayRemaining <= 0 && (
         <div className="text-center py-2 text-amber-400 font-bold flex items-center justify-center gap-1.5 text-sm animate-pulse">
           <span>⏱️ Hết thời gian! Đang chờ Quản trò công bố kết quả...</span>
         </div>

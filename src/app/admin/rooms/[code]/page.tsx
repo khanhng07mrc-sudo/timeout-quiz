@@ -21,6 +21,11 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
+import {
+  syncClockWithServer,
+  calculateAuthoritativeTimer,
+  calibrateClockFromPacket,
+} from "@/lib/clock-sync";
 
 export default function AdminRoomPage() {
   const { code } = useParams<{ code: string }>();
@@ -30,7 +35,7 @@ export default function AdminRoomPage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnded, setGameEnded] = useState(false);
-  const [timer, setTimer] = useState<{ remaining: number; total: number } | null>(null);
+  const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [cardsLocked, setCardsLocked] = useState(false);
   const [buzzedTeam, setBuzzedTeam] = useState<{ teamId?: string; teamName?: string; playerId: string; playerName: string } | null>(null);
   const [stealBuzzed, setStealBuzzed] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
@@ -97,6 +102,26 @@ export default function AdminRoomPage() {
     return () => clearInterval(interval);
   }, [questionPrepare]);
 
+  // Authoritative local countdown ticker for 0s lag across screens
+  useEffect(() => {
+    if (!timer?.endsAt) return;
+    const interval = setInterval(() => {
+      const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
+      setTimer((prev) => {
+        if (!prev) return null;
+        if (prev.remaining === auth.remaining) return prev;
+        return { ...prev, remaining: auth.remaining };
+      });
+      if (auth.remaining <= 5 && auth.remaining > 0 && soundEnabledRef.current) {
+        soundManager.playCountdownTick(auth.remaining);
+      }
+      if (auth.isExpired && soundEnabledRef.current) {
+        soundManager.stopMusic();
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [timer?.endsAt, timer?.total]);
+
   const fetchRoomAndBanks = async () => {
     try {
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
@@ -149,6 +174,7 @@ export default function AdminRoomPage() {
     socketRef.current = socket;
 
     socket.on("connect", () => {
+      syncClockWithServer(socket);
       socket.emit("admin:join", { code, hostKey: storedKey } as any, (result: any) => {
         if (result?.success) {
           setAuthRequired(false);
@@ -166,6 +192,10 @@ export default function AdminRoomPage() {
           }
         }
       });
+    });
+
+    socket.io.on("reconnect", () => {
+      syncClockWithServer(socket);
     });
 
     socket.on("error", (msg) => {
@@ -196,11 +226,17 @@ export default function AdminRoomPage() {
     });
 
     socket.on("game:question", (q) => {
+      if (q.serverTime) calibrateClockFromPacket(q.serverTime);
       setMatchStarting(null);
       setQuestionPrepare(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
-      setTimer(null);
+      if (!q.timerPending && q.endsAt) {
+        const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
+        setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
+      } else {
+        setTimer(null);
+      }
       setBuzzedTeam(null);
       setStealBuzzed(null);
       setIsStealOpen(false);
@@ -214,6 +250,8 @@ export default function AdminRoomPage() {
       }
     });
     socket.on("game:timer:started", (payload) => {
+      if (payload?.serverTime) calibrateClockFromPacket(payload.serverTime);
+      const tLimit = payload?.timeLimit ?? 30;
       setCurrentQuestion((prev) =>
         prev
           ? {
@@ -221,15 +259,33 @@ export default function AdminRoomPage() {
               timerPending: false,
               timerStarted: true,
               startedAt: Date.now(),
-              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+              endsAt: payload?.endsAt,
+              timeLimit: tLimit,
             }
           : prev
       );
+      if (payload?.endsAt) {
+        const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
+        setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
+      }
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(0);
       }
     });
-    socket.on("game:timer", setTimer);
+    socket.on("game:timer", (t) => {
+      calibrateClockFromPacket(t.serverTime);
+      setTimer((prev) => {
+        const effectiveEndsAt = t.endsAt || prev?.endsAt;
+        if (effectiveEndsAt) {
+          const auth = calculateAuthoritativeTimer(effectiveEndsAt, t.total, t.remaining);
+          return { remaining: auth.remaining, total: t.total, endsAt: effectiveEndsAt };
+        }
+        return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
+      });
+      if (t.remaining <= 5 && t.remaining > 0 && soundEnabledRef.current) {
+        soundManager.playCountdownTick(t.remaining);
+      }
+    });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
@@ -459,6 +515,11 @@ export default function AdminRoomPage() {
     ? (currentQuestion.bloomLevel ?? getBloomLevelFromPoints(currentQuestion.question.points))
     : "REMEMBER";
   const bloomMeta = BLOOM_METADATA[bloom];
+
+  const timerAuth = timer?.endsAt
+    ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
+    : null;
+  const timerDisplayRemaining = timerAuth ? timerAuth.remaining : timer?.remaining ?? 0;
 
   return (
     <div className="space-y-6 pb-24 lg:pb-8">
@@ -705,8 +766,8 @@ export default function AdminRoomPage() {
           {/* Timer display */}
           {timer && (
             <div className="text-center py-1">
-              <div className="text-5xl font-black" style={{ color: timer.remaining < 5 ? "#ef4444" : timer.remaining < 10 ? "#f59e0b" : "#06b6d4" }}>
-                {timer.remaining}s
+              <div className="text-5xl font-black" style={{ color: timerDisplayRemaining < 5 ? "#ef4444" : timerDisplayRemaining < 10 ? "#f59e0b" : "#06b6d4" }}>
+                {timerDisplayRemaining}s
               </div>
             </div>
           )}
@@ -1138,14 +1199,14 @@ export default function AdminRoomPage() {
                 onClick={() => emit("admin:reveal", { code })}
                 disabled={!currentQuestion || !!revealPayload}
                 className={`py-3 rounded-xl font-bold text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-all ${
-                  roomState?.mode === "GRID_CARO" && !revealPayload && (timer?.remaining === 0)
+                  roomState?.mode === "GRID_CARO" && !revealPayload && (timerDisplayRemaining === 0)
                     ? "col-span-2 bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 hover:to-green-400 text-black font-black text-base shadow-2xl animate-pulse ring-4 ring-green-400/50"
                     : "border border-green-500/50 hover:bg-green-500/10 text-green-400 disabled:opacity-40"
                 }`}
               >
                 <span>👁️</span>
                 <span className="whitespace-nowrap">
-                  {roomState?.mode === "GRID_CARO" && !revealPayload && (timer?.remaining === 0)
+                  {roomState?.mode === "GRID_CARO" && !revealPayload && (timerDisplayRemaining === 0)
                     ? "Tiết lộ đáp án & Chốt điểm (Hết giờ 0s)"
                     : "Tiết lộ đáp án"}
                 </span>
@@ -1166,7 +1227,7 @@ export default function AdminRoomPage() {
             {currentQuestion && !revealPayload && (
               <button
                 onClick={() => emit("admin:timer:stop_early")}
-                disabled={Boolean(timer && timer.remaining <= 0)}
+                disabled={Boolean(timer && timerDisplayRemaining <= 0)}
                 className="py-2.5 rounded-xl border border-rose-500/50 hover:bg-rose-500/20 text-rose-300 font-bold text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                 title="Dừng thời gian câu hỏi ngay lập tức"
               >

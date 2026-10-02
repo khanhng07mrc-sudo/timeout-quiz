@@ -771,6 +771,8 @@ export interface QuestionState {
   rarityBonusPercent?: number;
   bouncebackSelectPhase?: boolean;
   selectedPointLevel?: 10 | 20 | 30;
+  endsAt?: number;
+  serverTime?: number;
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -863,7 +865,7 @@ export interface ServerToClientEvents {
   "game:starting": (payload: GameStartingPayload) => void;
   "game:prepare": (payload: GamePreparePayload) => void;
   "game:question": (question: QuestionState) => void;
-  "game:timer": (payload: { remaining: number; total: number }) => void;
+  "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
   "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string }) => void;
   "game:buzz:closed": () => void;
   "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
@@ -889,7 +891,7 @@ export interface ServerToClientEvents {
   "game:wager:bailout_granted": (payload: { teamId: string; teamName: string; newScore: number; bailoutsRemaining: number }) => void;
   "game:tournament:update": (state: TournamentState) => void;
   "game:question:clear": () => void;
-  "game:timer:started": (payload?: { timeLimit?: number }) => void;
+  "game:timer:started": (payload?: { timeLimit?: number; endsAt?: number; serverTime?: number }) => void;
   "game:timer:expired": (payload?: { questionId?: string }) => void;
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
@@ -908,6 +910,7 @@ export interface ServerToClientEvents {
 }
 
 export interface ClientToServerEvents {
+  "time:sync": (clientTime: number, callback: (result: { clientTime: number; serverTime: number }) => void) => void;
   "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
   "room:leave": () => void;
   "game:answer:submit": (payload: { questionId: string; answer: string | string[] }) => void;

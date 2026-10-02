@@ -135,71 +135,91 @@ class SoundManager {
     return this.volume;
   }
 
-  // ── Music Player with Fade In / Fade Out ───────────────────────────────────
+  // ── True Crossfading & Smooth Fade In/Out ──────────────────────────────────
 
-  private playMusicTrack(type: "LOBBY" | "QUESTION", audioKey: BGMKey, targetVolFactor: number = 0.75) {
-    if (this.isMuted) return;
-    this.initAudioAssets();
-
-    if (this.currentMusicType === type && this.currentMusicAudio && !this.currentMusicAudio.paused) {
-      return; // Already playing this track
-    }
-
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
-    }
-
-    // Fade out old track
-    const oldAudio = this.currentMusicAudio;
-    if (oldAudio && !oldAudio.paused) {
+  private fadeOutAudio(audio: HTMLAudioElement, durationMs: number = 450) {
+    if (audio.paused || audio.volume <= 0) {
       try {
-        let v = oldAudio.volume;
-        const fadeOut = setInterval(() => {
-          v = Math.max(0, v - 0.15);
-          oldAudio.volume = v;
-          if (v <= 0) {
-            clearInterval(fadeOut);
-            oldAudio.pause();
-            oldAudio.currentTime = 0;
-          }
-        }, 30);
-      } catch {
-        oldAudio.pause();
-        oldAudio.currentTime = 0;
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+      return;
+    }
+
+    const steps = 15;
+    const stepInterval = Math.max(15, Math.floor(durationMs / steps));
+    const startVol = audio.volume;
+    const volStep = startVol / steps;
+    let currentVol = startVol;
+
+    const interval = setInterval(() => {
+      currentVol = Math.max(0, currentVol - volStep);
+      try {
+        audio.volume = currentVol;
+      } catch {}
+
+      if (currentVol <= 0) {
+        clearInterval(interval);
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
       }
-    }
+    }, stepInterval);
+  }
 
-    let audio = this.bgmMap.get(audioKey);
-    if (!audio) {
-      const loop = type === "LOBBY";
-      audio = this.createAudioWithFallbacks(BGM_CONFIG[audioKey] || { primary: `/sounds/${audioKey}.mp3`, fallbacks: [] }, loop);
-      this.bgmMap.set(audioKey, audio);
-    }
-
-    this.currentMusicAudio = audio;
-    this.currentMusicType = type;
-
-    const targetVol = this.volume * targetVolFactor;
-    audio.volume = 0.05;
+  private fadeInAudio(audio: HTMLAudioElement, targetVol: number, durationMs: number = 400) {
+    const steps = 15;
+    const stepInterval = Math.max(15, Math.floor(durationMs / steps));
+    const initialVol = 0.02;
+    audio.volume = this.isMuted ? 0 : initialVol;
     audio.currentTime = 0;
 
     audio.play().then(() => {
-      // Fade in smoothly over ~300ms
-      let cur = 0.05;
-      this.fadeInterval = setInterval(() => {
-        cur = Math.min(targetVol, cur + (targetVol / 10));
+      let currentVol = initialVol;
+      const volStep = Math.max(0.01, (targetVol - initialVol) / steps);
+
+      const interval = setInterval(() => {
+        currentVol = Math.min(targetVol, currentVol + volStep);
         if (this.currentMusicAudio === audio) {
-          audio!.volume = this.isMuted ? 0 : cur;
+          audio.volume = this.isMuted ? 0 : currentVol;
         }
-        if (cur >= targetVol) {
-          if (this.fadeInterval) clearInterval(this.fadeInterval);
-          this.fadeInterval = null;
+        if (currentVol >= targetVol) {
+          clearInterval(interval);
         }
-      }, 30);
+      }, stepInterval);
     }).catch(() => {
-      // Autoplay might be blocked until user clicks
+      // Autoplay policy fallback
     });
+  }
+
+  private playMusicTrack(type: "LOBBY" | "QUESTION", audioKey: BGMKey, targetVolFactor: number = 0.75, crossfadeMs: number = 450) {
+    if (this.isMuted) return;
+    this.initAudioAssets();
+
+    let nextAudio = this.bgmMap.get(audioKey);
+    if (!nextAudio) {
+      const loop = type === "LOBBY";
+      nextAudio = this.createAudioWithFallbacks(BGM_CONFIG[audioKey] || { primary: `/sounds/${audioKey}.mp3`, fallbacks: [] }, loop);
+      this.bgmMap.set(audioKey, nextAudio);
+    }
+
+    // If already playing this exact track and audio instance, do nothing
+    if (this.currentMusicType === type && this.currentMusicAudio === nextAudio && !nextAudio.paused) {
+      return;
+    }
+
+    // Crossfade: smoothly fade out previous track over crossfadeMs
+    const prevAudio = this.currentMusicAudio;
+    if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
+      this.fadeOutAudio(prevAudio, crossfadeMs);
+    }
+
+    this.currentMusicAudio = nextAudio;
+    this.currentMusicType = type;
+
+    const targetVol = this.volume * targetVolFactor;
+    this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50));
   }
 
   public playLobbyMusic() {
@@ -207,7 +227,7 @@ class SoundManager {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
     }
-    this.playMusicTrack("LOBBY", "lobby", 0.7);
+    this.playMusicTrack("LOBBY", "lobby", 0.7, 500);
   }
 
   /**
@@ -223,7 +243,7 @@ class SoundManager {
       this.questionMusicTimeout = null;
     }
     if (remainingSeconds <= 0) {
-      this.stopMusic();
+      this.stopMusic(400);
       return;
     }
 
@@ -238,32 +258,38 @@ class SoundManager {
       selectedKey = "olympia_60s";
     }
 
-    this.playMusicTrack("QUESTION", selectedKey, 0.85);
+    this.playMusicTrack("QUESTION", selectedKey, 0.85, 400);
 
-    // Auto-stop music strictly when question timer expires - NEVER loop past time limit!
+    // Auto-stop music strictly when question timer expires with a smooth fade-out
     this.questionMusicTimeout = setTimeout(() => {
-      this.stopMusic();
+      this.stopMusic(350);
       this.playTimeout();
     }, Math.max(1000, remainingSeconds * 1000));
   }
 
-  public stopMusic() {
+  /**
+   * Smoothly stops background music with a gentle crossfade / fade-out instead of cutting abruptly.
+   * @param fadeDurationMs Duration of fade out in milliseconds (defaults to 450ms)
+   */
+  public stopMusic(fadeDurationMs: number = 450) {
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
     }
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
-    }
+
     if (this.currentMusicAudio) {
       const audio = this.currentMusicAudio;
       this.currentMusicAudio = null;
       this.currentMusicType = null;
-      try {
-        audio.pause();
-        audio.currentTime = 0;
-      } catch {}
+
+      if (fadeDurationMs > 0 && !audio.paused) {
+        this.fadeOutAudio(audio, fadeDurationMs);
+      } else {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
+      }
     }
   }
 

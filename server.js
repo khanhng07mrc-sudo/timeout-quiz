@@ -548,6 +548,35 @@ function handleDiceRaceLanding({
   };
 }
 
+// src/lib/game-engine/powerups.ts
+var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
+  // DICE_RACE: Turn-based single team answering -> only quiz-helping cards (50/50, TIME_PLUS, SKIP).
+  // Disallow FREEZE, ATTACK, and score-based cards (DOUBLE, SCORE_X2, STEAL, PENALTY, SHIELD) which are meaningless in race mode.
+  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP"],
+  // GRID_CARO: Turn-based cell choosing -> quiz help, point multiplier for captured cell, and shield. Disallow FREEZE.
+  GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SHIELD"],
+  // BUZZ: Reflex buzzer tempo -> score boosts, shields, 50/50 and penalty. Disallows FREEZE, ATTACK, SKIP.
+  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY", "TIME_PLUS"],
+  // BOUNCEBACK: Olympia style -> DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
+  BOUNCEBACK: ["DOUBLE", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
+  // ELIMINATION: Survival battle -> SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Disallow gang-up cards.
+  ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
+  // TOURNAMENT: 1v1 bracket -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. Disallow FREEZE (anti auto-win) and STEAL.
+  TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
+  // WAGER: Secret bets -> 50/50, TIME_PLUS, SKIP, SHIELD.
+  WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
+  // CLASSIC / POWERUP: Full 10 cards enabled.
+  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
+  POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
+};
+function getDefaultAllowedPowerupsForMode(mode) {
+  return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
+}
+function isPowerupAllowedForMode(mode, cardType) {
+  const allowed = getDefaultAllowedPowerupsForMode(mode);
+  return allowed.includes(cardType);
+}
+
 // src/lib/utils.ts
 function shuffleArray(array) {
   const arr = [...array];
@@ -1759,6 +1788,10 @@ function registerSocketHandlers(io2) {
       }
       if (card.ownerType === "TEAM" && card.teamId !== player.teamId) {
         socket.emit("error", "Th\u1EBB n\xE0y kh\xF4ng thu\u1ED9c v\u1EC1 \u0111\u1ED9i c\u1EE7a b\u1EA1n!");
+        return;
+      }
+      if (!isPowerupAllowedForMode(room.mode, card.type)) {
+        socket.emit("error", `Th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
         return;
       }
       await prisma.powerupCard.update({
@@ -3195,6 +3228,10 @@ function registerSocketHandlers(io2) {
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
+      if (!isPowerupAllowedForMode(room.mode, cardType)) {
+        socket.emit("error", `Th\u1EBB ${cardType} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
+        return;
+      }
       await prisma.powerupCard.create({
         data: {
           type: cardType,

@@ -3,30 +3,43 @@ import { computeStealAmount } from "./scoring";
 
 /**
  * Filter power-ups strictly matched to the mechanics and victory conditions of each game mode:
- * - DICE_RACE: Only allows quiz-helping cards (50/50, TIME_PLUS, SKIP) and turn-freezing (FREEZE).
- *   Eliminates score penalty/theft cards (PENALTY, STEAL, DOUBLE, SCORE_X2) which are meaningless in race mode.
+ * - DICE_RACE: Only allows quiz-helping cards (50/50, TIME_PLUS, SKIP). Disallows FREEZE, ATTACK, and score cards.
  * - BUZZ: Allows score boosts, shields, 50/50 and penalty. Disallows FREEZE and ATTACK to preserve fast reflex buzzer tempo.
  * - BOUNCEBACK: Olympia style - allows DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
- * - GRID_CARO: Allows 50/50, TIME_PLUS, SKIP, FREEZE, DOUBLE, SHIELD.
+ * - GRID_CARO: Allows 50/50, TIME_PLUS, SKIP, DOUBLE, SHIELD. Disallows FREEZE.
  * - ELIMINATION: Allows SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL.
  * - TOURNAMENT: 1v1 bracket - allows 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD.
  * - CLASSIC / POWERUP: Full 10 cards enabled.
  * - WAGER: Secret bets - allows 50/50, TIME_PLUS, SKIP, SHIELD.
  */
 export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
-  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "FREEZE"],
+  // DICE_RACE: Turn-based single team answering -> only quiz-helping cards (50/50, TIME_PLUS, SKIP).
+  // Disallow FREEZE, ATTACK, and score-based cards (DOUBLE, SCORE_X2, STEAL, PENALTY, SHIELD) which are meaningless in race mode.
+  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP"],
+  // GRID_CARO: Turn-based cell choosing -> quiz help, point multiplier for captured cell, and shield. Disallow FREEZE.
+  GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SHIELD"],
+  // BUZZ: Reflex buzzer tempo -> score boosts, shields, 50/50 and penalty. Disallows FREEZE, ATTACK, SKIP.
   BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY", "TIME_PLUS"],
+  // BOUNCEBACK: Olympia style -> DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
   BOUNCEBACK: ["DOUBLE", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
-  GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "FREEZE", "DOUBLE", "SHIELD"],
+  // ELIMINATION: Survival battle -> SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Disallow gang-up cards.
   ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
+  // TOURNAMENT: 1v1 bracket -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. Disallow FREEZE (anti auto-win) and STEAL.
   TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
+  // WAGER: Secret bets -> 50/50, TIME_PLUS, SKIP, SHIELD.
+  WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
+  // CLASSIC / POWERUP: Full 10 cards enabled.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
-  WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
 };
 
 export function getDefaultAllowedPowerupsForMode(mode: GameMode): CardType[] {
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
+}
+
+export function isPowerupAllowedForMode(mode: GameMode, cardType: CardType): boolean {
+  const allowed = getDefaultAllowedPowerupsForMode(mode);
+  return allowed.includes(cardType);
 }
 
 export interface PowerupEffect {

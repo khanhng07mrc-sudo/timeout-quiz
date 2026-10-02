@@ -1367,6 +1367,11 @@ export default function AdminSandboxPage() {
 
   const handleGrantCard = async () => {
     if (!roomState || !grantTargetTeamId) return;
+    const currentModeAllowed = getDefaultAllowedPowerupsForMode((roomState.mode || "CLASSIC") as GameMode);
+    if (!currentModeAllowed.includes(grantCardType)) {
+      alert(`Thẻ [${grantCardType}] không được phép sử dụng trong chế độ ${roomState.mode}!`);
+      return;
+    }
     if (isOfflineSandbox) {
       addLog(`Đã cấp thẻ [${grantCardType}] cho Đội ID: ${grantTargetTeamId}`);
       setShowCardModal(false);
@@ -1534,6 +1539,10 @@ export default function AdminSandboxPage() {
                   onClick={() => {
                     if (roomState?.teams && roomState.teams.length > 0) {
                       setGrantTargetTeamId(roomState.teams[0].id);
+                    }
+                    const currentModeAllowed = getDefaultAllowedPowerupsForMode((roomState?.mode || "CLASSIC") as GameMode);
+                    if (!currentModeAllowed.includes(grantCardType)) {
+                      setGrantCardType(currentModeAllowed[0] || "FIFTY_FIFTY");
                     }
                     setShowCardModal(true);
                   }}
@@ -2143,30 +2152,48 @@ export default function AdminSandboxPage() {
               </div>
 
               <div>
-                <label className="block text-muted-foreground font-bold mb-1">Chọn loại thẻ Power-up:</label>
+                <label className="block text-muted-foreground font-bold mb-1">
+                  Chọn loại thẻ Power-up ({roomState?.mode || "CLASSIC"}):
+                </label>
                 <div className="grid grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
-                  {(Object.keys(CARD_METADATA) as CardType[]).map((cType) => {
-                    const meta = CARD_METADATA[cType];
-                    const active = grantCardType === cType;
-                    return (
-                      <button
-                        key={cType}
-                        type="button"
-                        onClick={() => setGrantCardType(cType)}
-                        className={`p-2 rounded-xl border text-left flex items-center gap-2 transition ${
-                          active
-                            ? "bg-purple-600/30 border-purple-500 text-white font-bold"
-                            : "glass border-white/10 text-slate-300 hover:text-white hover:bg-white/5"
-                        }`}
-                      >
-                        <span className="text-lg">{meta.emoji}</span>
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-[11px]">{meta.nameVi}</p>
-                          <p className="text-[10px] text-muted-foreground truncate">{meta.summaryVi}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {(() => {
+                    const currentModeAllowed = getDefaultAllowedPowerupsForMode((roomState?.mode || "CLASSIC") as GameMode);
+                    return (Object.keys(CARD_METADATA) as CardType[]).map((cType) => {
+                      const meta = CARD_METADATA[cType];
+                      const isSupported = currentModeAllowed.includes(cType);
+                      const active = grantCardType === cType;
+                      return (
+                        <button
+                          key={cType}
+                          type="button"
+                          disabled={!isSupported}
+                          onClick={() => setGrantCardType(cType)}
+                          className={`p-2 rounded-xl border text-left flex items-center gap-2 transition ${
+                            !isSupported
+                              ? "opacity-30 cursor-not-allowed border-red-500/20 bg-red-950/10 text-slate-500"
+                              : active
+                              ? "bg-purple-600/30 border-purple-500 text-white font-bold"
+                              : "glass border-white/10 text-slate-300 hover:text-white hover:bg-white/5"
+                          }`}
+                        >
+                          <span className={`text-lg ${!isSupported ? "grayscale opacity-50" : ""}`}>{meta.emoji}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between">
+                              <p className="truncate font-semibold text-[11px]">{meta.nameVi}</p>
+                              {!isSupported && (
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-red-500/20 text-red-300 font-bold border border-red-500/30">
+                                  Khóa
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {!isSupported ? `Không thuộc mode ${roomState?.mode}` : meta.summaryVi}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>

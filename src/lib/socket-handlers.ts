@@ -27,6 +27,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
+import { isPowerupAllowedForMode } from "./game-engine/powerups";
 import { shuffleArray } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -1391,6 +1392,10 @@ export function registerSocketHandlers(io: IO) {
       }
       if (card.ownerType === "TEAM" && card.teamId !== player.teamId) {
         socket.emit("error", "Thẻ này không thuộc về đội của bạn!");
+        return;
+      }
+      if (!isPowerupAllowedForMode(room.mode as any, card.type as any)) {
+        socket.emit("error", `Thẻ ${CARD_METADATA[card.type as CardType]?.nameVi || card.type} không được phép sử dụng trong chế độ ${room.mode}!`);
         return;
       }
 
@@ -3097,6 +3102,10 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
+      if (!isPowerupAllowedForMode(room.mode as any, cardType as any)) {
+        socket.emit("error", `Thẻ ${cardType} không được phép sử dụng trong chế độ ${room.mode}!`);
+        return;
+      }
       await prisma.powerupCard.create({
         data: {
           type: cardType as any,

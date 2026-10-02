@@ -7,7 +7,7 @@ import PowerupIcon from "@/components/ui/PowerupIcon";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
-import { GameMode } from "@/types";
+import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const GAME_MODES = [
@@ -179,6 +179,8 @@ export default function CreateRoomPage() {
   const removeTeam = (i: number) => setTeams(teams.filter((_, idx) => idx !== i));
 
   const togglePowerup = (type: string) => {
+    const currentModeAllowed = getDefaultAllowedPowerupsForMode(mode as GameMode);
+    if (!currentModeAllowed.includes(type as CardType)) return;
     setAllowedPowerups((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
@@ -211,8 +213,11 @@ export default function CreateRoomPage() {
             powerupOwnerType,
             powerupCountShared,
             powerupCountPerTeam,
-            maxHandSize,
-            allowedPowerups,
+            allowedPowerups: (() => {
+              const currentModeAllowed = getDefaultAllowedPowerupsForMode(mode as GameMode);
+              const filtered = allowedPowerups.filter((p) => currentModeAllowed.includes(p as CardType));
+              return filtered.length > 0 ? filtered : currentModeAllowed;
+            })(),
             // Mode Classic là mode DUY NHẤT có bonus thời gian
             timeBonusEnabled: mode === "CLASSIC" ? timeBonusEnabled : false,
             penaltyForWrong,
@@ -1217,118 +1222,148 @@ export default function CreateRoomPage() {
               </div>
 
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-bold text-foreground">Loại thẻ được phép</label>
-                    <span className="text-xs font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30 font-bold">
-                      {allowedPowerups.length}/{POWERUP_TYPES.length}
-                    </span>
-                  </div>
+                {(() => {
+                  const currentModeAllowed = getDefaultAllowedPowerupsForMode(mode as GameMode);
+                  const activeValidCount = allowedPowerups.filter((p) => currentModeAllowed.includes(p as CardType)).length;
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Quick Select Buttons */}
-                    <button
-                      type="button"
-                      onClick={() => setAllowedPowerups(POWERUP_TYPES.map((p) => p.value))}
-                      className="text-xs font-semibold px-2 py-1 rounded-lg glass border border-border hover:bg-white/10 text-muted-foreground hover:text-white transition"
-                    >
-                      Chọn tất cả
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setAllowedPowerups([])}
-                      className="text-xs font-semibold px-2 py-1 rounded-lg glass border border-border hover:bg-white/10 text-muted-foreground hover:text-white transition"
-                    >
-                      Bỏ chọn
-                    </button>
+                  return (
+                    <>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-bold text-foreground">Loại thẻ được phép</label>
+                          <span className="text-xs font-mono text-purple-300 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-500/30 font-bold">
+                            {activeValidCount}/{currentModeAllowed.length} khả dụng trong mode {mode}
+                          </span>
+                        </div>
 
-                    {/* Segmented layout switcher: Grid vs Compact */}
-                    <div className="flex items-center p-0.5 rounded-xl bg-card border border-border gap-0.5 text-xs shadow-inner">
-                      <button
-                        type="button"
-                        onClick={() => handleSetPowerupLayout("GRID")}
-                        title="Bố cục Lưới thẻ"
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
-                          powerupLayout === "GRID"
-                            ? "bg-purple-600 text-white shadow"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <span>⊞</span>
-                        <span className="text-[11px]">Lưới</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSetPowerupLayout("COMPACT")}
-                        title="Bố cục Thẻ nhỏ tinh gọn (Chips)"
-                        className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
-                          powerupLayout === "COMPACT"
-                            ? "bg-purple-600 text-white shadow"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        <span>🏷️</span>
-                        <span className="text-[11px]">Tinh gọn</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Quick Select Buttons */}
+                          <button
+                            type="button"
+                            onClick={() => setAllowedPowerups([...currentModeAllowed])}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg glass border border-purple-500/40 hover:bg-purple-500/20 text-purple-300 hover:text-white transition"
+                          >
+                            Chọn tất cả ({currentModeAllowed.length} thẻ)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAllowedPowerups([])}
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg glass border border-border hover:bg-white/10 text-muted-foreground hover:text-white transition"
+                          >
+                            Bỏ chọn
+                          </button>
 
-                {powerupLayout === "GRID" ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-slide-up">
-                    {POWERUP_TYPES.map((pt) => {
-                      const isAllowed = allowedPowerups.includes(pt.value);
-                      return (
-                        <button
-                          key={pt.value}
-                          type="button"
-                          onClick={() => togglePowerup(pt.value)}
-                          className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all text-left ${
-                            isAllowed
-                              ? "border-purple-500 bg-purple-500/15 shadow-sm text-foreground"
-                              : "border-border opacity-40 hover:opacity-75 glass bg-card/30"
-                          }`}
-                        >
-                          <PowerupIcon type={pt.value} className="w-8 h-8 shrink-0 mt-0.5 drop-shadow" />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-bold">{pt.label}</span>
-                              {isAllowed ? (
-                                <span className="text-xs text-purple-400 font-bold">✓ Bật</span>
-                              ) : (
-                                <span className="text-xs text-muted-foreground">Tắt</span>
-                              )}
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-0.5">{pt.desc}</div>
+                          {/* Segmented layout switcher: Grid vs Compact */}
+                          <div className="flex items-center p-0.5 rounded-xl bg-card border border-border gap-0.5 text-xs shadow-inner">
+                            <button
+                              type="button"
+                              onClick={() => handleSetPowerupLayout("GRID")}
+                              title="Bố cục Lưới thẻ"
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
+                                powerupLayout === "GRID"
+                                  ? "bg-purple-600 text-white shadow"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <span>⊞</span>
+                              <span className="text-[11px]">Lưới</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSetPowerupLayout("COMPACT")}
+                              title="Bố cục Thẻ nhỏ tinh gọn (Chips)"
+                              className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold transition-all ${
+                                powerupLayout === "COMPACT"
+                                  ? "bg-purple-600 text-white shadow"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <span>🏷️</span>
+                              <span className="text-[11px]">Tinh gọn</span>
+                            </button>
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap gap-2 animate-slide-up">
-                    {POWERUP_TYPES.map((pt) => {
-                      const isAllowed = allowedPowerups.includes(pt.value);
-                      return (
-                        <button
-                          key={pt.value}
-                          type="button"
-                          onClick={() => togglePowerup(pt.value)}
-                          title={pt.desc}
-                          className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold active:scale-95 ${
-                            isAllowed
-                              ? "border-purple-500 bg-purple-600 text-white shadow-md glow-purple"
-                              : "border-border/60 bg-card/40 opacity-40 hover:opacity-80 text-muted-foreground"
-                          }`}
-                        >
-                          <PowerupIcon type={pt.value} className="w-5 h-5 shrink-0" />
-                          <span>{pt.label}</span>
-                          {isAllowed && <span className="text-xs font-black text-purple-200">✓</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                        </div>
+                      </div>
+
+                      {powerupLayout === "GRID" ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-slide-up">
+                          {POWERUP_TYPES.map((pt) => {
+                            const isSupported = currentModeAllowed.includes(pt.value as CardType);
+                            const isAllowed = isSupported && allowedPowerups.includes(pt.value);
+                            return (
+                              <button
+                                key={pt.value}
+                                type="button"
+                                disabled={!isSupported}
+                                onClick={() => togglePowerup(pt.value)}
+                                className={`flex items-start gap-3 p-3 rounded-xl border-2 transition-all text-left ${
+                                  !isSupported
+                                    ? "border-red-500/20 bg-red-950/10 opacity-30 cursor-not-allowed text-slate-500"
+                                    : isAllowed
+                                    ? "border-purple-500 bg-purple-500/15 shadow-sm text-foreground hover:border-purple-400"
+                                    : "border-border opacity-40 hover:opacity-75 glass bg-card/30 hover:border-slate-500"
+                                }`}
+                              >
+                                <PowerupIcon type={pt.value} className={`w-8 h-8 shrink-0 mt-0.5 drop-shadow ${!isSupported ? "grayscale opacity-50" : ""}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-bold">{pt.label}</span>
+                                    {!isSupported ? (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 font-bold border border-red-500/30">
+                                        Không hỗ trợ
+                                      </span>
+                                    ) : isAllowed ? (
+                                      <span className="text-xs text-purple-400 font-bold">✓ Bật</span>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">Tắt</span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-0.5">{pt.desc}</div>
+                                  {!isSupported && (
+                                    <p className="text-[10px] text-red-300/80 mt-1 italic">
+                                      🚫 Không phù hợp với cơ chế của chế độ {mode}
+                                    </p>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2 animate-slide-up">
+                          {POWERUP_TYPES.map((pt) => {
+                            const isSupported = currentModeAllowed.includes(pt.value as CardType);
+                            const isAllowed = isSupported && allowedPowerups.includes(pt.value);
+                            return (
+                              <button
+                                key={pt.value}
+                                type="button"
+                                disabled={!isSupported}
+                                onClick={() => togglePowerup(pt.value)}
+                                title={!isSupported ? `Không hỗ trợ trong chế độ ${mode}` : pt.desc}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${
+                                  !isSupported
+                                    ? "border-red-500/20 bg-red-950/20 opacity-35 cursor-not-allowed text-slate-500 line-through"
+                                    : isAllowed
+                                    ? "border-purple-500 bg-purple-600 text-white shadow-md glow-purple active:scale-95"
+                                    : "border-border/60 bg-card/40 opacity-40 hover:opacity-80 text-muted-foreground active:scale-95"
+                                }`}
+                              >
+                                <PowerupIcon type={pt.value} className={`w-5 h-5 shrink-0 ${!isSupported ? "grayscale" : ""}`} />
+                                <span>{pt.label}</span>
+                                {!isSupported ? (
+                                  <span className="text-[10px] text-red-400">✕</span>
+                                ) : isAllowed ? (
+                                  <span className="text-xs font-black text-purple-200">✓</span>
+                                ) : null}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </>
           )}

@@ -40,54 +40,75 @@ export default function BrandLogo({
       className={`${iconSizes[size]} shrink-0 drop-shadow`}
     >
       <defs>
-        <linearGradient id="bl_bg" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#1e1b4b" />
-          <stop offset="50%" stopColor="#2e1065" />
-          <stop offset="100%" stopColor="#0f172a" />
+        <linearGradient id="bc_ui_bg" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="#2e1065" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="#0f172a" stopOpacity="0.95" />
         </linearGradient>
-        <linearGradient id="bl_rim" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#c084fc" />
-          <stop offset="50%" stopColor="#818cf8" />
+        <linearGradient id="bc_ui_rim" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#818cf8" />
+          <stop offset="50%" stopColor="#a855f7" />
           <stop offset="100%" stopColor="#06b6d4" />
         </linearGradient>
-        <linearGradient id="bl_bolt" x1="22" y1="14" x2="42" y2="50" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="35%" stopColor="#38bdf8" />
-          <stop offset="70%" stopColor="#fbbf24" />
-          <stop offset="100%" stopColor="#f59e0b" />
+        <linearGradient id="bc_ui_brain_left" x1="12" y1="16" x2="30" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#c084fc" />
+          <stop offset="100%" stopColor="#6366f1" />
         </linearGradient>
-        <filter id="bl_glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#8b5cf6" floodOpacity="0.5" />
-        </filter>
+        <linearGradient id="bc_ui_brain_right" x1="34" y1="16" x2="52" y2="44" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#0891b2" />
+        </linearGradient>
+        <linearGradient id="bc_ui_bolt" x1="26" y1="12" x2="38" y2="52" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="45%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#06b6d4" />
+        </linearGradient>
       </defs>
 
-      {/* Squircle base & glow */}
-      <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#bl_bg)" filter="url(#bl_glow)" />
-      <rect x="4" y="4" width="56" height="56" rx="16" stroke="url(#bl_rim)" strokeWidth="1.8" />
-
-      {/* Stopwatch Winder Top */}
-      <rect x="28" y="7" width="8" height="3.5" rx="1.5" fill="#facc15" stroke="#78350f" strokeWidth="0.8" />
-      <path d="M26 10.5H38" stroke="#38bdf8" strokeWidth="1" strokeLinecap="round" />
-
-      {/* Dial Ring */}
-      <circle cx="32" cy="34" r="20" stroke="#06b6d4" strokeWidth="2.5" strokeOpacity="0.85" strokeDasharray="3 2" />
-      <circle cx="32" cy="34" r="23" stroke="#818cf8" strokeOpacity="0.3" strokeWidth="1" />
-
-      {/* Markers */}
-      <line x1="32" y1="16" x2="32" y2="19" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-      <line x1="50" y1="34" x2="47" y2="34" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-      <line x1="32" y1="52" x2="32" y2="49" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-      <line x1="14" y1="34" x2="17" y2="34" stroke="#38bdf8" strokeWidth="2" strokeLinecap="round" />
-
-      {/* Lightning Bolt */}
+      {/* Outer Shield Crest */}
       <path
-        d="M36 17L22 35H32L28 51L44 31H34L36 17Z"
-        fill="url(#bl_bolt)"
+        d="M32 4L57 14V36C57 48.5 46.5 57 32 61C17.5 57 7 48.5 7 36V14L32 4Z"
+        fill="url(#bc_ui_bg)"
+        stroke="url(#bc_ui_rim)"
+        strokeWidth="2.2"
+      />
+
+      {/* Inner Inset Line */}
+      <path
+        d="M32 9L52 17V35C52 45 43.5 52 32 55.5C20.5 52 12 45 12 35V17L32 9Z"
+        stroke="#4f46e5"
+        strokeOpacity="0.4"
+        strokeWidth="1"
+      />
+
+      {/* Brain Left Hemisphere */}
+      <path
+        d="M28 19C22 19 17 23 17 29C17 33.5 19.5 37 23 39L28 41V19Z"
+        fill="url(#bc_ui_brain_left)"
+        stroke="#1e1b4b"
+        strokeWidth="0.8"
+      />
+      <path d="M23 23L28 28M19 31L26 34" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1" strokeLinecap="round" />
+
+      {/* Brain Right Hemisphere */}
+      <path
+        d="M36 19C42 19 47 23 47 29C47 33.5 44.5 37 41 39L36 41V19Z"
+        fill="url(#bc_ui_brain_right)"
+        stroke="#1e1b4b"
+        strokeWidth="0.8"
+      />
+      <path d="M41 23L36 28M45 31L38 34" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1" strokeLinecap="round" />
+
+      {/* Central Lightning Clash Bolt */}
+      <path
+        d="M37 13L22 31H33L26 51L43 29H30L37 13Z"
+        fill="url(#bc_ui_bolt)"
         stroke="#0f172a"
-        strokeWidth="1.2"
+        strokeWidth="1.3"
         strokeLinejoin="round"
       />
-      <circle cx="48" cy="18" r="1.5" fill="#ffffff" />
+
+      <circle cx="32" cy="30" r="1.8" fill="#ffffff" />
     </svg>
   );
 
@@ -107,9 +128,9 @@ export default function BrandLogo({
       {iconElement}
       <div className="flex flex-col">
         <div className={`font-black tracking-tight flex items-center leading-none ${textSizes[size]}`}>
-          <span className="text-white">Timeout</span>
-          <span className="ml-1 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
-            Quiz
+          <span className="text-white">Brain</span>
+          <span className="ml-0.5 bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">
+            Clash
           </span>
         </div>
         {subText && (
@@ -119,7 +140,7 @@ export default function BrandLogo({
         )}
         {variant === "full" && !subText && (
           <span className="text-[9px] font-extrabold tracking-wider text-purple-300 uppercase mt-0.5 opacity-80">
-            Realtime Quiz Arena
+            INTELLECTUAL ARENA
           </span>
         )}
       </div>

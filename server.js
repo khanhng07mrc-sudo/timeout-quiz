@@ -560,8 +560,9 @@ function shuffleArray(array) {
 
 // src/lib/security.ts
 var import_crypto = __toESM(require("crypto"));
-var TOKEN_SECRET = process.env.NEXTAUTH_SECRET || "timeout_quiz_super_secret_key_2026";
-var TOKEN_TTL_MS = 24 * 60 * 60 * 1e3;
+var import_bcryptjs = __toESM(require("bcryptjs"));
+var TOKEN_SECRET = process.env.NEXTAUTH_SECRET || "brainclash_super_secret_key_2026";
+var TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1e3;
 function verifyAdminToken(token) {
   if (!token || typeof token !== "string") return false;
   const parts = token.split(".");
@@ -577,9 +578,9 @@ function verifyAdminToken(token) {
     const payload = JSON.parse(
       Buffer.from(payloadEncoded, "base64url").toString("utf8")
     );
-    if (payload.role !== "admin") return false;
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
-    return true;
+    if (payload.role === "admin" || payload.role === "ADMIN" || payload.userId) return true;
+    return false;
   } catch {
     return false;
   }

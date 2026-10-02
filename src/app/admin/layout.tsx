@@ -19,7 +19,7 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { logout } = useAdminAuth();
+  const { user, logout } = useAdminAuth();
 
   const handleLogout = async () => {
     if (confirm("Bạn có chắc chắn muốn đăng xuất và khóa lại quyền quản trị?")) {
@@ -89,6 +89,17 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             </nav>
 
             <div className="pt-3 border-t border-[#222642] flex flex-col gap-2">
+              {user && (
+                <div className="p-2.5 rounded-xl bg-[#171a30] border border-[#272c50] flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white text-xs font-black shrink-0">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+              )}
               <Link
                 href="/"
                 onClick={() => setMobileMenuOpen(false)}
@@ -103,7 +114,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition text-left"
               >
                 <SystemIcon name="logout" className="w-4 h-4 shrink-0 text-rose-400" />
-                <span>Khóa & Đăng xuất</span>
+                <span>Đăng xuất</span>
               </button>
             </div>
           </div>
@@ -141,11 +152,27 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Bottom Actions */}
-        <div className="border-t border-[#222642] pt-4 flex flex-col gap-1.5">
+        {/* Bottom Actions & User Profile */}
+        <div className="border-t border-[#222642] pt-4 flex flex-col gap-2">
+          {user && (
+            <div className="p-2.5 rounded-xl bg-[#171a30] border border-[#272c50] flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white truncate">{user.name}</p>
+                <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+              </div>
+              {user.role === "ADMIN" && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold shrink-0">
+                  ADMIN
+                </span>
+              )}
+            </div>
+          )}
           <Link
             href="/"
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors"
           >
             <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
             <span>Về trang chủ</span>
@@ -153,10 +180,10 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full text-left cursor-pointer"
+            className="flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full text-left cursor-pointer"
           >
             <SystemIcon name="logout" className="w-4 h-4 shrink-0 text-rose-400" />
-            <span>Khóa & Đăng xuất</span>
+            <span>Đăng xuất</span>
           </button>
         </div>
       </aside>

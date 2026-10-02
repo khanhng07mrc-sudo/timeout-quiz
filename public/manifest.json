@@ -1,6 +1,6 @@
 {
-  "name": "Timeout Quiz",
-  "short_name": "TimeoutQuiz",
+  "name": "BrainClash",
+  "short_name": "BrainClash",
   "description": "Nền tảng thi đấu trả lời câu hỏi realtime đa chế độ, hỗ trợ online và offline",
   "start_url": "/admin/sandbox",
   "display": "standalone",

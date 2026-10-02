@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
+import {
+  verifyAdminRequest,
+  getCurrentUserFromRequest,
+  sanitizeInput,
+} from "@/lib/security";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const ownerId = searchParams.get("ownerId");
+  const user = getCurrentUserFromRequest(req);
+  const queryOwnerId = searchParams.get("ownerId");
+  const effectiveOwnerId = user?.userId || queryOwnerId;
 
   const banks = await prisma.quizBank.findMany({
-    where: ownerId ? { OR: [{ ownerId }, { isPublic: true }] } : { isPublic: true },
+    where: effectiveOwnerId
+      ? {
+          OR: [
+            { ownerId: effectiveOwnerId },
+            { isPublic: true },
+            { ownerId: "demo-host-id" },
+          ],
+        }
+      : {
+          OR: [{ isPublic: true }, { ownerId: "demo-host-id" }],
+        },
     include: { _count: { select: { questions: true } } },
     orderBy: { createdAt: "desc" },
   });
@@ -21,11 +37,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const user = getCurrentUserFromRequest(req);
     const body = await req.json();
-    const { title, description, ownerId, isPublic } = body;
+    const { title, description, isPublic } = body;
+    const effectiveOwnerId = user?.userId || body.ownerId || "demo-host-id";
 
-    if (!title || !ownerId) {
+    if (!title) {
       return NextResponse.json({ error: "Vui lòng nhập tên bộ đề" }, { status: 400 });
+    }
+
+    // Ensure owner user exists in database to satisfy foreign key
+    const existingOwner = await prisma.user.findUnique({ where: { id: effectiveOwnerId } });
+    if (!existingOwner) {
+      await prisma.user.upsert({
+        where: { email: user?.email || `${effectiveOwnerId}@brainclash.io` },
+        update: {},
+        create: {
+          id: effectiveOwnerId,
+          name: user?.name || "Quiz Creator",
+          email: user?.email || `${effectiveOwnerId}@brainclash.io`,
+          role: "ADMIN",
+        },
+      });
     }
 
     const cleanedTitle = sanitizeInput(title, 100);
@@ -35,8 +68,8 @@ export async function POST(req: NextRequest) {
       data: {
         title: cleanedTitle,
         description: cleanedDesc,
-        ownerId,
-        isPublic: isPublic ?? false,
+        ownerId: effectiveOwnerId,
+        isPublic: isPublic ?? true,
       },
     });
 

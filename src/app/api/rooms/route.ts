@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck } from "@/lib/utils";
-import { verifyAdminRequest, generateHostKey, sanitizeInput } from "@/lib/security";
+import {
+  verifyAdminRequest,
+  getCurrentUserFromRequest,
+  generateHostKey,
+  sanitizeInput,
+} from "@/lib/security";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 
 const DEFAULT_CONFIG = {
@@ -47,11 +52,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const user = getCurrentUserFromRequest(req);
     const body = await req.json();
-    const { name, quizBankId, mode, teamMode, config, hostId, teams } = body;
+    const { name, quizBankId, mode, teamMode, config, teams } = body;
+    const effectiveHostId = user?.userId || body.hostId || "demo-host-id";
 
-    if (!name || !hostId) {
+    if (!name) {
       return NextResponse.json({ error: "Vui lòng nhập tên phòng thi" }, { status: 400 });
+    }
+
+    // Ensure host User record exists in DB to prevent foreign key errors
+    const existingHost = await prisma.user.findUnique({ where: { id: effectiveHostId } });
+    if (!existingHost) {
+      await prisma.user.upsert({
+        where: { email: user?.email || `${effectiveHostId}@brainclash.io` },
+        update: {},
+        create: {
+          id: effectiveHostId,
+          name: user?.name || "BrainClash Host",
+          email: user?.email || `${effectiveHostId}@brainclash.io`,
+          role: "ADMIN",
+        },
+      });
     }
 
     const targetMode = mode ?? "CLASSIC";
@@ -150,7 +172,7 @@ export async function POST(req: NextRequest) {
       data: {
         code,
         name: sanitizeInput(name, 100),
-        hostId,
+        hostId: effectiveHostId,
         hostKey,
         quizBankId: quizBankId || null,
         mode: mode ?? "CLASSIC",
@@ -218,9 +240,23 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const hostId = searchParams.get("hostId");
+    const user = getCurrentUserFromRequest(req);
+
+    let whereClause: any = undefined;
+    if (user && user.userId !== "master-admin") {
+      whereClause = {
+        OR: [
+          { hostId: user.userId },
+          { hostId: "demo-host-id" },
+          ...(hostId && hostId !== "demo-host-id" && hostId !== user.userId ? [{ hostId }] : []),
+        ],
+      };
+    } else if (hostId && hostId !== "demo-host-id") {
+      whereClause = { hostId };
+    }
 
     const rooms = await prisma.room.findMany({
-      where: hostId ? { hostId } : undefined,
+      where: whereClause,
       orderBy: { createdAt: "desc" },
       include: {
         _count: { select: { players: true, teams: true } },

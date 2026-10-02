@@ -159,7 +159,7 @@ export default function GameQuestion({
       )}
 
       {/* Timer */}
-      {timer && (
+      {timer && !question.bouncebackSelectPhase && (
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-12">
             <svg className="w-12 h-12" viewBox="0 0 48 48">
@@ -190,39 +190,50 @@ export default function GameQuestion({
         <div className="rounded-xl p-3 border text-sm font-medium transition-all">
           {question.bouncebackSelectPhase ? (
             isPrimaryTeam ? (
-              <div className="flex flex-col items-center justify-center gap-3 bg-indigo-950/60 border-2 border-indigo-400 p-4 rounded-xl text-center">
+              <div className="flex flex-col items-center justify-center gap-4 bg-indigo-950/60 border-2 border-indigo-400 p-5 rounded-2xl text-center shadow-2xl">
                 <div>
-                  <p className="font-black text-indigo-300 text-base flex items-center justify-center gap-2">
-                    <span>🎯</span>
-                    <span>CHỌN GÓI ĐIỂM CHO CÂU HỎI (VỀ ĐÍCH OLYMPIA)</span>
+                  <span className="text-3xl mb-1 block">🎯</span>
+                  <p className="font-black text-indigo-300 text-lg sm:text-xl">
+                    CHỌN GÓI ĐIỂM CÂU HỎI (VỀ ĐÍCH)
                   </p>
-                  <p className="text-xs text-indigo-200/90 mt-1">
-                    Đội bạn đang là đội trả lời chính. Vui lòng chọn mức điểm câu hỏi (10, 20 hoặc 30 điểm):
+                  <p className="text-xs sm:text-sm text-indigo-200/90 mt-1">
+                    Đội bạn đang là đội trả lời chính. Đề bài và đồng hồ sẽ được mở ra ngay sau khi chọn:
                   </p>
                 </div>
-                <div className="grid grid-cols-3 gap-2 sm:gap-3 w-full max-w-sm mt-1">
-                  {([10, 20, 30] as const).map((pts) => (
-                    <button
-                      key={pts}
-                      type="button"
-                      onClick={() => onSelectPoints?.(pts)}
-                      className="py-2.5 sm:py-3 px-2 sm:px-4 rounded-xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg active:scale-95 transition-all cursor-pointer border border-indigo-300/40 hover:border-indigo-300 flex items-center justify-center gap-1"
-                    >
-                      <span className="font-mono text-base sm:text-lg">{pts}</span>
-                      <span className="text-xs sm:text-sm font-semibold opacity-90">Điểm</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-md">
+                  {([10, 20, 30] as const).map((pts) => {
+                    const secs = pts === 10 ? 15 : pts === 20 ? 20 : 30;
+                    return (
+                      <button
+                        key={pts}
+                        type="button"
+                        onClick={() => onSelectPoints?.(pts)}
+                        className="py-3.5 px-3 rounded-xl font-black bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-xl active:scale-95 transition-all cursor-pointer border-2 border-indigo-300/40 hover:border-indigo-300 flex flex-col items-center justify-center gap-1 group"
+                      >
+                        <span className="font-mono text-2xl group-hover:scale-110 transition">{pts} ĐIỂM</span>
+                        <span className="text-xs font-semibold text-indigo-200">⏱️ {secs} giây</span>
+                      </button>
+                    );
+                  })}
                 </div>
+                <p className="text-[11px] text-indigo-300/80 italic">
+                  * Trả lời đúng nhận trọn số điểm; Trả lời sai các đội khác có cơ hội bấm chuông cướp điểm!
+                </p>
               </div>
             ) : (
-              <div className="bg-blue-950/40 border border-blue-500/30 p-3.5 rounded-xl text-center space-y-1">
-                <p className="font-bold text-blue-300 text-sm flex items-center justify-center gap-2">
-                  <span className="animate-spin text-base">⏳</span>
-                  <span>Chờ đội chính chọn gói điểm...</span>
+              <div className="bg-blue-950/50 border-2 border-blue-500/40 p-5 rounded-2xl text-center space-y-2 shadow-xl">
+                <span className="text-3xl mb-1 block animate-bounce">⏳</span>
+                <p className="font-black text-blue-300 text-base sm:text-lg">
+                  Đang chờ đội chính chọn gói câu hỏi...
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Đội <strong className="text-yellow-400 font-bold">{question.primaryTeamName ?? "chính"}</strong> đang lựa chọn gói 10, 20 hoặc 30 điểm trước khi tính giờ.
+                <p className="text-xs sm:text-sm text-blue-200/90">
+                  Đội <strong className="text-yellow-400 font-bold">{question.primaryTeamName ?? "chính"}</strong> đang lựa chọn gói 10, 20 hoặc 30 điểm.
                 </p>
+                <div className="pt-2">
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-400/30">
+                    Chuẩn bị chuông cướp điểm nếu đội chính không trả lời được
+                  </span>
+                </div>
               </div>
             )
           ) : isStealPhase ? (
@@ -410,7 +421,9 @@ export default function GameQuestion({
       )}
 
       {/* Question metadata & Bloom Difficulty */}
-      <div>
+      {!question.bouncebackSelectPhase && (
+        <>
+          <div>
         <div className="flex flex-wrap items-center gap-2 mb-2">
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold whitespace-nowrap">
             {q.type === "MC_SINGLE" ? "Trắc nghiệm" : q.type === "MC_MULTI" ? "Nhiều đáp án" : q.type === "TRUE_FALSE" ? "Đúng/Sai" : q.type === "FILL_BLANK" ? "Điền vào chỗ trống" : q.type === "ESSAY" ? "Tự luận" : "Câu hỏi"}
@@ -587,6 +600,8 @@ export default function GameQuestion({
           </button>
         </div>
       ) : null}
+        </>
+      )}
 
       {answered && !revealPayload && (
         <div className="text-center py-2 text-green-400 font-bold flex flex-wrap items-center justify-center gap-1.5 text-xs sm:text-sm bg-green-500/10 border border-green-500/30 rounded-xl px-4 animate-slide-up shadow-sm">

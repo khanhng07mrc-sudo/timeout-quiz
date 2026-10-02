@@ -296,17 +296,26 @@ export default function AdminSandboxPage() {
       addLog("🔔 Chuông đã MỞ KHÓA cho tất cả các đội!");
     });
     sock.on("game:bounceback:points_selected", (payload) => {
+      const pts = payload.points as (10 | 20 | 30);
+      const ptsTimeLimit = payload.timeLimit ?? (pts === 10 ? 15 : pts === 20 ? 20 : 30);
+      const effectiveEndsAt = payload.endsAt ?? (Date.now() + ptsTimeLimit * 1000);
       setCurrentQuestion((prev) =>
         prev
           ? {
               ...prev,
               bouncebackSelectPhase: false,
-              selectedPointLevel: payload.points,
-              question: { ...prev.question, points: payload.points },
+              selectedPointLevel: pts,
+              timeLimit: ptsTimeLimit,
+              startedAt: Date.now(),
+              endsAt: effectiveEndsAt,
+              timerPending: false,
+              timerStarted: true,
+              question: { ...prev.question, points: pts, timeLimit: ptsTimeLimit },
             }
           : prev
       );
-      addLog(`🎯 Đã chọn mức điểm: ${payload.points}đ (Về đích Olympia)`);
+      setTimer({ remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt: effectiveEndsAt });
+      addLog(`🎯 Đã chọn mức điểm: ${pts}đ (${ptsTimeLimit}s) (Về đích Olympia)`);
     });
     sock.on("game:elimination:round", (payload) => {
       addLog(`💀 Vòng loại #${payload.round}: Đội ${payload.eliminatedTeamName} bị loại! (Còn ${payload.survivingTeamsCount} đội)`);
@@ -596,18 +605,69 @@ export default function AdminSandboxPage() {
         addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG thành công!`);
         syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
       } else if (action === "bounceback_select_points") {
+        const pts = (points as 10 | 20 | 30) || 20;
+        const ptsTimeLimit = pts === 10 ? 15 : pts === 20 ? 20 : 30;
+        const endsAt = Date.now() + ptsTimeLimit * 1000;
+
+        if (offlineTimerRef.current) {
+          clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
+        }
+
+        offlineRemainingRef.current = ptsTimeLimit;
+        setTimer({ remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt });
+
         setCurrentQuestion((prev) => {
           if (!prev) return prev;
           const updated = {
             ...prev,
             bouncebackSelectPhase: false,
-            selectedPointLevel: points,
-            question: { ...prev.question, points },
+            selectedPointLevel: pts,
+            timeLimit: ptsTimeLimit,
+            startedAt: Date.now(),
+            endsAt,
+            timerPending: false,
+            timerStarted: true,
+            question: { ...prev.question, points: pts, timeLimit: ptsTimeLimit },
           };
-          syncToIframes({ currentQuestion: updated });
+          syncToIframes({
+            currentQuestion: updated,
+            timer: { remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt },
+          });
           return updated;
         });
-        addLog(`🎯 [${targetTeamName}] đã chọn gói điểm: ${points}đ`);
+
+        offlineTimerRef.current = setInterval(() => {
+          offlineRemainingRef.current -= 1;
+          const rem = offlineRemainingRef.current;
+          setTimer({ remaining: rem, total: ptsTimeLimit, endsAt });
+          syncToIframes({ timer: { remaining: rem, total: ptsTimeLimit, endsAt } });
+          if (rem <= 0) {
+            if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+            syncToIframes({ timer: { remaining: 0, total: ptsTimeLimit, endsAt: 0 } });
+          }
+        }, 1000);
+
+        if (botAutoEnabled) {
+          setTimeout(() => {
+            const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current];
+            const opts = rawQ?.options || [];
+            if (opts.length > 0) {
+              ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
+                const bOpt = opts[Math.floor(Math.random() * opts.length)];
+                const isCorrect = (bOpt as any).isCorrect ?? false;
+                offlineAnswersRef.current.set(bTeamId, {
+                  answer: bOpt.id,
+                  isCorrect,
+                  points: isCorrect ? pts : 0,
+                });
+              });
+            }
+          }, 2500);
+        }
+
+        addLog(`🎯 [${targetTeamName}] đã chọn gói điểm: ${pts}đ (${ptsTimeLimit}s suy nghĩ) — Bắt đầu tính giờ!`);
       } else if (action === "stop_early") {
         if (offlineTimerRef.current) {
           clearInterval(offlineTimerRef.current);
@@ -703,11 +763,11 @@ export default function AdminSandboxPage() {
       },
       timeLimit,
       startedAt: Date.now(),
-      endsAt,
+      endsAt: selectedMode === "BOUNCEBACK" ? undefined : endsAt,
       serverTime: Date.now(),
       activeBoosts: [],
-      timerPending: false,
-      timerStarted: true,
+      timerPending: selectedMode === "BOUNCEBACK",
+      timerStarted: selectedMode !== "BOUNCEBACK",
       buzzUnlocked: selectedMode === "BUZZ" ? false : true,
       buzzUnlockMode: "MANUAL",
       bouncebackSelectPhase: selectedMode === "BOUNCEBACK",
@@ -737,8 +797,23 @@ export default function AdminSandboxPage() {
 
     setCurrentQuestion(qState);
     setRevealPayload(null);
-    setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
-    offlineRemainingRef.current = timeLimit;
+
+    if (selectedMode === "BOUNCEBACK") {
+      setTimer(null);
+      offlineRemainingRef.current = 0;
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      syncToIframes({ currentQuestion: qState, timer: null });
+    } else {
+      setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
+      offlineRemainingRef.current = timeLimit;
+      syncToIframes({
+        currentQuestion: qState,
+        timer: { remaining: timeLimit, total: timeLimit, endsAt },
+      });
+    }
 
     setRoomState((prev) => {
       if (!prev) return prev;
@@ -748,33 +823,35 @@ export default function AdminSandboxPage() {
       return { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx, diceRaceState: nextDice };
     });
 
-    offlineTimerRef.current = setInterval(() => {
-      offlineRemainingRef.current -= 1;
-      const rem = offlineRemainingRef.current;
-      setTimer({ remaining: rem, total: timeLimit, endsAt });
-      if (rem <= 0) {
-        if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
-        offlineTimerRef.current = null;
-      }
-    }, 1000);
-
-    if (botAutoEnabled) {
-      setTimeout(() => {
-        const opts = q.options || [];
-        if (opts.length > 0) {
-          ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
-            const bOpt = opts[Math.floor(Math.random() * opts.length)];
-            const isCorrect = (bOpt as any).isCorrect ?? false;
-            offlineAnswersRef.current.set(bTeamId, {
-              answer: bOpt.id,
-              isCorrect,
-              points: isCorrect ? (q.points || 10) : 0,
-            });
-            const teamName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
-            addLog(`Bot [${teamName}] nộp đáp án: ${bOpt.text}`);
-          });
+    if (selectedMode !== "BOUNCEBACK") {
+      offlineTimerRef.current = setInterval(() => {
+        offlineRemainingRef.current -= 1;
+        const rem = offlineRemainingRef.current;
+        setTimer({ remaining: rem, total: timeLimit, endsAt });
+        if (rem <= 0) {
+          if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
         }
-      }, 2200);
+      }, 1000);
+
+      if (botAutoEnabled) {
+        setTimeout(() => {
+          const opts = q.options || [];
+          if (opts.length > 0) {
+            ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
+              const bOpt = opts[Math.floor(Math.random() * opts.length)];
+              const isCorrect = (bOpt as any).isCorrect ?? false;
+              offlineAnswersRef.current.set(bTeamId, {
+                answer: bOpt.id,
+                isCorrect,
+                points: isCorrect ? (q.points || 10) : 0,
+              });
+              const teamName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
+              addLog(`Bot [${teamName}] nộp đáp án: ${bOpt.text}`);
+            });
+          }
+        }, 2200);
+      }
     }
 
     addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
@@ -1046,17 +1123,69 @@ export default function AdminSandboxPage() {
 
   const handleAdminBouncebackSelectPoints = (points: 10 | 20 | 30) => {
     if (isOfflineSandbox) {
-      setCurrentQuestion((prev) =>
-        prev
-          ? {
-              ...prev,
-              bouncebackSelectPhase: false,
-              selectedPointLevel: points,
-              question: { ...prev.question, points },
-            }
-          : prev
-      );
-      addLog(`🎯 Đã chọn mức điểm: ${points}đ (Về đích Olympia)`);
+      const pts = points;
+      const ptsTimeLimit = pts === 10 ? 15 : pts === 20 ? 20 : 30;
+      const endsAt = Date.now() + ptsTimeLimit * 1000;
+
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+
+      offlineRemainingRef.current = ptsTimeLimit;
+      setTimer({ remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt });
+
+      setCurrentQuestion((prev) => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          bouncebackSelectPhase: false,
+          selectedPointLevel: pts,
+          timeLimit: ptsTimeLimit,
+          startedAt: Date.now(),
+          endsAt,
+          timerPending: false,
+          timerStarted: true,
+          question: { ...prev.question, points: pts, timeLimit: ptsTimeLimit },
+        };
+        syncToIframes({
+          currentQuestion: updated,
+          timer: { remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt },
+        });
+        return updated;
+      });
+
+      offlineTimerRef.current = setInterval(() => {
+        offlineRemainingRef.current -= 1;
+        const rem = offlineRemainingRef.current;
+        setTimer({ remaining: rem, total: ptsTimeLimit, endsAt });
+        syncToIframes({ timer: { remaining: rem, total: ptsTimeLimit, endsAt } });
+        if (rem <= 0) {
+          if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
+          syncToIframes({ timer: { remaining: 0, total: ptsTimeLimit, endsAt: 0 } });
+        }
+      }, 1000);
+
+      if (botAutoEnabled) {
+        setTimeout(() => {
+          const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current];
+          const opts = rawQ?.options || [];
+          if (opts.length > 0) {
+            ["t_blue", "t_yellow", "t_purple"].forEach((bTeamId) => {
+              const bOpt = opts[Math.floor(Math.random() * opts.length)];
+              const isCorrect = (bOpt as any).isCorrect ?? false;
+              offlineAnswersRef.current.set(bTeamId, {
+                answer: bOpt.id,
+                isCorrect,
+                points: isCorrect ? pts : 0,
+              });
+            });
+          }
+        }, 2500);
+      }
+
+      addLog(`🎯 Admin đã chọn gói: ${pts}đ (${ptsTimeLimit}s suy nghĩ) — Bắt đầu tính giờ!`);
       return;
     }
 

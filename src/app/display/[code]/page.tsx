@@ -123,7 +123,7 @@ export default function DisplayPage() {
           setCurrentQuestion(p.currentQuestion);
           if (p.currentQuestion) {
             setDisplayModeTab("QUESTION");
-            if (!p.currentQuestion.timerPending) {
+            if (!p.currentQuestion.timerPending && !p.currentQuestion.bouncebackSelectPhase) {
               soundManager.playCountdownTick(0);
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
             }
@@ -134,7 +134,11 @@ export default function DisplayPage() {
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
           soundManager.stopMusic();
-          soundManager.playFanfare();
+          if (p.revealPayload?.answers?.some((a: any) => a.isCorrect)) {
+            soundManager.playCorrect();
+          } else {
+            soundManager.playWrong();
+          }
         }
         if (p.timer !== undefined) {
           setTimer(p.timer);
@@ -201,13 +205,13 @@ export default function DisplayPage() {
       setIsStealOpen(false);
       setStealBuzzed(null);
       setDisplayModeTab("QUESTION");
-      if (!q.timerPending && q.endsAt) {
+      if (!q.timerPending && !q.bouncebackSelectPhase && q.endsAt) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
       } else {
         setTimer(null);
       }
-      if (!q.timerPending) {
+      if (!q.timerPending && !q.bouncebackSelectPhase) {
         soundManager.playCountdownTick(0);
         soundManager.playQuestionMusic(q.timeLimit);
       }
@@ -272,21 +276,30 @@ export default function DisplayPage() {
       soundManager.playBuzz();
     });
     socket.on("game:bounceback:points_selected", (payload) => {
+      const ptsTimeLimit = payload.timeLimit ?? (payload.points === 10 ? 15 : payload.points === 20 ? 20 : 30);
+      const effectiveEndsAt = payload.endsAt ?? (Date.now() + ptsTimeLimit * 1000);
       setCurrentQuestion((prev) =>
         prev
           ? {
               ...prev,
               bouncebackSelectPhase: false,
               selectedPointLevel: payload.points,
+              timeLimit: ptsTimeLimit,
+              startedAt: Date.now(),
+              endsAt: effectiveEndsAt,
+              timerPending: false,
+              timerStarted: true,
               question: {
                 ...prev.question,
                 points: payload.points,
+                timeLimit: ptsTimeLimit,
               },
             }
           : prev
       );
+      setTimer({ remaining: ptsTimeLimit, total: ptsTimeLimit, endsAt: effectiveEndsAt });
       soundManager.playCountdownTick(0);
-      soundManager.playQuestionMusic(30);
+      soundManager.playQuestionMusic(ptsTimeLimit);
     });
     socket.on("game:elimination:round", (payload) => {
       setEliminationNotice({
@@ -828,17 +841,59 @@ export default function DisplayPage() {
         {/* Question (hidden if viewing full board tab in DICE_RACE) */}
         {currentQuestion && displayModeTab !== "BOARD" && (
           <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
-            <div>
-              {/* Bounceback Point Selection Notice */}
-              {currentQuestion.bouncebackSelectPhase && (
-                <div className="bg-gradient-to-r from-blue-900/60 to-indigo-900/60 border-2 border-indigo-400 text-white rounded-2xl p-5 text-center animate-pulse shadow-xl mb-4">
-                  <span className="text-3xl mb-1 block">🎯</span>
-                  <h3 className="text-xl sm:text-2xl font-black text-indigo-300">ĐỘI CHÍNH ĐANG CHỌN GÓI CÂU HỎI (10, 20, 30 ĐIỂM)</h3>
-                  <p className="text-sm text-indigo-100 mt-1">
-                    Đội <strong className="text-yellow-400 font-bold">{currentQuestion.primaryTeamName}</strong> đang lựa chọn gói điểm trước khi tính giờ.
+            {currentQuestion.bouncebackSelectPhase ? (
+              <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
+                <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 border border-indigo-400/50 text-indigo-300 font-black text-sm sm:text-base uppercase tracking-widest shadow-xl">
+                  <span>🎯</span>
+                  <span>PHẦN THI VỀ ĐÍCH — CHỌN GÓI CÂU HỎI</span>
+                </div>
+
+                <div className="space-y-2 max-w-2xl">
+                  <h2 className="text-3xl sm:text-5xl font-black bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 bg-clip-text text-transparent">
+                    LƯỢT THI CỦA ĐỘI {currentQuestion.primaryTeamName?.toUpperCase() || "THÍ SINH"}
+                  </h2>
+                  <p className="text-base sm:text-xl text-slate-300">
+                    Đội đang lựa chọn mức điểm trên màn hình thiết bị...
                   </p>
                 </div>
-              )}
+
+                {/* 3 Point Pack Cards Display */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full max-w-4xl pt-2">
+                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-blue-500/40 bg-blue-950/40 flex flex-col items-center justify-center space-y-2 shadow-xl hover:border-blue-400 transition">
+                    <span className="text-5xl sm:text-6xl font-mono font-black text-blue-400">10</span>
+                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
+                    <span className="text-xs sm:text-sm font-semibold text-blue-200/90 bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
+                      ⏱️ 15 giây suy nghĩ
+                    </span>
+                    <span className="text-xs text-slate-400 pt-1">Độ khó cơ bản</span>
+                  </div>
+
+                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-indigo-500/50 bg-indigo-950/50 flex flex-col items-center justify-center space-y-2 shadow-2xl hover:border-indigo-400 transition ring-2 ring-indigo-500/30">
+                    <span className="text-5xl sm:text-6xl font-mono font-black text-indigo-300">20</span>
+                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
+                    <span className="text-xs sm:text-sm font-semibold text-indigo-200/90 bg-indigo-500/20 px-3 py-1 rounded-full border border-indigo-400/30">
+                      ⏱️ 20 giây suy nghĩ
+                    </span>
+                    <span className="text-xs text-slate-400 pt-1">Độ khó trung bình</span>
+                  </div>
+
+                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-purple-500/50 bg-purple-950/40 flex flex-col items-center justify-center space-y-2 shadow-xl hover:border-purple-400 transition">
+                    <span className="text-5xl sm:text-6xl font-mono font-black text-purple-400">30</span>
+                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
+                    <span className="text-xs sm:text-sm font-semibold text-purple-200/90 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-400/30">
+                      ⏱️ 30 giây suy nghĩ
+                    </span>
+                    <span className="text-xs text-slate-400 pt-1">Độ khó nâng cao</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-indigo-300/80 font-mono animate-pulse pt-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-400 animate-ping inline-block" />
+                  <span>Nội dung câu hỏi và đồng hồ đếm ngược sẽ kích hoạt ngay khi chốt gói điểm</span>
+                </div>
+              </div>
+            ) : (
+              <div>
 
               {/* Timer & Turn Info */}
               <div className="flex items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
@@ -986,6 +1041,7 @@ export default function DisplayPage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Rarity & Team Results on Reveal */}
             {revealPayload && (

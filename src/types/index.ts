@@ -895,7 +895,7 @@ export interface ServerToClientEvents {
   "game:timer:expired": (payload?: { questionId?: string }) => void;
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
-  "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30 }) => void;
+  "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30; timeLimit?: number; endsAt?: number }) => void;
   "game:answer:ack": (payload: { questionId: string; answer: string | string[]; isUpdate: boolean; success: boolean }) => void;
   "game:answer:received": (payload: { teamId?: string; playerId?: string; playerName: string; teamName?: string; questionId: string; answer?: string | string[]; isUpdate: boolean }) => void;
   "game:elimination:round": (payload: {

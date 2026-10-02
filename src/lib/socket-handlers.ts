@@ -1318,25 +1318,32 @@ export function registerSocketHandlers(io: IO) {
       const qKey = `${room.id}:${q.id}`;
 
       const validPoints: 10 | 20 | 30 = [10, 20, 30].includes(points) ? points : 20;
+      const timeLimit = validPoints === 10 ? 15 : validPoints === 20 ? 20 : 30;
+      const endsAt = Date.now() + timeLimit * 1000;
       roomBouncebackSelectedPoints.set(qKey, validPoints);
 
       const activeQ = roomActiveQuestions.get(room.id);
       if (activeQ) {
         activeQ.bouncebackSelectPhase = false;
         activeQ.selectedPointLevel = validPoints;
+        activeQ.timeLimit = timeLimit;
         activeQ.question.points = validPoints;
+        activeQ.question.timeLimit = timeLimit;
         activeQ.timerPending = false;
         activeQ.timerStarted = true;
         activeQ.startedAt = Date.now();
+        activeQ.endsAt = endsAt;
 
         const primary = roomPrimaryTeams.get(qKey);
         io.to(`room:${room.code}`).emit("game:bounceback:points_selected", {
           teamId: primary?.teamId || "",
           points: validPoints,
+          timeLimit,
+          endsAt,
         });
 
         io.to(`room:${room.code}`).emit("game:question", activeQ);
-        startQuestionTimer(io, room.code, room.id, q.id, q.timeLimit);
+        startQuestionTimer(io, room.code, room.id, q.id, timeLimit);
       }
     };
 

@@ -629,6 +629,32 @@ var roomActiveQuestions = /* @__PURE__ */ new Map();
 var teamStreakMap = /* @__PURE__ */ new Map();
 var playerStreakMap = /* @__PURE__ */ new Map();
 var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
+function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
+  if (!rawQuestions || rawQuestions.length === 0) return null;
+  let usedSet = roomUsedQuestions.get(roomId);
+  if (!usedSet) {
+    usedSet = /* @__PURE__ */ new Set();
+    roomUsedQuestions.set(roomId, usedSet);
+  }
+  if (usedSet.size >= rawQuestions.length) {
+    return null;
+  }
+  if (preferredIndex !== void 0 && preferredIndex >= 0 && preferredIndex < rawQuestions.length) {
+    const candidate = rawQuestions[preferredIndex];
+    if (candidate && !usedSet.has(candidate.id)) {
+      usedSet.add(candidate.id);
+      return { question: candidate, index: preferredIndex };
+    }
+  }
+  for (let i = 0; i < rawQuestions.length; i++) {
+    const candidate = rawQuestions[i];
+    if (!usedSet.has(candidate.id)) {
+      usedSet.add(candidate.id);
+      return { question: candidate, index: i };
+    }
+  }
+  return null;
+}
 function startGridCaroPreview(ioInstance, roomId, roomCode, durationSec = 5) {
   const gridState = roomGridCaros.get(roomId);
   if (!gridState) return;
@@ -883,9 +909,6 @@ function buildTournamentMatches(teams, questionsPerMatch) {
     }
   );
   return matches;
-}
-function generateDiceTiles(totalTiles = 30) {
-  return generateBalancedDiceTiles(totalTiles);
 }
 var roomCache = /* @__PURE__ */ new Map();
 var roomQuestionsCache = /* @__PURE__ */ new Map();
@@ -1746,7 +1769,7 @@ function registerSocketHandlers(io2) {
       const state = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", state);
     });
-    async function startQuestionPrepareAndLaunch(room, questions, questionIndex) {
+    async function startQuestionPrepareAndLaunch(room, questions, questionIndex, specificQ) {
       stopQuestionTimer(room.id);
       const existingPrepare = roomPrepareStates.get(room.id);
       if (existingPrepare?.timer) {
@@ -1758,8 +1781,14 @@ function registerSocketHandlers(io2) {
         clearInterval(existingWagerTimer);
         roomWagerTimers.delete(room.id);
       }
-      const q = questions[questionIndex];
+      const q = specificQ || questions[questionIndex];
       if (!q) return;
+      let usedSet = roomUsedQuestions.get(room.id);
+      if (!usedSet) {
+        usedSet = /* @__PURE__ */ new Set();
+        roomUsedQuestions.set(room.id, usedSet);
+      }
+      usedSet.add(q.id);
       const qKey = `${room.id}:${q.id}`;
       roomStealPhase.delete(qKey);
       roomStealBuzzed.delete(qKey);
@@ -2172,9 +2201,14 @@ function registerSocketHandlers(io2) {
           roomGridCaros.set(room.id, gridCaroState);
         } else if (room.mode === "DICE_RACE") {
           const totalTiles = config?.diceTrackTotalTiles || 30;
-          const tiles = generateDiceTiles(totalTiles);
+          const tiles = generateBalancedDiceTiles(totalTiles);
           const teamPositions = {};
-          teams.forEach((t) => {
+          for (const t of teams) {
+            await prisma.team.update({
+              where: { id: t.id },
+              data: { score: 1 }
+            }).catch(console.error);
+            t.score = 1;
             teamPositions[t.id] = {
               teamId: t.id,
               teamName: t.name,
@@ -2182,7 +2216,7 @@ function registerSocketHandlers(io2) {
               position: 0,
               hasFinished: false
             };
-          });
+          }
           roomDiceRaces.set(room.id, {
             totalTiles,
             tiles,
@@ -2236,7 +2270,11 @@ function registerSocketHandlers(io2) {
         }
         const launchWarmupToFirstQuestion = () => {
           roomPrepareStates.delete(room.id);
-          startQuestionPrepareAndLaunch(room, questions, 0);
+          const nextQ2 = getNextUniqueQuestion(room.id, questions, 0);
+          if (nextQ2) {
+            room.currentQuestion = nextQ2.index;
+            startQuestionPrepareAndLaunch(room, questions, nextQ2.index, nextQ2.question);
+          }
         };
         io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
         const timer = setTimeout(() => {
@@ -2271,9 +2309,8 @@ function registerSocketHandlers(io2) {
           }
         }
       }
-      const isFirstDiceLaunch = room.mode === "DICE_RACE" && !roomActiveQuestions.has(room.id) && room.currentQuestion === 0;
-      const nextIndex = isFirstDiceLaunch ? 0 : room.currentQuestion + 1;
-      if (nextIndex >= questions.length) {
+      const nextQ = getNextUniqueQuestion(room.id, questions);
+      if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
         roomCache.set(room.id, room);
@@ -2282,14 +2319,15 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
         return;
       }
+      const nextIndex = nextQ.index;
       room.currentQuestion = nextIndex;
       room.status = "PLAYING";
       roomCache.set(room.id, room);
-      prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
       if (nextIndex > 0 && nextIndex % 3 === 0) {
         replenishTeamPowerups(room.id, io2).catch(console.error);
       }
-      await startQuestionPrepareAndLaunch(room, questions, nextIndex);
+      await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
     });
     socket.on("admin:skip:prepare", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
@@ -2502,9 +2540,14 @@ function registerSocketHandlers(io2) {
         targetQ = rawQuestions.find((q) => !usedSet.has(q.id));
       }
       if (!targetQ) {
-        targetQ = rawQuestions.find((q) => normalizeToThreeLevels(q.points) === cell.points) || rawQuestions[0];
+        gridState.selectedCellAnimation = false;
+        io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        room.status = "FINISHED";
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
       }
-      if (!targetQ) return;
       usedSet.add(targetQ.id);
       targetQ.points = cell.points;
       cell.questionId = targetQ.id;
@@ -2545,11 +2588,12 @@ function registerSocketHandlers(io2) {
       const grantAnotherRoll = landingResult.grantAnotherRoll;
       teamProg.position = newPos;
       teamProg.hasShield = landingResult.hasShield;
+      const newScore = newPos + 1;
       await prisma.team.update({
         where: { id: teamId },
-        data: { score: newPos }
+        data: { score: newScore }
       }).catch(console.error);
-      io2.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: newPos, delta: 0 }]);
+      io2.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: newScore, delta: roll }]);
       io2.to(`room:${room.code}`).emit("game:dice:rolled", {
         teamId,
         teamName: teamProg.teamName,
@@ -2770,13 +2814,19 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "GRID_CARO") return;
       await advanceGridToBoard(io2, room.id, room.code);
     });
-    socket.on("admin:dice:roll:manual", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:dice:roll:manual", async (payload) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "DICE_RACE") return;
       const diceState = roomDiceRaces.get(room.id);
       if (!diceState) return;
       const teamId = diceState.currentTurnTeamId;
       if (!teamId) return;
+      if (roomActiveQuestions.has(room.id)) {
+        roomActiveQuestions.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
       await executeDiceRoll(room, diceState, teamId);
     });
     socket.on("admin:dice:advance_to_board", async (payload) => {
@@ -4267,7 +4317,7 @@ async function buildLeaderboard(roomId) {
           rank: i + 1,
           teamId: t.id,
           name: t.name,
-          score: pos,
+          score: pos + 1,
           correctAnswers: room.answers.filter((a) => a.teamId === t.id && a.isCorrect).length,
           totalAnswers: room.answers.filter((a) => a.teamId === t.id).length
         };

@@ -9,6 +9,7 @@ import type {
   QuestionState,
   GameMode,
   CardType,
+  DiceRaceState,
 } from "@/types";
 import { CARD_METADATA } from "@/types";
 import Link from "next/link";
@@ -49,6 +50,7 @@ export default function AdminSandboxPage() {
   const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const offlineRemainingRef = useRef<number>(0);
   const offlineAnswersRef = useRef<Map<string, { answer: any; isCorrect: boolean; points: number }>>(new Map());
+  const offlineUsedQuestionIdsRef = useRef<Set<string>>(new Set());
 
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
@@ -447,32 +449,34 @@ export default function AdminSandboxPage() {
     offlineQuestionsRef.current = questions;
     offlineQIndexRef.current = -1;
     offlineAnswersRef.current.clear();
+    offlineUsedQuestionIdsRef.current.clear();
 
     const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
+    const initialScore = mode === "DICE_RACE" ? 1 : 0;
     const teams = [
-      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_r1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_red", used: false },
         { id: "c_r2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_red", used: false },
       ], playerCount: 1 },
-      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_b1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
         { id: "c_b2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
       ], playerCount: 1 },
-      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_y1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
         { id: "c_y2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
       ], playerCount: 1 },
-      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: 0, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
+      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_p1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
         { id: "c_p2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
       ], playerCount: 1 },
     ];
 
     const players = [
-      { id: "p_you", name: "Bạn (Tester)", score: 0, teamId: "t_red", isHost: true, isOnline: true },
-      { id: "bot_1", name: "Đội Xanh 🤖", score: 0, teamId: "t_blue", isHost: false, isOnline: true },
-      { id: "bot_2", name: "Đội Vàng 🤖", score: 0, teamId: "t_yellow", isHost: false, isOnline: true },
-      { id: "bot_3", name: "Đội Tím 🤖", score: 0, teamId: "t_purple", isHost: false, isOnline: true },
+      { id: "p_you", name: "Bạn (Tester)", score: initialScore, teamId: "t_red", isHost: true, isOnline: true },
+      { id: "bot_1", name: "Đội Xanh 🤖", score: initialScore, teamId: "t_blue", isHost: false, isOnline: true },
+      { id: "bot_2", name: "Đội Vàng 🤖", score: initialScore, teamId: "t_yellow", isHost: false, isOnline: true },
+      { id: "bot_3", name: "Đội Tím 🤖", score: initialScore, teamId: "t_purple", isHost: false, isOnline: true },
     ];
 
     let gridCaroState: any = undefined;
@@ -775,7 +779,34 @@ export default function AdminSandboxPage() {
       }
 
       const questions = offlineQuestionsRef.current;
-      const nextIdx = currentQuestion ? (offlineQIndexRef.current + 1) % (questions.length || 1) : 0;
+      if (questions.length === 0) return;
+
+      // Theo quy tắc: Nếu hết câu hỏi trong bộ đề mà chưa ai về đích / chưa hết ô -> Dừng luôn cuộc chơi và tính hạng luôn
+      if (offlineUsedQuestionIdsRef.current.size >= questions.length) {
+        setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        addLog("🏁 Đã hết toàn bộ câu hỏi trong bộ đề! Trận đấu kết thúc và công bố bảng xếp hạng.");
+        syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null });
+        return;
+      }
+
+      let nextIdx = -1;
+      for (let i = 0; i < questions.length; i++) {
+        const qId = questions[i].id || `q_${i + 1}`;
+        if (!offlineUsedQuestionIdsRef.current.has(qId)) {
+          nextIdx = i;
+          offlineUsedQuestionIdsRef.current.add(qId);
+          break;
+        }
+      }
+
+      if (nextIdx === -1) {
+        setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
+        addLog("🏁 Hết câu hỏi khả dụng! Trận đấu kết thúc.");
+        return;
+      }
+
       launchOfflineQuestion(nextIdx);
       return;
     }
@@ -1013,6 +1044,13 @@ export default function AdminSandboxPage() {
     }
 
     if (isOfflineSandbox) {
+      if (currentQuestion || revealPayload) {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
+      }
+
       const roll = Math.floor(Math.random() * 6) + 1;
       setRoomState((prev) => {
         if (!prev || !prev.diceRaceState) return prev;
@@ -1043,20 +1081,59 @@ export default function AdminSandboxPage() {
         const nextTeamId = isExtra ? curTurnId : teamIds[(curIdx + 1) % teamIds.length];
         const nextTeamName = prev.teams.find((t) => t.id === nextTeamId)?.name;
 
+        // Điểm theo vị trí ô: ô xuất phát #1 = 1 điểm, finalPos 0-indexed => newScore = finalPos + 1
+        const newScore = finalPos + 1;
+        const updatedTeams = prev.teams.map((t) =>
+          t.id === curTurnId ? { ...t, score: newScore } : t
+        );
+        const updatedPlayers = prev.players.map((p) =>
+          p.teamId === curTurnId ? { ...p, score: newScore } : p
+        );
+
         addLog(`🎲 [${prev.diceRaceState.currentTurnTeamName}] ${landingResult.effectMessage}`);
 
-        return {
-          ...prev,
-          diceRaceState: {
-            ...prev.diceRaceState,
-            lastDiceRoll: roll,
-            rollTimestamp: Date.now(),
-            teamPositions: updatedPositions,
-            currentTurnTeamId: nextTeamId,
-            currentTurnTeamName: nextTeamName,
-            canRollDice: isExtra ? true : false,
-          },
+        const nextDiceRaceState: DiceRaceState = {
+          ...prev.diceRaceState,
+          lastDiceRoll: roll,
+          rollTimestamp: Date.now(),
+          teamPositions: updatedPositions,
+          currentTurnTeamId: nextTeamId,
+          currentTurnTeamName: nextTeamName,
+          canRollDice: isExtra ? true : false,
         };
+
+        let nextStatus = prev.status;
+        const hasFinished = finalPos >= prev.diceRaceState.totalTiles - 1;
+        if (hasFinished) {
+          nextStatus = "FINISHED";
+          const sortedTeams = [...updatedTeams].sort((a, b) => b.score - a.score);
+          const leaderboard = sortedTeams.map((t, idx) => ({
+            rank: idx + 1,
+            teamId: t.id,
+            name: t.name,
+            score: t.score,
+            correctAnswers: 0,
+            totalAnswers: 0,
+          }));
+          syncToIframes({ gameEnd: { leaderboard } });
+          addLog(`🏆 Đội [${prev.diceRaceState.currentTurnTeamName}] đã cán đích chiến thắng! Trận đấu kết thúc!`);
+        }
+
+        const nextRoomState: RoomState = {
+          ...prev,
+          status: nextStatus,
+          teams: updatedTeams,
+          players: updatedPlayers,
+          diceRaceState: nextDiceRaceState,
+        };
+
+        syncToIframes({
+          roomState: nextRoomState,
+          diceState: nextDiceRaceState,
+          scores: [{ teamId: curTurnId, score: newScore, delta: roll }],
+        });
+
+        return nextRoomState;
       });
       return;
     }

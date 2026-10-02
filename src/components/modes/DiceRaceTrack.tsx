@@ -321,15 +321,15 @@ export default function DiceRaceTrack({
     const hasPawns = teamsHere.length > 0;
     const isEvenRow = rowIdx % 2 === 0;
 
-    // Distinct 3D Stepping Stone Themes (Thick extruded borders, rich highlights)
+    // Distinct 3D Stepping Stone Themes (Thick extruded borders, rich highlights, neon glow)
     const tileStyles: Record<string, { border: string; bg: string; text: string; shadow: string; glow: string; topBevel: string }> = {
       NORMAL: {
-        border: "border-slate-600/80 border-b-[4.5px] border-b-slate-900",
-        bg: "bg-gradient-to-b from-[#2e3148] via-[#1f2133] to-[#12131f]",
-        text: "text-slate-300",
-        shadow: "shadow-[0_4px_8px_rgba(0,0,0,0.6)]",
-        glow: "",
-        topBevel: "border-t border-white/20",
+        border: "border-cyan-500/30 border-b-[4.5px] border-b-cyan-950",
+        bg: "bg-gradient-to-b from-[#1c223d] via-[#12162a] to-[#0a0d18]",
+        text: "text-slate-200",
+        shadow: "shadow-[0_4px_10px_rgba(0,0,0,0.7)]",
+        glow: "hover:border-cyan-400/60",
+        topBevel: "border-t border-cyan-400/20",
       },
       BOOST: {
         border: "border-cyan-400 border-b-[4.5px] border-b-cyan-800",
@@ -418,12 +418,12 @@ export default function DiceRaceTrack({
           </span>
           {isStart && (
             <span className="text-[6px] sm:text-[7.5px] px-1 py-0.2 rounded bg-emerald-500/40 text-emerald-200 font-black uppercase">
-              XUẤT PHÁT
+              XUẤT PHÁT (1đ)
             </span>
           )}
           {isFinish && (
             <span className="text-[6px] sm:text-[7.5px] px-1 py-0.2 rounded bg-amber-400/50 text-amber-100 font-black animate-pulse uppercase">
-              ĐÍCH
+              ĐÍCH ({totalTiles}đ)
             </span>
           )}
           {tile.portalId && (
@@ -512,30 +512,30 @@ export default function DiceRaceTrack({
 
   return (
     <div
-      className={`relative rounded-3xl overflow-hidden border-2 border-amber-600/60 shadow-2xl transition-all flex flex-col justify-between ${
-        isDisplay ? "p-3 sm:p-5" : "p-2.5 sm:p-4"
+      className={`relative rounded-3xl overflow-visible border-2 border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all flex flex-col justify-between ${
+        isDisplay ? "p-3 sm:p-5 px-3.5 sm:px-6 md:px-8" : "p-2.5 sm:p-4 px-3 sm:px-5 md:px-7"
       }`}
       style={{
-        background: "radial-gradient(ellipse at center, #18192e 0%, #0f101d 65%, #07070f 100%)",
+        background: "radial-gradient(ellipse at center, #11152e 0%, #090c1c 65%, #05060f 100%)",
       }}
     >
-      {/* Vintage Pirate Chart / Nautical World Map Watermark Texture */}
+      {/* Cyber Circuit Grid Background Texture */}
       <div
-        className="absolute inset-0 pointer-events-none opacity-20"
+        className="absolute inset-0 pointer-events-none opacity-20 rounded-3xl overflow-hidden"
         style={{
-          backgroundImage: `radial-gradient(circle at 10% 20%, rgba(245, 158, 11, 0.25) 0%, transparent 45%),
-                            radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.25) 0%, transparent 45%),
-                            linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)`,
+          backgroundImage: `radial-gradient(circle at 10% 20%, rgba(6, 182, 212, 0.25) 0%, transparent 45%),
+                            radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.25) 0%, transparent 45%),
+                            linear-gradient(rgba(6, 182, 212, 0.1) 1px, transparent 1px),
+                            linear-gradient(90deg, rgba(6, 182, 212, 0.1) 1px, transparent 1px)`,
           backgroundSize: "100% 100%, 100% 100%, 32px 32px, 32px 32px",
         }}
       />
 
-      {/* Decorative Gold Filigree Corner Accents */}
-      <div className="absolute top-2 left-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
-      <div className="absolute top-2 right-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
-      <div className="absolute bottom-2 left-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
-      <div className="absolute bottom-2 right-2 text-amber-500/30 text-xs font-serif pointer-events-none select-none">⚜</div>
+      {/* Decorative Cyber Neon Corner Accents */}
+      <div className="absolute top-2 left-2 text-cyan-400/40 text-[10px] font-mono pointer-events-none select-none">◤ CIRCUIT ◢</div>
+      <div className="absolute top-2 right-2 text-cyan-400/40 text-[10px] font-mono pointer-events-none select-none">◤ S-CURVE ◢</div>
+      <div className="absolute bottom-2 left-2 text-cyan-400/40 text-[10px] font-mono pointer-events-none select-none">◣ ALPHA ◢</div>
+      <div className="absolute bottom-2 right-2 text-cyan-400/40 text-[10px] font-mono pointer-events-none select-none">◣ SPEED ◢</div>
 
       {/* 3D Dice Toss Simulated on Real Gameboard (No Black Overlay) */}
       {hasLandedDice && (
@@ -554,29 +554,31 @@ export default function DiceRaceTrack({
 
       {/* Landing Event Splash Banner */}
       {landingBanner && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 px-5 py-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400 text-black font-black text-center shadow-2xl border-2 border-white animate-bounce">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 px-5 py-2 rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-emerald-400 text-black font-black text-center shadow-2xl border-2 border-white animate-bounce">
           <p className="text-sm font-black uppercase tracking-wide">{landingBanner.text}</p>
           {landingBanner.subtext && <p className="text-xs font-bold mt-0.5">{landingBanner.subtext}</p>}
         </div>
       )}
 
       {/* Ornate Board Header */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-b border-amber-500/30 pb-2 mb-2 shrink-0">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/30 pb-2 mb-2 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg border border-yellow-300/50 text-base sm:text-lg font-black shrink-0">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-2xl bg-gradient-to-br from-cyan-500 to-purple-600 flex items-center justify-center shadow-lg border border-cyan-300/50 text-base sm:text-lg font-black shrink-0">
             🎲
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className={`font-black ${isDisplay ? "text-lg sm:text-2xl" : "text-sm sm:text-base"} text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-200 to-orange-400`}>
-                Đường Đua Cờ Xí Ngầu S-Curve
+              <h3 className={`font-black ${isDisplay ? "text-lg sm:text-2xl" : "text-sm sm:text-base"} text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-amber-300`}>
+                Đường Đua Cờ Xí Ngầu Neon Circuit
               </h3>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-black uppercase tracking-wider">
+              <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[10px] font-black uppercase tracking-wider">
                 {totalTiles} Ô
               </span>
             </div>
             <p className="text-[9px] sm:text-[11px] text-slate-300 flex items-center gap-1.5 flex-wrap mt-0.5">
               <span>Đổ 1-6</span>
+              <span>•</span>
+              <span className="text-amber-300 font-bold">Điểm = Vị trí ô (Tối thiểu 1đ)</span>
               <span>•</span>
               <span className="text-cyan-400 font-bold">🚀 Tăng tốc (+2)</span>
               <span>•</span>
@@ -651,7 +653,7 @@ export default function DiceRaceTrack({
       {/* ═════════════════════════════════════════════════════════════════════
           CONTINUOUS PATHWAY RIBBON WITH DIRECTION ARROWS (30 - 50 TILES)
          ═════════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex flex-col gap-2.5 sm:gap-3.5 p-2 sm:p-3 rounded-2xl bg-black/45 border border-amber-600/30 flex-1 justify-center">
+      <div className="relative z-10 flex flex-col gap-3 sm:gap-4 p-2 sm:p-3.5 rounded-2xl bg-black/60 border border-cyan-500/30 flex-1 justify-center">
         {Array.from({ length: rowCount }).map((_, r) => {
           const startIdx = r * tilesPerRow;
           const endIdx = Math.min(tiles.length, (r + 1) * tilesPerRow);
@@ -662,31 +664,39 @@ export default function DiceRaceTrack({
 
           return (
             <div key={r} className="relative flex flex-col w-full">
-              {/* Connected Cobblestone Pathway Road Bed (Lót đường đá phiêu lưu) */}
+              {/* Connected Neon Cyber Road Bed */}
               <div
-                className={`relative w-full rounded-2xl border-2 border-[#433522] p-1.5 shadow-inner ${
+                className={`relative w-full rounded-2xl border-2 border-cyan-500/40 p-1.5 sm:p-2 shadow-inner ${
                   isEvenRow ? "rounded-r-3xl" : "rounded-l-3xl"
                 }`}
                 style={{
-                  background: "linear-gradient(180deg, #2a2217 0%, #1e1810 50%, #15110a 100%)",
-                  boxShadow: "inset 0 3px 6px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.5)",
+                  background: "linear-gradient(180deg, #161c38 0%, #0d1226 50%, #070914 100%)",
+                  boxShadow: "inset 0 3px 8px rgba(0,0,0,0.8), 0 0 15px rgba(6,182,212,0.1)",
                 }}
               >
+                {/* Glowing Dashed Centerline Track Marking */}
+                <div
+                  className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-1 pointer-events-none opacity-40 z-0"
+                  style={{
+                    backgroundImage: "repeating-linear-gradient(90deg, rgba(6,182,212,0.8) 0px, rgba(6,182,212,0.8) 12px, transparent 12px, transparent 24px)",
+                  }}
+                />
+
                 {/* 10-Column Strict Equal Grid */}
-                <div className="grid grid-cols-10 gap-1 sm:gap-2 w-full items-stretch">
+                <div className="grid grid-cols-10 gap-1 sm:gap-2 w-full items-stretch relative z-10">
                   {displayTiles.map((tile, tIdx) => {
                     const isLastInThisDisplay = tIdx === displayTiles.length - 1;
                     return (
                       <div key={tile.index} className="relative flex items-stretch min-w-0 w-full h-full">
                         {renderTile(tile, isLastInThisDisplay, tIdx === 0, r)}
 
-                        {/* Emerald Glowing Direction Arrow on Road between Tiles */}
+                        {/* Emerald/Cyan Glowing Direction Arrow on Road between Tiles */}
                         {!isLastInThisDisplay && (
                           <div
-                            className={`absolute top-1/2 -translate-y-1/2 pointer-events-none z-30 filter drop-shadow-[0_0_4px_rgba(52,211,153,0.8)] ${
+                            className={`absolute top-1/2 -translate-y-1/2 pointer-events-none z-30 filter drop-shadow-[0_0_6px_rgba(6,182,212,0.9)] ${
                               isEvenRow
-                                ? "-right-1 sm:-right-1.5 text-emerald-400"
-                                : "-left-1 sm:-left-1.5 text-emerald-400"
+                                ? "-right-1 sm:-right-1.5 text-cyan-400"
+                                : "-left-1 sm:-left-1.5 text-cyan-400"
                             }`}
                           >
                             <span className="text-[10px] sm:text-[12px] font-black leading-none">
@@ -702,13 +712,12 @@ export default function DiceRaceTrack({
                 {/* Right U-Turn Curve Road Cap (Chuyển hàng Chẵn sang Lẻ) */}
                 {hasNextRow && isEvenRow && (
                   <div
-                    className="hidden sm:flex absolute -right-4 top-1/2 -translate-y-1/2 w-6 h-full border-r-4 border-t-4 border-b-4 border-[#52412b] rounded-r-3xl pointer-events-none items-center justify-center bg-[#241d13] shadow-lg z-0"
+                    className="flex absolute -right-3 sm:-right-4 md:-right-5 top-0 w-6 sm:w-9 md:w-11 border-r-4 sm:border-r-[5px] border-t-4 sm:border-t-[5px] border-b-4 sm:border-b-[5px] border-cyan-400 rounded-r-[2rem] sm:rounded-r-[2.5rem] pointer-events-none items-center justify-center bg-gradient-to-r from-transparent via-cyan-950/60 to-cyan-900/70 shadow-[0_0_20px_rgba(6,182,212,0.5)] z-0"
                     style={{
-                      height: "calc(100% + 14px)",
-                      transform: "translateY(12px)",
+                      height: "calc(200% + 12px)",
                     }}
                   >
-                    <span className="text-xs text-emerald-400 font-black animate-pulse">
+                    <span className="text-xs sm:text-sm text-cyan-300 font-black animate-pulse filter drop-shadow-[0_0_6px_rgba(6,182,212,0.9)]">
                       ⤵
                     </span>
                   </div>
@@ -717,13 +726,12 @@ export default function DiceRaceTrack({
                 {/* Left U-Turn Curve Road Cap (Chuyển hàng Lẻ sang Chẵn) */}
                 {hasNextRow && !isEvenRow && (
                   <div
-                    className="hidden sm:flex absolute -left-4 top-1/2 -translate-y-1/2 w-6 h-full border-l-4 border-t-4 border-b-4 border-[#52412b] rounded-l-3xl pointer-events-none items-center justify-center bg-[#241d13] shadow-lg z-0"
+                    className="flex absolute -left-3 sm:-left-4 md:-left-5 top-0 w-6 sm:w-9 md:w-11 border-l-4 sm:border-l-[5px] border-t-4 sm:border-t-[5px] border-b-4 sm:border-b-[5px] border-cyan-400 rounded-l-[2rem] sm:rounded-l-[2.5rem] pointer-events-none items-center justify-center bg-gradient-to-l from-transparent via-cyan-950/60 to-cyan-900/70 shadow-[0_0_20px_rgba(6,182,212,0.5)] z-0"
                     style={{
-                      height: "calc(100% + 14px)",
-                      transform: "translateY(12px)",
+                      height: "calc(200% + 12px)",
                     }}
                   >
-                    <span className="text-xs text-emerald-400 font-black animate-pulse">
+                    <span className="text-xs sm:text-sm text-cyan-300 font-black animate-pulse filter drop-shadow-[0_0_6px_rgba(6,182,212,0.9)]">
                       ⤵
                     </span>
                   </div>
@@ -733,13 +741,13 @@ export default function DiceRaceTrack({
               {/* U-Turn Milestone Badge */}
               {hasNextRow && (
                 <div
-                  className={`flex items-center -my-1 text-[8px] sm:text-[9px] font-mono font-bold text-amber-300 pointer-events-none z-10 ${
-                    isEvenRow ? "justify-end pr-3" : "justify-start pl-3"
+                  className={`flex items-center -my-1 text-[8px] sm:text-[9px] font-mono font-bold text-cyan-300 pointer-events-none z-10 ${
+                    isEvenRow ? "justify-end pr-2 sm:pr-4" : "justify-start pl-2 sm:pl-4"
                   }`}
                 >
-                  <span className="flex items-center gap-1 bg-black/80 px-2 py-0.5 rounded-full border border-amber-500/40 shadow">
+                  <span className="flex items-center gap-1 bg-black/85 px-2 py-0.5 rounded-full border border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
                     <span>Khúc Cua #{endIdx} ➔ #{endIdx + 1}</span>
-                    <span className="text-emerald-400 font-black">⤵</span>
+                    <span className="text-cyan-400 font-black">⤵</span>
                   </span>
                 </div>
               )}
@@ -749,12 +757,12 @@ export default function DiceRaceTrack({
       </div>
 
       {/* ═════════════════════════════════════════════════════════════════════
-          STANDINGS & PAWN TRACKER FOOTER
+          STANDINGS & PAWN TRACKER FOOTER (Score = Position + 1, Min 1 Pt)
          ═════════════════════════════════════════════════════════════════════ */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 border-t border-amber-500/20 pt-1.5 sm:pt-2 mt-2 text-xs shrink-0">
-        <div className="flex items-center gap-1.5 text-slate-300 font-bold uppercase text-[9px] sm:text-[11px]">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 border-t border-cyan-500/30 pt-2 sm:pt-2.5 mt-2 text-xs shrink-0">
+        <div className="flex items-center gap-1.5 text-slate-200 font-bold uppercase text-[9px] sm:text-[11px]">
           <span>🏆</span>
-          <span>Bảng xếp hạng vị trí đường đua:</span>
+          <span>Bảng xếp hạng vị trí & điểm số:</span>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -764,27 +772,31 @@ export default function DiceRaceTrack({
               if (!a.hasFinished && b.hasFinished) return 1;
               return b.position - a.position;
             })
-            .map((team, idx) => (
-              <div
-                key={team.teamId}
-                className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border text-xs transition ${
-                  team.teamId === currentTurnTeamId
-                    ? "bg-purple-900/50 border-purple-400 text-white font-bold ring-1 ring-purple-400/50 shadow-md"
-                    : "bg-black/50 border-white/10 text-slate-300"
-                }`}
-              >
-                <span className="font-black text-amber-400 text-[10px] sm:text-[11px]">#{idx + 1}</span>
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
-                  style={{ background: team.teamColor }}
-                />
-                <span className="truncate max-w-[75px] sm:max-w-[105px] font-semibold text-[10px] sm:text-[11px]">{team.teamName}</span>
-                <span className="font-mono font-black text-cyan-300 text-[10px] sm:text-[11px] ml-0.5">
-                  {team.hasFinished ? "🏁 ĐÍCH" : `Ô ${(animPositions[team.teamId] ?? team.position) + 1}`}
-                </span>
-                {team.hasShield && <span className="text-[10px]" title="Có khiên bảo vệ">🛡️</span>}
-              </div>
-            ))}
+            .map((team, idx) => {
+              const pos = animPositions[team.teamId] ?? team.position;
+              const points = pos + 1;
+              return (
+                <div
+                  key={team.teamId}
+                  className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-xl border text-xs transition ${
+                    team.teamId === currentTurnTeamId
+                      ? "bg-cyan-950/60 border-cyan-400 text-white font-bold ring-1 ring-cyan-400/60 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                      : "bg-black/60 border-white/10 text-slate-300"
+                  }`}
+                >
+                  <span className="font-black text-amber-400 text-[10px] sm:text-[11px]">#{idx + 1}</span>
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0 shadow-sm"
+                    style={{ background: team.teamColor }}
+                  />
+                  <span className="truncate max-w-[75px] sm:max-w-[105px] font-semibold text-[10px] sm:text-[11px]">{team.teamName}</span>
+                  <span className="font-mono font-black text-cyan-300 text-[10px] sm:text-[11px] ml-0.5">
+                    {team.hasFinished ? `🏁 ĐÍCH (${totalTiles}đ)` : `Ô ${points} (${points}đ)`}
+                  </span>
+                  {team.hasShield && <span className="text-[10px]" title="Có khiên bảo vệ">🛡️</span>}
+                </div>
+              );
+            })}
         </div>
       </div>
     </div>

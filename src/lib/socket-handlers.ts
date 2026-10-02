@@ -90,6 +90,51 @@ const teamStreakMap = new Map<string, number>(); // teamId -> streak count
 const playerStreakMap = new Map<string, number>(); // playerId -> streak count
 const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
 
+/**
+ * Lấy câu hỏi tiếp theo đảm bảo KHÔNG BAO GIỜ bị lặp lại ở tất cả các mode.
+ * Theo quy tắc: Nếu hết câu hỏi trong ngân hàng đề mà chưa ai về đích, hoặc không dùng hết ô,
+ * thì dừng luôn cuộc chơi và tính hạng luôn (tuyệt đối không lặp lại câu hỏi cũ).
+ */
+function getNextUniqueQuestion(
+  roomId: string,
+  rawQuestions: any[],
+  preferredIndex?: number
+): { question: any; index: number } | null {
+  if (!rawQuestions || rawQuestions.length === 0) return null;
+
+  let usedSet = roomUsedQuestions.get(roomId);
+  if (!usedSet) {
+    usedSet = new Set<string>();
+    roomUsedQuestions.set(roomId, usedSet);
+  }
+
+  // Nếu tất cả câu hỏi trong ngân hàng đề đã được hỏi hết -> dừng luôn cuộc chơi, không lặp lại
+  if (usedSet.size >= rawQuestions.length) {
+    return null;
+  }
+
+  // 1. Thử lấy câu hỏi theo preferredIndex nếu câu đó chưa từng được dùng
+  if (preferredIndex !== undefined && preferredIndex >= 0 && preferredIndex < rawQuestions.length) {
+    const candidate = rawQuestions[preferredIndex];
+    if (candidate && !usedSet.has(candidate.id)) {
+      usedSet.add(candidate.id);
+      return { question: candidate, index: preferredIndex };
+    }
+  }
+
+  // 2. Tìm câu hỏi đầu tiên chưa được sử dụng theo thứ tự của bộ đề
+  for (let i = 0; i < rawQuestions.length; i++) {
+    const candidate = rawQuestions[i];
+    if (!usedSet.has(candidate.id)) {
+      usedSet.add(candidate.id);
+      return { question: candidate, index: i };
+    }
+  }
+
+  // Không còn câu hỏi nào chưa sử dụng
+  return null;
+}
+
 function startGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string, durationSec: number = 5) {
   const gridState = roomGridCaros.get(roomId);
   if (!gridState) return;
@@ -1423,7 +1468,8 @@ export function registerSocketHandlers(io: IO) {
     async function startQuestionPrepareAndLaunch(
       room: any,
       questions: any[],
-      questionIndex: number
+      questionIndex: number,
+      specificQ?: any
     ) {
       stopQuestionTimer(room.id);
       const existingPrepare = roomPrepareStates.get(room.id);
@@ -1438,8 +1484,17 @@ export function registerSocketHandlers(io: IO) {
         roomWagerTimers.delete(room.id);
       }
 
-      const q = questions[questionIndex];
+      const q = specificQ || questions[questionIndex];
       if (!q) return;
+
+      // Đánh dấu câu hỏi đã được sử dụng trong phòng này để không bao giờ bị lặp lại
+      let usedSet = roomUsedQuestions.get(room.id);
+      if (!usedSet) {
+        usedSet = new Set<string>();
+        roomUsedQuestions.set(room.id, usedSet);
+      }
+      usedSet.add(q.id);
+
       const qKey = `${room.id}:${q.id}`;
 
       // Reset mode states for new question
@@ -1893,9 +1948,15 @@ export function registerSocketHandlers(io: IO) {
           roomGridCaros.set(room.id, gridCaroState);
         } else if (room.mode === "DICE_RACE") {
           const totalTiles = config?.diceTrackTotalTiles || 30;
-          const tiles = generateDiceTiles(totalTiles);
+          const tiles = generateBalancedDiceTiles(totalTiles);
           const teamPositions: Record<string, TeamRaceProgress> = {};
-          teams.forEach((t) => {
+          for (const t of teams) {
+            // Điểm số mặc định tính theo vị trí ô: ô xuất phát #1 tương ứng 1 điểm (thấp nhất là 1 điểm)
+            await prisma.team.update({
+              where: { id: t.id },
+              data: { score: 1 },
+            }).catch(console.error);
+            t.score = 1;
             teamPositions[t.id] = {
               teamId: t.id,
               teamName: t.name,
@@ -1903,7 +1964,7 @@ export function registerSocketHandlers(io: IO) {
               position: 0,
               hasFinished: false,
             };
-          });
+          }
 
           roomDiceRaces.set(room.id, {
             totalTiles,
@@ -1965,7 +2026,11 @@ export function registerSocketHandlers(io: IO) {
 
         const launchWarmupToFirstQuestion = () => {
           roomPrepareStates.delete(room.id);
-          startQuestionPrepareAndLaunch(room, questions, 0);
+          const nextQ = getNextUniqueQuestion(room.id, questions, 0);
+          if (nextQ) {
+            room.currentQuestion = nextQ.index;
+            startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
+          }
         };
 
         io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
@@ -2006,11 +2071,9 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      // Với DICE_RACE: Nếu chưa từng khởi động câu hỏi nào (vừa nhấn Bắt đầu ở LOBBY và đang dừng ở bàn cờ) thì bắt đầu từ câu 0
-      const isFirstDiceLaunch = room.mode === "DICE_RACE" && !roomActiveQuestions.has(room.id) && room.currentQuestion === 0;
-      const nextIndex = isFirstDiceLaunch ? 0 : room.currentQuestion + 1;
-
-      if (nextIndex >= questions.length) {
+      // Lấy câu hỏi độc nhất tiếp theo (đảm bảo 100% không trùng lặp ở tất cả các mode)
+      const nextQ = getNextUniqueQuestion(room.id, questions);
+      if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
         roomCache.set(room.id, room);
@@ -2020,17 +2083,18 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      const nextIndex = nextQ.index;
       room.currentQuestion = nextIndex;
       room.status = "PLAYING";
       roomCache.set(room.id, room);
-      prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
 
       // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
       if (nextIndex > 0 && nextIndex % 3 === 0) {
         replenishTeamPowerups(room.id, io).catch(console.error);
       }
 
-      await startQuestionPrepareAndLaunch(room, questions, nextIndex);
+      await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
     });
 
     socket.on("admin:skip:prepare", async (payload?: { code?: string }) => {
@@ -2284,9 +2348,15 @@ export function registerSocketHandlers(io: IO) {
         targetQ = rawQuestions.find((q: any) => !usedSet!.has(q.id));
       }
       if (!targetQ) {
-        targetQ = rawQuestions.find((q: any) => normalizeToThreeLevels(q.points) === cell.points) || rawQuestions[0];
+        // Theo quy tắc: Hết câu hỏi mà chưa ai thắng hoặc không dùng hết ô -> Dừng luôn cuộc chơi và tính hạng luôn
+        gridState.selectedCellAnimation = false;
+        io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        room.status = "FINISHED";
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
       }
-      if (!targetQ) return;
 
       usedSet.add(targetQ.id);
       targetQ.points = cell.points; // Đảm bảo điểm câu hỏi chuẩn hoá khớp chính xác ô đã chọn
@@ -2341,13 +2411,14 @@ export function registerSocketHandlers(io: IO) {
       teamProg.position = newPos;
       teamProg.hasShield = landingResult.hasShield;
 
-      // Đồng bộ điểm đội theo vị trí ô để hiển thị trên UI nhất quán
+      // Đồng bộ điểm đội theo vị trí ô để hiển thị trên UI nhất quán (thấp nhất là 1 điểm ở ô xuất phát #1)
+      const newScore = newPos + 1;
       await prisma.team.update({
         where: { id: teamId },
-        data: { score: newPos },
+        data: { score: newScore },
       }).catch(console.error);
 
-      io.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: newPos, delta: 0 }]);
+      io.to(`room:${room.code}`).emit("game:score:update", [{ teamId, score: newScore, delta: roll }]);
 
       io.to(`room:${room.code}`).emit("game:dice:rolled", {
         teamId,
@@ -2635,14 +2706,23 @@ export function registerSocketHandlers(io: IO) {
       await advanceGridToBoard(io, room.id, room.code);
     });
 
-    socket.on("admin:dice:roll:manual", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:dice:roll:manual", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "DICE_RACE") return;
       const diceState = roomDiceRaces.get(room.id);
       if (!diceState) return;
 
       const teamId = diceState.currentTurnTeamId;
       if (!teamId) return;
+
+      // Tự động chuyển về bàn cờ trước nếu màn hình còn đang hiển thị câu hỏi / đáp án!
+      if (roomActiveQuestions.has(room.id)) {
+        roomActiveQuestions.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        // Chờ 400ms để màn hình chuyển cảnh mượt về bàn cờ trước khi tung xúc xắc
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
 
       await executeDiceRoll(room, diceState, teamId);
     });
@@ -4469,7 +4549,7 @@ async function buildLeaderboard(roomId: string) {
             rank: i + 1,
             teamId: t.id,
             name: t.name,
-            score: pos,
+            score: pos + 1,
             correctAnswers: room.answers.filter((a) => a.teamId === t.id && a.isCorrect).length,
             totalAnswers: room.answers.filter((a) => a.teamId === t.id).length,
           };

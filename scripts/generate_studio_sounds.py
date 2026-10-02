@@ -22,10 +22,6 @@ def write_wav(filename, samples):
     print(f"Generated {filename}: {len(samples)} samples ({len(samples)/SAMPLE_RATE:.2f}s)")
 
 # ── Helper Synthesis Functions ────────────────────────────────────────────────
-def warm_wave(phase):
-    # Mixture of fundamental sine + 2nd harmonic (warm) + gentle 3rd
-    return 0.7 * math.sin(phase) + 0.2 * math.sin(2 * phase) + 0.1 * math.sin(3 * phase)
-
 def envelope(t, attack, decay, sustain, release, duration):
     if t < attack:
         return t / attack
@@ -38,188 +34,220 @@ def envelope(t, attack, decay, sustain, release, duration):
         return max(0.0, sustain * (1.0 - rel_pos))
     return 0.0
 
-# 1. 🎵 LOBBY.WAV (Modern, stylish, ambient broadcast groove ~ 8 seconds seamless loop)
+def bell_tone(freq, t, decay_rate=6.0):
+    """Rich metallic bell / celesta timbre with natural inharmonic overtones"""
+    env = math.exp(-t * decay_rate)
+    f1 = math.sin(2 * math.pi * freq * t)
+    f2 = 0.5 * math.sin(2 * math.pi * (freq * 2.002) * t)
+    f3 = 0.25 * math.sin(2 * math.pi * (freq * 3.01) * t)
+    f4 = 0.12 * math.sin(2 * math.pi * (freq * 4.2) * t)
+    return (f1 + f2 + f3 + f4) * env
+
+# 1. 🎵 LOBBY.WAV - "Chinh phục / Brainiest Kid" Grand Arena Theme (8.0s seamless loop)
+# Prestigious orchestral gameshow aesthetic with driving bass pulse & heroic strings
 def gen_lobby():
     duration = 8.0
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    
-    # Chord progression: Dm9 -> G13 -> Cmaj9 -> Am9 (Gameshow TV theme vibes)
+
+    # Dramatic Minor Progression: Dm -> Bb -> C -> Am (Epic intellectual contest vibe)
     chords = [
-        ([146.83, 220.00, 261.63, 329.63, 349.23], 0.0, 2.0), # Dm9
-        ([98.00, 196.00, 246.94, 329.63, 392.00], 2.0, 4.0),  # G13
-        ([130.81, 196.00, 246.94, 293.66, 329.63], 4.0, 6.0), # Cmaj9
-        ([110.00, 164.81, 220.00, 261.63, 329.63], 6.0, 8.0), # Am9
+        ([146.83, 220.00, 261.63, 293.66, 349.23], 0.0, 2.0), # Dm(add9)
+        ([116.54, 174.61, 233.08, 293.66, 349.23], 2.0, 4.0), # Bb(maj7)
+        ([130.81, 196.00, 246.94, 293.66, 392.00], 4.0, 6.0), # C(add9)
+        ([110.00, 164.81, 220.00, 261.63, 329.63], 6.0, 8.0), # Am7
     ]
-    
+
     for chord_freqs, start_t, end_t in chords:
         c_dur = end_t - start_t
         for i in range(int(start_t * SAMPLE_RATE), int(end_t * SAMPLE_RATE)):
             t = (i / SAMPLE_RATE) - start_t
-            env = envelope(t, 0.2, 0.4, 0.7, 0.3, c_dur)
+            env = envelope(t, 0.15, 0.35, 0.75, 0.25, c_dur)
             chord_val = 0.0
             for idx, f in enumerate(chord_freqs):
-                # Detuned warm voices for analog shimmer
                 voice1 = math.sin(2 * math.pi * f * t)
-                voice2 = math.sin(2 * math.pi * (f * 1.003) * t + 0.3)
-                chord_val += (voice1 + voice2) * 0.5 * (1.0 / (idx + 1)**0.5)
-            samples[i] += chord_val * env * 0.18
-            
-    # Add gentle rhythmic warm pulse (kick & shaker)
-    for beat in range(16): # 2 beats per second (120 BPM)
+                voice2 = math.sin(2 * math.pi * (f * 1.002) * t + 0.2)
+                voice3 = 0.3 * math.sin(2 * math.pi * (f * 2.0) * t)
+                chord_val += (voice1 + voice2 + voice3) * (0.35 / (idx + 1)**0.5)
+            samples[i] += chord_val * env * 0.15
+
+    # Rhythmic orchestral pulse (Timpani & Marching Sub-pulse at 120 BPM)
+    for beat in range(16):
         bt_start = beat * 0.5
-        # Kick on 1 and 3 (beat 0, 2, 4...)
-        if beat % 2 == 0:
-            k_len = int(0.2 * SAMPLE_RATE)
-            for j in range(k_len):
-                idx = int(bt_start * SAMPLE_RATE) + j
-                if idx < num_samples:
-                    k_t = j / SAMPLE_RATE
-                    k_freq = 110.0 * math.exp(-k_t * 18.0)
-                    k_env = max(0.0, 1.0 - k_t / 0.2)**2
-                    samples[idx] += math.sin(2 * math.pi * k_freq * k_t) * k_env * 0.25
-        # Soft studio shaker on every 16th
-        sh_len = int(0.06 * SAMPLE_RATE)
-        for j in range(sh_len):
-            idx = int((bt_start + 0.25) * SAMPLE_RATE) + j
+        # Kick / Timpani impact on downbeats
+        t_len = int(0.25 * SAMPLE_RATE)
+        for j in range(t_len):
+            idx = int(bt_start * SAMPLE_RATE) + j
             if idx < num_samples:
-                sh_t = j / SAMPLE_RATE
-                sh_env = max(0.0, 1.0 - sh_t / 0.06)
-                # Filtered pseudo-noise
-                noise = math.sin(2 * math.pi * 3200 * sh_t) * math.sin(2 * math.pi * 5400 * sh_t)
-                samples[idx] += noise * sh_env * 0.08
-                
-    # Normalize with headroom
+                k_t = j / SAMPLE_RATE
+                k_freq = 95.0 * math.exp(-k_t * 14.0)
+                k_env = max(0.0, 1.0 - k_t / 0.25)**2
+                samples[idx] += math.sin(2 * math.pi * k_freq * k_t) * k_env * 0.22
+
+        # High-register rhythmic celesta ticks (Brainiest Kid clock pulse)
+        clk_len = int(0.08 * SAMPLE_RATE)
+        clk_idx = int((bt_start + 0.25) * SAMPLE_RATE)
+        for j in range(clk_len):
+            idx = clk_idx + j
+            if idx < num_samples:
+                c_t = j / SAMPLE_RATE
+                samples[idx] += math.sin(2 * math.pi * 1760.0 * c_t) * math.exp(-c_t * 40.0) * 0.07
+
     peak = max(abs(s) for s in samples) or 1.0
-    samples = [s / peak * 0.75 for s in samples]
+    samples = [s / peak * 0.78 for s in samples]
     write_wav("lobby.wav", samples)
 
-# 2. 🎻 QUESTION_SUSPENSE.WAV (Tense, cinematic pulsing heartbeat & rising strings ~ 6 seconds loop)
+# 2. 🎻 QUESTION_SUSPENSE.WAV - "Chinh phục" Intense Quick-Fire Countdown BGM (6.0s seamless loop)
+# Features driving sub-bass pulse, dramatic staccato strings, and rising tension swell
 def gen_question_suspense():
     duration = 6.0
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    
-    # Deep rhythmic heart-pulse bass (C - G - C - G)
-    for pulse in range(12): # 0.5s per pulse
-        p_t0 = pulse * 0.5
-        p_len = int(0.35 * SAMPLE_RATE)
-        f_bass = 65.41 if (pulse % 4 < 2) else 58.27 # C2 / Bb1
+
+    # Rhythmic syncopated heart-pulse bass (D2 & A1 tension)
+    pulses = [0.0, 0.35, 0.75, 1.0, 1.5, 1.85, 2.25, 2.5, 3.0, 3.35, 3.75, 4.0, 4.5, 4.85, 5.25, 5.5]
+    for p_t0 in pulses:
+        p_len = int(0.3 * SAMPLE_RATE)
         for j in range(p_len):
             idx = int(p_t0 * SAMPLE_RATE) + j
             if idx < num_samples:
                 t = j / SAMPLE_RATE
-                env = math.exp(-t * 9.0)
-                pulse_val = math.sin(2 * math.pi * f_bass * t) + 0.4 * math.sin(2 * math.pi * (f_bass * 2) * t)
-                samples[idx] += pulse_val * env * 0.35
-                
-    # High-tension minor string pad (C minor / tension harmonics)
+                env = math.exp(-t * 10.0)
+                f_bass = 73.42 if (p_t0 < 3.0) else 65.41 # D2 / C2
+                val = math.sin(2 * math.pi * f_bass * t) + 0.5 * math.sin(2 * math.pi * (f_bass * 2) * t)
+                samples[idx] += val * env * 0.32
+
+    # High-tension staccato ostinato strings (Rapid 16th-note intellectual countdown)
+    ostinato_notes = [587.33, 698.46, 880.00, 1046.50, 880.00, 698.46] # D5, F5, A5, C6, A5, F5
+    note_dur = 0.125 # 8 notes per second
+    for step in range(int(duration / note_dur)):
+        n_t0 = step * note_dur
+        f_note = ostinato_notes[step % len(ostinato_notes)]
+        n_len = int(0.12 * SAMPLE_RATE)
+        for j in range(n_len):
+            idx = int(n_t0 * SAMPLE_RATE) + j
+            if idx < num_samples:
+                t = j / SAMPLE_RATE
+                env = math.exp(-t * 22.0)
+                staccato = math.sin(2 * math.pi * f_note * t) + 0.3 * math.sin(2 * math.pi * 2 * f_note * t)
+                samples[idx] += staccato * env * 0.12
+
+    # Subtle rising dramatic drone across the 6 seconds
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        # Slow tremolo modulation
-        lfo = 1.0 + 0.15 * math.sin(2 * math.pi * 4.0 * t)
-        s1 = math.sin(2 * math.pi * 523.25 * t) # C5
-        s2 = math.sin(2 * math.pi * 622.25 * t) # Eb5
-        s3 = math.sin(2 * math.pi * 783.99 * t) # G5
-        s4 = math.sin(2 * math.pi * 932.33 * t) # Bb5
-        samples[i] += (s1 + s2 + s3 + s4) * 0.05 * lfo
-        
+        swell = 0.05 + 0.08 * (t / duration)
+        pad = math.sin(2 * math.pi * 293.66 * t) + 0.5 * math.sin(2 * math.pi * 440.0 * t)
+        samples[i] += pad * swell * 0.15
+
     peak = max(abs(s) for s in samples) or 1.0
-    samples = [s / peak * 0.70 for s in samples]
+    samples = [s / peak * 0.75 for s in samples]
     write_wav("question_suspense.wav", samples)
 
-# 3. ⏱️ TICK.WAV (Clean broadcast studio countdown blip)
+# 3. ⏱️ TICK.WAV - Iconic Broadcast Clockwork Click
+# Crisp metallic woodblock studio tick, sharp and tense
 def gen_tick():
-    duration = 0.18
+    duration = 0.16
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        env = math.exp(-t * 28.0)
-        # Studio woodblock/percussive click + crisp harmonic
-        click = math.sin(2 * math.pi * 880 * t) + 0.6 * math.sin(2 * math.pi * 1760 * t)
-        samples[i] = click * env * 0.7
+        env = math.exp(-t * 32.0)
+        # Studio precision click (dual harmonic snap)
+        snap = math.sin(2 * math.pi * 1200 * t) + 0.7 * math.sin(2 * math.pi * 2400 * t)
+        samples[i] = snap * env * 0.75
     write_wav("tick.wav", samples)
 
-# 4. ⚡ GO.WAV (Warm broadcast gong/start chime)
+# 4. ⚡ GO.WAV - Question Start / Time Expired Studio Gong
+# Resonant orchestral tubular gong chime
 def gen_go():
-    duration = 0.8
+    duration = 1.0
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    freqs = [440, 554.37, 659.25, 880] # A major triad
+    freqs = [261.63, 392.00, 523.25, 783.99] # C4, G4, C5, G5 gong chord
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        env = math.exp(-t * 4.5)
-        val = sum(math.sin(2 * math.pi * f * t) * (1.0 / (idx + 1)) for idx, f in enumerate(freqs))
-        samples[i] = val * env * 0.65
+        env = math.exp(-t * 3.8)
+        val = sum(bell_tone(f, t, decay_rate=3.5) for f in freqs)
+        samples[i] = val * env * 0.35
+    peak = max(abs(s) for s in samples) or 1.0
+    samples = [s / peak * 0.85 for s in samples]
     write_wav("go.wav", samples)
 
-# 5. 🚨 BUZZ.WAV (Punchy game show electronic lock-in buzzer)
+# 5. 🚨 BUZZ.WAV - Contestant Podium Lock-In Buzzer
+# Instantaneous high-energy studio hit
 def gen_buzz():
-    duration = 0.65
+    duration = 0.5
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        env = math.exp(-t * 5.0)
-        # Low punchy synth brass (140Hz with sharp odd harmonics)
-        synth = (
-            math.sin(2 * math.pi * 140 * t) +
-            0.6 * math.sin(2 * math.pi * 280 * t) +
-            0.4 * math.sin(2 * math.pi * 420 * t) +
-            0.3 * math.sin(2 * math.pi * 560 * t)
+        env = math.exp(-t * 6.5)
+        # Authoritative dual tone buzzer (320Hz + 640Hz + bite)
+        tone = (
+            math.sin(2 * math.pi * 320 * t) +
+            0.7 * math.sin(2 * math.pi * 640 * t) +
+            0.4 * math.sin(2 * math.pi * 960 * t)
         )
-        samples[i] = synth * env * 0.8
+        samples[i] = tone * env * 0.85
+    peak = max(abs(s) for s in samples) or 1.0
+    samples = [s / peak * 0.85 for s in samples]
     write_wav("buzz.wav", samples)
 
-# 6. ✅ CORRECT.WAV (Joyful, bright, triumphant broadcast chime)
+# 6. ✅ CORRECT.WAV - Vietnam's Brainiest Kid Triumphant Bell Chime
+# High-register glockenspiel arpeggio (C6 -> E6 -> G6 -> C7), crystal clear and thrilling
 def gen_correct():
-    duration = 0.9
+    duration = 1.0
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    # Arpeggio: C5 -> E5 -> G5 -> C6
     notes = [
-        (523.25, 0.00, 0.7),
-        (659.25, 0.10, 0.7),
-        (783.99, 0.20, 0.7),
-        (1046.50, 0.30, 0.6),
+        (1046.50, 0.00, 0.7), # C6
+        (1318.51, 0.08, 0.7), # E6
+        (1567.98, 0.16, 0.7), # G6
+        (2093.00, 0.24, 0.8), # C7
     ]
     for f, start_t, dur in notes:
         for j in range(int(dur * SAMPLE_RATE)):
             idx = int(start_t * SAMPLE_RATE) + j
             if idx < num_samples:
                 t = j / SAMPLE_RATE
-                env = math.exp(-t * 5.5)
-                tone = math.sin(2 * math.pi * f * t) + 0.3 * math.sin(2 * math.pi * 2 * f * t)
-                samples[idx] += tone * env * 0.35
+                val = bell_tone(f, t, decay_rate=5.0)
+                samples[idx] += val * 0.4
     peak = max(abs(s) for s in samples) or 1.0
-    samples = [s / peak * 0.8 for s in samples]
+    samples = [s / peak * 0.85 for s in samples]
     write_wav("correct.wav", samples)
 
-# 7. ❌ WRONG.WAV (Firm, clean descending television game show error thud)
+# 7. ❌ WRONG.WAV - Television Gameshow Authoritative Error Thud
+# Low punchy minor-second dissonance with sharp transient
 def gen_wrong():
     duration = 0.7
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    # Low dissonant tritone: F#2 + C3 (92.5Hz + 130.81Hz)
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        env = math.exp(-t * 4.8)
-        thud = math.sin(2 * math.pi * 92.5 * t) + 0.8 * math.sin(2 * math.pi * 130.81 * t)
-        samples[i] = thud * env * 0.75
+        env = math.exp(-t * 4.5)
+        # Deep broadcast fail dissonance: 110Hz + 116.5Hz (A2 + Bb2 clash)
+        thud = (
+            math.sin(2 * math.pi * 110.0 * t) +
+            0.9 * math.sin(2 * math.pi * 116.5 * t) +
+            0.5 * math.sin(2 * math.pi * 220.0 * t)
+        )
+        samples[i] = thud * env * 0.8
+    peak = max(abs(s) for s in samples) or 1.0
+    samples = [s / peak * 0.85 for s in samples]
     write_wav("wrong.wav", samples)
 
-# 8. 🎺 FANFARE.WAV (Grand, rich victory fanfare with brass & bells ~ 3.5s)
+# 8. 🎺 FANFARE.WAV - Brainiest Kid Grand Trophy Victory
+# Full brass fanfare with majestic triumphant resolution
 def gen_fanfare():
-    duration = 3.5
+    duration = 3.6
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
-    # Fanfare motif: G4 -> C5 -> E5 -> G5 (sustained chord)
+    # Grand motif: D4 -> F#4 -> A4 -> D5 -> glorious D major chord
     chords = [
-        ([392.00], 0.0, 0.35),
-        ([523.25], 0.35, 0.7),
-        ([659.25], 0.7, 1.05),
-        ([523.25, 659.25, 783.99, 1046.50], 1.05, 3.5), # Glorious C major
+        ([293.66], 0.00, 0.35), # D4
+        ([369.99], 0.35, 0.70), # F#4
+        ([440.00], 0.70, 1.05), # A4
+        ([293.66, 369.99, 440.00, 587.33, 880.00], 1.05, 3.6), # Grand D Major
     ]
     for freqs, start_t, end_t in chords:
         dur = end_t - start_t
@@ -227,25 +255,36 @@ def gen_fanfare():
             idx = int(start_t * SAMPLE_RATE) + j
             if idx < num_samples:
                 t = j / SAMPLE_RATE
-                env = envelope(t, 0.05, 0.2, 0.8, 0.6, dur)
-                val = sum((math.sin(2 * math.pi * f * t) + 0.3 * math.sin(2 * math.pi * 2 * f * t)) for f in freqs)
+                env = envelope(t, 0.04, 0.15, 0.85, 0.5, dur)
+                val = 0.0
+                for f in freqs:
+                    brass = math.sin(2 * math.pi * f * t) + 0.4 * math.sin(2 * math.pi * 2 * f * t) + 0.2 * math.sin(2 * math.pi * 3 * f * t)
+                    val += brass
                 samples[idx] += val * env * (0.35 / len(freqs)**0.5)
+
+    # Shimmering celestial glissando across final chord
+    for i in range(int(1.05 * SAMPLE_RATE), num_samples):
+        t = (i - int(1.05 * SAMPLE_RATE)) / SAMPLE_RATE
+        shimmer = bell_tone(1760.0, t, decay_rate=2.0) + bell_tone(2349.32, t, decay_rate=2.2)
+        samples[i] += shimmer * 0.12
+
     peak = max(abs(s) for s in samples) or 1.0
-    samples = [s / peak * 0.85 for s in samples]
+    samples = [s / peak * 0.88 for s in samples]
     write_wav("fanfare.wav", samples)
 
-# 9. 💎 POWERUP.WAV (High-tech digital sparkles / magical upgrade whoosh)
+# 9. 💎 POWERUP.WAV - Sci-Fi Powerup Surge
 def gen_powerup():
     duration = 0.85
     num_samples = int(duration * SAMPLE_RATE)
     samples = [0.0] * num_samples
     for i in range(num_samples):
         t = i / SAMPLE_RATE
-        env = math.exp(-t * 3.8)
-        # Glissando sweeping upward 400Hz -> 1600Hz
-        freq = 400.0 + 1200.0 * (t / duration)**1.5
+        env = math.exp(-t * 3.6)
+        freq = 440.0 + 1400.0 * (t / duration)**1.4
         shimmer = math.sin(2 * math.pi * freq * t) + 0.4 * math.sin(2 * math.pi * (freq * 1.5) * t)
-        samples[i] = shimmer * env * 0.7
+        samples[i] = shimmer * env * 0.75
+    peak = max(abs(s) for s in samples) or 1.0
+    samples = [s / peak * 0.85 for s in samples]
     write_wav("powerup.wav", samples)
 
 if __name__ == "__main__":
@@ -258,4 +297,4 @@ if __name__ == "__main__":
     gen_wrong()
     gen_fanfare()
     gen_powerup()
-    print("All studio broadcast audio assets generated successfully!")
+    print("All Vietnam's Brainiest Kid broadcast audio assets generated successfully!")

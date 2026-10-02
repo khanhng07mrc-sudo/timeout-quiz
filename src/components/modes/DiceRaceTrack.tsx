@@ -30,29 +30,29 @@ export interface TileGeometry {
  */
 export function getSerpentineTileGeometry(index: number, totalTiles: number = 30): TileGeometry {
   if (totalTiles === 30) {
-    // ── Exact Golden Precision for 30 tiles ─────────────────────────────────
-    // Row 1 (Tiles 0 to 8: 9 tiles, moving East, rotateZ = 0 deg)
+    // ── Exact Golden Precision for 30 tiles (all tiles upright at rotateZ = 0) ──
+    // Row 1 (Tiles 0 to 8: 9 tiles, moving East)
     if (index >= 0 && index <= 8) {
       const x = 6.2 + index * 8.5; // 6.2, 14.7, 23.2, 31.7, 40.2, 48.7, 57.2, 65.7, 74.2
       return { x, y: 15.0, rotateZ: 0 };
     }
     // Curve 1 (Right U-turn bend: Tiles 9, 10, 11, curving South then West)
-    if (index === 9) return { x: 83.2, y: 22.0, rotateZ: 35 };
-    if (index === 10) return { x: 88.5, y: 34.0, rotateZ: 90 };
-    if (index === 11) return { x: 83.2, y: 46.0, rotateZ: 145 };
+    if (index === 9) return { x: 83.2, y: 22.0, rotateZ: 0 };
+    if (index === 10) return { x: 88.5, y: 34.0, rotateZ: 0 };
+    if (index === 11) return { x: 83.2, y: 46.0, rotateZ: 0 };
 
-    // Row 2 (Tiles 12 to 18: 7 tiles, moving West, rotateZ = 180 deg)
+    // Row 2 (Tiles 12 to 18: 7 tiles, moving West - upright, never inverted!)
     if (index >= 12 && index <= 18) {
       const step = index - 12;
       const x = 74.2 - step * 8.5; // 74.2, 65.7, 57.2, 48.7, 40.2, 31.7, 23.2
-      return { x, y: 52.0, rotateZ: 180 };
+      return { x, y: 52.0, rotateZ: 0 };
     }
     // Curve 2 (Left U-turn bend: Tiles 19, 20, 21, curving South then East)
-    if (index === 19) return { x: 14.5, y: 58.0, rotateZ: 215 };
-    if (index === 20) return { x: 9.2, y: 70.0, rotateZ: 270 };
-    if (index === 21) return { x: 14.5, y: 82.0, rotateZ: 325 };
+    if (index === 19) return { x: 14.5, y: 58.0, rotateZ: 0 };
+    if (index === 20) return { x: 9.2, y: 70.0, rotateZ: 0 };
+    if (index === 21) return { x: 14.5, y: 82.0, rotateZ: 0 };
 
-    // Row 3 (Tiles 22 to 28: 7 tiles, moving East, rotateZ = 0 deg)
+    // Row 3 (Tiles 22 to 28: 7 tiles, moving East)
     if (index >= 22 && index <= 28) {
       const step = index - 22;
       const x = 23.2 + step * 8.5; // 23.2, 31.7, 40.2, 48.7, 57.2, 65.7, 74.2
@@ -62,7 +62,7 @@ export function getSerpentineTileGeometry(index: number, totalTiles: number = 30
     return { x: 86.5, y: 88.0, rotateZ: 0 };
   }
 
-  // Scalable parametric spline for 31 - 50 tiles
+  // Scalable parametric spline for 31 - 50 tiles (all tiles upright at rotateZ = 0)
   const r1 = Math.round(totalTiles * 0.28);
   const c1 = 3;
   const r2 = Math.round(totalTiles * 0.24);
@@ -77,18 +77,18 @@ export function getSerpentineTileGeometry(index: number, totalTiles: number = 30
   if (curr < c1) {
     const angle = 30 + (curr / (c1 - 1 || 1)) * 120;
     const rad = ((angle - 90) * Math.PI) / 180;
-    return { x: 74.2 + Math.cos(rad) * 14.3, y: 34.0 + Math.sin(rad) * 18.0, rotateZ: angle };
+    return { x: 74.2 + Math.cos(rad) * 14.3, y: 34.0 + Math.sin(rad) * 18.0, rotateZ: 0 };
   }
   curr -= c1;
   if (curr < r2) {
     const frac = curr / (r2 - 1 || 1);
-    return { x: 74.2 - frac * 51.0, y: 52.0, rotateZ: 180 };
+    return { x: 74.2 - frac * 51.0, y: 52.0, rotateZ: 0 };
   }
   curr -= r2;
   if (curr < c2) {
     const angle = 210 + (curr / (c2 - 1 || 1)) * 120;
     const rad = ((angle - 270) * Math.PI) / 180;
-    return { x: 23.2 - Math.cos(rad) * 14.0, y: 70.0 + Math.sin(rad) * 18.0, rotateZ: angle };
+    return { x: 23.2 - Math.cos(rad) * 14.0, y: 70.0 + Math.sin(rad) * 18.0, rotateZ: 0 };
   }
   curr -= c2;
   const frac = curr / (r3 - 1 || 1);

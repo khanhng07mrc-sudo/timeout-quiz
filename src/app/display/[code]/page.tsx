@@ -259,7 +259,7 @@ export default function DisplayPage() {
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       soundManager.stopMusic();
-      soundManager.playBuzz();
+      soundManager.playTimeout();
     });
     socket.on("game:buzz", (p) => {
       setBuzzed({ playerName: p.teamName ?? p.playerName });

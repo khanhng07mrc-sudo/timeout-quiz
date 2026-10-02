@@ -1,5 +1,33 @@
-// Timeout Quiz - Studio Audio Engine
-// Real high-fidelity gameshow audio player with seamless looping, smooth fading, and instant SFX.
+// Timeout Quiz - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
+// High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
+
+type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";
+type BGMKey = "lobby" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense";
+
+interface AudioSourceConfig {
+  primary: string;
+  fallbacks: string[];
+}
+
+const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
+  tick: { primary: "/sounds/tick.mp3", fallbacks: ["/sounds/tick.wav"] },
+  go: { primary: "/sounds/go.mp3", fallbacks: ["/sounds/go.wav"] },
+  buzz: { primary: "/sounds/buzz.mp3", fallbacks: ["/sounds/buzz.wav"] },
+  correct: { primary: "/sounds/correct.mp3", fallbacks: ["/sounds/correct.wav"] },
+  wrong: { primary: "/sounds/wrong.ogg", fallbacks: ["/sounds/wrong.mp3", "/sounds/wrong.wav"] },
+  fanfare: { primary: "/sounds/fanfare.mp3", fallbacks: ["/sounds/fanfare.wav"] },
+  powerup: { primary: "/sounds/powerup.mp3", fallbacks: ["/sounds/powerup.wav"] },
+  timeout: { primary: "/sounds/timeout.mp3", fallbacks: ["/sounds/buzz.mp3"] },
+};
+
+const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
+  lobby: { primary: "/sounds/lobby.ogg", fallbacks: ["/sounds/lobby.mp3", "/sounds/lobby.wav"] },
+  olympia_15s: { primary: "/sounds/olympia_15s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
+  olympia_20s: { primary: "/sounds/olympia_20s.ogg", fallbacks: ["/sounds/olympia_20s.mp3", "/sounds/question_suspense.mp3"] },
+  olympia_30s: { primary: "/sounds/olympia_30s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
+  olympia_60s: { primary: "/sounds/olympia_60s.mp3", fallbacks: ["/sounds/olympia_30s.mp3", "/sounds/question_suspense.mp3"] },
+  question_suspense: { primary: "/sounds/question_suspense.mp3", fallbacks: ["/sounds/question_suspense.wav"] },
+};
 
 class SoundManager {
   private isMuted: boolean = false;
@@ -9,6 +37,7 @@ class SoundManager {
   private currentMusicAudio: HTMLAudioElement | null = null;
   private currentMusicType: "LOBBY" | "QUESTION" | "VICTORY" | null = null;
   private fadeInterval: NodeJS.Timeout | null = null;
+  private questionMusicTimeout: NodeJS.Timeout | null = null;
 
   // Preloaded audio elements
   private sfxMap: Map<string, HTMLAudioElement> = new Map();
@@ -21,36 +50,45 @@ class SoundManager {
     }
   }
 
+  private createAudioWithFallbacks(config: AudioSourceConfig, loop: boolean = false): HTMLAudioElement {
+    const audio = new Audio();
+    const sources = [config.primary, ...config.fallbacks];
+    let currentIndex = 0;
+
+    const tryNext = () => {
+      currentIndex++;
+      if (currentIndex < sources.length) {
+        audio.src = sources[currentIndex];
+        audio.load();
+      }
+    };
+
+    audio.onerror = tryNext;
+    audio.src = sources[0];
+    audio.preload = "auto";
+    audio.loop = loop;
+    audio.volume = this.volume;
+    return audio;
+  }
+
   private initAudioAssets() {
     if (this.initialized || typeof window === "undefined") return;
     this.initialized = true;
 
-    const sfxList = ["tick", "buzz", "correct", "wrong", "go", "fanfare", "powerup"];
-    sfxList.forEach((name) => {
+    // Preload SFX
+    (Object.keys(SFX_CONFIG) as SFXKey[]).forEach((key) => {
       try {
-        const audio = new Audio(`/sounds/${name}.mp3`);
-        audio.onerror = () => {
-          // Fallback to lossless WAV if MP3 is unavailable
-          audio.src = `/sounds/${name}.wav`;
-        };
-        audio.preload = "auto";
-        audio.volume = this.volume;
-        this.sfxMap.set(name, audio);
+        const audio = this.createAudioWithFallbacks(SFX_CONFIG[key], false);
+        this.sfxMap.set(key, audio);
       } catch {}
     });
 
-    const bgmList = ["lobby", "question_suspense"];
-    bgmList.forEach((name) => {
+    // Preload BGM
+    (Object.keys(BGM_CONFIG) as BGMKey[]).forEach((key) => {
       try {
-        const audio = new Audio(`/sounds/${name}.mp3`);
-        audio.onerror = () => {
-          // Fallback to lossless WAV if MP3 is unavailable
-          audio.src = `/sounds/${name}.wav`;
-        };
-        audio.preload = "auto";
-        audio.loop = true;
-        audio.volume = this.volume;
-        this.bgmMap.set(name, audio);
+        const loop = key === "lobby";
+        const audio = this.createAudioWithFallbacks(BGM_CONFIG[key], loop);
+        this.bgmMap.set(key, audio);
       } catch {}
     });
   }
@@ -99,7 +137,7 @@ class SoundManager {
 
   // ── Music Player with Fade In / Fade Out ───────────────────────────────────
 
-  private playMusicTrack(type: "LOBBY" | "QUESTION", audioKey: string, targetVolFactor: number = 0.75) {
+  private playMusicTrack(type: "LOBBY" | "QUESTION", audioKey: BGMKey, targetVolFactor: number = 0.75) {
     if (this.isMuted) return;
     this.initAudioAssets();
 
@@ -134,11 +172,8 @@ class SoundManager {
 
     let audio = this.bgmMap.get(audioKey);
     if (!audio) {
-      audio = new Audio(`/sounds/${audioKey}.mp3`);
-      audio.onerror = () => {
-        audio!.src = `/sounds/${audioKey}.wav`;
-      };
-      audio.loop = true;
+      const loop = type === "LOBBY";
+      audio = this.createAudioWithFallbacks(BGM_CONFIG[audioKey] || { primary: `/sounds/${audioKey}.mp3`, fallbacks: [] }, loop);
       this.bgmMap.set(audioKey, audio);
     }
 
@@ -167,8 +202,6 @@ class SoundManager {
     });
   }
 
-  private questionMusicTimeout: NodeJS.Timeout | null = null;
-
   public playLobbyMusic() {
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
@@ -177,6 +210,13 @@ class SoundManager {
     this.playMusicTrack("LOBBY", "lobby", 0.7);
   }
 
+  /**
+   * Automatically maps to official Olympia countdown music:
+   * - <= 15s: Olympia 10 Về đích (15s)
+   * - 16s - 25s: Olympia 9 Về đích (20s)
+   * - 26s - 45s: Olympia 22 Về đích (30s)
+   * - > 45s: Olympia 10 Khởi động (60s)
+   */
   public playQuestionMusic(remainingSeconds: number = 30) {
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
@@ -186,10 +226,24 @@ class SoundManager {
       this.stopMusic();
       return;
     }
-    this.playMusicTrack("QUESTION", "question_suspense", 0.75);
+
+    let selectedKey: BGMKey = "olympia_30s";
+    if (remainingSeconds <= 15) {
+      selectedKey = "olympia_15s";
+    } else if (remainingSeconds <= 25) {
+      selectedKey = "olympia_20s";
+    } else if (remainingSeconds <= 45) {
+      selectedKey = "olympia_30s";
+    } else {
+      selectedKey = "olympia_60s";
+    }
+
+    this.playMusicTrack("QUESTION", selectedKey, 0.85);
+
     // Auto-stop music strictly when question timer expires - NEVER loop past time limit!
     this.questionMusicTimeout = setTimeout(() => {
       this.stopMusic();
+      this.playTimeout();
     }, Math.max(1000, remainingSeconds * 1000));
   }
 
@@ -215,17 +269,15 @@ class SoundManager {
 
   // ── Instant Sound Effects (SFX) ───────────────────────────────────────────
 
-  private playSFX(name: string, volumeScale: number = 1.0) {
+  private playSFX(name: SFXKey, volumeScale: number = 1.0) {
     if (this.isMuted) return;
     this.initAudioAssets();
 
     try {
       const original = this.sfxMap.get(name);
       if (!original) {
-        const sound = new Audio(`/sounds/${name}.mp3`);
-        sound.onerror = () => {
-          sound.src = `/sounds/${name}.wav`;
-        };
+        const config = SFX_CONFIG[name];
+        const sound = this.createAudioWithFallbacks(config || { primary: `/sounds/${name}.mp3`, fallbacks: [] }, false);
         sound.volume = this.volume * volumeScale;
         sound.play().catch(() => {});
         return;
@@ -246,24 +298,46 @@ class SoundManager {
     }
   }
 
+  /**
+   * Chuông bấm giành quyền trả lời Về đích Olympia (O8 - O24)
+   */
   public playBuzz() {
     this.playSFX("buzz", 1.0);
   }
 
+  /**
+   * Tiếng chuông chúc mừng đúng Về đích Olympia (O7 - O24)
+   */
   public playCorrect() {
-    this.playSFX("correct", 0.9);
+    this.playSFX("correct", 0.95);
   }
 
+  /**
+   * Tiếng còi báo sai Về đích Olympia (O7 - O24)
+   */
   public playWrong() {
-    this.playSFX("wrong", 0.9);
+    this.playSFX("wrong", 0.95);
   }
 
+  /**
+   * Nhạc tổng kết điểm trao giải Olympia (O9 - O24)
+   */
   public playFanfare() {
     this.playSFX("fanfare", 0.95);
   }
 
+  /**
+   * Âm Ngôi sao hy vọng Olympia khi dùng thẻ bổ trợ (O8 - O24)
+   */
   public playPowerup() {
-    this.playSFX("powerup", 0.85);
+    this.playSFX("powerup", 0.9);
+  }
+
+  /**
+   * Tiếng còi báo hết giờ Olympia (O8 - O24)
+   */
+  public playTimeout() {
+    this.playSFX("timeout", 1.0);
   }
 }
 

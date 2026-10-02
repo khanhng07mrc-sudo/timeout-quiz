@@ -298,7 +298,7 @@ export default function AdminRoomPage() {
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
-        soundManager.playBuzz();
+        soundManager.playTimeout();
       }
     });
     socket.on("game:buzz", (p) => {

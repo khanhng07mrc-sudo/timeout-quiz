@@ -372,7 +372,7 @@ export default function PlayPage() {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
         soundManager.stopMusic();
-        soundManager.playBuzz();
+        soundManager.playTimeout();
       }
     });
 

@@ -285,26 +285,36 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
     }
     const boostIndices = indices.filter((idx) => map[idx].type === "BOOST");
     const trapIndices = indices.filter((idx) => map[idx].type === "TRAP");
+    const extraRollIndices = indices.filter((idx) => map[idx].type === "EXTRA_ROLL");
     for (const b of boostIndices) {
       for (const t of trapIndices) {
         if (Math.abs(b - t) === 2) return false;
       }
     }
     for (const b of boostIndices) {
-      const dest = b + 2;
-      if (dest < count - 1 && map[dest] !== void 0) return false;
+      if (map[b + 1] !== void 0) return false;
+      if (map[b + 2] !== void 0) return false;
+    }
+    for (const t of trapIndices) {
+      if (map[t - 1] !== void 0) return false;
+      if (map[t - 2] !== void 0) return false;
+    }
+    for (let i = 0; i < extraRollIndices.length; i++) {
+      for (let j = i + 1; j < extraRollIndices.length; j++) {
+        if (Math.abs(extraRollIndices[i] - extraRollIndices[j]) < 7) return false;
+      }
     }
     return true;
   };
   let specialMap = {};
   let generationSuccess = false;
   if (options.randomize !== false) {
-    const maxAttempts = 50;
+    const maxAttempts = 100;
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const tempMap = {};
       const reservedNormalIndices = /* @__PURE__ */ new Set();
-      const alphaIn = 5 + Math.floor(Math.random() * Math.min(8, count - 16));
-      const alphaOut = alphaIn + 6 + Math.floor(Math.random() * Math.min(5, count - alphaIn - 8));
+      const alphaIn = 7 + Math.floor(Math.random() * Math.min(4, Math.max(1, count - 20)));
+      const alphaOut = alphaIn + 6 + Math.floor(Math.random() * Math.min(3, Math.max(1, count - alphaIn - 8)));
       tempMap[alphaIn] = { type: "TELEPORT", label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian", portalId: "Alpha", teleportTargetIndex: alphaOut };
       tempMap[alphaOut] = { type: "TELEPORT_EXIT", label: "\u2728 C\u1ED5ng Ra An To\xE0n", portalId: "Alpha" };
       if (count >= 40) {
@@ -351,17 +361,22 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
               ([k, v]) => v.type === "TRAP" && Math.abs(parseInt(k, 10) - slot) === 2
             );
             if (violatesTrapDistance) continue;
-            if (tempMap[slot + 2] !== void 0) continue;
+            if (slot + 2 >= count - 1) continue;
+            if (tempMap[slot + 1] !== void 0 || tempMap[slot + 2] !== void 0) continue;
           }
           if (item.type === "TRAP") {
             const violatesBoostDistance = Object.entries(tempMap).some(
               ([k, v]) => v.type === "BOOST" && Math.abs(parseInt(k, 10) - slot) === 2
             );
             if (violatesBoostDistance) continue;
-            const isDestinationOfBoost = Object.entries(tempMap).some(
-              ([k, v]) => v.type === "BOOST" && parseInt(k, 10) + 2 === slot
+            if (slot - 2 <= 0) continue;
+            if (tempMap[slot - 1] !== void 0 || tempMap[slot - 2] !== void 0) continue;
+          }
+          if (item.type === "EXTRA_ROLL") {
+            const violatesExtraRollGap = Object.entries(tempMap).some(
+              ([k, v]) => v.type === "EXTRA_ROLL" && Math.abs(parseInt(k, 10) - slot) < 7
             );
-            if (isDestinationOfBoost) continue;
+            if (violatesExtraRollGap) continue;
           }
           placedSlot = slot;
           break;
@@ -373,7 +388,12 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
             effectValue: item.effectValue
           };
           if (item.type === "BOOST") {
+            reservedNormalIndices.add(placedSlot + 1);
             reservedNormalIndices.add(placedSlot + 2);
+          }
+          if (item.type === "TRAP") {
+            reservedNormalIndices.add(placedSlot - 1);
+            reservedNormalIndices.add(placedSlot - 2);
           }
         } else {
           allPlaced = false;
@@ -389,26 +409,25 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
   }
   if (!generationSuccess) {
     specialMap = {};
-    specialMap[3] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
-    specialMap[6] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
-    specialMap[9] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[12] = {
+    specialMap[4] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[7] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[10] = {
       type: "TELEPORT",
       label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian",
       portalId: "Alpha",
-      teleportTargetIndex: 19
+      teleportTargetIndex: 17
     };
-    specialMap[14] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
-    specialMap[16] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
-    specialMap[18] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
-    specialMap[19] = {
+    specialMap[12] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[15] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[17] = {
       type: "TELEPORT_EXIT",
       label: "\u2728 C\u1ED5ng Ra An To\xE0n",
       portalId: "Alpha"
     };
+    specialMap[19] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
     specialMap[21] = { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" };
-    specialMap[23] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[26] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[23] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
+    specialMap[26] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
   }
   for (let i = 0; i < count; i++) {
     if (i === 0) {

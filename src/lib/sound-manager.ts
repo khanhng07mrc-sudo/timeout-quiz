@@ -28,7 +28,11 @@ class SoundManager {
     const sfxList = ["tick", "buzz", "correct", "wrong", "go", "fanfare", "powerup"];
     sfxList.forEach((name) => {
       try {
-        const audio = new Audio(`/sounds/${name}.wav`);
+        const audio = new Audio(`/sounds/${name}.mp3`);
+        audio.onerror = () => {
+          // Fallback to lossless WAV if MP3 is unavailable
+          audio.src = `/sounds/${name}.wav`;
+        };
         audio.preload = "auto";
         audio.volume = this.volume;
         this.sfxMap.set(name, audio);
@@ -38,7 +42,11 @@ class SoundManager {
     const bgmList = ["lobby", "question_suspense"];
     bgmList.forEach((name) => {
       try {
-        const audio = new Audio(`/sounds/${name}.wav`);
+        const audio = new Audio(`/sounds/${name}.mp3`);
+        audio.onerror = () => {
+          // Fallback to lossless WAV if MP3 is unavailable
+          audio.src = `/sounds/${name}.wav`;
+        };
         audio.preload = "auto";
         audio.loop = true;
         audio.volume = this.volume;
@@ -126,7 +134,10 @@ class SoundManager {
 
     let audio = this.bgmMap.get(audioKey);
     if (!audio) {
-      audio = new Audio(`/sounds/${audioKey}.wav`);
+      audio = new Audio(`/sounds/${audioKey}.mp3`);
+      audio.onerror = () => {
+        audio!.src = `/sounds/${audioKey}.wav`;
+      };
       audio.loop = true;
       this.bgmMap.set(audioKey, audio);
     }
@@ -211,7 +222,10 @@ class SoundManager {
     try {
       const original = this.sfxMap.get(name);
       if (!original) {
-        const sound = new Audio(`/sounds/${name}.wav`);
+        const sound = new Audio(`/sounds/${name}.mp3`);
+        sound.onerror = () => {
+          sound.src = `/sounds/${name}.wav`;
+        };
         sound.volume = this.volume * volumeScale;
         sound.play().catch(() => {});
         return;

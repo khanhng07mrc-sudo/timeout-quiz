@@ -638,6 +638,7 @@ export interface TeamRaceProgress {
   hasFinished: boolean;
   finishRank?: number;
   hasShield?: boolean;
+  extraRollGranted?: boolean;
 }
 
 export interface DiceRaceState {

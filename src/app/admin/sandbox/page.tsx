@@ -1100,6 +1100,7 @@ export default function AdminSandboxPage() {
           currentTurnTeamId: nextTeamId,
           currentTurnTeamName: nextTeamName,
           canRollDice: isExtra ? true : false,
+          extraRollGranted: isExtra,
         };
 
         let nextStatus = prev.status;

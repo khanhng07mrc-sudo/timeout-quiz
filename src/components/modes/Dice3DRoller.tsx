@@ -13,6 +13,8 @@ export interface Dice3DRollerProps {
   simulateToss?: boolean;
   landingPos?: { x: number; y: number }; // Percentage 0-100 on board, guaranteed >20% away from edges
   originCorner?: 0 | 1 | 2 | 3; // 0: Top-Left, 1: Top-Right, 2: Bottom-Left, 3: Bottom-Right
+  isDismissed?: boolean;
+  onDismiss?: () => void;
 }
 
 /**
@@ -35,6 +37,8 @@ export default function Dice3DRoller({
   simulateToss = false,
   landingPos = { x: 50, y: 50 },
   originCorner = 0,
+  isDismissed = false,
+  onDismiss,
 }: Dice3DRollerProps) {
   const [phase, setPhase] = useState<"rolling" | "landed">(isRolling ? "rolling" : "landed");
   const [displayValue, setDisplayValue] = useState<number>(value || 6);
@@ -297,6 +301,13 @@ export default function Dice3DRoller({
                 scale: [1.85, 1.55, 1.0, 1.1, 1.0, 1.0],
                 opacity: [1, 1, 1, 1, 1, 1],
               }
+            : isDismissed
+            ? {
+                left: "108%",
+                top: "-12%",
+                scale: 0.25,
+                opacity: 0,
+              }
             : {
                 left: `${safeTarget.x}%`,
                 top: `${safeTarget.y}%`,
@@ -310,7 +321,9 @@ export default function Dice3DRoller({
                 duration: durationMs / 1000,
                 times: [0, 0.38, 0.68, 0.80, 0.92, 1.0],
               }
-            : { duration: 0.2 }
+            : isDismissed
+            ? { duration: 0.45, ease: "easeInOut" }
+            : { duration: 0.4, type: "spring", stiffness: 260, damping: 20 }
         }
         style={{
           transform: "translate(-50%, -50%)",
@@ -335,6 +348,12 @@ export default function Dice3DRoller({
                   opacity: [0.15, 0.35, 0.85, 0.5, 0.8, 0.8],
                   scale: [0.5, 0.7, 1.0, 0.85, 1.0, 1.0],
                 }
+              : isDismissed
+              ? {
+                  width: "0px",
+                  opacity: 0,
+                  scale: 0,
+                }
               : {
                   width: `${size * 0.95}px`,
                   opacity: 0.8,
@@ -347,14 +366,30 @@ export default function Dice3DRoller({
                   duration: durationMs / 1000,
                   times: [0, 0.38, 0.68, 0.80, 0.92, 1.0],
                 }
-              : { duration: 0.2 }
+              : { duration: 0.25 }
           }
         />
 
-        {/* Landed Celebration Badge (Appears ONLY after complete dead stop) */}
-        {phase === "landed" && (
-          <div className="absolute -bottom-8 px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap z-40">
-            🎲 {displayValue} NÚT!
+        {/* Landed Celebration Badge with Quick Dismiss (Appears ONLY after complete dead stop) */}
+        {phase === "landed" && !isDismissed && (
+          <div className="absolute -bottom-9 flex items-center gap-1.5 z-40 pointer-events-auto">
+            <div className="px-3 py-0.5 rounded-full bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black font-black text-xs shadow-xl border-2 border-white animate-bounce whitespace-nowrap">
+              🎲 {displayValue} NÚT!
+            </div>
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDismiss();
+                }}
+                className="px-2 py-0.5 rounded-full bg-black/90 hover:bg-black text-slate-200 hover:text-white border border-amber-400/50 text-[10px] font-black shadow-lg transition flex items-center gap-1 active:scale-95 cursor-pointer whitespace-nowrap"
+                title="Đẩy xúc xắc ra ngoài bàn cờ để nhìn rõ bàn"
+              >
+                <span>↗</span>
+                <span>Đẩy ra</span>
+              </button>
+            )}
           </div>
         )}
       </motion.div>

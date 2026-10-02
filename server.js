@@ -273,112 +273,141 @@ function computeStealAmount(leaderScore, stealerScore) {
 }
 
 // src/lib/game-engine/dice-race.ts
-function generateBalancedDiceTiles(totalTiles = 30) {
+function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true }) {
   const count = Math.max(30, Math.min(50, totalTiles || 30));
   const tiles = [];
-  const specialMap = {};
-  if (count === 30) {
+  const validateLayout = (map) => {
+    const indices = Object.keys(map).map((k) => parseInt(k, 10)).sort((a, b) => a - b);
+    if (indices.some((idx) => idx <= 2 || idx >= count - 2)) return false;
+    for (let i = 0; i < indices.length - 1; i++) {
+      if (Math.abs(indices[i] - indices[i + 1]) < 2) return false;
+    }
+    const boostIndices = indices.filter((idx) => map[idx].type === "BOOST");
+    const trapIndices = indices.filter((idx) => map[idx].type === "TRAP");
+    for (const b of boostIndices) {
+      for (const t of trapIndices) {
+        if (Math.abs(b - t) === 2) return false;
+      }
+    }
+    for (const b of boostIndices) {
+      const dest = b + 2;
+      if (dest < count - 1 && map[dest] !== void 0) return false;
+    }
+    return true;
+  };
+  let specialMap = {};
+  let generationSuccess = false;
+  if (options.randomize !== false) {
+    const maxAttempts = 50;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const tempMap = {};
+      const reservedNormalIndices = /* @__PURE__ */ new Set();
+      const alphaIn = 5 + Math.floor(Math.random() * Math.min(8, count - 16));
+      const alphaOut = alphaIn + 6 + Math.floor(Math.random() * Math.min(5, count - alphaIn - 8));
+      tempMap[alphaIn] = { type: "TELEPORT", label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian", portalId: "Alpha", teleportTargetIndex: alphaOut };
+      tempMap[alphaOut] = { type: "TELEPORT_EXIT", label: "\u2728 C\u1ED5ng Ra An To\xE0n", portalId: "Alpha" };
+      if (count >= 40) {
+        const betaIn = alphaOut + 4 + Math.floor(Math.random() * Math.min(6, count - alphaOut - 10));
+        const betaOut = betaIn + 6 + Math.floor(Math.random() * Math.min(4, count - betaIn - 4));
+        if (betaIn < count - 7 && betaOut < count - 2 && Math.abs(betaIn - alphaOut) >= 2) {
+          tempMap[betaIn] = { type: "TELEPORT", label: "\u{1F300} C\u1ED5ng Beta", portalId: "Beta", teleportTargetIndex: betaOut };
+          tempMap[betaOut] = { type: "TELEPORT_EXIT", label: "\u2728 C\u1ED5ng Ra Beta", portalId: "Beta" };
+        }
+      }
+      const pool = [
+        { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
+        { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
+        { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 },
+        { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 },
+        { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
+        { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
+        { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
+        { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
+        { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" }
+      ];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const candidateSlots = [];
+      for (let s = 3; s <= count - 4; s++) {
+        candidateSlots.push(s);
+      }
+      for (let i = candidateSlots.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [candidateSlots[i], candidateSlots[j]] = [candidateSlots[j], candidateSlots[i]];
+      }
+      let allPlaced = true;
+      for (const item of pool) {
+        let placedSlot = null;
+        for (const slot of candidateSlots) {
+          if (tempMap[slot] !== void 0) continue;
+          if (reservedNormalIndices.has(slot)) continue;
+          const violatesGap = Object.keys(tempMap).some((k) => Math.abs(parseInt(k, 10) - slot) < 2);
+          if (violatesGap) continue;
+          if (item.type === "BOOST") {
+            const violatesTrapDistance = Object.entries(tempMap).some(
+              ([k, v]) => v.type === "TRAP" && Math.abs(parseInt(k, 10) - slot) === 2
+            );
+            if (violatesTrapDistance) continue;
+            if (tempMap[slot + 2] !== void 0) continue;
+          }
+          if (item.type === "TRAP") {
+            const violatesBoostDistance = Object.entries(tempMap).some(
+              ([k, v]) => v.type === "BOOST" && Math.abs(parseInt(k, 10) - slot) === 2
+            );
+            if (violatesBoostDistance) continue;
+            const isDestinationOfBoost = Object.entries(tempMap).some(
+              ([k, v]) => v.type === "BOOST" && parseInt(k, 10) + 2 === slot
+            );
+            if (isDestinationOfBoost) continue;
+          }
+          placedSlot = slot;
+          break;
+        }
+        if (placedSlot !== null) {
+          tempMap[placedSlot] = {
+            type: item.type,
+            label: item.label,
+            effectValue: item.effectValue
+          };
+          if (item.type === "BOOST") {
+            reservedNormalIndices.add(placedSlot + 2);
+          }
+        } else {
+          allPlaced = false;
+          break;
+        }
+      }
+      if (allPlaced && validateLayout(tempMap)) {
+        specialMap = tempMap;
+        generationSuccess = true;
+        break;
+      }
+    }
+  }
+  if (!generationSuccess) {
+    specialMap = {};
     specialMap[3] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
-    specialMap[5] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[7] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
-    specialMap[10] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[6] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[9] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
     specialMap[12] = {
       type: "TELEPORT",
       label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian",
       portalId: "Alpha",
       teleportTargetIndex: 19
-      // Ô #13 -> Ô #20
     };
-    specialMap[15] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
-    specialMap[17] = { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" };
+    specialMap[14] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[16] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[18] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
     specialMap[19] = {
       type: "TELEPORT_EXIT",
       label: "\u2728 C\u1ED5ng Ra An To\xE0n",
       portalId: "Alpha"
     };
-    specialMap[22] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[24] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
-    specialMap[26] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
-  } else {
-    const isLarge = count >= 40;
-    const findSafeIndex = (preferred, minBound = 3, maxBound = count - 4) => {
-      const candidates = [
-        preferred,
-        preferred + 1,
-        preferred - 1,
-        preferred + 2,
-        preferred - 2
-      ].filter((idx) => idx >= minBound && idx <= maxBound);
-      for (const cand of candidates) {
-        const hasAdjacent = Object.keys(specialMap).some(
-          (k) => Math.abs(parseInt(k, 10) - cand) < 2
-        );
-        if (!hasAdjacent) return cand;
-      }
-      return null;
-    };
-    const alphaInPreferred = Math.round(count * 0.35);
-    const alphaOutPreferred = Math.round(count * 0.55);
-    const alphaIn = findSafeIndex(alphaInPreferred);
-    if (alphaIn !== null) {
-      specialMap[alphaIn] = {
-        type: "TELEPORT",
-        label: "\u{1F300} C\u1ED5ng Alpha",
-        portalId: "Alpha"
-      };
-    }
-    const alphaOut = findSafeIndex(alphaOutPreferred);
-    if (alphaOut !== null && alphaIn !== null) {
-      specialMap[alphaOut] = {
-        type: "TELEPORT_EXIT",
-        label: "\u2728 Ra C\u1ED5ng Alpha",
-        portalId: "Alpha"
-      };
-      specialMap[alphaIn].teleportTargetIndex = alphaOut;
-    }
-    if (isLarge) {
-      const betaInPreferred = Math.round(count * 0.65);
-      const betaOutPreferred = Math.round(count * 0.83);
-      const betaIn = findSafeIndex(betaInPreferred);
-      if (betaIn !== null) {
-        specialMap[betaIn] = {
-          type: "TELEPORT",
-          label: "\u{1F300} C\u1ED5ng Beta",
-          portalId: "Beta"
-        };
-      }
-      const betaOut = findSafeIndex(betaOutPreferred);
-      if (betaOut !== null && betaIn !== null) {
-        specialMap[betaOut] = {
-          type: "TELEPORT_EXIT",
-          label: "\u2728 Ra C\u1ED5ng Beta",
-          portalId: "Beta"
-        };
-        specialMap[betaIn].teleportTargetIndex = betaOut;
-      }
-    }
-    const candidatesList = [
-      { pct: 0.1, type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
-      { pct: 0.18, type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
-      { pct: 0.25, type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
-      { pct: 0.44, type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 },
-      { pct: 0.5, type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
-      { pct: 0.6, type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" },
-      { pct: 0.72, type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
-      { pct: 0.78, type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
-      { pct: 0.88, type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 }
-    ];
-    for (const item of candidatesList) {
-      const prefIdx = Math.round(count * item.pct);
-      const safeIdx = findSafeIndex(prefIdx);
-      if (safeIdx !== null) {
-        specialMap[safeIdx] = {
-          type: item.type,
-          label: item.label,
-          effectValue: item.effectValue
-        };
-      }
-    }
+    specialMap[21] = { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" };
+    specialMap[23] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[26] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
   }
   for (let i = 0; i < count; i++) {
     if (i === 0) {
@@ -425,13 +454,23 @@ function handleDiceRaceLanding({
     };
   }
   let currentShield = !!teamProg.hasShield;
-  let newPos = Math.min(diceState.totalTiles - 1, teamProg.position + roll);
-  const landingTile = diceState.tiles[newPos];
+  const remainingSteps = Math.max(0, diceState.totalTiles - 1 - teamProg.position);
+  const actualSteps = Math.min(roll, remainingSteps);
+  let newPos = teamProg.position + actualSteps;
+  const isDirectFinish = newPos >= diceState.totalTiles - 1;
   let grantAnotherRoll = false;
   let teleported = false;
-  let effectMessage = `Tung x\xFAc x\u1EAFc \u0111\u01B0\u1EE3c ${roll} n\xFAt! \u0110\u1EBFn \xD4 #${newPos + 1}`;
+  let effectMessage = "";
+  if (isDirectFinish && actualSteps < roll) {
+    effectMessage = `Tung x\xFAc x\u1EAFc \u0111\u01B0\u1EE3c ${roll} n\xFAt! Ch\u1EC9 c\u1EA7n ${actualSteps} b\u01B0\u1EDBc \u0111\u1EC3 c\xE1n \u0111\xEDch \xD4 #${newPos + 1}! \u{1F3C6} CHI\u1EBEN TH\u1EAENG!`;
+  } else if (isDirectFinish) {
+    effectMessage = `Tung x\xFAc x\u1EAFc \u0111\u01B0\u1EE3c ${roll} n\xFAt! C\xE1n \u0111\xEDch \xD4 #${newPos + 1}! \u{1F3C6} CHI\u1EBEN TH\u1EAENG!`;
+  } else {
+    effectMessage = `Tung x\xFAc x\u1EAFc \u0111\u01B0\u1EE3c ${roll} n\xFAt! \u0110\u1EBFn \xD4 #${newPos + 1}`;
+  }
   let swappedWithTeamId = void 0;
-  if (landingTile) {
+  const landingTile = diceState.tiles[newPos];
+  if (!isDirectFinish && landingTile) {
     if (landingTile.type === "TELEPORT" && landingTile.teleportTargetIndex !== void 0) {
       teleported = true;
       const targetPos = Math.min(diceState.totalTiles - 1, Math.max(0, landingTile.teleportTargetIndex));
@@ -441,8 +480,20 @@ function handleDiceRaceLanding({
       effectMessage = `\u2728 Ti\u1EBFp \u0111\u1EA5t an to\xE0n t\u1EA1i C\u1ED5ng Ra \xD4 #${newPos + 1}!`;
     } else if (landingTile.type === "BOOST") {
       const boostVal = landingTile.effectValue || 2;
-      newPos = Math.min(diceState.totalTiles - 1, newPos + boostVal);
+      const afterBoostPos = Math.min(diceState.totalTiles - 1, newPos + boostVal);
+      newPos = afterBoostPos;
       effectMessage += ` \u2794 \u{1F680} T\u0103ng t\u1ED1c! Ti\u1EBFn th\xEAm ${boostVal} b\u01B0\u1EDBc \u0111\u1EBFn \xD4 #${newPos + 1}!`;
+      const chainedTile = diceState.tiles[newPos];
+      if (chainedTile && chainedTile.type === "TRAP") {
+        if (currentShield) {
+          currentShield = false;
+          effectMessage += ` \u2794 \u{1F6E1}\uFE0F Khi\xEAn b\u1EA3o v\u1EC7 \u0111\xE3 h\u1EA5p th\u1EE5 B\u1EABy h\u1EE5t (-2 b\u01B0\u1EDBc)! An to\xE0n t\u1EA1i \xD4 #${newPos + 1}.`;
+        } else {
+          const trapVal = chainedTile.effectValue || -2;
+          newPos = Math.max(0, newPos + trapVal);
+          effectMessage += ` \u2794 \u{1F4A5} D\u1EABm ph\u1EA3i B\u1EABy h\u1EE5t! L\xF9i ${Math.abs(trapVal)} b\u01B0\u1EDBc v\u1EC1 \xD4 #${newPos + 1}.`;
+        }
+      }
     } else if (landingTile.type === "TRAP") {
       if (currentShield) {
         currentShield = false;
@@ -451,15 +502,21 @@ function handleDiceRaceLanding({
         const trapVal = landingTile.effectValue || -2;
         newPos = Math.max(0, newPos + trapVal);
         effectMessage += ` \u2794 \u{1F4A5} D\u1EABm ph\u1EA3i B\u1EABy h\u1EE5t! L\xF9i ${Math.abs(trapVal)} b\u01B0\u1EDBc v\u1EC1 \xD4 #${newPos + 1}.`;
+        const recoveredTile = diceState.tiles[newPos];
+        if (recoveredTile && recoveredTile.type === "SHIELD") {
+          currentShield = true;
+          effectMessage += ` \u2794 \u{1F6E1}\uFE0F Nh\u1EB7t \u0111\u01B0\u1EE3c Khi\xEAn b\u1EA3o h\u1ED9 ph\u1EE5c h\u1ED3i!`;
+        } else if (recoveredTile && recoveredTile.type === "EXTRA_ROLL") {
+          grantAnotherRoll = true;
+          effectMessage += ` \u2794 \u{1F3B2} R\u01A1i v\xE0o \xF4 x2 C\u01A1 h\u1ED9i! \u0110\u01B0\u1EE3c tung th\xEAm m\u1ED9t l\u1EA7n n\u1EEFa!`;
+        }
       }
     } else if (landingTile.type === "SHIELD") {
       currentShield = true;
       effectMessage += ` \u2794 \u{1F6E1}\uFE0F Nh\u1EADn \u0111\u01B0\u1EE3c Khi\xEAn b\u1EA3o h\u1ED9 th\u1EA7n k\u1EF3!`;
     } else if (landingTile.type === "EXTRA_ROLL") {
-      if (!diceState.extraRollGranted) {
-        grantAnotherRoll = true;
-        effectMessage += ` \u2794 \u{1F3B2} R\u01A1i v\xE0o \xF4 x2 C\u01A1 h\u1ED9i! \u0110\u01B0\u1EE3c tung x\xFAc x\u1EAFc th\xEAm m\u1ED9t l\u1EA7n n\u1EEFa!`;
-      }
+      grantAnotherRoll = true;
+      effectMessage += ` \u2794 \u{1F3B2} R\u01A1i v\xE0o \xF4 x2 C\u01A1 h\u1ED9i! \u0110\u01B0\u1EE3c tung x\xFAc x\u1EAFc th\xEAm m\u1ED9t l\u1EA7n n\u1EEFa!`;
     } else if (landingTile.type === "SWAP") {
       const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
       otherTeams.sort((a, b) => b.position - a.position);
@@ -2617,8 +2674,11 @@ function registerSocketHandlers(io2) {
       if (grantAnotherRoll) {
         diceState.canRollDice = true;
         diceState.dicePendingAnswer = false;
+        diceState.extraRollGranted = true;
+        teamProg.extraRollGranted = true;
       } else {
         diceState.extraRollGranted = false;
+        teamProg.extraRollGranted = false;
         diceState.dicePendingAnswer = false;
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         if (teams.length > 0) {

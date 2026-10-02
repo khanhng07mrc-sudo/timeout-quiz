@@ -2448,11 +2448,14 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (grantAnotherRoll) {
-        // Ô x2 Cơ hội: được thêm 1 lần gieo nữa trước khi chuyển lượt
+        // Ô x2 Cơ hội: được thêm 1 lần gieo nữa trước khi chuyển lượt (không mất lượt, được gieo tiếp ngay)
         diceState.canRollDice = true;
         diceState.dicePendingAnswer = false;
+        diceState.extraRollGranted = true;
+        teamProg.extraRollGranted = true;
       } else {
         diceState.extraRollGranted = false;
+        teamProg.extraRollGranted = false;
         diceState.dicePendingAnswer = false;
 
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });

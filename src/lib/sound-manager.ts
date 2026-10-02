@@ -209,17 +209,35 @@ class SoundManager {
       return;
     }
 
-    // Crossfade: smoothly fade out previous track over crossfadeMs
     const prevAudio = this.currentMusicAudio;
-    if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
-      this.fadeOutAudio(prevAudio, crossfadeMs);
-    }
-
-    this.currentMusicAudio = nextAudio;
-    this.currentMusicType = type;
-
     const targetVol = this.volume * targetVolFactor;
-    this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50));
+
+    if (type === "QUESTION") {
+      // Countdown music must start IMMEDIATELY at full volume, without fade-in or crossfade lag
+      if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
+        try {
+          prevAudio.pause();
+          prevAudio.currentTime = 0;
+        } catch {}
+      }
+
+      this.currentMusicAudio = nextAudio;
+      this.currentMusicType = type;
+
+      nextAudio.volume = this.isMuted ? 0 : targetVol;
+      nextAudio.currentTime = 0;
+      nextAudio.play().catch(() => {});
+    } else {
+      // For Lobby or ambient music, crossfade smoothly
+      if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
+        this.fadeOutAudio(prevAudio, crossfadeMs);
+      }
+
+      this.currentMusicAudio = nextAudio;
+      this.currentMusicType = type;
+
+      this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50));
+    }
   }
 
   public playLobbyMusic() {

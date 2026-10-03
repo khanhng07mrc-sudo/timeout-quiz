@@ -1,7 +1,7 @@
 <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <!-- Q Ring Gradient: Neon Violet to Electric Cyan -->
-    <linearGradient id="qz_icon_qgrad" x1="12" y1="8" x2="48" y2="44" gradientUnits="userSpaceOnUse">
+    <linearGradient id="qz_pwa_qgrad" x1="12" y1="8" x2="48" y2="44" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#c084fc" />
       <stop offset="35%" stop-color="#8b5cf6" />
       <stop offset="70%" stop-color="#38bdf8" />
@@ -9,14 +9,14 @@
     </linearGradient>
 
     <!-- Swoosh Gradient -->
-    <linearGradient id="qz_icon_swoosh" x1="6" y1="54" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+    <linearGradient id="qz_pwa_swoosh" x1="6" y1="54" x2="54" y2="54" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#a855f7" />
       <stop offset="50%" stop-color="#38bdf8" />
       <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
     <!-- Soft Neon Bloom Filter -->
-    <filter id="qz_icon_glow" x="-30%" y="-30%" width="160%" height="160%">
+    <filter id="qz_pwa_glow" x="-30%" y="-30%" width="160%" height="160%">
       <feGaussianBlur stdDeviation="2" result="blur" />
       <feMerge>
         <feMergeNode in="blur" />
@@ -25,22 +25,22 @@
     </filter>
 
     <!-- Ambient Halo Behind -->
-    <filter id="qz_icon_halo" x="-50%" y="-50%" width="200%" height="200%">
+    <filter id="qz_pwa_halo" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="4" result="halo" />
     </filter>
   </defs>
 
   <!-- Ambient background bloom -->
-  <circle cx="30" cy="25" r="16" fill="url(#qz_icon_qgrad)" opacity="0.25" filter="url(#qz_icon_halo)" />
+  <circle cx="30" cy="25" r="16" fill="url(#qz_pwa_qgrad)" opacity="0.25" filter="url(#qz_pwa_halo)" />
 
   <!-- Neon Q Letterform -->
-  <g filter="url(#qz_icon_glow)">
+  <g filter="url(#qz_pwa_glow)">
     <!-- Main Ring -->
     <circle
       cx="30"
       cy="25"
       r="14"
-      stroke="url(#qz_icon_qgrad)"
+      stroke="url(#qz_pwa_qgrad)"
       stroke-width="6.8"
       stroke-linecap="round"
     />
@@ -48,7 +48,7 @@
     <!-- Q Tail: Curves from inside the hole out to bottom-right -->
     <path
       d="M 31 27 Q 35 34 47 42"
-      stroke="url(#qz_icon_qgrad)"
+      stroke="url(#qz_pwa_qgrad)"
       stroke-width="6.8"
       stroke-linecap="round"
     />
@@ -57,14 +57,14 @@
   <!-- Arched Swoosh Curve Underneath Q -->
   <path
     d="M 6 55 Q 30 47 54 55"
-    stroke="url(#qz_icon_swoosh)"
+    stroke="url(#qz_pwa_swoosh)"
     stroke-width="2.6"
     stroke-linecap="round"
     opacity="0.95"
   />
   <path
     d="M 10 56.5 Q 30 50 50 56.5"
-    stroke="url(#qz_icon_swoosh)"
+    stroke="url(#qz_pwa_swoosh)"
     stroke-width="1.2"
     stroke-linecap="round"
     opacity="0.45"

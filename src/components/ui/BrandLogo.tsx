@@ -40,75 +40,75 @@ export default function BrandLogo({
       className={`${iconSizes[size]} shrink-0 drop-shadow`}
     >
       <defs>
-        <linearGradient id="bc_ui_bg" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.95" />
-          <stop offset="50%" stopColor="#2e1065" stopOpacity="0.9" />
-          <stop offset="100%" stopColor="#0f172a" stopOpacity="0.95" />
-        </linearGradient>
-        <linearGradient id="bc_ui_rim" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#818cf8" />
-          <stop offset="50%" stopColor="#a855f7" />
-          <stop offset="100%" stopColor="#06b6d4" />
-        </linearGradient>
-        <linearGradient id="bc_ui_brain_left" x1="12" y1="16" x2="30" y2="44" gradientUnits="userSpaceOnUse">
+        {/* Q Ring Gradient: Neon Violet to Electric Cyan */}
+        <linearGradient id="qz_ui_qgrad" x1="12" y1="8" x2="48" y2="44" gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="#c084fc" />
-          <stop offset="100%" stopColor="#6366f1" />
-        </linearGradient>
-        <linearGradient id="bc_ui_brain_right" x1="34" y1="16" x2="52" y2="44" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#38bdf8" />
-          <stop offset="100%" stopColor="#0891b2" />
-        </linearGradient>
-        <linearGradient id="bc_ui_bolt" x1="26" y1="12" x2="38" y2="52" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="45%" stopColor="#38bdf8" />
+          <stop offset="35%" stopColor="#8b5cf6" />
+          <stop offset="70%" stopColor="#38bdf8" />
           <stop offset="100%" stopColor="#06b6d4" />
         </linearGradient>
+
+        {/* Swoosh Gradient */}
+        <linearGradient id="qz_ui_swoosh" x1="6" y1="54" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#a855f7" />
+          <stop offset="50%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#06b6d4" />
+        </linearGradient>
+
+        {/* Soft Neon Bloom Filter */}
+        <filter id="qz_ui_glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+
+        {/* Ambient Halo Behind */}
+        <filter id="qz_ui_halo" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="halo" />
+        </filter>
       </defs>
 
-      {/* Outer Shield Crest */}
-      <path
-        d="M32 4L57 14V36C57 48.5 46.5 57 32 61C17.5 57 7 48.5 7 36V14L32 4Z"
-        fill="url(#bc_ui_bg)"
-        stroke="url(#bc_ui_rim)"
-        strokeWidth="2.2"
-      />
+      {/* Ambient background bloom */}
+      <circle cx="30" cy="25" r="16" fill="url(#qz_ui_qgrad)" opacity="0.22" filter="url(#qz_ui_halo)" />
 
-      {/* Inner Inset Line */}
-      <path
-        d="M32 9L52 17V35C52 45 43.5 52 32 55.5C20.5 52 12 45 12 35V17L32 9Z"
-        stroke="#4f46e5"
-        strokeOpacity="0.4"
-        strokeWidth="1"
-      />
+      {/* Neon Q Letterform */}
+      <g filter="url(#qz_ui_glow)">
+        {/* Main Ring */}
+        <circle
+          cx="30"
+          cy="25"
+          r="14"
+          stroke="url(#qz_ui_qgrad)"
+          strokeWidth="6.8"
+          strokeLinecap="round"
+        />
 
-      {/* Brain Left Hemisphere */}
-      <path
-        d="M28 19C22 19 17 23 17 29C17 33.5 19.5 37 23 39L28 41V19Z"
-        fill="url(#bc_ui_brain_left)"
-        stroke="#1e1b4b"
-        strokeWidth="0.8"
-      />
-      <path d="M23 23L28 28M19 31L26 34" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1" strokeLinecap="round" />
+        {/* Q Tail: Curves from inside the hole out to bottom-right */}
+        <path
+          d="M 31 27 Q 35 34 47 42"
+          stroke="url(#qz_ui_qgrad)"
+          strokeWidth="6.8"
+          strokeLinecap="round"
+        />
+      </g>
 
-      {/* Brain Right Hemisphere */}
+      {/* Arched Swoosh Curve Underneath Q */}
       <path
-        d="M36 19C42 19 47 23 47 29C47 33.5 44.5 37 41 39L36 41V19Z"
-        fill="url(#bc_ui_brain_right)"
-        stroke="#1e1b4b"
-        strokeWidth="0.8"
+        d="M 6 55 Q 30 47 54 55"
+        stroke="url(#qz_ui_swoosh)"
+        strokeWidth="2.6"
+        strokeLinecap="round"
+        opacity="0.95"
       />
-      <path d="M41 23L36 28M45 31L38 34" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1" strokeLinecap="round" />
-
-      {/* Central Lightning Clash Bolt */}
       <path
-        d="M37 13L22 31H33L26 51L43 29H30L37 13Z"
-        fill="url(#bc_ui_bolt)"
-        stroke="#0f172a"
-        strokeWidth="1.3"
-        strokeLinejoin="round"
+        d="M 10 56.5 Q 30 50 50 56.5"
+        stroke="url(#qz_ui_swoosh)"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        opacity="0.45"
       />
-
-      <circle cx="32" cy="30" r="1.8" fill="#ffffff" />
     </svg>
   );
 
@@ -128,9 +128,9 @@ export default function BrandLogo({
       {iconElement}
       <div className="flex flex-col">
         <div className={`font-black tracking-tight flex items-center leading-none ${textSizes[size]}`}>
-          <span className="text-white">Brain</span>
-          <span className="ml-0.5 bg-gradient-to-r from-cyan-400 to-teal-300 bg-clip-text text-transparent">
-            Clash
+          <span className="text-white">Quiz</span>
+          <span className="ml-0.5 bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
+            orra
           </span>
         </div>
         {subText && (

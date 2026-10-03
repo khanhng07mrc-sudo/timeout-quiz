@@ -1,134 +1,100 @@
 <svg viewBox="0 0 280 64" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Background shield gradient (subtle dark metallic, non-glare) -->
-    <linearGradient id="bc_shield_bg" x1="6" y1="4" x2="54" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#1e1b4b" stopOpacity="0.95" />
-      <stop offset="50%" stopColor="#2e1065" stopOpacity="0.9" />
-      <stop offset="100%" stopColor="#0f172a" stopOpacity="0.95" />
+    <!-- Q Ring Gradient -->
+    <linearGradient id="qz_logo_qgrad" x1="12" y1="8" x2="48" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="35%" stop-color="#8b5cf6" />
+      <stop offset="70%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <!-- Shield rim gradient (matte purple to cyan) -->
-    <linearGradient id="bc_rim_grad" x1="4" y1="4" x2="56" y2="58" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#818cf8" />
-      <stop offset="45%" stopColor="#a855f7" />
-      <stop offset="100%" stopColor="#06b6d4" />
+    <!-- Swoosh Gradient -->
+    <linearGradient id="qz_logo_swoosh" x1="6" y1="54" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <!-- Brain Left Lobe (Purple / Violet) -->
-    <linearGradient id="bc_brain_left" x1="12" y1="16" x2="28" y2="42" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#c084fc" />
-      <stop offset="100%" stopColor="#6366f1" />
+    <!-- Text Gradients -->
+    <linearGradient id="qz_text_orra" x1="140" y1="18" x2="245" y2="38" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="45%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
 
-    <!-- Brain Right Lobe (Cyan / Teal) -->
-    <linearGradient id="bc_brain_right" x1="32" y1="16" x2="48" y2="42" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#38bdf8" />
-      <stop offset="100%" stopColor="#0891b2" />
-    </linearGradient>
-
-    <!-- Center Lightning Clash (Pure electric sharpness, controlled contrast) -->
-    <linearGradient id="bc_bolt_grad" x1="24" y1="12" x2="36" y2="50" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#ffffff" />
-      <stop offset="50%" stopColor="#38bdf8" />
-      <stop offset="100%" stopColor="#06b6d4" />
-    </linearGradient>
-
-    <!-- Typography Gradients -->
-    <linearGradient id="bc_text_brain" x1="68" y1="18" x2="155" y2="38" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#ffffff" />
-      <stop offset="65%" stopColor="#ede9fe" />
-      <stop offset="100%" stopColor="#c084fc" />
-    </linearGradient>
-    <linearGradient id="bc_text_clash" x1="158" y1="18" x2="245" y2="38" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stopColor="#38bdf8" />
-      <stop offset="60%" stopColor="#06b6d4" />
-      <stop offset="100%" stopColor="#14b8a6" />
-    </linearGradient>
-
-    <!-- Subtle non-glaring shadow -->
-    <filter id="bc_subtle_shadow" x="-15%" y="-15%" width="130%" height="130%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodColor="#6366f1" floodOpacity="0.4" />
+    <!-- Neon Glow Filter -->
+    <filter id="qz_logo_glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
     </filter>
   </defs>
 
-  <!-- ICON BADGE (x: 4 to 56, y: 4 to 58) -->
-  <g transform="translate(2, 2)">
-    <!-- Outer Shield Crest -->
-    <path d="M30 5L53 14V34C53 45.5 43.5 53.5 30 57C16.5 53.5 7 45.5 7 34V14L30 5Z" 
-          fill="url(#bc_shield_bg)" 
-          stroke="url(#bc_rim_grad)" 
-          strokeWidth="2" 
-          filter="url(#bc_subtle_shadow)" />
+  <!-- ICON BADGE (left: 0..64) -->
+  <g transform="translate(2, 0)">
+    <!-- Ambient halo -->
+    <circle cx="30" cy="25" r="16" fill="url(#qz_logo_qgrad)" opacity="0.2" filter="url(#qz_logo_glow)" />
 
-    <!-- Inner Shield Inset line -->
-    <path d="M30 9L49 16.5V33C49 42.5 41 49 30 52.5C19 49 11 42.5 11 33V16.5L30 9Z" 
-          stroke="#4f46e5" 
-          strokeOpacity="0.4" 
-          strokeWidth="1" />
+    <!-- Neon Q Letterform -->
+    <g filter="url(#qz_logo_glow)">
+      <circle
+        cx="30"
+        cy="25"
+        r="14"
+        stroke="url(#qz_logo_qgrad)"
+        stroke-width="6.8"
+        stroke-linecap="round"
+      />
+      <path
+        d="M 31 27 Q 35 34 47 42"
+        stroke="url(#qz_logo_qgrad)"
+        stroke-width="6.8"
+        stroke-linecap="round"
+      />
+    </g>
 
-    <!-- Brain Left Hemisphere (Faceted segments) -->
-    <path d="M26 18C21 18 16 22 16 27C16 31 18 34 21 36L26 38V18Z" 
-          fill="url(#bc_brain_left)" 
-          stroke="#1e1b4b" 
-          strokeWidth="0.8" />
-    <path d="M21 21L26 26M18 29L24 32" 
-          stroke="#ffffff" 
-          strokeOpacity="0.35" 
-          strokeWidth="1" 
-          strokeLinecap="round" />
-
-    <!-- Brain Right Hemisphere (Faceted segments) -->
-    <path d="M34 18C39 18 44 22 44 27C44 31 42 34 39 36L34 38V18Z" 
-          fill="url(#bc_brain_right)" 
-          stroke="#1e1b4b" 
-          strokeWidth="0.8" />
-    <path d="M39 21L34 26M42 29L36 32" 
-          stroke="#ffffff" 
-          strokeOpacity="0.35" 
-          strokeWidth="1" 
-          strokeLinecap="round" />
-
-    <!-- Central Lightning Clash Bolt -->
-    <path d="M35 12L21 29H31L25 48L41 27H29L35 12Z" 
-          fill="url(#bc_bolt_grad)" 
-          stroke="#0f172a" 
-          strokeWidth="1.2" 
-          strokeLinejoin="round" />
-
-    <!-- Core highlight dot -->
-    <circle cx="30" cy="28" r="1.8" fill="#ffffff" />
+    <!-- Swoosh -->
+    <path
+      d="M 6 55 Q 30 47 54 55"
+      stroke="url(#qz_logo_swoosh)"
+      stroke-width="2.6"
+      stroke-linecap="round"
+      opacity="0.95"
+    />
   </g>
 
-  <!-- WORDMARK: BRAIN -->
-  <text x="68" y="37" 
-        fill="url(#bc_text_brain)" 
-        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
-        fontSize="25" 
-        fontWeight="900" 
-        letterSpacing="0.5">BRAIN</text>
+  <!-- WORDMARK: Quiz -->
+  <text x="70" y="38" 
+        fill="#ffffff" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="28" 
+        font-weight="900" 
+        letter-spacing="-0.5">Quiz</text>
 
-  <!-- WORDMARK: CLASH -->
-  <text x="157" y="37" 
-        fill="url(#bc_text_clash)" 
-        fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
-        fontSize="25" 
-        fontWeight="900" 
-        letterSpacing="0.5">CLASH</text>
+  <!-- WORDMARK: orra -->
+  <text x="135" y="38" 
+        fill="url(#qz_text_orra)" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="28" 
+        font-weight="900" 
+        letter-spacing="-0.5">orra</text>
 
-  <!-- SUBTITLE BADGE: INTELLECTUAL ARENA -->
-  <g transform="translate(68, 44)">
-    <rect x="0" y="0" width="138" height="15" rx="4" 
+  <!-- SUBTITLE BADGE -->
+  <g transform="translate(70, 45)">
+    <rect x="0" y="0" width="148" height="15" rx="4" 
           fill="#1e1b4b" 
-          fillOpacity="0.75" 
+          fill-opacity="0.75" 
           stroke="#818cf8" 
-          strokeOpacity="0.3" 
-          strokeWidth="0.8" />
+          stroke-opacity="0.3" 
+          stroke-width="0.8" />
     <circle cx="8" cy="7.5" r="2.2" fill="#06b6d4" />
     <text x="16" y="11" 
           fill="#c4b5fd" 
-          fontFamily="system-ui, -apple-system, sans-serif" 
-          fontSize="8" 
-          fontWeight="800" 
-          letterSpacing="1.2">INTELLECTUAL ARENA</text>
+          font-family="system-ui, -apple-system, sans-serif" 
+          font-size="8" 
+          font-weight="800" 
+          letter-spacing="1.2">INTELLECTUAL ARENA</text>
   </g>
 </svg>

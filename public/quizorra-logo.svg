@@ -1,53 +1,83 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 200" fill="none">
+<svg viewBox="0 0 360 80" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="qGrad" gradientUnits="userSpaceOnUse" x1="90" y1="12" x2="90" y2="182">
-      <stop offset="0%"   stop-color="#A855F7"/>
-      <stop offset="50%"  stop-color="#7C3AED"/>
-      <stop offset="100%" stop-color="#06B6D4"/>
+    <!-- Q Ring Gradient -->
+    <linearGradient id="qz_svg_qgrad" x1="12" y1="8" x2="60" y2="56" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c084fc" />
+      <stop offset="35%" stop-color="#8b5cf6" />
+      <stop offset="70%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
-    <linearGradient id="swooshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%"   stop-color="#7C3AED"/>
-      <stop offset="100%" stop-color="#22D3EE"/>
+
+    <!-- Swoosh Gradient -->
+    <linearGradient id="qz_svg_swoosh" x1="6" y1="68" x2="70" y2="68" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
     </linearGradient>
-    <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur stdDeviation="10" result="glow"/>
+
+    <!-- Wordmark orra gradient -->
+    <linearGradient id="qz_svg_orra" x1="165" y1="20" x2="320" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a855f7" />
+      <stop offset="50%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <!-- Glow Filter -->
+    <filter id="qz_svg_glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
       <feMerge>
-        <feMergeNode in="glow"/>
-        <feMergeNode in="glow"/>
-        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
-    <!-- Donut mask: punch out inner circle -->
-    <mask id="donutMask">
-      <rect width="620" height="200" fill="white"/>
-      <circle cx="90" cy="92" r="48" fill="black"/>
-    </mask>
   </defs>
 
-  <!-- Bloom aura -->
-  <circle cx="90" cy="92" r="80" fill="url(#qGrad)" opacity="0.15" filter="url(#bloom)"/>
+  <!-- ICON (left: 0..80) -->
+  <g transform="translate(6, 4)">
+    <!-- Ambient halo -->
+    <circle cx="36" cy="30" r="20" fill="url(#qz_svg_qgrad)" opacity="0.22" filter="url(#qz_svg_glow)" />
 
-  <!-- Q donut ring with gradient -->
-  <g filter="url(#bloom)">
-    <circle cx="90" cy="92" r="74" fill="url(#qGrad)" mask="url(#donutMask)"/>
-    <!-- Q tail -->
-    <path d="M 132 136 Q 154 164 136 172"
-          stroke="url(#qGrad)" stroke-width="18"
-          fill="none" stroke-linecap="round"/>
+    <!-- Neon Q Letterform -->
+    <g filter="url(#qz_svg_glow)">
+      <circle
+        cx="36"
+        cy="30"
+        r="17"
+        stroke="url(#qz_svg_qgrad)"
+        stroke-width="8.2"
+        stroke-linecap="round"
+      />
+      <path
+        d="M 37 32 Q 42 41 57 51"
+        stroke="url(#qz_svg_qgrad)"
+        stroke-width="8.2"
+        stroke-linecap="round"
+      />
+    </g>
+
+    <!-- Swoosh -->
+    <path
+      d="M 8 66 Q 36 56 66 66"
+      stroke="url(#qz_svg_swoosh)"
+      stroke-width="3"
+      stroke-linecap="round"
+      opacity="0.95"
+    />
   </g>
 
-  <!-- Full-width swoosh below entire wordmark -->
-  <path d="M 14 185 Q 320 200 606 185"
-        stroke="url(#swooshGrad)" stroke-width="2.5"
-        fill="none" stroke-linecap="round" opacity="0.85"/>
+  <!-- WORDMARK: Quiz -->
+  <text x="86" y="48" 
+        fill="#ffffff" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="36" 
+        font-weight="900" 
+        letter-spacing="-1">Quiz</text>
 
-  <!-- "uizorra" — thin weight, same line as Q -->
-  <text
-    x="185" y="120"
-    font-family="'Inter','Helvetica Neue',Helvetica,Arial,sans-serif"
-    font-size="88"
-    font-weight="300"
-    fill="white"
-    letter-spacing="-2"
-  >uizorra</text>
+  <!-- WORDMARK: orra -->
+  <text x="168" y="48" 
+        fill="url(#qz_svg_orra)" 
+        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
+        font-size="36" 
+        font-weight="900" 
+        letter-spacing="-1">orra</text>
 </svg>

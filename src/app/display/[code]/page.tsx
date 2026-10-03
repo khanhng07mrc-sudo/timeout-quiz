@@ -124,7 +124,7 @@ export default function DisplayPage() {
           if (p.currentQuestion) {
             setDisplayModeTab("QUESTION");
             if (!p.currentQuestion.timerPending && !p.currentQuestion.bouncebackSelectPhase) {
-              soundManager.playQuestionMusic(p.currentQuestion.timeLimit);
+              soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
             }
           } else {
             setDisplayModeTab("BOARD");
@@ -404,7 +404,7 @@ export default function DisplayPage() {
     });
     socket.on("game:resumed", () => {
       setRoomState((s) => s ? { ...s, status: "PLAYING" } : s);
-      soundManager.playQuestionMusic();
+      soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
     });
     socket.on("game:question:clear", () => {
       setCurrentQuestion(null);
@@ -446,7 +446,7 @@ export default function DisplayPage() {
       if (roomState?.status === "LOBBY") {
         soundManager.playLobbyMusic();
       } else if (currentQuestion && !revealPayload) {
-        soundManager.playQuestionMusic();
+        soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }
     }
   };

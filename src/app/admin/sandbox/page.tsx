@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { io, Socket } from "socket.io-client";
 import type {
   ServerToClientEvents,
   ClientToServerEvents,
   RoomState,
+  TeamState,
   QuestionState,
   GameMode,
   CardType,
@@ -55,6 +56,7 @@ export default function AdminSandboxPage() {
 
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
+  const initialTeamOrderRef = useRef<string[]>([]);
 
   // Bot automation state (default: OFF, manual on-demand control)
   const [botAutoEnabled, setBotAutoEnabled] = useState(false);
@@ -283,6 +285,8 @@ export default function AdminSandboxPage() {
 
   // ── Admin Socket Connection ─────────────────────────────────────────────────
   const connectAdminSocket = useCallback((roomCode: string) => {
+    initialTeamOrderRef.current = [];
+    setActiveTeamIndex(0);
     if (adminSocketRef.current) {
       adminSocketRef.current.disconnect();
     }
@@ -571,6 +575,8 @@ export default function AdminSandboxPage() {
     setIsOfflineSandbox(true);
     const offlineCode = "OFFLINE";
     setCode(offlineCode);
+    initialTeamOrderRef.current = [];
+    setActiveTeamIndex(0);
     saveSandboxSession(offlineCode, true, mode, bankId);
 
     if (offlineTimerRef.current) {
@@ -1917,9 +1923,36 @@ export default function AdminSandboxPage() {
     });
   };
 
+  // Stable team ordering: keeps teams in deterministic positions (index 0, 1, 2, 3) across questions & score updates
+  const stableTeams = useMemo<TeamState[]>(() => {
+    if (!roomState?.teams || roomState.teams.length === 0) return [];
+    if (isOfflineSandbox) {
+      const fixedOrder = ["t_red", "t_blue", "t_yellow", "t_purple"];
+      return [...roomState.teams].sort((a, b) => {
+        const idxA = fixedOrder.indexOf(a.id);
+        const idxB = fixedOrder.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    }
+    if (initialTeamOrderRef.current.length === 0 && roomState.teams.length > 0) {
+      initialTeamOrderRef.current = roomState.teams.map((t) => t.id);
+    }
+    return [...roomState.teams].sort((a, b) => {
+      const idxA = initialTeamOrderRef.current.indexOf(a.id);
+      const idxB = initialTeamOrderRef.current.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }, [roomState?.teams, isOfflineSandbox]);
+
   const handleSwitchActiveTeam = (idx: number) => {
     setActiveTeamIndex(idx);
-    const targetTeam = roomState?.teams[idx];
+    const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     const targetName = idx === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
     playerIframeRef.current?.contentWindow?.postMessage(
@@ -1960,7 +1993,7 @@ export default function AdminSandboxPage() {
     setShowCardModal(false);
   };
 
-  const currentTeam = roomState?.teams?.[activeTeamIndex] || roomState?.teams?.[0];
+  const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
 
   return (
     <div className="h-full max-h-full flex flex-col min-h-0 gap-2 overflow-hidden">
@@ -2708,7 +2741,7 @@ export default function AdminSandboxPage() {
                 </span>
               </div>
               <div className="grid grid-cols-4 gap-1">
-                {(roomState?.teams || []).map((t, idx) => {
+                {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
                   return (
                     <button
@@ -2847,12 +2880,12 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1${(roomState?.teams[activeTeamIndex] || roomState?.teams[0]) ? `&teamId=${(roomState?.teams[activeTeamIndex] || roomState?.teams[0])!.id}&teamIndex=${activeTeamIndex}&name=${encodeURIComponent(activeTeamIndex === 0 ? "Bạn (Tester)" : `${(roomState?.teams[activeTeamIndex] || roomState?.teams[0])!.name} 🤖`)}` : ""}`}
+                  src={`/play/${code}?sandbox=1`}
                   onLoad={() => {
                     if (isOfflineSandbox) {
                       syncToIframes();
                     }
-                    const targetTeam = roomState?.teams[activeTeamIndex] || roomState?.teams[0];
+                    const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
                     if (targetTeam) {
                       const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
                       playerIframeRef.current?.contentWindow?.postMessage(

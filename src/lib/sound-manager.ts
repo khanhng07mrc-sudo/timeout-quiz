@@ -218,17 +218,21 @@ class SoundManager {
 
     // Strict deduplication:
     // If already playing this track type:
-    // 1. If QUESTION mode and same questionId is already playing -> do not restart
-    // 2. If same audioKey was started < 3500ms ago -> do not restart (avoids timer:started restarting question music)
-    // 3. If exact same audio instance is actively playing (not paused) -> do not restart
+    // 1. If QUESTION mode:
+    //    - If the same track is actively playing, DO NOT restart unless an explicit, DIFFERENT questionId is provided.
+    //    - Redundant sync events, timer ticks, or answer submissions without a new question ID will not interrupt the track.
+    // 2. If LOBBY mode:
+    //    - Do not restart if already playing the lobby music.
     if (this.currentMusicType === type) {
       if (type === "QUESTION") {
-        if (questionId && this.currentPlayingQuestionId === questionId) {
-          return;
-        }
-        if (this.currentMusicKey === audioKey && now - this.lastMusicStartTime < 3500) {
-          if (questionId) this.currentPlayingQuestionId = questionId;
-          return;
+        if (this.currentMusicKey === audioKey && !nextAudio.paused && !nextAudio.ended) {
+          if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
+            // Explicit different question ID -> Proceed below to restart for the new question
+          } else {
+            // Same question or redundant sync event -> Keep playing uninterrupted
+            if (questionId) this.currentPlayingQuestionId = questionId;
+            return;
+          }
         }
       } else if (type === "LOBBY" && this.currentMusicKey === audioKey && (now - this.lastMusicStartTime < 3000 || !nextAudio.paused)) {
         return;
@@ -300,10 +304,6 @@ class SoundManager {
    * to preserve authentic Olympia resolutions and gong/reverb effects.
    */
   public playQuestionMusic(remainingSeconds: number = 30, questionId?: string) {
-    if (this.questionMusicTimeout) {
-      clearTimeout(this.questionMusicTimeout);
-      this.questionMusicTimeout = null;
-    }
     if (remainingSeconds <= 0) {
       this.stopMusic(400);
       return;
@@ -318,6 +318,28 @@ class SoundManager {
       selectedKey = "olympia_30s";
     } else {
       selectedKey = "olympia_60s";
+    }
+
+    // Check if this exact track is already actively playing for the current question
+    if (
+      this.currentMusicType === "QUESTION" &&
+      this.currentMusicKey === selectedKey &&
+      this.currentMusicAudio &&
+      !this.currentMusicAudio.paused &&
+      !this.currentMusicAudio.ended
+    ) {
+      // Only restart if an explicit different questionId is provided
+      if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
+        // Proceed below to start track for new question
+      } else {
+        if (questionId) this.currentPlayingQuestionId = questionId;
+        return;
+      }
+    }
+
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
     }
 
     this.playMusicTrack("QUESTION", selectedKey, 0.85, 400, questionId);

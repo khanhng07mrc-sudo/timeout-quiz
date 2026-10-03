@@ -176,11 +176,19 @@ export default function PlayPage() {
           }
           setRoomState((prev) => {
             if (!prev) return prev;
-            const updatedPlayers = prev.players.map((p) =>
-              p.id === currentPid
-                ? { ...p, teamId, name: teamIndex === 0 ? "Bạn (Tester)" : `${teamName} 🤖` }
-                : p
-            );
+            const pName = teamName || (teamIndex === 0 ? "Bạn (Tester)" : `Đội ${teamIndex + 1} 🤖`);
+            const exists = prev.players.some((p) => p.id === currentPid);
+            let updatedPlayers: any[];
+            if (exists) {
+              updatedPlayers = prev.players.map((p) =>
+                p.id === currentPid ? { ...p, teamId, name: pName } : p
+              );
+            } else {
+              updatedPlayers = [
+                ...prev.players,
+                { id: currentPid, name: pName, score: 0, teamId, isHost: teamIndex === 0, isOnline: true },
+              ];
+            }
             return { ...prev, players: updatedPlayers };
           });
           setAnswered(false);

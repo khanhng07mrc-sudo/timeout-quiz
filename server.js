@@ -1280,7 +1280,10 @@ function registerSocketHandlers(io2) {
         const room = await prisma.room.findUnique({
           where: { code },
           include: {
-            teams: { include: { players: true, powerupCards: true } },
+            teams: {
+              orderBy: { createdAt: "asc" },
+              include: { players: true, powerupCards: true }
+            },
             players: true,
             powerupCards: { where: { teamId: null } },
             quizBank: { include: { questions: { orderBy: { order: "asc" } } } }
@@ -4882,7 +4885,10 @@ async function buildRoomState(roomId) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      teams: { include: { players: true, powerupCards: true } },
+      teams: {
+        orderBy: { createdAt: "asc" },
+        include: { players: true, powerupCards: true }
+      },
       players: true,
       powerupCards: { where: { ownerType: "SHARED" } },
       quizBank: { select: { questions: { select: { id: true } } } }
@@ -5030,7 +5036,10 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   const room = await prisma.room.findUnique({
     where: { id: roomId },
     include: {
-      teams: { include: { players: true } }
+      teams: {
+        orderBy: { createdAt: "asc" },
+        include: { players: true }
+      }
     }
   });
   if (!room || room.teamMode !== "TEAM" || room.mode !== "CLASSIC" && room.mode !== "ELIMINATION" && room.mode !== "POWERUP") {

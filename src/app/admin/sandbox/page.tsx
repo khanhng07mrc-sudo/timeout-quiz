@@ -472,6 +472,45 @@ export default function AdminSandboxPage() {
       addLog(`Chuyển về bàn cờ / đường đua`);
     });
 
+    sock.on("game:bounceback:awaiting_judgment", (p) => {
+      const normalizedAns = Array.isArray(p.answer) ? p.answer : (p.answer ? [p.answer] : undefined);
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              bouncebackAwaitingJudgment: p.phase,
+              bouncebackAutoCorrect: p.isAutoCorrect,
+              bouncebackAnswerText: p.answerText,
+              bouncebackPrimaryAnswer: p.phase === "PRIMARY" ? normalizedAns : prev.bouncebackPrimaryAnswer,
+              bouncebackStealAnswer: p.phase === "STEAL" ? normalizedAns : prev.bouncebackStealAnswer,
+            }
+          : prev
+      );
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
+      addLog(`⚖️ [Phán quyết] Đội ${p.targetTeamName} đã chốt: ${p.answerText} (${p.isAutoCorrect ? "✓ Đúng" : "✗ Sai"})`);
+    });
+
+    sock.on("game:early_completed", (p) => {
+      setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
+      addLog(`⏹️ Vòng trả lời đã chốt sớm! (${p.message || ""})`);
+    });
+
+    sock.on("game:answer:finalized", (payload) => {
+      addLog(`🔒 [${payload.actorName}] đã chốt đáp án! (${payload.finalizedCount}/${payload.totalParticipantsCount})`);
+    });
+
+    sock.on("game:answer:received", (payload: any) => {
+      if (payload.teamName || payload.playerName) {
+        const ans = Array.isArray(payload.answer) ? payload.answer.join(", ") : payload.answer;
+        addLog(`📝 [${payload.teamName || payload.playerName}] đã chọn: ${ans}`);
+      }
+    });
+
+    sock.on("game:buzz:locked", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
+      addLog("🔒 Chuông đã KHÓA!");
+    });
+
     sock.on("game:score:update", (scores) => {
       setRoomState((prev) => {
         if (!prev) return prev;
@@ -824,6 +863,26 @@ export default function AdminSandboxPage() {
           const isCorrect = correctOpt ? correctOpt.id === finalAns : false;
           const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
           offlineAnswersRef.current.set(targetTeamId, { answer: finalAns, isCorrect, points: awarded });
+
+          if (selectedMode === "BOUNCEBACK") {
+            const isSteal = Boolean(currentQuestion.stealBuzzedTeamId);
+            const chosenOpt = (qData.options || []).find((o: any) => o.id === finalAns || o.text === finalAns);
+            const ansText = chosenOpt ? `${chosenOpt.text}` : String(finalAns);
+            const ansArr = [finalAns];
+
+            setCurrentQuestion((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    bouncebackAwaitingJudgment: isSteal ? "STEAL" : "PRIMARY",
+                    bouncebackAutoCorrect: isCorrect,
+                    bouncebackAnswerText: ansText,
+                    bouncebackPrimaryAnswer: !isSteal ? ansArr : prev.bouncebackPrimaryAnswer,
+                    bouncebackStealAnswer: isSteal ? ansArr : prev.bouncebackStealAnswer,
+                  }
+                : prev
+            );
+          }
         }
         offlineFinalizedActorsRef.current.add(targetTeamId);
         addLog(`🔒 [${targetTeamName}] đã CHỐT ĐÁP ÁN!`);
@@ -2297,84 +2356,115 @@ export default function AdminSandboxPage() {
                       </div>
                     )}
 
-                    {!revealPayload && (
-                      <div className="flex flex-col gap-1 items-start">
-                        {currentQuestion.bouncebackAnswerText && (
-                          <div className="text-[11px] px-2 py-0.5 rounded bg-black/40 border border-slate-700 text-slate-200">
-                            Đáp án: <strong className="text-white">{currentQuestion.bouncebackAnswerText}</strong>
-                            {currentQuestion.bouncebackAutoCorrect !== undefined && (
-                              <span className={`ml-1 font-bold ${currentQuestion.bouncebackAutoCorrect ? "text-green-400" : "text-red-400"}`}>
-                                ({currentQuestion.bouncebackAutoCorrect ? "✓ Đúng" : "✗ Sai"})
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        {(currentQuestion.answerMethod || roomState?.config.answerMethod || "DEVICE") === "DEVICE" ? (
-                          currentQuestion.bouncebackAutoCorrect === true ? (
-                            <div className="flex items-center gap-1.5">
+                    {!revealPayload && (() => {
+                      const isAwaiting = Boolean(
+                        currentQuestion.bouncebackAwaitingJudgment ||
+                        (timer && timer.remaining <= 0) ||
+                        currentQuestion.bouncebackAnswerText
+                      );
+                      const isDevice = (currentQuestion.answerMethod || roomState?.config.answerMethod || "DEVICE") === "DEVICE";
+
+                      return (
+                        <div className="flex flex-col gap-1 items-start">
+                          {currentQuestion.bouncebackAnswerText && (
+                            <div className="text-[11px] px-2 py-0.5 rounded bg-black/40 border border-slate-700 text-slate-200">
+                              Đáp án: <strong className="text-white">{currentQuestion.bouncebackAnswerText}</strong>
+                              {currentQuestion.bouncebackAutoCorrect !== undefined && (
+                                <span className={`ml-1 font-bold ${currentQuestion.bouncebackAutoCorrect ? "text-green-400" : "text-red-400"}`}>
+                                  ({currentQuestion.bouncebackAutoCorrect ? "✓ Đúng" : "✗ Sai"})
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          {isDevice ? (
+                            isAwaiting ? (
+                              currentQuestion.bouncebackAutoCorrect === true ? (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBouncebackJudge(true)}
+                                    className="px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 animate-pulse cursor-pointer"
+                                    title="Hệ thống xác định Đúng — Xác nhận và công bố kết quả"
+                                  >
+                                    <span>✓</span>
+                                    <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP ĐÚNG (+100%)" : "CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBouncebackJudge(false)}
+                                    className="text-[10px] text-red-400 hover:text-red-300 hover:underline px-1 py-0.5 cursor-pointer"
+                                    title="Can thiệp thủ công: Chấm Sai"
+                                  >
+                                    (Chấm Sai)
+                                  </button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBouncebackJudge(false)}
+                                    className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 animate-pulse cursor-pointer"
+                                    title="Hệ thống xác định Sai — Xác nhận và mở cướp 5s"
+                                  >
+                                    <span>✗</span>
+                                    <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP SAI (-50%)" : "XÁC NHẬN: SAI (MỞ 5S)"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleBouncebackJudge(true)}
+                                    className="text-[10px] text-green-400 hover:text-green-300 hover:underline px-1 py-0.5 cursor-pointer"
+                                    title="Can thiệp thủ công: Chấm Đúng"
+                                  >
+                                    (Chấm Đúng)
+                                  </button>
+                                </div>
+                              )
+                            ) : (
+                              <div className="flex items-center gap-1.5 text-xs text-amber-300 bg-amber-950/40 px-2 py-0.5 rounded border border-amber-500/30">
+                                <span>⏳ Đang đợi {currentQuestion.stealBuzzedTeamId ? "đội cướp" : "đội chính"} trả lời ({timer?.remaining ?? 0}s)...</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleBouncebackJudge(true)}
+                                  className="text-[10px] text-green-400 hover:underline px-1 cursor-pointer"
+                                  title="Chấm Đúng sớm"
+                                >
+                                  (Đúng)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleBouncebackJudge(false)}
+                                  className="text-[10px] text-red-400 hover:underline px-1 cursor-pointer"
+                                  title="Chấm Sai sớm"
+                                >
+                                  (Sai)
+                                </button>
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex items-center gap-1">
                               <button
                                 type="button"
                                 onClick={() => handleBouncebackJudge(true)}
-                                className="px-2.5 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 animate-pulse cursor-pointer"
-                                title="Hệ thống xác định Đúng — Xác nhận và công bố kết quả"
+                                className="px-2 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                                title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp ĐÚNG (+100%, đội chính -100%)" : "Phán quyết đội chính ĐÚNG (+100%)"}
                               >
                                 <span>✓</span>
-                                <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP ĐÚNG (+100%)" : "CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                                <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
                               </button>
                               <button
                                 type="button"
                                 onClick={() => handleBouncebackJudge(false)}
-                                className="text-[10px] text-red-400 hover:text-red-300 hover:underline px-1 py-0.5 cursor-pointer"
-                                title="Can thiệp thủ công: Chấm Sai"
-                              >
-                                (Chấm Sai)
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleBouncebackJudge(false)}
-                                className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 animate-pulse cursor-pointer"
-                                title="Hệ thống xác định Sai — Xác nhận và mở cướp 5s"
+                                className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
+                                title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp SAI (-50%, đội chính 0đ)" : "Phán quyết đội chính SAI (Mở cướp 5s)"}
                               >
                                 <span>✗</span>
-                                <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP SAI (-50%)" : "XÁC NHẬN: SAI (MỞ 5S)"}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleBouncebackJudge(true)}
-                                className="text-[10px] text-green-400 hover:text-green-300 hover:underline px-1 py-0.5 cursor-pointer"
-                                title="Can thiệp thủ công: Chấm Đúng"
-                              >
-                                (Chấm Đúng)
+                                <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
                               </button>
                             </div>
-                          )
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => handleBouncebackJudge(true)}
-                              className="px-2 py-1 rounded-lg bg-green-600 hover:bg-green-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
-                              title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp ĐÚNG (+100%, đội chính -100%)" : "Phán quyết đội chính ĐÚNG (+100%)"}
-                            >
-                              <span>✓</span>
-                              <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP ĐÚNG" : "ĐÚNG (+100%)"}</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleBouncebackJudge(false)}
-                              className="px-2 py-1 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap active:scale-95 cursor-pointer"
-                              title={currentQuestion.stealBuzzedTeamId ? "Phán quyết đội cướp SAI (-50%, đội chính 0đ)" : "Phán quyết đội chính SAI (Mở cướp 5s)"}
-                            >
-                              <span>✗</span>
-                              <span>{currentQuestion.stealBuzzedTeamId ? "CƯỚP SAI" : "SAI (MỞ 5S)"}</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {!currentQuestion.stealBuzzedTeamId && !currentQuestion.isStealPhase && !revealPayload && (
                       <button
@@ -2724,22 +2814,23 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1`}
+                  src={`/play/${code}?sandbox=1${(roomState?.teams[activeTeamIndex] || roomState?.teams[0]) ? `&teamId=${(roomState?.teams[activeTeamIndex] || roomState?.teams[0])!.id}&teamIndex=${activeTeamIndex}&name=${encodeURIComponent(activeTeamIndex === 0 ? "Bạn (Tester)" : `${(roomState?.teams[activeTeamIndex] || roomState?.teams[0])!.name} 🤖`)}` : ""}`}
                   onLoad={() => {
                     if (isOfflineSandbox) {
                       syncToIframes();
                     }
                     const targetTeam = roomState?.teams[activeTeamIndex] || roomState?.teams[0];
                     if (targetTeam) {
+                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
                       playerIframeRef.current?.contentWindow?.postMessage(
                         {
                           type: "SWITCH_ACTIVE_TEAM",
                           teamId: targetTeam.id,
-                          teamName: activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`,
+                          teamName: tName,
                           teamIndex: activeTeamIndex,
                           payload: {
                             teamId: targetTeam.id,
-                            teamName: activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`,
+                            teamName: tName,
                             teamIndex: activeTeamIndex,
                           },
                         },

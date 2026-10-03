@@ -273,11 +273,19 @@ export default function PlayPage() {
       setConnected(true);
       syncClockWithServer(socket);
       joinRoom();
+      const curTeam = myTeamIdRef.current || paramTeamId;
+      if (curTeam) {
+        socket.emit("player:select:team", { teamId: curTeam, playerId: playerIdRef.current || savedPlayerId });
+      }
     });
 
     socket.io.on("reconnect", () => {
       syncClockWithServer(socket);
       joinRoom();
+      const curTeam = myTeamIdRef.current || paramTeamId;
+      if (curTeam) {
+        socket.emit("player:select:team", { teamId: curTeam, playerId: playerIdRef.current || savedPlayerId });
+      }
     });
 
     socket.on("room:state", (state) => {

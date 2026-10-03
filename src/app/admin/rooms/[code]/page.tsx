@@ -926,56 +926,81 @@ export default function AdminRoomPage() {
                   </p>
 
                   {isDeviceAnswer ? (
-                    <div className="space-y-2">
-                      <div className="p-2.5 rounded-xl bg-black/40 border border-slate-700/60 text-left space-y-1">
-                        <div className="text-[11px] text-slate-400">
-                          Đáp án trên máy: <strong className="text-white font-mono">{answerSummaryText}</strong>
+                    !effectiveAwaiting && timerDisplayRemaining > 0 ? (
+                      <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-700/60 text-left space-y-1.5">
+                        <div className="text-[11px] text-amber-300 flex items-center gap-1.5 animate-pulse">
+                          <span>⏳ Đội thi đang suy nghĩ và chọn đáp án trên thiết bị (còn {timerDisplayRemaining}s)...</span>
                         </div>
-                        <div className={`px-2 py-0.5 rounded text-[11px] font-black inline-flex items-center gap-1 ${
-                          isAutoCorrectResult
-                            ? "bg-green-500/20 text-green-300 border border-green-500/40"
-                            : "bg-red-500/20 text-red-300 border border-red-500/40"
-                        }`}>
-                          <span>{isAutoCorrectResult ? "✅ Tự động: ĐÚNG" : "❌ Tự động: SAI"}</span>
+                        <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+                          <span className="text-[10px] text-slate-500">Chấm sớm:</span>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                            className="px-2 py-0.5 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 text-[10px] font-bold cursor-pointer"
+                          >
+                            ✓ Đúng
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                            className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-[10px] font-bold cursor-pointer"
+                          >
+                            ✗ Sai
+                          </button>
                         </div>
                       </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="p-2.5 rounded-xl bg-black/40 border border-slate-700/60 text-left space-y-1">
+                          <div className="text-[11px] text-slate-400">
+                            Đáp án trên máy: <strong className="text-white font-mono">{answerSummaryText}</strong>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded text-[11px] font-black inline-flex items-center gap-1 ${
+                            isAutoCorrectResult
+                              ? "bg-green-500/20 text-green-300 border border-green-500/40"
+                              : "bg-red-500/20 text-red-300 border border-red-500/40"
+                          }`}>
+                            <span>{isAutoCorrectResult ? "✅ Tự động: ĐÚNG" : "❌ Tự động: SAI"}</span>
+                          </div>
+                        </div>
 
-                      {isAutoCorrectResult ? (
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                            className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
-                          >
-                            <span>✓</span>
-                            <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "CÔNG BỐ: ĐÚNG (+100%)"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                            className="w-full py-1 text-[11px] text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-1">
-                          <button
-                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                            className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
-                          >
-                            <span>✗</span>
-                            <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN: SAI (MỞ CƯỚP 5S)"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                            className="w-full py-1 text-[11px] text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        {isAutoCorrectResult ? (
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                              className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
+                            >
+                              <span>✓</span>
+                              <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                              className="w-full py-1 text-[11px] text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <button
+                              onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                              className="w-full py-2.5 px-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 font-black text-xs text-white shadow-lg flex items-center justify-center gap-1.5 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
+                            >
+                              <span>✗</span>
+                              <span>{isStealPhaseActive ? "CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN: SAI (MỞ CƯỚP 5S)"}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                              className="w-full py-1 text-[11px] text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
                   ) : (
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -1558,61 +1583,90 @@ export default function AdminRoomPage() {
             {roomState?.mode === "BOUNCEBACK" && currentQuestion && !revealPayload ? (
               <div className="col-span-2 space-y-2">
                 {isDeviceAnswer ? (
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-left space-y-1">
+                  !effectiveAwaiting && timerDisplayRemaining > 0 ? (
+                    <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-left space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-400">Đội thi:</span>
                         <span className="font-bold text-cyan-300">{targetJudgeName}</span>
                       </div>
-                      <div className="text-xs">
-                        <span className="text-slate-400">Đáp án thí sinh đã chọn: </span>
-                        <strong className="text-white font-mono text-sm">{answerSummaryText}</strong>
+                      <div className="text-xs text-amber-300 flex items-center gap-1.5 animate-pulse">
+                        <span>⏳ Đội thi đang suy nghĩ và chọn đáp án trên thiết bị (còn {timerDisplayRemaining}s)...</span>
                       </div>
-                      <div className={`px-2.5 py-1 rounded text-xs font-black inline-flex items-center gap-1 ${
-                        isAutoCorrectResult
-                          ? "bg-green-500/20 text-green-300 border border-green-500/40"
-                          : "bg-red-500/20 text-red-300 border border-red-500/40"
-                      }`}>
-                        <span>{isAutoCorrectResult ? "✅ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN ĐÚNG" : "❌ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN SAI"}</span>
+                      <div className="flex items-center gap-2 pt-1 border-t border-slate-800">
+                        <span className="text-[10px] text-slate-500">Chấm sớm:</span>
+                        <button
+                          type="button"
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                          className="px-2.5 py-1 rounded bg-green-500/20 text-green-300 hover:bg-green-500/30 text-xs font-bold cursor-pointer"
+                        >
+                          ✓ Chấm Đúng
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                          className="px-2.5 py-1 rounded bg-red-500/20 text-red-300 hover:bg-red-500/30 text-xs font-bold cursor-pointer"
+                        >
+                          ✗ Chấm Sai
+                        </button>
                       </div>
                     </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-700/80 text-left space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-400">Đội thi:</span>
+                          <span className="font-bold text-cyan-300">{targetJudgeName}</span>
+                        </div>
+                        <div className="text-xs">
+                          <span className="text-slate-400">Đáp án thí sinh đã chọn: </span>
+                          <strong className="text-white font-mono text-sm">{answerSummaryText}</strong>
+                        </div>
+                        <div className={`px-2.5 py-1 rounded text-xs font-black inline-flex items-center gap-1 ${
+                          isAutoCorrectResult
+                            ? "bg-green-500/20 text-green-300 border border-green-500/40"
+                            : "bg-red-500/20 text-red-300 border border-red-500/40"
+                        }`}>
+                          <span>{isAutoCorrectResult ? "✅ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN ĐÚNG" : "❌ HỆ THỐNG XÁC ĐỊNH: ĐÁP ÁN SAI"}</span>
+                        </div>
+                      </div>
 
-                    {isAutoCorrectResult ? (
-                      <div className="space-y-1">
-                        <button
-                          onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                          className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
-                        >
-                          <span className="text-lg">✓</span>
-                          <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "XÁC NHẬN & CÔNG BỐ: ĐÚNG (+100%)"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                          className="w-full py-1 text-xs text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <button
-                          onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
-                          className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
-                        >
-                          <span className="text-lg">✗</span>
-                          <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN & MỞ CƯỚP: SAI (5s)"}</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
-                          className="w-full py-1 text-xs text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
-                        >
-                          <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      {isAutoCorrectResult ? (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                            className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-green-400 animate-pulse cursor-pointer"
+                          >
+                            <span className="text-lg">✓</span>
+                            <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP ĐÚNG (+100%)" : "XÁC NHẬN & CÔNG BỐ: ĐÚNG (+100%)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                            className="w-full py-1 text-xs text-red-400/80 hover:text-red-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>⚠️ Can thiệp: Chấm Sai {isStealPhaseActive ? "(-50%)" : "(Mở cướp 5s)"}</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1">
+                          <button
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: false, code })}
+                            className="w-full py-3.5 px-3 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-sm shadow-xl flex items-center justify-center gap-2 active:scale-95 transition ring-2 ring-red-400 animate-pulse cursor-pointer"
+                          >
+                            <span className="text-lg">✗</span>
+                            <span>{isStealPhaseActive ? "XÁC NHẬN & CÔNG BỐ: CƯỚP SAI (-50%)" : "XÁC NHẬN & MỞ CƯỚP: SAI (5s)"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => emit("admin:bounceback:judge", { isCorrect: true, code })}
+                            className="w-full py-1 text-xs text-green-400/80 hover:text-green-300 hover:underline flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <span>⚠️ Can thiệp: Chấm Đúng (+100%)</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <div className="grid grid-cols-2 gap-2">
                     <button

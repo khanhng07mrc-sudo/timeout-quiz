@@ -1,100 +1,123 @@
-<svg viewBox="0 0 280 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 220" width="612" height="220" fill="none">
   <defs>
-    <!-- Q Ring Gradient -->
-    <linearGradient id="qz_logo_qgrad" x1="12" y1="8" x2="48" y2="44" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#c084fc" />
-      <stop offset="35%" stop-color="#8b5cf6" />
-      <stop offset="70%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#06b6d4" />
+    <!-- Q Ring Gradient: Seamless Neon Purple to Electric Cyan -->
+    <linearGradient id="qzRingGrad" x1="50" y1="32" x2="170" y2="152" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d8b4fe" />
+      <stop offset="16%" stop-color="#c084fc" />
+      <stop offset="42%" stop-color="#a855f7" />
+      <stop offset="68%" stop-color="#38bdf8" />
+      <stop offset="88%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#00f2fe" />
     </linearGradient>
 
-    <!-- Swoosh Gradient -->
-    <linearGradient id="qz_logo_swoosh" x1="6" y1="54" x2="54" y2="54" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#a855f7" />
-      <stop offset="50%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#06b6d4" />
+    <!-- Q Tail Gradient: 3D Volumetric Cyan Depth -->
+    <linearGradient id="qzTailGrad" x1="110" y1="96" x2="176" y2="156" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7dd3fc" />
+      <stop offset="30%" stop-color="#38bdf8" />
+      <stop offset="70%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#0284c7" />
     </linearGradient>
 
-    <!-- Text Gradients -->
-    <linearGradient id="qz_text_orra" x1="140" y1="18" x2="245" y2="38" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#a855f7" />
-      <stop offset="45%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#06b6d4" />
+    <!-- Q Tail Highlight Gradient -->
+    <linearGradient id="qzTailHl" x1="118" y1="96" x2="160" y2="134" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="45%" stop-color="#e0f2fe" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.1" />
     </linearGradient>
 
-    <!-- Neon Glow Filter -->
-    <filter id="qz_logo_glow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="2" result="blur" />
+    <!-- Swoosh Gradient: Purple on left -> Electric Cyan on right -->
+    <linearGradient id="qzSwooshGrad" x1="25" y1="180" x2="587" y2="180" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.95" />
+      <stop offset="25%" stop-color="#a855f7" />
+      <stop offset="65%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Soft Neon Glow Filter -->
+    <filter id="qzGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="glow1" />
+      <feGaussianBlur stdDeviation="7" result="glow2" />
       <feMerge>
-        <feMergeNode in="blur" />
+        <feMergeNode in="glow2" />
+        <feMergeNode in="glow1" />
         <feMergeNode in="SourceGraphic" />
       </feMerge>
     </filter>
+
+    <!-- Ambient Halo behind Q -->
+    <filter id="qzHalo" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="halo" />
+    </filter>
+
+    <!-- Text 3D Shadow -->
+    <filter id="qzTextShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#7c3aed" flood-opacity="0.45" />
+      <feDropShadow dx="0" dy="6" stdDeviation="12" flood-color="#06b6d4" flood-opacity="0.22" />
+    </filter>
   </defs>
 
-  <!-- ICON BADGE (left: 0..64) -->
-  <g transform="translate(2, 0)">
-    <!-- Ambient halo -->
-    <circle cx="30" cy="25" r="16" fill="url(#qz_logo_qgrad)" opacity="0.2" filter="url(#qz_logo_glow)" />
+  <!-- AMBIENT NEON HALO (Behind Q) -->
+  <circle cx="110" cy="92" r="66" fill="url(#qzRingGrad)" opacity="0.25" filter="url(#qzHalo)" />
 
-    <!-- Neon Q Letterform -->
-    <g filter="url(#qz_logo_glow)">
-      <circle
-        cx="30"
-        cy="25"
-        r="14"
-        stroke="url(#qz_logo_qgrad)"
-        stroke-width="6.8"
-        stroke-linecap="round"
-      />
-      <path
-        d="M 31 27 Q 35 34 47 42"
-        stroke="url(#qz_logo_qgrad)"
-        stroke-width="6.8"
-        stroke-linecap="round"
-      />
-    </g>
-
-    <!-- Swoosh -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- Q SYMBOL (100% UNCLIPPED, 360° ROUND CIRCLE + 3D CAPSULE TAIL)   -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g filter="url(#qzGlow)">
+    <!-- 1. FULL UNCLIPPED CIRCULAR DONUT RING (360° completely round, zero flat cuts) -->
+    <!-- Center (110, 92), Outer R=60, Inner r=33 -->
     <path
-      d="M 6 55 Q 30 47 54 55"
-      stroke="url(#qz_logo_swoosh)"
-      stroke-width="2.6"
-      stroke-linecap="round"
-      opacity="0.95"
+      fill-rule="evenodd"
+      clip-rule="evenodd"
+      d="M 110 32 C 76.86 32 50 58.86 50 92 C 50 125.14 76.86 152 110 152 C 143.14 152 170 125.14 170 92 C 170 58.86 143.14 32 110 32 Z M 110 59 C 128.22 59 143 73.78 143 92 C 143 110.22 128.22 125 110 125 C 91.78 125 77 110.22 77 92 C 77 73.78 91.78 59 110 59 Z"
+      fill="url(#qzRingGrad)"
+    />
+
+    <!-- Translucent Cyan Inner Sweep along bottom of hole -->
+    <path
+      d="M 116 102 C 96 106, 78 114, 70 128 C 80 130, 98 126, 116 116 Z"
+      fill="#38bdf8"
+      opacity="0.65"
+    />
+
+    <!-- 2. Q TAIL: Solid 3D rounded capsule flowing from inside hole out to bottom-right -->
+    <path
+      d="M 125.51 91.06 A 14.5 14.5 0 0 0 106.49 112.94 L 150.84 154.83 A 17 17 0 0 0 173.16 129.17 Z"
+      fill="url(#qzTailGrad)"
+    />
+
+    <!-- 3. Soft Volumetric Gloss Sheen along top surface of tail -->
+    <path
+      d="M 124.0 95.0 A 6 6 0 0 0 116.0 104.0 L 151.0 137.0 A 7.5 7.5 0 0 0 161.0 126.0 Z"
+      fill="url(#qzTailHl)"
     />
   </g>
 
-  <!-- WORDMARK: Quiz -->
-  <text x="70" y="38" 
-        fill="#ffffff" 
-        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
-        font-size="28" 
-        font-weight="900" 
-        letter-spacing="-0.5">Quiz</text>
-
-  <!-- WORDMARK: orra -->
-  <text x="135" y="38" 
-        fill="url(#qz_text_orra)" 
-        font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" 
-        font-size="28" 
-        font-weight="900" 
-        letter-spacing="-0.5">orra</text>
-
-  <!-- SUBTITLE BADGE -->
-  <g transform="translate(70, 45)">
-    <rect x="0" y="0" width="148" height="15" rx="4" 
-          fill="#1e1b4b" 
-          fill-opacity="0.75" 
-          stroke="#818cf8" 
-          stroke-opacity="0.3" 
-          stroke-width="0.8" />
-    <circle cx="8" cy="7.5" r="2.2" fill="#06b6d4" />
-    <text x="16" y="11" 
-          fill="#c4b5fd" 
-          font-family="system-ui, -apple-system, sans-serif" 
-          font-size="8" 
-          font-weight="800" 
-          letter-spacing="1.2">INTELLECTUAL ARENA</text>
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- SWOOSH / ARC UNDERNEATH (Spans smoothly below Q & text)         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <g filter="url(#qzGlow)">
+    <!-- Aerodynamic Crescent Ribbon -->
+    <path
+      d="M 28 184 C 70 168, 140 168, 220 176 C 360 188, 540 189, 587 181 C 540 193, 360 192, 220 181 C 140 173, 70 173, 28 184 Z"
+      fill="url(#qzSwooshGrad)"
+      opacity="0.95"
+    />
+    <!-- White neon tube core highlight -->
+    <path
+      d="M 45 183.5 C 80 169, 140 169, 220 177 C 360 189, 520 190, 567 182"
+      stroke="#ffffff"
+      stroke-width="1.6"
+      stroke-linecap="round"
+      opacity="0.75"
+    />
   </g>
+
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- WORDMARK: "uizorra" (Pure Vector Path of Poppins-Bold)          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <path
+    d=" M251.08 85.08L268.53 85.08L268.53 142L251.08 142L251.08 134.25Q248.43 138.02 243.89 140.32Q239.35 142.61 233.85 142.61Q227.32 142.61 222.32 139.71Q217.32 136.80 214.57 131.29Q211.81 125.78 211.81 118.34L211.81 85.08L229.15 85.08L229.15 115.99Q229.15 121.70 232.11 124.86Q235.07 128.03 240.07 128.03Q245.17 128.03 248.13 124.86Q251.08 121.70 251.08 115.99 M289.84 79.17Q285.25 79.17 282.35 76.46Q279.44 73.76 279.44 69.78Q279.44 65.70 282.35 63Q285.25 60.30 289.84 60.30Q294.33 60.30 297.24 63Q300.15 65.70 300.15 69.78Q300.15 73.76 297.24 76.46Q294.33 79.17 289.84 79.17M281.07 85.08L298.51 85.08L298.51 142L281.07 142 M351.66 98.96L327.48 127.62L352.17 127.62L352.17 142L308 142L308 128.13L331.66 99.47L308.20 99.47L308.20 85.08L351.66 85.08 M387.66 142.82Q379.30 142.82 372.62 139.25Q365.94 135.68 362.11 129.05Q358.29 122.42 358.29 113.54Q358.29 104.77 362.16 98.09Q366.04 91.41 372.77 87.84Q379.50 84.27 387.87 84.27Q396.23 84.27 402.96 87.84Q409.69 91.41 413.57 98.09Q417.45 104.77 417.45 113.54Q417.45 122.31 413.52 129Q409.59 135.68 402.81 139.25Q396.03 142.82 387.66 142.82M387.66 127.72Q392.66 127.72 396.18 124.05Q399.70 120.38 399.70 113.54Q399.70 106.71 396.28 103.04Q392.86 99.36 387.87 99.36Q382.77 99.36 379.40 102.98Q376.03 106.61 376.03 113.54Q376.03 120.38 379.35 124.05Q382.66 127.72 387.66 127.72 M444.17 94.57Q447.23 89.88 451.82 87.17Q456.41 84.47 462.02 84.47L462.02 102.93L457.23 102.93Q450.70 102.93 447.43 105.74Q444.17 108.54 444.17 115.58L444.17 142L426.73 142L426.73 85.08L444.17 85.08 M487.83 94.57Q490.89 89.88 495.48 87.17Q500.07 84.47 505.68 84.47L505.68 102.93L500.88 102.93Q494.35 102.93 491.09 105.74Q487.83 108.54 487.83 115.58L487.83 142L470.38 142L470.38 85.08L487.83 85.08 M510.57 113.44Q510.57 104.67 513.89 98.04Q517.20 91.41 522.91 87.84Q528.63 84.27 535.66 84.27Q541.68 84.27 546.22 86.72Q550.76 89.16 553.21 93.14L553.21 85.08L570.65 85.08L570.65 142L553.21 142L553.21 133.94Q550.66 137.92 546.12 140.37Q541.58 142.82 535.56 142.82Q528.63 142.82 522.91 139.19Q517.20 135.57 513.89 128.89Q510.57 122.21 510.57 113.44M553.21 113.54Q553.21 107.01 549.59 103.24Q545.97 99.47 540.76 99.47Q535.56 99.47 531.94 103.19Q528.32 106.91 528.32 113.44Q528.32 119.97 531.94 123.79Q535.56 127.62 540.76 127.62Q545.97 127.62 549.59 123.84Q553.21 120.07 553.21 113.54"
+    fill="#ffffff"
+    filter="url(#qzTextShadow)"
+  />
 </svg>

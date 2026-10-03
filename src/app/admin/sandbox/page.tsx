@@ -102,6 +102,7 @@ export default function AdminSandboxPage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showCheatDropdown, setShowCheatDropdown] = useState(false);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
 
   // Sockets
@@ -1208,6 +1209,16 @@ export default function AdminSandboxPage() {
     addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
   };
 
+  // ── Config Toggle Helper ──────────────────────────────────────────────────
+  const updateConfig = useCallback(<K extends keyof NonNullable<RoomState["config"]>>(key: K, value: NonNullable<RoomState["config"]>[K]) => {
+    setRoomState((prev) => {
+      if (!prev) return prev;
+      return { ...prev, config: { ...prev.config, [key]: value } };
+    });
+    addLog(`⚙️ Cài đặt [${String(key)}] = ${JSON.stringify(value)}`);
+    if (isOfflineSandbox) setTimeout(() => syncToIframes(), 50);
+  }, [addLog, isOfflineSandbox, syncToIframes]);
+
   const handleAdminNext = () => {
     if (isOfflineSandbox) {
       // Khi nhấn Bắt đầu ở LOBBY: Hiện bàn cờ/đường đua trước rồi mới hiện câu hỏi!
@@ -2116,7 +2127,10 @@ export default function AdminSandboxPage() {
   };
 
   return (
-    <div className="h-full max-h-full flex flex-col min-h-0 gap-2 overflow-hidden">
+    <div
+      className="h-full max-h-full flex flex-col min-h-0 gap-2 overflow-hidden"
+      onClick={() => { if (showSettingsDropdown) setShowSettingsDropdown(false); if (showCheatDropdown) setShowCheatDropdown(false); }}
+    >
       {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
       <div className="glass rounded-xl px-3 py-2 border border-white/10 flex flex-wrap items-center justify-between gap-2 shadow-lg shrink-0 bg-[#121424]">
         <div className="flex items-center gap-2">
@@ -2553,7 +2567,113 @@ export default function AdminSandboxPage() {
                   <span className="whitespace-nowrap">Bot nộp bài</span>
                 </button>
 
-                {/* Tools Group */}
+                {/* Auto-Timer Toggle (Request E) */}
+                <button
+                  type="button"
+                  onClick={() => updateConfig("autoTimerStart", !roomState?.config.autoTimerStart)}
+                  disabled={!roomState}
+                  className={`px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
+                    roomState?.config.autoTimerStart
+                      ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300 shadow-sm"
+                      : "glass border-white/10 text-muted-foreground hover:text-white"
+                  }`}
+                  title="Bật: đếm ngược tự động khi câu hỏi hiện lên (như Kahoot). Tắt: cần bấm thủ công."
+                >
+                  <span>⏱️</span>
+                  <span className="whitespace-nowrap">Đếm tự động: {roomState?.config.autoTimerStart ? "BẬT" : "TẮT"}</span>
+                </button>
+
+                {/* Settings Dropdown (Request C) */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                    disabled={!roomState}
+                    className={`px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
+                      showSettingsDropdown
+                        ? "bg-slate-500/30 border-slate-400/50 text-white"
+                        : "glass border-white/10 text-muted-foreground hover:text-white"
+                    }`}
+                    title="Cài đặt nâng cao cho chế độ hiện tại"
+                  >
+                    <span>⚙️</span>
+                    <span className="whitespace-nowrap">Cài đặt</span>
+                  </button>
+                  {showSettingsDropdown && roomState && (
+                    <div
+                      className="absolute right-0 top-full mt-1 z-40 w-64 rounded-2xl glass border border-white/20 bg-[#151728]/95 shadow-2xl p-3 flex flex-col gap-2 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-0.5">
+                        <span className="font-black text-white text-[11px]">⚙️ Cài đặt — {roomState.mode}</span>
+                        <button onClick={() => setShowSettingsDropdown(false)} className="text-muted-foreground hover:text-white text-[11px]">✕</button>
+                      </div>
+
+                      {/* Penalty for wrong */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Trừ điểm khi sai</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("penaltyForWrong", !roomState.config.penaltyForWrong)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.penaltyForWrong ? "bg-red-500 border-red-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.penaltyForWrong ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Time bonus */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Bonus thời gian còn lại</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("timeBonusEnabled", !roomState.config.timeBonusEnabled)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.timeBonusEnabled ? "bg-emerald-500 border-emerald-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.timeBonusEnabled ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Answer submission mode */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-300">Chế độ trả lời</span>
+                        <select
+                          value={roomState.config.answerSubmissionMode || "ALLOW_CHANGE"}
+                          onChange={(e) => updateConfig("answerSubmissionMode", e.target.value as any)}
+                          className="px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none"
+                        >
+                          <option value="ALLOW_CHANGE">Cho phép đổi</option>
+                          <option value="SINGLE_SUBMIT">Bấm 1 lần duy nhất</option>
+                        </select>
+                      </div>
+
+                      {/* Auto-timer (duplicate for settings panel) */}
+                      <label className="flex items-center justify-between cursor-pointer gap-2">
+                        <span className="text-slate-300">Đếm ngược tự động</span>
+                        <button
+                          type="button"
+                          onClick={() => updateConfig("autoTimerStart", !roomState.config.autoTimerStart)}
+                          className={`w-10 h-5 rounded-full border transition-all relative ${roomState.config.autoTimerStart ? "bg-cyan-500 border-cyan-400" : "bg-slate-700 border-slate-500"}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${roomState.config.autoTimerStart ? "left-5" : "left-0.5"}`} />
+                        </button>
+                      </label>
+
+                      {/* Penalty points */}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-slate-300">Mức trừ điểm</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={roomState.config.penaltyPoints ?? 10}
+                          onChange={(e) => updateConfig("penaltyPoints", Number(e.target.value))}
+                          className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-1 p-0.5 rounded-lg glass border border-white/10 shrink-0">
                   <button
                     type="button"
@@ -2867,6 +2987,66 @@ export default function AdminSandboxPage() {
                           </button>
                         ))}
                       </>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── WAGER Mode Mini-Panel (Request A: accessible without scrolling) ──── */}
+            {roomState?.mode === "WAGER" && roomState.wagerState && (
+              <div className="glass rounded-xl border border-amber-500/30 bg-[#1a1408]/90 p-2 shrink-0 text-xs">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="font-black text-amber-300 text-[11px]">🎰 Trạng thái Cược</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                    roomState.wagerState.phase === "WAGER_PERIOD" ? "bg-amber-500/30 text-amber-200 animate-pulse" :
+                    roomState.wagerState.phase === "QUESTION_PERIOD" ? "bg-emerald-500/30 text-emerald-200" :
+                    "bg-slate-500/30 text-slate-300"
+                  }`}>
+                    {roomState.wagerState.phase === "WAGER_PERIOD" ? "⏳ Đang cược" :
+                     roomState.wagerState.phase === "QUESTION_PERIOD" ? "📖 Câu hỏi" :
+                     roomState.wagerState.phase || "—"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {stableTeams.map((t) => {
+                    const myBet = roomState.wagerState?.teamWagers?.[t.id];
+                    const isResting = roomState.wagerState?.previousQuestionWagerTeamId === t.id;
+                    const isWinner = roomState.wagerState?.lastWagerTeamId === t.id;
+                    const isActive = activeTeamIndex === stableTeams.indexOf(t);
+                    return (
+                      <div key={t.id} className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border ${isActive ? "border-purple-500/50 bg-purple-500/10" : "border-white/10 bg-black/20"}`}>
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
+                        <span className="font-bold text-[10px] truncate flex-1" style={{ color: t.color }}>{t.name}</span>
+                        <span className="font-mono text-[10px] text-white shrink-0">
+                          {isResting ? <span className="text-purple-300">⏸️</span> :
+                           isWinner ? <span className="text-amber-300">👑</span> :
+                           myBet?.submitted ? <span className="text-amber-200 font-black">+{myBet.amount}đ</span> :
+                           <span className="text-slate-500">—</span>}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Quick bet for current team */}
+                {roomState.wagerState.phase === "WAGER_PERIOD" && (
+                  <div className="mt-1.5 pt-1 border-t border-white/10 flex items-center gap-1 flex-wrap">
+                    <span className="text-amber-400 font-bold text-[10px] shrink-0">
+                      {currentTeam?.name}:
+                    </span>
+                    {roomState.wagerState.previousQuestionWagerTeamId === currentTeam?.id ? (
+                      <span className="text-purple-300 text-[10px]">⏸️ Tạm nghỉ</span>
+                    ) : (
+                      [10, 15, 20, 25, 30].map((amt) => (
+                        <button
+                          key={amt}
+                          type="button"
+                          onClick={() => handleForceActiveTeamWager(amt)}
+                          className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] transition active:scale-95 cursor-pointer shadow"
+                        >
+                          {amt}đ
+                        </button>
+                      ))
                     )}
                   </div>
                 )}

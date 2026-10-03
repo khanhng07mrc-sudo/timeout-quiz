@@ -4094,7 +4094,9 @@ async function processAnswerSubmission({
     isUpdate,
   };
   io.to(`room:${room.code}:admin`).emit("game:answer:received", answerReceivedPayload);
-  io.to(`room:${room.code}`).emit("game:answer:received", answerReceivedPayload);
+  // Note: do NOT broadcast game:answer:received to the full room (player clients).
+  // Only admins need to see live answer notifications. Broadcasting to players can
+  // cause unintended cross-device state contamination.
 
   // 3. Nếu là Đội cướp chuông Bounceback: Chốt ngay lập tức và chuyển sang MC phán quyết
   if (isBouncebackSteal && !isAdminOverride) {

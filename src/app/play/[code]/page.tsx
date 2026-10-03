@@ -356,15 +356,23 @@ export default function PlayPage() {
     });
 
     socket.on("game:question", (q) => {
+      const incomingQId = q?.question?.id ?? null;
+      const isNewQuestion = incomingQId !== lastQuestionIdRef.current;
+      lastQuestionIdRef.current = incomingQId;
       setMatchStarting(null);
       setQuestionPrepare(null);
       setCurrentQuestion(q);
-      setRevealPayload(null);
-      setAnswered(false);
-      setBuzzedBy(null);
-      setHiddenOptionIds([]);
-      setIsStealPhase(Boolean(q.isStealPhase));
-      setUsedCardTypes([]);
+      // Only reset answered/selection state when it's a genuinely new question.
+      // If server re-broadcasts the same question (e.g. state update after someone answers),
+      // keep the current player's selection intact to avoid cross-device contamination.
+      if (isNewQuestion) {
+        setRevealPayload(null);
+        setAnswered(false);
+        setBuzzedBy(null);
+        setHiddenOptionIds([]);
+        setIsStealPhase(Boolean(q.isStealPhase));
+        setUsedCardTypes([]);
+      }
       if (q.stealBuzzedTeamId) {
         setStealBuzzedTeam((prev) =>
           prev && prev.teamId === q.stealBuzzedTeamId

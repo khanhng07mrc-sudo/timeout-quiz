@@ -4086,7 +4086,6 @@ async function processAnswerSubmission({
     isUpdate
   };
   io2.to(`room:${room.code}:admin`).emit("game:answer:received", answerReceivedPayload);
-  io2.to(`room:${room.code}`).emit("game:answer:received", answerReceivedPayload);
   if (isBouncebackSteal && !isAdminOverride) {
     stopQuestionTimer(room.id);
     const stealInfo = roomStealBuzzed.get(qKey);

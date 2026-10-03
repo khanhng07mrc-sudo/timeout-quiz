@@ -829,9 +829,29 @@ export default function AdminSandboxPage() {
         addLog(`🔒 [${targetTeamName}] đã CHỐT ĐÁP ÁN!`);
         checkOfflineEarlyCompletion();
       } else if (action === "buzz") {
-        setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: targetTeamId, buzzedTeamName: targetTeamName } : prev);
-        addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG thành công!`);
-        syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
+        if (selectedMode === "BOUNCEBACK" && currentQuestion?.isStealPhase) {
+          const stealData = { teamId: targetTeamId, teamName: targetTeamName, playerId: "", playerName: "" };
+          const updatedQ: QuestionState = {
+            ...currentQuestion,
+            isStealPhase: false,
+            stealBuzzedTeamId: targetTeamId,
+            stealBuzzedTeamName: targetTeamName,
+            stealAnsweringActive: false,
+            timerPending: true,
+            timerStarted: false,
+          };
+          setCurrentQuestion(updatedQ);
+          addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG CƯỚP ĐIỂM thành công!`);
+          syncToIframes({
+            isStealOpen: false,
+            stealBuzzed: stealData,
+            currentQuestion: updatedQ,
+          });
+        } else {
+          setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: targetTeamId, buzzedTeamName: targetTeamName, buzzAnsweringActive: false, timerPending: true, timerStarted: false } : prev);
+          addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG thành công!`);
+          syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
+        }
       } else if (action === "bounceback_select_points") {
         const pts = (points as 10 | 20 | 30) || 20;
         handleOfflineBouncebackPointsPicked(pts);
@@ -1236,6 +1256,15 @@ export default function AdminSandboxPage() {
   };
 
   const handleStartTimer = () => {
+    if (selectedMode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId) {
+      handleBouncebackStartStealAnswer();
+      return;
+    }
+    if (selectedMode === "BUZZ" && currentQuestion?.buzzedTeamId && !currentQuestion.buzzAnsweringActive) {
+      handleBuzzStartAnswer();
+      return;
+    }
+
     if (isOfflineSandbox) {
       if (!currentQuestion) return;
       const ptsLimit = currentQuestion.selectedPointLevel === 10 ? 15 : currentQuestion.selectedPointLevel === 20 ? 20 : currentQuestion.selectedPointLevel === 30 ? 30 : null;
@@ -1289,6 +1318,44 @@ export default function AdminSandboxPage() {
   const handleBuzzStartAnswer = (duration?: number) => {
     const isMC = currentQuestion?.question.type === "MC_SINGLE" || currentQuestion?.question.type === "TRUE_FALSE" || currentQuestion?.question.type === "MC_MULTI";
     const finalDuration = duration && duration > 0 ? duration : (isMC ? 5 : 15);
+
+    if (isOfflineSandbox) {
+      if (!currentQuestion) return;
+      const endsAt = Date.now() + finalDuration * 1000;
+      const updatedQ: QuestionState = {
+        ...currentQuestion,
+        buzzAnsweringActive: true,
+        timerPending: false,
+        timerStarted: true,
+        timeLimit: finalDuration,
+        startedAt: Date.now(),
+        endsAt,
+        serverTime: Date.now(),
+      };
+      setCurrentQuestion(updatedQ);
+      offlineRemainingRef.current = finalDuration;
+      setTimer({ remaining: finalDuration, total: finalDuration, endsAt });
+      syncToIframes({
+        currentQuestion: updatedQ,
+        timer: { remaining: finalDuration, total: finalDuration, endsAt },
+      });
+
+      if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+      offlineTimerRef.current = setInterval(() => {
+        offlineRemainingRef.current -= 1;
+        const rem = offlineRemainingRef.current;
+        setTimer({ remaining: rem, total: finalDuration, endsAt });
+        syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
+        if (rem <= 0) {
+          if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
+          syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
+        }
+      }, 1000);
+      addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cho đội bấm chuông`);
+      return;
+    }
+
     adminSocketRef.current?.emit("admin:buzz:start_answer", { duration: finalDuration });
     addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cho đội bấm chuông`);
   };
@@ -1307,6 +1374,50 @@ export default function AdminSandboxPage() {
   const handleBouncebackStartStealAnswer = (duration?: number) => {
     const isMC = currentQuestion?.question.type === "MC_SINGLE" || currentQuestion?.question.type === "TRUE_FALSE" || currentQuestion?.question.type === "MC_MULTI";
     const finalDuration = duration && duration > 0 ? duration : (isMC ? 5 : 15);
+
+    if (isOfflineSandbox) {
+      if (!currentQuestion) return;
+      const endsAt = Date.now() + finalDuration * 1000;
+      const updatedQ: QuestionState = {
+        ...currentQuestion,
+        stealAnsweringActive: true,
+        timerPending: false,
+        timerStarted: true,
+        timeLimit: finalDuration,
+        startedAt: Date.now(),
+        endsAt,
+        serverTime: Date.now(),
+      };
+      setCurrentQuestion(updatedQ);
+      offlineRemainingRef.current = finalDuration;
+      setTimer({ remaining: finalDuration, total: finalDuration, endsAt });
+      syncToIframes({
+        currentQuestion: updatedQ,
+        timer: { remaining: finalDuration, total: finalDuration, endsAt },
+        stealBuzzed: currentQuestion.stealBuzzedTeamId ? {
+          teamId: currentQuestion.stealBuzzedTeamId,
+          teamName: currentQuestion.stealBuzzedTeamName || "",
+          playerId: "",
+          playerName: "",
+        } : undefined,
+      });
+
+      if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+      offlineTimerRef.current = setInterval(() => {
+        offlineRemainingRef.current -= 1;
+        const rem = offlineRemainingRef.current;
+        setTimer({ remaining: rem, total: finalDuration, endsAt });
+        syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
+        if (rem <= 0) {
+          if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+          offlineTimerRef.current = null;
+          syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
+        }
+      }, 1000);
+      addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cướp điểm`);
+      return;
+    }
+
     adminSocketRef.current?.emit("admin:bounceback:start_steal_answer", { duration: finalDuration });
     addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cướp điểm`);
   };
@@ -2104,7 +2215,13 @@ export default function AdminSandboxPage() {
                     className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1 whitespace-nowrap"
                   >
                     <span>⏱️</span>
-                    <span>Bắt đầu tính giờ</span>
+                    <span>
+                      {selectedMode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId
+                        ? `Bắt đầu tính giờ cướp (${currentQuestion.stealBuzzedTeamName || "Đội cướp"})`
+                        : selectedMode === "BUZZ" && currentQuestion?.buzzedTeamId
+                        ? `Bắt đầu tính giờ (${currentQuestion.buzzedTeamName || "Đội chuông"})`
+                        : "Bắt đầu tính giờ"}
+                    </span>
                   </button>
                 )}
 

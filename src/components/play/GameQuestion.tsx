@@ -82,8 +82,15 @@ export default function GameQuestion({
   // Primary phase: primary team/player can answer
   const isPrimaryTeam = myActorId && question.primaryTeamId ? myActorId === question.primaryTeamId : !question.primaryTeamId;
   // Steal phase: only steal buzzed team/player can answer
-  const isStealTeam = myActorId && stealBuzzedTeam
-    ? (stealBuzzedTeam.teamId === myActorId || stealBuzzedTeam.playerId === myActorId)
+  const effStealTeam = stealBuzzedTeam || (question.stealBuzzedTeamId ? {
+    teamId: question.stealBuzzedTeamId,
+    teamName: question.stealBuzzedTeamName || "",
+    playerId: "",
+    playerName: "",
+  } : null);
+
+  const isStealTeam = myActorId && effStealTeam
+    ? (effStealTeam.teamId === myActorId || effStealTeam.playerId === myActorId)
     : false;
 
   // In BUZZ mode: only buzzed team/player can answer
@@ -97,13 +104,13 @@ export default function GameQuestion({
       ? (myActorId === question.tournamentTeam1Id || myActorId === question.tournamentTeam2Id)
       : true;
 
-  const isBouncebackSteal = roomMode === "BOUNCEBACK" && Boolean(stealBuzzedTeam);
+  const isBouncebackSteal = roomMode === "BOUNCEBACK" && Boolean(effStealTeam);
   const subMode = question.answerSubmissionMode || "ALLOW_CHANGE";
   const isSingleSubmit = isBouncebackSteal || subMode === "SINGLE_SUBMIT";
 
   const isBuzzedWaitingPrep =
     (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||
-    (roomMode === "BOUNCEBACK" && Boolean(stealBuzzedTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
+    (roomMode === "BOUNCEBACK" && Boolean(effStealTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
 
   const canAnswerThisQuestion = () => {
     if (isSpectator) return false;
@@ -115,7 +122,7 @@ export default function GameQuestion({
     if (question.timerPending) return false;
     if (timer && timerDisplayRemaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
-      if (stealBuzzedTeam) return Boolean(isStealTeam && question.stealAnsweringActive);
+      if (effStealTeam) return Boolean(isStealTeam && question.stealAnsweringActive);
       if (isStealPhase) return false; // In steal buzz phase, only buzzing is allowed
       return isPrimaryTeam;
     }
@@ -324,7 +331,7 @@ export default function GameQuestion({
                 </div>
               </div>
             )
-          ) : stealBuzzedTeam ? (
+          ) : effStealTeam ? (
             isStealTeam ? (
               !question.stealAnsweringActive ? (
                 <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-emerald-950/90 border-2 border-emerald-400 text-center shadow-xl animate-fade-in my-1">
@@ -355,7 +362,7 @@ export default function GameQuestion({
               <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-300 text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow">
                 <span className="text-lg">⚡</span>
                 <span>
-                  Đội <strong className="text-amber-300 font-bold">{stealBuzzedTeam.teamName}</strong> đã giành quyền bấm chuông. Hãy cùng chú ý theo dõi...
+                  Đội <strong className="text-amber-300 font-bold">{effStealTeam.teamName}</strong> đã giành quyền bấm chuông. Hãy cùng chú ý theo dõi...
                 </span>
               </div>
             )
@@ -392,7 +399,7 @@ export default function GameQuestion({
             <div className="mt-3 flex flex-col items-center justify-center gap-2 bg-amber-950/80 border-2 border-amber-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
               <div className="text-3xl">⚡⚖️</div>
               <p className="text-base sm:text-lg font-black text-amber-200">
-                {isStealTeam ? "ĐÃ NỘP CÂU TRẢ LỜI CƯỚP ĐIỂM — ĐANG CHỜ MC PHÁN QUYẾT" : `ĐỘI CƯỚP [${stealBuzzedTeam?.teamName || "CƯỚP"}] ĐÃ TRẢ LỜI — CHỜ MC PHÁN QUYẾT`}
+                {isStealTeam ? "ĐÃ NỘP CÂU TRẢ LỜI CƯỚP ĐIỂM — ĐANG CHỜ MC PHÁN QUYẾT" : `ĐỘI CƯỚP [${effStealTeam?.teamName || "CƯỚP"}] ĐÃ TRẢ LỜI — CHỜ MC PHÁN QUYẾT`}
               </p>
               <p className="text-xs text-amber-300/80">
                 Đúng: +100% điểm cho đội cướp & -100% điểm đội chính | Sai: -50% điểm đội cướp & đội chính 0đ.

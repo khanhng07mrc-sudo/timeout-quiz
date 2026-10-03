@@ -1491,11 +1491,25 @@ export default function AdminRoomPage() {
             {/* Timer pending manual start button */}
             {currentQuestion?.timerPending && (
               <button
-                onClick={() => emit("admin:question:start_timer")}
+                onClick={() => {
+                  if (roomState?.mode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId) {
+                    emit("admin:bounceback:start_steal_answer", { duration: isQuestionMC ? 5 : 15 });
+                  } else if (roomState?.mode === "BUZZ" && currentQuestion?.buzzedTeamId && !currentQuestion?.buzzAnsweringActive) {
+                    emit("admin:buzz:start_answer", { duration: isQuestionMC ? 5 : 15 });
+                  } else {
+                    emit("admin:question:start_timer");
+                  }
+                }}
                 className="py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-green-500 hover:from-amber-400 hover:to-green-400 text-black font-black text-base col-span-2 shadow-2xl animate-pulse inline-flex items-center justify-center gap-2 whitespace-nowrap"
               >
                 <span>⏱️</span>
-                <span className="whitespace-nowrap">Bắt đầu tính thời gian</span>
+                <span className="whitespace-nowrap">
+                  {roomState?.mode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId
+                    ? `Bắt đầu tính giờ cướp: ${currentQuestion.stealBuzzedTeamName || "Đội cướp"} (${isQuestionMC ? "5s" : "15s"})`
+                    : roomState?.mode === "BUZZ" && currentQuestion?.buzzedTeamId
+                    ? `Bắt đầu tính giờ: ${currentQuestion.buzzedTeamName || "Đội chuông"} (${isQuestionMC ? "5s" : "15s"})`
+                    : "Bắt đầu tính thời gian"}
+                </span>
               </button>
             )}
 

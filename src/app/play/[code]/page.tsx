@@ -319,8 +319,21 @@ export default function PlayPage() {
       setAnswered(false);
       setBuzzedBy(null);
       setHiddenOptionIds([]);
-      setIsStealPhase(false);
-      setStealBuzzedTeam(null);
+      setIsStealPhase(Boolean(q.isStealPhase));
+      if (q.stealBuzzedTeamId) {
+        setStealBuzzedTeam((prev) =>
+          prev && prev.teamId === q.stealBuzzedTeamId
+            ? prev
+            : {
+                teamId: q.stealBuzzedTeamId!,
+                teamName: q.stealBuzzedTeamName || "",
+                playerId: "",
+                playerName: "",
+              }
+        );
+      } else {
+        setStealBuzzedTeam(null);
+      }
       if (!q.timerPending && q.endsAt) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });

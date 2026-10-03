@@ -198,9 +198,19 @@ export default function DisplayPage() {
       setQuestionPrepare(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
-      setBuzzed(null);
-      setIsStealOpen(false);
-      setStealBuzzed(null);
+      setIsStealOpen(Boolean(q.isStealPhase));
+      if (q.stealBuzzedTeamId) {
+        setStealBuzzed((prev) =>
+          prev && prev.teamName === (q.stealBuzzedTeamName || prev.teamName)
+            ? prev
+            : {
+                teamName: q.stealBuzzedTeamName || "Đội cướp",
+                playerName: "",
+              }
+        );
+      } else {
+        setStealBuzzed(null);
+      }
       setDisplayModeTab("QUESTION");
       if (!q.timerPending && !q.bouncebackSelectPhase && q.endsAt) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
@@ -208,7 +218,7 @@ export default function DisplayPage() {
       } else {
         setTimer(null);
       }
-      if (!q.timerPending && !q.bouncebackSelectPhase) {
+      if (!q.timerPending && !q.bouncebackSelectPhase && !(q.stealBuzzedTeamId && !q.stealAnsweringActive)) {
         soundManager.playQuestionMusic(q.timeLimit, q.question?.id);
       }
     });

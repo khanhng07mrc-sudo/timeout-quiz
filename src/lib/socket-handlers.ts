@@ -1341,6 +1341,12 @@ export function registerSocketHandlers(io: IO) {
         teamName: buzz.teamName,
         timeLimit,
       });
+      io.to(`room:${room.code}`).emit("game:timer:started", {
+        timeLimit,
+        endsAt: Date.now() + timeLimit * 1000,
+        serverTime: Date.now(),
+        questionId: currentQ.id,
+      });
       startQuestionTimer(io, room.code, room.id, currentQ.id, timeLimit);
     });
 
@@ -1411,6 +1417,12 @@ export function registerSocketHandlers(io: IO) {
         teamId: steal.teamId,
         teamName: steal.teamName,
         timeLimit,
+      });
+      io.to(`room:${room.code}`).emit("game:timer:started", {
+        timeLimit,
+        endsAt: Date.now() + timeLimit * 1000,
+        serverTime: Date.now(),
+        questionId: currentQ.id,
       });
       startQuestionTimer(io, room.code, room.id, currentQ.id, timeLimit);
     });
@@ -2940,6 +2952,60 @@ export function registerSocketHandlers(io: IO) {
       const rawQuestions = room.quizBank?.questions ?? [];
       const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
       if (!q) return;
+
+      // 1. BOUNCEBACK Steal Timer trigger:
+      if (room.mode === "BOUNCEBACK" && activeQ?.stealBuzzedTeamId) {
+        const qKey = `${room.id}:${q.id}`;
+        const steal = roomStealBuzzed.get(qKey) || {
+          teamId: activeQ.stealBuzzedTeamId,
+          teamName: activeQ.stealBuzzedTeamName || "Đội cướp",
+        };
+        const isMultipleChoice = q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" || q.type === "MC_MULTI";
+        const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
+        const defaultDuration = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
+
+        activeQ.stealAnsweringActive = true;
+        activeQ.timeLimit = defaultDuration;
+        activeQ.startedAt = Date.now();
+        activeQ.endsAt = Date.now() + defaultDuration * 1000;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+        io.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
+          teamId: steal.teamId,
+          teamName: steal.teamName,
+          timeLimit: defaultDuration,
+        });
+        io.to(`room:${room.code}`).emit("game:timer:started", {
+          timeLimit: defaultDuration,
+          endsAt: activeQ.endsAt,
+          serverTime: Date.now(),
+          questionId: q.id,
+        });
+        startQuestionTimer(io, room.code, room.id, q.id, defaultDuration);
+        return;
+      }
+
+      // 2. BUZZ Mode Buzzer Answer Timer trigger:
+      if (room.mode === "BUZZ" && activeQ?.buzzedTeamId && !activeQ.buzzAnsweringActive) {
+        const isMultipleChoice = q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" || q.type === "MC_MULTI";
+        const timeLimit = isMultipleChoice ? 5 : 15;
+        activeQ.buzzAnsweringActive = true;
+        activeQ.timeLimit = timeLimit;
+        activeQ.startedAt = Date.now();
+        activeQ.endsAt = Date.now() + timeLimit * 1000;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        io.to(`room:${room.code}`).emit("game:question", activeQ);
+        io.to(`room:${room.code}`).emit("game:timer:started", {
+          timeLimit,
+          endsAt: activeQ.endsAt,
+          serverTime: Date.now(),
+          questionId: q.id,
+        });
+        startQuestionTimer(io, room.code, room.id, q.id, timeLimit);
+        return;
+      }
 
       const effectiveTimeLimit = activeQ?.timeLimit || q.timeLimit;
       const endsAt = Date.now() + effectiveTimeLimit * 1000;

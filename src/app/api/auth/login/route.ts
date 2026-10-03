@@ -5,6 +5,7 @@ import {
   createUserToken,
   createAdminToken,
   getAdminMasterPassword,
+  isValidMasterPassword,
 } from "@/lib/security";
 
 export async function POST(req: NextRequest) {
@@ -12,11 +13,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { email, password, isMasterKey } = body;
 
-    const masterPasscode = getAdminMasterPassword();
+    const isMaster = isValidMasterPassword(password);
 
     // 1. Emergency Master Passcode bypass
-    if (isMasterKey || (!email && password) || password === masterPasscode) {
-      if (password === masterPasscode) {
+    if (isMasterKey || (!email && password) || isMaster) {
+      if (isMaster) {
         const token = createAdminToken();
         const response = NextResponse.json({
           success: true,

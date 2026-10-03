@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getAdminMasterPassword,
+  isValidMasterPassword,
   createAdminToken,
   createUserToken,
   comparePassword,
@@ -59,7 +60,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Master Passcode login
-    if (!password || password !== masterPassword) {
+    if (!password || !isValidMasterPassword(password)) {
       return NextResponse.json(
         { error: "Mật khẩu Quản trị (Admin Passcode) không chính xác" },
         { status: 401 }

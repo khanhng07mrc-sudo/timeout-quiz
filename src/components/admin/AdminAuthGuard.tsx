@@ -69,8 +69,8 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password) {
-      setError("Vui lòng điền đầy đủ Email và Mật khẩu");
+    if (!password) {
+      setError("Vui lòng nhập mật khẩu");
       return;
     }
 
@@ -78,10 +78,15 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
     setError("");
 
     try {
+      const isMasterAttempt = !email.trim();
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password.trim(),
+          isMasterKey: isMasterAttempt,
+        }),
       });
 
       const data = await res.json();
@@ -95,7 +100,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
         setIsAuthenticated(true);
         setPassword("");
       } else {
-        setError(data.error || "Email hoặc mật khẩu không chính xác");
+        setError(data.error || (isMasterAttempt ? "Mật khẩu Quản trị không chính xác" : "Email hoặc mật khẩu không chính xác"));
       }
     } catch {
       setError("Lỗi kết nối máy chủ. Vui lòng thử lại sau.");
@@ -194,7 +199,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   };
 
   const fillDemoAccount = () => {
-    setEmail("demo.host@quizora.io");
+    setEmail("demo.host@quizorra.com");
     setPassword("DemoHost@2026");
     setName("Chủ Phòng Trải Nghiệm");
     setError("");
@@ -218,7 +223,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       <div className="min-h-screen flex items-center justify-center bg-[#0b0c16]">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-400 font-medium">Đang kiểm tra phiên Quizora...</p>
+          <p className="text-sm text-slate-400 font-medium">Đang kiểm tra phiên Quizorra...</p>
         </div>
       </div>
     );
@@ -391,7 +396,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   {loading ? (
                     <span>Đang kiểm tra...</span>
                   ) : (
-                    <span>Đăng nhập vào Quizora</span>
+                    <span>Đăng nhập vào Quizorra</span>
                   )}
                 </button>
               </form>
@@ -467,7 +472,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   {loading ? (
                     <span>Đang tạo tài khoản...</span>
                   ) : (
-                    <span>Tạo tài khoản Quizora miễn phí</span>
+                    <span>Tạo tài khoản Quizorra miễn phí</span>
                   )}
                 </button>
               </form>

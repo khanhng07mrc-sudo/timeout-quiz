@@ -252,7 +252,17 @@ export default function DisplayPage() {
       setBuzzed({ playerName: p.teamName ?? p.playerName });
       soundManager.playBuzz();
     });
-    socket.on("game:buzz:answering", (p) => setBuzzed({ playerName: p.teamName }));
+    socket.on("game:buzz:answering", (p) => {
+      setBuzzed({ playerName: p.teamName });
+      const tLimit = p.timeLimit ?? 15;
+      const endsAt = Date.now() + tLimit * 1000;
+      setTimer({ remaining: tLimit, total: tLimit, endsAt });
+      if (tLimit <= 5) {
+        soundManager.playOlympia5s();
+      } else {
+        soundManager.playQuestionMusic(tLimit);
+      }
+    });
     socket.on("game:bounceback:open_steal", () => {
       setIsStealOpen(true);
       setStealBuzzed(null);
@@ -263,6 +273,16 @@ export default function DisplayPage() {
       setStealBuzzed({ teamName: p.teamName, playerName: p.playerName });
       soundManager.playBuzz();
       // Nhạc 5s bấm chuông tiếp tục chạy tới hết file như yêu cầu
+    });
+    socket.on("game:bounceback:steal_answering", (p) => {
+      const tLimit = p.timeLimit ?? 5;
+      const endsAt = Date.now() + tLimit * 1000;
+      setTimer({ remaining: tLimit, total: tLimit, endsAt });
+      if (tLimit <= 5) {
+        soundManager.playOlympia5s();
+      } else {
+        soundManager.playQuestionMusic(tLimit);
+      }
     });
     socket.on("game:bounceback:points_selected", (payload) => {
       const ptsTimeLimit = payload.timeLimit ?? (payload.points === 10 ? 15 : payload.points === 20 ? 20 : 30);
@@ -804,7 +824,9 @@ export default function DisplayPage() {
           <div className="bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-800 text-white border-2 border-yellow-400 rounded-2xl p-5 text-center font-black animate-bounce-in shadow-2xl flex items-center justify-center gap-4">
             <span className="text-4xl animate-pulse">🚨</span>
             <div>
-              <div className="text-xs uppercase tracking-widest text-yellow-300 font-bold mb-1">GIÀNH QUYỀN TRẢ LỜI THÀNH CÔNG</div>
+              <div className="text-xs uppercase tracking-widest text-yellow-300 font-bold mb-1">
+                {currentQuestion?.stealAnsweringActive ? "⏱️ ĐANG TRẢ LỜI CƯỚP ĐIỂM" : "✨ GIÀNH QUYỀN TRẢ LỜI — ĐANG CHUẨN BỊ"}
+              </div>
               <div className="text-3xl text-yellow-200">ĐỘI {stealBuzzed.teamName.toUpperCase()}</div>
               {stealBuzzed.playerName && <div className="text-sm text-purple-200 font-medium mt-0.5">Thí sinh: {stealBuzzed.playerName}</div>}
             </div>
@@ -815,7 +837,7 @@ export default function DisplayPage() {
         {/* Buzz notification */}
         {buzzed && (
           <div className="bg-yellow-500 text-black rounded-xl p-4 text-center font-black text-2xl animate-bounce-in shadow-xl">
-            ⚡ ĐỘI {buzzed.playerName.toUpperCase()} BUZZ!
+            ⚡ ĐỘI {buzzed.playerName.toUpperCase()} {currentQuestion?.buzzAnsweringActive ? "ĐANG TRẢ LỜI!" : "ĐÃ BẤM CHUÔNG (ĐANG CHUẨN BỊ)"}
           </div>
         )}
 

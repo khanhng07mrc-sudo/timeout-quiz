@@ -595,6 +595,7 @@ export default function AdminRoomPage() {
   const timerDisplayRemaining = timerAuth ? timerAuth.remaining : timer?.remaining ?? 0;
 
   const isDeviceAnswer = (currentQuestion?.answerMethod || roomState?.config.answerMethod || "DEVICE") === "DEVICE";
+  const isQuestionMC = currentQuestion?.question.type === "MC_SINGLE" || currentQuestion?.question.type === "TRUE_FALSE" || currentQuestion?.question.type === "MC_MULTI";
   const effectiveAwaiting = awaitingJudgment || (
     currentQuestion?.bouncebackAwaitingJudgment
       ? {
@@ -1012,16 +1013,66 @@ export default function AdminRoomPage() {
               )}
 
               {stealBuzzed && (
-                <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30 space-y-2">
-                  <p className="text-xs font-bold text-green-300">
-                    ⚡ Đội <span className="underline">{stealBuzzed.teamName}</span> ({stealBuzzed.playerName}) đã cướp chuông!
-                  </p>
-                  <button
-                    onClick={() => emit("admin:bounceback:start_steal_answer")}
-                    className="w-full py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-bold text-xs text-white"
-                  >
-                    ⏱️ Bắt đầu thời gian trả lời cho đội cướp
-                  </button>
+                <div className="p-3.5 rounded-xl bg-green-500/10 border border-green-500/30 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-green-300">
+                      ⚡ Đội <span className="underline">{stealBuzzed.teamName}</span> ({stealBuzzed.playerName}) đã cướp chuông!
+                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold animate-pulse">
+                      {currentQuestion?.stealAnsweringActive ? "Đang trả lời" : "Đang chuẩn bị"}
+                    </span>
+                  </div>
+
+                  {!isDeviceAnswer ? (
+                    <div className="p-2.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-xs text-cyan-200">
+                      🎙️ <strong>Chế độ trả lời qua MC:</strong> Thí sinh trả lời trực tiếp bằng lời nói. MC lắng nghe và bấm phán quyết ĐÚNG / SAI ở bảng bên dưới.
+                    </div>
+                  ) : currentQuestion?.stealAnsweringActive ? (
+                    <div className="p-2.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-xs text-cyan-200 flex items-center justify-between">
+                      <span>⏱️ Thí sinh đang chọn đáp án trên máy:</span>
+                      <span className="font-mono text-sm font-black px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-200">
+                        {timerDisplayRemaining}s
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-slate-300">
+                        Thí sinh đang chuẩn bị. Bấm nút dưới đây để bắt đầu đếm ngược trả lời trên máy:
+                      </p>
+                      {isQuestionMC ? (
+                        <button
+                          onClick={() => emit("admin:bounceback:start_steal_answer", { duration: 5 })}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-xs text-white shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>⏱️ Bắt đầu thời gian trả lời trên máy (5 giây)</span>
+                        </button>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-cyan-300 font-semibold">Chọn thời gian trả lời (Tự luận / Điền từ):</div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              onClick={() => emit("admin:bounceback:start_steal_answer", { duration: 10 })}
+                              className="py-1.5 px-2 rounded-lg bg-cyan-700/60 hover:bg-cyan-600 border border-cyan-500/40 text-[11px] font-bold text-white transition active:scale-95"
+                            >
+                              ⏱️ 10 giây
+                            </button>
+                            <button
+                              onClick={() => emit("admin:bounceback:start_steal_answer", { duration: 15 })}
+                              className="py-1.5 px-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border border-cyan-400 text-[11px] font-bold text-white shadow transition active:scale-95"
+                            >
+                              ⏱️ 15 giây ⭐
+                            </button>
+                            <button
+                              onClick={() => emit("admin:bounceback:start_steal_answer", { duration: 20 })}
+                              className="py-1.5 px-2 rounded-lg bg-cyan-700/60 hover:bg-cyan-600 border border-cyan-500/40 text-[11px] font-bold text-white transition active:scale-95"
+                            >
+                              ⏱️ 20 giây
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1030,16 +1081,66 @@ export default function AdminRoomPage() {
           {roomState?.mode === "BUZZ" && (
             <div className="p-4 rounded-xl bg-amber-900/20 border border-amber-500/30 space-y-3">
               {buzzedTeam ? (
-                <div className="space-y-2">
-                  <p className="text-sm font-bold text-amber-300">
-                    ⚡ Đội <span className="underline">{buzzedTeam.teamName ?? buzzedTeam.playerName}</span> đã bấm chuông sớm nhất!
-                  </p>
-                  <button
-                    onClick={() => emit("admin:buzz:start_answer")}
-                    className="w-full py-2.5 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-sm"
-                  >
-                    ⏱️ Bắt đầu thời gian trả lời cho đội chuông (15s)
-                  </button>
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-bold text-amber-300">
+                      ⚡ Đội <span className="underline">{buzzedTeam.teamName ?? buzzedTeam.playerName}</span> đã bấm chuông sớm nhất!
+                    </p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold animate-pulse">
+                      {currentQuestion?.buzzAnsweringActive ? "Đang trả lời" : "Đang chuẩn bị"}
+                    </span>
+                  </div>
+
+                  {!isDeviceAnswer ? (
+                    <div className="p-2.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-xs text-cyan-200">
+                      🎙️ <strong>Chế độ trả lời qua MC:</strong> Thí sinh trả lời trực tiếp bằng lời nói. MC lắng nghe và chọn đáp án hoặc bấm Đúng/Sai bên dưới.
+                    </div>
+                  ) : currentQuestion?.buzzAnsweringActive ? (
+                    <div className="p-2.5 rounded-lg bg-amber-950/60 border border-amber-500/30 text-xs text-amber-200 flex items-center justify-between">
+                      <span>⏱️ Thí sinh đang chọn đáp án trên máy:</span>
+                      <span className="font-mono text-sm font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
+                        {timerDisplayRemaining}s
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-[11px] text-slate-300">
+                        Thí sinh đang chuẩn bị. Bấm nút dưới đây để bắt đầu đếm ngược trả lời trên máy:
+                      </p>
+                      {isQuestionMC ? (
+                        <button
+                          onClick={() => emit("admin:buzz:start_answer", { duration: 5 })}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-bold text-sm shadow active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>⏱️ Bắt đầu thời gian trả lời trên máy (5 giây)</span>
+                        </button>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="text-[10px] text-amber-300 font-semibold">Chọn thời gian trả lời (Tự luận / Điền từ):</div>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              onClick={() => emit("admin:buzz:start_answer", { duration: 10 })}
+                              className="py-1.5 px-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-[11px] font-bold text-yellow-200 transition active:scale-95"
+                            >
+                              ⏱️ 10 giây
+                            </button>
+                            <button
+                              onClick={() => emit("admin:buzz:start_answer", { duration: 15 })}
+                              className="py-1.5 px-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black text-[11px] font-bold shadow transition active:scale-95"
+                            >
+                              ⏱️ 15 giây ⭐
+                            </button>
+                            <button
+                              onClick={() => emit("admin:buzz:start_answer", { duration: 20 })}
+                              className="py-1.5 px-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-[11px] font-bold text-yellow-200 transition active:scale-95"
+                            >
+                              ⏱️ 20 giây
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground text-center">

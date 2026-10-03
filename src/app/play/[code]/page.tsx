@@ -382,6 +382,13 @@ export default function PlayPage() {
       setBuzzedBy({ playerName: payload.teamName, teamId: payload.teamId, teamName: payload.teamName });
       const endsAt = Date.now() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
+      if (soundEnabledRef.current) {
+        if (payload.timeLimit <= 5) {
+          soundManager.playOlympia5s();
+        } else {
+          soundManager.playQuestionMusic(payload.timeLimit);
+        }
+      }
     });
 
     socket.on("game:bounceback:open_steal", (payload) => {
@@ -400,7 +407,15 @@ export default function PlayPage() {
     });
 
     socket.on("game:bounceback:steal_answering", (payload) => {
-      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit });
+      const endsAt = Date.now() + payload.timeLimit * 1000;
+      setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
+      if (soundEnabledRef.current) {
+        if (payload.timeLimit <= 5) {
+          soundManager.playOlympia5s();
+        } else {
+          soundManager.playQuestionMusic(payload.timeLimit);
+        }
+      }
     });
 
     socket.on("game:bounceback:points_selected", (payload) => {

@@ -1286,9 +1286,11 @@ export default function AdminSandboxPage() {
     addLog("Admin: Mở chuông cho thí sinh bấm (admin:buzz:unlock)");
   };
 
-  const handleBuzzStartAnswer = () => {
-    adminSocketRef.current?.emit("admin:buzz:start_answer");
-    addLog("Admin: Bắt đầu 15s trả lời cho đội bấm chuông");
+  const handleBuzzStartAnswer = (duration?: number) => {
+    const isMC = currentQuestion?.question.type === "MC_SINGLE" || currentQuestion?.question.type === "TRUE_FALSE" || currentQuestion?.question.type === "MC_MULTI";
+    const finalDuration = duration && duration > 0 ? duration : (isMC ? 5 : 15);
+    adminSocketRef.current?.emit("admin:buzz:start_answer", { duration: finalDuration });
+    addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cho đội bấm chuông`);
   };
 
   const handleBouncebackOpenSteal = () => {
@@ -1302,9 +1304,11 @@ export default function AdminSandboxPage() {
     addLog("Admin: Mở cửa sổ chuông cướp điểm 5s");
   };
 
-  const handleBouncebackStartStealAnswer = () => {
-    adminSocketRef.current?.emit("admin:bounceback:start_steal_answer");
-    addLog("Admin: Bắt đầu 15s trả lời cướp điểm");
+  const handleBouncebackStartStealAnswer = (duration?: number) => {
+    const isMC = currentQuestion?.question.type === "MC_SINGLE" || currentQuestion?.question.type === "TRUE_FALSE" || currentQuestion?.question.type === "MC_MULTI";
+    const finalDuration = duration && duration > 0 ? duration : (isMC ? 5 : 15);
+    adminSocketRef.current?.emit("admin:bounceback:start_steal_answer", { duration: finalDuration });
+    addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cướp điểm`);
   };
 
   const handleBouncebackJudge = (isCorrect: boolean) => {
@@ -2118,14 +2122,42 @@ export default function AdminSandboxPage() {
                       </button>
                     )}
                     {currentQuestion.buzzedTeamId && (
-                      <button
-                        type="button"
-                        onClick={handleBuzzStartAnswer}
-                        className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                      >
-                        <span>🎙️</span>
-                        <span>Cho trả lời 15s</span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {currentQuestion.question.type === "MC_SINGLE" || currentQuestion.question.type === "TRUE_FALSE" || currentQuestion.question.type === "MC_MULTI" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleBuzzStartAnswer(5)}
+                            className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                          >
+                            <span>⏱️</span>
+                            <span>Cho trả lời 5s</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleBuzzStartAnswer(10)}
+                              className="px-1.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold shadow whitespace-nowrap"
+                            >
+                              10s
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBuzzStartAnswer(15)}
+                              className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow whitespace-nowrap"
+                            >
+                              15s ⭐
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBuzzStartAnswer(20)}
+                              className="px-1.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold shadow whitespace-nowrap"
+                            >
+                              20s
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </>
                 )}
@@ -2238,14 +2270,42 @@ export default function AdminSandboxPage() {
                       </button>
                     )}
                     {currentQuestion.stealBuzzedTeamId && (
-                      <button
-                        type="button"
-                        onClick={handleBouncebackStartStealAnswer}
-                        className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
-                      >
-                        <span>🎙️</span>
-                        <span>Cho cướp 15s</span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {currentQuestion.question.type === "MC_SINGLE" || currentQuestion.question.type === "TRUE_FALSE" || currentQuestion.question.type === "MC_MULTI" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleBouncebackStartStealAnswer(5)}
+                            className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap"
+                          >
+                            <span>⏱️</span>
+                            <span>Cho cướp 5s</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleBouncebackStartStealAnswer(10)}
+                              className="px-1.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold shadow whitespace-nowrap"
+                            >
+                              10s
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBouncebackStartStealAnswer(15)}
+                              className="px-2 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black shadow whitespace-nowrap"
+                            >
+                              15s ⭐
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleBouncebackStartStealAnswer(20)}
+                              className="px-1.5 py-1 rounded-lg bg-cyan-700 hover:bg-cyan-600 text-white text-[11px] font-bold shadow whitespace-nowrap"
+                            >
+                              20s
+                            </button>
+                          </>
+                        )}
+                      </div>
                     )}
                   </>
                 )}

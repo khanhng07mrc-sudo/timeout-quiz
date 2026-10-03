@@ -101,6 +101,10 @@ export default function GameQuestion({
   const subMode = question.answerSubmissionMode || "ALLOW_CHANGE";
   const isSingleSubmit = isBouncebackSteal || subMode === "SINGLE_SUBMIT";
 
+  const isBuzzedWaitingPrep =
+    (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||
+    (roomMode === "BOUNCEBACK" && Boolean(stealBuzzedTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
+
   const canAnswerThisQuestion = () => {
     if (isSpectator) return false;
     if (isFinalizedLocally) return false;
@@ -111,12 +115,12 @@ export default function GameQuestion({
     if (question.timerPending) return false;
     if (timer && timerDisplayRemaining <= 0) return false;
     if (roomMode === "BOUNCEBACK") {
-      if (stealBuzzedTeam) return isStealTeam;
+      if (stealBuzzedTeam) return Boolean(isStealTeam && question.stealAnsweringActive);
       if (isStealPhase) return false; // In steal buzz phase, only buzzing is allowed
       return isPrimaryTeam;
     }
     if (roomMode === "BUZZ") {
-      return isBuzzedTeam;
+      return Boolean(isBuzzedTeam && question.buzzAnsweringActive);
     }
     if (roomMode === "GRID_CARO" || roomMode === "DICE_RACE") {
       return isPrimaryTeam;
@@ -171,7 +175,11 @@ export default function GameQuestion({
   };
 
   return (
-    <div className="glass rounded-2xl p-3 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 animate-slide-up">
+    <div className={`glass rounded-2xl p-3 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 animate-slide-up transition-all duration-500 ${
+      isBuzzedWaitingPrep
+        ? "border-2 border-emerald-400/90 shadow-[0_0_35px_rgba(16,185,129,0.35)] ring-2 ring-emerald-400/30"
+        : ""
+    }`}>
       {/* Spectator Mode Notice */}
       {isSpectator && (
         <div className="p-3.5 rounded-2xl bg-purple-900/40 border-2 border-purple-500/50 text-purple-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg">
@@ -181,7 +189,7 @@ export default function GameQuestion({
       )}
 
       {/* Timer Pending Alert */}
-      {question.timerPending && !revealPayload && (
+      {question.timerPending && !revealPayload && !isBuzzedWaitingPrep && (
         <div className="p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 animate-pulse shadow-lg">
           <span className="text-xl">⏳</span>
           <span>Lắng nghe câu hỏi — Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
@@ -189,7 +197,7 @@ export default function GameQuestion({
       )}
 
       {/* Timer */}
-      {timer && !question.bouncebackSelectPhase && (
+      {timer && !question.bouncebackSelectPhase && !isBuzzedWaitingPrep && (
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-12">
             <svg className="w-12 h-12" viewBox="0 0 48 48">
@@ -317,14 +325,40 @@ export default function GameQuestion({
               </div>
             )
           ) : stealBuzzedTeam ? (
-            <div className="bg-purple-500/20 border border-purple-500/40 p-4 rounded-xl text-purple-200 text-center space-y-1">
-              <p className="text-base font-black text-cyan-300">
-                ⚡ Đội <span className="underline">{stealBuzzedTeam.teamName}</span> đã cướp chuông thành công!
-              </p>
-              <p className="text-xs text-purple-300">
-                {isStealTeam ? "👉 Đội của bạn đang trả lời (Chỉ 1 lần chọn duy nhất!)" : "Đang chờ đội cướp trả lời..."}
-              </p>
-            </div>
+            isStealTeam ? (
+              !question.stealAnsweringActive ? (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-emerald-950/90 border-2 border-emerald-400 text-center shadow-xl animate-fade-in my-1">
+                  <div className="flex items-center justify-center gap-2 text-emerald-300 font-black text-base sm:text-lg mb-1">
+                    <span className="text-2xl animate-pulse">✨</span>
+                    <span>BẠN ĐÃ GIÀNH QUYỀN TRẢ LỜI!</span>
+                  </div>
+                  <p className="text-sm sm:text-base text-emerald-100 font-semibold">
+                    Hãy bình tĩnh suy nghĩ câu trả lời...
+                  </p>
+                  <p className="text-xs text-emerald-300/80 mt-1">
+                    {isMcMode
+                      ? "🎙️ Bạn hãy chuẩn bị và trả lời trực tiếp cho MC / Quản trò."
+                      : "⏳ Quản trò (MC) sẽ bấm bắt đầu tính giờ trên máy khi bạn đã sẵn sàng."}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-purple-500/20 border border-purple-500/40 p-4 rounded-xl text-purple-200 text-center space-y-1 my-1">
+                  <p className="text-base font-black text-cyan-300">
+                    ⚡ Đội của bạn đang trong thời gian trả lời! (Chỉ 1 lần chọn duy nhất)
+                  </p>
+                  <p className="text-xs text-purple-300">
+                    Hãy chọn hoặc nhập câu trả lời trên màn hình trước khi hết giờ.
+                  </p>
+                </div>
+              )
+            ) : (
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-300 text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow">
+                <span className="text-lg">⚡</span>
+                <span>
+                  Đội <strong className="text-amber-300 font-bold">{stealBuzzedTeam.teamName}</strong> đã giành quyền bấm chuông. Hãy cùng chú ý theo dõi...
+                </span>
+              </div>
+            )
           ) : (
             <div className="bg-blue-500/15 border border-blue-500/30 p-3 rounded-lg flex items-center justify-between">
               <div>
@@ -420,10 +454,35 @@ export default function GameQuestion({
               </button>
             </div>
           ) : (
-            <div className="bg-yellow-500/20 border border-yellow-500/40 p-3 rounded-lg text-yellow-200">
-              ⚡ Đội <span className="font-bold text-white">{buzzedBy.teamName ?? buzzedBy.playerName}</span> đã bấm chuông sớm nhất!
-              {isBuzzedTeam && " 👉 Đội bạn đang có quyền trả lời!"}
-            </div>
+            isBuzzedTeam ? (
+              !question.buzzAnsweringActive ? (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/90 to-emerald-950/90 border-2 border-emerald-400 text-center shadow-xl animate-fade-in my-1">
+                  <div className="flex items-center justify-center gap-2 text-emerald-300 font-black text-base sm:text-lg mb-1">
+                    <span className="text-2xl animate-pulse">✨</span>
+                    <span>BẠN ĐÃ GIÀNH QUYỀN TRẢ LỜI!</span>
+                  </div>
+                  <p className="text-sm sm:text-base text-emerald-100 font-semibold">
+                    Hãy bình tĩnh suy nghĩ câu trả lời...
+                  </p>
+                  <p className="text-xs text-emerald-300/80 mt-1">
+                    {isMcMode
+                      ? "🎙️ Bạn hãy chuẩn bị và trả lời trực tiếp cho MC / Quản trò."
+                      : "⏳ Quản trò (MC) sẽ bấm bắt đầu tính giờ trên máy khi bạn đã sẵn sàng."}
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-yellow-500/20 border border-yellow-500/40 p-3 rounded-lg text-yellow-200 my-1">
+                  ⚡ Đội <span className="font-bold text-white">{buzzedBy.teamName ?? buzzedBy.playerName}</span> đang trong thời gian trả lời!
+                </div>
+              )
+            ) : (
+              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-300 text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow">
+                <span className="text-lg">⚡</span>
+                <span>
+                  Đội <strong className="text-amber-300 font-bold">{buzzedBy.teamName ?? buzzedBy.playerName}</strong> đã bấm chuông sớm nhất. Hãy cùng chú ý theo dõi...
+                </span>
+              </div>
+            )
           )}
         </div>
       )}

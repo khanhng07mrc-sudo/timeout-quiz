@@ -948,10 +948,10 @@ export interface ClientToServerEvents {
   "admin:shuffle:cards": () => void;
   "admin:lock:cards": (locked: boolean) => void;
   "admin:buzz:clear": () => void;
-  "admin:buzz:start_answer": () => void;
+  "admin:buzz:start_answer": (payload?: { duration?: number }) => void;
   "admin:buzz:unlock": () => void;
   "admin:bounceback:open_steal": () => void;
-  "admin:bounceback:start_steal_answer": () => void;
+  "admin:bounceback:start_steal_answer": (payload?: { duration?: number }) => void;
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "admin:bounceback:judge": (payload: { isCorrect: boolean; code?: string }) => void;
   "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;

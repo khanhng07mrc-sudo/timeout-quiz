@@ -1672,6 +1672,16 @@ function registerSocketHandlers(io2) {
         const buzzInfo = { teamId, teamName, playerId, playerName: player.name };
         roomBuzzFirst.set(qKey, buzzInfo);
         stopQuestionTimer(room.id);
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (activeQ) {
+          activeQ.buzzedTeamId = teamId;
+          activeQ.buzzedTeamName = teamName;
+          activeQ.buzzedBy = player.name;
+          activeQ.buzzAnsweringActive = false;
+          activeQ.timerPending = true;
+          activeQ.timerStarted = false;
+          io2.to(`room:${room.code}`).emit("game:question", activeQ);
+        }
         io2.to(`room:${room.code}`).emit("game:buzz", {
           playerId,
           playerName: player.name,
@@ -1691,37 +1701,22 @@ function registerSocketHandlers(io2) {
           roomStealTimer.delete(qKey);
         }
         roomStealPhase.set(qKey, false);
+        stopQuestionTimer(room.id);
         const teamId = player.teamId ?? player.id;
         const teamName = player.team?.name ?? player.name;
         const stealInfo = { teamId, teamName, playerId, playerName: player.name };
         roomStealBuzzed.set(qKey, stealInfo);
         const activeQ = roomActiveQuestions.get(room.id);
-        const questions2 = await getRoomQuestions(room.id);
-        const currentQ2 = questions2[room.currentQuestion];
-        const isMultipleChoice = currentQ2?.type === "MC_SINGLE" || currentQ2?.type === "TRUE_FALSE" || currentQ2?.type === "MC_MULTI";
-        const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
-        const stealTimeLimit = isMultipleChoice ? 5 : chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20;
         if (activeQ) {
           activeQ.isStealPhase = false;
           activeQ.stealBuzzedTeamId = stealInfo.teamId;
           activeQ.stealBuzzedTeamName = stealInfo.teamName;
-          activeQ.stealAnsweringActive = true;
-          activeQ.timeLimit = stealTimeLimit;
-          activeQ.startedAt = Date.now();
-          activeQ.endsAt = Date.now() + stealTimeLimit * 1e3;
-          activeQ.timerPending = false;
-          activeQ.timerStarted = true;
+          activeQ.stealAnsweringActive = false;
+          activeQ.timerPending = true;
+          activeQ.timerStarted = false;
           io2.to(`room:${room.code}`).emit("game:question", activeQ);
         }
         io2.to(`room:${room.code}`).emit("game:bounceback:steal_buzzed", stealInfo);
-        io2.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
-          teamId: stealInfo.teamId,
-          teamName: stealInfo.teamName,
-          timeLimit: stealTimeLimit
-        });
-        if (currentQ2) {
-          startQuestionTimer(io2, room.code, room.id, currentQ2.id, stealTimeLimit);
-        }
       }
     });
     socket.on("admin:buzz:unlock", async () => {
@@ -1738,7 +1733,7 @@ function registerSocketHandlers(io2) {
       roomBuzzUnlocked.set(qKey, true);
       io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
     });
-    socket.on("admin:buzz:start_answer", async () => {
+    socket.on("admin:buzz:start_answer", async (payload) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
       const questions = await getRoomQuestions(room.id);
@@ -1747,7 +1742,18 @@ function registerSocketHandlers(io2) {
       const qKey = `${room.id}:${currentQ.id}`;
       const buzz = roomBuzzFirst.get(qKey);
       if (!buzz) return;
-      const timeLimit = 15;
+      const isMultipleChoice = currentQ.type === "MC_SINGLE" || currentQ.type === "TRUE_FALSE" || currentQ.type === "MC_MULTI";
+      const timeLimit = payload?.duration && payload.duration > 0 ? payload.duration : isMultipleChoice ? 5 : 15;
+      const activeQ = roomActiveQuestions.get(room.id);
+      if (activeQ) {
+        activeQ.buzzAnsweringActive = true;
+        activeQ.timeLimit = timeLimit;
+        activeQ.startedAt = Date.now();
+        activeQ.endsAt = Date.now() + timeLimit * 1e3;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        io2.to(`room:${room.code}`).emit("game:question", activeQ);
+      }
       io2.to(`room:${room.code}`).emit("game:buzz:answering", {
         teamId: buzz.teamId,
         teamName: buzz.teamName,
@@ -1779,7 +1785,7 @@ function registerSocketHandlers(io2) {
         await finalizeBouncebackPrimary(io2, room.id, room.code, q.id, isCorrect);
       }
     });
-    socket.on("admin:bounceback:start_steal_answer", async () => {
+    socket.on("admin:bounceback:start_steal_answer", async (payload) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
       const questions = await getRoomQuestions(room.id);
@@ -1790,7 +1796,8 @@ function registerSocketHandlers(io2) {
       if (!steal) return;
       const isMultipleChoice = currentQ.type === "MC_SINGLE" || currentQ.type === "TRUE_FALSE" || currentQ.type === "MC_MULTI";
       const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
-      const timeLimit = isMultipleChoice ? 5 : chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20;
+      const defaultDuration = isMultipleChoice ? 5 : chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20;
+      const timeLimit = payload?.duration && payload.duration > 0 ? payload.duration : defaultDuration;
       const activeQ = roomActiveQuestions.get(room.id);
       if (activeQ) {
         activeQ.stealAnsweringActive = true;

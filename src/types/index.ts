@@ -882,7 +882,7 @@ export interface ServerToClientEvents {
   "game:buzz:closed": () => void;
   "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
   "game:bounceback:open_steal": (payload: { questionId: string; timeLimit: number }) => void;
-  "game:bounceback:steal_buzzed": (payload: { teamId: string; teamName: string; playerId: string; playerName: string }) => void;
+  "game:bounceback:steal_buzzed": (payload: { teamId: string; teamName: string; playerId: string; playerName: string; prepSeconds?: number }) => void;
   "game:bounceback:steal_answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
   "game:answer:reveal": (payload: AnswerRevealPayload) => void;
   "game:score:update": (scores: ScoreUpdate[]) => void;

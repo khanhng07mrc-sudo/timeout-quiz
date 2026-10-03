@@ -64,7 +64,7 @@ const adminSockets = new Map<string, string>(); // socketId -> roomId
 const roomTimers = new Map<string, NodeJS.Timeout>(); // roomId -> timer
 const roomRemainingTimes = new Map<string, number>(); // roomId -> remaining seconds
 const roomTimerEndsAt = new Map<string, number>(); // roomId -> endsAt timestamp (epoch ms)
-const roomQuestionTeamCards = new Map<string, Map<string, ActiveTeamCard>>(); // qKey -> Map(teamId -> ActiveTeamCard)
+const roomQuestionTeamCards = new Map<string, Map<string, ActiveTeamCard[]>>(); // qKey -> Map(teamId -> ActiveTeamCard[])
 const roomFrozenTeams = new Map<string, Set<string>>(); // qKey -> Set(teamId)
 const roomFiftyFifty = new Map<string, Map<string, string[]>>(); // qKey -> Map(teamId -> hiddenOptionIds[])
 const roomQuestionProcessed = new Set<string>(); // qKey to prevent double team scoring
@@ -656,6 +656,52 @@ async function getAdminRoom(socket: Sock, payloadCode?: string) {
 
 export function registerSocketHandlers(io: IO) {
   globalIO = io;
+
+  const startStealAnsweringTimer = async (
+    roomId: string,
+    roomCode: string,
+    currentQ: any,
+    customDuration?: number
+  ) => {
+    const qKey = `${roomId}:${currentQ.id}`;
+    const prepKey = `${roomId}:steal_prep`;
+    if (roomStealTimer.has(prepKey)) {
+      clearTimeout(roomStealTimer.get(prepKey)!);
+      roomStealTimer.delete(prepKey);
+    }
+
+    const steal = roomStealBuzzed.get(qKey);
+    if (!steal) return;
+
+    const isMultipleChoice = currentQ.type === "MC_SINGLE" || currentQ.type === "TRUE_FALSE" || currentQ.type === "MC_MULTI";
+    const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
+    const defaultDuration = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
+    const timeLimit = customDuration && customDuration > 0 ? customDuration : defaultDuration;
+
+    const activeQ = roomActiveQuestions.get(roomId);
+    if (activeQ) {
+      activeQ.stealAnsweringActive = true;
+      activeQ.timeLimit = timeLimit;
+      activeQ.startedAt = Date.now();
+      activeQ.endsAt = Date.now() + timeLimit * 1000;
+      activeQ.timerPending = false;
+      activeQ.timerStarted = true;
+      io.to(`room:${roomCode}`).emit("game:question", activeQ);
+    }
+
+    io.to(`room:${roomCode}`).emit("game:bounceback:steal_answering", {
+      teamId: steal.teamId,
+      teamName: steal.teamName,
+      timeLimit,
+    });
+    io.to(`room:${roomCode}`).emit("game:timer:started", {
+      timeLimit,
+      endsAt: Date.now() + timeLimit * 1000,
+      serverTime: Date.now(),
+      questionId: currentQ.id,
+    });
+    startQuestionTimer(io, roomCode, roomId, currentQ.id, timeLimit);
+  };
 
   io.on("connection", (socket: Sock) => {
     console.log(`[Socket] Connected: ${socket.id}`);
@@ -1278,13 +1324,30 @@ export function registerSocketHandlers(io: IO) {
           activeQ.isStealPhase = false;
           activeQ.stealBuzzedTeamId = stealInfo.teamId;
           activeQ.stealBuzzedTeamName = stealInfo.teamName;
-          activeQ.stealAnsweringActive = false; // Crucial: Do NOT start answering immediately! Wait for MC!
+          activeQ.stealAnsweringActive = false; // Do NOT start answering immediately! 3s buffer first!
           activeQ.timerPending = true;
           activeQ.timerStarted = false;
           io.to(`room:${room.code}`).emit("game:question", activeQ);
         }
 
-        io.to(`room:${room.code}`).emit("game:bounceback:steal_buzzed", stealInfo);
+        io.to(`room:${room.code}`).emit("game:bounceback:steal_buzzed", {
+          ...stealInfo,
+          prepSeconds: 3,
+        });
+
+        // 3 giây đệm 'SẴN SÀNG' để thí sinh chuẩn bị tâm lý trước khi đồng hồ trả lời chính thức chạy
+        const prepKey = `${room.id}:steal_prep`;
+        if (roomStealTimer.has(prepKey)) {
+          clearTimeout(roomStealTimer.get(prepKey)!);
+        }
+        const prepTimeout = setTimeout(async () => {
+          roomStealTimer.delete(prepKey);
+          const currentActiveQ = roomActiveQuestions.get(room.id);
+          if (currentActiveQ && currentActiveQ.stealBuzzedTeamId === stealInfo.teamId && !currentActiveQ.stealAnsweringActive) {
+            await startStealAnsweringTimer(room.id, room.code, currentQ);
+          }
+        }, 3000);
+        roomStealTimer.set(prepKey, prepTimeout);
       }
     });
 
@@ -1392,39 +1455,7 @@ export function registerSocketHandlers(io: IO) {
       const questions = await getRoomQuestions(room.id);
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
-      const qKey = `${room.id}:${currentQ.id}`;
-
-      const steal = roomStealBuzzed.get(qKey);
-      if (!steal) return;
-
-      const isMultipleChoice = currentQ.type === "MC_SINGLE" || currentQ.type === "TRUE_FALSE" || currentQ.type === "MC_MULTI";
-      const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
-      const defaultDuration = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
-      const timeLimit = payload?.duration && payload.duration > 0 ? payload.duration : defaultDuration;
-
-      const activeQ = roomActiveQuestions.get(room.id);
-      if (activeQ) {
-        activeQ.stealAnsweringActive = true;
-        activeQ.timeLimit = timeLimit;
-        activeQ.startedAt = Date.now();
-        activeQ.endsAt = Date.now() + timeLimit * 1000;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
-        io.to(`room:${room.code}`).emit("game:question", activeQ);
-      }
-
-      io.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
-        teamId: steal.teamId,
-        teamName: steal.teamName,
-        timeLimit,
-      });
-      io.to(`room:${room.code}`).emit("game:timer:started", {
-        timeLimit,
-        endsAt: Date.now() + timeLimit * 1000,
-        serverTime: Date.now(),
-        questionId: currentQ.id,
-      });
-      startQuestionTimer(io, room.code, room.id, currentQ.id, timeLimit);
+      await startStealAnsweringTimer(room.id, room.code, currentQ, payload?.duration);
     });
 
     // ── Bounceback Select Point Level (Olympia 10, 20, 30đ) ───────────────────
@@ -1535,6 +1566,11 @@ export function registerSocketHandlers(io: IO) {
           socket.emit("error", "Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm!");
           return;
         }
+        const primary = roomPrimaryTeams.get(qKey);
+        if (primary && player.teamId !== primary.teamId) {
+          socket.emit("error", "Ở phần thi Về đích, chỉ đội chính mới được dùng thẻ hỗ trợ ở câu này!");
+          return;
+        }
         const activeQ = roomActiveQuestions.get(room.id);
         if (activeQ?.timerStarted) {
           socket.emit("error", "Ở phần thi Về đích, Ngôi sao hy vọng và thẻ hỗ trợ chỉ được kích hoạt trước khi bắt đầu đếm ngược!");
@@ -1542,20 +1578,15 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      if (room.teamMode === "TEAM" && qKey) {
-        let teamCardsMap = roomQuestionTeamCards.get(qKey);
-        if (!teamCardsMap) {
-          teamCardsMap = new Map();
-          roomQuestionTeamCards.set(qKey, teamCardsMap);
-        }
-
-        const existingCard = teamCardsMap.get(player.teamId);
-        if (existingCard) {
-          socket.emit("error", `Đồng đội ${existingCard.usedByPlayerName} đã kích hoạt thẻ ${CARD_METADATA[existingCard.type]?.nameVi || existingCard.type} cho đội ở câu này rồi!`);
+      if (room.mode === "BUZZ" && qKey) {
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (roomBuzzFirst.has(qKey) || activeQ?.buzzedTeamId || activeQ?.timerStarted) {
+          socket.emit("error", "Không thể dùng thẻ hỗ trợ sau khi chuông đã bấm hoặc thời gian trả lời đã bắt đầu!");
           return;
         }
       }
 
+      // Fetch card from DB first (needed for type checks below)
       const card = await prisma.powerupCard.findUnique({ where: { id: cardId } });
       if (!card || card.used) {
         socket.emit("error", "Thẻ này đã được dùng hoặc không hợp lệ!");
@@ -1565,6 +1596,31 @@ export function registerSocketHandlers(io: IO) {
         socket.emit("error", "Thẻ này không thuộc về đội của bạn!");
         return;
       }
+
+      if (room.teamMode === "TEAM" && qKey) {
+        let teamCardsMap = roomQuestionTeamCards.get(qKey);
+        if (!teamCardsMap) {
+          teamCardsMap = new Map();
+          roomQuestionTeamCards.set(qKey, teamCardsMap);
+        }
+
+        const existingCards = teamCardsMap.get(player.teamId) || [];
+        if (existingCards.some((c) => c.type === card.type)) {
+          socket.emit("error", `Đội của bạn đã kích hoạt thẻ ${CARD_METADATA[card.type as CardType]?.nameVi || card.type} ở câu hỏi này rồi!`);
+          return;
+        }
+
+        // Quy tắc Mutex: Không được vừa dùng Khiên vừa dùng x2 điểm trong cùng một câu
+        if (card.type === "SHIELD" && existingCards.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE")) {
+          socket.emit("error", "Không thể vừa dùng Khiên Bảo Vệ vừa dùng Ngôi Sao Hy Vọng (x2 điểm) trong cùng một câu!");
+          return;
+        }
+        if ((card.type === "SCORE_X2" || card.type === "DOUBLE") && existingCards.some((c) => c.type === "SHIELD")) {
+          socket.emit("error", "Không thể vừa dùng Ngôi Sao Hy Vọng (x2 điểm) vừa dùng Khiên Bảo Vệ trong cùng một câu!");
+          return;
+        }
+      }
+
       if (!isPowerupAllowedForMode(room.mode as any, card.type as any)) {
         socket.emit("error", `Thẻ ${CARD_METADATA[card.type as CardType]?.nameVi || card.type} không được phép sử dụng trong chế độ ${room.mode}!`);
         return;
@@ -1589,7 +1645,8 @@ export function registerSocketHandlers(io: IO) {
 
       if (room.teamMode === "TEAM" && qKey) {
         const teamCardsMap = roomQuestionTeamCards.get(qKey)!;
-        teamCardsMap.set(player.teamId, {
+        const currentList = teamCardsMap.get(player.teamId) || [];
+        currentList.push({
           cardId,
           type: card.type as CardType,
           usedByPlayerId: player.id,
@@ -1598,6 +1655,7 @@ export function registerSocketHandlers(io: IO) {
           targetTeamId,
           appliedAt: Date.now(),
         });
+        teamCardsMap.set(player.teamId, currentList);
       }
 
       // Handle card effects
@@ -2955,34 +3013,7 @@ export function registerSocketHandlers(io: IO) {
 
       // 1. BOUNCEBACK Steal Timer trigger:
       if (room.mode === "BOUNCEBACK" && activeQ?.stealBuzzedTeamId) {
-        const qKey = `${room.id}:${q.id}`;
-        const steal = roomStealBuzzed.get(qKey) || {
-          teamId: activeQ.stealBuzzedTeamId,
-          teamName: activeQ.stealBuzzedTeamName || "Đội cướp",
-        };
-        const isMultipleChoice = q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" || q.type === "MC_MULTI";
-        const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
-        const defaultDuration = isMultipleChoice ? 5 : (chosenPoints === 10 ? 10 : chosenPoints === 20 ? 15 : 20);
-
-        activeQ.stealAnsweringActive = true;
-        activeQ.timeLimit = defaultDuration;
-        activeQ.startedAt = Date.now();
-        activeQ.endsAt = Date.now() + defaultDuration * 1000;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
-        io.to(`room:${room.code}`).emit("game:question", activeQ);
-        io.to(`room:${room.code}`).emit("game:bounceback:steal_answering", {
-          teamId: steal.teamId,
-          teamName: steal.teamName,
-          timeLimit: defaultDuration,
-        });
-        io.to(`room:${room.code}`).emit("game:timer:started", {
-          timeLimit: defaultDuration,
-          endsAt: activeQ.endsAt,
-          serverTime: Date.now(),
-          questionId: q.id,
-        });
-        startQuestionTimer(io, room.code, room.id, q.id, defaultDuration);
+        await startStealAnsweringTimer(room.id, room.code, q);
         return;
       }
 
@@ -4160,18 +4191,15 @@ async function finalizeBuzzAnswer(io: IO, roomId: string, roomCode: string, ques
   });
 
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
-  const activeCard = teamCardsMap?.get(effTeamId);
+  const activeCards = teamCardsMap?.get(effTeamId) || [];
   let multiplier = 1;
   const currentTeamObj = room.teams.find((t) => t.id === effTeamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
-  if (activeCard) {
-    if (activeCard.type === "DOUBLE") multiplier = 2;
-    if (activeCard.type === "SCORE_X2") {
-      multiplier = 1.5;
-      shielded = true;
-    }
-    if (activeCard.type === "SHIELD") shielded = true;
+  if (activeCards.some((c) => c.type === "DOUBLE")) multiplier = 2;
+  if (activeCards.some((c) => c.type === "SCORE_X2")) {
+    multiplier = 2;
   }
+  if (activeCards.some((c) => c.type === "SHIELD")) shielded = true;
 
   const isCorrect = existingAns?.isCorrect === true;
   let points = 0;
@@ -4625,12 +4653,10 @@ async function finalizeBouncebackPrimary(
     roomQuestionProcessed.add(qKey);
 
     const teamCardsMap = roomQuestionTeamCards.get(qKey);
-    const activeCard = teamCardsMap?.get(primary.teamId);
+    const activeCards = teamCardsMap?.get(primary.teamId) || [];
     let multiplier = 1;
-    if (activeCard && activeCard.type === "DOUBLE") {
+    if (activeCards.some((c) => c.type === "DOUBLE" || c.type === "SCORE_X2")) {
       multiplier = 2;
-    } else if (activeCard && activeCard.type === "SCORE_X2") {
-      multiplier = 1.5;
     }
     const points = Math.floor(chosenPoints * multiplier);
 
@@ -4671,10 +4697,13 @@ async function finalizeBouncebackPrimary(
   } else {
     // Đội chính trả lời sai:
     const teamCardsMap = roomQuestionTeamCards.get(qKey);
-    const activeCard = teamCardsMap?.get(primary.teamId);
+    const activeCards = teamCardsMap?.get(primary.teamId) || [];
     let hopeStarPenalty = 0;
-    if (activeCard && activeCard.type === "DOUBLE") {
-      // Ngôi sao hy vọng: Đúng x2, Sai bị trừ 100% điểm câu hỏi!
+    if (activeCards.some((c) => c.type === "SHIELD")) {
+      // Khiên bảo vệ: Miễn trừ trừ điểm khi sai!
+      hopeStarPenalty = 0;
+    } else if (activeCards.some((c) => c.type === "DOUBLE" || c.type === "SCORE_X2")) {
+      // Ngôi sao hy vọng (x2 điểm): Đúng x2, Sai bị trừ 100% điểm câu hỏi!
       hopeStarPenalty = chosenPoints;
     }
 
@@ -4747,18 +4776,12 @@ async function finalizeBouncebackSteal(
   });
 
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
-  const activeCard = teamCardsMap?.get(stealInfo.teamId);
+  const activeCards = teamCardsMap?.get(stealInfo.teamId) || [];
   let multiplier = 1;
   const currentTeamObj = room.teams.find((t) => t.id === stealInfo.teamId);
   let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
-  if (activeCard) {
-    if (activeCard.type === "DOUBLE") multiplier = 2;
-    if (activeCard.type === "SCORE_X2") {
-      multiplier = 1.5;
-      shielded = true;
-    }
-    if (activeCard.type === "SHIELD") shielded = true;
-  }
+  if (activeCards.some((c) => c.type === "DOUBLE" || c.type === "SCORE_X2")) multiplier = 2;
+  if (activeCards.some((c) => c.type === "SHIELD")) shielded = true;
 
   const isCorrect = forceCorrect !== undefined ? forceCorrect : (existingAns?.isCorrect === true);
   const chosenPoints = roomBouncebackSelectedPoints.get(qKey) ?? 20;
@@ -4808,7 +4831,7 @@ async function finalizeBouncebackSteal(
   // Lưu ý: Nếu đội chính đã đặt Ngôi sao hy vọng thì đã bị trừ 100% lúc làm sai, không trừ lần 2!
   // Nếu đội cướp sai -> đội cướp bị trừ 50% điểm (-chosenPoints * 0.5), đội chính giữ nguyên điểm (0đ)!
   const primary = roomPrimaryTeams.get(qKey);
-  const primaryHadDouble = teamCardsMap?.get(primary?.teamId ?? "")?.type === "DOUBLE";
+  const primaryHadDouble = (teamCardsMap?.get(primary?.teamId ?? "") ?? []).some((c) => c.type === "DOUBLE");
   if (isCorrect && primary && primary.teamId !== stealInfo.teamId && !primaryHadDouble) {
     const deductPoints = -chosenPoints;
     const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
@@ -5294,25 +5317,20 @@ async function resolveQuestionTeamScores(
       teamStreakMap.set(team.id, 0);
     }
 
-    const activeCard = teamCardsMap?.get(team.id);
+    const activeCards = teamCardsMap?.get(team.id) || [];
     let multiplier = 1;
     let shielded = team.shieldCount > 0;
-    if (activeCard) {
-      if (activeCard.type === "DOUBLE") {
-        multiplier = 2;
-      } else if (activeCard.type === "SCORE_X2") {
-        multiplier = 1.5;
-        shielded = true;
-      }
-      if (activeCard.type === "SHIELD") {
-        shielded = true;
-      }
+    if (activeCards.some((c) => c.type === "DOUBLE" || c.type === "SCORE_X2")) {
+      multiplier = 2;
+    }
+    if (activeCards.some((c) => c.type === "SHIELD")) {
+      shielded = true;
     }
 
     let penaltyMultiplier = 1;
     if (teamCardsMap) {
-      for (const [, otherCard] of teamCardsMap) {
-        if (otherCard.type === "PENALTY" && otherCard.targetTeamId === team.id) {
+      for (const [, otherCards] of teamCardsMap) {
+        if (otherCards.some((c) => c.type === "PENALTY" && c.targetTeamId === team.id)) {
           penaltyMultiplier = 2;
         }
       }
@@ -5354,7 +5372,7 @@ async function resolveQuestionTeamScores(
       pointsAwarded: teamPoints,
       speedBonus: Math.round(speedBonus * 100),
       multiplier,
-      activeCard: activeCard?.type,
+      activeCard: activeCards[0]?.type,
       empiricalMultiplier,
     });
   }

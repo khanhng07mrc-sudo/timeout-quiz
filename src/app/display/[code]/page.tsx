@@ -25,6 +25,7 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
+import StealPrepCountdown from "@/components/ui/StealPrepCountdown";
 import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
@@ -51,6 +52,7 @@ export default function DisplayPage() {
   const [soundMuted, setSoundMuted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
   const [eliminationNotice, setEliminationNotice] = useState<{
     round: number;
     eliminatedTeamName: string;
@@ -282,9 +284,14 @@ export default function DisplayPage() {
       setIsStealOpen(false);
       setStealBuzzed({ teamName: p.teamName, playerName: p.playerName });
       soundManager.playBuzz();
+      // Show prep countdown if server sent prepSeconds
+      if (p.prepSeconds && p.prepSeconds > 0) {
+        setStealPrepCountdown({ teamName: p.teamName, seconds: p.prepSeconds });
+      }
       // Nhạc 5s bấm chuông tiếp tục chạy tới hết file như yêu cầu
     });
     socket.on("game:bounceback:steal_answering", (p) => {
+      setStealPrepCountdown(null);
       const tLimit = p.timeLimit ?? 5;
       const endsAt = Date.now() + tLimit * 1000;
       setTimer({ remaining: tLimit, total: tLimit, endsAt });
@@ -1228,6 +1235,15 @@ export default function DisplayPage() {
         isOpen={showRulesModal}
         onClose={() => setShowRulesModal(false)}
       />
+
+      {/* Steal Prep Countdown overlay */}
+      {stealPrepCountdown && (
+        <StealPrepCountdown
+          teamName={stealPrepCountdown.teamName}
+          initialSeconds={stealPrepCountdown.seconds}
+          onComplete={() => setStealPrepCountdown(null)}
+        />
+      )}
     </div>
   );
 }

@@ -13,20 +13,22 @@ import { computeStealAmount } from "./scoring";
  * - WAGER: Secret bets - allows 50/50, TIME_PLUS, SKIP, SHIELD.
  */
 export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
-  // DICE_RACE: Nước rút (+2 bước), Bứt phá (+1 bước), Thêm giờ, 50/50, Đổi câu. Cấm thẻ trừ điểm và STEAL.
+  // BOUNCEBACK: Về đích Olympia -> SCORE_X2 (Ngôi sao an toàn), DOUBLE (Ngôi sao hy vọng), SHIELD (Khiên), FIFTY_FIFTY (50/50), SKIP (Đổi câu), TIME_PLUS.
+  // Quy tắc: Không được vừa dùng SHIELD vừa dùng SCORE_X2 trong 1 câu; Toàn bộ thẻ bị khóa ở pha cướp chuông.
+  BOUNCEBACK: ["SCORE_X2", "DOUBLE", "FIFTY_FIFTY", "SHIELD", "SKIP", "TIME_PLUS"],
+  // BUZZ: Bấm chuông nhanh -> FREEZE (Đóng băng chuông), SCORE_X2, DOUBLE, STEAL, SHIELD, PENALTY, SKIP, TIME_PLUS.
+  // CẤM FIFTY_FIFTY vì câu hỏi chung, cấm dùng thẻ SAU KHI đã bấm chuông.
+  BUZZ: ["FREEZE", "SCORE_X2", "DOUBLE", "STEAL", "SHIELD", "PENALTY", "SKIP", "TIME_PLUS"],
+  // ELIMINATION: Sinh tồn -> SHIELD (Safe pass cứu nguy 1 lần nếu chót bảng vòng hiện tại), DOUBLE, SCORE_X2, FREEZE, SKIP, TIME_PLUS.
+  ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FREEZE", "SKIP", "TIME_PLUS"],
+  // TOURNAMENT: 1v1 đối kháng trực diện -> ATTACK (Ép trả lời 10s), STEAL (Cướp lượt), PENALTY (Gấp đôi phạt), SHIELD (Kháng công), DOUBLE, SCORE_X2, FREEZE, SKIP, TIME_PLUS.
+  TOURNAMENT: ["ATTACK", "STEAL", "PENALTY", "SHIELD", "DOUBLE", "SCORE_X2", "FREEZE", "SKIP", "TIME_PLUS"],
+  // GRID_CARO: Bàn cờ chiến thuật -> DOUBLE, SCORE_X2, FREEZE, SHIELD, SKIP, TIME_PLUS.
+  GRID_CARO: ["DOUBLE", "SCORE_X2", "FREEZE", "SHIELD", "SKIP", "TIME_PLUS"],
+  // DICE_RACE: Nước rút (+2 bước), Bứt phá (+1 bước), Thêm giờ, 50/50, Đổi câu.
   DICE_RACE: ["DOUBLE", "SCORE_X2", "TIME_PLUS", "FIFTY_FIFTY", "SKIP"],
-  // GRID_CARO: 50/50, Thêm giờ, Đổi câu, Chiếm thành x2, Khiên bảo vệ. Cấm thẻ trừ điểm đối thủ.
-  GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SHIELD"],
-  // BUZZ: Bấm chuông nhanh -> DOUBLE, SCORE_X2, SHIELD, PENALTY, 50/50. CẤM FREEZE, ATTACK, TIME_PLUS.
-  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY"],
-  // BOUNCEBACK: Về đích Olympia -> DOUBLE (Ngôi sao hy vọng), SCORE_X2 (Ngôi sao an toàn), SHIELD, 50/50, TIME_PLUS.
-  BOUNCEBACK: ["DOUBLE", "SCORE_X2", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
-  // ELIMINATION: Sinh tồn -> SHIELD (Khiên sinh tồn), DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Cấm FREEZE, ATTACK, PENALTY.
-  ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
-  // TOURNAMENT: 1v1 đối kháng thuần kỹ năng -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. CẤM FREEZE và STEAL.
-  TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
-  // WAGER: Cược điểm -> 50/50, TIME_PLUS, SKIP, SHIELD (Bảo hiểm cược). CẤM các thẻ triệt hạ (FREEZE, ATTACK, STEAL).
-  WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
+  // WAGER: Cược điểm -> FIFTY_FIFTY, SHIELD (Bảo hiểm cược mất 50%), TIME_PLUS, SKIP. CẤM STEAL và FREEZE.
+  WAGER: ["FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "SKIP"],
   // CLASSIC / POWERUP: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],

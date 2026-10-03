@@ -26,6 +26,7 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import StealPrepCountdown from "@/components/ui/StealPrepCountdown";
 import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
@@ -58,6 +59,8 @@ export default function PlayPage() {
   const [isSandbox, setIsSandbox] = useState(false);
   const [activeTeamId, setActiveTeamId] = useState<string>("");
   const [activePlayerName, setActivePlayerName] = useState<string>("");
+  const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
+  const [usedCardTypes, setUsedCardTypes] = useState<import("@/types").CardType[]>([]);
   const soundEnabledRef = useRef(false);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
@@ -328,6 +331,7 @@ export default function PlayPage() {
       setBuzzedBy(null);
       setHiddenOptionIds([]);
       setIsStealPhase(Boolean(q.isStealPhase));
+      setUsedCardTypes([]);
       if (q.stealBuzzedTeamId) {
         setStealBuzzedTeam((prev) =>
           prev && prev.teamId === q.stealBuzzedTeamId
@@ -422,12 +426,16 @@ export default function PlayPage() {
     socket.on("game:bounceback:steal_buzzed", (payload) => {
       setIsStealPhase(false);
       setStealBuzzedTeam(payload);
+      if (payload.prepSeconds && payload.prepSeconds > 0) {
+        setStealPrepCountdown({ teamName: payload.teamName, seconds: payload.prepSeconds });
+      }
       if (soundEnabledRef.current) {
         soundManager.playBuzz();
       }
     });
 
     socket.on("game:bounceback:steal_answering", (payload) => {
+      setStealPrepCountdown(null);
       const endsAt = Date.now() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
       if (soundEnabledRef.current) {
@@ -489,6 +497,8 @@ export default function PlayPage() {
       setHiddenOptionIds([]);
       setIsStealPhase(false);
       setStealBuzzedTeam(null);
+      setStealPrepCountdown(null);
+      setUsedCardTypes([]);
     });
 
     socket.on("game:answer:ack", (payload) => {
@@ -512,6 +522,18 @@ export default function PlayPage() {
 
     socket.on("game:powerup:used", (payload) => {
       setLastPowerup(payload);
+      // Track which card types MY team has used this question
+      const currentPid = playerIdRef.current;
+      const currentTeamId = myTeamIdRef.current;
+      if (
+        payload.usedByTeamId &&
+        currentTeamId &&
+        payload.usedByTeamId === currentTeamId
+      ) {
+        setUsedCardTypes((prev) =>
+          prev.includes(payload.type) ? prev : [...prev, payload.type]
+        );
+      }
       if (soundEnabledRef.current) {
         soundManager.playPowerup();
       }
@@ -1059,6 +1081,16 @@ export default function PlayPage() {
           onUse={handleUsePowerup}
           disabled={roomState?.mode === "BOUNCEBACK" && Boolean(isStealPhase || stealBuzzedTeam)}
           disabledReason="Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm"
+          activeCardTypes={usedCardTypes}
+        />
+      )}
+
+      {/* Steal Prep Countdown overlay */}
+      {stealPrepCountdown && (
+        <StealPrepCountdown
+          teamName={stealPrepCountdown.teamName}
+          initialSeconds={stealPrepCountdown.seconds}
+          onComplete={() => setStealPrepCountdown(null)}
         />
       )}
 

@@ -10,6 +10,7 @@ interface Props {
   onUse: (cardId: string, targetTeamId?: string) => void;
   disabled?: boolean;
   disabledReason?: string;
+  activeCardTypes?: CardType[];
 }
 
 interface ActiveCardToConfirm {
@@ -18,7 +19,7 @@ interface ActiveCardToConfirm {
   source: "team" | "shared";
 }
 
-export default function PowerupBar({ roomState, playerId, onUse, disabled, disabledReason }: Props) {
+export default function PowerupBar({ roomState, playerId, onUse, disabled, disabledReason, activeCardTypes }: Props) {
   const [confirmingCard, setConfirmingCard] = useState<ActiveCardToConfirm | null>(null);
   const [selectedTargetTeamId, setSelectedTargetTeamId] = useState<string | null>(null);
 
@@ -211,13 +212,31 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {availableCards.map((card) => {
           const meta = CARD_METADATA[card.type];
+          const isMutexDisabled =
+            (card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")) ||
+            ((card.type === "SCORE_X2" || card.type === "DOUBLE") && activeCardTypes?.some((t) => t === "SHIELD")) ||
+            (roomState.mode === "BUZZ" && card.type === "FIFTY_FIFTY") ||
+            (roomState.mode === "WAGER" && (card.type === "STEAL" || card.type === "FREEZE"));
+
+          const isCardDisabled = Boolean(disabled || isMutexDisabled);
+          const badgeText =
+            card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")
+              ? "Cấm dùng cùng x2"
+              : (card.type === "SCORE_X2" || card.type === "DOUBLE") && activeCardTypes?.some((t) => t === "SHIELD")
+              ? "Cấm dùng cùng Khiên"
+              : roomState.mode === "BUZZ" && card.type === "FIFTY_FIFTY"
+              ? "Không khả dụng"
+              : roomState.mode === "WAGER" && (card.type === "STEAL" || card.type === "FREEZE")
+              ? "Bị cấm"
+              : null;
+
           return (
             <button
               key={card.id}
-              disabled={disabled}
+              disabled={isCardDisabled}
               onClick={() => handleCardClick(card)}
               className={`flex items-center sm:flex-col sm:items-start p-3 rounded-xl border transition-all text-left relative overflow-hidden bg-card/40 ${
-                disabled
+                isCardDisabled
                   ? "border-border/40 opacity-40 cursor-not-allowed"
                   : "border-border/70 hover:border-purple-500 hover:bg-purple-500/10 active:scale-[0.98] group hover:shadow-md cursor-pointer"
               }`}
@@ -232,20 +251,20 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
                   </div>
                   <span
                     className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider"
-                    style={{ background: `${meta.color}25`, color: meta.color }}
+                    style={{ background: badgeText ? "#ef444425" : `${meta.color}25`, color: badgeText ? "#f87171" : meta.color }}
                   >
-                    {meta.tag}
+                    {badgeText || meta.tag}
                   </span>
                 </div>
               </div>
 
               {/* Summary line */}
               <div className="hidden sm:block text-xs text-muted-foreground group-hover:text-foreground/90 transition-colors mt-0.5 line-clamp-1 w-full">
-                {meta.summaryVi}
+                {badgeText ? `Không thể dùng: ${badgeText}` : meta.summaryVi}
               </div>
 
               <div className="ml-auto sm:hidden shrink-0 text-xs font-bold text-purple-400">
-                Dùng ›
+                {isCardDisabled ? "Khóa" : "Dùng ›"}
               </div>
             </button>
           );

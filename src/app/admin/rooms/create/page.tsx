@@ -172,6 +172,7 @@ export default function CreateRoomPage() {
   const [penaltyPoints, setPenaltyPoints] = useState(5);
   const [answerSubmissionMode, setAnswerSubmissionMode] = useState<"ALLOW_CHANGE" | "SINGLE_SUBMIT">("ALLOW_CHANGE");
   const [autoTimerStart, setAutoTimerStart] = useState(false);
+  const [initialTeamScore, setInitialTeamScore] = useState<number>(0);
 
   const addTeam = () => {
     if (teams.length >= 20) return;
@@ -254,6 +255,7 @@ export default function CreateRoomPage() {
             // Answer submission & timer control
             answerSubmissionMode,
             autoTimerStart,
+            initialTeamScore: Math.max(0, Number(initialTeamScore) || 0),
           },
         }),
       });
@@ -1530,6 +1532,32 @@ export default function CreateRoomPage() {
             >
               <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ !autoTimerStart ? "translate-x-6" : "translate-x-0" }`} />
             </button>
+          </div>
+
+          {/* Cài đặt điểm xuất phát ban đầu cho các đội */}
+          <div className="glass rounded-xl p-4 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <p className="font-bold">Điểm xuất phát ban đầu của các đội</p>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  &gt;= 0 điểm
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Số điểm khởi đầu mỗi đội nhận được khi trận đấu bắt đầu (Mặc định 0; Điểm số xuyên suốt cuộc chơi luôn &gt;= 0).
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <input
+                type="number"
+                min={0}
+                step={5}
+                value={initialTeamScore}
+                onChange={(e) => setInitialTeamScore(Math.max(0, parseInt(e.target.value) || 0))}
+                className="w-24 px-3 py-2 rounded-xl bg-input border border-border text-center font-mono font-bold text-lg focus:outline-none focus:ring-2 focus:ring-ring text-white"
+              />
+              <span className="text-sm font-semibold text-muted-foreground">pts</span>
+            </div>
           </div>
         </div>
       )}

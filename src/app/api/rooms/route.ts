@@ -47,6 +47,7 @@ const DEFAULT_CONFIG = {
   // Answer submission & timer control defaults
   answerSubmissionMode: "ALLOW_CHANGE",
   autoTimerStart: false,
+  initialTeamScore: 0,
 };
 
 export async function POST(req: NextRequest) {
@@ -194,7 +195,7 @@ export async function POST(req: NextRequest) {
             name: sanitizeInput(team.name, 50),
             color: team.color ?? "#6366f1",
             roomId: room.id,
-            score: (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : 0,
+            score: (mode ?? "CLASSIC") === "DICE_RACE" ? 1 : Math.max(0, Number(mergedConfig.initialTeamScore) || 0),
           },
         });
       }

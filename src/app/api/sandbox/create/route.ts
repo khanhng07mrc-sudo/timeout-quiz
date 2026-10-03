@@ -50,6 +50,7 @@ const DEFAULT_SANDBOX_CONFIG = {
   // Buzz defaults
   buzzUnlockMode: "AUTO",
   buzzAutoDelay: 3,
+  initialTeamScore: 0,
 };
 
 const DEFAULT_TEAMS = [
@@ -159,7 +160,7 @@ export async function POST(req: NextRequest) {
           name: t.name,
           color: t.color,
           roomId: room.id,
-          score: mode === "DICE_RACE" ? 1 : 0,
+          score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
         },
       });
       createdTeams.push(team);
@@ -190,7 +191,7 @@ export async function POST(req: NextRequest) {
           roomId: room.id,
           teamId: createdTeams[p.teamIndex].id,
           isHost: false,
-          score: mode === "DICE_RACE" ? 1 : 0,
+          score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
         },
       });
       createdPlayers.push(player);

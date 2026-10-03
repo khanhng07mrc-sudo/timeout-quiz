@@ -739,6 +739,28 @@ var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
 var roomFinalizedActors = /* @__PURE__ */ new Map();
 var roomSubmittedActors = /* @__PURE__ */ new Map();
 var roomTeamImmunity = /* @__PURE__ */ new Map();
+async function applyScoreDeltaToTeam(teamId, delta) {
+  const current = await prisma.team.findUnique({ where: { id: teamId }, select: { score: true } });
+  const oldScore = current?.score ?? 0;
+  const newScore = Math.max(0, oldScore + delta);
+  const effectiveDelta = newScore - oldScore;
+  await prisma.team.update({
+    where: { id: teamId },
+    data: { score: newScore }
+  });
+  return { oldScore, newScore, effectiveDelta };
+}
+async function applyScoreDeltaToPlayer(playerId, delta) {
+  const current = await prisma.player.findUnique({ where: { id: playerId }, select: { score: true } });
+  const oldScore = current?.score ?? 0;
+  const newScore = Math.max(0, oldScore + delta);
+  const effectiveDelta = newScore - oldScore;
+  await prisma.player.update({
+    where: { id: playerId },
+    data: { score: newScore }
+  });
+  return { oldScore, newScore, effectiveDelta };
+}
 function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
   if (!rawQuestions || rawQuestions.length === 0) return null;
   let usedSet = roomUsedQuestions.get(roomId);
@@ -1980,12 +2002,12 @@ function registerSocketHandlers(io2) {
         if (leader && leader.id !== player.teamId) {
           const myTeam = teams.find((t) => t.id === player.teamId);
           const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
-          if (amount > 0) {
-            await prisma.team.update({ where: { id: leader.id }, data: { score: { decrement: amount } } });
-            await prisma.team.update({ where: { id: player.teamId }, data: { score: { increment: amount } } });
+          if (amount > 0 && player.teamId) {
+            const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
+            const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
             io2.to(`room:${room.code}`).emit("game:score:update", [
-              { teamId: leader.id, score: leader.score - amount, delta: -amount },
-              { teamId: player.teamId, score: (myTeam?.score ?? 0) + amount, delta: amount }
+              { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
+              { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta }
             ]);
           }
         }
@@ -2505,6 +2527,17 @@ function registerSocketHandlers(io2) {
             teamWagers: {},
             teamBailouts
           });
+        } else if (room.mode !== "DICE_RACE" && config?.initialTeamScore && config.initialTeamScore > 0) {
+          const initScore = Math.max(0, config.initialTeamScore);
+          for (const team of teams) {
+            if (team.score === 0) {
+              await prisma.team.update({
+                where: { id: team.id },
+                data: { score: initScore }
+              });
+              team.score = initScore;
+            }
+          }
         }
         const updatedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", updatedState);
@@ -2667,10 +2700,16 @@ function registerSocketHandlers(io2) {
         data: { isCorrect: points > 0, pointsAwarded: points }
       });
       if (answer.playerId) {
-        await prisma.player.update({ where: { id: answer.playerId }, data: { score: { increment: points } } });
+        const pRes = await applyScoreDeltaToPlayer(answer.playerId, points);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { playerId: answer.playerId, score: pRes.newScore, delta: pRes.effectiveDelta }
+        ]);
       }
       if (answer.teamId) {
-        await prisma.team.update({ where: { id: answer.teamId }, data: { score: { increment: points } } });
+        const tRes = await applyScoreDeltaToTeam(answer.teamId, points);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: answer.teamId, score: tRes.newScore, delta: tRes.effectiveDelta }
+        ]);
       }
     });
     socket.on("admin:shuffle:cards", async () => {
@@ -3073,7 +3112,8 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("game:timer:started", {
         timeLimit: effectiveTimeLimit,
         endsAt,
-        serverTime: Date.now()
+        serverTime: Date.now(),
+        questionId: q.id
       });
       startQuestionTimer(io2, room.code, room.id, q.id, effectiveTimeLimit);
       if (room.mode === "BUZZ") {
@@ -3132,11 +3172,11 @@ function registerSocketHandlers(io2) {
       let newScore = team.score;
       let effectiveDelta = 0;
       if (typeof setScore === "number") {
-        newScore = setScore;
+        newScore = Math.max(0, setScore);
         effectiveDelta = newScore - team.score;
       } else if (typeof delta === "number") {
-        newScore = team.score + delta;
-        effectiveDelta = delta;
+        newScore = Math.max(0, team.score + delta);
+        effectiveDelta = newScore - team.score;
       }
       await prisma.team.update({
         where: { id: teamId },
@@ -3145,6 +3185,79 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("game:score:update", [
         { teamId, score: newScore, delta: effectiveDelta }
       ]);
+    });
+    socket.on("admin:teams:set_initial_scores", async ({ defaultScore, teamScores, code }, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) {
+          if (callback) callback({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ph\xF2ng ho\u1EB7c kh\xF4ng c\xF3 quy\u1EC1n Admin" });
+          return;
+        }
+        const scoreUpdates = [];
+        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+        for (const t of teams) {
+          let targetScore = t.score;
+          if (typeof defaultScore === "number") {
+            targetScore = Math.max(0, defaultScore);
+          }
+          if (teamScores && typeof teamScores[t.id] === "number") {
+            targetScore = Math.max(0, teamScores[t.id]);
+          }
+          if (targetScore !== t.score) {
+            const effectiveDelta = targetScore - t.score;
+            await prisma.team.update({
+              where: { id: t.id },
+              data: { score: targetScore }
+            });
+            scoreUpdates.push({ teamId: t.id, score: targetScore, delta: effectiveDelta });
+          }
+        }
+        if (typeof defaultScore === "number") {
+          const config = room.config || {};
+          await prisma.room.update({
+            where: { id: room.id },
+            data: { config: { ...config, initialTeamScore: Math.max(0, defaultScore) } }
+          });
+        }
+        if (scoreUpdates.length > 0) {
+          io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
+        const updatedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", updatedState);
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error("[admin:teams:set_initial_scores]", err);
+        if (callback) callback({ success: false, error: "L\u1ED7i h\u1EC7 th\u1ED1ng khi c\u1EADp nh\u1EADt \u0111i\u1EC3m" });
+      }
+    });
+    socket.on("admin:team:update_score", async ({ teamId, score, code }, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) {
+          if (callback) callback({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ph\xF2ng ho\u1EB7c kh\xF4ng c\xF3 quy\u1EC1n Admin" });
+          return;
+        }
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+        if (!team || team.roomId !== room.id) {
+          if (callback) callback({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y \u0111\u1ED9i trong ph\xF2ng n\xE0y" });
+          return;
+        }
+        const newScore = Math.max(0, score);
+        const effectiveDelta = newScore - team.score;
+        await prisma.team.update({
+          where: { id: teamId },
+          data: { score: newScore }
+        });
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId, score: newScore, delta: effectiveDelta }
+        ]);
+        const updatedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", updatedState);
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error("[admin:team:update_score]", err);
+        if (callback) callback({ success: false, error: "L\u1ED7i h\u1EC7 th\u1ED1ng khi c\u1EADp nh\u1EADt \u0111i\u1EC3m \u0111\u1ED9i" });
+      }
     });
     socket.on("admin:tournament:advance", async () => {
       const room = await getAdminRoom(socket);
@@ -3934,12 +4047,9 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
     });
   }
   if (points !== 0) {
-    const updatedTeam = await prisma.team.update({
-      where: { id: effTeamId },
-      data: { score: { increment: points } }
-    });
+    const tRes = await applyScoreDeltaToTeam(effTeamId, points);
     io2.to(`room:${roomCode}`).emit("game:score:update", [
-      { teamId: effTeamId, score: updatedTeam.score, delta: points }
+      { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
     ]);
   }
   await revealCurrentAnswer(io2, roomId, roomCode, questionId);
@@ -3959,19 +4069,13 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   const scoreUpdates = [];
   if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id) {
     currentMatch.team1Score += question.points;
-    const upd = await prisma.team.update({
-      where: { id: currentMatch.team1Id },
-      data: { score: { increment: question.points } }
-    });
-    scoreUpdates.push({ teamId: currentMatch.team1Id, score: upd.score, delta: question.points });
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, question.points);
+    scoreUpdates.push({ teamId: currentMatch.team1Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
   if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id) {
     currentMatch.team2Score += question.points;
-    const upd = await prisma.team.update({
-      where: { id: currentMatch.team2Id },
-      data: { score: { increment: question.points } }
-    });
-    scoreUpdates.push({ teamId: currentMatch.team2Id, score: upd.score, delta: question.points });
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, question.points);
+    scoreUpdates.push({ teamId: currentMatch.team2Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
   currentMatch.currentQuestionInMatch++;
   if (currentMatch.currentQuestionInMatch >= currentMatch.totalQuestionsInMatch) {
@@ -4094,11 +4198,8 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
           data: { pointsAwarded: awardedPoints }
         }).catch(console.error);
       }
-      const upd = await prisma.team.update({
-        where: { id: currentTeam.id },
-        data: { score: { increment: awardedPoints } }
-      });
-      scoreUpdates.push({ teamId: currentTeam.id, score: upd.score, delta: awardedPoints });
+      const tRes = await applyScoreDeltaToTeam(currentTeam.id, awardedPoints);
+      scoreUpdates.push({ teamId: currentTeam.id, score: tRes.newScore, delta: tRes.effectiveDelta });
     } else {
       cell.isCompleted = false;
       cell.claimedByTeamId = void 0;
@@ -4175,20 +4276,17 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
         data: { pointsAwarded: delta }
       }).catch(console.error);
     }
-    const upd = await prisma.team.update({
-      where: { id: team.id },
-      data: { score: { increment: delta } }
-    });
-    scoreUpdates.push({ teamId: team.id, score: upd.score, delta });
+    const tRes = await applyScoreDeltaToTeam(team.id, delta);
+    scoreUpdates.push({ teamId: team.id, score: tRes.newScore, delta: tRes.effectiveDelta });
     if (!wagerState.bailoutQueue) wagerState.bailoutQueue = [];
     const bailoutsRem = wagerState.teamBailouts?.[team.id]?.remaining ?? 1;
-    if (upd.score <= 0) {
+    if (tRes.newScore <= 0) {
       if (bailoutsRem > 0 && !wagerState.bailoutQueue.some((item) => item.teamId === team.id)) {
         wagerState.bailoutQueue.push({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color,
-          score: upd.score,
+          score: tRes.newScore,
           questionIndex: room.currentQuestion + 1,
           eliminatedAt: Date.now()
         });
@@ -4308,20 +4406,14 @@ async function finalizeBouncebackPrimary(io2, roomId, roomCode, questionId, forc
     }
     const playerToUpdate = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (playerToUpdate) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: points } }
-      });
+      const pRes = await applyScoreDeltaToPlayer(primary.teamId, points);
       io2.to(`room:${roomCode}`).emit("game:score:update", [
-        { playerId: primary.teamId, score: updatedPlayer.score, delta: points }
+        { playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta }
       ]);
     } else {
-      const updatedTeam = await prisma.team.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: points } }
-      });
+      const tRes = await applyScoreDeltaToTeam(primary.teamId, points);
       io2.to(`room:${roomCode}`).emit("game:score:update", [
-        { teamId: primary.teamId, score: updatedTeam.score, delta: points }
+        { teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta }
       ]);
     }
     await revealCurrentAnswer(io2, roomId, roomCode, questionId);
@@ -4354,20 +4446,14 @@ async function finalizeBouncebackPrimary(io2, roomId, roomCode, questionId, forc
     if (hopeStarPenalty > 0) {
       const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
       if (primaryPlayer) {
-        const updatedPrimary = await prisma.player.update({
-          where: { id: primary.teamId },
-          data: { score: { decrement: hopeStarPenalty } }
-        });
+        const pRes = await applyScoreDeltaToPlayer(primary.teamId, -hopeStarPenalty);
         io2.to(`room:${roomCode}`).emit("game:score:update", [
-          { playerId: primary.teamId, score: updatedPrimary.score, delta: -hopeStarPenalty }
+          { playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta }
         ]);
       } else {
-        const updatedTeam = await prisma.team.update({
-          where: { id: primary.teamId },
-          data: { score: { decrement: hopeStarPenalty } }
-        });
+        const tRes = await applyScoreDeltaToTeam(primary.teamId, -hopeStarPenalty);
         io2.to(`room:${roomCode}`).emit("game:score:update", [
-          { teamId: primary.teamId, score: updatedTeam.score, delta: -hopeStarPenalty }
+          { teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta }
         ]);
       }
     }
@@ -4436,17 +4522,11 @@ async function finalizeBouncebackSteal(io2, roomId, roomCode, questionId, forceC
   if (points !== 0) {
     const stealPlayer = await prisma.player.findUnique({ where: { id: stealInfo.teamId } }).catch(() => null);
     if (stealPlayer) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: stealInfo.teamId },
-        data: { score: { increment: points } }
-      });
-      scoreUpdates.push({ playerId: stealInfo.teamId, score: updatedPlayer.score, delta: points });
+      const pRes = await applyScoreDeltaToPlayer(stealInfo.teamId, points);
+      scoreUpdates.push({ playerId: stealInfo.teamId, score: pRes.newScore, delta: pRes.effectiveDelta });
     } else {
-      const updatedTeam = await prisma.team.update({
-        where: { id: stealInfo.teamId },
-        data: { score: { increment: points } }
-      });
-      scoreUpdates.push({ teamId: stealInfo.teamId, score: updatedTeam.score, delta: points });
+      const tRes = await applyScoreDeltaToTeam(stealInfo.teamId, points);
+      scoreUpdates.push({ teamId: stealInfo.teamId, score: tRes.newScore, delta: tRes.effectiveDelta });
     }
   }
   const primary = roomPrimaryTeams.get(qKey);
@@ -4455,17 +4535,11 @@ async function finalizeBouncebackSteal(io2, roomId, roomCode, questionId, forceC
     const deductPoints = -chosenPoints;
     const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (primaryPlayer) {
-      const updatedPrimary = await prisma.player.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: deductPoints } }
-      });
-      scoreUpdates.push({ playerId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+      const pRes = await applyScoreDeltaToPlayer(primary.teamId, deductPoints);
+      scoreUpdates.push({ playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta });
     } else {
-      const updatedPrimary = await prisma.team.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: deductPoints } }
-      });
-      scoreUpdates.push({ teamId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+      const tRes = await applyScoreDeltaToTeam(primary.teamId, deductPoints);
+      scoreUpdates.push({ teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta });
     }
   }
   if (scoreUpdates.length > 0) {
@@ -4522,15 +4596,12 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
       data: { pointsAwarded: points }
     });
     if (points !== 0) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: ans.playerId },
-        data: { score: { increment: points } }
-      });
+      const pRes = await applyScoreDeltaToPlayer(ans.playerId, points);
       scoreUpdates.push({
         playerId: ans.playerId,
         teamId: ans.teamId ?? void 0,
-        score: updatedPlayer.score,
-        delta: points
+        score: pRes.newScore,
+        delta: pRes.effectiveDelta
       });
     }
   }
@@ -4877,14 +4948,11 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       roomAccuracy,
       streak: teamStreak
     });
-    const updatedTeam = await prisma.team.update({
-      where: { id: team.id },
-      data: { score: { increment: teamPoints } }
-    });
+    const tRes = await applyScoreDeltaToTeam(team.id, teamPoints);
     teamScoresUpdates.push({
       teamId: team.id,
-      score: updatedTeam.score,
-      delta: teamPoints
+      score: tRes.newScore,
+      delta: tRes.effectiveDelta
     });
     teamSummaries.push({
       teamId: team.id,

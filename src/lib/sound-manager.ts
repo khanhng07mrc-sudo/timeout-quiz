@@ -37,6 +37,9 @@ class SoundManager {
   // Background Music tracks
   private currentMusicAudio: HTMLAudioElement | null = null;
   private currentMusicType: "LOBBY" | "QUESTION" | "VICTORY" | null = null;
+  private currentMusicKey: BGMKey | null = null;
+  private currentPlayingQuestionId: string | null = null;
+  private lastMusicStartTime: number = 0;
   private fadeInterval: NodeJS.Timeout | null = null;
   private questionMusicTimeout: NodeJS.Timeout | null = null;
 
@@ -194,7 +197,13 @@ class SoundManager {
     });
   }
 
-  private playMusicTrack(type: "LOBBY" | "QUESTION", audioKey: BGMKey, targetVolFactor: number = 0.75, crossfadeMs: number = 450) {
+  private playMusicTrack(
+    type: "LOBBY" | "QUESTION",
+    audioKey: BGMKey,
+    targetVolFactor: number = 0.75,
+    crossfadeMs: number = 450,
+    questionId?: string
+  ) {
     if (this.isMuted) return;
     this.initAudioAssets();
 
@@ -205,9 +214,25 @@ class SoundManager {
       this.bgmMap.set(audioKey, nextAudio);
     }
 
-    // If already playing this exact track and audio instance, do nothing
-    if (this.currentMusicType === type && this.currentMusicAudio === nextAudio && !nextAudio.paused) {
-      return;
+    const now = Date.now();
+
+    // Strict deduplication:
+    // If already playing this track type:
+    // 1. If QUESTION mode and same questionId is already playing -> do not restart
+    // 2. If same audioKey was started < 3500ms ago -> do not restart (avoids timer:started restarting question music)
+    // 3. If exact same audio instance is actively playing (not paused) -> do not restart
+    if (this.currentMusicType === type) {
+      if (type === "QUESTION") {
+        if (questionId && this.currentPlayingQuestionId === questionId) {
+          return;
+        }
+        if (this.currentMusicKey === audioKey && now - this.lastMusicStartTime < 3500) {
+          if (questionId) this.currentPlayingQuestionId = questionId;
+          return;
+        }
+      } else if (type === "LOBBY" && this.currentMusicKey === audioKey && (now - this.lastMusicStartTime < 3000 || !nextAudio.paused)) {
+        return;
+      }
     }
 
     const prevAudio = this.currentMusicAudio;
@@ -224,6 +249,9 @@ class SoundManager {
 
       this.currentMusicAudio = nextAudio;
       this.currentMusicType = type;
+      this.currentMusicKey = audioKey;
+      this.currentPlayingQuestionId = questionId ?? null;
+      this.lastMusicStartTime = now;
 
       nextAudio.loop = false;
       nextAudio.volume = this.isMuted ? 0 : targetVol;
@@ -232,6 +260,8 @@ class SoundManager {
         if (this.currentMusicAudio === nextAudio) {
           this.currentMusicAudio = null;
           this.currentMusicType = null;
+          this.currentMusicKey = null;
+          this.currentPlayingQuestionId = null;
         }
       };
       nextAudio.play().catch(() => {});
@@ -243,6 +273,9 @@ class SoundManager {
 
       this.currentMusicAudio = nextAudio;
       this.currentMusicType = type;
+      this.currentMusicKey = audioKey;
+      this.currentPlayingQuestionId = null;
+      this.lastMusicStartTime = now;
 
       this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50));
     }
@@ -266,7 +299,7 @@ class SoundManager {
    * Countdown music plays naturally through to the end of the audio track
    * to preserve authentic Olympia resolutions and gong/reverb effects.
    */
-  public playQuestionMusic(remainingSeconds: number = 30) {
+  public playQuestionMusic(remainingSeconds: number = 30, questionId?: string) {
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
@@ -287,7 +320,7 @@ class SoundManager {
       selectedKey = "olympia_60s";
     }
 
-    this.playMusicTrack("QUESTION", selectedKey, 0.85, 400);
+    this.playMusicTrack("QUESTION", selectedKey, 0.85, 400, questionId);
 
     // Audio file plays naturally to its end (chạy tới hết file).
     // Safety watchdog only to reset state after track completion.
@@ -321,6 +354,9 @@ class SoundManager {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
     }
+
+    this.currentPlayingQuestionId = null;
+    this.currentMusicKey = null;
 
     if (this.currentMusicAudio) {
       const audio = this.currentMusicAudio;

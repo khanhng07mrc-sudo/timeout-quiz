@@ -487,6 +487,7 @@ export interface GameConfig {
   // Answer submission mode & timer start
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
   autoTimerStart?: boolean;
+  initialTeamScore?: number;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -902,7 +903,7 @@ export interface ServerToClientEvents {
   "game:wager:bailout_granted": (payload: { teamId: string; teamName: string; newScore: number; bailoutsRemaining: number }) => void;
   "game:tournament:update": (state: TournamentState) => void;
   "game:question:clear": () => void;
-  "game:timer:started": (payload?: { timeLimit?: number; endsAt?: number; serverTime?: number }) => void;
+  "game:timer:started": (payload?: { timeLimit?: number; endsAt?: number; serverTime?: number; questionId?: string }) => void;
   "game:timer:expired": (payload?: { questionId?: string }) => void;
   "game:buzz:unlocked": () => void;
   "game:buzz:locked": () => void;
@@ -983,6 +984,8 @@ export interface ClientToServerEvents {
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
   "game:answer:finalize": (payload: { questionId: string; answer?: string | string[] }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
+  "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

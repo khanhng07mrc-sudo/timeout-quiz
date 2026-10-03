@@ -60,35 +60,39 @@ export default function DisplayPage() {
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
-    if (!matchStarting || matchStarting.seconds <= 0) return;
+    if (!matchStarting) return;
     const interval = setInterval(() => {
       setMatchStarting((prev) => {
-        if (!prev) return null;
+        if (!prev || prev.seconds <= 1) {
+          return null;
+        }
         const next = prev.seconds - 1;
         if (next >= 0) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { seconds: next } : null;
+        return { seconds: next };
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [matchStarting]);
+  }, [Boolean(matchStarting)]);
 
   // Local ticker for question preparation countdown (3s)
   useEffect(() => {
-    if (!questionPrepare || questionPrepare.seconds <= 0) return;
+    if (!questionPrepare) return;
     const interval = setInterval(() => {
       setQuestionPrepare((prev) => {
-        if (!prev) return null;
+        if (!prev || prev.seconds <= 1) {
+          return prev ? { ...prev, seconds: 0 } : null;
+        }
         const next = prev.seconds - 1;
         if (next >= 0) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { ...prev, seconds: next } : { ...prev, seconds: 0 };
+        return { ...prev, seconds: next };
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [questionPrepare]);
+  }, [Boolean(questionPrepare)]);
 
   // Authoritative local countdown ticker for 0s lag across screens
   useEffect(() => {
@@ -205,7 +209,7 @@ export default function DisplayPage() {
         setTimer(null);
       }
       if (!q.timerPending && !q.bouncebackSelectPhase) {
-        soundManager.playQuestionMusic(q.timeLimit);
+        soundManager.playQuestionMusic(q.timeLimit, q.question?.id);
       }
     });
 
@@ -227,7 +231,7 @@ export default function DisplayPage() {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      soundManager.playQuestionMusic(tLimit);
+      soundManager.playQuestionMusic(tLimit, payload?.questionId);
     });
 
     socket.on("game:timer", (t) => {

@@ -96,6 +96,43 @@ const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of ac
 const roomTeamImmunity = new Map<string, number>(); // roomId:teamId -> immuneUntilQuestionIndex
 
 /**
+ * Áp dụng thay đổi điểm số cho Đội, đảm bảo quy định:
+ * "Điểm số của các đội xuyên suốt cuộc chơi luôn >= 0, nếu có một phép trừ có thể khiến điểm về âm, hệ thống chuyển điểm về 0 thay vì âm."
+ */
+async function applyScoreDeltaToTeam(
+  teamId: string,
+  delta: number
+): Promise<{ oldScore: number; newScore: number; effectiveDelta: number }> {
+  const current = await prisma.team.findUnique({ where: { id: teamId }, select: { score: true } });
+  const oldScore = current?.score ?? 0;
+  const newScore = Math.max(0, oldScore + delta);
+  const effectiveDelta = newScore - oldScore;
+  await prisma.team.update({
+    where: { id: teamId },
+    data: { score: newScore },
+  });
+  return { oldScore, newScore, effectiveDelta };
+}
+
+/**
+ * Áp dụng thay đổi điểm số cho Thí sinh cá nhân, đảm bảo quy định điểm số luôn >= 0.
+ */
+async function applyScoreDeltaToPlayer(
+  playerId: string,
+  delta: number
+): Promise<{ oldScore: number; newScore: number; effectiveDelta: number }> {
+  const current = await prisma.player.findUnique({ where: { id: playerId }, select: { score: true } });
+  const oldScore = current?.score ?? 0;
+  const newScore = Math.max(0, oldScore + delta);
+  const effectiveDelta = newScore - oldScore;
+  await prisma.player.update({
+    where: { id: playerId },
+    data: { score: newScore },
+  });
+  return { oldScore, newScore, effectiveDelta };
+}
+
+/**
  * Lấy câu hỏi tiếp theo đảm bảo KHÔNG BAO GIỜ bị lặp lại ở tất cả các mode.
  * Theo quy tắc: Nếu hết câu hỏi trong ngân hàng đề mà chưa ai về đích, hoặc không dùng hết ô,
  * thì dừng luôn cuộc chơi và tính hạng luôn (tuyệt đối không lặp lại câu hỏi cũ).
@@ -1590,12 +1627,12 @@ export function registerSocketHandlers(io: IO) {
         if (leader && leader.id !== player.teamId) {
           const myTeam = teams.find((t) => t.id === player.teamId);
           const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
-          if (amount > 0) {
-            await prisma.team.update({ where: { id: leader.id }, data: { score: { decrement: amount } } });
-            await prisma.team.update({ where: { id: player.teamId }, data: { score: { increment: amount } } });
+          if (amount > 0 && player.teamId) {
+            const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
+            const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
             io.to(`room:${room.code}`).emit("game:score:update", [
-              { teamId: leader.id, score: leader.score - amount, delta: -amount },
-              { teamId: player.teamId, score: (myTeam?.score ?? 0) + amount, delta: amount },
+              { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
+              { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta },
             ]);
           }
         }
@@ -2177,6 +2214,17 @@ export function registerSocketHandlers(io: IO) {
             teamWagers: {},
             teamBailouts,
           });
+        } else if (room.mode !== "DICE_RACE" && config?.initialTeamScore && config.initialTeamScore > 0) {
+          const initScore = Math.max(0, config.initialTeamScore);
+          for (const team of teams) {
+            if (team.score === 0) {
+              await prisma.team.update({
+                where: { id: team.id },
+                data: { score: initScore },
+              });
+              team.score = initScore;
+            }
+          }
         }
 
         const updatedState = await buildRoomState(room.id);
@@ -2367,10 +2415,16 @@ export function registerSocketHandlers(io: IO) {
       });
 
       if (answer.playerId) {
-        await prisma.player.update({ where: { id: answer.playerId }, data: { score: { increment: points } } });
+        const pRes = await applyScoreDeltaToPlayer(answer.playerId, points);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { playerId: answer.playerId, score: pRes.newScore, delta: pRes.effectiveDelta },
+        ]);
       }
       if (answer.teamId) {
-        await prisma.team.update({ where: { id: answer.teamId }, data: { score: { increment: points } } });
+        const tRes = await applyScoreDeltaToTeam(answer.teamId, points);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: answer.teamId, score: tRes.newScore, delta: tRes.effectiveDelta },
+        ]);
       }
     });
 
@@ -2889,6 +2943,7 @@ export function registerSocketHandlers(io: IO) {
         timeLimit: effectiveTimeLimit,
         endsAt,
         serverTime: Date.now(),
+        questionId: q.id,
       });
       startQuestionTimer(io, room.code, room.id, q.id, effectiveTimeLimit);
 
@@ -2962,11 +3017,11 @@ export function registerSocketHandlers(io: IO) {
       let effectiveDelta = 0;
 
       if (typeof setScore === "number") {
-        newScore = setScore;
+        newScore = Math.max(0, setScore);
         effectiveDelta = newScore - team.score;
       } else if (typeof delta === "number") {
-        newScore = team.score + delta;
-        effectiveDelta = delta;
+        newScore = Math.max(0, team.score + delta);
+        effectiveDelta = newScore - team.score;
       }
 
       await prisma.team.update({
@@ -2977,6 +3032,95 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:score:update", [
         { teamId, score: newScore, delta: effectiveDelta },
       ]);
+    });
+
+    // ── Cài đặt điểm số ban đầu cho các đội khi bắt đầu thi ────────────────────
+    socket.on("admin:teams:set_initial_scores", async ({ defaultScore, teamScores, code }, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) {
+          if (callback) callback({ success: false, error: "Không tìm thấy phòng hoặc không có quyền Admin" });
+          return;
+        }
+
+        const scoreUpdates: ScoreUpdate[] = [];
+        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+
+        for (const t of teams) {
+          let targetScore = t.score;
+          if (typeof defaultScore === "number") {
+            targetScore = Math.max(0, defaultScore);
+          }
+          if (teamScores && typeof teamScores[t.id] === "number") {
+            targetScore = Math.max(0, teamScores[t.id]);
+          }
+
+          if (targetScore !== t.score) {
+            const effectiveDelta = targetScore - t.score;
+            await prisma.team.update({
+              where: { id: t.id },
+              data: { score: targetScore },
+            });
+            scoreUpdates.push({ teamId: t.id, score: targetScore, delta: effectiveDelta });
+          }
+        }
+
+        // Persist initialTeamScore in room config if defaultScore is provided
+        if (typeof defaultScore === "number") {
+          const config = (room.config as any) || {};
+          await prisma.room.update({
+            where: { id: room.id },
+            data: { config: { ...config, initialTeamScore: Math.max(0, defaultScore) } },
+          });
+        }
+
+        if (scoreUpdates.length > 0) {
+          io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
+
+        const updatedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", updatedState);
+
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error("[admin:teams:set_initial_scores]", err);
+        if (callback) callback({ success: false, error: "Lỗi hệ thống khi cập nhật điểm" });
+      }
+    });
+
+    socket.on("admin:team:update_score", async ({ teamId, score, code }, callback) => {
+      try {
+        const room = await getAdminRoom(socket, code);
+        if (!room) {
+          if (callback) callback({ success: false, error: "Không tìm thấy phòng hoặc không có quyền Admin" });
+          return;
+        }
+
+        const team = await prisma.team.findUnique({ where: { id: teamId } });
+        if (!team || team.roomId !== room.id) {
+          if (callback) callback({ success: false, error: "Không tìm thấy đội trong phòng này" });
+          return;
+        }
+
+        const newScore = Math.max(0, score);
+        const effectiveDelta = newScore - team.score;
+        await prisma.team.update({
+          where: { id: teamId },
+          data: { score: newScore },
+        });
+
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId, score: newScore, delta: effectiveDelta },
+        ]);
+
+        const updatedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", updatedState);
+
+        if (callback) callback({ success: true });
+      } catch (err) {
+        console.error("[admin:team:update_score]", err);
+        if (callback) callback({ success: false, error: "Lỗi hệ thống khi cập nhật điểm đội" });
+      }
     });
 
     socket.on("admin:tournament:advance", async () => {
@@ -3914,12 +4058,9 @@ async function finalizeBuzzAnswer(io: IO, roomId: string, roomCode: string, ques
   }
 
   if (points !== 0) {
-    const updatedTeam = await prisma.team.update({
-      where: { id: effTeamId },
-      data: { score: { increment: points } },
-    });
+    const tRes = await applyScoreDeltaToTeam(effTeamId, points);
     io.to(`room:${roomCode}`).emit("game:score:update", [
-      { teamId: effTeamId, score: updatedTeam.score, delta: points },
+      { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta },
     ]);
   }
 
@@ -3950,20 +4091,14 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
 
   if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id) {
     currentMatch.team1Score += question.points;
-    const upd = await prisma.team.update({
-      where: { id: currentMatch.team1Id },
-      data: { score: { increment: question.points } },
-    });
-    scoreUpdates.push({ teamId: currentMatch.team1Id, score: upd.score, delta: question.points });
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, question.points);
+    scoreUpdates.push({ teamId: currentMatch.team1Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
 
   if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id) {
     currentMatch.team2Score += question.points;
-    const upd = await prisma.team.update({
-      where: { id: currentMatch.team2Id },
-      data: { score: { increment: question.points } },
-    });
-    scoreUpdates.push({ teamId: currentMatch.team2Id, score: upd.score, delta: question.points });
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, question.points);
+    scoreUpdates.push({ teamId: currentMatch.team2Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
 
   currentMatch.currentQuestionInMatch++;
@@ -4111,11 +4246,8 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
         }).catch(console.error);
       }
 
-      const upd = await prisma.team.update({
-        where: { id: currentTeam.id },
-        data: { score: { increment: awardedPoints } },
-      });
-      scoreUpdates.push({ teamId: currentTeam.id, score: upd.score, delta: awardedPoints });
+      const tRes = await applyScoreDeltaToTeam(currentTeam.id, awardedPoints);
+      scoreUpdates.push({ teamId: currentTeam.id, score: tRes.newScore, delta: tRes.effectiveDelta });
     } else {
       cell.isCompleted = false;
       cell.claimedByTeamId = undefined;
@@ -4215,23 +4347,19 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
       }).catch(console.error);
     }
 
-    const upd = await prisma.team.update({
-      where: { id: team.id },
-      data: { score: { increment: delta } },
-    });
-
-    scoreUpdates.push({ teamId: team.id, score: upd.score, delta });
+    const tRes = await applyScoreDeltaToTeam(team.id, delta);
+    scoreUpdates.push({ teamId: team.id, score: tRes.newScore, delta: tRes.effectiveDelta });
 
     if (!wagerState.bailoutQueue) wagerState.bailoutQueue = [];
     const bailoutsRem = wagerState.teamBailouts?.[team.id]?.remaining ?? 1;
 
-    if (upd.score <= 0) {
+    if (tRes.newScore <= 0) {
       if (bailoutsRem > 0 && !wagerState.bailoutQueue.some((item) => item.teamId === team.id)) {
         wagerState.bailoutQueue.push({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color,
-          score: upd.score,
+          score: tRes.newScore,
           questionIndex: room.currentQuestion + 1,
           eliminatedAt: Date.now(),
         });
@@ -4383,20 +4511,14 @@ async function finalizeBouncebackPrimary(
 
     const playerToUpdate = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (playerToUpdate) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: points } },
-      });
+      const pRes = await applyScoreDeltaToPlayer(primary.teamId, points);
       io.to(`room:${roomCode}`).emit("game:score:update", [
-        { playerId: primary.teamId, score: updatedPlayer.score, delta: points },
+        { playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta },
       ]);
     } else {
-      const updatedTeam = await prisma.team.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: points } },
-      });
+      const tRes = await applyScoreDeltaToTeam(primary.teamId, points);
       io.to(`room:${roomCode}`).emit("game:score:update", [
-        { teamId: primary.teamId, score: updatedTeam.score, delta: points },
+        { teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta },
       ]);
     }
 
@@ -4434,20 +4556,14 @@ async function finalizeBouncebackPrimary(
     if (hopeStarPenalty > 0) {
       const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
       if (primaryPlayer) {
-        const updatedPrimary = await prisma.player.update({
-          where: { id: primary.teamId },
-          data: { score: { decrement: hopeStarPenalty } },
-        });
+        const pRes = await applyScoreDeltaToPlayer(primary.teamId, -hopeStarPenalty);
         io.to(`room:${roomCode}`).emit("game:score:update", [
-          { playerId: primary.teamId, score: updatedPrimary.score, delta: -hopeStarPenalty },
+          { playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta },
         ]);
       } else {
-        const updatedTeam = await prisma.team.update({
-          where: { id: primary.teamId },
-          data: { score: { decrement: hopeStarPenalty } },
-        });
+        const tRes = await applyScoreDeltaToTeam(primary.teamId, -hopeStarPenalty);
         io.to(`room:${roomCode}`).emit("game:score:update", [
-          { teamId: primary.teamId, score: updatedTeam.score, delta: -hopeStarPenalty },
+          { teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta },
         ]);
       }
     }
@@ -4535,17 +4651,11 @@ async function finalizeBouncebackSteal(
   if (points !== 0) {
     const stealPlayer = await prisma.player.findUnique({ where: { id: stealInfo.teamId } }).catch(() => null);
     if (stealPlayer) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: stealInfo.teamId },
-        data: { score: { increment: points } },
-      });
-      scoreUpdates.push({ playerId: stealInfo.teamId, score: updatedPlayer.score, delta: points });
+      const pRes = await applyScoreDeltaToPlayer(stealInfo.teamId, points);
+      scoreUpdates.push({ playerId: stealInfo.teamId, score: pRes.newScore, delta: pRes.effectiveDelta });
     } else {
-      const updatedTeam = await prisma.team.update({
-        where: { id: stealInfo.teamId },
-        data: { score: { increment: points } },
-      });
-      scoreUpdates.push({ teamId: stealInfo.teamId, score: updatedTeam.score, delta: points });
+      const tRes = await applyScoreDeltaToTeam(stealInfo.teamId, points);
+      scoreUpdates.push({ teamId: stealInfo.teamId, score: tRes.newScore, delta: tRes.effectiveDelta });
     }
   }
 
@@ -4559,17 +4669,11 @@ async function finalizeBouncebackSteal(
     const deductPoints = -chosenPoints;
     const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (primaryPlayer) {
-      const updatedPrimary = await prisma.player.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: deductPoints } },
-      });
-      scoreUpdates.push({ playerId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+      const pRes = await applyScoreDeltaToPlayer(primary.teamId, deductPoints);
+      scoreUpdates.push({ playerId: primary.teamId, score: pRes.newScore, delta: pRes.effectiveDelta });
     } else {
-      const updatedPrimary = await prisma.team.update({
-        where: { id: primary.teamId },
-        data: { score: { increment: deductPoints } },
-      });
-      scoreUpdates.push({ teamId: primary.teamId, score: updatedPrimary.score, delta: deductPoints });
+      const tRes = await applyScoreDeltaToTeam(primary.teamId, deductPoints);
+      scoreUpdates.push({ teamId: primary.teamId, score: tRes.newScore, delta: tRes.effectiveDelta });
     }
   }
 
@@ -4640,15 +4744,12 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
     });
 
     if (points !== 0) {
-      const updatedPlayer = await prisma.player.update({
-        where: { id: ans.playerId },
-        data: { score: { increment: points } },
-      });
+      const pRes = await applyScoreDeltaToPlayer(ans.playerId, points);
       scoreUpdates.push({
         playerId: ans.playerId,
         teamId: ans.teamId ?? undefined,
-        score: updatedPlayer.score,
-        delta: points,
+        score: pRes.newScore,
+        delta: pRes.effectiveDelta,
       });
     }
   }
@@ -5092,15 +5193,12 @@ async function resolveQuestionTeamScores(
       streak: teamStreak,
     });
 
-    const updatedTeam = await prisma.team.update({
-      where: { id: team.id },
-      data: { score: { increment: teamPoints } },
-    });
+    const tRes = await applyScoreDeltaToTeam(team.id, teamPoints);
 
     teamScoresUpdates.push({
       teamId: team.id,
-      score: updatedTeam.score,
-      delta: teamPoints,
+      score: tRes.newScore,
+      delta: tRes.effectiveDelta,
     });
 
     teamSummaries.push({

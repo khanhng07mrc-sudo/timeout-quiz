@@ -72,6 +72,45 @@ export default function AdminRoomPage() {
   const [hostKeyInput, setHostKeyInput] = useState("");
   const [copiedHostLink, setCopiedHostLink] = useState(false);
 
+  // Starting scores configuration in Lobby
+  const [allTeamsInitialScore, setAllTeamsInitialScore] = useState<number>(0);
+  const [editingTeamScores, setEditingTeamScores] = useState<Record<string, number>>({});
+  const [savingInitialScores, setSavingInitialScores] = useState(false);
+
+  useEffect(() => {
+    if (roomState?.config && typeof (roomState.config as any).initialTeamScore === "number") {
+      setAllTeamsInitialScore((roomState.config as any).initialTeamScore);
+    }
+  }, [roomState?.config]);
+
+  const handleSetAllTeamsInitialScores = () => {
+    if (!socketRef.current) return;
+    setSavingInitialScores(true);
+    socketRef.current.emit(
+      "admin:teams:set_initial_scores",
+      { defaultScore: Math.max(0, allTeamsInitialScore), code },
+      (res) => {
+        setSavingInitialScores(false);
+        if (!res?.success) {
+          alert(res?.error || "Không thể cập nhật điểm");
+        }
+      }
+    );
+  };
+
+  const handleUpdateTeamScore = (teamId: string, score: number) => {
+    if (!socketRef.current) return;
+    socketRef.current.emit(
+      "admin:team:update_score",
+      { teamId, score: Math.max(0, score), code },
+      (res) => {
+        if (!res?.success) {
+          alert(res?.error || "Không thể cập nhật điểm");
+        }
+      }
+    );
+  };
+
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
@@ -82,35 +121,39 @@ export default function AdminRoomPage() {
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
-    if (!matchStarting || matchStarting.seconds <= 0) return;
+    if (!matchStarting) return;
     const interval = setInterval(() => {
       setMatchStarting((prev) => {
-        if (!prev) return null;
+        if (!prev || prev.seconds <= 1) {
+          return null;
+        }
         const next = prev.seconds - 1;
         if (next >= 0 && soundEnabledRef.current) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { seconds: next } : null;
+        return { seconds: next };
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [matchStarting]);
+  }, [Boolean(matchStarting)]);
 
   // Local ticker for question preparation countdown (3s)
   useEffect(() => {
-    if (!questionPrepare || questionPrepare.seconds <= 0) return;
+    if (!questionPrepare) return;
     const interval = setInterval(() => {
       setQuestionPrepare((prev) => {
-        if (!prev) return null;
+        if (!prev || prev.seconds <= 1) {
+          return prev ? { ...prev, seconds: 0 } : null;
+        }
         const next = prev.seconds - 1;
         if (next >= 0 && soundEnabledRef.current) {
           soundManager.playCountdownTick(next);
         }
-        return next > 0 ? { ...prev, seconds: next } : { ...prev, seconds: 0 };
+        return { ...prev, seconds: next };
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [questionPrepare]);
+  }, [Boolean(questionPrepare)]);
 
   // Authoritative local countdown ticker for 0s lag across screens
   useEffect(() => {
@@ -763,6 +806,45 @@ export default function AdminRoomPage() {
               bankId={currentBankInfo.id}
               showClearButton={false}
             />
+          )}
+
+          {/* Lobby Initial Starting Score Setting */}
+          {roomState?.teamMode === "TEAM" && (
+            <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎯</span>
+                  <h3 className="font-bold text-base">Cài đặt số điểm ban đầu cho các đội</h3>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    &gt;= 0 điểm
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Cài đặt điểm xuất phát trước khi bắt đầu trận (Điểm số của các đội xuyên suốt cuộc chơi luôn &gt;= 0, nếu bị trừ quá điểm sẽ về 0).
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    step={5}
+                    value={allTeamsInitialScore}
+                    onChange={(e) => setAllTeamsInitialScore(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-24 px-3 py-2 rounded-xl bg-[#151728] border border-border text-center font-mono font-bold text-base focus:ring-2 focus:ring-ring text-white"
+                  />
+                  <span className="text-xs font-semibold text-muted-foreground">pts</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSetAllTeamsInitialScores}
+                  disabled={savingInitialScores}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow transition disabled:opacity-50"
+                >
+                  {savingInitialScores ? "Đang lưu..." : "Áp dụng cho tất cả đội"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -1665,7 +1747,38 @@ export default function AdminRoomPage() {
                       </div>
                       <p className="font-bold text-sm truncate">{team.name}</p>
                     </div>
-                    <span className="text-xs font-black text-cyan-400">{team.score} pts</span>
+                    {roomState?.status === "LOBBY" ? (
+                      <div className="flex items-center gap-1" title="Cài điểm số ban đầu cho đội này">
+                        <input
+                          type="number"
+                          min={0}
+                          step={5}
+                          value={editingTeamScores[team.id] ?? team.score}
+                          onChange={(e) => {
+                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                            setEditingTeamScores((prev) => ({ ...prev, [team.id]: val }));
+                          }}
+                          onBlur={() => {
+                            const val = editingTeamScores[team.id];
+                            if (val !== undefined && val !== team.score) {
+                              handleUpdateTeamScore(team.id, val);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              const val = editingTeamScores[team.id];
+                              if (val !== undefined) {
+                                handleUpdateTeamScore(team.id, val);
+                              }
+                            }
+                          }}
+                          className="w-14 px-1.5 py-0.5 rounded bg-black/40 border border-border text-center font-bold text-xs text-cyan-300 focus:outline-none focus:ring-1 focus:ring-cyan-400"
+                        />
+                        <span className="text-[10px] text-muted-foreground font-semibold">pts</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-black text-cyan-400">{team.score} pts</span>
+                    )}
                   </div>
 
                   <div className="text-xs text-muted-foreground flex items-center justify-between border-t border-border/40 pt-2">

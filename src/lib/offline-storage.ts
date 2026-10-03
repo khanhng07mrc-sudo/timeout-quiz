@@ -1,4 +1,4 @@
-// Timeout Quiz - Offline Storage & Sync Engine
+﻿// Quizora - Offline Storage & Sync Engine
 // Manages local quiz banks, offline drafts, preset banks, and background sync.
 
 export interface OfflineQuestion {
@@ -259,3 +259,4 @@ export const offlineStorage = {
     return { synced, failed };
   },
 };
+

@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
     const existingOwner = await prisma.user.findUnique({ where: { id: effectiveOwnerId } });
     if (!existingOwner) {
       await prisma.user.upsert({
-        where: { email: user?.email || `${effectiveOwnerId}@brainclash.io` },
+        where: { email: user?.email || `${effectiveOwnerId}@quizora.io` },
         update: {},
         create: {
           id: effectiveOwnerId,
           name: user?.name || "Quiz Creator",
-          email: user?.email || `${effectiveOwnerId}@brainclash.io`,
+          email: user?.email || `${effectiveOwnerId}@quizora.io`,
           role: "ADMIN",
         },
       });

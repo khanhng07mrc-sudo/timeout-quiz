@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
           user: {
             id: "master-admin",
             name: "Super Admin",
-            email: "admin@brainclash.io",
+            email: "admin@quizora.io",
             role: "ADMIN",
           },
         });
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
           user: {
             id: "master-admin",
             name: "Super Admin",
-            email: "admin@brainclash.io",
+            email: "admin@quizora.io",
             role: "ADMIN",
           },
         });

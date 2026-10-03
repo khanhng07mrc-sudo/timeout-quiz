@@ -194,7 +194,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
   };
 
   const fillDemoAccount = () => {
-    setEmail("demo.host@brainclash.io");
+    setEmail("demo.host@quizora.io");
     setPassword("DemoHost@2026");
     setName("Chủ Phòng Trải Nghiệm");
     setError("");
@@ -218,7 +218,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
       <div className="min-h-screen flex items-center justify-center bg-[#0b0c16]">
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-400 rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-slate-400 font-medium">Đang kiểm tra phiên BrainClash...</p>
+          <p className="text-sm text-slate-400 font-medium">Đang kiểm tra phiên Quizora...</p>
         </div>
       </div>
     );
@@ -391,7 +391,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   {loading ? (
                     <span>Đang kiểm tra...</span>
                   ) : (
-                    <span>Đăng nhập vào BrainClash</span>
+                    <span>Đăng nhập vào Quizora</span>
                   )}
                 </button>
               </form>
@@ -467,7 +467,7 @@ export default function AdminAuthGuard({ children }: { children: React.ReactNode
                   {loading ? (
                     <span>Đang tạo tài khoản...</span>
                   ) : (
-                    <span>Tạo tài khoản BrainClash miễn phí</span>
+                    <span>Tạo tài khoản Quizora miễn phí</span>
                   )}
                 </button>
               </form>

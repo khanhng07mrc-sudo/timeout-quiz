@@ -7,8 +7,8 @@ import OfflineBanner from "@/components/ui/OfflineBanner";
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
-  title: "BrainClash — Đấu Trường Trí Tuệ & Realtime Quiz Arena",
-  description: "Nền tảng thi đấu trắc nghiệm & boardgame thời gian thực đa chế độ, đối kháng đỉnh cao BrainClash",
+  title: "Quizora — Đấu Trường Trí Tuệ & Realtime Quiz Arena",
+  description: "Nền tảng thi đấu trắc nghiệm & boardgame thời gian thực đa chế độ, đối kháng đỉnh cao — Quizora",
   manifest: "/manifest.json",
   icons: {
     icon: [

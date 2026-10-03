@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
 import { GameMode } from "@/types";
@@ -68,11 +68,11 @@ export async function POST(req: NextRequest) {
 
     // Ensure Host user exists
     const host = await prisma.user.upsert({
-      where: { email: "demo-host@timeoutquiz.com" },
+      where: { email: "demo-host@quizora.io" },
       update: {},
       create: {
         id: "demo-host-id",
-        email: "demo-host@timeoutquiz.com",
+        email: "demo-host@quizora.io",
         name: "Nguyễn Gia Khánh (Host)",
         role: "ADMIN",
       },
@@ -229,3 +229,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

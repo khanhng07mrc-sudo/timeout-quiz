@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import {
   getAdminMasterPassword,
   createAdminToken,
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       user: {
         id: "master-admin",
         name: "Super Admin",
-        email: "admin@brainclash.io",
+        email: "admin@quizora.io",
         role: "ADMIN",
       },
       message: "Xác thực Quản trị viên thành công",
@@ -109,3 +109,4 @@ export async function DELETE() {
   response.cookies.delete("auth_token");
   return response;
 }
+

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 200" fill="none">
+  <defs>
+    <!-- Gradient top-purple to bottom-cyan, mapped to Q position -->
+    <linearGradient id="qGrad" x1="0%" y1="0%" x2="0%" y2="100%"
+                    gradientUnits="userSpaceOnUse"
+                    x1="90" y1="10" x2="90" y2="185">
+      <stop offset="0%"   stop-color="#A855F7"/>
+      <stop offset="50%"  stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <!-- Swoosh gradient left-to-right -->
+    <linearGradient id="swooshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <!-- Neon glow bloom -->
+    <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Mask: punch out inner circle to create donut -->
+    <mask id="donutMask">
+      <rect width="580" height="200" fill="white"/>
+      <!-- Inner transparent hole (radius = outer - thickness) -->
+      <circle cx="90" cy="92" r="50" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Bloom glow aura -->
+  <circle cx="90" cy="92" r="82" fill="url(#qGrad)" opacity="0.18" filter="url(#bloom)"/>
+
+  <!-- Q donut body: thick ring with gradient, transparent inside -->
+  <g filter="url(#bloom)">
+    <circle cx="90" cy="92" r="76" fill="url(#qGrad)" mask="url(#donutMask)"/>
+    <!-- Q tail (bottom-right, same gradient color) -->
+    <path d="M 134 138 Q 156 168 138 175"
+          stroke="url(#qGrad)" stroke-width="20"
+          fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Full-width swoosh below entire wordmark -->
+  <path d="M 14 185 Q 300 202 566 185"
+        stroke="url(#swooshGrad)" stroke-width="2.5"
+        fill="none" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- "uizora" — thin geometric sans-serif, white, vertically centered -->
+  <text
+    x="185" y="118"
+    font-family="'Inter','Helvetica Neue',Helvetica,Arial,sans-serif"
+    font-size="90"
+    font-weight="300"
+    fill="white"
+    letter-spacing="-2"
+  >uizora</text>
+</svg>

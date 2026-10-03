@@ -1,4 +1,4 @@
-// Timeout Quiz - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
+﻿// Quizora - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
 // High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
 
 type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";
@@ -454,3 +454,4 @@ class SoundManager {
 }
 
 export const soundManager = typeof window !== "undefined" ? new SoundManager() : ({} as SoundManager);
+

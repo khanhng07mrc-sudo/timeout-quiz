@@ -298,138 +298,9 @@ export default function WagerPanel({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* ─── VÙNG 1: THỨ TỰ NGƯỜI/ĐỘI CƯỢC (CÔNG KHAI) ─── */}
-        <div className={`lg:col-span-5 glass rounded-2xl p-3.5 sm:p-4 border border-amber-500/30 flex flex-col gap-3 ${
-          mobileTab === "VUNG2" ? "hidden lg:flex" : "flex"
-        }`}>
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-xl">📋</span>
-              <div>
-                <h4 className="font-bold text-sm text-amber-300">VÙNG 1: Thứ Tự Cược</h4>
-                <p className="text-[11px] text-muted-foreground">Công khai thời gian thực câu này</p>
-              </div>
-            </div>
-            <span className="px-2.5 py-1 rounded-full text-xs font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
-              {currentHighestWager > 0 ? `Đang dẫn: ${currentHighestWager}đ` : "Khởi điểm: 5đ"}
-            </span>
-          </div>
-
-          {/* History List */}
-          <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
-            {wagerHistory.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-xs glass rounded-xl border border-white/5 space-y-1.5">
-                <span className="text-3xl block mb-1">⚡</span>
-                <p className="font-bold text-foreground text-sm">Chưa có đội nào đặt cược!</p>
-                <p className="text-[11px] text-amber-200/80">
-                  Mức cược mở màn: 5 điểm. Đội nào sẽ ra đòn trước?
-                </p>
-              </div>
-            ) : (
-              wagerHistory.map((item) => {
-                const isLeading = item.teamId === lastWagerTeamId;
-                const isMe = item.teamId === myTeamId;
-                return (
-                  <div
-                    key={`${item.order}-${item.teamId}-${item.amount}`}
-                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                      isLeading
-                        ? "bg-amber-500/20 border-amber-400 ring-2 ring-amber-400/50 shadow-lg"
-                        : "bg-white/5 border-white/10 text-foreground"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`w-7 h-7 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
-                          item.order === 1
-                            ? "bg-yellow-400 text-black shadow"
-                            : item.order === 2
-                            ? "bg-slate-300 text-black"
-                            : item.order === 3
-                            ? "bg-amber-600 text-white"
-                            : "bg-white/10 text-white"
-                        }`}
-                      >
-                        #{item.order}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs truncate" style={{ color: item.teamColor }}>
-                            {item.teamName}
-                          </span>
-                          {isMe && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-purple-500/30 text-purple-200 border border-purple-500/50">
-                              BẠN
-                            </span>
-                          )}
-                        </div>
-                        {isLeading && (
-                          <span className="text-[10px] text-amber-300 font-semibold flex items-center gap-1">
-                            🔥 Vừa cược (Đang dẫn mức cược)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="font-mono font-black text-base text-yellow-300">
-                        {item.amount} pts
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-
-          {/* Teams Status Section */}
-          {allTeamsList.length > 0 && (
-            <div className="pt-2 border-t border-white/10 space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                Trạng thái các đội:
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {allTeamsList.map((t) => {
-                  const isResting = t.id === previousQuestionWagerTeamId;
-                  const hasBet = wagerHistory.some((h) => h.teamId === t.id);
-                  const isDisqualified = !hasBet && !isResting && t.score < minOption;
-                  const isLeading = t.id === lastWagerTeamId;
-                  if (hasBet && !isLeading) return null;
-                  return (
-                    <div
-                      key={t.id}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 border ${
-                        isResting
-                          ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
-                          : isDisqualified
-                          ? "bg-red-500/10 border-red-500/30 text-red-300"
-                          : isLeading
-                          ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
-                          : "bg-white/5 border-white/10 text-muted-foreground"
-                      }`}
-                    >
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                      <span className="font-bold">{t.name}:</span>
-                      {isResting ? (
-                        <span className="text-purple-300 font-bold">⏸️ Tạm nghỉ (Đã cược câu trước)</span>
-                      ) : isDisqualified ? (
-                        <span className="text-red-400 font-bold">🚫 Mất quyền cược ({t.score}đ &lt; {minOption}đ)</span>
-                      ) : isLeading ? (
-                        <span className="text-amber-300 font-bold">🔥 Giữ mức {currentHighestWager}đ</span>
-                      ) : (
-                        <span>Chưa cược ({t.score}đ)</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ─── VÙNG 2: 12 Ô CƯỢC ĐIỂM ─── */}
-        <div className={`lg:col-span-7 glass rounded-2xl p-3.5 sm:p-4 border border-cyan-500/30 flex flex-col gap-3 ${
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+        {/* ─── VÙNG 2: 12 Ô CƯỢC ĐIỂM (ĐẶT LÊN ĐẦU ĐỂ DỄ TIẾP CẬN KHÔNG CẦN CUỘN) ─── */}
+        <div className={`lg:col-span-7 glass rounded-2xl p-3 sm:p-4 border border-cyan-500/30 flex flex-col gap-2.5 ${
           mobileTab === "VUNG1" ? "hidden lg:flex" : "flex"
         }`}>
           <div className="flex items-center justify-between border-b border-white/10 pb-2">
@@ -437,88 +308,88 @@ export default function WagerPanel({
               <span className="text-xl">🎯</span>
               <div>
                 <h4 className="font-bold text-sm text-cyan-300">VÙNG 2: 12 Ô Cược Điểm</h4>
-                <p className="text-[11px] text-muted-foreground">
-                  Ô nhỏ nhất: {minOption}đ (+5đ) · Các ô cách nhau 5đ · Tránh cược quá tay
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground">
+                  Khởi điểm: {minOption}đ (+5đ) · Bước nhảy +5đ mỗi ô
                 </p>
               </div>
             </div>
             {myTeamId && (
-              <span className="text-xs px-2.5 py-1 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 font-bold">
-                Điểm đội bạn: {myTeamScore} pts
+              <span className="text-xs px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 font-bold font-mono">
+                Điểm bạn: {myTeamScore}đ
               </span>
             )}
           </div>
 
           {/* Previous question bettor notice: Luật công bằng - không được cược 2 câu liên tiếp */}
           {isPreviousQuestionWagerTeam && (
-            <div className="p-3.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-start gap-2.5 animate-bounce-in">
-              <span className="text-2xl shrink-0">⏸️</span>
-              <div className="space-y-1">
-                <p className="font-black text-purple-300 text-sm">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-start gap-2 animate-bounce-in">
+              <span className="text-xl shrink-0">⏸️</span>
+              <div className="space-y-0.5">
+                <p className="font-black text-purple-300 text-xs sm:text-sm">
                   ĐỘI BẠN TẠM NGHỈ CƯỢC CÂU NÀY
                 </p>
-                <p className="text-[11px] leading-relaxed">
-                  Theo luật công bằng, đội bạn đã tham gia cược ở câu hỏi trước nên sẽ tạm nghỉ cược câu này để nhường quyền cho các đội khác. Đội bạn vẫn tham gia trả lời và hưởng 1/2 điểm nếu trả lời đúng!
+                <p className="text-[10px] sm:text-[11px] leading-relaxed">
+                  Đã cược ở câu trước nên tạm nghỉ câu này để công bằng. Bạn vẫn được trả lời và nhận 1/2 điểm nếu đúng!
                 </p>
               </div>
             </div>
           )}
 
-          {/* Auto-assigned notice: Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp */}
+          {/* Auto-assigned notice */}
           {isAutoAssigned && (
-            <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2.5 animate-pulse">
-              <span className="text-xl shrink-0">🎲</span>
+            <div className="p-2 sm:p-2.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2 animate-pulse">
+              <span className="text-lg shrink-0">🎲</span>
               <div>
-                <p className="font-bold">Đội bạn được hệ thống chỉ định cược 10đ khởi điểm!</p>
-                <p className="text-[11px] text-purple-200/90">
-                  Bạn vẫn có quyền chọn nâng cược thêm 1 lần kế tiếp trong phiên này!
+                <p className="font-bold text-[11px]">Đội bạn được chỉ định cược 10đ mở màn!</p>
+                <p className="text-[10px] text-purple-200/90">
+                  Bạn vẫn có quyền nâng cược thêm 1 lần kế tiếp trong phiên này!
                 </p>
               </div>
             </div>
           )}
 
-          {/* Anti-spam notice: "mỗi đội không được cược từ 2 lần liên tiếp trở lên" */}
+          {/* Anti-spam notice */}
           {isConsecutiveBlocked && (
-            <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-2.5 animate-pulse">
-              <span className="text-xl shrink-0">⏳</span>
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-2 animate-pulse">
+              <span className="text-lg shrink-0">⏳</span>
               <div>
-                <p className="font-bold">Đội bạn vừa đặt cược ({currentHighestWager}đ)!</p>
-                <p className="text-[11px] text-amber-200/90">
-                  Tránh spam cược: Không được cược từ 2 lần liên tiếp trở lên. Vui lòng chờ đội khác cược trước khi có thể cược tiếp!
+                <p className="font-bold text-[11px]">Đội bạn đang giữ mức cược ({currentHighestWager}đ)!</p>
+                <p className="text-[10px] text-amber-200/90">
+                  Không được cược 2 lần liên tiếp. Vui lòng chờ đội khác cược trước.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Disqualification notice: "khi số điểm cược hiện lên đã vượt quá điểm đội mình, đội mình sẽ mất quyền cược trong câu hỏi đó" */}
+          {/* Disqualification notice */}
           {hasLostWagerRight && (
-            <div className="p-3.5 rounded-xl bg-red-500/15 border border-red-500/40 text-red-200 text-xs flex items-start gap-2.5 animate-bounce-in">
-              <span className="text-2xl shrink-0">🚫</span>
-              <div className="space-y-1">
-                <p className="font-black text-red-300 text-sm">
-                  ĐỘI BẠN ĐÃ MẤT QUYỀN CƯỢC TRONG CÂU HỎI NÀY!
+            <div className="p-2.5 sm:p-3 rounded-xl bg-red-500/15 border border-red-500/40 text-red-200 text-xs flex items-start gap-2 animate-bounce-in">
+              <span className="text-xl shrink-0">🚫</span>
+              <div className="space-y-0.5">
+                <p className="font-black text-red-300 text-xs sm:text-sm">
+                  ĐÃ VƯỢT QUÁ ĐIỂM ĐỘI BẠN!
                 </p>
-                <p className="text-[11px] leading-relaxed">
-                  Mức cược tối thiểu trên bàn ({minOption}đ) đã vượt quá số điểm hiện tại của đội bạn ({myTeamScore}đ). Đội bạn không thể đặt cược ở câu hỏi này.
+                <p className="text-[10px] sm:text-[11px] leading-relaxed">
+                  Mức cược tối thiểu ({minOption}đ) đã vượt quá điểm số hiện tại của đội ({myTeamScore}đ).
                 </p>
               </div>
             </div>
           )}
 
           {cannotRaiseFurther && (
-            <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2">
-              <span className="text-xl shrink-0">🔒</span>
+            <div className="p-2 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-center gap-2">
+              <span className="text-lg shrink-0">🔒</span>
               <div>
-                <p className="font-bold">Đã chốt cược {myWager?.amount} điểm!</p>
-                <p className="text-[11px] text-purple-200/80">
-                  Mức cược tiếp theo ({minOption}đ) đã vượt quá số điểm hiện có ({myTeamScore}đ). Mức cược của bạn được bảo lưu ở {myWager?.amount}đ.
+                <p className="font-bold text-[11px]">Đã bảo lưu mức cược {myWager?.amount} điểm!</p>
+                <p className="text-[10px] text-purple-200/80">
+                  Mức cược kế tiếp ({minOption}đ) vượt quá điểm đội bạn ({myTeamScore}đ).
                 </p>
               </div>
             </div>
           )}
 
           {/* 12 Clickable Cells */}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
             {wagerOptions.map((optValue, idx) => {
               const stepIncrement = 5 * (idx + 1);
               const exceedsMyScore = optValue > myTeamScore;
@@ -538,7 +409,7 @@ export default function WagerPanel({
                   type="button"
                   disabled={isDisabled}
                   onClick={() => handleSubmit(optValue)}
-                  className={`relative p-2.5 sm:p-3 min-h-[52px] sm:min-h-[58px] rounded-xl border flex flex-col items-center justify-center gap-0.5 sm:gap-1 transition-all duration-200 active:scale-95 ${
+                  className={`relative p-2 sm:p-2.5 min-h-[46px] sm:min-h-[52px] rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all duration-200 active:scale-95 ${
                     isCurrentSelected
                       ? "bg-gradient-to-br from-green-500/30 to-emerald-600/30 border-green-400 ring-2 ring-green-400 text-white shadow-lg"
                       : isDisabled
@@ -550,7 +421,7 @@ export default function WagerPanel({
                 >
                   {/* Step Badge */}
                   <span
-                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                    className={`text-[9px] font-bold px-1 py-0.2 rounded-full ${
                       isDisabled ? "bg-white/5 text-muted-foreground" : "bg-cyan-500/20 text-cyan-300"
                     }`}
                   >
@@ -559,7 +430,7 @@ export default function WagerPanel({
 
                   {/* Value */}
                   <span
-                    className={`font-mono font-black text-base sm:text-lg ${
+                    className={`font-mono font-black text-sm sm:text-base ${
                       isCurrentSelected
                         ? "text-green-300"
                         : isDisabled
@@ -572,14 +443,14 @@ export default function WagerPanel({
 
                   {/* Exceeds score warning */}
                   {exceedsMyScore && !isDisplay && (
-                    <span className="text-[9px] text-red-400/80 font-semibold truncate max-w-[80px]">
+                    <span className="text-[8px] text-red-400/80 font-semibold truncate max-w-[70px]">
                       🔒 &gt; {myTeamScore}đ
                     </span>
                   )}
 
                   {isCurrentSelected && (
-                    <span className="text-[9px] text-green-300 font-black">
-                      ✓ Đang cược
+                    <span className="text-[8px] text-green-300 font-black">
+                      ✓ Đã cược
                     </span>
                   )}
                 </button>
@@ -588,9 +459,138 @@ export default function WagerPanel({
           </div>
 
           {isDisplay && (
-            <p className="text-[11px] text-muted-foreground text-center italic mt-1">
+            <p className="text-[10px] text-muted-foreground text-center italic">
               Thí sinh bấm chọn 1 trong 12 ô cược trên thiết bị cá nhân để nâng mức cược
             </p>
+          )}
+        </div>
+
+        {/* ─── VÙNG 1: THỨ TỰ NGƯỜI/ĐỘI CƯỢC (CÔNG KHAI) ─── */}
+        <div className={`lg:col-span-5 glass rounded-2xl p-3 sm:p-4 border border-amber-500/30 flex flex-col gap-2.5 ${
+          mobileTab === "VUNG2" ? "hidden lg:flex" : "flex"
+        }`}>
+          <div className="flex items-center justify-between border-b border-white/10 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📋</span>
+              <div>
+                <h4 className="font-bold text-sm text-amber-300">VÙNG 1: Thứ Tự Cược</h4>
+                <p className="text-[10px] sm:text-[11px] text-muted-foreground">Công khai thời gian thực</p>
+              </div>
+            </div>
+            <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/40">
+              {currentHighestWager > 0 ? `Đang dẫn: ${currentHighestWager}đ` : "Khởi điểm: 5đ"}
+            </span>
+          </div>
+
+          {/* History List */}
+          <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+            {wagerHistory.length === 0 ? (
+              <div className="text-center py-4 text-muted-foreground text-xs glass rounded-xl border border-white/5 space-y-1">
+                <span className="text-2xl block mb-0.5">⚡</span>
+                <p className="font-bold text-foreground text-xs">Chưa có đội nào đặt cược!</p>
+                <p className="text-[10px] text-amber-200/80">
+                  Mức cược mở màn: 5 điểm.
+                </p>
+              </div>
+            ) : (
+              wagerHistory.map((item) => {
+                const isLeading = item.teamId === lastWagerTeamId;
+                const isMe = item.teamId === myTeamId;
+                return (
+                  <div
+                    key={`${item.order}-${item.teamId}-${item.amount}`}
+                    className={`flex items-center justify-between p-2 rounded-xl border transition-all ${
+                      isLeading
+                        ? "bg-amber-500/20 border-amber-400 ring-1 ring-amber-400/50 shadow-md"
+                        : "bg-white/5 border-white/10 text-foreground"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-[11px] shrink-0 ${
+                          item.order === 1
+                            ? "bg-yellow-400 text-black shadow"
+                            : item.order === 2
+                            ? "bg-slate-300 text-black"
+                            : item.order === 3
+                            ? "bg-amber-600 text-white"
+                            : "bg-white/10 text-white"
+                        }`}
+                      >
+                        #{item.order}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-xs truncate" style={{ color: item.teamColor }}>
+                            {item.teamName}
+                          </span>
+                          {isMe && (
+                            <span className="px-1 py-0.2 rounded text-[8px] font-black bg-purple-500/30 text-purple-200 border border-purple-500/50">
+                              BẠN
+                            </span>
+                          )}
+                        </div>
+                        {isLeading && (
+                          <span className="text-[9px] text-amber-300 font-semibold flex items-center gap-0.5">
+                            🔥 Đang dẫn cược
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-black text-sm text-yellow-300">
+                        {item.amount}đ
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Teams Status Section */}
+          {allTeamsList.length > 0 && (
+            <div className="pt-2 border-t border-white/10 space-y-1">
+              <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Trạng thái các đội:
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {allTeamsList.map((t) => {
+                  const isResting = t.id === previousQuestionWagerTeamId;
+                  const hasBet = wagerHistory.some((h) => h.teamId === t.id);
+                  const isDisqualified = !hasBet && !isResting && t.score < minOption;
+                  const isLeading = t.id === lastWagerTeamId;
+                  if (hasBet && !isLeading) return null;
+                  return (
+                    <div
+                      key={t.id}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-medium flex items-center gap-1 border ${
+                        isResting
+                          ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
+                          : isDisqualified
+                          ? "bg-red-500/10 border-red-500/30 text-red-300"
+                          : isLeading
+                          ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                          : "bg-white/5 border-white/10 text-muted-foreground"
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
+                      <span className="font-bold">{t.name}:</span>
+                      {isResting ? (
+                        <span className="text-purple-300 font-bold">⏸️ Nghỉ (câu trước)</span>
+                      ) : isDisqualified ? (
+                        <span className="text-red-400 font-bold">🚫 Mất quyền ({t.score}đ)</span>
+                      ) : isLeading ? (
+                        <span className="text-amber-300 font-bold">🔥 Giữ {currentHighestWager}đ</span>
+                      ) : (
+                        <span>{t.score}đ</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
       </div>

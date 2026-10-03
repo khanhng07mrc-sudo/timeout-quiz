@@ -1920,6 +1920,8 @@ export default function AdminSandboxPage() {
       const q = offlineQuestionsRef.current[offlineQIndexRef.current] || DEFAULT_OFFLINE_BANK.questions![0];
       if (q) {
         const timeLimit = q.timeLimit || 20;
+        const winningTeamId = updatedWager.lastWagerTeamId;
+        const winningTeam = stableTeams.find((t) => t.id === winningTeamId);
         const qState: QuestionState = {
           question: {
             id: q.id || `q_${offlineQIndexRef.current + 1}`,
@@ -1941,6 +1943,8 @@ export default function AdminSandboxPage() {
           buzzUnlockMode: "MANUAL",
           answerSubmissionMode: roomState?.config.answerSubmissionMode || "ALLOW_CHANGE",
           totalParticipantsCount: roomState?.teams.length || 4,
+          primaryTeamId: winningTeamId,
+          primaryTeamName: winningTeam?.name || updatedWager.autoAssignedTeamName || "Đội cược",
         };
         setCurrentQuestion(qState);
         syncToIframes({ currentQuestion: qState, roomState: { ...roomState, wagerState: updatedWager } });
@@ -2852,16 +2856,11 @@ export default function AdminSandboxPage() {
           {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-5 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden">
-            {/* Team Switcher Tabs (Compact) */}
-            <div className="glass rounded-xl p-1.5 border border-white/10 bg-[#121424] shrink-0">
-              <div className="text-[10px] font-bold text-slate-400 mb-1 px-1 flex items-center justify-between">
-                <span>📱 Chọn Đội trên điện thoại:</span>
-                <span className="text-cyan-400 font-mono font-bold">
-                  {currentTeam?.name || "Đội 1"}
-                </span>
-              </div>
-              <div className="grid grid-cols-4 gap-1">
+          <div className="lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden">
+            {/* Team Switcher Tabs (Ultra-Compact Single Row) */}
+            <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">📱 Chọn Đội:</span>
+              <div className="grid grid-cols-4 gap-1 flex-1">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
                   return (
@@ -2869,7 +2868,7 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`p-1.5 rounded-lg text-left border transition flex flex-col gap-0.5 cursor-pointer ${
+                      className={`px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-1 cursor-pointer ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
@@ -2877,192 +2876,108 @@ export default function AdminSandboxPage() {
                     >
                       <div className="flex items-center gap-1 min-w-0">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
-                        <span className="font-bold text-[11px] truncate text-white">{t.name}</span>
+                        <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
                       </div>
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400 text-[9px]">
-                          {idx === 0 ? "Tester" : "Bot"}
-                        </span>
-                        <span className="font-mono font-bold text-cyan-300 text-[10px]">
-                          {t.score}đ
-                        </span>
-                      </div>
+                      <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0">
+                        {t.score}đ
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Quick Testing Actions for Current Selected Team */}
-            {currentTeam && (
-              <div className="glass rounded-xl px-2 py-1.5 border border-white/10 bg-[#151728] shrink-0 flex flex-wrap items-center justify-between gap-1 text-xs">
-                {/* Answer simulation */}
-                <div className="flex items-center gap-1 flex-wrap">
+            {/* Mobile Device Frame with Integrated Quick Testing Header */}
+            <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col bg-[#0b0c16]">
+              {/* Integrated Tester Header (Single Slim Bar) */}
+              <div className="bg-[#151728] px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+                {/* Active Team Identity Badge */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
+                  <span className="font-black text-xs text-white truncate">
+                    {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
+                  </span>
+                  <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
+                    {currentTeam?.score ?? 0}đ
+                  </span>
+                </div>
+
+                {/* Quick Test Controls */}
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(true)}
-                    className="px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    title="Giả lập đội này chọn đáp án đúng"
                   >
-                    ✓ Chọn ĐÚNG
+                    ✓ Đúng
                   </button>
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(false)}
-                    className="px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    title="Giả lập đội này chọn đáp án sai"
                   >
-                    ✗ Chọn SAI
+                    ✗ Sai
                   </button>
                   <button
                     type="button"
                     onClick={handleForceActiveTeamBuzz}
-                    className="px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[11px]"
+                    className="px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    title="Giả lập đội này bấm chuông"
                   >
                     ⚡ Buzz
                   </button>
-                </div>
 
-                {/* Score Cheat Controls */}
-                <div className="flex items-center gap-1 relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowCheatDropdown(!showCheatDropdown)}
-                    className="px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-1"
-                  >
-                    <span>Cheat điểm ({currentTeam.score}đ)</span>
-                    <span>▾</span>
-                  </button>
+                  {/* Score Cheat Dropdown */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setShowCheatDropdown(!showCheatDropdown); }}
+                      className="px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 cursor-pointer"
+                      title="Chỉnh điểm nhanh cho đội này"
+                    >
+                      <span>Cheat</span>
+                      <span>▾</span>
+                    </button>
 
-                  {showCheatDropdown && (
-                    <div className="absolute right-0 top-full mt-1 z-30 p-2 rounded-xl glass border border-white/20 bg-[#151728] shadow-2xl flex flex-col gap-1 w-32">
-                      <button
-                        type="button"
-                        onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
-                        className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono text-[11px]"
+                    {showCheatDropdown && currentTeam && (
+                      <div
+                        className="absolute right-0 top-full mt-1 z-50 p-1.5 rounded-xl glass border border-white/20 bg-[#151728]/95 shadow-2xl flex flex-col gap-1 w-28 text-[10px]"
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        +20 điểm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { handleAdjustScore(currentTeam.id, -20); setShowCheatDropdown(false); }}
-                        className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono text-[11px]"
-                      >
-                        -20 điểm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { handleAdjustScore(currentTeam.id, undefined, 0); setShowCheatDropdown(false); }}
-                        className="px-2 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 text-left font-mono text-[11px]"
-                      >
-                        Set 0 điểm
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { handleAdjustScore(currentTeam.id, undefined, 50); setShowCheatDropdown(false); }}
-                        className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-left font-mono text-[11px]"
-                      >
-                        Set 50 điểm
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Secret Wager quick bids if mode is WAGER */}
-                {roomState?.mode === "WAGER" && (
-                  <div className="w-full flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
-                    {roomState?.wagerState?.previousQuestionWagerTeamId === currentTeam.id ? (
-                      <span className="text-[10px] text-purple-300 font-bold bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30">
-                        ⏸️ Đội này tạm nghỉ cược câu này (đã cược câu trước)
-                      </span>
-                    ) : (
-                      <>
-                        <span className="font-bold text-amber-300 text-[10px]">Cược nhanh:</span>
-                        {[10, 15, 20, 25, 30].map((amt) => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => handleForceActiveTeamWager(amt)}
-                            className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-mono font-bold text-[9px]"
-                          >
-                            +{amt}đ
-                          </button>
-                        ))}
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── WAGER Mode Mini-Panel (Request A: accessible without scrolling) ──── */}
-            {roomState?.mode === "WAGER" && roomState.wagerState && (
-              <div className="glass rounded-xl border border-amber-500/30 bg-[#1a1408]/90 p-2 shrink-0 text-xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-black text-amber-300 text-[11px]">🎰 Trạng thái Cược</span>
-                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                    roomState.wagerState.phase === "WAGER_PERIOD" ? "bg-amber-500/30 text-amber-200 animate-pulse" :
-                    roomState.wagerState.phase === "QUESTION_PERIOD" ? "bg-emerald-500/30 text-emerald-200" :
-                    "bg-slate-500/30 text-slate-300"
-                  }`}>
-                    {roomState.wagerState.phase === "WAGER_PERIOD" ? "⏳ Đang cược" :
-                     roomState.wagerState.phase === "QUESTION_PERIOD" ? "📖 Câu hỏi" :
-                     roomState.wagerState.phase || "—"}
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-1">
-                  {stableTeams.map((t) => {
-                    const myBet = roomState.wagerState?.teamWagers?.[t.id];
-                    const isResting = roomState.wagerState?.previousQuestionWagerTeamId === t.id;
-                    const isWinner = roomState.wagerState?.lastWagerTeamId === t.id;
-                    const isActive = activeTeamIndex === stableTeams.indexOf(t);
-                    return (
-                      <div key={t.id} className={`flex items-center gap-1 px-1.5 py-1 rounded-lg border ${isActive ? "border-purple-500/50 bg-purple-500/10" : "border-white/10 bg-black/20"}`}>
-                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: t.color }} />
-                        <span className="font-bold text-[10px] truncate flex-1" style={{ color: t.color }}>{t.name}</span>
-                        <span className="font-mono text-[10px] text-white shrink-0">
-                          {isResting ? <span className="text-purple-300">⏸️</span> :
-                           isWinner ? <span className="text-amber-300">👑</span> :
-                           myBet?.submitted ? <span className="text-amber-200 font-black">+{myBet.amount}đ</span> :
-                           <span className="text-slate-500">—</span>}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Quick bet for current team */}
-                {roomState.wagerState.phase === "WAGER_PERIOD" && (
-                  <div className="mt-1.5 pt-1 border-t border-white/10 flex items-center gap-1 flex-wrap">
-                    <span className="text-amber-400 font-bold text-[10px] shrink-0">
-                      {currentTeam?.name}:
-                    </span>
-                    {roomState.wagerState.previousQuestionWagerTeamId === currentTeam?.id ? (
-                      <span className="text-purple-300 text-[10px]">⏸️ Tạm nghỉ</span>
-                    ) : (
-                      [10, 15, 20, 25, 30].map((amt) => (
                         <button
-                          key={amt}
                           type="button"
-                          onClick={() => handleForceActiveTeamWager(amt)}
-                          className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] transition active:scale-95 cursor-pointer shadow"
+                          onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono font-bold"
                         >
-                          {amt}đ
+                          +20 điểm
                         </button>
-                      ))
+                        <button
+                          type="button"
+                          onClick={() => { handleAdjustScore(currentTeam.id, -20); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono font-bold"
+                        >
+                          -20 điểm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { handleAdjustScore(currentTeam.id, undefined, 0); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 text-left font-mono font-bold"
+                        >
+                          Set 0 điểm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { handleAdjustScore(currentTeam.id, undefined, 50); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-left font-mono font-bold"
+                        >
+                          Set 50 điểm
+                        </button>
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            )}
-
-            {/* Mobile Device Frame Mockup (Fills Remaining Height) */}
-            <div className="flex-1 min-h-0 glass rounded-3xl border-2 border-purple-500/30 overflow-hidden shadow-2xl flex flex-col bg-[#0b0c16]">
-              {/* Phone Speaker Notch */}
-              <div className="bg-[#151728] px-3 py-1 border-b border-white/10 flex items-center justify-between text-[10px] text-slate-400 shrink-0">
-                <span className="font-mono">9:41</span>
-                <div className="w-10 h-1 rounded-full bg-white/20" />
-                <span className="flex items-center gap-1 font-mono text-[9px]">
-                  <span>5G</span>
-                  <span>100%</span>
-                </span>
+                </div>
               </div>
 
               {/* Player Viewport */}

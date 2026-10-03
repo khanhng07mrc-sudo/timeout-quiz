@@ -3460,11 +3460,18 @@ function registerSocketHandlers(io2) {
       wagerState.questionReady = true;
       const qKey = `${room.id}:${q.id}`;
       roomQuestionProcessed.delete(qKey);
+      let winningTeamName = wagerState.autoAssignedTeamName || "\u0110\u1ED9i c\u01B0\u1EE3c";
+      if (wagerState.lastWagerTeamId) {
+        const teamObj = await prisma.team.findUnique({ where: { id: wagerState.lastWagerTeamId } });
+        if (teamObj) winningTeamName = teamObj.name;
+      }
       const bloomLevel = getBloomLevelFromPoints(q.points);
       const questionState = buildQuestionState(q, {
         bloomLevel,
         answerMethod: room.config?.answerMethod ?? "DEVICE",
-        wagerPhase: "QUESTION_PERIOD"
+        wagerPhase: "QUESTION_PERIOD",
+        primaryTeamId: wagerState.lastWagerTeamId,
+        primaryTeamName: winningTeamName
       });
       questionState.timerPending = true;
       questionState.timerStarted = false;

@@ -78,9 +78,9 @@ export default function GameQuestion({
   const isMcMode = (question.answerMethod ?? answerMethod) === "MC";
   const myActorId = myTeamId || playerId;
 
-  // In BOUNCEBACK mode:
-  // Primary phase: primary team/player can answer
-  const isPrimaryTeam = myActorId && question.primaryTeamId ? myActorId === question.primaryTeamId : !question.primaryTeamId;
+  // In single-team answer modes:
+  // Primary phase: strictly check match against primaryTeamId
+  const isPrimaryTeam = Boolean(myActorId && question.primaryTeamId && myActorId === question.primaryTeamId);
   // Steal phase: only steal buzzed team/player can answer
   const effStealTeam = stealBuzzedTeam || (question.stealBuzzedTeamId ? {
     teamId: question.stealBuzzedTeamId,
@@ -112,6 +112,8 @@ export default function GameQuestion({
     (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||
     (roomMode === "BOUNCEBACK" && Boolean(effStealTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
 
+  const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE", "WAGER"].includes(roomMode);
+
   const canAnswerThisQuestion = () => {
     if (isSpectator) return false;
     if (isFinalizedLocally) return false;
@@ -121,20 +123,39 @@ export default function GameQuestion({
     if (question.bouncebackAwaitingJudgment) return false;
     if (question.timerPending) return false;
     if (timer && timerDisplayRemaining <= 0) return false;
+
+    // 1. BOUNCEBACK:
     if (roomMode === "BOUNCEBACK") {
       if (effStealTeam) return Boolean(isStealTeam && question.stealAnsweringActive);
       if (isStealPhase) return false; // In steal buzz phase, only buzzing is allowed
       return isPrimaryTeam;
     }
+
+    // 2. BUZZ:
     if (roomMode === "BUZZ") {
       return Boolean(isBuzzedTeam && question.buzzAnsweringActive);
     }
-    if (roomMode === "GRID_CARO" || roomMode === "DICE_RACE") {
+
+    // 3. GRID_CARO:
+    if (roomMode === "GRID_CARO") {
       return isPrimaryTeam;
     }
+
+    // 4. DICE_RACE:
+    if (roomMode === "DICE_RACE") {
+      return isPrimaryTeam;
+    }
+
+    // 5. WAGER: Only the winning wager team can answer!
+    if (roomMode === "WAGER") {
+      return isPrimaryTeam;
+    }
+
+    // 6. TOURNAMENT:
     if (roomMode === "TOURNAMENT") {
       return isTournamentCompetitor;
     }
+
     return true;
   };
 
@@ -553,12 +574,27 @@ export default function GameQuestion({
 
       {/* WAGER Banner */}
       {roomMode === "WAGER" && (
-        <div className="rounded-xl p-3 border text-xs sm:text-sm font-medium transition-all bg-amber-500/15 border-amber-500/30 text-amber-200">
-          <div className="flex items-center gap-2">
-            <span className="text-base shrink-0">💰</span>
-            <span>
-              <strong>Cược điểm:</strong> 👑 Đội cược cuối: Đúng nhận điểm cược, Sai trừ điểm cược · Các đội khác: Đúng nhận 1/2 điểm câu hỏi (làm tròn lên chia hết cho 5), Sai 0đ
-            </span>
+        <div className={`rounded-xl p-3 border text-xs sm:text-sm font-medium transition-all ${
+          isPrimaryTeam
+            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-200 shadow-sm"
+            : "bg-amber-500/15 border-amber-500/30 text-amber-200"
+        }`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-base shrink-0">👑</span>
+              <span>
+                <strong>Đội cược điểm:</strong> <span className="font-bold text-yellow-300">{question.primaryTeamName || "Đang xác định"}</span>
+              </span>
+            </div>
+            {isPrimaryTeam ? (
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-black border border-emerald-500/50 animate-pulse whitespace-nowrap">
+                Lượt của bạn!
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                🔒 Đang quan sát
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -569,6 +605,35 @@ export default function GameQuestion({
           <span className="text-base">🎙️</span>
           <span>
             <strong>Chế độ trả lời qua MC:</strong> Thí sinh đọc và trả lời miệng cho MC/Giám khảo. Quản trò (Admin) sẽ click chọn đáp án trên máy.
+          </span>
+        </div>
+      )}
+
+      {/* Single-Team Mode Turn Status Notice */}
+      {isSingleTeamTurnMode && !revealPayload && !question.timerPending && !isSpectator && !question.bouncebackSelectPhase && (
+        <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 transition-all ${
+          canAnswerThisQuestion()
+            ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-200 shadow-sm"
+            : "bg-slate-900/80 border-slate-700/60 text-slate-400"
+        }`}>
+          <div className="flex items-center gap-2">
+            <span>{canAnswerThisQuestion() ? "✨" : "🔒"}</span>
+            <span>
+              {canAnswerThisQuestion()
+                ? "LƯỢT CỦA BẠN: Hãy chọn đáp án để ghi điểm!"
+                : `Quyền bấm đang khóa: Đang là lượt của ${
+                    roomMode === "BUZZ"
+                      ? (question.buzzedTeamName || buzzedBy?.teamName || "đội bấm chuông")
+                      : roomMode === "BOUNCEBACK" && effStealTeam
+                      ? (effStealTeam.teamName)
+                      : (question.primaryTeamName || "đội chính")
+                  }`}
+            </span>
+          </div>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-mono ${
+            canAnswerThisQuestion() ? "bg-emerald-500/30 text-emerald-300" : "bg-white/10 text-slate-400"
+          }`}>
+            {canAnswerThisQuestion() ? "Đã mở khóa" : "Đang khóa"}
           </span>
         </div>
       )}

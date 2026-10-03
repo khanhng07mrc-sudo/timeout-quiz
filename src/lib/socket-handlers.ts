@@ -3355,11 +3355,19 @@ export function registerSocketHandlers(io: IO) {
       const qKey = `${room.id}:${q.id}`;
       roomQuestionProcessed.delete(qKey);
 
+      let winningTeamName = wagerState.autoAssignedTeamName || "Đội cược";
+      if (wagerState.lastWagerTeamId) {
+        const teamObj = await prisma.team.findUnique({ where: { id: wagerState.lastWagerTeamId } });
+        if (teamObj) winningTeamName = teamObj.name;
+      }
+
       const bloomLevel = getBloomLevelFromPoints(q.points);
       const questionState = buildQuestionState(q, {
         bloomLevel,
         answerMethod: (room.config as any)?.answerMethod ?? "DEVICE",
         wagerPhase: "QUESTION_PERIOD",
+        primaryTeamId: wagerState.lastWagerTeamId,
+        primaryTeamName: winningTeamName,
       });
 
       // Do NOT start timer yet! Admin clicks "Bắt đầu tính giờ" manually!

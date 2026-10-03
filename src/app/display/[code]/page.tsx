@@ -1151,6 +1151,18 @@ export default function DisplayPage() {
                   isDisplay={true}
                   teams={roomState.teams}
                   positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+                  onGrantBailout={(teamId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_GRANT_BAILOUT", teamId }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:grant_bailout" as any, { teamId });
+                  }}
+                  onSetBailoutLimit={(limit) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_SET_BAILOUT_LIMIT", limit }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
+                  }}
                 />
               </div>
             )}
@@ -1186,6 +1198,18 @@ export default function DisplayPage() {
                   isDisplay={true}
                   teams={roomState.teams}
                   positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+                  onGrantBailout={(teamId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_GRANT_BAILOUT", teamId }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:grant_bailout" as any, { teamId });
+                  }}
+                  onSetBailoutLimit={(limit) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_SET_BAILOUT_LIMIT", limit }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
+                  }}
                 />
               </div>
             ) : (

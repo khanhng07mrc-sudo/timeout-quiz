@@ -177,7 +177,7 @@ export default function WagerPanel({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {isAdmin && onSetBailoutLimit && (
+              {onSetBailoutLimit && (
                 <div className="flex items-center gap-1.5 text-xs bg-white/10 px-2 py-1 rounded-lg border border-white/10">
                   <span className="text-muted-foreground text-[11px]">Giới hạn:</span>
                   <button
@@ -231,7 +231,7 @@ export default function WagerPanel({
                   <span style={{ color: item.teamColor }}>{item.teamName}</span>
                   <span className="font-mono text-rose-300">({item.score}đ tại câu {item.questionIndex})</span>
 
-                  {isFirst && isAdmin && onGrantBailout && (
+                  {isFirst && onGrantBailout && (
                     positiveTeamsCount !== undefined && positiveTeamsCount < 1 ? (
                       <span className="ml-2 text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/40">
                         🔒 Cần &ge;2 đội sống
@@ -241,7 +241,7 @@ export default function WagerPanel({
                         type="button"
                         disabled={currentQuestionBailoutUsed}
                         onClick={() => onGrantBailout(item.teamId)}
-                        className="ml-2 px-3 py-1 rounded-md bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs shadow transition active:scale-95"
+                        className="ml-2 px-3 py-1 rounded-md bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-black font-black text-xs shadow transition active:scale-95 cursor-pointer shadow-emerald-500/30"
                       >
                         {currentQuestionBailoutUsed ? "Chờ câu sau" : "🆘 Cấp Trợ Cấp"}
                       </button>

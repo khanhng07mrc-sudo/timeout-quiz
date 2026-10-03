@@ -937,6 +937,13 @@ export default function PlayPage() {
       </div>
     );
   }
+
+  const canAdminBailout = Boolean(
+    isSandbox ||
+    (typeof window !== "undefined" && window.self !== window.top) ||
+    roomState?.players.find((p) => p.id === playerId)?.isHost
+  );
+
   return (
     <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
       {/* Header with score and sound toggle */}
@@ -1043,6 +1050,18 @@ export default function PlayPage() {
                   myTeamName={myTeam?.name ?? mePlayer?.name}
                   teams={roomState.teams}
                   positiveTeamsCount={roomState?.teams.filter((t) => t.score > 0).length}
+                  onGrantBailout={canAdminBailout ? (teamId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_GRANT_BAILOUT", teamId }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:grant_bailout" as any, { teamId });
+                  } : undefined}
+                  onSetBailoutLimit={canAdminBailout ? (limit) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_SET_BAILOUT_LIMIT", limit }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
+                  } : undefined}
                 />
               </div>
             )}
@@ -1106,6 +1125,18 @@ export default function PlayPage() {
                   teams={roomState.teams}
                   onSubmitWager={handleSubmitWager}
                   positiveTeamsCount={roomState?.teams.filter((t) => t.score > 0).length}
+                  onGrantBailout={canAdminBailout ? (teamId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_GRANT_BAILOUT", teamId }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:grant_bailout" as any, { teamId });
+                  } : undefined}
+                  onSetBailoutLimit={canAdminBailout ? (limit) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "WAGER_SET_BAILOUT_LIMIT", limit }, "*");
+                    }
+                    socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
+                  } : undefined}
                 />
               </div>
             ) : (

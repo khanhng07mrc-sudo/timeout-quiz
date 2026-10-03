@@ -869,9 +869,112 @@ export default function AdminSandboxPage() {
     }, 1000);
   };
 
+  const handleGrantBailout = useCallback((teamId: string) => {
+    if (!roomStateRef.current?.wagerState) return;
+    const curWager = roomStateRef.current.wagerState;
+    const curTeams = roomStateRef.current.teams;
+
+    if (isOfflineSandbox) {
+      const q = curWager.bailoutQueue || [];
+      if (q.length === 0) {
+        addLog("⚠️ Hàng đợi cứu trợ đang trống!");
+        return;
+      }
+      if (curWager.currentQuestionBailoutUsed) {
+        addLog("⚠️ Chỉ có thể cứu trợ 1 đội trong mỗi câu hỏi! Vui lòng chờ câu tiếp theo.");
+        return;
+      }
+
+      const topQueueItem = q[0];
+      if (topQueueItem.teamId !== teamId) {
+        addLog(`⚠️ Phải ưu tiên cứu đội rời cuộc chơi sớm hơn: [${topQueueItem.teamName}]!`);
+        return;
+      }
+
+      const team = curTeams.find((t) => t.id === teamId);
+      if (!team) return;
+
+      const positiveScores = curTeams.filter((t) => t.score > 0).map((t) => t.score);
+      if (positiveScores.length < 1) {
+        addLog("⚠️ Điều kiện cứu trợ không thỏa mãn: Cần còn ít nhất 2 đội còn sống!");
+        return;
+      }
+
+      const lowestPositiveScore = Math.min(...positiveScores);
+      const updatedTeams = curTeams.map((t) => {
+        if (t.id === teamId) {
+          return { ...t, score: lowestPositiveScore, isEliminated: false };
+        }
+        return t;
+      });
+
+      const bailoutMax = roomStateRef.current.config.wagerBailoutLimit ?? 1;
+      const bailoutInfo = {
+        ...(curWager.teamBailouts?.[teamId] || { remaining: bailoutMax, max: bailoutMax }),
+      };
+      bailoutInfo.remaining = Math.max(0, bailoutInfo.remaining - 1);
+
+      const nextQueue = q.slice(1);
+      const nextWagerState: WagerState = {
+        ...curWager,
+        teamBailouts: {
+          ...curWager.teamBailouts,
+          [teamId]: bailoutInfo,
+        },
+        bailoutQueue: nextQueue,
+        currentQuestionBailoutUsed: true,
+      };
+
+      const nextRoomState: RoomState = {
+        ...roomStateRef.current,
+        teams: updatedTeams,
+        wagerState: nextWagerState,
+      };
+
+      setRoomState(nextRoomState);
+      syncToIframes({ roomState: nextRoomState });
+      addLog(`🆘 Admin đã cấp trợ cấp hồi sinh cho Đội [${team.name}] (${lowestPositiveScore}đ)!`);
+      return;
+    }
+
+    // Online Sandbox Mode
+    adminSocketRef.current?.emit("admin:wager:grant_bailout" as any, { teamId });
+    const targetTeam = curTeams.find((t) => t.id === teamId);
+    addLog(`Admin: Kích hoạt cứu trợ cho Đội [${targetTeam?.name || teamId}]...`);
+  }, [isOfflineSandbox, addLog, syncToIframes]);
+
+  const handleSetBailoutLimit = useCallback((limit: number) => {
+    if (isOfflineSandbox) {
+      if (!roomStateRef.current?.wagerState) return;
+      const updatedBailouts = { ...(roomStateRef.current.wagerState.teamBailouts || {}) };
+      Object.keys(updatedBailouts).forEach((tid) => {
+        updatedBailouts[tid] = { ...updatedBailouts[tid], max: limit, remaining: Math.min(updatedBailouts[tid].remaining, limit) };
+      });
+      const nextRoomState: RoomState = {
+        ...roomStateRef.current,
+        config: { ...roomStateRef.current.config, wagerBailoutLimit: limit },
+        wagerState: { ...roomStateRef.current.wagerState, teamBailouts: updatedBailouts },
+      };
+      setRoomState(nextRoomState);
+      syncToIframes({ roomState: nextRoomState });
+      addLog(`Admin: Đã chỉnh giới hạn cứu trợ tối đa: ${limit} lần/đội`);
+      return;
+    }
+    adminSocketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
+    addLog(`Admin: Chỉnh giới hạn cứu trợ: ${limit} lần`);
+  }, [isOfflineSandbox, addLog, syncToIframes]);
+
   // Handle player actions sent from the mobile viewport iframe
   useEffect(() => {
     const handlePlayerAction = (e: MessageEvent) => {
+      if (e.data?.type === "WAGER_GRANT_BAILOUT") {
+        handleGrantBailout(e.data.teamId);
+        return;
+      }
+      if (e.data?.type === "WAGER_SET_BAILOUT_LIMIT") {
+        handleSetBailoutLimit(e.data.limit);
+        return;
+      }
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
       const { action, answer, points, cellId, teamId } = e.data;
       const targetTeamId = teamId || stableTeams[activeTeamIndex]?.id || "t_red";
@@ -2273,6 +2376,32 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
+                {/* 1b. WAGER Mode Bailout Grant Button (When any team falls into bailout queue) */}
+                {roomState?.mode === "WAGER" && roomState?.wagerState?.bailoutQueue && roomState.wagerState.bailoutQueue.length > 0 && (
+                  <button
+                    type="button"
+                    disabled={roomState.wagerState.currentQuestionBailoutUsed}
+                    onClick={() => handleGrantBailout(roomState.wagerState!.bailoutQueue![0].teamId)}
+                    className={`px-3 py-1 rounded-lg text-xs font-black shadow flex items-center gap-1.5 whitespace-nowrap transition-all active:scale-95 cursor-pointer ${
+                      roomState.wagerState.currentQuestionBailoutUsed
+                        ? "bg-slate-700/50 text-slate-400 border border-slate-600/40 cursor-not-allowed opacity-60"
+                        : "bg-gradient-to-r from-rose-600 via-pink-600 to-amber-500 hover:from-rose-500 hover:to-amber-400 text-white shadow-rose-500/30 animate-pulse border border-rose-400/50"
+                    }`}
+                    title={
+                      roomState.wagerState.currentQuestionBailoutUsed
+                        ? "Đã cấp cứu trợ trong câu này. Đội tiếp theo sẽ được cứu ở câu kế tiếp."
+                        : `Cấp trợ cấp hồi sinh cho ${roomState.wagerState.bailoutQueue[0].teamName}`
+                    }
+                  >
+                    <span>🆘</span>
+                    <span>
+                      {roomState.wagerState.currentQuestionBailoutUsed
+                        ? "Đã cứu câu này (Chờ câu sau)"
+                        : `Cứu trợ: ${roomState.wagerState.bailoutQueue[0].teamName}`}
+                    </span>
+                  </button>
+                )}
+
                 {/* 2. Start Timer if pending */}
                 {currentQuestion?.timerPending && (
                   <button
@@ -2527,19 +2656,6 @@ export default function AdminSandboxPage() {
                   </>
                 )}
 
-                {roomState?.mode === "WAGER" && (
-                  <>
-                    {roomState.wagerState?.phase === "QUESTION_PERIOD" && !roomState.wagerState.questionReady && (
-                      <button
-                        type="button"
-                        onClick={handleWagerLaunchQuestion}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap animate-pulse cursor-pointer shadow-emerald-500/30"
-                      >
-                        <span>📢 Mở câu hỏi cược</span>
-                      </button>
-                    )}
-                  </>
-                )}
               </div>
 
               {/* Right Section: Studio Utilities */}
@@ -2674,6 +2790,28 @@ export default function AdminSandboxPage() {
                           className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
                         />
                       </div>
+
+                      {roomState.mode === "WAGER" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Giới hạn cứu trợ</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3].map((limit) => (
+                              <button
+                                key={limit}
+                                type="button"
+                                onClick={() => handleSetBailoutLimit(limit)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.wagerBailoutLimit ?? 1) === limit
+                                    ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {limit} lần
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

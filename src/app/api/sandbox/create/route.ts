@@ -66,17 +66,28 @@ export async function POST(req: NextRequest) {
     const mode: GameMode = body.mode || "CLASSIC";
     let quizBankId: string = body.quizBankId;
 
-    // Ensure Host user exists
-    const host = await prisma.user.upsert({
-      where: { email: "demo-host@quizorra.com" },
-      update: {},
-      create: {
-        id: "demo-host-id",
-        email: "demo-host@quizorra.com",
-        name: "Nguyễn Gia Khánh (Host)",
-        role: "ADMIN",
+    // Ensure Host user exists safely without ID collision
+    let host = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: "demo-host-id" },
+          { email: "demo.host@quizorra.com" },
+          { email: "demo-host@quizorra.com" },
+          { email: "demo-host@timeoutquiz.com" },
+        ],
       },
     });
+
+    if (!host) {
+      host = await prisma.user.create({
+        data: {
+          id: "demo-host-id",
+          email: "demo.host@quizorra.com",
+          name: "Nguyễn Gia Khánh (Host)",
+          role: "ADMIN",
+        },
+      });
+    }
 
     // If quiz bank specified, find it; otherwise find any available bank
     let quizBank = quizBankId
@@ -221,10 +232,10 @@ export async function POST(req: NextRequest) {
       players: createdPlayers,
       hostPlayerId: hostPlayer.id,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("[sandbox:create] Error:", error);
     return NextResponse.json(
-      { success: false, error: "Lỗi khởi tạo phòng Sandbox" },
+      { success: false, error: error?.message || "Lỗi khởi tạo phòng Sandbox" },
       { status: 500 }
     );
   }

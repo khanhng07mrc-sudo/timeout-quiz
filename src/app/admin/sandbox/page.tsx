@@ -712,23 +712,31 @@ export default function AdminSandboxPage() {
     const storedMode = sessionStorage.getItem("sandbox_offline_mode") as GameMode | null;
     const storedBank = sessionStorage.getItem("sandbox_offline_bank") || "";
 
-    const effectiveCode = urlCode || storedCode;
-    const effectiveOffline = urlOffline || storedOffline || (effectiveCode === "OFFLINE" || (effectiveCode?.startsWith("OFFLINE") ?? false));
+    // Only restore offline mode if explicitly requested in URL (e.g. ?offline=1 or ?code=OFFLINE)
+    const isExplicitlyOffline = urlOffline || (urlCode === "OFFLINE" || (urlCode?.startsWith("OFFLINE") ?? false));
 
-    if (effectiveOffline) {
-      const modeToUse = urlMode || storedMode || "GRID_CARO";
+    if (isExplicitlyOffline) {
+      const modeToUse = urlMode || storedMode || "BOUNCEBACK";
       const bankToUse = storedBank || "";
       setSelectedMode(modeToUse);
       setIsOfflineSandbox(true);
       startOfflineSandbox(modeToUse, bankToUse);
-    } else if (effectiveCode && effectiveCode.trim().length === 6) {
-      const cleanCode = effectiveCode.trim();
-      setCode(cleanCode);
-      setIsOfflineSandbox(false);
-      saveSandboxSession(cleanCode, false);
-      connectAdminSocket(cleanCode);
+    } else {
+      const candidateCode = (urlCode || storedCode || "").trim();
+      if (candidateCode && candidateCode.length === 6 && candidateCode !== "OFFLINE") {
+        setCode(candidateCode);
+        setIsOfflineSandbox(false);
+        saveSandboxSession(candidateCode, false);
+        connectAdminSocket(candidateCode);
+      } else {
+        // Fresh start: clear any stale offline flags so user starts in online selection mode
+        clearSandboxSession();
+        setCode("");
+        setIsOfflineSandbox(false);
+        setRoomState(null);
+      }
     }
-  }, [connectAdminSocket, startOfflineSandbox, saveSandboxSession]);
+  }, [connectAdminSocket, startOfflineSandbox, saveSandboxSession, clearSandboxSession]);
 
   const checkOfflineEarlyCompletion = () => {
     if (!currentQuestionRef.current) return;
@@ -961,14 +969,22 @@ export default function AdminSandboxPage() {
         setIsOfflineSandbox(false);
         saveSandboxSession(data.code, false);
         connectAdminSocket(data.code);
-        addLog(`Đã khởi tạo Sandbox: Phòng ${data.code} (${data.mode})`);
+        addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
       } else {
-        addLog("⚡ Không thể tạo phòng online, tự động chuyển sang Sandbox Ngoại tuyến!");
+        const errorMsg = data?.error || "Không thể tạo phòng Sandbox trên máy chủ";
+        addLog(`❌ Không thể tạo phòng online: ${errorMsg}`);
+        const wantOffline = window.confirm(`Không thể tạo phòng Sandbox Online trên máy chủ:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
+        if (wantOffline) {
+          startOfflineSandbox(selectedMode, selectedBankId);
+        }
+      }
+    } catch (err: any) {
+      const errorMsg = err?.message || "Lỗi kết nối mạng";
+      addLog(`❌ Lỗi kết nối mạng: ${errorMsg}`);
+      const wantOffline = window.confirm(`Lỗi kết nối mạng khi tạo Sandbox Online:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
+      if (wantOffline) {
         startOfflineSandbox(selectedMode, selectedBankId);
       }
-    } catch {
-      addLog("⚡ Lỗi kết nối mạng: Đã tự động kích hoạt Sandbox Ngoại tuyến!");
-      startOfflineSandbox(selectedMode, selectedBankId);
     } finally {
       setCreating(false);
     }
@@ -1961,9 +1977,26 @@ export default function AdminSandboxPage() {
                 1 Người Điều Khiển
               </span>
               {isOfflineSandbox && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap animate-pulse">
-                  ⚡ Ngoại tuyến
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap">
+                    ⚡ Ngoại tuyến
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearSandboxSession();
+                      setCode("");
+                      setIsOfflineSandbox(false);
+                      setRoomState(null);
+                      setCurrentQuestion(null);
+                    }}
+                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold whitespace-nowrap flex items-center gap-1 transition cursor-pointer"
+                    title="Thoát chế độ ngoại tuyến và mở phòng online với bộ đề trên máy chủ"
+                  >
+                    <span>🌐</span>
+                    <span>Chuyển sang Online</span>
+                  </button>
+                </div>
               )}
               {code && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs">

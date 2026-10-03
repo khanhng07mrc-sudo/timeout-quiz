@@ -2251,6 +2251,8 @@ function registerSocketHandlers(io2) {
         }
       };
       if (room.mode === "WAGER") {
+        roomActiveQuestions.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
         const teams = await prisma.team.findMany({ where: { roomId: room.id } });
         const initialWagers = {};
         teams.forEach((t) => {

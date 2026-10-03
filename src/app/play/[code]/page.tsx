@@ -67,6 +67,12 @@ export default function PlayPage() {
   const playerIdRef = useRef<string>("");
   const lastQuestionIdRef = useRef<string | null>(null);
 
+  const currentQuestionRef = useRef<QuestionState | null>(null);
+  currentQuestionRef.current = currentQuestion;
+  const handleAnswerRef = useRef<(ans: string | string[]) => void>(() => {});
+  const handleBuzzRef = useRef<() => void>(() => {});
+  const handleSubmitWagerRef = useRef<(amt: number) => void>(() => {});
+
   const toggleSound = () => {
     const next = !soundEnabled;
     setSoundEnabled(next);
@@ -192,6 +198,25 @@ export default function PlayPage() {
             return { ...prev, players: updatedPlayers };
           });
           setAnswered(false);
+        }
+        return;
+      }
+      if (e.data?.type === "FORCE_TESTER_ACTION") {
+        const { action, answer, isCorrect, amount } = e.data;
+        if (action === "buzz") {
+          handleBuzzRef.current();
+        } else if (action === "wager" && typeof amount === "number") {
+          handleSubmitWagerRef.current(amount);
+        } else if (action === "answer") {
+          if (answer) {
+            handleAnswerRef.current(answer);
+          } else if (currentQuestionRef.current && isCorrect !== undefined) {
+            const opts = currentQuestionRef.current.question.options || [];
+            if (opts.length > 0) {
+              const chosen = isCorrect ? opts[0] : opts[opts.length - 1];
+              handleAnswerRef.current(chosen.id);
+            }
+          }
         }
         return;
       }
@@ -695,6 +720,10 @@ export default function PlayPage() {
     }
   };
 
+  handleAnswerRef.current = handleAnswer;
+  handleBuzzRef.current = handleBuzz;
+  handleSubmitWagerRef.current = handleSubmitWager;
+
   const handleSelectPoints = (points: 10 | 20 | 30) => {
     if (socketRef.current?.connected) {
       socketRef.current.emit("game:bounceback:select_points", { points });
@@ -954,7 +983,7 @@ export default function PlayPage() {
 
       {/* Main game area */}
       <div className="flex-1 flex flex-col gap-2 sm:gap-3">
-        {currentQuestion ? (
+        {currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
           <>
             {/* DICE_RACE: Mini-track on top while answering; Full Board after reveal so team can roll dice */}
             {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (

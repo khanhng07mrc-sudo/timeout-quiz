@@ -2,7 +2,7 @@
 // High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
 
 type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";
-type BGMKey = "lobby" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense";
+type BGMKey = "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense";
 
 interface AudioSourceConfig {
   primary: string;
@@ -12,7 +12,7 @@ interface AudioSourceConfig {
 const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   tick: { primary: "/sounds/tick.mp3", fallbacks: ["/sounds/tick.wav"] },
   go: { primary: "/sounds/go.mp3", fallbacks: ["/sounds/go.wav"] },
-  buzz: { primary: "/sounds/buzz.mp3", fallbacks: ["/sounds/buzz.wav"] },
+  buzz: { primary: "/sounds/olympia_buzz.mp3", fallbacks: ["/sounds/buzz.mp3", "/sounds/buzz.wav"] },
   correct: { primary: "/sounds/correct.mp3", fallbacks: ["/sounds/correct.wav"] },
   wrong: { primary: "/sounds/wrong.ogg", fallbacks: ["/sounds/wrong.mp3", "/sounds/wrong.wav"] },
   fanfare: { primary: "/sounds/fanfare.mp3", fallbacks: ["/sounds/fanfare.wav"] },
@@ -22,6 +22,7 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
 
 const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   lobby: { primary: "/sounds/lobby.ogg", fallbacks: ["/sounds/lobby.mp3", "/sounds/lobby.wav"] },
+  olympia_5s: { primary: "/sounds/olympia_5s.mp3", fallbacks: ["/sounds/olympia_5s_left.mp3"] },
   olympia_15s: { primary: "/sounds/olympia_15s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_20s: { primary: "/sounds/olympia_20s.ogg", fallbacks: ["/sounds/olympia_20s.mp3", "/sounds/question_suspense.mp3"] },
   olympia_30s: { primary: "/sounds/olympia_30s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
@@ -296,6 +297,19 @@ class SoundManager {
         this.stopMusic(350);
       }
     }, safetyTimeoutMs);
+  }
+
+  /**
+   * Plays the official Olympia 5s countdown soundtrack (O10 - nay ở phần Về đích)
+   * used during the Bounceback steal buzzer window.
+   * Runs naturally to the end of the file even if a contestant buzzes during the 5s.
+   */
+  public playOlympia5s() {
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
+    this.playMusicTrack("QUESTION", "olympia_5s", 0.9, 0);
   }
 
   /**

@@ -93,6 +93,7 @@ const playerStreakMap = new Map<string, number>(); // playerId -> streak count
 const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
 const roomFinalizedActors = new Map<string, Set<string>>(); // qKey -> set of actors who finalized
 const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of actors who submitted at least once
+const roomTeamImmunity = new Map<string, number>(); // roomId:teamId -> immuneUntilQuestionIndex
 
 /**
  * Lấy câu hỏi tiếp theo đảm bảo KHÔNG BAO GIỜ bị lặp lại ở tất cả các mode.
@@ -1467,6 +1468,18 @@ export function registerSocketHandlers(io: IO) {
       const currentQ = room.quizBank?.questions[room.currentQuestion];
       const qKey = currentQ ? `${room.id}:${currentQ.id}` : "";
 
+      if (room.mode === "BOUNCEBACK" && qKey) {
+        if (roomStealPhase.get(qKey) || roomStealBuzzed.has(qKey)) {
+          socket.emit("error", "Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm!");
+          return;
+        }
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (activeQ?.timerStarted) {
+          socket.emit("error", "Ở phần thi Về đích, Ngôi sao hy vọng và thẻ hỗ trợ chỉ được kích hoạt trước khi bắt đầu đếm ngược!");
+          return;
+        }
+      }
+
       if (room.teamMode === "TEAM" && qKey) {
         let teamCardsMap = roomQuestionTeamCards.get(qKey);
         if (!teamCardsMap) {
@@ -1493,6 +1506,18 @@ export function registerSocketHandlers(io: IO) {
       if (!isPowerupAllowedForMode(room.mode as any, card.type as any)) {
         socket.emit("error", `Thẻ ${CARD_METADATA[card.type as CardType]?.nameVi || card.type} không được phép sử dụng trong chế độ ${room.mode}!`);
         return;
+      }
+
+      // Cơ chế chống 'Úp sọt' (Gang-up Protection): Miễn nhiễm 1 câu sau khi bị dính ATTACK, FREEZE hoặc PENALTY
+      if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
+        const immunityKey = `${room.id}:${targetTeamId}`;
+        const immuneUntilQ = roomTeamImmunity.get(immunityKey);
+        if (immuneUntilQ !== undefined && immuneUntilQ >= room.currentQuestion) {
+          socket.emit("error", "Đội này vừa bị tấn công và đang được kích hoạt Khiên miễn nhiễm bảo hộ trong câu hỏi này!");
+          return;
+        }
+        // Thiết lập miễn nhiễm cho câu hỏi tiếp theo
+        roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
       }
 
       await prisma.powerupCard.update({
@@ -4379,11 +4404,18 @@ async function finalizeBouncebackPrimary(
     return true;
   } else {
     // Đội chính trả lời sai:
-    // Tạm thời chưa trừ điểm (0đ), cập nhật answer
+    const teamCardsMap = roomQuestionTeamCards.get(qKey);
+    const activeCard = teamCardsMap?.get(primary.teamId);
+    let hopeStarPenalty = 0;
+    if (activeCard && activeCard.type === "DOUBLE") {
+      // Ngôi sao hy vọng: Đúng x2, Sai bị trừ 100% điểm câu hỏi!
+      hopeStarPenalty = chosenPoints;
+    }
+
     if (existingAns) {
       await prisma.answer.update({
         where: { id: existingAns.id },
-        data: { pointsAwarded: 0, isCorrect: false },
+        data: { pointsAwarded: -hopeStarPenalty, isCorrect: false },
       });
     } else {
       await prisma.answer.create({
@@ -4393,10 +4425,31 @@ async function finalizeBouncebackPrimary(
           teamId: primary.teamId,
           answer: [],
           isCorrect: false,
-          pointsAwarded: 0,
+          pointsAwarded: -hopeStarPenalty,
           timeSpent: 0,
         },
       });
+    }
+
+    if (hopeStarPenalty > 0) {
+      const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
+      if (primaryPlayer) {
+        const updatedPrimary = await prisma.player.update({
+          where: { id: primary.teamId },
+          data: { score: { decrement: hopeStarPenalty } },
+        });
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: primary.teamId, score: updatedPrimary.score, delta: -hopeStarPenalty },
+        ]);
+      } else {
+        const updatedTeam = await prisma.team.update({
+          where: { id: primary.teamId },
+          data: { score: { decrement: hopeStarPenalty } },
+        });
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: primary.teamId, score: updatedTeam.score, delta: -hopeStarPenalty },
+        ]);
+      }
     }
 
     io.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: question.timeLimit });
@@ -4498,9 +4551,11 @@ async function finalizeBouncebackSteal(
 
   // Olympia Steal:
   // Nếu đội cướp đúng -> đội cướp ăn trọn điểm (+chosenPoints), đội chính bị trừ 100% điểm (-chosenPoints)!
+  // Lưu ý: Nếu đội chính đã đặt Ngôi sao hy vọng thì đã bị trừ 100% lúc làm sai, không trừ lần 2!
   // Nếu đội cướp sai -> đội cướp bị trừ 50% điểm (-chosenPoints * 0.5), đội chính giữ nguyên điểm (0đ)!
   const primary = roomPrimaryTeams.get(qKey);
-  if (isCorrect && primary && primary.teamId !== stealInfo.teamId) {
+  const primaryHadDouble = teamCardsMap?.get(primary?.teamId ?? "")?.type === "DOUBLE";
+  if (isCorrect && primary && primary.teamId !== stealInfo.teamId && !primaryHadDouble) {
     const deductPoints = -chosenPoints;
     const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (primaryPlayer) {

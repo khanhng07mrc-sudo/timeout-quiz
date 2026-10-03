@@ -13,22 +13,21 @@ import { computeStealAmount } from "./scoring";
  * - WAGER: Secret bets - allows 50/50, TIME_PLUS, SKIP, SHIELD.
  */
 export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
-  // DICE_RACE: Turn-based single team answering -> only quiz-helping cards (50/50, TIME_PLUS, SKIP).
-  // Disallow FREEZE, ATTACK, and score-based cards (DOUBLE, SCORE_X2, STEAL, PENALTY, SHIELD) which are meaningless in race mode.
-  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP"],
-  // GRID_CARO: Turn-based cell choosing -> quiz help, point multiplier for captured cell, and shield. Disallow FREEZE.
+  // DICE_RACE: Nước rút (+2 bước), Bứt phá (+1 bước), Thêm giờ, 50/50, Đổi câu. Cấm thẻ trừ điểm và STEAL.
+  DICE_RACE: ["DOUBLE", "SCORE_X2", "TIME_PLUS", "FIFTY_FIFTY", "SKIP"],
+  // GRID_CARO: 50/50, Thêm giờ, Đổi câu, Chiếm thành x2, Khiên bảo vệ. Cấm thẻ trừ điểm đối thủ.
   GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SHIELD"],
-  // BUZZ: Reflex buzzer tempo -> score boosts, shields, 50/50 and penalty. Disallows FREEZE, ATTACK, SKIP.
-  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY", "TIME_PLUS"],
-  // BOUNCEBACK: Olympia style -> DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
-  BOUNCEBACK: ["DOUBLE", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
-  // ELIMINATION: Survival battle -> SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Disallow gang-up cards.
+  // BUZZ: Bấm chuông nhanh -> DOUBLE, SCORE_X2, SHIELD, PENALTY, 50/50. CẤM FREEZE, ATTACK, TIME_PLUS.
+  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY"],
+  // BOUNCEBACK: Về đích Olympia -> DOUBLE (Ngôi sao hy vọng), SCORE_X2 (Ngôi sao an toàn), SHIELD, 50/50, TIME_PLUS.
+  BOUNCEBACK: ["DOUBLE", "SCORE_X2", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
+  // ELIMINATION: Sinh tồn -> SHIELD (Khiên sinh tồn), DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Cấm FREEZE, ATTACK, PENALTY.
   ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
-  // TOURNAMENT: 1v1 bracket -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. Disallow FREEZE (anti auto-win) and STEAL.
+  // TOURNAMENT: 1v1 đối kháng thuần kỹ năng -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. CẤM FREEZE và STEAL.
   TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
-  // WAGER: Secret bets -> 50/50, TIME_PLUS, SKIP, SHIELD.
+  // WAGER: Cược điểm -> 50/50, TIME_PLUS, SKIP, SHIELD (Bảo hiểm cược). CẤM các thẻ triệt hạ (FREEZE, ATTACK, STEAL).
   WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
-  // CLASSIC / POWERUP: Full 10 cards enabled.
+  // CLASSIC / POWERUP: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
 };
@@ -67,12 +66,14 @@ export function resolvePowerup({
   targetTeam,
   teams,
   questionState,
+  mode,
 }: {
   cardType: CardType;
   usedByTeam: TeamState;
   targetTeam?: TeamState;
   teams: TeamState[];
   questionState: QuestionState;
+  mode?: GameMode;
 }): PowerupEffect {
   switch (cardType) {
     case "FREEZE":
@@ -107,31 +108,54 @@ export function resolvePowerup({
         mutations: [{ kind: "skip_question" }],
       };
 
-    case "SHIELD":
+    case "SHIELD": {
+      let descVi = "Kích hoạt tái sinh! Bảo vệ khỏi bị trừ điểm lần tới.";
+      if (mode === "ELIMINATION") {
+        descVi = "Khiên sinh tồn: Bảo vệ đội khỏi bị loại trực tiếp ở cuối vòng đấu hiện tại!";
+      } else if (mode === "WAGER") {
+        descVi = "Bảo hiểm cược: Nếu trả lời sai chỉ bị trừ 50% số điểm cược!";
+      }
       return {
         type: cardType,
-        description: "Shield activated! Protected from next penalty.",
-        descriptionVi: "Kích hoạt tái sinh! Bảo vệ khỏi bị trừ điểm lần tới.",
+        description: "Shield activated!",
+        descriptionVi: descVi,
         mutations: [{ kind: "add_shield", teamId: usedByTeam.id }],
       };
+    }
 
-    case "DOUBLE":
+    case "DOUBLE": {
+      let descVi = "Câu đúng tiếp theo được nhân đôi điểm!";
+      if (mode === "BOUNCEBACK") {
+        descVi = "Ngôi sao hy vọng: Đúng x2 điểm (+200%), Sai bị trừ 100% điểm câu hỏi!";
+      } else if (mode === "DICE_RACE") {
+        descVi = "Nước rút: +2 bước xúc xắc khi trả lời đúng!";
+      } else if (mode === "GRID_CARO") {
+        descVi = "Chiếm thành: Ô cờ chiếm được tính thành 2 điểm!";
+      }
       return {
         type: cardType,
         description: "Next correct answer is worth double!",
-        descriptionVi: "Câu đúng tiếp theo được nhân đôi điểm!",
+        descriptionVi: descVi,
         mutations: [{ kind: "set_multiplier", teamId: usedByTeam.id, multiplier: 2 }],
       };
+    }
 
-    case "SCORE_X2":
+    case "SCORE_X2": {
+      let descVi = "Đúng x1.5 điểm, sai không bị trừ (bảo toàn điểm)!";
+      if (mode === "DICE_RACE") {
+        descVi = "Bứt phá: +1 bước xúc xắc khi trả lời đúng!";
+      } else if (mode === "BOUNCEBACK") {
+        descVi = "Ngôi sao an toàn: Đúng x1.5 điểm, Sai không bị trừ điểm!";
+      }
       return {
         type: cardType,
         description: "Correct = x1.5 points, Wrong = 0 penalty!",
-        descriptionVi: "Đúng x1.5 điểm, sai không bị trừ (bảo toàn điểm)!",
+        descriptionVi: descVi,
         mutations: [
           { kind: "score_x2", teamId: usedByTeam.id },
         ],
       };
+    }
 
     case "STEAL": {
       const leader = [...teams].sort((a, b) => b.score - a.score)[0];

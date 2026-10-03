@@ -569,22 +569,21 @@ function handleDiceRaceLanding({
 
 // src/lib/game-engine/powerups.ts
 var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
-  // DICE_RACE: Turn-based single team answering -> only quiz-helping cards (50/50, TIME_PLUS, SKIP).
-  // Disallow FREEZE, ATTACK, and score-based cards (DOUBLE, SCORE_X2, STEAL, PENALTY, SHIELD) which are meaningless in race mode.
-  DICE_RACE: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP"],
-  // GRID_CARO: Turn-based cell choosing -> quiz help, point multiplier for captured cell, and shield. Disallow FREEZE.
+  // DICE_RACE: Nước rút (+2 bước), Bứt phá (+1 bước), Thêm giờ, 50/50, Đổi câu. Cấm thẻ trừ điểm và STEAL.
+  DICE_RACE: ["DOUBLE", "SCORE_X2", "TIME_PLUS", "FIFTY_FIFTY", "SKIP"],
+  // GRID_CARO: 50/50, Thêm giờ, Đổi câu, Chiếm thành x2, Khiên bảo vệ. Cấm thẻ trừ điểm đối thủ.
   GRID_CARO: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SHIELD"],
-  // BUZZ: Reflex buzzer tempo -> score boosts, shields, 50/50 and penalty. Disallows FREEZE, ATTACK, SKIP.
-  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY", "TIME_PLUS"],
-  // BOUNCEBACK: Olympia style -> DOUBLE (Hope Star), SHIELD, 50/50, TIME_PLUS.
-  BOUNCEBACK: ["DOUBLE", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
-  // ELIMINATION: Survival battle -> SHIELD, DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Disallow gang-up cards.
+  // BUZZ: Bấm chuông nhanh -> DOUBLE, SCORE_X2, SHIELD, PENALTY, 50/50. CẤM FREEZE, ATTACK, TIME_PLUS.
+  BUZZ: ["DOUBLE", "SCORE_X2", "SHIELD", "PENALTY", "FIFTY_FIFTY"],
+  // BOUNCEBACK: Về đích Olympia -> DOUBLE (Ngôi sao hy vọng), SCORE_X2 (Ngôi sao an toàn), SHIELD, 50/50, TIME_PLUS.
+  BOUNCEBACK: ["DOUBLE", "SCORE_X2", "SHIELD", "FIFTY_FIFTY", "TIME_PLUS"],
+  // ELIMINATION: Sinh tồn -> SHIELD (Khiên sinh tồn), DOUBLE, SCORE_X2, 50/50, TIME_PLUS, SKIP, STEAL. Cấm FREEZE, ATTACK, PENALTY.
   ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FIFTY_FIFTY", "TIME_PLUS", "SKIP", "STEAL"],
-  // TOURNAMENT: 1v1 bracket -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. Disallow FREEZE (anti auto-win) and STEAL.
+  // TOURNAMENT: 1v1 đối kháng thuần kỹ năng -> 50/50, TIME_PLUS, SKIP, DOUBLE, SCORE_X2, SHIELD. CẤM FREEZE và STEAL.
   TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "DOUBLE", "SCORE_X2", "SHIELD"],
-  // WAGER: Secret bets -> 50/50, TIME_PLUS, SKIP, SHIELD.
+  // WAGER: Cược điểm -> 50/50, TIME_PLUS, SKIP, SHIELD (Bảo hiểm cược). CẤM các thẻ triệt hạ (FREEZE, ATTACK, STEAL).
   WAGER: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SHIELD"],
-  // CLASSIC / POWERUP: Full 10 cards enabled.
+  // CLASSIC / POWERUP: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
 };
@@ -739,6 +738,7 @@ var playerStreakMap = /* @__PURE__ */ new Map();
 var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
 var roomFinalizedActors = /* @__PURE__ */ new Map();
 var roomSubmittedActors = /* @__PURE__ */ new Map();
+var roomTeamImmunity = /* @__PURE__ */ new Map();
 function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
   if (!rawQuestions || rawQuestions.length === 0) return null;
   let usedSet = roomUsedQuestions.get(roomId);
@@ -1870,6 +1870,17 @@ function registerSocketHandlers(io2) {
       if (room.status !== "PLAYING") return;
       const currentQ = room.quizBank?.questions[room.currentQuestion];
       const qKey = currentQ ? `${room.id}:${currentQ.id}` : "";
+      if (room.mode === "BOUNCEBACK" && qKey) {
+        if (roomStealPhase.get(qKey) || roomStealBuzzed.has(qKey)) {
+          socket.emit("error", "To\xE0n b\u1ED9 th\u1EBB h\u1ED7 tr\u1EE3 (power-up) b\u1ECB v\xF4 hi\u1EC7u ho\xE1 trong l\u01B0\u1EE3t c\u01B0\u1EDBp \u0111i\u1EC3m!");
+          return;
+        }
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (activeQ?.timerStarted) {
+          socket.emit("error", "\u1EDE ph\u1EA7n thi V\u1EC1 \u0111\xEDch, Ng\xF4i sao hy v\u1ECDng v\xE0 th\u1EBB h\u1ED7 tr\u1EE3 ch\u1EC9 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm ng\u01B0\u1EE3c!");
+          return;
+        }
+      }
       if (room.teamMode === "TEAM" && qKey) {
         let teamCardsMap = roomQuestionTeamCards.get(qKey);
         if (!teamCardsMap) {
@@ -1894,6 +1905,15 @@ function registerSocketHandlers(io2) {
       if (!isPowerupAllowedForMode(room.mode, card.type)) {
         socket.emit("error", `Th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
         return;
+      }
+      if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
+        const immunityKey = `${room.id}:${targetTeamId}`;
+        const immuneUntilQ = roomTeamImmunity.get(immunityKey);
+        if (immuneUntilQ !== void 0 && immuneUntilQ >= room.currentQuestion) {
+          socket.emit("error", "\u0110\u1ED9i n\xE0y v\u1EEBa b\u1ECB t\u1EA5n c\xF4ng v\xE0 \u0111ang \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t Khi\xEAn mi\u1EC5n nhi\u1EC5m b\u1EA3o h\u1ED9 trong c\xE2u h\u1ECFi n\xE0y!");
+          return;
+        }
+        roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
       }
       await prisma.powerupCard.update({
         where: { id: cardId },
@@ -4307,10 +4327,16 @@ async function finalizeBouncebackPrimary(io2, roomId, roomCode, questionId, forc
     await revealCurrentAnswer(io2, roomId, roomCode, questionId);
     return true;
   } else {
+    const teamCardsMap = roomQuestionTeamCards.get(qKey);
+    const activeCard = teamCardsMap?.get(primary.teamId);
+    let hopeStarPenalty = 0;
+    if (activeCard && activeCard.type === "DOUBLE") {
+      hopeStarPenalty = chosenPoints;
+    }
     if (existingAns) {
       await prisma.answer.update({
         where: { id: existingAns.id },
-        data: { pointsAwarded: 0, isCorrect: false }
+        data: { pointsAwarded: -hopeStarPenalty, isCorrect: false }
       });
     } else {
       await prisma.answer.create({
@@ -4320,10 +4346,30 @@ async function finalizeBouncebackPrimary(io2, roomId, roomCode, questionId, forc
           teamId: primary.teamId,
           answer: [],
           isCorrect: false,
-          pointsAwarded: 0,
+          pointsAwarded: -hopeStarPenalty,
           timeSpent: 0
         }
       });
+    }
+    if (hopeStarPenalty > 0) {
+      const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
+      if (primaryPlayer) {
+        const updatedPrimary = await prisma.player.update({
+          where: { id: primary.teamId },
+          data: { score: { decrement: hopeStarPenalty } }
+        });
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: primary.teamId, score: updatedPrimary.score, delta: -hopeStarPenalty }
+        ]);
+      } else {
+        const updatedTeam = await prisma.team.update({
+          where: { id: primary.teamId },
+          data: { score: { decrement: hopeStarPenalty } }
+        });
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: primary.teamId, score: updatedTeam.score, delta: -hopeStarPenalty }
+        ]);
+      }
     }
     io2.to(`room:${roomCode}`).emit("game:timer", { remaining: 0, total: question.timeLimit });
     await openBouncebackStealWindow(io2, roomId, roomCode, questionId);
@@ -4404,7 +4450,8 @@ async function finalizeBouncebackSteal(io2, roomId, roomCode, questionId, forceC
     }
   }
   const primary = roomPrimaryTeams.get(qKey);
-  if (isCorrect && primary && primary.teamId !== stealInfo.teamId) {
+  const primaryHadDouble = teamCardsMap?.get(primary?.teamId ?? "")?.type === "DOUBLE";
+  if (isCorrect && primary && primary.teamId !== stealInfo.teamId && !primaryHadDouble) {
     const deductPoints = -chosenPoints;
     const primaryPlayer = await prisma.player.findUnique({ where: { id: primary.teamId } }).catch(() => null);
     if (primaryPlayer) {

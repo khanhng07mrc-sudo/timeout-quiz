@@ -1017,6 +1017,8 @@ export default function PlayPage() {
           roomState={roomState}
           playerId={playerId}
           onUse={handleUsePowerup}
+          disabled={roomState?.mode === "BOUNCEBACK" && Boolean(isStealPhase || stealBuzzedTeam)}
+          disabledReason="Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm"
         />
       )}
 

@@ -8,6 +8,8 @@ interface Props {
   roomState: RoomState;
   playerId: string;
   onUse: (cardId: string, targetTeamId?: string) => void;
+  disabled?: boolean;
+  disabledReason?: string;
 }
 
 interface ActiveCardToConfirm {
@@ -16,7 +18,7 @@ interface ActiveCardToConfirm {
   source: "team" | "shared";
 }
 
-export default function PowerupBar({ roomState, playerId, onUse }: Props) {
+export default function PowerupBar({ roomState, playerId, onUse, disabled, disabledReason }: Props) {
   const [confirmingCard, setConfirmingCard] = useState<ActiveCardToConfirm | null>(null);
   const [selectedTargetTeamId, setSelectedTargetTeamId] = useState<string | null>(null);
 
@@ -36,12 +38,13 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
   if (availableCards.length === 0) return null;
 
   const handleCardClick = (card: { id: string; type: CardType; source: "team" | "shared" }) => {
+    if (disabled) return;
     setConfirmingCard({ cardId: card.id, type: card.type, source: card.source });
     setSelectedTargetTeamId(null);
   };
 
   const handleConfirmUse = () => {
-    if (!confirmingCard) return;
+    if (disabled || !confirmingCard) return;
     const meta = CARD_METADATA[confirmingCard.type];
     if (meta.requiresTarget && !selectedTargetTeamId) {
       alert("Vui lòng chọn đội mục tiêu trước khi kích hoạt thẻ này!");
@@ -56,7 +59,7 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
   const activeMeta = confirmingCard ? CARD_METADATA[confirmingCard.type] : null;
 
   return (
-    <div className="glass rounded-2xl p-4 border border-purple-500/20 shadow-lg">
+    <div className={`glass rounded-2xl p-4 border transition-all ${disabled ? "border-amber-500/30 opacity-75" : "border-purple-500/20 shadow-lg"}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className="text-lg">🃏</span>
@@ -68,9 +71,16 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
           </span>
         </div>
         <span className="text-xs text-muted-foreground hidden sm:inline">
-          Nhấn vào thẻ để xem tính năng & xác nhận dùng
+          {disabled ? "Đang tạm khóa" : "Nhấn vào thẻ để xem tính năng & xác nhận dùng"}
         </span>
       </div>
+
+      {disabled && (
+        <div className="mb-3 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <span className="text-base">🚫</span>
+          <span>{disabledReason || "Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm"}</span>
+        </div>
+      )}
 
       {/* Confirmation & Function Detail Modal */}
       {confirmingCard && activeMeta && (
@@ -204,8 +214,13 @@ export default function PowerupBar({ roomState, playerId, onUse }: Props) {
           return (
             <button
               key={card.id}
+              disabled={disabled}
               onClick={() => handleCardClick(card)}
-              className="flex items-center sm:flex-col sm:items-start p-3 rounded-xl border border-border/70 hover:border-purple-500 hover:bg-purple-500/10 transition-all active:scale-[0.98] group text-left relative overflow-hidden bg-card/40 hover:shadow-md"
+              className={`flex items-center sm:flex-col sm:items-start p-3 rounded-xl border transition-all text-left relative overflow-hidden bg-card/40 ${
+                disabled
+                  ? "border-border/40 opacity-40 cursor-not-allowed"
+                  : "border-border/70 hover:border-purple-500 hover:bg-purple-500/10 active:scale-[0.98] group hover:shadow-md cursor-pointer"
+              }`}
             >
               <div className="flex items-center gap-2.5 sm:mb-2 w-full">
                 <div className="w-10 h-10 sm:w-11 sm:h-11 shrink-0 group-hover:scale-110 transition-transform">

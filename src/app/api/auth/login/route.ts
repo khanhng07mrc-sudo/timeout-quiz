@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
           user: {
             id: "master-admin",
             name: "Super Admin",
-            email: "admin@quizora.io",
+            email: "admin@quizorra.com",
             role: "ADMIN",
           },
         });

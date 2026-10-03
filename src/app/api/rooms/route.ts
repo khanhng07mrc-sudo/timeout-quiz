@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck } from "@/lib/utils";
 import {
@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
     const existingHost = await prisma.user.findUnique({ where: { id: effectiveHostId } });
     if (!existingHost) {
       await prisma.user.upsert({
-        where: { email: user?.email || `${effectiveHostId}@quizora.io` },
+        where: { email: user?.email || `${effectiveHostId}@quizorra.com` },
         update: {},
         create: {
           id: effectiveHostId,
-          name: user?.name || "Quizora Host",
-          email: user?.email || `${effectiveHostId}@quizora.io`,
+          name: user?.name || "Quizorra Host",
+          email: user?.email || `${effectiveHostId}@quizorra.com`,
           role: "ADMIN",
         },
       });

@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 200" fill="none">
+  <defs>
+    <linearGradient id="qGrad" gradientUnits="userSpaceOnUse" x1="90" y1="12" x2="90" y2="182">
+      <stop offset="0%"   stop-color="#A855F7"/>
+      <stop offset="50%"  stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    <linearGradient id="swooshGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#22D3EE"/>
+    </linearGradient>
+    <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- Donut mask: punch out inner circle -->
+    <mask id="donutMask">
+      <rect width="620" height="200" fill="white"/>
+      <circle cx="90" cy="92" r="48" fill="black"/>
+    </mask>
+  </defs>
+
+  <!-- Bloom aura -->
+  <circle cx="90" cy="92" r="80" fill="url(#qGrad)" opacity="0.15" filter="url(#bloom)"/>
+
+  <!-- Q donut ring with gradient -->
+  <g filter="url(#bloom)">
+    <circle cx="90" cy="92" r="74" fill="url(#qGrad)" mask="url(#donutMask)"/>
+    <!-- Q tail -->
+    <path d="M 132 136 Q 154 164 136 172"
+          stroke="url(#qGrad)" stroke-width="18"
+          fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Full-width swoosh below entire wordmark -->
+  <path d="M 14 185 Q 320 200 606 185"
+        stroke="url(#swooshGrad)" stroke-width="2.5"
+        fill="none" stroke-linecap="round" opacity="0.85"/>
+
+  <!-- "uizorra" — thin weight, same line as Q -->
+  <text
+    x="185" y="120"
+    font-family="'Inter','Helvetica Neue',Helvetica,Arial,sans-serif"
+    font-size="88"
+    font-weight="300"
+    fill="white"
+    letter-spacing="-2"
+  >uizorra</text>
+</svg>

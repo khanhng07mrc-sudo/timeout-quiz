@@ -1,11 +1,11 @@
-﻿import crypto from "crypto";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 
-const TOKEN_SECRET = process.env.NEXTAUTH_SECRET || "quizora_super_secret_key_2026";
+const TOKEN_SECRET = process.env.NEXTAUTH_SECRET || "Quizorra_super_secret_key_2026";
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days session
 
 export function getAdminMasterPassword(): string {
-  return process.env.ADMIN_MASTER_PASSWORD || "Quizora@Admin2026";
+  return process.env.ADMIN_MASTER_PASSWORD || "Quizorra@Admin2026";
 }
 
 /**

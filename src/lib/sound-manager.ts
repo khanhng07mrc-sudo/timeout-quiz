@@ -1,4 +1,4 @@
-﻿// Quizora - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
+// Quizorra - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
 // High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
 
 type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";

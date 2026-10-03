@@ -545,7 +545,7 @@ export default function DisplayPage() {
               ⚡ Chuẩn bị bắt đầu trận đấu
             </div>
             <h1 className="text-5xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-              {roomState?.name ?? "Quizora"}
+              {roomState?.name ?? "Quizorra"}
             </h1>
             <p className="text-xl text-white/70">
               Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
@@ -680,7 +680,7 @@ export default function DisplayPage() {
 
         <div className="text-center mb-6">
           <h1 className="text-4xl sm:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-            {roomState?.name ?? "Quizora"}
+            {roomState?.name ?? "Quizorra"}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-2">Mã phòng tham gia</p>
           <div className="inline-block mt-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">

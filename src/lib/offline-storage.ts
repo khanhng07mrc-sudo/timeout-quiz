@@ -1,4 +1,4 @@
-﻿// Quizora - Offline Storage & Sync Engine
+// Quizorra - Offline Storage & Sync Engine
 // Manages local quiz banks, offline drafts, preset banks, and background sync.
 
 export interface OfflineQuestion {

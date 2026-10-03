@@ -46,6 +46,7 @@ export default function WagerPanel({
     wagerTimeRemaining,
     currentHighestWager = 0,
     lastWagerTeamId,
+    previousQuestionWagerTeamId,
     wagerHistory = [],
     initialPoints = 50,
     topicPreview,
@@ -64,6 +65,9 @@ export default function WagerPanel({
   const myBailoutInfo = myTeamId && teamBailouts ? teamBailouts[myTeamId] : undefined;
   const myBailoutsRemaining = myBailoutInfo ? myBailoutInfo.remaining : 1;
 
+  // Rule: "Và để đảm bảo công bằng, một đội không được cược 2 câu liên tiếp"
+  const isPreviousQuestionWagerTeam = Boolean(myTeamId && previousQuestionWagerTeamId === myTeamId);
+
   // Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp
   const isAutoAssigned = Boolean(myTeamId && autoAssignedTeamId === myTeamId);
   // Rule: "mỗi đội không được cược từ 2 lần liên tiếp trở lên" (trừ lần đầu của đội được chỉ định ngẫu nhiên)
@@ -74,7 +78,7 @@ export default function WagerPanel({
   const cannotRaiseFurther = Boolean(myTeamId && myTeamScore < minOption && myWager?.submitted);
 
   const handleSubmit = (amount: number) => {
-    if (phase !== "WAGER_PERIOD" || isConsecutiveBlocked || amount > myTeamScore) return;
+    if (phase !== "WAGER_PERIOD" || isPreviousQuestionWagerTeam || isConsecutiveBlocked || amount > myTeamScore) return;
     setHasSubmittedLocal(true);
     if (onSubmitWager) onSubmitWager(amount);
   };
@@ -387,15 +391,18 @@ export default function WagerPanel({
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {allTeamsList.map((t) => {
+                  const isResting = t.id === previousQuestionWagerTeamId;
                   const hasBet = wagerHistory.some((h) => h.teamId === t.id);
-                  const isDisqualified = !hasBet && t.score < minOption;
+                  const isDisqualified = !hasBet && !isResting && t.score < minOption;
                   const isLeading = t.id === lastWagerTeamId;
                   if (hasBet && !isLeading) return null;
                   return (
                     <div
                       key={t.id}
                       className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1.5 border ${
-                        isDisqualified
+                        isResting
+                          ? "bg-purple-500/15 border-purple-500/40 text-purple-300"
+                          : isDisqualified
                           ? "bg-red-500/10 border-red-500/30 text-red-300"
                           : isLeading
                           ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
@@ -404,7 +411,9 @@ export default function WagerPanel({
                     >
                       <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
                       <span className="font-bold">{t.name}:</span>
-                      {isDisqualified ? (
+                      {isResting ? (
+                        <span className="text-purple-300 font-bold">⏸️ Tạm nghỉ (Đã cược câu trước)</span>
+                      ) : isDisqualified ? (
                         <span className="text-red-400 font-bold">🚫 Mất quyền cược ({t.score}đ &lt; {minOption}đ)</span>
                       ) : isLeading ? (
                         <span className="text-amber-300 font-bold">🔥 Giữ mức {currentHighestWager}đ</span>
@@ -439,6 +448,21 @@ export default function WagerPanel({
               </span>
             )}
           </div>
+
+          {/* Previous question bettor notice: Luật công bằng - không được cược 2 câu liên tiếp */}
+          {isPreviousQuestionWagerTeam && (
+            <div className="p-3.5 rounded-xl bg-purple-500/15 border border-purple-500/40 text-purple-200 text-xs flex items-start gap-2.5 animate-bounce-in">
+              <span className="text-2xl shrink-0">⏸️</span>
+              <div className="space-y-1">
+                <p className="font-black text-purple-300 text-sm">
+                  ĐỘI BẠN TẠM NGHỈ CƯỢC CÂU NÀY
+                </p>
+                <p className="text-[11px] leading-relaxed">
+                  Theo luật công bằng, đội bạn đã tham gia cược ở câu hỏi trước nên sẽ tạm nghỉ cược câu này để nhường quyền cho các đội khác. Đội bạn vẫn tham gia trả lời và hưởng 1/2 điểm nếu trả lời đúng!
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Auto-assigned notice: Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp */}
           {isAutoAssigned && (
@@ -501,6 +525,7 @@ export default function WagerPanel({
               const isDisabled =
                 isDisplay ||
                 phase !== "WAGER_PERIOD" ||
+                isPreviousQuestionWagerTeam ||
                 isConsecutiveBlocked ||
                 hasLostWagerRight ||
                 exceedsMyScore;

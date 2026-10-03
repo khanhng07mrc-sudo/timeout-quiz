@@ -12,6 +12,7 @@ import type {
   CardType,
   DiceRaceState,
   WagerState,
+  TeamWager,
 } from "@/types";
 import { CARD_METADATA } from "@/types";
 import Link from "next/link";
@@ -1118,6 +1119,43 @@ export default function AdminSandboxPage() {
       }
       syncToIframes({ currentQuestion: qState, timer: null });
       addLog(`🎯 Đội [${qState.primaryTeamName || "Chính"}] đang chọn gói điểm (10/20/30đ)...`);
+    } else if (selectedMode === "WAGER") {
+      const prevWagerTeamId = roomState?.wagerState?.lastWagerTeamId;
+      const initialWagers: Record<string, TeamWager> = {};
+      (roomState?.teams || []).forEach((t) => {
+        initialWagers[t.id] = { teamId: t.id, teamName: t.name, amount: 10, submitted: false };
+      });
+      const newWagerState: WagerState = {
+        phase: "WAGER_PERIOD",
+        wagerSubPhase: "INITIAL_5S",
+        wagerTimeRemaining: 5,
+        wagerTimeTotal: 5,
+        minWager: 5,
+        currentHighestWager: 0,
+        lastWagerTeamId: undefined,
+        previousQuestionWagerTeamId: prevWagerTeamId,
+        autoAssignedTeamName: undefined,
+        questionReady: false,
+        wagerHistory: [],
+        allowanceMinScore: 50,
+        initialPoints: 50,
+        topicPreview: q.hint || "Tổng hợp kiến thức",
+        difficultyPreview: "NHẬN BIẾT",
+        teamWagers: initialWagers,
+        teamBailouts: roomState?.wagerState?.teamBailouts || {},
+        bailoutQueue: roomState?.wagerState?.bailoutQueue || [],
+        currentQuestionBailoutUsed: false,
+      };
+      setRoomState((prev) => prev ? { ...prev, wagerState: newWagerState } : prev);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer({ remaining: 5, total: 5, endsAt: Date.now() + 5000 });
+      syncToIframes({
+        currentQuestion: null,
+        roomState: { ...(roomState || {}), wagerState: newWagerState },
+        timer: { remaining: 5, total: 5 },
+      });
+      addLog(`💰 Phiên cược câu #${nextIdx + 1} bắt đầu! 5s mở màn... (Đội cược câu trước tạm nghỉ)`);
     } else {
       let prepSeconds = 3;
       syncToIframes({
@@ -1970,6 +2008,10 @@ export default function AdminSandboxPage() {
 
   const handleForceActiveTeamWager = (amount: number) => {
     if (!currentTeam) return;
+    if (roomState?.wagerState?.previousQuestionWagerTeamId === currentTeam.id) {
+      addLog(`⚠️ Đội [${currentTeam.name}] đã cược ở câu trước nên tạm nghỉ cược câu này!`);
+      return;
+    }
     const sock = botSocketsRef.current.get(currentTeam.id);
     if (!sock || activeTeamIndex === 0) {
       playerIframeRef.current?.contentWindow?.postMessage(
@@ -2466,6 +2508,20 @@ export default function AdminSandboxPage() {
                     )}
                   </>
                 )}
+
+                {roomState?.mode === "WAGER" && (
+                  <>
+                    {roomState.wagerState?.phase === "QUESTION_PERIOD" && !roomState.wagerState.questionReady && (
+                      <button
+                        type="button"
+                        onClick={handleWagerLaunchQuestion}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap animate-pulse cursor-pointer shadow-emerald-500/30"
+                      >
+                        <span>📢 Mở câu hỏi cược</span>
+                      </button>
+                    )}
+                  </>
+                )}
               </div>
 
               {/* Right Section: Studio Utilities */}
@@ -2793,17 +2849,25 @@ export default function AdminSandboxPage() {
                 {/* Secret Wager quick bids if mode is WAGER */}
                 {roomState?.mode === "WAGER" && (
                   <div className="w-full flex items-center gap-1 pt-1 border-t border-white/10 flex-wrap">
-                    <span className="font-bold text-amber-300 text-[10px]">Cược nhanh:</span>
-                    {[10, 15, 20, 25, 30].map((amt) => (
-                      <button
-                        key={amt}
-                        type="button"
-                        onClick={() => handleForceActiveTeamWager(amt)}
-                        className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-mono font-bold text-[9px]"
-                      >
-                        +{amt}đ
-                      </button>
-                    ))}
+                    {roomState?.wagerState?.previousQuestionWagerTeamId === currentTeam.id ? (
+                      <span className="text-[10px] text-purple-300 font-bold bg-purple-500/15 px-2 py-0.5 rounded border border-purple-500/30">
+                        ⏸️ Đội này tạm nghỉ cược câu này (đã cược câu trước)
+                      </span>
+                    ) : (
+                      <>
+                        <span className="font-bold text-amber-300 text-[10px]">Cược nhanh:</span>
+                        {[10, 15, 20, 25, 30].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => handleForceActiveTeamWager(amt)}
+                            className="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-mono font-bold text-[9px]"
+                          >
+                            +{amt}đ
+                          </button>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>

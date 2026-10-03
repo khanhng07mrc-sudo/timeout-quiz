@@ -700,6 +700,7 @@ export interface WagerState {
   minWager: number;
   currentHighestWager: number;
   lastWagerTeamId?: string;
+  previousQuestionWagerTeamId?: string;
   wagerHistory: WagerHistoryItem[];
   allowanceMinScore: number;
   initialPoints?: number;

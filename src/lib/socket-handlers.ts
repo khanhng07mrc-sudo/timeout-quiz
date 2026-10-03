@@ -1916,6 +1916,7 @@ export function registerSocketHandlers(io: IO) {
         });
 
         const prevWagerState = roomWagers.get(room.id);
+        const prevWagerTeamId = prevWagerState?.lastWagerTeamId;
         const bailoutMax = config?.wagerBailoutLimit ?? 1;
         const teamBailouts = prevWagerState?.teamBailouts ?? {};
         teams.forEach((t) => {
@@ -1932,6 +1933,7 @@ export function registerSocketHandlers(io: IO) {
           minWager: 5,
           currentHighestWager: 0,
           lastWagerTeamId: undefined,
+          previousQuestionWagerTeamId: prevWagerTeamId,
           autoAssignedTeamName: undefined,
           questionReady: false,
           wagerHistory: [],
@@ -1958,7 +1960,12 @@ export function registerSocketHandlers(io: IO) {
             // Nếu không ai tự cược trong 5s, hệ thống chọn ngẫu nhiên 1 đội
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
               const activeTeams = teams.filter((t) => !t.isEliminated);
-              const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+              // Lọc bỏ đội đã cược ở câu trước để đảm bảo công bằng (không cược 2 câu liên tiếp)
+              const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0
+                ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
+                : activeTeams;
+
+              const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
 
               let pickedTeam: typeof activeTeams[0] | undefined;
               let assignedWager = 10;
@@ -1969,8 +1976,8 @@ export function registerSocketHandlers(io: IO) {
                 assignedWager = 10;
               } else {
                 // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
-                const teams5 = activeTeams.filter((t) => t.score === 5);
-                const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+                const teams5 = eligibleTeams.filter((t) => t.score === 5);
+                const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
                 if (pool5.length > 0) {
                   pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
                   assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
@@ -2841,6 +2848,12 @@ export function registerSocketHandlers(io: IO) {
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
 
+      // 0. "Và để đảm bảo công bằng, một đội không được cược 2 câu liên tiếp"
+      if (wagerState.previousQuestionWagerTeamId && team.id === wagerState.previousQuestionWagerTeamId) {
+        socket.emit("error", "Đội bạn đã đặt cược ở câu hỏi trước! Theo luật công bằng, đội bạn tạm nghỉ cược câu này để nhường các đội khác.");
+        return;
+      }
+
       // 1. "tránh việc spam cược, mỗi đội không được cược từ 2 lần liên tiếp trở lên"
       // Ngoại lệ: Đội được chỉ định ngẫu nhiên 10đ vẫn được chọn cược 1 lần kế tiếp
       const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
@@ -2924,6 +2937,7 @@ export function registerSocketHandlers(io: IO) {
 
         // Check if any team can still make a valid bet
         const canAnyTeamBet = allTeams.some((t) =>
+          t.id !== wagerState.previousQuestionWagerTeamId &&
           (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) &&
           t.score >= nextMinOption
         );
@@ -3269,7 +3283,12 @@ export function registerSocketHandlers(io: IO) {
       if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id } });
         const activeTeams = teams.filter((t) => !t.isEliminated);
-        const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+        const prevWagerTeamId = wagerState.previousQuestionWagerTeamId;
+        const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0
+          ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
+          : activeTeams;
+
+        const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
 
         let pickedTeam: typeof activeTeams[0] | undefined;
         let assignedWager = 10;
@@ -3279,8 +3298,8 @@ export function registerSocketHandlers(io: IO) {
           assignedWager = 10;
         } else {
           // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
-          const teams5 = activeTeams.filter((t) => t.score === 5);
-          const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+          const teams5 = eligibleTeams.filter((t) => t.score === 5);
+          const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
           if (pool5.length > 0) {
             pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
             assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);

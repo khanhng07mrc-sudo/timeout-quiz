@@ -2259,6 +2259,7 @@ function registerSocketHandlers(io2) {
           initialWagers[t.id] = { teamId: t.id, teamName: t.name, amount: 10, submitted: false };
         });
         const prevWagerState = roomWagers.get(room.id);
+        const prevWagerTeamId = prevWagerState?.lastWagerTeamId;
         const bailoutMax = config?.wagerBailoutLimit ?? 1;
         const teamBailouts = prevWagerState?.teamBailouts ?? {};
         teams.forEach((t) => {
@@ -2274,6 +2275,7 @@ function registerSocketHandlers(io2) {
           minWager: 5,
           currentHighestWager: 0,
           lastWagerTeamId: void 0,
+          previousQuestionWagerTeamId: prevWagerTeamId,
           autoAssignedTeamName: void 0,
           questionReady: false,
           wagerHistory: [],
@@ -2297,15 +2299,16 @@ function registerSocketHandlers(io2) {
             roomWagerTimers.delete(room.id);
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
               const activeTeams = teams.filter((t) => !t.isEliminated);
-              const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+              const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0 ? activeTeams.filter((t) => t.id !== prevWagerTeamId) : activeTeams;
+              const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
               let pickedTeam;
               let assignedWager = 10;
               if (teamsGte10.length > 0) {
                 pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
                 assignedWager = 10;
               } else {
-                const teams5 = activeTeams.filter((t) => t.score === 5);
-                const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+                const teams5 = eligibleTeams.filter((t) => t.score === 5);
+                const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
                 if (pool5.length > 0) {
                   pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
                   assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
@@ -3051,6 +3054,10 @@ function registerSocketHandlers(io2) {
       if (!wagerState || wagerState.phase !== "WAGER_PERIOD") return;
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
+      if (wagerState.previousQuestionWagerTeamId && team.id === wagerState.previousQuestionWagerTeamId) {
+        socket.emit("error", "\u0110\u1ED9i b\u1EA1n \u0111\xE3 \u0111\u1EB7t c\u01B0\u1EE3c \u1EDF c\xE2u h\u1ECFi tr\u01B0\u1EDBc! Theo lu\u1EADt c\xF4ng b\u1EB1ng, \u0111\u1ED9i b\u1EA1n t\u1EA1m ngh\u1EC9 c\u01B0\u1EE3c c\xE2u n\xE0y \u0111\u1EC3 nh\u01B0\u1EDDng c\xE1c \u0111\u1ED9i kh\xE1c.");
+        return;
+      }
       const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
       if (wagerState.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
         socket.emit("error", "\u0110\u1ED9i b\u1EA1n v\u1EEBa \u0111\u1EB7t c\u01B0\u1EE3c! Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c 2 l\u1EA7n li\xEAn ti\u1EBFp, vui l\xF2ng ch\u1EDD \u0111\u1ED9i kh\xE1c c\u01B0\u1EE3c tr\u01B0\u1EDBc.");
@@ -3113,7 +3120,7 @@ function registerSocketHandlers(io2) {
       } else {
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
         const canAnyTeamBet = allTeams.some(
-          (t) => (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) && t.score >= nextMinOption
+          (t) => t.id !== wagerState.previousQuestionWagerTeamId && (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) && t.score >= nextMinOption
         );
         if (!canAnyTeamBet) {
           const wTimer = roomWagerTimers.get(room.id);
@@ -3394,15 +3401,17 @@ function registerSocketHandlers(io2) {
       if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id } });
         const activeTeams = teams.filter((t) => !t.isEliminated);
-        const teamsGte10 = activeTeams.filter((t) => t.score >= 10);
+        const prevWagerTeamId = wagerState.previousQuestionWagerTeamId;
+        const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0 ? activeTeams.filter((t) => t.id !== prevWagerTeamId) : activeTeams;
+        const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
         let pickedTeam;
         let assignedWager = 10;
         if (teamsGte10.length > 0) {
           pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
           assignedWager = 10;
         } else {
-          const teams5 = activeTeams.filter((t) => t.score === 5);
-          const pool5 = teams5.length > 0 ? teams5 : activeTeams.filter((t) => t.score > 0);
+          const teams5 = eligibleTeams.filter((t) => t.score === 5);
+          const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
           if (pool5.length > 0) {
             pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
             assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);

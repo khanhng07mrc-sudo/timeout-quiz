@@ -500,6 +500,11 @@ export interface GameConfig {
   wagerMinAllowance?: number;
   wagerInitialPoints?: number;
   wagerBailoutLimit?: number;
+  wagerMultiplierCap?: number;
+  wagerRoundsPerTeam?: number;
+  // Match question limit
+  matchMaxQuestions?: number;
+  diceRaceMaxQuestions?: number;
   // Buzz config
   buzzUnlockMode?: "AUTO" | "MANUAL";
   buzzAutoDelay?: number;
@@ -729,6 +734,11 @@ export interface WagerState {
   teamBailouts?: Record<string, { remaining: number; max: number }>;
   bailoutQueue?: WagerBailoutQueueItem[];
   currentQuestionBailoutUsed?: boolean;
+  maxBetCap?: number;
+  wagerMultiplierCap?: number;
+  baseQuestionPoints?: number;
+  roundIndex?: number;
+  totalRounds?: number;
 }
 
 export interface RoomState {

@@ -606,6 +606,39 @@ function isPowerupAllowedForMode(mode, cardType) {
 }
 
 // src/lib/utils.ts
+function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
+  const safeBankTotal = Math.max(1, bankTotal);
+  const safeTeamsCount = Math.max(1, teamsCount);
+  if (mode === "WAGER") {
+    const rounds = config?.wagerRoundsPerTeam || 2;
+    return Math.min(safeBankTotal, safeTeamsCount * rounds);
+  }
+  if (mode === "BOUNCEBACK") {
+    const cycles = config?.bouncebackCycles || 1;
+    const qPerTurn = config?.bouncebackQuestionsPerTurn || 3;
+    return Math.min(safeBankTotal, safeTeamsCount * cycles * qPerTurn);
+  }
+  if (mode === "GRID_CARO") {
+    const rounds = config?.gridRoundsPerTeam;
+    if (rounds && rounds > 0) {
+      return Math.min(safeBankTotal, safeTeamsCount * rounds);
+    }
+    if (config?.gridMaxQuestions && config.gridMaxQuestions > 0) {
+      return Math.min(safeBankTotal, config.gridMaxQuestions);
+    }
+    return safeBankTotal;
+  }
+  if (mode === "DICE_RACE") {
+    if (config?.diceRaceMaxQuestions && config.diceRaceMaxQuestions > 0) {
+      return Math.min(safeBankTotal, config.diceRaceMaxQuestions);
+    }
+    return safeBankTotal;
+  }
+  if (config?.matchMaxQuestions && config.matchMaxQuestions > 0) {
+    return Math.min(safeBankTotal, config.matchMaxQuestions);
+  }
+  return safeBankTotal;
+}
 function shuffleArray(array) {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -2275,6 +2308,12 @@ function registerSocketHandlers(io2) {
             teamBailouts[t.id] = { remaining: bailoutMax, max: bailoutMax };
           }
         });
+        const teamsCount = Math.max(1, teams.length);
+        const wagerRounds = config?.wagerRoundsPerTeam || 2;
+        const currentRoundIdx = Math.floor(questionIndex / teamsCount);
+        const wagerMultCap = config?.wagerMultiplierCap ?? 2.5;
+        const basePts = q.points || 10;
+        const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
         const wagerState = {
           phase: "WAGER_PERIOD",
           wagerSubPhase: "INITIAL_5S",
@@ -2294,7 +2333,12 @@ function registerSocketHandlers(io2) {
           teamWagers: initialWagers,
           teamBailouts,
           bailoutQueue: prevWagerState?.bailoutQueue ?? [],
-          currentQuestionBailoutUsed: false
+          currentQuestionBailoutUsed: false,
+          maxBetCap: calculatedMaxBetCap,
+          wagerMultiplierCap: wagerMultCap,
+          baseQuestionPoints: basePts,
+          roundIndex: currentRoundIdx,
+          totalRounds: wagerRounds
         };
         roomWagers.set(room.id, wagerState);
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
@@ -2308,20 +2352,9 @@ function registerSocketHandlers(io2) {
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
               const activeTeams = teams.filter((t) => !t.isEliminated);
               const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0 ? activeTeams.filter((t) => t.id !== prevWagerTeamId) : activeTeams;
-              const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
-              let pickedTeam;
-              let assignedWager = 10;
-              if (teamsGte10.length > 0) {
-                pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
-                assignedWager = 10;
-              } else {
-                const teams5 = eligibleTeams.filter((t) => t.score === 5);
-                const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
-                if (pool5.length > 0) {
-                  pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
-                  assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
-                }
-              }
+              const roundRobinIndex = questionIndex % eligibleTeams.length;
+              const pickedTeam = eligibleTeams[roundRobinIndex] || activeTeams[0];
+              const assignedWager = pickedTeam && pickedTeam.score < 10 ? Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5) : 10;
               if (pickedTeam) {
                 wagerState.currentHighestWager = assignedWager;
                 wagerState.lastWagerTeamId = pickedTeam.id;
@@ -2511,9 +2544,9 @@ function registerSocketHandlers(io2) {
         prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } }).catch(console.error);
         ensureInitialTeamPowerups(room.id, io2).catch(console.error);
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
-        const config = room.config;
+        const config2 = room.config;
         if (room.mode === "TOURNAMENT") {
-          const questionsPerMatch = config?.tournamentQuestionsPerMatch || 3;
+          const questionsPerMatch = config2?.tournamentQuestionsPerMatch || 3;
           const matches = buildTournamentMatches(teams, questionsPerMatch);
           roomTournaments.set(room.id, {
             matches,
@@ -2521,13 +2554,13 @@ function registerSocketHandlers(io2) {
             questionsPerMatch
           });
         } else if (room.mode === "GRID_CARO") {
-          const rows = config?.gridRows || 4;
-          const cols = config?.gridCols || 4;
-          const streakK = config?.gridStreakTargetK || 3;
-          const bonusPts = config?.gridCaroBonusPoints || 30;
+          const rows = config2?.gridRows || 4;
+          const cols = config2?.gridCols || 4;
+          const streakK = config2?.gridStreakTargetK || 3;
+          const bonusPts = config2?.gridCaroBonusPoints || 30;
           const totalCells = rows * cols;
           const isCaroEligible = rows >= 4 && cols >= 4;
-          const caroEnabled = isCaroEligible && config?.gridCaroEnabled !== false && questions.length >= totalCells;
+          const caroEnabled = isCaroEligible && config2?.gridCaroEnabled !== false && questions.length >= totalCells;
           const pointPalette = [10, 20, 30];
           const cells = [];
           for (let r = 0; r < rows; r++) {
@@ -2547,7 +2580,7 @@ function registerSocketHandlers(io2) {
             }
           }
           const numTeams = Math.max(1, teams.length);
-          const configuredRounds = config?.gridRoundsPerTeam || 3;
+          const configuredRounds = config2?.gridRoundsPerTeam || 3;
           const maxPossibleRounds = Math.max(1, Math.floor(questions.length / numTeams));
           const maxRounds = Math.min(configuredRounds, maxPossibleRounds);
           const maxTurns = maxRounds * numTeams;
@@ -2571,7 +2604,7 @@ function registerSocketHandlers(io2) {
           };
           roomGridCaros.set(room.id, gridCaroState);
         } else if (room.mode === "DICE_RACE") {
-          const totalTiles = config?.diceTrackTotalTiles || 30;
+          const totalTiles = config2?.diceTrackTotalTiles || 30;
           const tiles = generateBalancedDiceTiles(totalTiles);
           const teamPositions = {};
           for (const t of teams) {
@@ -2599,8 +2632,8 @@ function registerSocketHandlers(io2) {
             finishLeaderboard: []
           });
         } else if (room.mode === "WAGER") {
-          const initPoints = Math.max(30, config?.wagerInitialPoints || 50);
-          const bailoutMax = config?.wagerBailoutLimit ?? 1;
+          const initPoints = Math.max(30, config2?.wagerInitialPoints || 50);
+          const bailoutMax = config2?.wagerBailoutLimit ?? 1;
           for (const team of teams) {
             await prisma.team.update({
               where: { id: team.id },
@@ -2614,19 +2647,19 @@ function registerSocketHandlers(io2) {
           });
           roomWagers.set(room.id, {
             phase: "WAGER_PERIOD",
-            wagerTimeRemaining: config?.wagerTimeSeconds || 15,
-            wagerTimeTotal: config?.wagerTimeSeconds || 15,
+            wagerTimeRemaining: config2?.wagerTimeSeconds || 15,
+            wagerTimeTotal: config2?.wagerTimeSeconds || 15,
             minWager: 5,
             currentHighestWager: 0,
             lastWagerTeamId: void 0,
             wagerHistory: [],
-            allowanceMinScore: config?.wagerMinAllowance || 50,
+            allowanceMinScore: config2?.wagerMinAllowance || 50,
             initialPoints: initPoints,
             teamWagers: {},
             teamBailouts
           });
-        } else if (room.mode !== "DICE_RACE" && config?.initialTeamScore && config.initialTeamScore > 0) {
-          const initScore = Math.max(0, config.initialTeamScore);
+        } else if (room.mode !== "DICE_RACE" && config2?.initialTeamScore && config2.initialTeamScore > 0) {
+          const initScore = Math.max(0, config2.initialTeamScore);
           for (const team of teams) {
             if (team.score === 0) {
               await prisma.team.update({
@@ -2640,7 +2673,7 @@ function registerSocketHandlers(io2) {
         const updatedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", updatedState);
         if (room.mode === "GRID_CARO") {
-          startGridCaroPreview(io2, room.id, room.code, config?.gridPreviewDuration || 5);
+          startGridCaroPreview(io2, room.id, room.code, config2?.gridPreviewDuration || 5);
           return;
         }
         if (room.mode === "DICE_RACE") {
@@ -2690,6 +2723,23 @@ function registerSocketHandlers(io2) {
             return;
           }
         }
+      }
+      const config = room.config;
+      const targetQuestions = getTargetTotalQuestions(
+        room.mode,
+        config,
+        await prisma.team.count({ where: { roomId: room.id } }) || 4,
+        questions.length
+      );
+      const usedCount = roomUsedQuestions.get(room.id)?.size ?? 0;
+      if (usedCount >= targetQuestions) {
+        stopQuestionTimer(room.id);
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
       }
       const nextQ = getNextUniqueQuestion(room.id, questions);
       if (!nextQ) {
@@ -3074,6 +3124,10 @@ function registerSocketHandlers(io2) {
       }
       if (amount > team.score) {
         socket.emit("error", `Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c s\u1ED1 \u0111i\u1EC3m (${amount}\u0111) v\u01B0\u1EE3t qu\xE1 \u0111i\u1EC3m hi\u1EC7n t\u1EA1i c\u1EE7a \u0111\u1ED9i b\u1EA1n (${team.score}\u0111)!`);
+        return;
+      }
+      if (wagerState.maxBetCap && amount > wagerState.maxBetCap) {
+        socket.emit("error", `Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c s\u1ED1 \u0111i\u1EC3m (${amount}\u0111) v\u01B0\u1EE3t qu\xE1 tr\u1EA7n c\u01B0\u1EE3c t\u1ED1i \u0111a (${wagerState.maxBetCap}\u0111) c\u1EE7a c\xE2u h\u1ECFi n\xE0y!`);
         return;
       }
       const currentHighest = wagerState.currentHighestWager || 0;

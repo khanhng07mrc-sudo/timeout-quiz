@@ -29,7 +29,7 @@ import {
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
 import { isPowerupAllowedForMode } from "./game-engine/powerups";
-import { shuffleArray } from "./utils";
+import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
 
@@ -1926,6 +1926,13 @@ export function registerSocketHandlers(io: IO) {
           }
         });
 
+        const teamsCount = Math.max(1, teams.length);
+        const wagerRounds = config?.wagerRoundsPerTeam || 2;
+        const currentRoundIdx = Math.floor(questionIndex / teamsCount);
+        const wagerMultCap = config?.wagerMultiplierCap ?? 2.5;
+        const basePts = q.points || 10;
+        const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
+
         const wagerState: WagerState = {
           phase: "WAGER_PERIOD",
           wagerSubPhase: "INITIAL_5S",
@@ -1946,6 +1953,11 @@ export function registerSocketHandlers(io: IO) {
           teamBailouts,
           bailoutQueue: prevWagerState?.bailoutQueue ?? [],
           currentQuestionBailoutUsed: false,
+          maxBetCap: calculatedMaxBetCap,
+          wagerMultiplierCap: wagerMultCap,
+          baseQuestionPoints: basePts,
+          roundIndex: currentRoundIdx,
+          totalRounds: wagerRounds,
         };
         roomWagers.set(room.id, wagerState);
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
@@ -1958,7 +1970,7 @@ export function registerSocketHandlers(io: IO) {
             clearInterval(initTimer);
             roomWagerTimers.delete(room.id);
 
-            // Nếu không ai tự cược trong 5s, hệ thống chọn ngẫu nhiên 1 đội
+            // Nếu không ai tự cược trong 5s, hệ thống chọn theo luật luân phiên (round-robin)
             if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
               const activeTeams = teams.filter((t) => !t.isEliminated);
               // Lọc bỏ đội đã cược ở câu trước để đảm bảo công bằng (không cược 2 câu liên tiếp)
@@ -1966,24 +1978,10 @@ export function registerSocketHandlers(io: IO) {
                 ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
                 : activeTeams;
 
-              const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
-
-              let pickedTeam: typeof activeTeams[0] | undefined;
-              let assignedWager = 10;
-
-              if (teamsGte10.length > 0) {
-                // Đội phải có tối thiểu 10 điểm (nếu chỉ 1 đội duy nhất >= 10đ thì đội đó sẽ được chọn)
-                pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
-                assignedWager = 10;
-              } else {
-                // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
-                const teams5 = eligibleTeams.filter((t) => t.score === 5);
-                const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
-                if (pool5.length > 0) {
-                  pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
-                  assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
-                }
-              }
+              // Round-robin opening assignment: câu 1 đội 1, câu 2 đội 2, câu 3 đội 3...
+              const roundRobinIndex = questionIndex % eligibleTeams.length;
+              const pickedTeam = eligibleTeams[roundRobinIndex] || activeTeams[0];
+              const assignedWager = pickedTeam && pickedTeam.score < 10 ? Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5) : 10;
 
               if (pickedTeam) {
                 wagerState.currentHighestWager = assignedWager;
@@ -2388,6 +2386,26 @@ export function registerSocketHandlers(io: IO) {
             return;
           }
         }
+      }
+
+      // Kiểm tra giới hạn số câu hỏi của trận đấu theo luật thi đấu
+      const config = room.config as any;
+      const targetQuestions = getTargetTotalQuestions(
+        room.mode,
+        config,
+        (await prisma.team.count({ where: { roomId: room.id } })) || 4,
+        questions.length
+      );
+
+      const usedCount = roomUsedQuestions.get(room.id)?.size ?? 0;
+      if (usedCount >= targetQuestions) {
+        stopQuestionTimer(room.id);
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
       }
 
       // Lấy câu hỏi độc nhất tiếp theo (đảm bảo 100% không trùng lặp ở tất cả các mode)
@@ -2867,6 +2885,12 @@ export function registerSocketHandlers(io: IO) {
       // 2. "mỗi đội không được cược số điểm vượt quá điểm hiện tại của đội"
       if (amount > team.score) {
         socket.emit("error", `Không được cược số điểm (${amount}đ) vượt quá điểm hiện tại của đội bạn (${team.score}đ)!`);
+        return;
+      }
+
+      // 2b. Kiểm tra trần cược tối đa theo hệ số điểm câu hỏi (maxBetCap)
+      if (wagerState.maxBetCap && amount > wagerState.maxBetCap) {
+        socket.emit("error", `Không được cược số điểm (${amount}đ) vượt quá trần cược tối đa (${wagerState.maxBetCap}đ) của câu hỏi này!`);
         return;
       }
 

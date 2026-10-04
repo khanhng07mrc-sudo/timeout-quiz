@@ -23,6 +23,7 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
+import { getTargetTotalQuestions } from "@/lib/utils";
 
 const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
@@ -1620,6 +1621,12 @@ export default function AdminSandboxPage() {
       (roomState?.teams || []).forEach((t) => {
         initialWagers[t.id] = { teamId: t.id, teamName: t.name, amount: 10, submitted: false };
       });
+      const teamsCount = Math.max(1, (roomState?.teams || []).length);
+      const wagerRounds = roomState?.config?.wagerRoundsPerTeam || 2;
+      const currentRoundIdx = Math.floor(nextIdx / teamsCount);
+      const wagerMultCap = roomState?.config?.wagerMultiplierCap ?? 2.5;
+      const basePts = q.points || 10;
+      const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
       const configuredWagerDuration = roomState?.config?.wagerTimeSeconds || 15;
       const newWagerState: WagerState = {
         phase: "WAGER_PERIOD",
@@ -1641,6 +1648,11 @@ export default function AdminSandboxPage() {
         teamBailouts: roomState?.wagerState?.teamBailouts || {},
         bailoutQueue: roomState?.wagerState?.bailoutQueue || [],
         currentQuestionBailoutUsed: false,
+        maxBetCap: calculatedMaxBetCap,
+        wagerMultiplierCap: wagerMultCap,
+        baseQuestionPoints: basePts,
+        roundIndex: currentRoundIdx,
+        totalRounds: wagerRounds,
       };
       setRoomState((prev) => prev ? { ...prev, wagerState: newWagerState } : prev);
       setCurrentQuestion(null);
@@ -1651,7 +1663,7 @@ export default function AdminSandboxPage() {
         roomState: { ...(roomState || {}), wagerState: newWagerState },
         timer: { remaining: 5, total: 5 },
       });
-      addLog(`💰 Phiên cược câu #${nextIdx + 1} bắt đầu! 5s mở màn... (Đội cược câu trước tạm nghỉ)`);
+      addLog(`💰 Phiên cược câu #${nextIdx + 1} (Vòng ${currentRoundIdx + 1}/${wagerRounds}, trần ${calculatedMaxBetCap}đ) bắt đầu! 5s mở màn...`);
 
       let initRem = 5;
       if (offlineTimerRef.current) {
@@ -1679,7 +1691,9 @@ export default function AdminSandboxPage() {
             ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
             : activeTeams;
 
-          const pickedTeam = eligibleTeams[Math.floor(Math.random() * eligibleTeams.length)] || activeTeams[0];
+          // Round-robin opening assignment: câu 1 đội 1, câu 2 đội 2, câu 3 đội 3...
+          const roundRobinIndex = nextIdx % eligibleTeams.length;
+          const pickedTeam = eligibleTeams[roundRobinIndex] || activeTeams[0];
           const assignedWager = 10;
           if (pickedTeam) {
             newWagerState.currentHighestWager = assignedWager;
@@ -1921,12 +1935,19 @@ export default function AdminSandboxPage() {
       const questions = offlineQuestionsRef.current;
       if (questions.length === 0) return;
 
-      // Theo quy tắc: Nếu hết câu hỏi trong bộ đề mà chưa ai về đích / chưa hết ô -> Dừng luôn cuộc chơi và tính hạng luôn
-      if (offlineUsedQuestionIdsRef.current.size >= questions.length) {
+      const targetTotal = getTargetTotalQuestions(
+        selectedMode,
+        roomState?.config,
+        roomState?.teams.length || 4,
+        questions.length
+      );
+
+      // Dừng trận đấu khi đủ số câu hỏi quy định theo luật hoặc hết bộ đề
+      if (offlineUsedQuestionIdsRef.current.size >= targetTotal || offlineUsedQuestionIdsRef.current.size >= questions.length) {
         setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
         setCurrentQuestion(null);
         setRevealPayload(null);
-        addLog("🏁 Đã hết toàn bộ câu hỏi trong bộ đề! Trận đấu kết thúc và công bố bảng xếp hạng.");
+        addLog(`🏁 Đã hoàn thành đủ ${targetTotal} câu hỏi theo luật thi đấu! Trận đấu kết thúc và công bố bảng xếp hạng.`);
         syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null });
         return;
       }
@@ -1953,6 +1974,29 @@ export default function AdminSandboxPage() {
 
     adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");
+  };
+
+  const handleConcludeMatch = () => {
+    if (isOfflineSandbox) {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      const questions = offlineQuestionsRef.current;
+      const targetTotal = getTargetTotalQuestions(
+        selectedMode,
+        roomState?.config,
+        roomState?.teams.length || 4,
+        questions.length || 25
+      );
+      setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      addLog(`🏆 Tổng kết trận đấu sau ${targetTotal} câu thi đấu hoàn tất! Trao giải và vinh danh.`);
+      syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null });
+      return;
+    }
+    adminSocketRef.current?.emit("admin:next", { code });
   };
 
   const handleAdminReveal = () => {
@@ -3034,25 +3078,51 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
-                {/* 3. Core Next / Start Button */}
+                {/* 3. Core Next / Start / Conclude Button */}
                 {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
-                  <button
-                    type="button"
-                    onClick={handleAdminNext}
-                    className={`px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap cursor-pointer ${
-                      roomState?.mode === "DICE_RACE" && !currentQuestion && roomState?.status === "PLAYING"
-                        ? "animate-pulse ring-2 ring-cyan-400 bg-gradient-to-r from-purple-600 to-cyan-600"
-                        : ""
-                    }`}
-                  >
-                    <span>
-                      {roomState?.status === "LOBBY"
-                        ? "🚀 Bắt đầu"
-                        : roomState?.mode === "DICE_RACE" && !currentQuestion
-                        ? "🎯 Hiện câu hỏi"
-                        : "⏩ Câu kế"}
-                    </span>
-                  </button>
+                  (() => {
+                    const targetTotal = getTargetTotalQuestions(
+                      selectedMode,
+                      roomState?.config,
+                      roomState?.teams.length || 4,
+                      offlineQuestionsRef.current.length || 25
+                    );
+                    const isLimitReached = (offlineQIndexRef.current + 1 >= targetTotal) || (offlineUsedQuestionIdsRef.current.size >= targetTotal);
+
+                    if (roomState?.status === "PLAYING" && revealPayload && isLimitReached) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleConcludeMatch}
+                          className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-xs font-black shadow-lg shadow-amber-500/30 border border-yellow-300 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-yellow-400"
+                          title="Đã thi đủ số câu quy định theo luật, kết thúc và công bố giải"
+                        >
+                          <span className="text-sm">🏆</span>
+                          <span>Tổng kết trận đấu & Trao giải (Đủ {targetTotal} câu)</span>
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={handleAdminNext}
+                        className={`px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                          roomState?.mode === "DICE_RACE" && !currentQuestion && roomState?.status === "PLAYING"
+                            ? "animate-pulse ring-2 ring-cyan-400 bg-gradient-to-r from-purple-600 to-cyan-600"
+                            : ""
+                        }`}
+                      >
+                        <span>
+                          {roomState?.status === "LOBBY"
+                            ? "🚀 Bắt đầu"
+                            : roomState?.mode === "DICE_RACE" && !currentQuestion
+                            ? "🎯 Hiện câu hỏi"
+                            : "⏩ Câu kế"}
+                        </span>
+                      </button>
+                    );
+                  })()
                 )}
 
                 {/* 4. Reveal Button */}
@@ -3454,6 +3524,48 @@ export default function AdminSandboxPage() {
                             </div>
                           </div>
 
+                          {/* Wager Max Bet Cap Multiplier */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Trần cược tối đa</span>
+                            <div className="flex items-center gap-1">
+                              {[2, 2.5, 3].map((mult) => (
+                                <button
+                                  key={mult}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerMultiplierCap", mult)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerMultiplierCap ?? 2.5) === mult
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  x{mult}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Wager Rounds Per Team */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Số vòng thi/đội</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3].map((r) => (
+                                <button
+                                  key={r}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerRoundsPerTeam", r)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerRoundsPerTeam ?? 2) === r
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {r} vòng
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
                           <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
                             <span className="text-slate-300">Giới hạn cứu trợ</span>
                             <div className="flex items-center gap-1">
@@ -3474,6 +3586,75 @@ export default function AdminSandboxPage() {
                             </div>
                           </div>
                         </>
+                      )}
+
+                      {/* Bounceback Rounds (Cycles) */}
+                      {roomState.mode === "BOUNCEBACK" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Số vòng thi/đội</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2].map((cycles) => (
+                              <button
+                                key={cycles}
+                                type="button"
+                                onClick={() => updateConfig("bouncebackCycles", cycles)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.bouncebackCycles ?? 1) === cycles
+                                    ? "bg-cyan-500/30 border-cyan-400 text-cyan-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {cycles} vòng
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Dice Race Max Questions Limit */}
+                      {roomState.mode === "DICE_RACE" && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Giới hạn câu đua</span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {[8, 12, 16, 0].map((qLimit) => (
+                              <button
+                                key={qLimit}
+                                type="button"
+                                onClick={() => updateConfig("diceRaceMaxQuestions", qLimit)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.diceRaceMaxQuestions ?? 0) === qLimit
+                                    ? "bg-indigo-500/30 border-indigo-400 text-indigo-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {qLimit === 0 ? "Hết đề" : `${qLimit}c`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Simultaneous Modes Max Questions */}
+                      {["CLASSIC", "BUZZ", "POWERUP", "ELIMINATION"].includes(roomState.mode) && (
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                          <span className="text-slate-300">Tổng số câu hỏi</span>
+                          <div className="flex items-center gap-1 flex-wrap justify-end">
+                            {[5, 10, 15, 20, 0].map((qCount) => (
+                              <button
+                                key={qCount}
+                                type="button"
+                                onClick={() => updateConfig("matchMaxQuestions", qCount)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  (roomState.config.matchMaxQuestions ?? 0) === qCount
+                                    ? "bg-purple-500/30 border-purple-400 text-purple-300"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {qCount === 0 ? "Hết đề" : `${qCount}c`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
 
                       {/* Initial Team Score */}

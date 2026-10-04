@@ -978,7 +978,15 @@ export default function DisplayPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
                         Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}
+                        {roomState.wagerState?.totalRounds
+                          ? ` (Vòng ${(roomState.wagerState.roundIndex ?? 0) + 1}/${roomState.wagerState.totalRounds})`
+                          : ""}
                       </span>
+                      {roomState.wagerState?.maxBetCap && (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-500/20 text-emerald-300">
+                          🛡️ Trần cược: {roomState.wagerState.maxBetCap}đ ({roomState.wagerState.wagerMultiplierCap ?? 2.5}x)
+                        </span>
+                      )}
                       <span
                         className="px-2.5 py-0.5 rounded-full text-xs font-bold border"
                         style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}40`, background: bloomMeta.bg }}

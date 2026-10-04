@@ -55,6 +55,11 @@ export default function WagerPanel({
     teamBailouts = {},
     bailoutQueue = [],
     currentQuestionBailoutUsed = false,
+    maxBetCap,
+    wagerMultiplierCap = 2.5,
+    baseQuestionPoints,
+    roundIndex,
+    totalRounds,
   } = wagerState;
 
   // 12 Cells calculation: lowest is currentHighestWager + 5, stepping by 5 each
@@ -78,7 +83,13 @@ export default function WagerPanel({
   const cannotRaiseFurther = Boolean(myTeamId && myTeamScore < minOption && myWager?.submitted);
 
   const handleSubmit = (amount: number) => {
-    if (phase !== "WAGER_PERIOD" || isPreviousQuestionWagerTeam || isConsecutiveBlocked || amount > myTeamScore) return;
+    if (
+      phase !== "WAGER_PERIOD" ||
+      isPreviousQuestionWagerTeam ||
+      isConsecutiveBlocked ||
+      amount > myTeamScore ||
+      (maxBetCap && amount > maxBetCap)
+    ) return;
     setHasSubmittedLocal(true);
     if (onSubmitWager) onSubmitWager(amount);
   };
@@ -98,11 +109,21 @@ export default function WagerPanel({
         <div className="flex items-center gap-3">
           <span className="text-3xl">💰</span>
           <div>
-            <h3 className={`font-black ${isDisplay ? "text-2xl" : "text-lg"} text-white flex items-center gap-2`}>
-              Cược Điểm (Wager Escalation)
+            <h3 className={`font-black ${isDisplay ? "text-2xl" : "text-lg"} text-white flex items-center gap-2 flex-wrap`}>
+              <span>Cược Điểm (Wager Escalation)</span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40">
                 Tặng trước {initialPoints}đ
               </span>
+              {totalRounds !== undefined && roundIndex !== undefined && (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
+                  🔄 Vòng {roundIndex + 1}/{totalRounds}
+                </span>
+              )}
+              {maxBetCap !== undefined && (
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold" title={`Trần cược tối đa = ${wagerMultiplierCap}x điểm câu hỏi gốc (${baseQuestionPoints || 10}đ)`}>
+                  🛡️ Trần: {maxBetCap}đ ({wagerMultiplierCap}x)
+                </span>
+              )}
             </h3>
             <p className="text-xs text-muted-foreground">
               Đội cược cuối: Đúng = +điểm cược, Sai = -điểm cược · Các đội khác: Đúng = +1/2 điểm câu hỏi (làm tròn lên chia hết cho 5), Sai = 0đ
@@ -388,18 +409,35 @@ export default function WagerPanel({
             </div>
           )}
 
+          {/* Max Bet Cap reached banner */}
+          {Boolean(maxBetCap && minOption > maxBetCap) && (
+            <div className="p-2.5 sm:p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-200 text-xs flex items-center gap-2 animate-pulse">
+              <span className="text-xl shrink-0">🛡️</span>
+              <div>
+                <p className="font-black text-amber-300 text-xs sm:text-sm">
+                  ĐÃ CHẠM TRẦN CƯỢC TỐI ĐA ({maxBetCap}đ)!
+                </p>
+                <p className="text-[10px] sm:text-[11px] leading-relaxed">
+                  Mức cược tối thiểu tiếp theo ({minOption}đ) đã vượt trần {wagerMultiplierCap}x điểm câu gốc ({maxBetCap}đ). Phiên cược dừng tại đây.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 12 Clickable Cells */}
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5 sm:gap-2">
             {wagerOptions.map((optValue, idx) => {
               const stepIncrement = 5 * (idx + 1);
               const exceedsMyScore = optValue > myTeamScore;
+              const exceedsMaxCap = Boolean(maxBetCap && optValue > maxBetCap);
               const isDisabled =
                 isDisplay ||
                 phase !== "WAGER_PERIOD" ||
                 isPreviousQuestionWagerTeam ||
                 isConsecutiveBlocked ||
                 hasLostWagerRight ||
-                exceedsMyScore;
+                exceedsMyScore ||
+                exceedsMaxCap;
 
               const isCurrentSelected = myWager?.amount === optValue;
 
@@ -413,7 +451,9 @@ export default function WagerPanel({
                     isCurrentSelected
                       ? "bg-gradient-to-br from-green-500/30 to-emerald-600/30 border-green-400 ring-2 ring-green-400 text-white shadow-lg"
                       : isDisabled
-                      ? exceedsMyScore
+                      ? exceedsMaxCap
+                        ? "bg-white/5 border-amber-500/20 text-muted-foreground/40 opacity-40 cursor-not-allowed"
+                        : exceedsMyScore
                         ? "bg-white/5 border-red-500/20 text-muted-foreground/40 opacity-40 cursor-not-allowed"
                         : "bg-white/5 border-white/5 text-muted-foreground/50 opacity-50 cursor-not-allowed"
                       : "bg-card/70 hover:bg-cyan-500/20 border-cyan-500/40 hover:border-cyan-400 text-white hover:shadow-cyan-500/20 hover:shadow-md cursor-pointer group"
@@ -441,8 +481,15 @@ export default function WagerPanel({
                     {optValue}đ
                   </span>
 
+                  {/* Exceeds maxBetCap warning */}
+                  {exceedsMaxCap && !isDisplay && (
+                    <span className="text-[8px] text-amber-400/90 font-bold truncate max-w-[75px]" title={`Vượt quá trần cược ${maxBetCap}đ`}>
+                      🛡️ &gt; Trần {maxBetCap}đ
+                    </span>
+                  )}
+
                   {/* Exceeds score warning */}
-                  {exceedsMyScore && !isDisplay && (
+                  {exceedsMyScore && !exceedsMaxCap && !isDisplay && (
                     <span className="text-[8px] text-red-400/80 font-semibold truncate max-w-[70px]">
                       🔒 &gt; {myTeamScore}đ
                     </span>

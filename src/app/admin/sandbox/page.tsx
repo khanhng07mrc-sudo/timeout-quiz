@@ -13,6 +13,8 @@ import type {
   DiceRaceState,
   WagerState,
   TeamWager,
+  GamePreparePayload,
+  TournamentState,
 } from "@/types";
 import { CARD_METADATA } from "@/types";
 import Link from "next/link";
@@ -110,6 +112,45 @@ export default function AdminSandboxPage() {
   const botSocketsRef = useRef<Map<string, Socket<ServerToClientEvents, ClientToServerEvents>>>(new Map());
   const pendingBotGridTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingBotDiceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Admin Features States & Tickers
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [cardsLocked, setCardsLocked] = useState(false);
+  const [showEssayModal, setShowEssayModal] = useState(false);
+  const [essayGradingScores, setEssayGradingScores] = useState<Record<string, number>>({});
+  const [showDirectAnswerModal, setShowDirectAnswerModal] = useState(false);
+  const [directAnswerTargetTeamId, setDirectAnswerTargetTeamId] = useState<string>("");
+  const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
+  const [initialTeamScoreInput, setInitialTeamScoreInput] = useState<number>(0);
+
+  const offlinePrepIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const offlineWarmupIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingOfflineLaunchRef = useRef<(() => void) | null>(null);
+
+  // Local ticker for match warmup countdown (5s)
+  useEffect(() => {
+    if (!matchStarting) return;
+    const interval = setInterval(() => {
+      setMatchStarting((prev) => {
+        if (!prev || prev.seconds <= 1) return null;
+        return { seconds: prev.seconds - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [Boolean(matchStarting)]);
+
+  // Local ticker for question preparation countdown (3s)
+  useEffect(() => {
+    if (!questionPrepare) return;
+    const interval = setInterval(() => {
+      setQuestionPrepare((prev) => {
+        if (!prev || prev.seconds <= 1) return null;
+        return { ...prev, seconds: prev.seconds - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [Boolean(questionPrepare)]);
 
   const addLog = useCallback((msg: string) => {
     setBotLogs((prev) => [
@@ -538,6 +579,10 @@ export default function AdminSandboxPage() {
     sock.on("game:answer:received", (payload: any) => {
       if (payload.teamName || payload.playerName) {
         const ans = Array.isArray(payload.answer) ? payload.answer.join(", ") : payload.answer;
+        if (payload.teamId && payload.answer) {
+          const singleAns = Array.isArray(payload.answer) ? payload.answer[0] : payload.answer;
+          setTeamSelectedAnswers((prev) => ({ ...prev, [payload.teamId]: singleAns }));
+        }
         addLog(`📝 [${payload.teamName || payload.playerName}] đã chọn: ${ans}`);
       }
     });
@@ -545,6 +590,27 @@ export default function AdminSandboxPage() {
     sock.on("game:buzz:locked", () => {
       setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
       addLog("🔒 Chuông đã KHÓA!");
+    });
+
+    sock.on("game:starting", (p) => {
+      setMatchStarting({ seconds: p.seconds });
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      addLog(`⚡ Chuẩn bị trận đấu: ${p.seconds}s`);
+    });
+
+    sock.on("game:prepare", (p) => {
+      setMatchStarting(null);
+      setQuestionPrepare(p);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      addLog(`📖 Chuẩn bị câu ${p.questionIndex + 1}: ${p.seconds}s`);
+    });
+
+    sock.on("game:tournament:update", (tState) => {
+      setRoomState((prev) => (prev ? { ...prev, tournamentState: tState } : prev));
+      addLog(`🏆 Cập nhật giải đấu 1v1 (Trận ${tState.currentMatchId})`);
     });
 
     sock.on("game:score:update", (scores) => {
@@ -568,6 +634,8 @@ export default function AdminSandboxPage() {
       if (adminSocketRef.current) adminSocketRef.current.disconnect();
       botSocketsRef.current.forEach((s) => s.disconnect());
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+      if (offlinePrepIntervalRef.current) clearInterval(offlinePrepIntervalRef.current);
+      if (offlineWarmupIntervalRef.current) clearInterval(offlineWarmupIntervalRef.current);
     };
   }, []);
 
@@ -588,13 +656,13 @@ export default function AdminSandboxPage() {
       revealPayload: revealPayloadRef.current,
       buzzed: null,
       lastPowerup: null,
-      matchStarting: null,
-      questionPrepare: null,
+      matchStarting: matchStarting,
+      questionPrepare: questionPrepare,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
-  }, []);
+  }, [matchStarting, questionPrepare]);
 
   useEffect(() => {
     if (isOfflineSandbox) {
@@ -964,6 +1032,329 @@ export default function AdminSandboxPage() {
     addLog(`Admin: Chỉnh giới hạn cứu trợ: ${limit} lần`);
   }, [isOfflineSandbox, addLog, syncToIframes]);
 
+  // ── Admin Features Implementation ──────────────────────────────────────────
+  const buildOfflineTournamentMatches = useCallback((teams: TeamState[], questionsPerMatch: number = 3) => {
+    return [
+      {
+        id: "SF-1",
+        roundIndex: 0,
+        roundName: "Bán kết 1",
+        matchIndex: 0,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team2Id: teams[3]?.id || teams[1]?.id,
+        team2Name: teams[3]?.name || teams[1]?.name,
+        team2Color: teams[3]?.color || teams[1]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-2",
+        roundIndex: 0,
+        roundName: "Bán kết 2",
+        matchIndex: 1,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "FINAL",
+        roundIndex: 1,
+        roundName: "Chung kết",
+        matchIndex: 2,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+    ];
+  }, []);
+
+  const handleSkipPrepare = useCallback(() => {
+    if (isOfflineSandbox) {
+      if (offlinePrepIntervalRef.current) {
+        clearInterval(offlinePrepIntervalRef.current);
+        offlinePrepIntervalRef.current = null;
+      }
+      if (offlineWarmupIntervalRef.current) {
+        clearInterval(offlineWarmupIntervalRef.current);
+        offlineWarmupIntervalRef.current = null;
+      }
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      if (pendingOfflineLaunchRef.current) {
+        pendingOfflineLaunchRef.current();
+        pendingOfflineLaunchRef.current = null;
+      }
+      syncToIframes({ matchStarting: null, questionPrepare: null });
+      addLog("Admin: Đã bỏ qua đếm ngược chuẩn bị");
+      return;
+    }
+    adminSocketRef.current?.emit("admin:skip:prepare" as any, { code });
+    setMatchStarting(null);
+    setQuestionPrepare(null);
+    addLog("Admin: Bỏ qua đếm ngược chuẩn bị");
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
+
+  const handleWagerSkipTimer = useCallback(() => {
+    if (isOfflineSandbox) {
+      if (!roomStateRef.current?.wagerState || roomStateRef.current.wagerState.phase !== "WAGER_PERIOD") return;
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      const curWager = roomStateRef.current.wagerState;
+      let assignedHighest = curWager.currentHighestWager || 10;
+      let winningTeamId = curWager.lastWagerTeamId;
+      let winningTeamName = curWager.autoAssignedTeamName;
+
+      if (!winningTeamId) {
+        const eligible = (roomStateRef.current.teams || []).filter((t) => t.score > 0 && t.id !== curWager.previousQuestionWagerTeamId);
+        const picked = eligible[0] || roomStateRef.current.teams[0];
+        if (picked) {
+          winningTeamId = picked.id;
+          winningTeamName = picked.name;
+          assignedHighest = Math.min(10, picked.score || 10);
+        }
+      }
+
+      const nextWagerState: WagerState = {
+        ...curWager,
+        currentHighestWager: assignedHighest,
+        lastWagerTeamId: winningTeamId,
+        autoAssignedTeamId: winningTeamId,
+        autoAssignedTeamName: winningTeamName,
+        phase: "QUESTION_PERIOD",
+        questionReady: false,
+        wagerTimeRemaining: 0,
+      };
+
+      const nextRoomState: RoomState = { ...roomStateRef.current, wagerState: nextWagerState };
+      setRoomState(nextRoomState);
+      setTimer(null);
+      syncToIframes({ roomState: nextRoomState, timer: null });
+      addLog(`Admin: Bỏ qua đếm ngược cược — Đã chốt cược: [${winningTeamName || "Đội cược"}] với ${assignedHighest}đ`);
+      return;
+    }
+    adminSocketRef.current?.emit("admin:wager:skip_timer" as any, { code });
+    addLog("Admin: Bỏ qua đếm ngược và chốt cược sớm");
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
+
+  const handleTournamentAdvance = useCallback(() => {
+    if (isOfflineSandbox) {
+      if (!roomStateRef.current?.tournamentState) return;
+      const tournament = { ...roomStateRef.current.tournamentState };
+      const curMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
+      if (curMatch) {
+        curMatch.status = "COMPLETED";
+        const winnerId = curMatch.team1Score >= curMatch.team2Score ? curMatch.team1Id : curMatch.team2Id;
+        const winnerName = curMatch.team1Score >= curMatch.team2Score ? curMatch.team1Name : curMatch.team2Name;
+        const winnerColor = curMatch.team1Score >= curMatch.team2Score ? curMatch.team1Color : curMatch.team2Color;
+
+        const finalMatch = tournament.matches.find((m) => m.id === "FINAL");
+        if (finalMatch && curMatch.id !== "FINAL") {
+          if (!finalMatch.team1Id) {
+            finalMatch.team1Id = winnerId;
+            finalMatch.team1Name = winnerName;
+            finalMatch.team1Color = winnerColor;
+          } else if (!finalMatch.team2Id) {
+            finalMatch.team2Id = winnerId;
+            finalMatch.team2Name = winnerName;
+            finalMatch.team2Color = winnerColor;
+          }
+        } else if (curMatch.id === "FINAL") {
+          tournament.championTeamId = winnerId;
+          tournament.championTeamName = winnerName;
+        }
+      }
+      const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
+      if (nextPending) {
+        nextPending.status = "IN_PROGRESS";
+        tournament.currentMatchId = nextPending.id;
+      }
+      const nextRoomState: RoomState = { ...roomStateRef.current, tournamentState: tournament };
+      setRoomState(nextRoomState);
+      syncToIframes({ roomState: nextRoomState, tournamentState: tournament });
+      addLog(`Admin: Chuyển sang trận tiếp theo trong giải đấu: ${tournament.currentMatchId || "Chung kết"}`);
+      return;
+    }
+    adminSocketRef.current?.emit("admin:tournament:advance" as any, { code });
+    addLog("Admin: Chuyển sang trận tiếp theo (1v1)");
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
+
+  const handleScoreManual = useCallback((answerId: string, points: number, teamId?: string, playerId?: string) => {
+    if (isOfflineSandbox) {
+      if (!revealPayloadRef.current) return;
+      const updatedAnswers = (revealPayloadRef.current.answers || []).map((a: any) => {
+        if ((a.id && a.id === answerId) || (teamId && a.teamId === teamId) || (playerId && a.playerId === playerId)) {
+          return {
+            ...a,
+            isCorrect: points > 0,
+            pointsAwarded: points,
+          };
+        }
+        return a;
+      });
+
+      const nextReveal = { ...revealPayloadRef.current, answers: updatedAnswers };
+      setRevealPayload(nextReveal);
+
+      if (teamId) {
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedTeams = prev.teams.map((t) => (t.id === teamId ? { ...t, score: Math.max(0, t.score + points) } : t));
+          return { ...prev, teams: updatedTeams };
+        });
+      }
+
+      syncToIframes({ revealPayload: nextReveal });
+      addLog(`Admin: Chấm tự luận: ${points}đ cho [${teamId || playerId || answerId}]`);
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:score:manual" as any, { answerId, points, code });
+    addLog(`Admin: Chấm tự luận: ${points}đ (ID: ${answerId})`);
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
+
+  const handleAdminSubmitDirectAnswer = useCallback((teamId: string, answerId: string) => {
+    if (!currentQuestionRef.current) return;
+    const targetTeam = roomStateRef.current?.teams.find((t) => t.id === teamId);
+    const teamName = targetTeam?.name || teamId;
+
+    setTeamSelectedAnswers((prev) => ({ ...prev, [teamId]: answerId }));
+
+    if (isOfflineSandbox) {
+      const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestionRef.current.question;
+      const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
+      const isCorrect = correctOpt ? correctOpt.id === answerId : false;
+      const awarded = isCorrect ? (currentQuestionRef.current.question.points || 10) : 0;
+
+      offlineAnswersRef.current.set(teamId, {
+        answer: answerId,
+        isCorrect,
+        points: awarded,
+      });
+      offlineFinalizedActorsRef.current.add(teamId);
+      checkOfflineEarlyCompletion();
+
+      addLog(`🎙️ MC chọn đáp án [${answerId}] cho Đội [${teamName}] (${isCorrect ? "Đúng" : "Sai"})`);
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:submit:answer" as any, {
+      questionId: currentQuestionRef.current.question.id,
+      teamId,
+      answer: answerId,
+      code,
+    });
+    addLog(`🎙️ MC nộp đáp án [${answerId}] cho Đội [${teamName}]`);
+  }, [isOfflineSandbox, code, addLog, checkOfflineEarlyCompletion]);
+
+  const handleToggleCards = useCallback((locked: boolean) => {
+    setCardsLocked(locked);
+    if (isOfflineSandbox) {
+      addLog(locked ? "Admin: Đã khóa thẻ hỗ trợ" : "Admin: Đã mở thẻ hỗ trợ");
+      return;
+    }
+    adminSocketRef.current?.emit("admin:lock:cards" as any, locked);
+    addLog(locked ? "Admin: Đã khóa thẻ hỗ trợ" : "Admin: Đã mở thẻ hỗ trợ");
+  }, [isOfflineSandbox, addLog]);
+
+  const handleShuffleCards = useCallback(() => {
+    if (isOfflineSandbox) {
+      addLog("Admin: Đã xáo lại thẻ hỗ trợ");
+      return;
+    }
+    adminSocketRef.current?.emit("admin:shuffle:cards" as any);
+    addLog("Admin: Đã xáo lại thẻ hỗ trợ");
+  }, [isOfflineSandbox, addLog]);
+
+  const handleSetAllTeamsInitialScores = useCallback((score: number) => {
+    const cleanScore = Math.max(0, score);
+    if (isOfflineSandbox) {
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const updatedTeams = prev.teams.map((t) => ({ ...t, score: cleanScore }));
+        return {
+          ...prev,
+          config: { ...prev.config, initialTeamScore: cleanScore } as any,
+          teams: updatedTeams,
+        };
+      });
+      syncToIframes();
+      addLog(`Admin: Đã đặt điểm xuất phát ban đầu: ${cleanScore}đ cho tất cả đội`);
+      return;
+    }
+    adminSocketRef.current?.emit(
+      "admin:teams:set_initial_scores" as any,
+      { defaultScore: cleanScore, code },
+      (res: any) => {
+        if (!res?.success) alert(res?.error || "Không thể đặt điểm ban đầu");
+        else addLog(`Admin: Đã đặt điểm xuất phát ban đầu: ${cleanScore}đ cho tất cả đội`);
+      }
+    );
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
+
+  const handleCleanOfflinePlayers = useCallback(() => {
+    if (isOfflineSandbox) {
+      addLog("Ngoại tuyến: Tất cả thí sinh là Bot mô phỏng, không có người offline");
+      return;
+    }
+    adminSocketRef.current?.emit("admin:clean:offline" as any, (res: any) => {
+      if (res?.success) addLog(`Admin: Đã dọn dẹp ${res.count ?? 0} thí sinh offline`);
+      else alert(res?.error || "Lỗi khi dọn dẹp thí sinh offline");
+    });
+  }, [isOfflineSandbox, addLog]);
+
+  const handleAssignQuizBank = useCallback(async (bankId: string) => {
+    if (isOfflineSandbox) {
+      setSelectedBankId(bankId);
+      const bank = (bankId && offlineStorage.getLocalBankById(bankId)) || DEFAULT_OFFLINE_BANK;
+      const questions = bank.questions && bank.questions.length > 0 ? bank.questions : DEFAULT_OFFLINE_BANK.questions!;
+      offlineQuestionsRef.current = questions;
+      offlineUsedQuestionIdsRef.current.clear();
+      offlineQIndexRef.current = 0;
+      addLog(`Ngoại tuyến: Đã chuyển sang bộ đề [${bank.title}] (${questions.length} câu)`);
+      return;
+    }
+    try {
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const storedHostKey = localStorage.getItem(`host_key_${code}`) || "";
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      if (storedHostKey) headers["x-host-key"] = storedHostKey;
+
+      const res = await fetch(`/api/rooms/${code}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ quizBankId: bankId || null }),
+      });
+      if (res.ok) {
+        setSelectedBankId(bankId);
+        const bTitle = quizBanks.find((b) => b.id === bankId)?.title || bankId;
+        addLog(`Admin: Đã đổi bộ đề gán cho phòng: [${bTitle}]`);
+      } else {
+        alert("Lỗi khi cập nhật bộ đề cho phòng!");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Lỗi kết nối khi đổi bộ đề!");
+    }
+  }, [isOfflineSandbox, code, quizBanks, addLog]);
+
   // Handle player actions sent from the mobile viewport iframe
   useEffect(() => {
     const handlePlayerAction = (e: MessageEvent) => {
@@ -1262,49 +1653,76 @@ export default function AdminSandboxPage() {
       addLog(`💰 Phiên cược câu #${nextIdx + 1} bắt đầu! 5s mở màn... (Đội cược câu trước tạm nghỉ)`);
     } else {
       let prepSeconds = 3;
+      const initialPrepPayload: GamePreparePayload = {
+        questionIndex: nextIdx,
+        totalQuestions: questions.length,
+        seconds: prepSeconds,
+        timeLimit,
+        points: q.points || 10,
+        primaryTeamName: qState.primaryTeamName,
+      };
+      setQuestionPrepare(initialPrepPayload);
       syncToIframes({
-        questionPrepare: { seconds: prepSeconds, points: q.points || 10 },
+        questionPrepare: initialPrepPayload,
         currentQuestion: null,
         timer: null,
       });
       addLog(`Chuẩn bị câu hỏi #${nextIdx + 1} trong 3s...`);
 
-      const prepInterval = setInterval(() => {
+      const proceedLaunchQuestion = () => {
+        if (offlinePrepIntervalRef.current) {
+          clearInterval(offlinePrepIntervalRef.current);
+          offlinePrepIntervalRef.current = null;
+        }
+        setQuestionPrepare(null);
+        setCurrentQuestion(qState);
+        setRevealPayload(null);
+        if (autoTimer) {
+          setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
+          offlineRemainingRef.current = timeLimit;
+          syncToIframes({
+            questionPrepare: null,
+            currentQuestion: qState,
+            timer: { remaining: timeLimit, total: timeLimit, endsAt },
+          });
+          offlineTimerRef.current = setInterval(() => {
+            offlineRemainingRef.current -= 1;
+            const rem = offlineRemainingRef.current;
+            setTimer({ remaining: rem, total: timeLimit, endsAt });
+            if (rem <= 0) {
+              if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+              offlineTimerRef.current = null;
+            }
+          }, 1000);
+        } else {
+          setTimer(null);
+          syncToIframes({
+            questionPrepare: null,
+            currentQuestion: qState,
+            timer: null,
+          });
+          addLog(`📖 Câu hỏi đã mở (Timer dừng cho MC đọc đề). Nhấn [Bắt đầu tính giờ] để đếm ngược!`);
+        }
+      };
+
+      pendingOfflineLaunchRef.current = proceedLaunchQuestion;
+      if (offlinePrepIntervalRef.current) {
+        clearInterval(offlinePrepIntervalRef.current);
+        offlinePrepIntervalRef.current = null;
+      }
+      offlinePrepIntervalRef.current = setInterval(() => {
         prepSeconds -= 1;
         if (prepSeconds > 0) {
+          const nextPrepPayload: GamePreparePayload = {
+            ...initialPrepPayload,
+            seconds: prepSeconds,
+          };
+          setQuestionPrepare(nextPrepPayload);
           syncToIframes({
-            questionPrepare: { seconds: prepSeconds, points: q.points || 10 },
+            questionPrepare: nextPrepPayload,
           });
         } else {
-          clearInterval(prepInterval);
-          setCurrentQuestion(qState);
-          setRevealPayload(null);
-          if (autoTimer) {
-            setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
-            offlineRemainingRef.current = timeLimit;
-            syncToIframes({
-              questionPrepare: null,
-              currentQuestion: qState,
-              timer: { remaining: timeLimit, total: timeLimit, endsAt },
-            });
-            offlineTimerRef.current = setInterval(() => {
-              offlineRemainingRef.current -= 1;
-              const rem = offlineRemainingRef.current;
-              setTimer({ remaining: rem, total: timeLimit, endsAt });
-              if (rem <= 0) {
-                if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
-                offlineTimerRef.current = null;
-              }
-            }, 1000);
-          } else {
-            setTimer(null);
-            syncToIframes({
-              questionPrepare: null,
-              currentQuestion: qState,
-              timer: null,
-            });
-            addLog(`📖 Câu hỏi đã mở (Timer dừng cho MC đọc đề). Nhấn [Bắt đầu tính giờ] để đếm ngược!`);
-          }
+          proceedLaunchQuestion();
         }
       }, 1000);
     }
@@ -1324,16 +1742,84 @@ export default function AdminSandboxPage() {
 
   const handleAdminNext = () => {
     if (isOfflineSandbox) {
-      // Khi nhấn Bắt đầu ở LOBBY: Hiện bàn cờ/đường đua trước rồi mới hiện câu hỏi!
       if (roomState?.status === "LOBBY") {
-        setRoomState((prev) => prev ? { ...prev, status: "PLAYING" } : prev);
-        if (selectedMode === "DICE_RACE") {
-          addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Bàn cờ hiển thị toàn màn hình. Nhấn 'Hiện câu hỏi' khi sẵn sàng.");
-          return;
-        } else if (selectedMode === "GRID_CARO") {
-          addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
-          return;
+        let tourState: TournamentState | undefined = undefined;
+        if (selectedMode === "TOURNAMENT") {
+          const tourMatches = buildOfflineTournamentMatches(roomState?.teams || []);
+          tourState = {
+            matches: tourMatches,
+            currentMatchId: tourMatches[0]?.id || "M1",
+            questionsPerMatch: roomState?.config?.tournamentQuestionsPerMatch || 3,
+          };
         }
+
+        let warmupSec = 5;
+        setMatchStarting({ seconds: warmupSec });
+        syncToIframes({ matchStarting: { seconds: warmupSec } });
+        addLog("🏁 Trận đấu bắt đầu! Đếm ngược chuẩn bị 5s...");
+
+        const proceedAfterWarmup = () => {
+          if (offlineWarmupIntervalRef.current) {
+            clearInterval(offlineWarmupIntervalRef.current);
+            offlineWarmupIntervalRef.current = null;
+          }
+          setMatchStarting(null);
+          setRoomState((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              status: "PLAYING",
+              tournamentState: tourState || prev.tournamentState,
+            };
+          });
+          syncToIframes({
+            matchStarting: null,
+            roomState: {
+              ...(roomState || {}),
+              status: "PLAYING",
+              tournamentState: tourState || roomState?.tournamentState,
+            },
+          });
+
+          if (selectedMode === "DICE_RACE") {
+            addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Bàn cờ hiển thị toàn màn hình. Nhấn 'Hiện câu hỏi' khi sẵn sàng.");
+            return;
+          } else if (selectedMode === "GRID_CARO") {
+            addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
+            return;
+          }
+
+          const questions = offlineQuestionsRef.current;
+          if (questions.length === 0) return;
+          let nextIdx = -1;
+          for (let i = 0; i < questions.length; i++) {
+            const qId = questions[i].id || `q_${i + 1}`;
+            if (!offlineUsedQuestionIdsRef.current.has(qId)) {
+              nextIdx = i;
+              offlineUsedQuestionIdsRef.current.add(qId);
+              break;
+            }
+          }
+          if (nextIdx !== -1) {
+            launchOfflineQuestion(nextIdx);
+          }
+        };
+
+        pendingOfflineLaunchRef.current = proceedAfterWarmup;
+        if (offlineWarmupIntervalRef.current) {
+          clearInterval(offlineWarmupIntervalRef.current);
+          offlineWarmupIntervalRef.current = null;
+        }
+        offlineWarmupIntervalRef.current = setInterval(() => {
+          warmupSec -= 1;
+          if (warmupSec > 0) {
+            setMatchStarting({ seconds: warmupSec });
+            syncToIframes({ matchStarting: { seconds: warmupSec } });
+          } else {
+            proceedAfterWarmup();
+          }
+        }, 1000);
+        return;
       }
 
       const questions = offlineQuestionsRef.current;
@@ -2364,6 +2850,51 @@ export default function AdminSandboxPage() {
             <>
               {/* Center Section: Primary Smart MC Flow */}
               <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* 0a. Skip Countdown (Match Starting or Question Prepare) */}
+                {(matchStarting || questionPrepare) && (
+                  <button
+                    type="button"
+                    onClick={handleSkipPrepare}
+                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                    title="Bỏ qua đếm ngược chuẩn bị"
+                  >
+                    <span>⚡</span>
+                    <span>
+                      Bỏ qua chuẩn bị ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 3}s)
+                    </span>
+                  </button>
+                )}
+
+                {/* 0b. WAGER Mode Skip Wager Timer */}
+                {roomState?.mode === "WAGER" && roomState?.wagerState?.phase === "WAGER_PERIOD" && (
+                  <button
+                    type="button"
+                    onClick={handleWagerSkipTimer}
+                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                    title="Khóa cược ngay lập tức và chuyển sang câu hỏi"
+                  >
+                    <span>⏩</span>
+                    <span>Chốt cược ngay</span>
+                  </button>
+                )}
+
+                {/* 0c. TOURNAMENT Mode Advance */}
+                {roomState?.mode === "TOURNAMENT" && (
+                  <button
+                    type="button"
+                    onClick={handleTournamentAdvance}
+                    className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                    title="Chuyển sang trận tiếp theo trong nhánh đấu"
+                  >
+                    <span>{roomState?.tournamentState?.championTeamName ? "👑" : "➡️"}</span>
+                    <span>
+                      {roomState?.tournamentState?.championTeamName
+                        ? `Vô địch: ${roomState.tournamentState.championTeamName}`
+                        : "Trận kế (1v1)"}
+                    </span>
+                  </button>
+                )}
+
                 {/* 1. WAGER Mode Launch Question (when bidding ended but question not yet opened) */}
                 {roomState?.mode === "WAGER" && roomState?.wagerState?.phase === "QUESTION_PERIOD" && !roomState?.wagerState?.questionReady && (
                   <button
@@ -2450,6 +2981,32 @@ export default function AdminSandboxPage() {
                   <span>👁️</span>
                   <span>Công bố</span>
                 </button>
+
+                {/* 4b. Essay & Manual Grading Modal Trigger */}
+                {revealPayload && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEssayModal(true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                    title="Chấm điểm câu tự luận hoặc điều chỉnh điểm"
+                  >
+                    <span>✏️</span>
+                    <span>Chấm điểm ({revealPayload.answers?.length ?? 0})</span>
+                  </button>
+                )}
+
+                {/* 4c. MC Direct Answer Submission Trigger */}
+                {currentQuestion && !revealPayload && currentQuestion.question.options && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDirectAnswerModal(true)}
+                    className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/50 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                    title="MC nộp đáp án A/B/C/D trực tiếp hộ bất kỳ đội nào"
+                  >
+                    <span>🎙️</span>
+                    <span>MC nộp hộ</span>
+                  </button>
+                )}
 
                 {/* 5. Early Stop */}
                 {currentQuestion && !revealPayload && (
@@ -2812,6 +3369,84 @@ export default function AdminSandboxPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* Initial Team Score */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Điểm ban đầu</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min={0}
+                            max={1000}
+                            value={initialTeamScoreInput}
+                            onChange={(e) => setInitialTeamScoreInput(Number(e.target.value))}
+                            className="w-16 px-2 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSetAllTeamsInitialScores(initialTeamScoreInput)}
+                            className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
+                          >
+                            Set
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Powerup Card Lock / Unlock & Shuffle */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Thẻ hỗ trợ</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCards(!cardsLocked)}
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                              cardsLocked
+                                ? "bg-red-500/30 border-red-400 text-red-300"
+                                : "glass border-white/20 text-slate-300 hover:text-white"
+                            }`}
+                          >
+                            {cardsLocked ? "🔒 Đã khóa" : "🔓 Mở"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleShuffleCards}
+                            className="px-2 py-0.5 rounded glass border border-white/20 text-slate-300 hover:text-white text-[10px] font-bold transition cursor-pointer"
+                            title="Xáo lại kho bài chia cho các đội"
+                          >
+                            🔀 Xáo bài
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Clean offline participants */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <span className="text-slate-300">Dọn dẹp offline</span>
+                        <button
+                          type="button"
+                          onClick={handleCleanOfflinePlayers}
+                          className="px-2 py-0.5 rounded glass border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 text-[10px] font-bold transition cursor-pointer"
+                          title="Xóa thí sinh mất kết nối"
+                        >
+                          🧹 Xóa offline
+                        </button>
+                      </div>
+
+                      {/* Assign Quiz Bank selector */}
+                      <div className="flex flex-col gap-1 pt-1 border-t border-white/10">
+                        <span className="text-slate-300 text-[10px]">Đổi bộ đề đang gán:</span>
+                        <select
+                          value={selectedBankId}
+                          onChange={(e) => handleAssignQuizBank(e.target.value)}
+                          className="w-full px-2 py-1 rounded-lg glass border border-white/20 text-white text-[10px] bg-[#0f0f1a] focus:outline-none truncate"
+                        >
+                          <option value="">📚 Mặc định (25 câu)</option>
+                          {quizBanks.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              📚 {b.title} ({b._count?.questions ?? 25}c)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -3066,6 +3701,19 @@ export default function AdminSandboxPage() {
                   >
                     ⚡ Buzz
                   </button>
+                  {currentQuestion && !revealPayload && currentQuestion.question.options && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentTeam) setDirectAnswerTargetTeamId(currentTeam.id);
+                        setShowDirectAnswerModal(true);
+                      }}
+                      className="px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                      title="MC nộp đáp án trực tiếp cho đội này hoặc đội khác"
+                    >
+                      🎙️ MC nộp
+                    </button>
+                  )}
 
                   {/* Score Cheat Dropdown */}
                   <div className="relative">
@@ -3310,6 +3958,252 @@ export default function AdminSandboxPage() {
                 className="px-4 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Essay / Manual Grading Modal ─────────────────────────────────── */}
+      {showEssayModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowEssayModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl glass rounded-3xl border border-white/20 p-5 flex flex-col gap-4 shadow-2xl bg-[#121324]/95 text-white max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span>✏️</span>
+                <span>Chấm điểm tự luận & Thủ công</span>
+              </h3>
+              <button
+                onClick={() => setShowEssayModal(false)}
+                className="w-7 h-7 rounded-lg glass hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-3 pr-1">
+              {(!revealPayload || !revealPayload.answers || revealPayload.answers.length === 0) ? (
+                <div className="text-center py-8 text-slate-400">
+                  <p className="text-2xl mb-2">📝</p>
+                  <p>Chưa có câu trả lời nào được nộp hoặc chưa nhấn [Công bố].</p>
+                  <p className="text-xs text-slate-500 mt-1">Khi công bố kết quả, các bài làm của thí sinh sẽ hiển thị tại đây để MC chấm điểm.</p>
+                </div>
+              ) : (
+                revealPayload.answers.map((ans: any, idx: number) => {
+                  const itemKey = ans.id || ans.teamId || ans.playerId || `ans_${idx}`;
+                  const currentScore = essayGradingScores[itemKey] ?? (ans.pointsAwarded ?? 10);
+
+                  return (
+                    <div
+                      key={itemKey}
+                      className="p-3 rounded-2xl glass border border-white/10 bg-black/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-black text-sm text-cyan-300">{ans.name || `Đội ${idx + 1}`}</span>
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                              ans.isCorrect === true
+                                ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                                : ans.isCorrect === false
+                                ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                                : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                            }`}
+                          >
+                            {ans.isCorrect === true ? "✓ Đúng" : ans.isCorrect === false ? "✗ Sai" : "⏳ Chờ chấm"}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">
+                            Hiện có: {ans.pointsAwarded ?? 0}đ
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-200 bg-white/5 p-2 rounded-xl font-mono break-words">
+                          {Array.isArray(ans.answer) ? ans.answer.join(", ") : String(ans.answer || "(Trống)")}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={currentScore}
+                          onChange={(e) =>
+                            setEssayGradingScores((prev) => ({
+                              ...prev,
+                              [itemKey]: Number(e.target.value),
+                            }))
+                          }
+                          className="w-16 px-2 py-1.5 rounded-xl glass border border-white/20 text-white font-mono font-bold text-xs bg-[#0f0f1a] text-center focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleScoreManual(ans.id || "", currentScore, ans.teamId, ans.playerId)}
+                          className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold text-xs transition active:scale-95 shadow-sm"
+                        >
+                          Lưu điểm
+                        </button>
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleScoreManual(ans.id || "", 10, ans.teamId, ans.playerId)}
+                            className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 text-[10px] font-bold"
+                          >
+                            +10đ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleScoreManual(ans.id || "", 0, ans.teamId, ans.playerId)}
+                            className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold"
+                          >
+                            0đ
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowEssayModal(false)}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MC Direct Answer Submission Modal ─────────────────────────────── */}
+      {showDirectAnswerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowDirectAnswerModal(false)}
+        >
+          <div
+            className="w-full max-w-lg glass rounded-3xl border border-white/20 p-5 flex flex-col gap-4 shadow-2xl bg-[#121324]/95 text-white max-h-[85vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <h3 className="text-base font-black flex items-center gap-2">
+                <span>🎙️</span>
+                <span>MC chọn đáp án trực tiếp</span>
+              </h3>
+              <button
+                onClick={() => setShowDirectAnswerModal(false)}
+                className="w-7 h-7 rounded-lg glass hover:bg-white/10 flex items-center justify-center text-muted-foreground hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Question preview */}
+            <div className="p-3 rounded-2xl glass border border-purple-500/30 bg-purple-950/20">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-300 mb-1">
+                Câu hỏi hiện tại ({currentQuestion?.question.points || 10}đ)
+              </p>
+              <p className="text-xs font-semibold text-white leading-relaxed line-clamp-2">
+                {currentQuestion?.question.content || "Chưa có câu hỏi"}
+              </p>
+            </div>
+
+            {/* Target Team Selection */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                1. Chọn đội để MC nộp đáp án:
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                {(roomState?.teams || []).map((t) => {
+                  const isTarget = (directAnswerTargetTeamId || currentTeam?.id) === t.id;
+                  const chosenOpt = teamSelectedAnswers[t.id];
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setDirectAnswerTargetTeamId(t.id)}
+                      className={`p-2 rounded-xl text-left border transition flex flex-col gap-0.5 cursor-pointer ${
+                        isTarget
+                          ? "bg-purple-600/40 border-purple-400 ring-2 ring-purple-400/50"
+                          : "glass border-white/10 hover:border-white/30 text-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                        <span className="font-bold text-xs truncate text-white">{t.name}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-cyan-300 font-mono">{t.score}đ</span>
+                        {chosenOpt && (
+                          <span className="font-black text-amber-300 px-1 rounded bg-amber-500/20">
+                            [{chosenOpt}]
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Option Selection */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
+                2. Bấm chọn phương án cho đội được chọn:
+              </label>
+              {currentQuestion?.question.options ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {currentQuestion.question.options.map((opt, i) => {
+                    const activeTeamId = directAnswerTargetTeamId || currentTeam?.id || roomState?.teams[0]?.id || "";
+                    const isSelected = teamSelectedAnswers[activeTeamId] === opt.id;
+                    const labels = ["A", "B", "C", "D", "E", "F"];
+
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleAdminSubmitDirectAnswer(activeTeamId, opt.id)}
+                        className={`p-3 rounded-2xl border text-left transition flex items-center gap-2.5 cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-1 ring-emerald-400 shadow-md"
+                            : "glass border-white/15 hover:border-purple-400 hover:bg-white/5 text-white"
+                        }`}
+                      >
+                        <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center font-black text-xs shrink-0 text-cyan-300">
+                          {labels[i] || i + 1}
+                        </span>
+                        <span className="text-xs font-medium flex-1 truncate">{opt.text}</span>
+                        {isSelected && <span className="text-emerald-400 text-xs font-bold">✓ Đã nộp</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400 text-center py-4 glass rounded-xl">
+                  Câu hỏi này không có các lựa chọn A/B/C/D trắc nghiệm.
+                </p>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t border-white/10">
+              <span className="text-[11px] text-slate-400">
+                💡 MC có thể chọn nhiều đội lần lượt mà không cần tắt hộp thoại.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowDirectAnswerModal(false)}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition"
+              >
+                Xong
               </button>
             </div>
           </div>

@@ -957,7 +957,14 @@ export default function PlayPage() {
   }
 
   // ── Intermission Screen (Leaderboard Standings for Player) ─────────────────
-  if (intermission || (!currentQuestion && roomState?.status === "PLAYING")) {
+  const isInteractiveBoardPhase = Boolean(
+    (roomState?.mode === "WAGER" && roomState?.wagerState) ||
+    (roomState?.mode === "GRID_CARO" && roomState?.gridCaroState) ||
+    (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) ||
+    (roomState?.mode === "TOURNAMENT" && roomState?.tournamentState)
+  );
+
+  if (!isInteractiveBoardPhase && (intermission || (!currentQuestion && roomState?.status === "PLAYING"))) {
     const isTeam = roomState?.teamMode === "TEAM";
     const participants = [...(isTeam ? (roomState?.teams ?? []) : (roomState?.players ?? []))]
       .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));

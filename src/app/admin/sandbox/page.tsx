@@ -107,6 +107,7 @@ export default function AdminSandboxPage() {
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showCheatDropdown, setShowCheatDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
 
   // Sockets
@@ -114,6 +115,7 @@ export default function AdminSandboxPage() {
   const botSocketsRef = useRef<Map<string, Socket<ServerToClientEvents, ClientToServerEvents>>>(new Map());
   const pendingBotGridTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingBotDiceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const offlineIntermissionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Admin Features States & Tickers
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
@@ -639,6 +641,7 @@ export default function AdminSandboxPage() {
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       if (offlinePrepIntervalRef.current) clearInterval(offlinePrepIntervalRef.current);
       if (offlineWarmupIntervalRef.current) clearInterval(offlineWarmupIntervalRef.current);
+      if (offlineIntermissionTimerRef.current) clearTimeout(offlineIntermissionTimerRef.current);
     };
   }, []);
 
@@ -1541,6 +1544,11 @@ export default function AdminSandboxPage() {
 
   // ── Host Actions ──────────────────────────────────────────────────────────
   const launchOfflineQuestion = (nextIdx: number) => {
+    if (offlineIntermissionTimerRef.current) {
+      clearTimeout(offlineIntermissionTimerRef.current);
+      offlineIntermissionTimerRef.current = null;
+    }
+    setIntermission(null);
     if (offlineTimerRef.current) {
       clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = null;
@@ -1667,6 +1675,7 @@ export default function AdminSandboxPage() {
         currentQuestion: null,
         roomState: { ...(roomState || {}), wagerState: newWagerState },
         timer: { remaining: 5, total: 5 },
+        intermission: null,
       });
       addLog(`💰 Phiên cược câu #${nextIdx + 1} (Vòng ${currentRoundIdx + 1}/${wagerRounds}, trần ${calculatedMaxBetCap}đ) bắt đầu! 5s mở màn...`);
 
@@ -1934,6 +1943,10 @@ export default function AdminSandboxPage() {
 
       // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission): Bắt đầu câu hỏi tiếp theo ngay lập tức!
       if (intermission) {
+        if (offlineIntermissionTimerRef.current) {
+          clearTimeout(offlineIntermissionTimerRef.current);
+          offlineIntermissionTimerRef.current = null;
+        }
         const nextIdx = intermission.nextQuestionIndex;
         const qId = questions[nextIdx]?.id || `q_${nextIdx + 1}`;
         offlineUsedQuestionIdsRef.current.add(qId);
@@ -1960,12 +1973,18 @@ export default function AdminSandboxPage() {
         return;
       }
 
-      // Kích hoạt màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)
+      if (offlineIntermissionTimerRef.current) {
+        clearTimeout(offlineIntermissionTimerRef.current);
+        offlineIntermissionTimerRef.current = null;
+      }
+
+      // Kích hoạt màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission) với đếm ngược 3s tự động
       const intermissionPayload: GameIntermissionPayload = {
         nextQuestionIndex: nextIdx,
         totalQuestions: targetTotal,
         previousQuestionIndex: offlineQIndexRef.current,
         titleVi: `BẢNG XẾP HẠNG SAU CÂU #${offlineQIndexRef.current + 1}`,
+        countdownSeconds: 3,
       };
       setIntermission(intermissionPayload);
       setCurrentQuestion(null);
@@ -1977,7 +1996,16 @@ export default function AdminSandboxPage() {
         revealPayload: null,
         timer: null,
       });
-      addLog(`📊 Hiển thị Bảng xếp hạng giữa hiệp (Sau câu #${offlineQIndexRef.current + 1}). Nhấn [Bắt đầu câu hỏi #${nextIdx + 1}] để tiếp tục.`);
+      addLog(`📊 Hiển thị Bảng xếp hạng giữa hiệp (Sau câu #${offlineQIndexRef.current + 1}). Tự động vào câu #${nextIdx + 1} sau 3s...`);
+
+      // 3s auto advance timer
+      offlineIntermissionTimerRef.current = setTimeout(() => {
+        offlineIntermissionTimerRef.current = null;
+        const qId = questions[nextIdx]?.id || `q_${nextIdx + 1}`;
+        offlineUsedQuestionIdsRef.current.add(qId);
+        setIntermission(null);
+        launchOfflineQuestion(nextIdx);
+      }, 3000);
       return;
     }
 
@@ -2017,8 +2045,22 @@ export default function AdminSandboxPage() {
       if (!currentQuestion) return;
 
       const qRaw = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion.question;
-      const correctOpt = qRaw.options?.find((o: any) => o.isCorrect);
-      const correctId = correctOpt ? correctOpt.id : "A";
+      const opts = qRaw.options as any[] | null;
+      const correctOpts = opts && Array.isArray(opts) ? opts.filter((o: any) => o.isCorrect) : [];
+      let correctId = "A";
+      let correctAnswerText = "";
+      if (correctOpts.length > 0) {
+        correctId = correctOpts[0].id;
+        const labels = ["A", "B", "C", "D", "E", "F"];
+        correctAnswerText = correctOpts.map((o: any) => {
+          const idx = (opts || []).findIndex((opt: any) => opt.id === o.id);
+          const prefix = idx >= 0 && idx < labels.length ? `${labels[idx]}. ` : "";
+          return `${prefix}${o.text}`;
+        }).join(" | ");
+      } else if (qRaw.answer) {
+        correctId = qRaw.answer;
+        correctAnswerText = qRaw.answer;
+      }
 
       const answers: any[] = [];
       const scoreDeltas: { teamId: string; delta: number }[] = [];
@@ -2042,6 +2084,8 @@ export default function AdminSandboxPage() {
       const payload = {
         questionId: currentQuestion.question.id,
         correctAnswer: [correctId],
+        correctAnswerText: correctAnswerText || undefined,
+        explanation: qRaw.hint || currentQuestion.question.hint || undefined,
         answers,
       };
 
@@ -2050,6 +2094,7 @@ export default function AdminSandboxPage() {
       const isCurTeamCorrect = Boolean(curTeamAnswer?.isCorrect);
 
       setRevealPayload(payload);
+      syncToIframes({ revealPayload: payload });
 
       setRoomState((prev) => {
         if (!prev) return prev;
@@ -3155,15 +3200,17 @@ export default function AdminSandboxPage() {
                   })()
                 )}
 
-                {/* 4. Reveal Button */}
-                <button
-                  type="button"
-                  onClick={handleAdminReveal}
-                  className="px-2.5 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                >
-                  <span>👁️</span>
-                  <span>Công bố</span>
-                </button>
+                {/* 4. Reveal Button - Only when question is active and not yet revealed */}
+                {currentQuestion && !revealPayload && (
+                  <button
+                    type="button"
+                    onClick={handleAdminReveal}
+                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer animate-pulse"
+                  >
+                    <span>👁️</span>
+                    <span>Công bố đáp án</span>
+                  </button>
+                )}
 
                 {/* 4b. Essay & Manual Grading Modal Trigger */}
                 {revealPayload && (
@@ -3205,23 +3252,18 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
-                {/* 6. Skip 1s & Pause/Resume */}
-                <button
-                  type="button"
-                  onClick={handleSkipTimerToOneSecond}
-                  title="Giảm thời gian đếm ngược còn 1s"
-                  className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-yellow-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                >
-                  <span>⚡</span>
-                  <span>Tua 1s</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePauseResume}
-                  className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-slate-300 text-xs font-bold transition whitespace-nowrap cursor-pointer"
-                >
-                  {roomState?.status === "PAUSED" ? "▶️ Tiếp" : "⏸️"}
-                </button>
+                {/* 6. Skip 1s */}
+                {currentQuestion && !revealPayload && timer && timer.remaining > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleSkipTimerToOneSecond}
+                    title="Giảm thời gian đếm ngược còn 1s"
+                    className="px-2 py-1 rounded-lg glass hover:bg-white/10 border border-white/20 text-yellow-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    <span>Tua 1s</span>
+                  </button>
+                )}
 
                 {/* Mode specific additions */}
                 {roomState?.mode === "BUZZ" && currentQuestion && (
@@ -3399,49 +3441,146 @@ export default function AdminSandboxPage() {
               </div>
 
               {/* Right Section: Studio Utilities */}
-              <div className="flex items-center gap-1.5 flex-wrap justify-end">
-                {/* Bot Auto Toggle */}
-                <button
-                  type="button"
-                  onClick={() => setBotAutoEnabled(!botAutoEnabled)}
-                  className={`px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
-                    botAutoEnabled
-                      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 shadow-sm"
-                      : "glass border-white/10 text-muted-foreground hover:text-white"
-                  }`}
-                  title="Bật/Tắt cơ chế Bot tự động nộp đáp án"
-                >
-                  <span>🤖</span>
-                  <span className="whitespace-nowrap">Bot Auto: {botAutoEnabled ? "BẬT" : "TẮT"}</span>
-                </button>
+              <div className="flex items-center gap-1.5 shrink-0 justify-end">
+                {/* Consolidated Utilities Dropdown */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowUtilitiesDropdown(!showUtilitiesDropdown)}
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                      showUtilitiesDropdown
+                        ? "bg-purple-600/30 border-purple-400/50 text-white shadow-sm"
+                        : "glass border-white/10 text-muted-foreground hover:text-white"
+                    }`}
+                    title="Tiện ích hỗ trợ quản lý phòng và bot"
+                  >
+                    <span>🛠️</span>
+                    <span className="whitespace-nowrap">Tiện ích</span>
+                    <span className="text-[10px] text-muted-foreground">▾</span>
+                  </button>
 
-                {/* On-Demand Trigger All Bots */}
-                <button
-                  type="button"
-                  onClick={handleTriggerAllBotsAnswer}
-                  disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
-                  className="px-2 py-1 rounded-lg border border-blue-500/40 bg-blue-600/20 text-blue-200 hover:bg-blue-600/30 text-xs font-bold transition flex items-center gap-1 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-                  title="Yêu cầu tất cả Bot ảo nộp đáp án ngay lúc này"
-                >
-                  <span>⚡</span>
-                  <span className="whitespace-nowrap">Bot nộp bài</span>
-                </button>
+                  {showUtilitiesDropdown && (
+                    <div
+                      className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-2xl glass border border-white/20 bg-[#151728]/95 backdrop-blur-xl shadow-2xl p-2 flex flex-col gap-1 text-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="flex items-center justify-between px-2 py-1 border-b border-white/10 mb-1">
+                        <span className="font-black text-white text-[11px] uppercase tracking-wider">🛠️ Tiện ích phòng</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowUtilitiesDropdown(false)}
+                          className="text-muted-foreground hover:text-white text-xs cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      </div>
 
-                {/* Auto-Timer Toggle (Request E) */}
-                <button
-                  type="button"
-                  onClick={() => updateConfig("autoTimerStart", !roomState?.config.autoTimerStart)}
-                  disabled={!roomState}
-                  className={`px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
-                    roomState?.config.autoTimerStart
-                      ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300 shadow-sm"
-                      : "glass border-white/10 text-muted-foreground hover:text-white"
-                  }`}
-                  title="Bật: đếm ngược tự động khi câu hỏi hiện lên (như Kahoot). Tắt: cần bấm thủ công."
-                >
-                  <span>⏱️</span>
-                  <span className="whitespace-nowrap">Đếm tự động: {roomState?.config.autoTimerStart ? "BẬT" : "TẮT"}</span>
-                </button>
+                      {/* Bot Auto */}
+                      <button
+                        type="button"
+                        onClick={() => setBotAutoEnabled(!botAutoEnabled)}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left"
+                      >
+                        <span className="flex items-center gap-2 text-slate-200">
+                          <span>🤖</span> Bot tự động
+                        </span>
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                          botAutoEnabled ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" : "bg-white/10 text-slate-400"
+                        }`}>
+                          {botAutoEnabled ? "BẬT" : "TẮT"}
+                        </span>
+                      </button>
+
+                      {/* Trigger All Bots */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleTriggerAllBotsAnswer();
+                          setShowUtilitiesDropdown(false);
+                        }}
+                        disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <span className="flex items-center gap-2 text-slate-200">
+                          <span>⚡</span> Bot nộp bài ngay
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Trigger</span>
+                      </button>
+
+                      {/* Auto-Timer */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (roomState) updateConfig("autoTimerStart", !roomState.config.autoTimerStart);
+                        }}
+                        disabled={!roomState}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer text-left disabled:opacity-40"
+                      >
+                        <span className="flex items-center gap-2 text-slate-200">
+                          <span>⏱️</span> Đếm tự động
+                        </span>
+                        <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${
+                          roomState?.config.autoTimerStart ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" : "bg-white/10 text-slate-400"
+                        }`}>
+                          {roomState?.config.autoTimerStart ? "BẬT" : "TẮT"}
+                        </span>
+                      </button>
+
+                      <div className="h-px bg-white/10 my-1" />
+
+                      {/* Rules */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowRulesModal(true);
+                          setShowUtilitiesDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-cyan-300 transition cursor-pointer text-left"
+                      >
+                        <span>📖</span>
+                        <span>Luật chơi</span>
+                      </button>
+
+                      {/* Grant Card */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (roomState?.teams && roomState.teams.length > 0) {
+                            setGrantTargetTeamId(roomState.teams[0].id);
+                          }
+                          const currentModeAllowed = getDefaultAllowedPowerupsForMode((roomState?.mode || "CLASSIC") as GameMode);
+                          if (!currentModeAllowed.includes(grantCardType)) {
+                            setGrantCardType(currentModeAllowed[0] || "FIFTY_FIFTY");
+                          }
+                          setShowCardModal(true);
+                          setShowUtilitiesDropdown(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-purple-300 transition cursor-pointer text-left"
+                      >
+                        <span>🃏</span>
+                        <span>Cấp thẻ bổ trợ</span>
+                      </button>
+
+                      {/* Logs */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowLogsModal(true);
+                          setShowUtilitiesDropdown(false);
+                        }}
+                        className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-amber-300 transition cursor-pointer text-left"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span>📜</span>
+                          <span>Nhật ký</span>
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-slate-300">
+                          {botLogs.length}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 {/* Settings Dropdown (Request C) */}
                 <div className="relative">
@@ -3449,7 +3588,7 @@ export default function AdminSandboxPage() {
                     type="button"
                     onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
                     disabled={!roomState}
-                    className={`px-2 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer disabled:opacity-40 ${
                       showSettingsDropdown
                         ? "bg-slate-500/30 border-slate-400/50 text-white"
                         : "glass border-white/10 text-muted-foreground hover:text-white"
@@ -3466,7 +3605,7 @@ export default function AdminSandboxPage() {
                     >
                       <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-0.5">
                         <span className="font-black text-white text-[11px]">⚙️ Cài đặt — {roomState.mode}</span>
-                        <button onClick={() => setShowSettingsDropdown(false)} className="text-muted-foreground hover:text-white text-[11px]">✕</button>
+                        <button type="button" onClick={() => setShowSettingsDropdown(false)} className="text-muted-foreground hover:text-white text-[11px] cursor-pointer">✕</button>
                       </div>
 
                       {/* Penalty for wrong */}
@@ -3768,42 +3907,6 @@ export default function AdminSandboxPage() {
                   )}
                 </div>
 
-                <div className="flex items-center gap-1 p-0.5 rounded-lg glass border border-white/10 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setShowRulesModal(true)}
-                    className="px-2 py-0.5 rounded hover:bg-white/10 text-cyan-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                  >
-                    <span>📖</span>
-                    <span>Luật</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (roomState?.teams && roomState.teams.length > 0) {
-                        setGrantTargetTeamId(roomState.teams[0].id);
-                      }
-                      const currentModeAllowed = getDefaultAllowedPowerupsForMode((roomState?.mode || "CLASSIC") as GameMode);
-                      if (!currentModeAllowed.includes(grantCardType)) {
-                        setGrantCardType(currentModeAllowed[0] || "FIFTY_FIFTY");
-                      }
-                      setShowCardModal(true);
-                    }}
-                    className="px-2 py-0.5 rounded hover:bg-white/10 text-purple-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                  >
-                    <span>🃏</span>
-                    <span>Cấp thẻ</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowLogsModal(true)}
-                    className="px-2 py-0.5 rounded hover:bg-white/10 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
-                  >
-                    <span>📜</span>
-                    <span>Logs ({botLogs.length})</span>
-                  </button>
-                </div>
-
                 {/* Exit */}
                 <button
                   type="button"
@@ -3814,7 +3917,7 @@ export default function AdminSandboxPage() {
                     setCurrentQuestion(null);
                     setIsOfflineSandbox(false);
                   }}
-                  className="px-2 py-1 rounded-lg glass hover:bg-red-500/20 text-red-400 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg glass hover:bg-red-500/20 text-red-400 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
                 >
                   ✕ Đổi phòng
                 </button>

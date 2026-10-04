@@ -925,6 +925,8 @@ export interface TeamRevealSummary {
 export interface AnswerRevealPayload {
   questionId: string;
   correctAnswer: string | string[];
+  correctAnswerText?: string;
+  explanation?: string;
   answers: Array<{
     teamId?: string;
     playerId?: string;
@@ -989,6 +991,7 @@ export interface GameIntermissionPayload {
   totalQuestions: number;
   previousQuestionIndex?: number;
   titleVi?: string;
+  countdownSeconds?: number;
 }
 
 export interface ServerToClientEvents {

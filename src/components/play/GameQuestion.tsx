@@ -928,6 +928,27 @@ export default function GameQuestion({
             )}
           </div>
 
+          {/* Prominent Correct Answer Banner on Reveal */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 border-2 border-emerald-500 shadow-lg animate-slide-up space-y-1.5 text-left">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">✅</span>
+              <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
+                ĐÁP ÁN CHÍNH XÁC
+              </span>
+            </div>
+            <p className="text-base sm:text-lg font-black text-white leading-relaxed">
+              {revealPayload.correctAnswerText ||
+                (Array.isArray(revealPayload.correctAnswer)
+                  ? revealPayload.correctAnswer.join(", ")
+                  : revealPayload.correctAnswer)}
+            </p>
+            {(revealPayload.explanation || q.hint) && (
+              <p className="text-xs text-emerald-200/90 pt-1.5 border-t border-emerald-500/30">
+                💡 <strong className="text-emerald-300">Giải thích:</strong> {revealPayload.explanation || q.hint}
+              </p>
+            )}
+          </div>
+
           {/* Rarity Empirical Bonus Banner */}
           {revealPayload.rarityBonusPercent !== undefined && revealPayload.rarityBonusPercent > 0 && (
             <div className="p-3 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 border border-amber-500/40 text-center animate-bounce-in">

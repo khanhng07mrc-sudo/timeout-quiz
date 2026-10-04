@@ -99,6 +99,7 @@ const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager ti
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
 const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
 const roomIntermissions = new Map<string, GameIntermissionPayload>(); // roomId -> current intermission state
+const roomIntermissionTimers = new Map<string, NodeJS.Timeout>(); // roomId -> auto-advance timer for intermission
 const teamStreakMap = new Map<string, number>(); // teamId -> streak count
 const playerStreakMap = new Map<string, number>(); // playerId -> streak count
 const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
@@ -1911,6 +1912,10 @@ export function registerSocketHandlers(io: IO) {
     ) {
       stopQuestionTimer(room.id);
       roomIntermissions.delete(room.id);
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id)!);
+        roomIntermissionTimers.delete(room.id);
+      }
       io.to(`room:${room.code}`).emit("game:intermission", null);
       const existingPrepare = roomPrepareStates.get(room.id);
       if (existingPrepare?.timer) {
@@ -2591,6 +2596,10 @@ export function registerSocketHandlers(io: IO) {
       // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission):
       // Bấm nút sẽ vào thẳng câu hỏi tiếp theo NGAY LẬP TỨC (0s delay)!
       if (roomIntermissions.has(room.id)) {
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id)!);
+          roomIntermissionTimers.delete(room.id);
+        }
         roomIntermissions.delete(room.id);
         io.to(`room:${room.code}`).emit("game:intermission", null);
 
@@ -2618,11 +2627,35 @@ export function registerSocketHandlers(io: IO) {
         totalQuestions: targetQuestions,
         previousQuestionIndex: room.currentQuestion,
         titleVi: `BẢNG XẾP HẠNG SAU CÂU #${(room.currentQuestion ?? 0) + 1}`,
+        countdownSeconds: 3,
       };
       roomIntermissions.set(room.id, intermissionPayload);
 
       io.to(`room:${room.code}`).emit("game:intermission", intermissionPayload);
       io.to(`room:${room.code}`).emit("game:question:clear");
+
+      // Auto-advance to next question after 3s leaderboard countdown
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id)!);
+      }
+      const autoTimer = setTimeout(async () => {
+        if (!roomIntermissions.has(room.id)) return;
+        roomIntermissions.delete(room.id);
+        roomIntermissionTimers.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:intermission", null);
+
+        room.currentQuestion = nextIndex;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+
+        if (nextIndex > 0 && nextIndex % 3 === 0) {
+          replenishTeamPowerups(room.id, io).catch(console.error);
+        }
+
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+      }, 3000);
+      roomIntermissionTimers.set(room.id, autoTimer);
     });
 
     socket.on("admin:skip:prepare", async (payload?: { code?: string }) => {
@@ -5422,11 +5455,28 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   });
 
   const options = q.options as any[] | null;
-  const correctAnswer = options?.filter((o: any) => o.isCorrect).map((o: any) => o.id) ?? q.answer ?? "";
+  const correctOptions = options && Array.isArray(options) ? options.filter((o: any) => o.isCorrect) : [];
+  let correctAnswer: string[] = [];
+  let correctAnswerText = "";
+
+  if (correctOptions.length > 0) {
+    correctAnswer = correctOptions.map((o: any) => o.id);
+    const labels = ["A", "B", "C", "D", "E", "F"];
+    correctAnswerText = correctOptions.map((o: any) => {
+      const idx = (options || []).findIndex((opt: any) => opt.id === o.id);
+      const prefix = idx >= 0 && idx < labels.length ? `${labels[idx]}. ` : "";
+      return `${prefix}${o.text}`;
+    }).join(" | ");
+  } else if (q.answer) {
+    correctAnswer = [q.answer];
+    correctAnswerText = q.answer;
+  }
 
   io.to(`room:${roomCode}`).emit("game:answer:reveal", {
     questionId: q.id,
     correctAnswer: Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer as string],
+    correctAnswerText: correctAnswerText || undefined,
+    explanation: q.hint || undefined,
     answers: answers.map((a) => ({
       teamId: a.teamId ?? undefined,
       playerId: a.playerId ?? undefined,

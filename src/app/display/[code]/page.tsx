@@ -1316,6 +1316,32 @@ export default function DisplayPage() {
                   })}
                 </div>
               )}
+
+              {/* Prominent Correct Answer Banner on Reveal */}
+              {revealPayload && (
+                <div className="mt-4 p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 border-2 border-emerald-500 shadow-2xl animate-slide-up space-y-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-2xl sm:text-3xl">✅</span>
+                    <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300">
+                      ĐÁP ÁN CHÍNH XÁC
+                    </span>
+                  </div>
+                  <p className="text-xl sm:text-3xl font-black text-white leading-relaxed">
+                    {revealPayload.correctAnswerText ||
+                      (Array.isArray(revealPayload.correctAnswer)
+                        ? revealPayload.correctAnswer.join(", ")
+                        : revealPayload.correctAnswer)}
+                  </p>
+                  {(revealPayload.explanation || currentQuestion.question.hint) && (
+                    <div className="pt-2.5 border-t border-emerald-500/30 text-sm sm:text-base text-emerald-200/90 flex items-start gap-2">
+                      <span className="font-bold shrink-0">💡 Giải thích:</span>
+                      <span className="leading-relaxed">
+                        {revealPayload.explanation || currentQuestion.question.hint}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             )}
 

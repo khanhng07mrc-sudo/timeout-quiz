@@ -102,6 +102,38 @@ export default function WagerPanel({
     score: tw.amount,
   }));
 
+  // When question is active or answer is revealed, streamline to a compact summary bar
+  if ((phase === "QUESTION_PERIOD" && questionReady) || phase === "REVEAL_PERIOD") {
+    const winningTeam = wagerHistory[wagerHistory.length - 1];
+    const winningTeamName = winningTeam?.teamName ?? autoAssignedTeamName ?? "Đội cược";
+    const wagerAmt = currentHighestWager || 10;
+    const isMeWinning = myTeamId && (winningTeam?.teamId === myTeamId || autoAssignedTeamId === myTeamId);
+
+    return (
+      <div className="glass rounded-xl p-2.5 sm:p-3 border border-amber-500/40 bg-amber-500/10 flex flex-wrap items-center justify-between gap-2 shadow-lg animate-fadeIn text-xs sm:text-sm">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xl shrink-0">💰</span>
+          <span className="font-bold text-amber-200">
+            Đội cược: <strong className="text-amber-300 underline font-black">{winningTeamName} {isMeWinning ? "(Đội bạn)" : ""}</strong> ({wagerAmt}đ)
+          </span>
+          {maxBetCap !== undefined && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 text-[11px]">
+              🛡️ Trần: {maxBetCap}đ
+            </span>
+          )}
+          {roundIndex !== undefined && totalRounds !== undefined && (
+            <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 text-[11px]">
+              🔄 Vòng {roundIndex + 1}/{totalRounds}
+            </span>
+          )}
+        </div>
+        <div className="text-[11px] text-amber-200/80 font-medium">
+          {isMeWinning ? "Đúng = +" : "Đội cược: Đúng = +"}{wagerAmt}đ, Sai = -{wagerAmt}đ · Các đội khác: Đúng = +{Math.ceil((baseQuestionPoints || 10) / 2)}đ
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`glass rounded-2xl ${isDisplay ? "p-6" : "p-4"} space-y-4`}>
       {/* Header */}
@@ -641,64 +673,6 @@ export default function WagerPanel({
           )}
         </div>
       </div>
-
-      {/* Reveal Phase Results Summary */}
-      {phase === "REVEAL_PERIOD" && (
-        <div className="space-y-2 pt-2 border-t border-white/10">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs font-bold text-muted-foreground uppercase">
-              Kết quả cược & tính điểm câu này:
-            </span>
-            <span className="text-[11px] text-amber-300 font-semibold">
-              👑 Đội cược cuối: Đúng +{currentHighestWager}đ / Sai -{currentHighestWager}đ · Các đội còn lại: Đúng +1/2 câu hỏi, Sai 0đ
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {Object.entries(teamWagers).map(([teamId, wager]) => {
-              const bailoutsRem = teamBailouts[teamId]?.remaining ?? 1;
-              const isDisqualified = wager.disqualified;
-              const isLastWager = teamId === lastWagerTeamId;
-
-              return (
-                <div
-                  key={teamId}
-                  className={`p-3 rounded-xl border flex flex-col gap-1 text-xs ${
-                    isLastWager
-                      ? "bg-amber-500/20 border-amber-500/60 ring-1 ring-amber-400"
-                      : "bg-card/50 border-border/60"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-white truncate max-w-[90px] flex items-center gap-1">
-                      {isLastWager && <span>👑</span>}
-                      {wager.teamName}
-                    </span>
-                    <span className="text-[10px] text-purple-300 font-bold">
-                      🛡️ {bailoutsRem}/{teamBailouts[teamId]?.max ?? 1}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-1">
-                    {isDisqualified ? (
-                      <span className="text-red-400 font-bold text-xs">🚫 Mất quyền cược</span>
-                    ) : isLastWager ? (
-                      <span className="font-mono font-black text-amber-300 text-sm">
-                        {currentHighestWager} pts (Chốt cược)
-                      </span>
-                    ) : wager.submitted ? (
-                      <span className="font-mono font-medium text-yellow-300/80 text-xs">
-                        Đã nâng {wager.amount}đ
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground italic text-xs">Không cược</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

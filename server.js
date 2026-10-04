@@ -837,6 +837,7 @@ var roomWagerTimers = /* @__PURE__ */ new Map();
 var roomGridTimers = /* @__PURE__ */ new Map();
 var roomActiveQuestions = /* @__PURE__ */ new Map();
 var roomIntermissions = /* @__PURE__ */ new Map();
+var roomIntermissionTimers = /* @__PURE__ */ new Map();
 var teamStreakMap = /* @__PURE__ */ new Map();
 var playerStreakMap = /* @__PURE__ */ new Map();
 var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
@@ -2328,6 +2329,10 @@ function registerSocketHandlers(io2) {
     async function startQuestionPrepareAndLaunch(room, questions, questionIndex, specificQ) {
       stopQuestionTimer(room.id);
       roomIntermissions.delete(room.id);
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id));
+        roomIntermissionTimers.delete(room.id);
+      }
       io2.to(`room:${room.code}`).emit("game:intermission", null);
       const existingPrepare = roomPrepareStates.get(room.id);
       if (existingPrepare?.timer) {
@@ -2929,6 +2934,10 @@ function registerSocketHandlers(io2) {
       }
       const nextIndex = nextQ.index;
       if (roomIntermissions.has(room.id)) {
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id));
+          roomIntermissionTimers.delete(room.id);
+        }
         roomIntermissions.delete(room.id);
         io2.to(`room:${room.code}`).emit("game:intermission", null);
         room.currentQuestion = nextIndex;
@@ -2947,11 +2956,30 @@ function registerSocketHandlers(io2) {
         nextQuestionIndex: nextIndex,
         totalQuestions: targetQuestions,
         previousQuestionIndex: room.currentQuestion,
-        titleVi: `B\u1EA2NG X\u1EBEP H\u1EA0NG SAU C\xC2U #${(room.currentQuestion ?? 0) + 1}`
+        titleVi: `B\u1EA2NG X\u1EBEP H\u1EA0NG SAU C\xC2U #${(room.currentQuestion ?? 0) + 1}`,
+        countdownSeconds: 3
       };
       roomIntermissions.set(room.id, intermissionPayload);
       io2.to(`room:${room.code}`).emit("game:intermission", intermissionPayload);
       io2.to(`room:${room.code}`).emit("game:question:clear");
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id));
+      }
+      const autoTimer = setTimeout(async () => {
+        if (!roomIntermissions.has(room.id)) return;
+        roomIntermissions.delete(room.id);
+        roomIntermissionTimers.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:intermission", null);
+        room.currentQuestion = nextIndex;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+        if (nextIndex > 0 && nextIndex % 3 === 0) {
+          replenishTeamPowerups(room.id, io2).catch(console.error);
+        }
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+      }, 3e3);
+      roomIntermissionTimers.set(room.id, autoTimer);
     });
     socket.on("admin:skip:prepare", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
@@ -5224,10 +5252,26 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId) {
     include: { player: true, team: true }
   });
   const options = q.options;
-  const correctAnswer = options?.filter((o) => o.isCorrect).map((o) => o.id) ?? q.answer ?? "";
+  const correctOptions = options && Array.isArray(options) ? options.filter((o) => o.isCorrect) : [];
+  let correctAnswer = [];
+  let correctAnswerText = "";
+  if (correctOptions.length > 0) {
+    correctAnswer = correctOptions.map((o) => o.id);
+    const labels = ["A", "B", "C", "D", "E", "F"];
+    correctAnswerText = correctOptions.map((o) => {
+      const idx = (options || []).findIndex((opt) => opt.id === o.id);
+      const prefix = idx >= 0 && idx < labels.length ? `${labels[idx]}. ` : "";
+      return `${prefix}${o.text}`;
+    }).join(" | ");
+  } else if (q.answer) {
+    correctAnswer = [q.answer];
+    correctAnswerText = q.answer;
+  }
   io2.to(`room:${roomCode}`).emit("game:answer:reveal", {
     questionId: q.id,
     correctAnswer: Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer],
+    correctAnswerText: correctAnswerText || void 0,
+    explanation: q.hint || void 0,
     answers: answers.map((a) => ({
       teamId: a.teamId ?? void 0,
       playerId: a.playerId ?? void 0,

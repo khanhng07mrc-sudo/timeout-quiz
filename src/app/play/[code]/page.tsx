@@ -463,13 +463,12 @@ export default function PlayPage() {
       setBuzzedBy({ playerName: payload.teamName, teamId: payload.teamId, teamName: payload.teamName });
       const endsAt = Date.now() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
-      if (soundEnabledRef.current) {
-        if (payload.timeLimit <= 5) {
-          soundManager.playOlympia5s();
-        } else {
-          soundManager.playQuestionMusic(payload.timeLimit);
-        }
-      }
+      soundManager.stopMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
+    });
+
+    socket.on("game:buzz:wrong_attempt", () => {
+      setBuzzedBy(null);
+      if (soundEnabledRef.current) soundManager.playWrong();
     });
 
     socket.on("game:bounceback:open_steal", (payload) => {
@@ -620,12 +619,24 @@ export default function PlayPage() {
     socket.on("game:dice:rolled", () => {
       if (soundEnabledRef.current) soundManager.playBuzz();
     });
-    socket.on("game:buzz:unlocked", () => {
-      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: true } : prev));
-      if (soundEnabledRef.current) soundManager.playBuzz();
+    socket.on("game:buzz:unlocked", (payload) => {
+      setCurrentQuestion((prev) => (prev ? {
+        ...prev,
+        buzzUnlocked: true,
+        buzzWindowActive: true,
+        buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
+        buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
+      } : prev));
+      if (payload?.endsAt) {
+        setTimer({ remaining: payload.remainingSeconds || 5, total: 5, endsAt: payload.endsAt });
+      }
+      if (soundEnabledRef.current) soundManager.playOlympia5s();
     });
     socket.on("game:buzz:locked", () => {
       setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
+    });
+    socket.on("game:buzz:closed", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false, buzzWindowActive: false } : prev));
     });
 
     socket.on("error", (msg) => {

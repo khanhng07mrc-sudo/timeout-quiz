@@ -1127,57 +1127,51 @@ export default function AdminRoomPage() {
                     <div className="p-2.5 rounded-lg bg-cyan-950/60 border border-cyan-500/30 text-xs text-cyan-200">
                       🎙️ <strong>Chế độ trả lời qua MC:</strong> Thí sinh trả lời trực tiếp bằng lời nói. MC lắng nghe và chọn đáp án hoặc bấm Đúng/Sai bên dưới.
                     </div>
-                  ) : currentQuestion?.buzzAnsweringActive ? (
+                  ) : (
                     <div className="p-2.5 rounded-lg bg-amber-950/60 border border-amber-500/30 text-xs text-amber-200 flex items-center justify-between">
                       <span>⏱️ Thí sinh đang chọn đáp án trên máy:</span>
                       <span className="font-mono text-sm font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-200">
                         {timerDisplayRemaining}s
                       </span>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-[11px] text-slate-300">
-                        Thí sinh đang chuẩn bị. Bấm nút dưới đây để bắt đầu đếm ngược trả lời trên máy:
-                      </p>
-                      {isQuestionMC ? (
-                        <button
-                          onClick={() => emit("admin:buzz:start_answer", { duration: 5 })}
-                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-bold text-sm shadow active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <span>⏱️ Bắt đầu thời gian trả lời trên máy (5 giây)</span>
-                        </button>
-                      ) : (
-                        <div className="space-y-1">
-                          <div className="text-[10px] text-amber-300 font-semibold">Chọn thời gian trả lời (Tự luận / Điền từ):</div>
-                          <div className="grid grid-cols-3 gap-1.5">
-                            <button
-                              onClick={() => emit("admin:buzz:start_answer", { duration: 10 })}
-                              className="py-1.5 px-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-[11px] font-bold text-yellow-200 transition active:scale-95"
-                            >
-                              ⏱️ 10 giây
-                            </button>
-                            <button
-                              onClick={() => emit("admin:buzz:start_answer", { duration: 15 })}
-                              className="py-1.5 px-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black text-[11px] font-bold shadow transition active:scale-95"
-                            >
-                              ⏱️ 15 giây ⭐
-                            </button>
-                            <button
-                              onClick={() => emit("admin:buzz:start_answer", { duration: 20 })}
-                              className="py-1.5 px-2 rounded-lg bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 text-[11px] font-bold text-yellow-200 transition active:scale-95"
-                            >
-                              ⏱️ 20 giây
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   )}
+
+                  {/* Nút phán quyết Đúng / Sai trực tiếp cho MC */}
+                  <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                    <span className="text-[11px] text-slate-400">Phán quyết MC:</span>
+                    <button
+                      type="button"
+                      onClick={() => emit("admin:buzz:judge", { isCorrect: true, code })}
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 text-xs font-bold cursor-pointer transition active:scale-95 text-center"
+                    >
+                      ✓ Đúng ({currentQuestion?.buzzMultiplier ? `x${currentQuestion.buzzMultiplier}` : "x1.5"})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => emit("admin:buzz:judge", { isCorrect: false, code })}
+                      className="flex-1 py-1.5 px-3 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 text-xs font-bold cursor-pointer transition active:scale-95 text-center"
+                    >
+                      ✗ Sai (Mở lại chuông)
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <p className="text-xs text-muted-foreground text-center">
-                  ⏳ Đang chờ các đội bấm chuông trên thiết bị...
-                </p>
+                <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/60 text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    {currentQuestion?.buzzUnlocked
+                      ? `🔔 Cửa sổ bấm chuông 5s đang MỞ (Lượt ${currentQuestion.buzzAttemptNumber || 1}/3 - x${currentQuestion.buzzMultiplier || 1.5})`
+                      : "🔒 Chuông đang khóa. Bấm 'Bắt đầu bấm chuông' hoặc nút bên dưới để mở."}
+                  </p>
+                  {!currentQuestion?.buzzUnlocked && (
+                    <button
+                      type="button"
+                      onClick={() => emit("admin:buzz:unlock")}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black text-xs font-black shadow transition active:scale-95 cursor-pointer"
+                    >
+                      🔔 Mở chuông ngay (5s)
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}

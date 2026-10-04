@@ -292,14 +292,14 @@ export default function DisplayPage() {
     });
     socket.on("game:buzz:answering", (p) => {
       setBuzzed({ playerName: p.teamName });
-      const tLimit = p.timeLimit ?? 15;
+      const tLimit = p.timeLimit ?? 5;
       const endsAt = Date.now() + tLimit * 1000;
       setTimer({ remaining: tLimit, total: tLimit, endsAt });
-      if (tLimit <= 5) {
-        soundManager.playOlympia5s();
-      } else {
-        soundManager.playQuestionMusic(tLimit);
-      }
+      soundManager.stopMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
+    });
+    socket.on("game:buzz:wrong_attempt", (p) => {
+      soundManager.playWrong();
+      setBuzzed(null);
     });
     socket.on("game:bounceback:open_steal", () => {
       setIsStealOpen(true);
@@ -412,12 +412,24 @@ export default function DisplayPage() {
     socket.on("game:dice:rolled", () => {
       soundManager.playBuzz();
     });
-    socket.on("game:buzz:unlocked", () => {
-      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: true } : prev));
-      soundManager.playBuzz();
+    socket.on("game:buzz:unlocked", (payload) => {
+      setCurrentQuestion((prev) => (prev ? {
+        ...prev,
+        buzzUnlocked: true,
+        buzzWindowActive: true,
+        buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
+        buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
+      } : prev));
+      if (payload?.endsAt) {
+        setTimer({ remaining: payload.remainingSeconds || 5, total: 5, endsAt: payload.endsAt });
+      }
+      soundManager.playOlympia5s();
     });
     socket.on("game:buzz:locked", () => {
       setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
+    });
+    socket.on("game:buzz:closed", () => {
+      setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false, buzzWindowActive: false } : prev));
     });
     socket.on("game:powerup:used", (p) => {
       setLastPowerup(p);

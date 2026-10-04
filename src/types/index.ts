@@ -799,6 +799,11 @@ export interface QuestionState {
   buzzUnlocked?: boolean;
   buzzUnlockMode?: "AUTO" | "MANUAL";
   buzzAutoDelaySeconds?: number;
+  buzzMultiplier?: number;
+  buzzAttemptNumber?: number;
+  buzzWindowActive?: boolean;
+  buzzWindowEndsAt?: number;
+  buzzDisqualifiedTeamIds?: string[];
   canRollDice?: boolean;
   streakCount?: number;
   speedBonusPercent?: number;
@@ -916,9 +921,10 @@ export interface ServerToClientEvents {
   "game:intermission": (payload: GameIntermissionPayload | null) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
-  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string }) => void;
+  "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string; attemptNumber?: number; multiplier?: number }) => void;
   "game:buzz:closed": () => void;
-  "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
+  "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number; attemptNumber?: number; multiplier?: number }) => void;
+  "game:buzz:wrong_attempt": (payload: { teamId: string; teamName: string; attemptNumber: number; remainingSeconds: number; canRetry: boolean }) => void;
   "game:bounceback:open_steal": (payload: { questionId: string; timeLimit: number }) => void;
   "game:bounceback:steal_buzzed": (payload: { teamId: string; teamName: string; playerId: string; playerName: string; prepSeconds?: number }) => void;
   "game:bounceback:steal_answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
@@ -943,7 +949,7 @@ export interface ServerToClientEvents {
   "game:question:clear": () => void;
   "game:timer:started": (payload?: { timeLimit?: number; endsAt?: number; serverTime?: number; questionId?: string }) => void;
   "game:timer:expired": (payload?: { questionId?: string }) => void;
-  "game:buzz:unlocked": () => void;
+  "game:buzz:unlocked": (payload?: { remainingSeconds?: number; attemptNumber?: number; multiplier?: number; endsAt?: number }) => void;
   "game:buzz:locked": () => void;
   "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30; timeLimit?: number; endsAt?: number }) => void;
   "game:bounceback:awaiting_judgment": (payload: {
@@ -988,6 +994,7 @@ export interface ClientToServerEvents {
   "admin:buzz:clear": () => void;
   "admin:buzz:start_answer": (payload?: { duration?: number }) => void;
   "admin:buzz:unlock": () => void;
+  "admin:buzz:judge": (payload: { isCorrect: boolean; code?: string }) => void;
   "admin:bounceback:open_steal": () => void;
   "admin:bounceback:start_steal_answer": (payload?: { duration?: number }) => void;
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;

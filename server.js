@@ -783,6 +783,12 @@ var roomStealTimer = /* @__PURE__ */ new Map();
 var roomBuzzFirst = /* @__PURE__ */ new Map();
 var roomBuzzUnlocked = /* @__PURE__ */ new Map();
 var roomBuzzDelayTimers = /* @__PURE__ */ new Map();
+var roomBuzzAttemptOrder = /* @__PURE__ */ new Map();
+var roomBuzzWindowTimers = /* @__PURE__ */ new Map();
+var roomBuzzWindowEndsAt = /* @__PURE__ */ new Map();
+var roomBuzzWindowRemaining = /* @__PURE__ */ new Map();
+var roomBuzzDisqualified = /* @__PURE__ */ new Map();
+var roomBuzzAnsweringTimers = /* @__PURE__ */ new Map();
 var roomTournaments = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
@@ -1173,6 +1179,30 @@ function cleanupRoomInMemory(roomId) {
     }
     for (const key of roomBuzzUnlocked.keys()) {
       if (key.startsWith(prefix)) roomBuzzUnlocked.delete(key);
+    }
+    for (const key of roomBuzzAttemptOrder.keys()) {
+      if (key.startsWith(prefix)) roomBuzzAttemptOrder.delete(key);
+    }
+    for (const key of roomBuzzWindowTimers.keys()) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(roomBuzzWindowTimers.get(key));
+        roomBuzzWindowTimers.delete(key);
+      }
+    }
+    for (const key of roomBuzzWindowEndsAt.keys()) {
+      if (key.startsWith(prefix)) roomBuzzWindowEndsAt.delete(key);
+    }
+    for (const key of roomBuzzWindowRemaining.keys()) {
+      if (key.startsWith(prefix)) roomBuzzWindowRemaining.delete(key);
+    }
+    for (const key of roomBuzzDisqualified.keys()) {
+      if (key.startsWith(prefix)) roomBuzzDisqualified.delete(key);
+    }
+    for (const key of roomBuzzAnsweringTimers.keys()) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(roomBuzzAnsweringTimers.get(key));
+        roomBuzzAnsweringTimers.delete(key);
+      }
     }
     for (const key of roomBouncebackSelectedPoints.keys()) {
       if (key.startsWith(prefix)) roomBouncebackSelectedPoints.delete(key);
@@ -1771,28 +1801,67 @@ function registerSocketHandlers(io2) {
           socket.emit("error", "Chu\xF4ng \u0111ang b\u1ECB kh\xF3a! Vui l\xF2ng ch\u1EDD m\u1EDF chu\xF4ng.");
           return;
         }
-        if (roomBuzzFirst.has(qKey)) return;
         const teamId = player.teamId ?? player.id;
         const teamName = player.team?.name ?? player.name;
-        const buzzInfo = { teamId, teamName, playerId, playerName: player.name };
+        const disqSet = roomBuzzDisqualified.get(qKey);
+        if (disqSet && disqSet.has(teamId)) {
+          socket.emit("error", "\u0110\u1ED9i c\u1EE7a b\u1EA1n \u0111\xE3 tr\u1EA3 l\u1EDDi sai \u1EDF c\xE2u n\xE0y, kh\xF4ng th\u1EC3 b\u1EA5m l\u1EA1i!");
+          return;
+        }
+        const attempts = roomBuzzAttemptOrder.get(qKey) || [];
+        if (attempts.length >= 3) {
+          socket.emit("error", "\u0110\xE3 h\u1EBFt 3 l\u01B0\u1EE3t b\u1EA5m chu\xF4ng cho c\xE2u h\u1ECFi n\xE0y!");
+          return;
+        }
+        if (roomBuzzFirst.has(qKey)) return;
+        roomBuzzUnlocked.set(qKey, false);
+        if (roomBuzzWindowTimers.has(qKey)) {
+          clearTimeout(roomBuzzWindowTimers.get(qKey));
+          roomBuzzWindowTimers.delete(qKey);
+        }
+        const windowEndsAt = roomBuzzWindowEndsAt.get(qKey) || Date.now();
+        const remWindowMs = Math.max(0, windowEndsAt - Date.now());
+        roomBuzzWindowRemaining.set(qKey, remWindowMs);
+        const attemptNumber = attempts.length + 1;
+        const multiplier = attemptNumber === 1 ? 1.5 : attemptNumber === 2 ? 1 : 0.5;
+        const buzzInfo = { teamId, teamName, playerId, playerName: player.name, attemptNumber, multiplier };
         roomBuzzFirst.set(qKey, buzzInfo);
+        attempts.push(buzzInfo);
+        roomBuzzAttemptOrder.set(qKey, attempts);
         stopQuestionTimer(room.id);
+        const answerTimeLimit = 5;
+        const answerEndsAt = Date.now() + answerTimeLimit * 1e3;
         const activeQ = roomActiveQuestions.get(room.id);
         if (activeQ) {
           activeQ.buzzedTeamId = teamId;
           activeQ.buzzedTeamName = teamName;
           activeQ.buzzedBy = player.name;
-          activeQ.buzzAnsweringActive = false;
-          activeQ.timerPending = true;
-          activeQ.timerStarted = false;
+          activeQ.buzzAnsweringActive = true;
+          activeQ.buzzAttemptNumber = attemptNumber;
+          activeQ.buzzMultiplier = multiplier;
+          activeQ.buzzWindowActive = false;
+          activeQ.timeLimit = answerTimeLimit;
+          activeQ.startedAt = Date.now();
+          activeQ.endsAt = answerEndsAt;
+          activeQ.timerPending = false;
+          activeQ.timerStarted = true;
           io2.to(`room:${room.code}`).emit("game:question", activeQ);
         }
-        io2.to(`room:${room.code}`).emit("game:buzz", {
-          playerId,
-          playerName: player.name,
-          teamId: player.teamId ?? void 0,
-          teamName
+        io2.to(`room:${room.code}`).emit("game:buzz", buzzInfo);
+        io2.to(`room:${room.code}`).emit("game:buzz:answering", {
+          teamId,
+          teamName,
+          timeLimit: answerTimeLimit,
+          attemptNumber,
+          multiplier
         });
+        io2.to(`room:${room.code}`).emit("game:timer:started", {
+          timeLimit: answerTimeLimit,
+          endsAt: answerEndsAt,
+          serverTime: Date.now(),
+          questionId: currentQ.id
+        });
+        startQuestionTimer(io2, room.code, room.id, currentQ.id, answerTimeLimit);
       } else if (room.mode === "BOUNCEBACK") {
         if (!roomStealPhase.get(qKey)) return;
         const primary = roomPrimaryTeams.get(qKey);
@@ -1850,8 +1919,15 @@ function registerSocketHandlers(io2) {
         clearTimeout(roomBuzzDelayTimers.get(qKey));
         roomBuzzDelayTimers.delete(qKey);
       }
-      roomBuzzUnlocked.set(qKey, true);
-      io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+      await openBuzzWindow(io2, room.id, room.code, currentQ.id);
+    });
+    socket.on("admin:buzz:judge", async ({ isCorrect, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "BUZZ") return;
+      const questions = await getRoomQuestions(room.id);
+      const currentQ = questions[room.currentQuestion];
+      if (!currentQ) return;
+      await finalizeBuzzAnswer(io2, room.id, room.code, currentQ.id, isCorrect);
     });
     socket.on("admin:buzz:start_answer", async (payload) => {
       const room = await getAdminRoom(socket);
@@ -2258,6 +2334,16 @@ function registerSocketHandlers(io2) {
         const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
         const buzzUnlocked = !buzzMode;
         roomBuzzUnlocked.set(qKey, buzzUnlocked);
+        if (buzzMode) {
+          roomBuzzWindowRemaining.set(qKey, 5e3);
+          roomBuzzDisqualified.set(qKey, /* @__PURE__ */ new Set());
+          roomBuzzAttemptOrder.set(qKey, []);
+          roomBuzzFirst.delete(qKey);
+          if (roomBuzzWindowTimers.has(qKey)) {
+            clearTimeout(roomBuzzWindowTimers.get(qKey));
+            roomBuzzWindowTimers.delete(qKey);
+          }
+        }
         const questionState = buildQuestionState(q, {
           primaryTeamId,
           primaryTeamName,
@@ -2283,21 +2369,25 @@ function registerSocketHandlers(io2) {
           roomActiveQuestions.set(room.id, questionState);
           io2.to(`room:${room.code}`).emit("game:question", questionState);
         } else {
-          const endsAt = Date.now() + q.timeLimit * 1e3;
-          questionState.timerPending = false;
-          questionState.timerStarted = true;
-          questionState.endsAt = endsAt;
-          questionState.serverTime = Date.now();
-          roomActiveQuestions.set(room.id, questionState);
-          io2.to(`room:${room.code}`).emit("game:question", questionState);
-          startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
-          if (buzzMode && buzzUnlockMode === "AUTO") {
-            const autoTimer = setTimeout(() => {
-              roomBuzzUnlocked.set(qKey, true);
+          if (buzzMode) {
+            questionState.timerPending = false;
+            questionState.timerStarted = true;
+            roomActiveQuestions.set(room.id, questionState);
+            io2.to(`room:${room.code}`).emit("game:question", questionState);
+            const autoTimer = setTimeout(async () => {
               roomBuzzDelayTimers.delete(qKey);
-              io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+              await openBuzzWindow(io2, room.id, room.code, q.id);
             }, buzzAutoDelay * 1e3);
             roomBuzzDelayTimers.set(qKey, autoTimer);
+          } else {
+            const endsAt = Date.now() + q.timeLimit * 1e3;
+            questionState.timerPending = false;
+            questionState.timerStarted = true;
+            questionState.endsAt = endsAt;
+            questionState.serverTime = Date.now();
+            roomActiveQuestions.set(room.id, questionState);
+            io2.to(`room:${room.code}`).emit("game:question", questionState);
+            startQuestionTimer(io2, room.code, room.id, q.id, q.timeLimit);
           }
         }
       };
@@ -3265,23 +3355,13 @@ function registerSocketHandlers(io2) {
         await startStealAnsweringTimer(room.id, room.code, q);
         return;
       }
-      if (room.mode === "BUZZ" && activeQ?.buzzedTeamId && !activeQ.buzzAnsweringActive) {
-        const isMultipleChoice = q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" || q.type === "MC_MULTI";
-        const timeLimit = isMultipleChoice ? 5 : 15;
-        activeQ.buzzAnsweringActive = true;
-        activeQ.timeLimit = timeLimit;
-        activeQ.startedAt = Date.now();
-        activeQ.endsAt = Date.now() + timeLimit * 1e3;
-        activeQ.timerPending = false;
-        activeQ.timerStarted = true;
-        io2.to(`room:${room.code}`).emit("game:question", activeQ);
-        io2.to(`room:${room.code}`).emit("game:timer:started", {
-          timeLimit,
-          endsAt: activeQ.endsAt,
-          serverTime: Date.now(),
-          questionId: q.id
-        });
-        startQuestionTimer(io2, room.code, room.id, q.id, timeLimit);
+      if (room.mode === "BUZZ") {
+        const qKey = `${room.id}:${q.id}`;
+        if (roomBuzzDelayTimers.has(qKey)) {
+          clearTimeout(roomBuzzDelayTimers.get(qKey));
+          roomBuzzDelayTimers.delete(qKey);
+        }
+        await openBuzzWindow(io2, room.id, room.code, q.id);
         return;
       }
       const effectiveTimeLimit = activeQ?.timeLimit || quantizeOlympiaTimeLimit(q.points, q.timeLimit);
@@ -3301,15 +3381,6 @@ function registerSocketHandlers(io2) {
         questionId: q.id
       });
       startQuestionTimer(io2, room.code, room.id, q.id, effectiveTimeLimit);
-      if (room.mode === "BUZZ") {
-        const qKey = `${room.id}:${q.id}`;
-        roomBuzzUnlocked.set(qKey, true);
-        if (roomBuzzDelayTimers.has(qKey)) {
-          clearTimeout(roomBuzzDelayTimers.get(qKey));
-          roomBuzzDelayTimers.delete(qKey);
-        }
-        io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
-      }
     });
     socket.on("admin:grid:advance_now", async () => {
       const room = await getAdminRoom(socket);
@@ -4217,6 +4288,14 @@ async function processAnswerSubmission({
     });
     return;
   }
+  if (room.mode === "BUZZ" && !isAdminOverride) {
+    stopQuestionTimer(room.id);
+    const { isAutoCorrect } = evaluateAnswerCorrectness(question, normalizedAnswer);
+    if (question.type !== "ESSAY") {
+      await finalizeBuzzAnswer(io2, room.id, room.code, questionId, isAutoCorrect);
+      return;
+    }
+  }
   const actorKey = targetTeamId || targetPlayerId;
   if (actorKey) {
     let subSet = roomSubmittedActors.get(qKey);
@@ -4239,10 +4318,75 @@ async function processAnswerSubmission({
     }
   }
 }
-async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
+async function openBuzzWindow(io2, roomId, roomCode, questionId) {
   const qKey = `${roomId}:${questionId}`;
-  if (roomQuestionProcessed.has(qKey)) return;
-  roomQuestionProcessed.add(qKey);
+  if (roomBuzzWindowTimers.has(qKey)) {
+    clearTimeout(roomBuzzWindowTimers.get(qKey));
+    roomBuzzWindowTimers.delete(qKey);
+  }
+  let remainingMs = roomBuzzWindowRemaining.get(qKey);
+  if (remainingMs === void 0) {
+    remainingMs = 5e3;
+    roomBuzzWindowRemaining.set(qKey, remainingMs);
+  }
+  const attempts = roomBuzzAttemptOrder.get(qKey) || [];
+  const allTeams = await prisma.team.findMany({ where: { roomId }, select: { id: true } });
+  const disqSet = roomBuzzDisqualified.get(qKey) || /* @__PURE__ */ new Set();
+  const eligibleTeams = allTeams.filter((t) => !disqSet.has(t.id));
+  if (remainingMs <= 100 || attempts.length >= 3 || eligibleTeams.length === 0) {
+    roomBuzzUnlocked.set(qKey, false);
+    const currQ = roomActiveQuestions.get(roomId);
+    if (currQ) {
+      currQ.buzzUnlocked = false;
+      currQ.buzzWindowActive = false;
+      io2.to(`room:${roomCode}`).emit("game:question", currQ);
+    }
+    io2.to(`room:${roomCode}`).emit("game:buzz:closed");
+    await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+    return;
+  }
+  const nextAttemptNum = attempts.length + 1;
+  const nextMultiplier = nextAttemptNum === 1 ? 1.5 : nextAttemptNum === 2 ? 1 : 0.5;
+  roomBuzzUnlocked.set(qKey, true);
+  const endsAt = Date.now() + remainingMs;
+  roomBuzzWindowEndsAt.set(qKey, endsAt);
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ) {
+    activeQ.buzzUnlocked = true;
+    activeQ.buzzWindowActive = true;
+    activeQ.buzzWindowEndsAt = endsAt;
+    activeQ.buzzAttemptNumber = nextAttemptNum;
+    activeQ.buzzMultiplier = nextMultiplier;
+    activeQ.buzzDisqualifiedTeamIds = Array.from(disqSet);
+    activeQ.buzzedTeamId = void 0;
+    activeQ.buzzedTeamName = void 0;
+    activeQ.buzzedBy = void 0;
+    activeQ.buzzAnsweringActive = false;
+    io2.to(`room:${roomCode}`).emit("game:question", activeQ);
+  }
+  io2.to(`room:${roomCode}`).emit("game:buzz:unlocked", {
+    remainingSeconds: Math.ceil(remainingMs / 1e3),
+    attemptNumber: nextAttemptNum,
+    multiplier: nextMultiplier,
+    endsAt
+  });
+  const timer = setTimeout(async () => {
+    roomBuzzWindowTimers.delete(qKey);
+    roomBuzzUnlocked.set(qKey, false);
+    roomBuzzWindowRemaining.set(qKey, 0);
+    const currQ = roomActiveQuestions.get(roomId);
+    if (currQ) {
+      currQ.buzzUnlocked = false;
+      currQ.buzzWindowActive = false;
+      io2.to(`room:${roomCode}`).emit("game:question", currQ);
+    }
+    io2.to(`room:${roomCode}`).emit("game:buzz:closed");
+    await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+  }, remainingMs);
+  roomBuzzWindowTimers.set(qKey, timer);
+}
+async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsCorrect) {
+  const qKey = `${roomId}:${questionId}`;
   stopQuestionTimer(roomId);
   const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
@@ -4256,22 +4400,23 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
   const existingAns = await prisma.answer.findFirst({
     where: { roomId, questionId, teamId: effTeamId }
   });
+  let isCorrect = false;
+  if (typeof overrideIsCorrect === "boolean") {
+    isCorrect = overrideIsCorrect;
+  } else if (existingAns && typeof existingAns.isCorrect === "boolean") {
+    isCorrect = existingAns.isCorrect;
+  }
+  const attemptNum = buzz.attemptNumber || 1;
+  const buzzMultiplier = buzz.multiplier || (attemptNum === 1 ? 1.5 : attemptNum === 2 ? 1 : 0.5);
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
   const activeCards = teamCardsMap?.get(effTeamId) || [];
-  let multiplier = 1;
-  const currentTeamObj = room.teams.find((t) => t.id === effTeamId);
-  let shielded = currentTeamObj ? currentTeamObj.shieldCount > 0 : false;
-  if (activeCards.some((c) => c.type === "DOUBLE")) multiplier = 2;
-  if (activeCards.some((c) => c.type === "SCORE_X2")) {
-    multiplier = 2;
-  }
-  if (activeCards.some((c) => c.type === "SHIELD")) shielded = true;
-  const isCorrect = existingAns?.isCorrect === true;
+  let cardMultiplier = 1;
+  if (activeCards.some((c) => c.type === "DOUBLE" || c.type === "SCORE_X2")) cardMultiplier = 2;
   let points = 0;
   if (isCorrect) {
-    points = Math.floor(question.points * multiplier);
+    points = Math.round(question.points * buzzMultiplier * cardMultiplier);
   } else {
-    points = shielded ? 0 : -Math.floor(question.points * 0.5);
+    points = 0;
   }
   if (existingAns) {
     await prisma.answer.update({
@@ -4286,19 +4431,50 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId) {
         teamId: effTeamId,
         playerId: buzz.playerId,
         answer: [],
-        isCorrect: false,
+        isCorrect,
         pointsAwarded: points,
         timeSpent: 0
       }
     });
   }
-  if (points !== 0) {
-    const tRes = await applyScoreDeltaToTeam(effTeamId, points);
-    io2.to(`room:${roomCode}`).emit("game:score:update", [
-      { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
-    ]);
+  if (isCorrect) {
+    roomQuestionProcessed.add(qKey);
+    roomBuzzUnlocked.set(qKey, false);
+    if (points > 0) {
+      const tRes = await applyScoreDeltaToTeam(effTeamId, points);
+      io2.to(`room:${roomCode}`).emit("game:score:update", [
+        { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
+      ]);
+    }
+    await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+  } else {
+    let disqSet = roomBuzzDisqualified.get(qKey);
+    if (!disqSet) {
+      disqSet = /* @__PURE__ */ new Set();
+      roomBuzzDisqualified.set(qKey, disqSet);
+    }
+    disqSet.add(effTeamId);
+    roomBuzzFirst.delete(qKey);
+    const attempts = roomBuzzAttemptOrder.get(qKey) || [];
+    const remainingMs = roomBuzzWindowRemaining.get(qKey) ?? 0;
+    const allTeams = await prisma.team.findMany({ where: { roomId }, select: { id: true } });
+    const eligibleTeams = allTeams.filter((t) => !disqSet.has(t.id));
+    if (attempts.length < 3 && remainingMs > 500 && eligibleTeams.length > 0) {
+      io2.to(`room:${roomCode}`).emit("game:buzz:wrong_attempt", {
+        teamId: effTeamId,
+        teamName: buzz.teamName,
+        attemptNumber: attemptNum,
+        remainingSeconds: Math.ceil(remainingMs / 1e3),
+        canRetry: true
+      });
+      await openBuzzWindow(io2, roomId, roomCode, questionId);
+    } else {
+      roomQuestionProcessed.add(qKey);
+      roomBuzzUnlocked.set(qKey, false);
+      io2.to(`room:${roomCode}`).emit("game:buzz:closed");
+      await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+    }
   }
-  await revealCurrentAnswer(io2, roomId, roomCode, questionId);
 }
 async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   const qKey = `${roomId}:${questionId}`;

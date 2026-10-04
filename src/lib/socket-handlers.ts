@@ -25,6 +25,7 @@ import {
   TeamRaceProgress,
   TeamWager,
   WagerState,
+  GameIntermissionPayload,
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
@@ -89,6 +90,7 @@ const roomUsedQuestions = new Map<string, Set<string>>(); // roomId -> Set(quest
 const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager timer
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
 const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
+const roomIntermissions = new Map<string, GameIntermissionPayload>(); // roomId -> current intermission state
 const teamStreakMap = new Map<string, number>(); // teamId -> streak count
 const playerStreakMap = new Map<string, number>(); // playerId -> streak count
 const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey -> chosen point level
@@ -521,6 +523,7 @@ export function cleanupRoomInMemory(roomId: string) {
     roomDiceRaces.delete(roomId);
     roomWagers.delete(roomId);
     roomUsedQuestions.delete(roomId);
+    roomIntermissions.delete(roomId);
     roomCache.delete(roomId);
     roomQuestionsCache.delete(roomId);
 
@@ -879,9 +882,11 @@ export function registerSocketHandlers(io: IO) {
         // Broadcast updated room state so all participants see the online status & team counts
         io.to(`room:${code}`).emit("room:state", roomState);
 
-        // If the game is PLAYING and not in preparation countdown, recover current question and timer for this player socket
+        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id)!);
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -999,9 +1004,11 @@ export function registerSocketHandlers(io: IO) {
         const roomState = await buildRoomState(room.id);
         io.to(`room:${code}`).emit("room:state", roomState);
 
-        // If the game is PLAYING and not in preparation countdown, recover current question and timer for admin socket
+        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id)!);
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1116,8 +1123,11 @@ export function registerSocketHandlers(io: IO) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
 
+        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id)!);
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1754,6 +1764,8 @@ export function registerSocketHandlers(io: IO) {
       specificQ?: any
     ) {
       stopQuestionTimer(room.id);
+      roomIntermissions.delete(room.id);
+      io.to(`room:${room.code}`).emit("game:intermission", null);
       const existingPrepare = roomPrepareStates.get(room.id);
       if (existingPrepare?.timer) {
         clearTimeout(existingPrepare.timer);
@@ -1854,7 +1866,7 @@ export function registerSocketHandlers(io: IO) {
       const launchQuestion = () => {
         roomPrepareStates.delete(room.id);
         const buzzMode = room.mode === "BUZZ";
-        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
+        const buzzUnlockMode = config?.autoTimerStart ? (config?.buzzUnlockMode ?? "AUTO") : "MANUAL";
         const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
         const buzzUnlocked = !buzzMode;
         roomBuzzUnlocked.set(qKey, buzzUnlocked);
@@ -2398,17 +2410,42 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const nextIndex = nextQ.index;
-      room.currentQuestion = nextIndex;
-      room.status = "PLAYING";
-      roomCache.set(room.id, room);
-      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
 
-      // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
-      if (nextIndex > 0 && nextIndex % 3 === 0) {
-        replenishTeamPowerups(room.id, io).catch(console.error);
+      // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission):
+      // Bấm nút sẽ vào thẳng câu hỏi tiếp theo NGAY LẬP TỨC (0s delay)!
+      if (roomIntermissions.has(room.id)) {
+        roomIntermissions.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:intermission", null);
+
+        room.currentQuestion = nextIndex;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+
+        // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
+        if (nextIndex > 0 && nextIndex % 3 === 0) {
+          replenishTeamPowerups(room.id, io).catch(console.error);
+        }
+
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+        return;
       }
 
-      await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+      // Nếu đang trong câu hỏi hoặc vừa công bố đáp án xong:
+      // Chuyển qua màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)
+      stopQuestionTimer(room.id);
+      roomActiveQuestions.delete(room.id);
+
+      const intermissionPayload: GameIntermissionPayload = {
+        nextQuestionIndex: nextIndex,
+        totalQuestions: targetQuestions,
+        previousQuestionIndex: room.currentQuestion,
+        titleVi: `BẢNG XẾP HẠNG SAU CÂU #${(room.currentQuestion ?? 0) + 1}`,
+      };
+      roomIntermissions.set(room.id, intermissionPayload);
+
+      io.to(`room:${room.code}`).emit("game:intermission", intermissionPayload);
+      io.to(`room:${room.code}`).emit("game:question:clear");
     });
 
     socket.on("admin:skip:prepare", async (payload?: { code?: string }) => {

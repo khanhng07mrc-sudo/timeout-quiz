@@ -791,6 +791,7 @@ var roomUsedQuestions = /* @__PURE__ */ new Map();
 var roomWagerTimers = /* @__PURE__ */ new Map();
 var roomGridTimers = /* @__PURE__ */ new Map();
 var roomActiveQuestions = /* @__PURE__ */ new Map();
+var roomIntermissions = /* @__PURE__ */ new Map();
 var teamStreakMap = /* @__PURE__ */ new Map();
 var playerStreakMap = /* @__PURE__ */ new Map();
 var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
@@ -1142,6 +1143,7 @@ function cleanupRoomInMemory(roomId) {
     roomDiceRaces.delete(roomId);
     roomWagers.delete(roomId);
     roomUsedQuestions.delete(roomId);
+    roomIntermissions.delete(roomId);
     roomCache.delete(roomId);
     roomQuestionsCache.delete(roomId);
     const prefix = `${roomId}:`;
@@ -1440,7 +1442,9 @@ function registerSocketHandlers(io2) {
         const roomState = await buildRoomState(room.id);
         io2.to(`room:${code}`).emit("room:state", roomState);
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id));
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1540,7 +1544,9 @@ function registerSocketHandlers(io2) {
         const roomState = await buildRoomState(room.id);
         io2.to(`room:${code}`).emit("room:state", roomState);
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id));
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1637,7 +1643,9 @@ function registerSocketHandlers(io2) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
         const isPreparing = roomPrepareStates.has(room.id);
-        if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        if (roomIntermissions.has(room.id)) {
+          socket.emit("game:intermission", roomIntermissions.get(room.id));
+        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const currentQ = room.quizBank.questions[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -2158,6 +2166,8 @@ function registerSocketHandlers(io2) {
     });
     async function startQuestionPrepareAndLaunch(room, questions, questionIndex, specificQ) {
       stopQuestionTimer(room.id);
+      roomIntermissions.delete(room.id);
+      io2.to(`room:${room.code}`).emit("game:intermission", null);
       const existingPrepare = roomPrepareStates.get(room.id);
       if (existingPrepare?.timer) {
         clearTimeout(existingPrepare.timer);
@@ -2244,7 +2254,7 @@ function registerSocketHandlers(io2) {
       const launchQuestion = () => {
         roomPrepareStates.delete(room.id);
         const buzzMode = room.mode === "BUZZ";
-        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
+        const buzzUnlockMode = config?.autoTimerStart ? config?.buzzUnlockMode ?? "AUTO" : "MANUAL";
         const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
         const buzzUnlocked = !buzzMode;
         roomBuzzUnlocked.set(qKey, buzzUnlocked);
@@ -2731,14 +2741,30 @@ function registerSocketHandlers(io2) {
         return;
       }
       const nextIndex = nextQ.index;
-      room.currentQuestion = nextIndex;
-      room.status = "PLAYING";
-      roomCache.set(room.id, room);
-      await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
-      if (nextIndex > 0 && nextIndex % 3 === 0) {
-        replenishTeamPowerups(room.id, io2).catch(console.error);
+      if (roomIntermissions.has(room.id)) {
+        roomIntermissions.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:intermission", null);
+        room.currentQuestion = nextIndex;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+        if (nextIndex > 0 && nextIndex % 3 === 0) {
+          replenishTeamPowerups(room.id, io2).catch(console.error);
+        }
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+        return;
       }
-      await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
+      stopQuestionTimer(room.id);
+      roomActiveQuestions.delete(room.id);
+      const intermissionPayload = {
+        nextQuestionIndex: nextIndex,
+        totalQuestions: targetQuestions,
+        previousQuestionIndex: room.currentQuestion,
+        titleVi: `B\u1EA2NG X\u1EBEP H\u1EA0NG SAU C\xC2U #${(room.currentQuestion ?? 0) + 1}`
+      };
+      roomIntermissions.set(room.id, intermissionPayload);
+      io2.to(`room:${room.code}`).emit("game:intermission", intermissionPayload);
+      io2.to(`room:${room.code}`).emit("game:question:clear");
     });
     socket.on("admin:skip:prepare", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);

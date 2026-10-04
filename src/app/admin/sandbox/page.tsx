@@ -25,6 +25,27 @@ import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
+import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+
+function checkOfflineCanAnyTeamBet(
+  teams: TeamState[],
+  wagerState: WagerState,
+  nextMinOption: number
+): boolean {
+  if (wagerState.maxBetCap && nextMinOption > wagerState.maxBetCap) {
+    return false;
+  }
+  return teams.some((t) => {
+    if (t.isEliminated) return false;
+    if (wagerState.previousQuestionWagerTeamId && t.id === wagerState.previousQuestionWagerTeamId) {
+      return false;
+    }
+    if (wagerState.lastWagerTeamId === t.id && wagerState.autoAssignedTeamId !== t.id) {
+      return false;
+    }
+    return t.score >= nextMinOption;
+  });
+}
 
 const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
@@ -695,7 +716,10 @@ export default function AdminSandboxPage() {
     }
 
     const bank = (bankId && offlineStorage.getLocalBankById(bankId)) || DEFAULT_OFFLINE_BANK;
-    const questions = bank.questions && bank.questions.length > 0 ? bank.questions : DEFAULT_OFFLINE_BANK.questions!;
+    const questions = (bank.questions || []).map((q: any) => ({
+      ...q,
+      points: normalizeToThreeLevels(q.points || 10),
+    }));
     offlineQuestionsRef.current = questions;
     offlineQIndexRef.current = -1;
     offlineAnswersRef.current.clear();
@@ -1337,7 +1361,10 @@ export default function AdminSandboxPage() {
       setSelectedBankId(bankId);
       const bank = (bankId && offlineStorage.getLocalBankById(bankId)) || DEFAULT_OFFLINE_BANK;
       const questions = bank.questions && bank.questions.length > 0 ? bank.questions : DEFAULT_OFFLINE_BANK.questions!;
-      offlineQuestionsRef.current = questions;
+      offlineQuestionsRef.current = questions.map((q) => ({
+        ...q,
+        points: normalizeToThreeLevels(q.points || 10),
+      }));
       offlineUsedQuestionIdsRef.current.clear();
       offlineQIndexRef.current = 0;
       addLog(`Ngoại tuyến: Đã chuyển sang bộ đề [${bank.title}] (${questions.length} câu)`);
@@ -1367,6 +1394,144 @@ export default function AdminSandboxPage() {
       alert("Lỗi kết nối khi đổi bộ đề!");
     }
   }, [isOfflineSandbox, code, quizBanks, addLog]);
+
+  const processOfflineWager = useCallback((targetTeamId: string, amount: number) => {
+    if (!roomStateRef.current?.wagerState) return;
+    const curWager = roomStateRef.current.wagerState;
+    if (curWager.phase !== "WAGER_PERIOD") return;
+
+    const team = roomStateRef.current.teams.find((t) => t.id === targetTeamId);
+    if (!team) return;
+
+    if (curWager.previousQuestionWagerTeamId === team.id) {
+      addLog(`⚠️ [${team.name}] đã cược ở câu trước nên tạm nghỉ cược câu này!`);
+      return;
+    }
+
+    const isAutoAssignedFirstBid = curWager.autoAssignedTeamId === team.id;
+    if (curWager.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
+      addLog(`⚠️ [${team.name}] không thể cược 2 lần liên tiếp!`);
+      return;
+    }
+
+    if (amount > team.score) {
+      addLog(`⚠️ [${team.name}] cược ${amount}đ vượt quá điểm hiện có (${team.score}đ)!`);
+      return;
+    }
+
+    if (curWager.maxBetCap && amount > curWager.maxBetCap) {
+      addLog(`⚠️ [${team.name}] cược ${amount}đ vượt quá trần cược (${curWager.maxBetCap}đ)!`);
+      return;
+    }
+
+    const currentHighest = curWager.currentHighestWager || 0;
+    const minOption = currentHighest + 5;
+    if (amount < minOption) {
+      addLog(`⚠️ [${team.name}] cược ${amount}đ không hợp lệ (tối thiểu ${minOption}đ)!`);
+      return;
+    }
+
+    const nextWager: WagerState = {
+      ...curWager,
+      currentHighestWager: amount,
+      lastWagerTeamId: team.id,
+      autoAssignedTeamId: isAutoAssignedFirstBid ? undefined : curWager.autoAssignedTeamId,
+      wagerHistory: [
+        ...(curWager.wagerHistory || []),
+        {
+          order: (curWager.wagerHistory?.length || 0) + 1,
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color,
+          amount,
+          timestamp: Date.now(),
+        },
+      ],
+      teamWagers: {
+        ...curWager.teamWagers,
+        [team.id]: {
+          teamId: team.id,
+          teamName: team.name,
+          amount,
+          submitted: true,
+          order: (curWager.wagerHistory?.length || 0) + 1,
+        },
+      },
+    };
+
+    const nextMinOption = amount + 5;
+    const canAnyBet = checkOfflineCanAnyTeamBet(roomStateRef.current.teams, nextWager, nextMinOption);
+
+    if (!canAnyBet) {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      nextWager.phase = "QUESTION_PERIOD";
+      nextWager.questionReady = false;
+      nextWager.wagerTimeRemaining = 0;
+
+      const nextRoomState: RoomState = { ...roomStateRef.current, wagerState: nextWager };
+      setRoomState(nextRoomState);
+      setTimer(null);
+      syncToIframes({ roomState: nextRoomState, timer: null });
+      addLog(`👑 [${team.name}] cược ${amount}đ — Không còn đội nào đủ điều kiện nâng cược! Tự động chốt cược và mở câu hỏi sau 2.5s...`);
+      setTimeout(() => {
+        handleWagerLaunchQuestionRef.current();
+      }, 2500);
+      return;
+    }
+
+    if (curWager.wagerSubPhase === "INITIAL_5S") {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      const configuredWagerDuration = (roomStateRef.current.config as any)?.wagerTimeSeconds || 15;
+      nextWager.wagerSubPhase = "MAIN_15S";
+      nextWager.wagerTimeRemaining = configuredWagerDuration;
+      nextWager.wagerTimeTotal = configuredWagerDuration;
+
+      const nextRoomState: RoomState = { ...roomStateRef.current, wagerState: nextWager };
+      setRoomState(nextRoomState);
+      setTimer({ remaining: configuredWagerDuration, total: configuredWagerDuration, endsAt: Date.now() + configuredWagerDuration * 1000 });
+      syncToIframes({ roomState: nextRoomState, timer: { remaining: configuredWagerDuration, total: configuredWagerDuration, endsAt: Date.now() + configuredWagerDuration * 1000 } });
+      addLog(`💰 [${team.name}] mở màn cược ${amount}đ! Bắt đầu ${configuredWagerDuration}s cho các đội khác nâng cược.`);
+
+      let mainRem = configuredWagerDuration;
+      offlineTimerRef.current = setInterval(() => {
+        mainRem--;
+        if (mainRem <= 0) {
+          if (offlineTimerRef.current) {
+            clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+          }
+          const finalWager: WagerState = {
+            ...nextWager,
+            phase: "QUESTION_PERIOD",
+            questionReady: false,
+            wagerTimeRemaining: 0,
+          };
+          setRoomState((prev) => prev ? { ...prev, wagerState: finalWager } : prev);
+          setTimer(null);
+          syncToIframes({ roomState: { ...(roomStateRef.current || {}), wagerState: finalWager }, timer: null });
+          addLog(`⌛ Đã hết ${configuredWagerDuration}s cược! Tự động chốt cược và mở câu hỏi trong 2.5s...`);
+          setTimeout(() => {
+            handleWagerLaunchQuestionRef.current();
+          }, 2500);
+        } else {
+          setTimer((prev) => prev ? { ...prev, remaining: mainRem } : null);
+          setRoomState((prev) => prev?.wagerState ? { ...prev, wagerState: { ...prev.wagerState, wagerTimeRemaining: mainRem } } : prev);
+        }
+      }, 1000);
+      return;
+    }
+
+    const nextRoomState: RoomState = { ...roomStateRef.current, wagerState: nextWager };
+    setRoomState(nextRoomState);
+    syncToIframes({ roomState: nextRoomState });
+    addLog(`💰 [${team.name}] nâng cược lên ${amount}đ!`);
+  }, [addLog, syncToIframes]);
 
   // Handle player actions sent from the mobile viewport iframe
   useEffect(() => {
@@ -1483,12 +1648,14 @@ export default function AdminSandboxPage() {
         addLog(`🏁 [${targetTeamName}] đã chọn ô #${cellId}`);
       } else if (action === "dice_roll") {
         handleDiceRollManual();
+      } else if (action === "wager_submit") {
+        processOfflineWager(targetTeamId, Number(e.data.amount) || 10);
       }
     };
 
     window.addEventListener("message", handlePlayerAction);
     return () => window.removeEventListener("message", handlePlayerAction);
-  }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode]);
+  }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
 
   // ── 1-Click Launch ──────────────────────────────────────────────────────────
   const handleLaunchSandbox = async () => {
@@ -1734,6 +1901,26 @@ export default function AdminSandboxPage() {
               order: 1,
             };
             addLog(`🤖 Hệ thống chọn [${pickedTeam.name}] mở cược: ${assignedWager}đ`);
+          }
+
+          const nextMin = assignedWager + 5;
+          const canAnyBet = checkOfflineCanAnyTeamBet(currentTeams, newWagerState, nextMin);
+          if (!canAnyBet) {
+            newWagerState.phase = "QUESTION_PERIOD";
+            newWagerState.questionReady = false;
+            newWagerState.wagerTimeRemaining = 0;
+
+            setRoomState((prev) => prev ? { ...prev, wagerState: { ...newWagerState } } : prev);
+            setTimer(null);
+            syncToIframes({
+              roomState: { ...(roomState || {}), wagerState: { ...newWagerState } },
+              timer: null,
+            });
+            addLog(`👑 Đã chốt cược: [${pickedTeam?.name || "Đội cược"}] (${assignedWager}đ) do không còn đội nào đủ điều kiện nâng cược! Tự động mở câu hỏi sau 2.5s...`);
+            setTimeout(() => {
+              handleWagerLaunchQuestionRef.current();
+            }, 2500);
+            return;
           }
 
           let mainRem = configuredWagerDuration;
@@ -2821,6 +3008,10 @@ export default function AdminSandboxPage() {
     if (!currentTeam) return;
     if (roomState?.wagerState?.previousQuestionWagerTeamId === currentTeam.id) {
       addLog(`⚠️ Đội [${currentTeam.name}] đã cược ở câu trước nên tạm nghỉ cược câu này!`);
+      return;
+    }
+    if (isOfflineSandbox) {
+      processOfflineWager(currentTeam.id, amount);
       return;
     }
     const sock = botSocketsRef.current.get(currentTeam.id);

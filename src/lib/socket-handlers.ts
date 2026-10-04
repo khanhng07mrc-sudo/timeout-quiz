@@ -354,6 +354,46 @@ function scheduleWagerAutoLaunch(ioInstance: IO, roomId: string, roomCode: strin
   roomWagerAutoLaunchTimers.set(roomId, timer);
 }
 
+function checkCanAnyTeamBet(
+  allTeams: { id: string; score: number; isEliminated?: boolean }[],
+  wagerState: WagerState,
+  nextMinOption: number
+): boolean {
+  if (wagerState.maxBetCap && nextMinOption > wagerState.maxBetCap) {
+    return false;
+  }
+  return allTeams.some((t) => {
+    if (t.isEliminated) return false;
+    if (wagerState.previousQuestionWagerTeamId && t.id === wagerState.previousQuestionWagerTeamId) {
+      return false;
+    }
+    if (wagerState.lastWagerTeamId === t.id && wagerState.autoAssignedTeamId !== t.id) {
+      return false;
+    }
+    return t.score >= nextMinOption;
+  });
+}
+
+async function lockWagerAndScheduleAutoLaunch(
+  ioInstance: IO,
+  roomId: string,
+  roomCode: string,
+  wagerState: WagerState
+) {
+  const existingTimer = roomWagerTimers.get(roomId);
+  if (existingTimer) {
+    clearInterval(existingTimer);
+    clearTimeout(existingTimer);
+    roomWagerTimers.delete(roomId);
+  }
+  await assignDefaultWagerTeamIfNone(roomId, wagerState);
+  wagerState.phase = "QUESTION_PERIOD";
+  wagerState.questionReady = false;
+  wagerState.wagerTimeRemaining = 0;
+  ioInstance.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
+  scheduleWagerAutoLaunch(ioInstance, roomId, roomCode);
+}
+
 function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string, duration?: number) {
   const existingTimer = roomWagerTimers.get(roomId);
   if (existingTimer) {
@@ -2151,8 +2191,8 @@ export function registerSocketHandlers(io: IO) {
         } else {
           q.points = chosenPoints;
         }
-      } else if (room.mode === "BUZZ" || room.mode === "TOURNAMENT" || room.mode === "GRID_CARO") {
-        q.points = normalizeToThreeLevels(q.points);
+      } else {
+        q.points = normalizeToThreeLevels(q.points || 10);
       }
 
       const bloomLevel = getBloomLevelFromPoints(q.points);
@@ -2300,7 +2340,7 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
 
         let initRem = 5;
-        const initTimer = setInterval(() => {
+        const initTimer = setInterval(async () => {
           initRem--;
           wagerState.wagerTimeRemaining = initRem;
           if (initRem <= 0) {
@@ -2343,9 +2383,16 @@ export function registerSocketHandlers(io: IO) {
               }
             }
 
-            // Đếm tiếp thời gian cho các đội kế tiếp cược (theo cấu hình hoặc mặc định 15s)
-            const wagerDuration = (room.config as any)?.wagerTimeSeconds || 15;
-            startWager15sCountdown(io, room.id, room.code, wagerDuration);
+            const nextMin = (wagerState.currentHighestWager || 10) + 5;
+            const canAnyBet = checkCanAnyTeamBet(teams, wagerState, nextMin);
+            if (!canAnyBet) {
+              // Không còn đội nào đủ điều kiện nâng cược: Tự động chốt cược ngay lập tức!
+              await lockWagerAndScheduleAutoLaunch(io, room.id, room.code, wagerState);
+            } else {
+              // Đếm tiếp thời gian cho các đội kế tiếp cược (theo cấu hình hoặc mặc định 15s)
+              const wagerDuration = (room.config as any)?.wagerTimeSeconds || 15;
+              startWager15sCountdown(io, room.id, room.code, wagerDuration);
+            }
           } else {
             io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
           }
@@ -3319,8 +3366,15 @@ export function registerSocketHandlers(io: IO) {
         }
       });
 
-      const wasInitial5s = wagerState.wagerSubPhase === "INITIAL_5S";
+      const canAnyTeamBet = checkCanAnyTeamBet(allTeams, wagerState, nextMinOption);
 
+      if (!canAnyTeamBet) {
+        // Không còn đội nào có thể cược tiếp: Chốt phiên cược & tự động mở câu hỏi sau 2.5s ngay lập tức!
+        await lockWagerAndScheduleAutoLaunch(io, room.id, room.code, wagerState);
+        return;
+      }
+
+      const wasInitial5s = wagerState.wagerSubPhase === "INITIAL_5S";
       if (wasInitial5s) {
         // Có đội đầu tiên cược trong 5s: Tự đếm tiếp theo với thời gian đã cấu hình
         const wagerDuration = (room.config as any)?.wagerTimeSeconds || 15;
@@ -3328,29 +3382,6 @@ export function registerSocketHandlers(io: IO) {
       } else {
         // Broadcast update
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
-
-        // Check if any team can still make a valid bet
-        const canAnyTeamBet = allTeams.some((t) =>
-          t.id !== wagerState.previousQuestionWagerTeamId &&
-          (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) &&
-          t.score >= nextMinOption
-        );
-
-        if (!canAnyTeamBet) {
-          // Không còn đội nào có thể cược tiếp: Chốt phiên cược & tự động mở câu hỏi sau 2.5s
-          const wTimer = roomWagerTimers.get(room.id);
-          if (wTimer) {
-            clearTimeout(wTimer);
-            clearInterval(wTimer);
-            roomWagerTimers.delete(room.id);
-          }
-          await assignDefaultWagerTeamIfNone(room.id, wagerState);
-          wagerState.phase = "QUESTION_PERIOD";
-          wagerState.questionReady = false;
-          wagerState.wagerTimeRemaining = 0;
-          io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
-          scheduleWagerAutoLaunch(io, room.id, room.code);
-        }
       }
     });
 

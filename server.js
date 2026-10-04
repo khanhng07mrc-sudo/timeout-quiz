@@ -1036,6 +1036,35 @@ function scheduleWagerAutoLaunch(ioInstance, roomId, roomCode) {
   }, 2500);
   roomWagerAutoLaunchTimers.set(roomId, timer);
 }
+function checkCanAnyTeamBet(allTeams, wagerState, nextMinOption) {
+  if (wagerState.maxBetCap && nextMinOption > wagerState.maxBetCap) {
+    return false;
+  }
+  return allTeams.some((t) => {
+    if (t.isEliminated) return false;
+    if (wagerState.previousQuestionWagerTeamId && t.id === wagerState.previousQuestionWagerTeamId) {
+      return false;
+    }
+    if (wagerState.lastWagerTeamId === t.id && wagerState.autoAssignedTeamId !== t.id) {
+      return false;
+    }
+    return t.score >= nextMinOption;
+  });
+}
+async function lockWagerAndScheduleAutoLaunch(ioInstance, roomId, roomCode, wagerState) {
+  const existingTimer = roomWagerTimers.get(roomId);
+  if (existingTimer) {
+    clearInterval(existingTimer);
+    clearTimeout(existingTimer);
+    roomWagerTimers.delete(roomId);
+  }
+  await assignDefaultWagerTeamIfNone(roomId, wagerState);
+  wagerState.phase = "QUESTION_PERIOD";
+  wagerState.questionReady = false;
+  wagerState.wagerTimeRemaining = 0;
+  ioInstance.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
+  scheduleWagerAutoLaunch(ioInstance, roomId, roomCode);
+}
 function startWager15sCountdown(ioInstance, roomId, roomCode, duration) {
   const existingTimer = roomWagerTimers.get(roomId);
   if (existingTimer) {
@@ -2539,8 +2568,8 @@ function registerSocketHandlers(io2) {
         } else {
           q.points = chosenPoints;
         }
-      } else if (room.mode === "BUZZ" || room.mode === "TOURNAMENT" || room.mode === "GRID_CARO") {
-        q.points = normalizeToThreeLevels(q.points);
+      } else {
+        q.points = normalizeToThreeLevels(q.points || 10);
       }
       const bloomLevel = getBloomLevelFromPoints(q.points);
       const launchQuestion = async () => {
@@ -2671,7 +2700,7 @@ function registerSocketHandlers(io2) {
         roomWagers.set(room.id, wagerState);
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
         let initRem = 5;
-        const initTimer = setInterval(() => {
+        const initTimer = setInterval(async () => {
           initRem--;
           wagerState.wagerTimeRemaining = initRem;
           if (initRem <= 0) {
@@ -2705,8 +2734,14 @@ function registerSocketHandlers(io2) {
                 };
               }
             }
-            const wagerDuration = room.config?.wagerTimeSeconds || 15;
-            startWager15sCountdown(io2, room.id, room.code, wagerDuration);
+            const nextMin = (wagerState.currentHighestWager || 10) + 5;
+            const canAnyBet = checkCanAnyTeamBet(teams, wagerState, nextMin);
+            if (!canAnyBet) {
+              await lockWagerAndScheduleAutoLaunch(io2, room.id, room.code, wagerState);
+            } else {
+              const wagerDuration = room.config?.wagerTimeSeconds || 15;
+              startWager15sCountdown(io2, room.id, room.code, wagerDuration);
+            }
           } else {
             io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
           }
@@ -3523,29 +3558,17 @@ function registerSocketHandlers(io2) {
           };
         }
       });
+      const canAnyTeamBet = checkCanAnyTeamBet(allTeams, wagerState, nextMinOption);
+      if (!canAnyTeamBet) {
+        await lockWagerAndScheduleAutoLaunch(io2, room.id, room.code, wagerState);
+        return;
+      }
       const wasInitial5s = wagerState.wagerSubPhase === "INITIAL_5S";
       if (wasInitial5s) {
         const wagerDuration = room.config?.wagerTimeSeconds || 15;
         startWager15sCountdown(io2, room.id, room.code, wagerDuration);
       } else {
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
-        const canAnyTeamBet = allTeams.some(
-          (t) => t.id !== wagerState.previousQuestionWagerTeamId && (t.id !== wagerState.lastWagerTeamId || wagerState.autoAssignedTeamId === t.id) && t.score >= nextMinOption
-        );
-        if (!canAnyTeamBet) {
-          const wTimer = roomWagerTimers.get(room.id);
-          if (wTimer) {
-            clearTimeout(wTimer);
-            clearInterval(wTimer);
-            roomWagerTimers.delete(room.id);
-          }
-          await assignDefaultWagerTeamIfNone(room.id, wagerState);
-          wagerState.phase = "QUESTION_PERIOD";
-          wagerState.questionReady = false;
-          wagerState.wagerTimeRemaining = 0;
-          io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
-          scheduleWagerAutoLaunch(io2, room.id, room.code);
-        }
       }
     });
     socket.on("admin:grid:preview:start", async () => {

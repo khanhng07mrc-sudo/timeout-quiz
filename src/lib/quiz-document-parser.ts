@@ -2,6 +2,7 @@ import * as XLSX from "xlsx";
 import Papa from "papaparse";
 // mammoth is imported dynamically or directly when parsing docx in browser or node
 import * as mammoth from "mammoth";
+import { normalizeToThreeLevels } from "./game-engine/scoring";
 
 export interface ParsedQuestionItem {
   id?: string;
@@ -23,7 +24,7 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
   const errors: string[] = [];
   const content = (q.content || "").trim();
   const type = q.type || "MC_SINGLE";
-  const points = Math.max(10, Math.round((Number(q.points) || 10) / 10) * 10);
+  const points = normalizeToThreeLevels(Number(q.points) || 10);
   const timeLimit = Math.max(5, Number(q.timeLimit) || 30);
   const hint = q.hint?.trim() || undefined;
 

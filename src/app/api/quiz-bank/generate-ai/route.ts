@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateQuestionItem } from "@/lib/quiz-document-parser";
+import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
 
 export const dynamic = "force-dynamic";
 
@@ -201,7 +202,7 @@ QUY ĐỊNH BẮT BUỘC VỀ ĐỊNH DẠNG:
         type: q.type || "MC_SINGLE",
         content: q.content || `Câu hỏi ${idx + 1}`,
         options: q.options || [],
-        points: Math.max(10, Math.round((Number(q.points) || defaultPoints) / 10) * 10),
+        points: normalizeToThreeLevels(Number(q.points) || defaultPoints || 10),
         timeLimit: Number(q.timeLimit) || defaultTimeLimit,
         hint: q.hint || undefined,
         answer: q.answer || undefined,

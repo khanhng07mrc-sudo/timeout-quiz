@@ -1043,16 +1043,17 @@ export default function QuizBankPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số (bội số của 10)</label>
-                <input
-                  type="number"
-                  min={10}
-                  step={10}
+                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ)</label>
+                <select
                   value={qPoints}
                   onChange={(e) => setQPoints(Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl bg-input border border-border"
-                />
-                <p className="text-[10px] text-muted-foreground mt-0.5">Bắt buộc chia hết cho 10 (10, 20, 30...)</p>
+                >
+                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ)</option>
+                  <option value={20}>20 Điểm (Trung bình / Thông hiểu)</option>
+                  <option value={30}>30 Điểm (Nâng cao / Vận dụng)</option>
+                </select>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 3 mức điểm gốc duy nhất</p>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
@@ -1278,16 +1279,17 @@ export default function QuizBankPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số (bội số 10)</label>
-                <input
-                  type="number"
-                  min={10}
-                  step={10}
+                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ)</label>
+                <select
                   value={editQPoints}
                   onChange={(e) => setEditQPoints(Number(e.target.value))}
                   className="w-full px-3 py-2 rounded-xl bg-input border border-border"
-                />
-                <p className="text-[10px] text-muted-foreground mt-0.5">Bắt buộc chia hết cho 10 (10, 20, 30...)</p>
+                >
+                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ)</option>
+                  <option value={20}>20 Điểm (Trung bình / Thông hiểu)</option>
+                  <option value={30}>30 Điểm (Nâng cao / Vận dụng)</option>
+                </select>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 3 mức điểm gốc duy nhất</p>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
@@ -1584,10 +1586,9 @@ export default function QuizBankPage() {
                     onChange={(e) => setAiDefaultPoints(Number(e.target.value))}
                     className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-xs text-white bg-[#151728] focus:outline-none"
                   >
-                    <option value={10}>10 Điểm / câu</option>
-                    <option value={20}>20 Điểm / câu</option>
-                    <option value={30}>30 Điểm / câu</option>
-                    <option value={50}>50 Điểm / câu</option>
+                    <option value={10}>10 Điểm / câu (Cơ bản)</option>
+                    <option value={20}>20 Điểm / câu (Trung bình)</option>
+                    <option value={30}>30 Điểm / câu (Nâng cao)</option>
                   </select>
                 </div>
 
@@ -1925,7 +1926,6 @@ export default function QuizBankPage() {
                             <option value={10}>10đ</option>
                             <option value={20}>20đ</option>
                             <option value={30}>30đ</option>
-                            <option value={50}>50đ</option>
                           </select>
                         </div>
 

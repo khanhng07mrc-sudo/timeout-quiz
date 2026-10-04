@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
+import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
 
 export async function GET(
   _req: NextRequest,
@@ -25,7 +26,7 @@ export async function POST(
   const { id } = await params;
   const body = await req.json();
 
-  const normalizePoints = (pts: any) => Math.max(10, Math.round((Number(pts) || 10) / 10) * 10);
+  const normalizePoints = (pts: any): 10 | 20 | 30 => normalizeToThreeLevels(Number(pts) || 10);
 
   // Support bulk creation (import)
   if (Array.isArray(body)) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
+import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
 
 export async function GET(
   _req: NextRequest,
@@ -30,7 +31,7 @@ export async function PATCH(
       ...(body.content && { content: sanitizeInput(body.content, 2000) }),
       ...(body.options !== undefined && { options: body.options }),
       ...(body.answer !== undefined && { answer: body.answer ? sanitizeInput(body.answer, 500) : null }),
-      ...(body.points !== undefined && { points: Math.max(10, Math.round((Number(body.points) || 10) / 10) * 10) }),
+      ...(body.points !== undefined && { points: normalizeToThreeLevels(Number(body.points) || 10) }),
       ...(body.timeLimit !== undefined && { timeLimit: Math.min(300, Math.max(5, Number(body.timeLimit) || 30)) }),
       ...(body.hint !== undefined && { hint: body.hint ? sanitizeInput(body.hint, 500) : null }),
       ...(body.order !== undefined && { order: body.order }),

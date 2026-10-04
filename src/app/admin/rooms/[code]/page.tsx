@@ -1265,14 +1265,6 @@ export default function AdminRoomPage() {
                     </p>
                   </div>
                 </div>
-                {roomState.wagerState.phase === "WAGER_PERIOD" && (
-                  <button
-                    onClick={() => emit("admin:wager:skip_timer")}
-                    className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
-                  >
-                    ⏩ Bỏ qua cược & chốt cược
-                  </button>
-                )}
                 {roomState.wagerState.phase === "QUESTION_PERIOD" && !roomState.wagerState.questionReady && (
                   <button
                     onClick={() => emit("admin:wager:launch_question")}

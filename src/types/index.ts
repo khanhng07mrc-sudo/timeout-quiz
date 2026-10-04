@@ -413,6 +413,25 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
   return "REMEMBER";
 }
 
+/**
+ * Quantizes question thinking time and countdown music to official Olympia tiers:
+ * - <= 10 points (Nhận biết) -> 15 seconds (olympia_15s.mp3)
+ * - <= 20 points (Thông hiểu / Vận dụng) -> 20 seconds (olympia_20s.ogg)
+ * - >= 30 points (Vận dụng cao) -> 30 seconds (olympia_30s.mp3)
+ *
+ * If an explicit standard Olympia time limit is provided (15s, 20s, 30s, 60s), it preserves that duration.
+ * This decouples variable betting points (in Wager mode) from audio countdown playback, ensuring 100% exact sync.
+ */
+export function quantizeOlympiaTimeLimit(points: number = 10, explicitTimeLimit?: number): number {
+  if (explicitTimeLimit === 15 || explicitTimeLimit === 20 || explicitTimeLimit === 30 || explicitTimeLimit === 60) {
+    return explicitTimeLimit;
+  }
+  if (points <= 10) return 15;
+  if (points <= 20) return 20;
+  return 30;
+}
+
+
 // ─── Question ─────────────────────────────────────────────────────────────────
 
 export interface Option {

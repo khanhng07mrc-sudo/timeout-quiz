@@ -191,6 +191,14 @@ function getBloomLevelFromPoints(points, explicitLevel) {
   if (points >= 15) return "APPLY";
   return "REMEMBER";
 }
+function quantizeOlympiaTimeLimit(points = 10, explicitTimeLimit) {
+  if (explicitTimeLimit === 15 || explicitTimeLimit === 20 || explicitTimeLimit === 30 || explicitTimeLimit === 60) {
+    return explicitTimeLimit;
+  }
+  if (points <= 10) return 15;
+  if (points <= 20) return 20;
+  return 30;
+}
 
 // src/lib/game-engine/scoring.ts
 function normalizeToThreeLevels(points) {
@@ -841,7 +849,7 @@ function stopGridCaroPreview(ioInstance, roomId, roomCode) {
     ioInstance.to(`room:${roomCode}`).emit("game:grid:update", gridState);
   }
 }
-function startWager15sCountdown(ioInstance, roomId, roomCode) {
+function startWager15sCountdown(ioInstance, roomId, roomCode, duration) {
   const existingTimer = roomWagerTimers.get(roomId);
   if (existingTimer) {
     clearInterval(existingTimer);
@@ -850,7 +858,7 @@ function startWager15sCountdown(ioInstance, roomId, roomCode) {
   }
   const wagerState = roomWagers.get(roomId);
   if (!wagerState) return;
-  const wagerTime = 15;
+  const wagerTime = duration && duration > 0 ? duration : 15;
   wagerState.wagerSubPhase = "MAIN_15S";
   wagerState.wagerTimeRemaining = wagerTime;
   wagerState.wagerTimeTotal = wagerTime;
@@ -2336,7 +2344,8 @@ function registerSocketHandlers(io2) {
                 };
               }
             }
-            startWager15sCountdown(io2, room.id, room.code);
+            const wagerDuration = room.config?.wagerTimeSeconds || 15;
+            startWager15sCountdown(io2, room.id, room.code, wagerDuration);
           } else {
             io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
           }
@@ -3116,7 +3125,8 @@ function registerSocketHandlers(io2) {
       });
       const wasInitial5s = wagerState.wagerSubPhase === "INITIAL_5S";
       if (wasInitial5s) {
-        startWager15sCountdown(io2, room.id, room.code);
+        const wagerDuration = room.config?.wagerTimeSeconds || 15;
+        startWager15sCountdown(io2, room.id, room.code, wagerDuration);
       } else {
         io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
         const canAnyTeamBet = allTeams.some(
@@ -3215,7 +3225,7 @@ function registerSocketHandlers(io2) {
         startQuestionTimer(io2, room.code, room.id, q.id, timeLimit);
         return;
       }
-      const effectiveTimeLimit = activeQ?.timeLimit || q.timeLimit;
+      const effectiveTimeLimit = activeQ?.timeLimit || quantizeOlympiaTimeLimit(q.points, q.timeLimit);
       const endsAt = Date.now() + effectiveTimeLimit * 1e3;
       if (activeQ) {
         activeQ.timerPending = false;
@@ -3466,6 +3476,7 @@ function registerSocketHandlers(io2) {
         if (teamObj) winningTeamName = teamObj.name;
       }
       const bloomLevel = getBloomLevelFromPoints(q.points);
+      const effectiveTimeLimit = quantizeOlympiaTimeLimit(q.points, q.timeLimit);
       const questionState = buildQuestionState(q, {
         bloomLevel,
         answerMethod: room.config?.answerMethod ?? "DEVICE",
@@ -3473,6 +3484,8 @@ function registerSocketHandlers(io2) {
         primaryTeamId: wagerState.lastWagerTeamId,
         primaryTeamName: winningTeamName
       });
+      questionState.timeLimit = effectiveTimeLimit;
+      questionState.question.timeLimit = effectiveTimeLimit;
       questionState.timerPending = true;
       questionState.timerStarted = false;
       roomActiveQuestions.set(room.id, questionState);

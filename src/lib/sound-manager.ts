@@ -294,6 +294,22 @@ class SoundManager {
   }
 
   /**
+   * Plays ambient suspense music during secret bidding / strategic decision phases (e.g. Wager Bidding Period).
+   * Runs as background ambient music without interfering with Olympia question countdown tracks.
+   */
+  public playBiddingSuspense() {
+    if (this.currentMusicType === "QUESTION" && this.currentMusicAudio && !this.currentMusicAudio.paused) {
+      return;
+    }
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
+    this.playMusicTrack("LOBBY", "question_suspense", 0.65, 400);
+  }
+
+
+  /**
    * Automatically maps to official Olympia countdown music:
    * - <= 15s: Olympia 10 Về đích (15s)
    * - 16s - 25s: Olympia 9 Về đích (20s)

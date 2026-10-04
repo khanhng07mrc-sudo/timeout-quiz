@@ -13,6 +13,7 @@ import {
   ScoreUpdate,
   BloomLevel,
   getBloomLevelFromPoints,
+  quantizeOlympiaTimeLimit,
   GameStartingPayload,
   GamePreparePayload,
   TournamentMatch,
@@ -3059,7 +3060,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const effectiveTimeLimit = activeQ?.timeLimit || q.timeLimit;
+      const effectiveTimeLimit = activeQ?.timeLimit || quantizeOlympiaTimeLimit(q.points, q.timeLimit);
       const endsAt = Date.now() + effectiveTimeLimit * 1000;
       if (activeQ) {
         activeQ.timerPending = false;
@@ -3364,6 +3365,7 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const bloomLevel = getBloomLevelFromPoints(q.points);
+      const effectiveTimeLimit = quantizeOlympiaTimeLimit(q.points, q.timeLimit);
       const questionState = buildQuestionState(q, {
         bloomLevel,
         answerMethod: (room.config as any)?.answerMethod ?? "DEVICE",
@@ -3371,6 +3373,8 @@ export function registerSocketHandlers(io: IO) {
         primaryTeamId: wagerState.lastWagerTeamId,
         primaryTeamName: winningTeamName,
       });
+      questionState.timeLimit = effectiveTimeLimit;
+      questionState.question.timeLimit = effectiveTimeLimit;
 
       // Do NOT start timer yet! Admin clicks "Bắt đầu tính giờ" manually!
       questionState.timerPending = true;

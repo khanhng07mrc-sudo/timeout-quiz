@@ -46,7 +46,7 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
         { id: "D", text: "Luôn luôn bằng 0", isCorrect: false },
       ],
       points: 10,
-      timeLimit: 20,
+      timeLimit: 15,
       hint: "Khi giá tăng, người tiêu dùng có xu hướng mua ít đi",
     },
     {
@@ -60,7 +60,7 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
         { id: "D", text: "Gross Delivery Price", isCorrect: false },
       ],
       points: 10,
-      timeLimit: 20,
+      timeLimit: 15,
       hint: "Đo lường tổng giá trị thị trường của toàn bộ hàng hóa & dịch vụ cuối cùng trong nước",
     },
     {
@@ -74,7 +74,7 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
         { id: "D", text: "Tỷ giá hối đoái", isCorrect: false },
       ],
       points: 20,
-      timeLimit: 25,
+      timeLimit: 20,
       hint: "Phương trình Fisher: r = i - π",
     },
     {
@@ -88,7 +88,7 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
         { id: "D", text: "Cạnh tranh mang tính độc quyền", isCorrect: false },
       ],
       points: 20,
-      timeLimit: 25,
+      timeLimit: 20,
     },
     {
       id: "q_off_5",

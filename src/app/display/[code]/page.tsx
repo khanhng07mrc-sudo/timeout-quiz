@@ -118,7 +118,17 @@ export default function DisplayPage() {
     const handlePostMessage = (e: MessageEvent) => {
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         const p = e.data.payload;
-        if (p.roomState !== undefined) setRoomState(p.roomState);
+        if (p.roomState !== undefined) {
+          setRoomState(p.roomState);
+          if (p.roomState?.wagerState) {
+            const ws = p.roomState.wagerState;
+            if (ws.phase === "WAGER_PERIOD") {
+              soundManager.playBiddingSuspense();
+            } else if (ws.phase === "QUESTION_PERIOD" && !ws.questionReady) {
+              soundManager.stopMusic(300);
+            }
+          }
+        }
         if (p.currentQuestion !== undefined) {
           setCurrentQuestion(p.currentQuestion);
           if (p.currentQuestion) {
@@ -371,6 +381,11 @@ export default function DisplayPage() {
     });
     socket.on("game:wager:update", (wagerState) => {
       setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
+      if (wagerState.phase === "WAGER_PERIOD") {
+        soundManager.playBiddingSuspense();
+      } else if (wagerState.phase === "QUESTION_PERIOD" && !wagerState.questionReady) {
+        soundManager.stopMusic(300);
+      }
     });
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
@@ -1027,7 +1042,9 @@ export default function DisplayPage() {
                     {roomState.mode === "WAGER" && (
                       <p className="text-base sm:text-lg font-black text-amber-300 mt-1 flex items-center gap-2">
                         <GameModeIcon mode="WAGER" className="w-5 h-5 shrink-0 inline-block" />
-                        <span>Cược điểm — Câu hỏi đang diễn ra!</span>
+                        <span>
+                          Cược điểm: Đội {currentQuestion.primaryTeamName || "cược"} đang trả lời ({roomState.wagerState?.currentHighestWager || 10}đ cược)
+                        </span>
                       </p>
                     )}
                     {roomState.config.answerMethod === "MC" && (

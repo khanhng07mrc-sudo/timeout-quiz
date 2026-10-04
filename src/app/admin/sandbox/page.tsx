@@ -16,7 +16,7 @@ import type {
   GamePreparePayload,
   TournamentState,
 } from "@/types";
-import { CARD_METADATA } from "@/types";
+import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
@@ -1545,7 +1545,7 @@ export default function AdminSandboxPage() {
     offlineQIndexRef.current = nextIdx;
     const q = questions[nextIdx] || DEFAULT_OFFLINE_BANK.questions![0];
 
-    const timeLimit = q.timeLimit || 20;
+    const timeLimit = quantizeOlympiaTimeLimit(q.points || 10, q.timeLimit);
     const endsAt = Date.now() + timeLimit * 1000;
     const autoTimer = roomState?.config.autoTimerStart === true;
     const qState: QuestionState = {
@@ -2113,7 +2113,7 @@ export default function AdminSandboxPage() {
     if (isOfflineSandbox) {
       if (!currentQuestion) return;
       const ptsLimit = currentQuestion.selectedPointLevel === 10 ? 15 : currentQuestion.selectedPointLevel === 20 ? 20 : currentQuestion.selectedPointLevel === 30 ? 30 : null;
-      const timeLimit = ptsLimit || currentQuestion.timeLimit || 20;
+      const timeLimit = ptsLimit || quantizeOlympiaTimeLimit(currentQuestion.question?.points || 10, currentQuestion.timeLimit);
       const endsAt = Date.now() + timeLimit * 1000;
       const updatedQ = {
         ...currentQuestion,
@@ -2604,7 +2604,7 @@ export default function AdminSandboxPage() {
       setRoomState((prev) => prev ? { ...prev, wagerState: updatedWager } : prev);
       const q = offlineQuestionsRef.current[offlineQIndexRef.current] || DEFAULT_OFFLINE_BANK.questions![0];
       if (q) {
-        const timeLimit = q.timeLimit || 20;
+        const timeLimit = quantizeOlympiaTimeLimit(q.points || 10, q.timeLimit);
         const winningTeamId = updatedWager.lastWagerTeamId;
         const winningTeam = stableTeams.find((t) => t.id === winningTeamId);
         const qState: QuestionState = {

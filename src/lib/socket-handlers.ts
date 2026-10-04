@@ -219,7 +219,7 @@ function stopGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string) {
   }
 }
 
-function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string) {
+function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string, duration?: number) {
   const existingTimer = roomWagerTimers.get(roomId);
   if (existingTimer) {
     clearInterval(existingTimer);
@@ -230,7 +230,7 @@ function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string
   const wagerState = roomWagers.get(roomId);
   if (!wagerState) return;
 
-  const wagerTime = 15;
+  const wagerTime = duration && duration > 0 ? duration : 15;
   wagerState.wagerSubPhase = "MAIN_15S";
   wagerState.wagerTimeRemaining = wagerTime;
   wagerState.wagerTimeTotal = wagerTime;
@@ -2007,8 +2007,9 @@ export function registerSocketHandlers(io: IO) {
               }
             }
 
-            // Đếm tiếp 15 giây cho các đội kế tiếp cược
-            startWager15sCountdown(io, room.id, room.code);
+            // Đếm tiếp thời gian cho các đội kế tiếp cược (theo cấu hình hoặc mặc định 15s)
+            const wagerDuration = (room.config as any)?.wagerTimeSeconds || 15;
+            startWager15sCountdown(io, room.id, room.code, wagerDuration);
           } else {
             io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
           }
@@ -2929,8 +2930,9 @@ export function registerSocketHandlers(io: IO) {
       const wasInitial5s = wagerState.wagerSubPhase === "INITIAL_5S";
 
       if (wasInitial5s) {
-        // Có đội đầu tiên cược trong 5s: Tự đếm ngay 15s tiếp theo!
-        startWager15sCountdown(io, room.id, room.code);
+        // Có đội đầu tiên cược trong 5s: Tự đếm tiếp theo với thời gian đã cấu hình
+        const wagerDuration = (room.config as any)?.wagerTimeSeconds || 15;
+        startWager15sCountdown(io, room.id, room.code, wagerDuration);
       } else {
         // Broadcast update
         io.to(`room:${room.code}`).emit("game:wager:update", wagerState);

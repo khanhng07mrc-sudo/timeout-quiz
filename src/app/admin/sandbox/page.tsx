@@ -1620,6 +1620,7 @@ export default function AdminSandboxPage() {
       (roomState?.teams || []).forEach((t) => {
         initialWagers[t.id] = { teamId: t.id, teamName: t.name, amount: 10, submitted: false };
       });
+      const configuredWagerDuration = roomState?.config?.wagerTimeSeconds || 15;
       const newWagerState: WagerState = {
         phase: "WAGER_PERIOD",
         wagerSubPhase: "INITIAL_5S",
@@ -1651,6 +1652,101 @@ export default function AdminSandboxPage() {
         timer: { remaining: 5, total: 5 },
       });
       addLog(`💰 Phiên cược câu #${nextIdx + 1} bắt đầu! 5s mở màn... (Đội cược câu trước tạm nghỉ)`);
+
+      let initRem = 5;
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      offlineTimerRef.current = setInterval(() => {
+        initRem -= 1;
+        if (initRem > 0) {
+          const updatedState: WagerState = { ...newWagerState, wagerTimeRemaining: initRem };
+          setRoomState((prev) => prev ? { ...prev, wagerState: updatedState } : prev);
+          setTimer({ remaining: initRem, total: 5 });
+          syncToIframes({
+            roomState: { ...(roomState || {}), wagerState: updatedState },
+            timer: { remaining: initRem, total: 5 },
+          });
+        } else {
+          if (offlineTimerRef.current) {
+            clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+          }
+          const currentTeams = roomStateRef.current?.teams || [];
+          const activeTeams = currentTeams.filter((t) => !t.isEliminated);
+          const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0
+            ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
+            : activeTeams;
+
+          const pickedTeam = eligibleTeams[Math.floor(Math.random() * eligibleTeams.length)] || activeTeams[0];
+          const assignedWager = 10;
+          if (pickedTeam) {
+            newWagerState.currentHighestWager = assignedWager;
+            newWagerState.lastWagerTeamId = pickedTeam.id;
+            newWagerState.autoAssignedTeamId = pickedTeam.id;
+            newWagerState.autoAssignedTeamName = pickedTeam.name;
+            newWagerState.wagerHistory = [{
+              order: 1,
+              teamId: pickedTeam.id,
+              teamName: pickedTeam.name,
+              teamColor: pickedTeam.color,
+              amount: assignedWager,
+              timestamp: Date.now(),
+            }];
+            newWagerState.teamWagers[pickedTeam.id] = {
+              teamId: pickedTeam.id,
+              teamName: pickedTeam.name,
+              amount: assignedWager,
+              submitted: true,
+              order: 1,
+            };
+            addLog(`🤖 Hệ thống chọn [${pickedTeam.name}] mở cược: ${assignedWager}đ`);
+          }
+
+          let mainRem = configuredWagerDuration;
+          newWagerState.wagerSubPhase = "MAIN_15S";
+          newWagerState.wagerTimeRemaining = mainRem;
+          newWagerState.wagerTimeTotal = configuredWagerDuration;
+
+          setRoomState((prev) => prev ? { ...prev, wagerState: { ...newWagerState } } : prev);
+          setTimer({ remaining: mainRem, total: configuredWagerDuration, endsAt: Date.now() + mainRem * 1000 });
+          syncToIframes({
+            roomState: { ...(roomState || {}), wagerState: { ...newWagerState } },
+            timer: { remaining: mainRem, total: configuredWagerDuration, endsAt: Date.now() + mainRem * 1000 },
+          });
+          addLog(`💰 Bắt đầu ${configuredWagerDuration}s để các đội bí mật chốt cược!`);
+
+          offlineTimerRef.current = setInterval(() => {
+            mainRem -= 1;
+            if (mainRem > 0) {
+              const uState: WagerState = { ...newWagerState, wagerTimeRemaining: mainRem };
+              setRoomState((prev) => prev ? { ...prev, wagerState: uState } : prev);
+              setTimer({ remaining: mainRem, total: configuredWagerDuration });
+              syncToIframes({
+                roomState: { ...(roomState || {}), wagerState: uState },
+                timer: { remaining: mainRem, total: configuredWagerDuration },
+              });
+            } else {
+              if (offlineTimerRef.current) {
+                clearInterval(offlineTimerRef.current);
+                offlineTimerRef.current = null;
+              }
+              newWagerState.phase = "QUESTION_PERIOD";
+              newWagerState.questionReady = false;
+              newWagerState.wagerTimeRemaining = 0;
+
+              setRoomState((prev) => prev ? { ...prev, wagerState: { ...newWagerState } } : prev);
+              setTimer(null);
+              syncToIframes({
+                roomState: { ...(roomState || {}), wagerState: { ...newWagerState } },
+                timer: null,
+              });
+              addLog(`⌛ Đã hết ${configuredWagerDuration}s cược! Nhấn [Mở câu hỏi cược] để bắt đầu trả lời.`);
+            }
+          }, 1000);
+        }
+      }, 1000);
     } else {
       let prepSeconds = 3;
       const initialPrepPayload: GamePreparePayload = {
@@ -2865,19 +2961,6 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
-                {/* 0b. WAGER Mode Skip Wager Timer */}
-                {roomState?.mode === "WAGER" && roomState?.wagerState?.phase === "WAGER_PERIOD" && (
-                  <button
-                    type="button"
-                    onClick={handleWagerSkipTimer}
-                    className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
-                    title="Khóa cược ngay lập tức và chuyển sang câu hỏi"
-                  >
-                    <span>⏩</span>
-                    <span>Chốt cược ngay</span>
-                  </button>
-                )}
-
                 {/* 0c. TOURNAMENT Mode Advance */}
                 {roomState?.mode === "TOURNAMENT" && (
                   <button
@@ -3349,25 +3432,48 @@ export default function AdminSandboxPage() {
                       </div>
 
                       {roomState.mode === "WAGER" && (
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                          <span className="text-slate-300">Giới hạn cứu trợ</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3].map((limit) => (
-                              <button
-                                key={limit}
-                                type="button"
-                                onClick={() => handleSetBailoutLimit(limit)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                  (roomState.config.wagerBailoutLimit ?? 1) === limit
-                                    ? "bg-amber-500/30 border-amber-400 text-amber-300"
-                                    : "glass border-white/10 text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                {limit} lần
-                              </button>
-                            ))}
+                        <>
+                          {/* Wager Betting Duration Setting */}
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Thời gian cược</span>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {[10, 15, 20, 30, 45].map((sec) => (
+                                <button
+                                  key={sec}
+                                  type="button"
+                                  onClick={() => updateConfig("wagerTimeSeconds", sec)}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerTimeSeconds ?? 15) === sec
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {sec}s
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                            <span className="text-slate-300">Giới hạn cứu trợ</span>
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3].map((limit) => (
+                                <button
+                                  key={limit}
+                                  type="button"
+                                  onClick={() => handleSetBailoutLimit(limit)}
+                                  className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                    (roomState.config.wagerBailoutLimit ?? 1) === limit
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      : "glass border-white/10 text-slate-400 hover:text-white"
+                                  }`}
+                                >
+                                  {limit} lần
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
                       )}
 
                       {/* Initial Team Score */}

@@ -135,8 +135,17 @@ export default function DisplayPage() {
           setCurrentQuestion(p.currentQuestion);
           if (p.currentQuestion) {
             setDisplayModeTab("QUESTION");
-            if (!p.currentQuestion.timerPending && !p.currentQuestion.bouncebackSelectPhase) {
+            const isTimerRunning = Boolean(
+              p.currentQuestion.timerStarted &&
+              !p.currentQuestion.timerPending &&
+              !p.currentQuestion.bouncebackSelectPhase &&
+              p.currentQuestion.endsAt &&
+              p.currentQuestion.endsAt > Date.now()
+            );
+            if (isTimerRunning && p.roomState?.mode !== "BUZZ") {
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
+            } else {
+              soundManager.stopMusic();
             }
           } else {
             setDisplayModeTab("BOARD");
@@ -240,14 +249,23 @@ export default function DisplayPage() {
         setStealBuzzed(null);
       }
       setDisplayModeTab("QUESTION");
-      if (!q.timerPending && !q.bouncebackSelectPhase && q.endsAt) {
-        const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
+      const isTimerRunning = Boolean(
+        q.timerStarted &&
+        !q.timerPending &&
+        !q.bouncebackSelectPhase &&
+        !(q.stealBuzzedTeamId && !q.stealAnsweringActive) &&
+        q.endsAt &&
+        q.endsAt > Date.now()
+      );
+      if (isTimerRunning) {
+        const auth = calculateAuthoritativeTimer(q.endsAt!, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
+        if (roomState?.mode !== "BUZZ") {
+          soundManager.playQuestionMusic(q.timeLimit, q.question?.id);
+        }
       } else {
         setTimer(null);
-      }
-      if (!q.timerPending && !q.bouncebackSelectPhase && !(q.stealBuzzedTeamId && !q.stealAnsweringActive)) {
-        soundManager.playQuestionMusic(q.timeLimit, q.question?.id);
+        soundManager.stopMusic();
       }
     });
 
@@ -269,7 +287,9 @@ export default function DisplayPage() {
         const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
         setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      soundManager.playQuestionMusic(tLimit, payload?.questionId);
+      if (roomState?.mode !== "BUZZ") {
+        soundManager.playQuestionMusic(tLimit, payload?.questionId);
+      }
     });
 
     socket.on("game:timer", (t) => {
@@ -292,6 +312,16 @@ export default function DisplayPage() {
     });
     socket.on("game:buzz:answering", (p) => {
       setBuzzed({ playerName: p.teamName });
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzAttemptNumber: p?.attemptNumber ?? prev.buzzAttemptNumber,
+              buzzMaxAttempts: p?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzMultiplier: p?.multiplier ?? prev.buzzMultiplier,
+            }
+          : prev
+      );
       const tLimit = p.timeLimit ?? 5;
       const endsAt = Date.now() + tLimit * 1000;
       setTimer({ remaining: tLimit, total: tLimit, endsAt });
@@ -300,6 +330,19 @@ export default function DisplayPage() {
     socket.on("game:buzz:wrong_attempt", (p) => {
       soundManager.playWrong();
       setBuzzed(null);
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzDisqualifiedTeamIds: p?.disqualifiedTeamIds ?? prev.buzzDisqualifiedTeamIds,
+              buzzMaxAttempts: p?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzedTeamId: undefined,
+              buzzedTeamName: undefined,
+              buzzedBy: undefined,
+              buzzAnsweringActive: false,
+            }
+          : prev
+      );
     });
     socket.on("game:bounceback:open_steal", () => {
       setIsStealOpen(true);
@@ -413,12 +456,18 @@ export default function DisplayPage() {
       soundManager.playBuzz();
     });
     socket.on("game:buzz:unlocked", (payload) => {
+      setBuzzed(null);
       setCurrentQuestion((prev) => (prev ? {
         ...prev,
         buzzUnlocked: true,
         buzzWindowActive: true,
         buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
+        buzzMaxAttempts: payload?.maxAttempts ?? prev.buzzMaxAttempts,
         buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
+        buzzedTeamId: undefined,
+        buzzedTeamName: undefined,
+        buzzedBy: undefined,
+        buzzAnsweringActive: false,
       } : prev));
       if (payload?.endsAt) {
         setTimer({ remaining: payload.remainingSeconds || 5, total: 5, endsAt: payload.endsAt });
@@ -447,7 +496,15 @@ export default function DisplayPage() {
     });
     socket.on("game:resumed", () => {
       setRoomState((s) => s ? { ...s, status: "PLAYING" } : s);
-      soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
+      const isTimerRunning = Boolean(
+        currentQuestion?.timerStarted &&
+        !currentQuestion?.timerPending &&
+        currentQuestion?.endsAt &&
+        currentQuestion?.endsAt > Date.now()
+      );
+      if (isTimerRunning && roomState?.mode !== "BUZZ") {
+        soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
+      }
     });
     socket.on("game:question:clear", () => {
       setCurrentQuestion(null);
@@ -488,7 +545,15 @@ export default function DisplayPage() {
     if (!matchStarting && !questionPrepare) {
       if (roomState?.status === "LOBBY") {
         soundManager.playLobbyMusic();
-      } else if (currentQuestion && !revealPayload) {
+      } else if (
+        currentQuestion &&
+        !revealPayload &&
+        currentQuestion.timerStarted &&
+        !currentQuestion.timerPending &&
+        currentQuestion.endsAt &&
+        currentQuestion.endsAt > Date.now() &&
+        roomState?.mode !== "BUZZ"
+      ) {
         soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }
     }
@@ -1023,6 +1088,7 @@ export default function DisplayPage() {
         {buzzed && (
           <div className="bg-yellow-500 text-black rounded-xl p-4 text-center font-black text-2xl animate-bounce-in shadow-xl">
             ⚡ ĐỘI {buzzed.playerName.toUpperCase()} {currentQuestion?.buzzAnsweringActive ? "ĐANG TRẢ LỜI!" : "ĐÃ BẤM CHUÔNG (ĐANG CHUẨN BỊ)"}
+            {currentQuestion?.buzzAttemptNumber ? ` (LƯỢT ${currentQuestion.buzzAttemptNumber}/${currentQuestion.buzzMaxAttempts || 3})` : ""}
           </div>
         )}
 

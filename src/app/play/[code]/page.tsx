@@ -402,7 +402,7 @@ export default function PlayPage() {
       } else {
         setStealBuzzedTeam(null);
       }
-      if (!q.timerPending && q.endsAt) {
+      if (q.timerStarted && !q.timerPending && q.endsAt && q.endsAt > Date.now()) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
       } else {
@@ -461,13 +461,36 @@ export default function PlayPage() {
 
     socket.on("game:buzz:answering", (payload) => {
       setBuzzedBy({ playerName: payload.teamName, teamId: payload.teamId, teamName: payload.teamName });
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
+              buzzMaxAttempts: payload?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
+            }
+          : prev
+      );
       const endsAt = Date.now() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
       soundManager.stopMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
     });
 
-    socket.on("game:buzz:wrong_attempt", () => {
+    socket.on("game:buzz:wrong_attempt", (payload) => {
       setBuzzedBy(null);
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzDisqualifiedTeamIds: payload?.disqualifiedTeamIds ?? prev.buzzDisqualifiedTeamIds,
+              buzzMaxAttempts: payload?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzedTeamId: undefined,
+              buzzedTeamName: undefined,
+              buzzedBy: undefined,
+              buzzAnsweringActive: false,
+            }
+          : prev
+      );
       if (soundEnabledRef.current) soundManager.playWrong();
     });
 
@@ -625,6 +648,7 @@ export default function PlayPage() {
         buzzUnlocked: true,
         buzzWindowActive: true,
         buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
+        buzzMaxAttempts: payload?.maxAttempts ?? prev.buzzMaxAttempts,
         buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
       } : prev));
       if (payload?.endsAt) {

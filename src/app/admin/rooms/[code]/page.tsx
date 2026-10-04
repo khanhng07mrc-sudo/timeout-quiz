@@ -13,7 +13,7 @@ import type {
   GamePreparePayload,
   GameIntermissionPayload,
 } from "@/types";
-import { BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
+import { BLOOM_METADATA, getBloomLevelFromPoints, getBuzzedAnswerTimeLimit } from "@/types";
 import Link from "next/link";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import { soundManager } from "@/lib/sound-manager";
@@ -295,7 +295,7 @@ export default function AdminRoomPage() {
       setIntermission(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
-      if (!q.timerPending && q.endsAt) {
+      if (q.timerStarted && !q.timerPending && q.endsAt && q.endsAt > Date.now()) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
       } else {
@@ -379,8 +379,47 @@ export default function AdminRoomPage() {
         soundManager.playBuzz();
       }
     });
+    socket.on("game:buzz:wrong_attempt", (p) => {
+      setBuzzedTeam(null);
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzDisqualifiedTeamIds: p?.disqualifiedTeamIds ?? prev.buzzDisqualifiedTeamIds,
+              buzzMaxAttempts: p?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzedTeamId: undefined,
+              buzzedTeamName: undefined,
+              buzzedBy: undefined,
+              buzzAnsweringActive: false,
+            }
+          : prev
+      );
+      if (soundEnabledRef.current) {
+        soundManager.playWrong();
+      }
+    });
+    socket.on("game:buzz:unlocked", (p) => {
+      setBuzzedTeam(null);
+      setCurrentQuestion((prev) =>
+        prev
+          ? {
+              ...prev,
+              buzzUnlocked: true,
+              buzzWindowActive: true,
+              buzzAttemptNumber: p?.attemptNumber ?? prev.buzzAttemptNumber,
+              buzzMaxAttempts: p?.maxAttempts ?? prev.buzzMaxAttempts,
+              buzzMultiplier: p?.multiplier ?? prev.buzzMultiplier,
+              buzzedTeamId: undefined,
+              buzzedTeamName: undefined,
+              buzzedBy: undefined,
+              buzzAnsweringActive: false,
+            }
+          : prev
+      );
+    });
     socket.on("game:buzz:closed", () => {
       setIsStealOpen(false);
+      setBuzzedTeam(null);
     });
     socket.on("game:answer:reveal", (p) => {
       setRevealPayload(p);
@@ -1117,6 +1156,7 @@ export default function AdminRoomPage() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-bold text-amber-300">
                       ⚡ Đội <span className="underline">{buzzedTeam.teamName ?? buzzedTeam.playerName}</span> đã bấm chuông sớm nhất!
+                      {currentQuestion?.buzzAttemptNumber ? ` (Lượt ${currentQuestion.buzzAttemptNumber}/${currentQuestion.buzzMaxAttempts || 3})` : ""}
                     </p>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold animate-pulse">
                       {currentQuestion?.buzzAnsweringActive ? "Đang trả lời" : "Đang chuẩn bị"}
@@ -1159,7 +1199,7 @@ export default function AdminRoomPage() {
                 <div className="p-3 rounded-xl bg-slate-900/80 border border-slate-700/60 text-center space-y-2">
                   <p className="text-xs text-muted-foreground">
                     {currentQuestion?.buzzUnlocked
-                      ? `🔔 Cửa sổ bấm chuông 5s đang MỞ (Lượt ${currentQuestion.buzzAttemptNumber || 1}/3 - x${currentQuestion.buzzMultiplier || 1.5})`
+                      ? `🔔 Cửa sổ bấm chuông 5s đang MỞ (Lượt ${currentQuestion.buzzAttemptNumber || 1}/${currentQuestion.buzzMaxAttempts || 3} - x${currentQuestion.buzzMultiplier || 1.5})`
                       : "🔒 Chuông đang khóa. Bấm 'Bắt đầu bấm chuông' hoặc nút bên dưới để mở."}
                   </p>
                   {!currentQuestion?.buzzUnlocked && (
@@ -1510,10 +1550,13 @@ export default function AdminRoomPage() {
             {currentQuestion?.timerPending && (
               <button
                 onClick={() => {
+                  const buzzedDuration = currentQuestion?.question
+                    ? getBuzzedAnswerTimeLimit(currentQuestion.question as any, currentQuestion.selectedPointLevel)
+                    : 5;
                   if (roomState?.mode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId) {
-                    emit("admin:bounceback:start_steal_answer", { duration: isQuestionMC ? 5 : 15 });
+                    emit("admin:bounceback:start_steal_answer", { duration: isDeviceAnswer ? buzzedDuration : 15 });
                   } else if (roomState?.mode === "BUZZ" && currentQuestion?.buzzedTeamId && !currentQuestion?.buzzAnsweringActive) {
-                    emit("admin:buzz:start_answer", { duration: isQuestionMC ? 5 : 15 });
+                    emit("admin:buzz:start_answer", { duration: isDeviceAnswer ? buzzedDuration : 15 });
                   } else {
                     emit("admin:question:start_timer");
                   }
@@ -1522,11 +1565,19 @@ export default function AdminRoomPage() {
               >
                 <span>⏱️</span>
                 <span className="whitespace-nowrap">
-                  {roomState?.mode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId
-                    ? `Bắt đầu tính giờ cướp: ${currentQuestion.stealBuzzedTeamName || "Đội cướp"} (${isQuestionMC ? "5s" : "15s"})`
-                    : roomState?.mode === "BUZZ" && currentQuestion?.buzzedTeamId
-                    ? `Bắt đầu tính giờ: ${currentQuestion.buzzedTeamName || "Đội chuông"} (${isQuestionMC ? "5s" : "15s"})`
-                    : "Bắt đầu tính thời gian"}
+                  {(() => {
+                    const buzzedDuration = currentQuestion?.question
+                      ? getBuzzedAnswerTimeLimit(currentQuestion.question as any, currentQuestion.selectedPointLevel)
+                      : 5;
+                    const durationLabel = isDeviceAnswer ? `${buzzedDuration}s` : "15s";
+                    if (roomState?.mode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId) {
+                      return `Bắt đầu tính giờ cướp: ${currentQuestion.stealBuzzedTeamName || "Đội cướp"} (${durationLabel})`;
+                    }
+                    if (roomState?.mode === "BUZZ" && currentQuestion?.buzzedTeamId) {
+                      return `Bắt đầu tính giờ: ${currentQuestion.buzzedTeamName || "Đội chuông"} (${durationLabel})`;
+                    }
+                    return "Bắt đầu tính thời gian";
+                  })()}
                 </span>
               </button>
             )}

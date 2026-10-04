@@ -431,6 +431,82 @@ export function quantizeOlympiaTimeLimit(points: number = 10, explicitTimeLimit?
   return 30;
 }
 
+/**
+ * Tính thời gian trả lời sau khi giành chuông (hoặc cướp chuông):
+ * - Trắc nghiệm 1 đáp án (MC_SINGLE, TRUE_FALSE): 5s/câu.
+ * - Trắc nghiệm nhiều đáp án (MC_MULTI) và tự luận (FILL_BLANK, ESSAY):
+ *   + Dễ (points <= 10 hoặc REMEMBER): 10s.
+ *   + Trung bình (points 11-20 hoặc APPLY): 15s.
+ *   + Khó (points > 20 hoặc ANALYZE): 20s.
+ * - Nối cặp (MATCHING) và Kéo thả (DRAG_DROP):
+ *   + Dễ: 15s.
+ *   + Trung bình: 20s.
+ *   + Khó: 25s.
+ */
+export function getBuzzedAnswerTimeLimit(
+  question: { type: QuestionType; points?: number; bloomLevel?: BloomLevel },
+  overridePoints?: number
+): number {
+  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
+    return 5;
+  }
+  const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
+  const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
+  const isHigh = bloom === "ANALYZE" || effPoints >= 30;
+  const isMedium = bloom === "APPLY" || effPoints >= 15;
+
+  if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
+    if (isHigh) return 25;
+    if (isMedium) return 20;
+    return 15;
+  }
+
+  // MC_MULTI, FILL_BLANK, ESSAY
+  if (isHigh) return 20;
+  if (isMedium) return 15;
+  return 10;
+}
+
+/**
+ * Tính thời gian thi đấu bình thường cả phòng (không bấm chuông) khi trả lời trên máy tính:
+ * - Nếu câu hỏi có thời gian cấu hình riêng (khác giá trị mặc định 30s và > 0) -> ưu tiên thời gian riêng đó.
+ * - Ngược lại, chuẩn hoá tự động theo bảng tiêu chuẩn:
+ *   + Trắc nghiệm 1 đáp án & Đúng/Sai: 15s (Dễ) / 20s (Trung bình) / 30s (Khó).
+ *   + Trắc nghiệm nhiều đáp án & Tự luận: 20s (Dễ) / 30s (Trung bình) / 45s (Khó).
+ *   + Nối cặp & Kéo thả: 30s (Dễ) / 45s (Trung bình) / 60s (Khó).
+ */
+export function getStandardQuestionTimeLimit(
+  question: { type: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel },
+  overridePoints?: number
+): number {
+  // Nếu câu hỏi đã được cấu hình thời gian riêng biệt (khác mặc định 30s và > 0), ưu tiên thời gian đó
+  if (question.timeLimit && question.timeLimit > 0 && question.timeLimit !== 30) {
+    return question.timeLimit;
+  }
+
+  const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
+  const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
+  const isHigh = bloom === "ANALYZE" || effPoints >= 30;
+  const isMedium = bloom === "APPLY" || effPoints >= 15;
+
+  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
+    if (isHigh) return 30;
+    if (isMedium) return 20;
+    return 15;
+  }
+
+  if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
+    if (isHigh) return 60;
+    if (isMedium) return 45;
+    return 30;
+  }
+
+  // MC_MULTI, FILL_BLANK, ESSAY
+  if (isHigh) return 45;
+  if (isMedium) return 30;
+  return 20;
+}
+
 
 // ─── Question ─────────────────────────────────────────────────────────────────
 
@@ -801,6 +877,7 @@ export interface QuestionState {
   buzzAutoDelaySeconds?: number;
   buzzMultiplier?: number;
   buzzAttemptNumber?: number;
+  buzzMaxAttempts?: number;
   buzzWindowActive?: boolean;
   buzzWindowEndsAt?: number;
   buzzDisqualifiedTeamIds?: string[];
@@ -923,8 +1000,8 @@ export interface ServerToClientEvents {
   "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
   "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string; attemptNumber?: number; multiplier?: number }) => void;
   "game:buzz:closed": () => void;
-  "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number; attemptNumber?: number; multiplier?: number }) => void;
-  "game:buzz:wrong_attempt": (payload: { teamId: string; teamName: string; attemptNumber: number; remainingSeconds: number; canRetry: boolean }) => void;
+  "game:buzz:answering": (payload: { teamId: string; teamName: string; timeLimit: number; attemptNumber?: number; maxAttempts?: number; multiplier?: number }) => void;
+  "game:buzz:wrong_attempt": (payload: { teamId: string; teamName: string; attemptNumber: number; maxAttempts?: number; remainingSeconds: number; canRetry: boolean; disqualifiedTeamIds?: string[] }) => void;
   "game:bounceback:open_steal": (payload: { questionId: string; timeLimit: number }) => void;
   "game:bounceback:steal_buzzed": (payload: { teamId: string; teamName: string; playerId: string; playerName: string; prepSeconds?: number }) => void;
   "game:bounceback:steal_answering": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
@@ -949,7 +1026,7 @@ export interface ServerToClientEvents {
   "game:question:clear": () => void;
   "game:timer:started": (payload?: { timeLimit?: number; endsAt?: number; serverTime?: number; questionId?: string }) => void;
   "game:timer:expired": (payload?: { questionId?: string }) => void;
-  "game:buzz:unlocked": (payload?: { remainingSeconds?: number; attemptNumber?: number; multiplier?: number; endsAt?: number }) => void;
+  "game:buzz:unlocked": (payload?: { remainingSeconds?: number; attemptNumber?: number; maxAttempts?: number; multiplier?: number; endsAt?: number }) => void;
   "game:buzz:locked": () => void;
   "game:bounceback:points_selected": (payload: { teamId: string; points: 10 | 20 | 30; timeLimit?: number; endsAt?: number }) => void;
   "game:bounceback:awaiting_judgment": (payload: {

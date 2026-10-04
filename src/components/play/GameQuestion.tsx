@@ -64,6 +64,13 @@ export default function GameQuestion({
     setIsFinalizedLocally(false);
   }, [q.id]);
 
+  // Reset isBuzzedLocally when buzzer reopens (attempt 2, 3), or when buzz/steal state is cleared
+  useEffect(() => {
+    if (question.buzzUnlocked || !buzzedBy || !question.buzzedTeamId || question.isStealPhase || !stealBuzzedTeam) {
+      setIsBuzzedLocally(false);
+    }
+  }, [question.buzzUnlocked, question.buzzAttemptNumber, buzzedBy, question.buzzedTeamId, question.isStealPhase, stealBuzzedTeam]);
+
   const timerAuth = timer
     ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
     : null;
@@ -77,6 +84,12 @@ export default function GameQuestion({
   // Mode permissions (supports both TEAM and INDIVIDUAL mode)
   const isMcMode = (question.answerMethod ?? answerMethod) === "MC";
   const myActorId = myTeamId || playerId;
+
+  const isDisqualifiedFromBuzz = Boolean(
+    myActorId &&
+    question.buzzDisqualifiedTeamIds &&
+    question.buzzDisqualifiedTeamIds.includes(myActorId)
+  );
 
   // In single-team answer modes:
   // Primary phase: strictly check match against primaryTeamId
@@ -453,8 +466,10 @@ export default function GameQuestion({
                   )}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {question.buzzUnlocked
-                    ? "Đội bấm chuông sớm nhất sẽ giành quyền trả lời duy nhất! (Sai trừ 50% điểm câu hỏi)"
+                  {isDisqualifiedFromBuzz
+                    ? "Đội bạn đã dùng lượt bấm chuông ở câu này (tối đa 1 lần/câu). Quyền bấm thuộc về các đội khác."
+                    : question.buzzUnlocked
+                    ? `Đội bấm chuông sớm nhất sẽ giành quyền trả lời! (Tối đa 1 lần bấm/đội, tối đa ${question.buzzMaxAttempts || 3} lượt/câu)`
                     : question.buzzUnlockMode === "MANUAL" || !question.timerStarted
                     ? "Quản trò sẽ mở khóa chuông sau khi đọc xong câu hỏi (mở ngay lập tức không chờ)."
                     : `Hệ thống đếm ngược ${question.buzzAutoDelaySeconds ?? 3} giây trước khi mở chuông tự động.`}
@@ -462,22 +477,27 @@ export default function GameQuestion({
               </div>
               <button
                 onClick={() => {
+                  if (isDisqualifiedFromBuzz) return;
                   setIsBuzzedLocally(true);
                   onBuzz();
                 }}
-                disabled={!question.buzzUnlocked || isBuzzedLocally}
+                disabled={!question.buzzUnlocked || isBuzzedLocally || isDisqualifiedFromBuzz}
                 className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
-                  isBuzzedLocally
+                  isDisqualifiedFromBuzz
+                    ? "bg-rose-950/60 text-rose-400 border border-rose-500/40 cursor-not-allowed opacity-75"
+                    : isBuzzedLocally
                     ? "bg-amber-400 text-black shadow-lg shadow-amber-500/30 opacity-80 cursor-default"
                     : question.buzzUnlocked
                     ? "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black shadow-lg shadow-amber-500/30 active:scale-95 animate-pulse cursor-pointer"
                     : "bg-white/10 text-slate-500 border border-white/10 cursor-not-allowed opacity-60"
                 }`}
               >
-                {isBuzzedLocally
+                {isDisqualifiedFromBuzz
+                  ? "❌ ĐÃ TRẢ LỜI SAI"
+                  : isBuzzedLocally
                   ? "⚡ ĐÃ BẤM CHUÔNG!"
                   : question.buzzUnlocked
-                  ? "🔔 BẤM CHUÔNG!"
+                  ? `🔔 BẤM CHUÔNG (Lượt ${question.buzzAttemptNumber || 1}/${question.buzzMaxAttempts || 3})!`
                   : "🔒 CHUÔNG KHÓA"}
               </button>
             </div>

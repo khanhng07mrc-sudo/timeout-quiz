@@ -11,6 +11,7 @@ import type {
   AnswerRevealPayload,
   BloomLevel,
   GamePreparePayload,
+  GameIntermissionPayload,
 } from "@/types";
 import { BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import Link from "next/link";
@@ -62,6 +63,7 @@ export default function AdminRoomPage() {
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const soundEnabledRef = useRef(false);
@@ -258,6 +260,7 @@ export default function AdminRoomPage() {
     socket.on("game:starting", (p) => {
       setMatchStarting({ seconds: p.seconds });
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       if (soundEnabledRef.current) {
@@ -268,6 +271,7 @@ export default function AdminRoomPage() {
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
       setQuestionPrepare(p);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       if (soundEnabledRef.current) {
@@ -275,10 +279,20 @@ export default function AdminRoomPage() {
       }
     });
 
+    socket.on("game:intermission", (p) => {
+      setIntermission(p);
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+    });
+
     socket.on("game:question", (q) => {
       if (q.serverTime) calibrateClockFromPacket(q.serverTime);
       setMatchStarting(null);
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
       if (!q.timerPending && q.endsAt) {
@@ -879,22 +893,15 @@ export default function AdminRoomPage() {
             </div>
           )}
 
-          {/* Question preparation countdown banner with Skip button */}
-          {questionPrepare && (
-            <div className="p-4 rounded-xl bg-purple-900/30 border border-purple-500/50 text-center space-y-3 animate-pulse">
-              <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
-                <span>Chuẩn bị câu {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}</span>
-                <span className="text-cyan-300 font-bold">{questionPrepare.points}đ · {questionPrepare.timeLimit}s</span>
-              </div>
-              <div className="text-4xl font-black text-cyan-400">
-                {questionPrepare.seconds}s
-              </div>
-              <button
-                onClick={() => emit("admin:skip:prepare")}
-                className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all flex items-center justify-center gap-1.5"
-              >
-                <span>⚡</span> Bỏ qua đếm ngược (Vào câu hỏi ngay)
-              </button>
+          {/* Intermission status banner */}
+          {intermission && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-cyan-900/40 border border-purple-500/50 text-center space-y-2 animate-pulse">
+              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                📊 Bảng xếp hạng giữa hiệp
+              </span>
+              <p className="text-white font-bold text-sm">
+                Đang hiển thị Bảng xếp hạng trên màn chiếu. Nhấn nút bên dưới để bắt đầu câu hỏi tiếp theo ngay lập tức (không chờ 3s)!
+              </p>
             </div>
           )}
 
@@ -1557,15 +1564,23 @@ export default function AdminRoomPage() {
                 onClick={() => emit("admin:next", { code })}
                 disabled={gameEnded}
                 className={`py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap ${
-                  roomState?.mode === "DICE_RACE" && !currentQuestion ? "animate-pulse ring-2 ring-cyan-400" : ""
+                  intermission
+                    ? "ring-2 ring-cyan-400 animate-pulse text-base font-black bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500"
+                    : roomState?.mode === "DICE_RACE" && !currentQuestion
+                    ? "animate-pulse ring-2 ring-cyan-400"
+                    : ""
                 }`}
               >
                 <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-4 h-4 shrink-0" />
                 <span className="whitespace-nowrap">
                   {roomState?.status === "LOBBY"
                     ? "Bắt đầu game"
+                    : intermission
+                    ? `🚀 Bắt đầu câu hỏi #${intermission.nextQuestionIndex + 1}`
                     : roomState?.mode === "DICE_RACE" && !currentQuestion
                     ? "🎯 Hiện câu hỏi"
+                    : revealPayload
+                    ? "📊 Bảng điểm / Câu kế"
                     : "Câu tiếp theo"}
                 </span>
               </button>

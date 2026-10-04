@@ -12,6 +12,7 @@ import type {
   PowerupUsedPayload,
   AnswerRevealPayload,
   GamePreparePayload,
+  GameIntermissionPayload,
 } from "@/types";
 import { CARD_METADATA } from "@/types";
 import GameQuestion from "@/components/play/GameQuestion";
@@ -54,6 +55,7 @@ export default function PlayPage() {
   const [stealBuzzedTeam, setStealBuzzedTeam] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
@@ -250,6 +252,7 @@ export default function PlayPage() {
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
         if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
         if (p.questionPrepare !== undefined) setQuestionPrepare(p.questionPrepare);
+        if (p.intermission !== undefined) setIntermission(p.intermission);
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
           if (soundEnabledRef.current) soundManager.playFanfare();
@@ -338,6 +341,7 @@ export default function PlayPage() {
     socket.on("game:starting", (p) => {
       setMatchStarting({ seconds: p.seconds });
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       if (soundEnabledRef.current) {
@@ -348,11 +352,21 @@ export default function PlayPage() {
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
       setQuestionPrepare(p);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(p.seconds);
       }
+    });
+
+    socket.on("game:intermission", (p) => {
+      setIntermission(p);
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
     });
 
     socket.on("game:question", (q) => {
@@ -361,6 +375,7 @@ export default function PlayPage() {
       lastQuestionIdRef.current = incomingQId;
       setMatchStarting(null);
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(q);
       // Only reset answered/selection state when it's a genuinely new question.
       // If server re-broadcasts the same question (e.g. state update after someone answers),
@@ -906,34 +921,101 @@ export default function PlayPage() {
     );
   }
 
-  // ── Question Preparation Countdown (3s) ──────────────────────────────────
-  if (questionPrepare) {
+  // ── Intermission Screen (Leaderboard Standings for Player) ─────────────────
+  if (intermission || (!currentQuestion && roomState?.status === "PLAYING")) {
+    const isTeam = roomState?.teamMode === "TEAM";
+    const participants = [...(isTeam ? (roomState?.teams ?? []) : (roomState?.players ?? []))]
+      .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
+    const me = isTeam
+      ? roomState?.teams.find((t) => t.id === activeTeamId)
+      : roomState?.players.find((p) => p.id === playerId);
+    const myRank = me ? participants.findIndex((p: any) => p.id === me.id) + 1 : 0;
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
-        <div className="w-full max-w-sm glass rounded-2xl p-5 sm:p-6 border-2 border-purple-500/40 space-y-4 sm:space-y-5 animate-slide-up">
-          <div className="flex items-center justify-between text-xs text-muted-foreground font-bold">
-            <span>CÂU {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}</span>
-            <span className="text-cyan-400 font-bold">{questionPrepare.points}đ · {questionPrepare.timeLimit}s</span>
+      <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto space-y-4 animate-slide-up justify-between">
+        <div className="space-y-4 pt-2">
+          {/* Intermission Header */}
+          <div className="text-center space-y-1.5">
+            <span className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              📊 Tổng kết điểm số giữa hiệp
+            </span>
+            <h2 className="text-2xl font-black text-white">BẢNG XẾP HẠNG</h2>
+            {intermission && (
+              <p className="text-xs text-cyan-300 font-semibold">
+                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
+            )}
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white">Chuẩn bị câu hỏi!</h2>
-          {questionPrepare.primaryTeamName && (
-            <p className="text-xs font-bold text-purple-300">
-              🎯 Đội trả lời chính: {questionPrepare.primaryTeamName}
-            </p>
+
+          {/* My Team / Player Ranking Highlight Card */}
+          {me && (
+            <div
+              className="p-4 rounded-2xl glass border-2 flex items-center justify-between shadow-xl"
+              style={{ borderColor: (me as any).color || "#a855f7" }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-white shadow"
+                  style={{ background: (me as any).color || "#a855f7" }}
+                >
+                  {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : `#${myRank}`}
+                </div>
+                <div>
+                  <p className="font-bold text-base text-white">{me.name} (Bạn)</p>
+                  <p className="text-xs text-muted-foreground">Hạng #{myRank} trong bảng đấu</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="font-mono font-black text-2xl text-cyan-400">{me.score?.toLocaleString() || 0}</span>
+                <span className="text-xs text-muted-foreground block">điểm</span>
+              </div>
+            </div>
           )}
-          <div className="py-1 sm:py-2">
-            <div className="inline-flex items-center justify-center w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 text-white text-4xl sm:text-5xl font-black shadow-xl animate-bounce-in glow-cyan">
-              {questionPrepare.seconds}
+
+          {/* Standings List */}
+          <div className="glass rounded-2xl p-4 border border-white/10 space-y-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+              Thứ hạng các đội
+            </h3>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+              {participants.map((p: any, idx: number) => {
+                const isMe = me && p.id === me.id;
+                return (
+                  <div
+                    key={p.id}
+                    className={`flex items-center justify-between p-2.5 rounded-xl border text-sm transition-all ${
+                      isMe
+                        ? "bg-purple-500/20 border-purple-500/50 text-white font-bold"
+                        : "bg-white/5 border-white/5 text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-6 text-center font-black text-xs shrink-0">
+                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                      </span>
+                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: p.color || "#6366f1" }} />
+                      <span className="truncate">{p.name} {isMe ? "(Bạn)" : ""}</span>
+                    </div>
+                    <span className="font-mono font-bold text-cyan-400 shrink-0">{p.score?.toLocaleString() || 0}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <p className="text-[11px] sm:text-xs text-muted-foreground">Đáp án và câu hỏi sẽ mở ngay sau đếm ngược</p>
         </div>
-        <button
-          onClick={toggleSound}
-          className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
-        >
-          {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
-        </button>
+
+        {/* Waiting message & sound toggle */}
+        <div className="text-center py-4 space-y-3">
+          <p className="text-xs text-muted-foreground animate-pulse">
+            ⏳ Quản trò đang tổng kết... Câu hỏi tiếp theo sẽ hiển thị ngay khi bắt đầu!
+          </p>
+          <button
+            onClick={toggleSound}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
+          >
+            {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
+          </button>
+        </div>
       </div>
     );
   }

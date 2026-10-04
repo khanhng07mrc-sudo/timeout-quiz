@@ -2024,31 +2024,8 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const preparePayload: GamePreparePayload = {
-        questionIndex,
-        totalQuestions: questions.length,
-        points: q.points,
-        timeLimit: q.timeLimit,
-        seconds: 3,
-        bloomLevel,
-        primaryTeamName,
-      };
-
-      io.to(`room:${room.code}`).emit("game:prepare", preparePayload);
-
-      const timer = setTimeout(() => {
-        launchQuestion();
-      }, 3000);
-
-      roomPrepareStates.set(room.id, {
-        type: "PREPARE",
-        questionIndex,
-        totalQuestions: questions.length,
-        targetTimestamp: Date.now() + 3000,
-        timer,
-        skipCallback: launchQuestion,
-        preparePayload,
-      });
+      // Launch question directly without 3s artificial countdown!
+      launchQuestion();
     }
 
     // ── Fair Card Distribution & Multi-round Replenishment ──────────────────
@@ -3103,23 +3080,15 @@ export function registerSocketHandlers(io: IO) {
       });
       startQuestionTimer(io, room.code, room.id, q.id, effectiveTimeLimit);
 
-      // Trong BUZZ mode: Khi bấm tính giờ mới kích hoạt mở chuông bấm
+      // Trong BUZZ mode: Khi MC bấm tính giờ thủ công, mở chuông NGAY LẬP TỨC (0s delay, không chờ 3s)
       if (room.mode === "BUZZ") {
-        const config = room.config as any;
         const qKey = `${room.id}:${q.id}`;
-        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
-        const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
-        if (buzzUnlockMode === "AUTO") {
-          const autoTimer = setTimeout(() => {
-            roomBuzzUnlocked.set(qKey, true);
-            roomBuzzDelayTimers.delete(qKey);
-            io.to(`room:${room.code}`).emit("game:buzz:unlocked");
-          }, buzzAutoDelay * 1000);
-          roomBuzzDelayTimers.set(qKey, autoTimer);
-        } else {
-          roomBuzzUnlocked.set(qKey, true);
-          io.to(`room:${room.code}`).emit("game:buzz:unlocked");
+        roomBuzzUnlocked.set(qKey, true);
+        if (roomBuzzDelayTimers.has(qKey)) {
+          clearTimeout(roomBuzzDelayTimers.get(qKey)!);
+          roomBuzzDelayTimers.delete(qKey);
         }
+        io.to(`room:${room.code}`).emit("game:buzz:unlocked");
       }
     });
 

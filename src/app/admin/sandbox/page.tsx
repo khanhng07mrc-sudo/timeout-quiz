@@ -14,6 +14,7 @@ import type {
   WagerState,
   TeamWager,
   GamePreparePayload,
+  GameIntermissionPayload,
   TournamentState,
 } from "@/types";
 import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
@@ -117,6 +118,7 @@ export default function AdminSandboxPage() {
   // Admin Features States & Tickers
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [cardsLocked, setCardsLocked] = useState(false);
   const [showEssayModal, setShowEssayModal] = useState(false);
   const [essayGradingScores, setEssayGradingScores] = useState<Record<string, number>>({});
@@ -648,6 +650,8 @@ export default function AdminSandboxPage() {
   timerRef.current = timer;
   const revealPayloadRef = useRef(revealPayload);
   revealPayloadRef.current = revealPayload;
+  const intermissionRef = useRef(intermission);
+  intermissionRef.current = intermission;
 
   const syncToIframes = useCallback((overrides?: Record<string, any>) => {
     const payload = {
@@ -659,6 +663,7 @@ export default function AdminSandboxPage() {
       lastPowerup: null,
       matchStarting: matchStarting,
       questionPrepare: questionPrepare,
+      intermission: intermissionRef.current,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
@@ -1762,79 +1767,53 @@ export default function AdminSandboxPage() {
         }
       }, 1000);
     } else {
-      let prepSeconds = 3;
-      const initialPrepPayload: GamePreparePayload = {
-        questionIndex: nextIdx,
-        totalQuestions: questions.length,
-        seconds: prepSeconds,
-        timeLimit,
-        points: q.points || 10,
-        primaryTeamName: qState.primaryTeamName,
-      };
-      setQuestionPrepare(initialPrepPayload);
-      syncToIframes({
-        questionPrepare: initialPrepPayload,
-        currentQuestion: null,
-        timer: null,
-      });
-      addLog(`Chuẩn bị câu hỏi #${nextIdx + 1} trong 3s...`);
-
-      const proceedLaunchQuestion = () => {
-        if (offlinePrepIntervalRef.current) {
-          clearInterval(offlinePrepIntervalRef.current);
-          offlinePrepIntervalRef.current = null;
-        }
-        setQuestionPrepare(null);
-        setCurrentQuestion(qState);
-        setRevealPayload(null);
-        if (autoTimer) {
-          setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
-          offlineRemainingRef.current = timeLimit;
-          syncToIframes({
-            questionPrepare: null,
-            currentQuestion: qState,
-            timer: { remaining: timeLimit, total: timeLimit, endsAt },
-          });
-          offlineTimerRef.current = setInterval(() => {
-            offlineRemainingRef.current -= 1;
-            const rem = offlineRemainingRef.current;
-            setTimer({ remaining: rem, total: timeLimit, endsAt });
-            if (rem <= 0) {
-              if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
-              offlineTimerRef.current = null;
-            }
-          }, 1000);
-        } else {
-          setTimer(null);
-          syncToIframes({
-            questionPrepare: null,
-            currentQuestion: qState,
-            timer: null,
-          });
-          addLog(`📖 Câu hỏi đã mở (Timer dừng cho MC đọc đề). Nhấn [Bắt đầu tính giờ] để đếm ngược!`);
-        }
-      };
-
-      pendingOfflineLaunchRef.current = proceedLaunchQuestion;
       if (offlinePrepIntervalRef.current) {
         clearInterval(offlinePrepIntervalRef.current);
         offlinePrepIntervalRef.current = null;
       }
-      offlinePrepIntervalRef.current = setInterval(() => {
-        prepSeconds -= 1;
-        if (prepSeconds > 0) {
-          const nextPrepPayload: GamePreparePayload = {
-            ...initialPrepPayload,
-            seconds: prepSeconds,
-          };
-          setQuestionPrepare(nextPrepPayload);
-          syncToIframes({
-            questionPrepare: nextPrepPayload,
-          });
-        } else {
-          proceedLaunchQuestion();
+      setIntermission(null);
+      setQuestionPrepare(null);
+      setCurrentQuestion(qState);
+      setRevealPayload(null);
+
+      if (autoTimer) {
+        setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
+        offlineRemainingRef.current = timeLimit;
+        syncToIframes({
+          intermission: null,
+          questionPrepare: null,
+          currentQuestion: qState,
+          timer: { remaining: timeLimit, total: timeLimit, endsAt },
+        });
+
+        // Mode BUZZ: Nếu cài đặt tự động đếm giờ, chờ 3s đọc đề rồi mới tự động mở chuông
+        if (selectedMode === "BUZZ") {
+          setTimeout(() => {
+            setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: true } : prev));
+            syncToIframes({ currentQuestion: { ...qState, buzzUnlocked: true } });
+            addLog("🔔 [Tự động] Hết 3s đọc đề — Chuông đã MỞ KHÓA cho tất cả các đội bấm!");
+          }, 3000);
         }
-      }, 1000);
+
+        offlineTimerRef.current = setInterval(() => {
+          offlineRemainingRef.current -= 1;
+          const rem = offlineRemainingRef.current;
+          setTimer({ remaining: rem, total: timeLimit, endsAt });
+          if (rem <= 0) {
+            if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+          }
+        }, 1000);
+      } else {
+        setTimer(null);
+        syncToIframes({
+          intermission: null,
+          questionPrepare: null,
+          currentQuestion: qState,
+          timer: null,
+        });
+        addLog(`📖 Câu hỏi #${nextIdx + 1} đã mở ngay (Timer dừng cho MC đọc đề). Nhấn [Mở chuông] hoặc [Bắt đầu tính giờ] để mở chuông ngay lập tức không chờ!`);
+      }
     }
 
     addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
@@ -1947,28 +1926,58 @@ export default function AdminSandboxPage() {
         setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
         setCurrentQuestion(null);
         setRevealPayload(null);
+        setIntermission(null);
         addLog(`🏁 Đã hoàn thành đủ ${targetTotal} câu hỏi theo luật thi đấu! Trận đấu kết thúc và công bố bảng xếp hạng.`);
-        syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null });
+        syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null, intermission: null });
         return;
       }
 
+      // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission): Bắt đầu câu hỏi tiếp theo ngay lập tức!
+      if (intermission) {
+        const nextIdx = intermission.nextQuestionIndex;
+        const qId = questions[nextIdx]?.id || `q_${nextIdx + 1}`;
+        offlineUsedQuestionIdsRef.current.add(qId);
+        setIntermission(null);
+        launchOfflineQuestion(nextIdx);
+        return;
+      }
+
+      // Nếu đang trong câu hỏi hoặc vừa công bố đáp án xong: Chuyển qua màn hình Bảng xếp hạng giữa hiệp
       let nextIdx = -1;
       for (let i = 0; i < questions.length; i++) {
         const qId = questions[i].id || `q_${i + 1}`;
         if (!offlineUsedQuestionIdsRef.current.has(qId)) {
           nextIdx = i;
-          offlineUsedQuestionIdsRef.current.add(qId);
           break;
         }
       }
 
       if (nextIdx === -1) {
         setRoomState((prev) => prev ? { ...prev, status: "FINISHED" } : prev);
+        setIntermission(null);
         addLog("🏁 Hết câu hỏi khả dụng! Trận đấu kết thúc.");
+        syncToIframes({ roomState: { ...(roomState || {}), status: "FINISHED" }, currentQuestion: null, intermission: null });
         return;
       }
 
-      launchOfflineQuestion(nextIdx);
+      // Kích hoạt màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)
+      const intermissionPayload: GameIntermissionPayload = {
+        nextQuestionIndex: nextIdx,
+        totalQuestions: targetTotal,
+        previousQuestionIndex: offlineQIndexRef.current,
+        titleVi: `BẢNG XẾP HẠNG SAU CÂU #${offlineQIndexRef.current + 1}`,
+      };
+      setIntermission(intermissionPayload);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      syncToIframes({
+        intermission: intermissionPayload,
+        currentQuestion: null,
+        revealPayload: null,
+        timer: null,
+      });
+      addLog(`📊 Hiển thị Bảng xếp hạng giữa hiệp (Sau câu #${offlineQIndexRef.current + 1}). Nhấn [Bắt đầu câu hỏi #${nextIdx + 1}] để tiếp tục.`);
       return;
     }
 
@@ -2159,13 +2168,14 @@ export default function AdminSandboxPage() {
       const ptsLimit = currentQuestion.selectedPointLevel === 10 ? 15 : currentQuestion.selectedPointLevel === 20 ? 20 : currentQuestion.selectedPointLevel === 30 ? 30 : null;
       const timeLimit = ptsLimit || quantizeOlympiaTimeLimit(currentQuestion.question?.points || 10, currentQuestion.timeLimit);
       const endsAt = Date.now() + timeLimit * 1000;
-      const updatedQ = {
+      const updatedQ: QuestionState = {
         ...currentQuestion,
         timerPending: false,
         timerStarted: true,
         endsAt,
         timeLimit,
         serverTime: Date.now(),
+        buzzUnlocked: selectedMode === "BUZZ" ? true : currentQuestion.buzzUnlocked,
       };
       setCurrentQuestion(updatedQ);
       offlineRemainingRef.current = timeLimit;
@@ -2184,7 +2194,7 @@ export default function AdminSandboxPage() {
           syncToIframes({ timer: { remaining: 0, total: timeLimit, endsAt: 0 } });
         }
       }, 1000);
-      addLog(`Admin: Bắt đầu tính giờ (${timeLimit}s)`);
+      addLog(`Admin: Bắt đầu tính giờ (${timeLimit}s)${selectedMode === "BUZZ" ? " & Mở chuông ngay lập tức" : ""}`);
       return;
     }
 
@@ -2195,13 +2205,17 @@ export default function AdminSandboxPage() {
   // Mode Specific Handlers
   const handleBuzzUnlock = () => {
     if (isOfflineSandbox) {
-      setCurrentQuestion((prev) => prev ? { ...prev, buzzUnlocked: true } : prev);
-      addLog("🔔 Chuông đã MỞ KHÓA cho tất cả các đội!");
+      if (currentQuestion) {
+        const updatedQ = { ...currentQuestion, buzzUnlocked: true };
+        setCurrentQuestion(updatedQ);
+        syncToIframes({ currentQuestion: updatedQ });
+      }
+      addLog("🔔 Chuông đã MỞ KHÓA NGAY LẬP TỨC (0s delay) cho tất cả các đội!");
       return;
     }
 
     adminSocketRef.current?.emit("admin:buzz:unlock");
-    addLog("Admin: Mở chuông cho thí sinh bấm (admin:buzz:unlock)");
+    addLog("Admin: Mở chuông cho thí sinh bấm ngay lập tức (admin:buzz:unlock)");
   };
 
   const handleBuzzStartAnswer = (duration?: number) => {
@@ -3103,6 +3117,20 @@ export default function AdminSandboxPage() {
                       );
                     }
 
+                    if (intermission) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleAdminNext}
+                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-cyan-400"
+                          title="Vào ngay câu hỏi tiếp theo (0s delay, không chờ 3s)"
+                        >
+                          <span>🚀</span>
+                          <span>Bắt đầu câu hỏi #{intermission.nextQuestionIndex + 1}</span>
+                        </button>
+                      );
+                    }
+
                     return (
                       <button
                         type="button"
@@ -3118,6 +3146,8 @@ export default function AdminSandboxPage() {
                             ? "🚀 Bắt đầu"
                             : roomState?.mode === "DICE_RACE" && !currentQuestion
                             ? "🎯 Hiện câu hỏi"
+                            : revealPayload
+                            ? "📊 Bảng điểm / Câu kế"
                             : "⏩ Câu kế"}
                         </span>
                       </button>

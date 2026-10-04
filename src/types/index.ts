@@ -902,10 +902,18 @@ export interface GamePreparePayload {
   primaryTeamName?: string;
 }
 
+export interface GameIntermissionPayload {
+  nextQuestionIndex: number;
+  totalQuestions: number;
+  previousQuestionIndex?: number;
+  titleVi?: string;
+}
+
 export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "game:starting": (payload: GameStartingPayload) => void;
   "game:prepare": (payload: GamePreparePayload) => void;
+  "game:intermission": (payload: GameIntermissionPayload | null) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
   "game:buzz": (payload: { playerId: string; playerName: string; teamId?: string; teamName?: string }) => void;

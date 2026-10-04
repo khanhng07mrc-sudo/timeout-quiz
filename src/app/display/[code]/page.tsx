@@ -13,6 +13,7 @@ import type {
   PowerupUsedPayload,
   BloomLevel,
   GamePreparePayload,
+  GameIntermissionPayload,
 } from "@/types";
 import { CARD_METADATA, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import PowerupIcon from "@/components/ui/PowerupIcon";
@@ -48,6 +49,7 @@ export default function DisplayPage() {
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
+  const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [displayModeTab, setDisplayModeTab] = useState<"QUESTION" | "BOARD">("QUESTION");
   const [soundMuted, setSoundMuted] = useState(false);
   const [audioUnlocked, setAudioUnlocked] = useState(false);
@@ -159,6 +161,7 @@ export default function DisplayPage() {
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
         if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
         if (p.questionPrepare !== undefined) setQuestionPrepare(p.questionPrepare);
+        if (p.intermission !== undefined) setIntermission(p.intermission);
         if (p.isStealOpen !== undefined) setIsStealOpen(p.isStealOpen);
         if (p.stealBuzzed !== undefined) setStealBuzzed(p.stealBuzzed);
         if (p.eliminationNotice !== undefined) setEliminationNotice(p.eliminationNotice);
@@ -190,6 +193,7 @@ export default function DisplayPage() {
     socket.on("game:starting", (p) => {
       setMatchStarting({ seconds: p.seconds });
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic();
@@ -199,15 +203,27 @@ export default function DisplayPage() {
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
       setQuestionPrepare(p);
+      setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic();
       soundManager.playCountdownTick(p.seconds);
     });
 
+    socket.on("game:intermission", (p) => {
+      setIntermission(p);
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      soundManager.playLobbyMusic();
+    });
+
     socket.on("game:question", (q) => {
       setMatchStarting(null);
       setQuestionPrepare(null);
+      setIntermission(null);
       setCurrentQuestion(q);
       setRevealPayload(null);
       setIsStealOpen(Boolean(q.isStealPhase));
@@ -579,14 +595,23 @@ export default function DisplayPage() {
     );
   }
 
-  // ── Question Preparation Countdown (3s) ──────────────────────────────────
-  if (questionPrepare) {
-    const bloom = questionPrepare.bloomLevel ?? getBloomLevelFromPoints(questionPrepare.points);
-    const bloomMeta = BLOOM_METADATA[bloom];
+  // ── Intermission Screen (Leaderboard / Mode Standings Between Questions) ────
+  if (intermission) {
+    const isCaro = roomState?.mode === "GRID_CARO" && roomState.gridCaroState;
+    const isDice = roomState?.mode === "DICE_RACE" && roomState.diceRaceState;
+    const isWager = roomState?.mode === "WAGER" && roomState.wagerState;
+    const isTour = roomState?.mode === "TOURNAMENT" && roomState.tournamentState;
+
+    const participants = [...(roomState?.teamMode === "TEAM" ? roomState.teams : roomState?.players ?? [])]
+      .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
+    const top1 = participants[0];
+    const top2 = participants[1];
+    const top3 = participants[2];
+    const rest = participants.slice(3);
 
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center p-8 bg-gradient-to-br from-[#0c0d18] via-[#121429] to-[#0c1a2e] relative overflow-hidden cursor-pointer"
+        className="min-h-screen flex flex-col justify-between p-4 sm:p-8 bg-gradient-to-br from-[#0c0d18] via-[#121429] to-[#0c1a2e] relative overflow-hidden cursor-pointer"
         onClick={handleUnlockAudio}
       >
         {/* Floating Sound Toggle */}
@@ -609,42 +634,158 @@ export default function DisplayPage() {
           </div>
         )}
 
-        <div className="w-full max-w-3xl glass rounded-3xl p-10 text-center border-2 border-purple-500/40 glow-purple space-y-8 animate-slide-up relative">
-          <div className="flex items-center justify-between border-b border-border/60 pb-4">
-            <span className="text-base font-bold text-muted-foreground uppercase tracking-widest">
-              Câu hỏi {questionPrepare.questionIndex + 1} / {questionPrepare.totalQuestions}
-            </span>
-            <span
-              className="px-4 py-1.5 rounded-full text-sm font-bold border"
-              style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}60`, background: bloomMeta.bg }}
-            >
-              {bloomMeta.emoji} {bloomMeta.labelVi}
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-sm uppercase tracking-wider text-cyan-300 font-semibold">Chuẩn bị</p>
-            <h2 className="text-4xl sm:text-5xl font-black text-white">
-              Sẵn sàng câu trả lời!
-            </h2>
-            <div className="flex items-center justify-center gap-6 pt-2 text-lg text-muted-foreground font-medium">
-              <span>💰 Điểm: <strong className="text-cyan-400 font-bold">{questionPrepare.points} điểm</strong></span>
-              <span>⏱️ Thời gian: <strong className="text-purple-400 font-bold">{questionPrepare.timeLimit}s</strong></span>
+        {/* Mode Specific Standings */}
+        {isCaro ? (
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+            <div className="text-center mb-4">
+              <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                Bàn cờ Caro & Lượt thi đấu
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">CỤC DIỆN BÀN CỜ CARO</h2>
+              <p className="text-sm text-cyan-300 mt-1 font-semibold">
+                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
             </div>
-            {questionPrepare.primaryTeamName && (
-              <div className="mt-4 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-bold text-base inline-block">
-                🎯 Lượt trả lời chính: {questionPrepare.primaryTeamName}
+            <GridCaroBoard gridState={roomState.gridCaroState!} isDisplay={true} />
+          </div>
+        ) : isDice ? (
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+            <div className="text-center mb-4">
+              <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                Đường đua xúc xắc & Vị trí các đội
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">ĐƯỜNG ĐUA XÍ NGẦU</h2>
+              <p className="text-sm text-cyan-300 mt-1 font-semibold">
+                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
+            </div>
+            <DiceRaceTrack diceState={roomState.diceRaceState!} isDisplay={true} />
+          </div>
+        ) : isWager ? (
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+            <div className="text-center mb-4">
+              <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                Bảng điểm & Điểm cược các đội
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">TỔNG KẾT ĐIỂM CƯỢC</h2>
+              <p className="text-sm text-cyan-300 mt-1 font-semibold">
+                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
+            </div>
+            <WagerPanel
+              wagerState={roomState.wagerState!}
+              isDisplay={true}
+              teams={roomState.teams}
+              positiveTeamsCount={roomState.teams.filter((t) => t.score > 0).length}
+            />
+          </div>
+        ) : isTour ? (
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+            <div className="text-center mb-4">
+              <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                Nhánh thi đấu đối kháng 1v1
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">CÂY ĐẤU LOẠI TRỰC TIẾP</h2>
+              <p className="text-sm text-cyan-300 mt-1 font-semibold">
+                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
+            </div>
+            <TournamentBracket tournamentState={roomState.tournamentState!} isDisplay={true} />
+          </div>
+        ) : (
+          /* Grand Leaderboard Intermission for BUZZ, CLASSIC, OLYMPIA, ELIMINATION, etc. */
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center items-center py-4 space-y-6 animate-slide-up">
+            <div className="text-center space-y-2">
+              <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 border border-purple-500/40 text-cyan-300 font-black text-xs uppercase tracking-widest shadow-lg">
+                <span>📊</span>
+                <span>BẢNG XẾP HẠNG TỔNG HỢP GIỮA CÁC CÂU THI</span>
+              </div>
+              <h2 className="text-4xl sm:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-300 to-cyan-400 bg-clip-text text-transparent">
+                CỤC DIỆN ĐIỂM SỐ
+              </h2>
+              <p className="text-sm sm:text-base text-slate-300">
+                Sẵn sàng cho Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+              </p>
+            </div>
+
+            {/* Top 3 Podium */}
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 w-full max-w-3xl items-end pt-6">
+              {/* Rank 2 (Silver) */}
+              {top2 ? (
+                <div className="flex flex-col items-center animate-slide-up">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-slate-300 shadow-xl flex items-center justify-center text-2xl font-black mb-2" style={{ background: (top2 as any)?.color || "#94a3b8" }}>
+                    {top2.name.charAt(0).toUpperCase()}
+                  </div>
+                  <p className="font-black text-sm sm:text-lg text-white truncate max-w-[110px] sm:max-w-[150px]">{top2.name}</p>
+                  <p className="text-cyan-300 font-mono font-black text-base sm:text-2xl mt-0.5">{top2.score?.toLocaleString() || 0} pts</p>
+                  <div className="w-full h-32 sm:h-40 glass rounded-t-2xl border-t-4 border-slate-300 bg-slate-500/20 flex flex-col items-center justify-center mt-2 shadow-xl">
+                    <span className="text-3xl sm:text-4xl">🥈</span>
+                    <span className="text-xs font-black uppercase text-slate-300 mt-1">HẠNG 2</span>
+                  </div>
+                </div>
+              ) : <div />}
+
+              {/* Rank 1 (Gold) */}
+              {top1 ? (
+                <div className="flex flex-col items-center animate-bounce-in relative">
+                  <span className="text-3xl sm:text-4xl absolute -top-10 animate-bounce">👑</span>
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-yellow-400 shadow-2xl flex items-center justify-center text-3xl font-black mb-2 ring-4 ring-yellow-400/40 glow-purple" style={{ background: (top1 as any)?.color || "#eab308" }}>
+                    {top1.name.charAt(0).toUpperCase()}
+                  </div>
+                  <p className="font-black text-base sm:text-xl text-yellow-300 truncate max-w-[130px] sm:max-w-[180px]">{top1.name}</p>
+                  <p className="text-yellow-400 font-mono font-black text-xl sm:text-3xl mt-0.5">{top1.score?.toLocaleString() || 0} pts</p>
+                  <div className="w-full h-44 sm:h-52 glass rounded-t-2xl border-t-4 border-yellow-400 bg-yellow-500/20 flex flex-col items-center justify-center mt-2 shadow-2xl ring-2 ring-yellow-400/30">
+                    <span className="text-4xl sm:text-5xl">🥇</span>
+                    <span className="text-sm font-black uppercase text-yellow-300 mt-1">QUÁN QUÂN</span>
+                  </div>
+                </div>
+              ) : <div />}
+
+              {/* Rank 3 (Bronze) */}
+              {top3 ? (
+                <div className="flex flex-col items-center animate-slide-up">
+                  <div className="w-14 h-14 sm:w-18 sm:h-18 rounded-full border-4 border-amber-600 shadow-xl flex items-center justify-center text-xl font-black mb-2" style={{ background: (top3 as any)?.color || "#d97706" }}>
+                    {top3.name.charAt(0).toUpperCase()}
+                  </div>
+                  <p className="font-black text-xs sm:text-base text-white truncate max-w-[100px] sm:max-w-[140px]">{top3.name}</p>
+                  <p className="text-cyan-300 font-mono font-black text-sm sm:text-xl mt-0.5">{top3.score?.toLocaleString() || 0} pts</p>
+                  <div className="w-full h-24 sm:h-32 glass rounded-t-2xl border-t-4 border-amber-600 bg-amber-600/20 flex flex-col items-center justify-center mt-2 shadow-xl">
+                    <span className="text-2xl sm:text-3xl">🥉</span>
+                    <span className="text-xs font-black uppercase text-amber-400 mt-1">HẠNG 3</span>
+                  </div>
+                </div>
+              ) : <div />}
+            </div>
+
+            {/* Remaining teams list (Rank 4+) */}
+            {rest.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full max-w-2xl pt-2">
+                {rest.map((p: any, idx: number) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center justify-between p-3 rounded-xl glass border border-white/10"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs font-black text-slate-300 shrink-0">
+                        #{idx + 4}
+                      </span>
+                      <div className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: p.color || "#6366f1" }} />
+                      <span className="font-bold text-sm text-white truncate">{p.name}</span>
+                    </div>
+                    <span className="font-mono font-bold text-sm text-cyan-300 shrink-0">{p.score?.toLocaleString() || 0} pts</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+        )}
 
-          <div className="pt-4 pb-2">
-            <div className="inline-flex items-center justify-center w-36 h-36 rounded-full bg-gradient-to-br from-purple-600 via-indigo-600 to-cyan-500 text-white text-7xl font-black shadow-2xl animate-bounce-in glow-cyan border-4 border-white/30">
-              {questionPrepare.seconds}
-            </div>
-          </div>
-
-          <p className="text-sm text-white/50">Chú ý đọc nhanh nội dung câu hỏi khi xuất hiện</p>
+        {/* Footer announcement */}
+        <div className="text-center py-3 border-t border-white/10">
+          <p className="text-xs sm:text-sm text-cyan-300/80 font-medium animate-pulse inline-flex items-center gap-2">
+            <span>⚡</span>
+            <span>Quản trò đang kiểm tra điểm số · Chuẩn bị bước vào câu hỏi tiếp theo!</span>
+          </p>
         </div>
       </div>
     );
@@ -1238,7 +1379,15 @@ export default function DisplayPage() {
                 />
               </div>
             ) : (
-              <p className="text-3xl text-muted-foreground">⏳ Chờ câu hỏi tiếp theo...</p>
+              <div className="flex flex-col items-center justify-center p-6 space-y-4 text-center">
+                <div className="w-16 h-16 rounded-full bg-purple-500/20 flex items-center justify-center text-3xl animate-pulse">
+                  📊
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-white">BẢNG XẾP HẠNG THỜI GIAN THỰC</h3>
+                  <p className="text-sm text-cyan-300 mt-1">Đang chờ câu hỏi tiếp theo từ Quản trò...</p>
+                </div>
+              </div>
             )}
           </div>
         )}

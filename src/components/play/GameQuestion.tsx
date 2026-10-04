@@ -442,7 +442,7 @@ export default function GameQuestion({
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-300 border border-green-500/40 font-normal animate-pulse">
                       Chuông đã mở!
                     </span>
-                  ) : question.buzzUnlockMode === "MANUAL" ? (
+                  ) : question.buzzUnlockMode === "MANUAL" || !question.timerStarted ? (
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-normal">
                       🔒 Chờ MC mở chuông
                     </span>
@@ -455,8 +455,8 @@ export default function GameQuestion({
                 <p className="text-xs text-muted-foreground">
                   {question.buzzUnlocked
                     ? "Đội bấm chuông sớm nhất sẽ giành quyền trả lời duy nhất! (Sai trừ 50% điểm câu hỏi)"
-                    : question.buzzUnlockMode === "MANUAL"
-                    ? "Quản trò sẽ mở khóa chuông sau khi đọc xong câu hỏi."
+                    : question.buzzUnlockMode === "MANUAL" || !question.timerStarted
+                    ? "Quản trò sẽ mở khóa chuông sau khi đọc xong câu hỏi (mở ngay lập tức không chờ)."
                     : `Hệ thống đếm ngược ${question.buzzAutoDelaySeconds ?? 3} giây trước khi mở chuông tự động.`}
                 </p>
               </div>

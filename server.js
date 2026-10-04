@@ -2390,28 +2390,7 @@ function registerSocketHandlers(io2) {
         launchQuestion();
         return;
       }
-      const preparePayload = {
-        questionIndex,
-        totalQuestions: questions.length,
-        points: q.points,
-        timeLimit: q.timeLimit,
-        seconds: 3,
-        bloomLevel,
-        primaryTeamName
-      };
-      io2.to(`room:${room.code}`).emit("game:prepare", preparePayload);
-      const timer = setTimeout(() => {
-        launchQuestion();
-      }, 3e3);
-      roomPrepareStates.set(room.id, {
-        type: "PREPARE",
-        questionIndex,
-        totalQuestions: questions.length,
-        targetTimestamp: Date.now() + 3e3,
-        timer,
-        skipCallback: launchQuestion,
-        preparePayload
-      });
+      launchQuestion();
     }
     async function ensureInitialTeamPowerups(roomId, ioInstance) {
       try {
@@ -3297,21 +3276,13 @@ function registerSocketHandlers(io2) {
       });
       startQuestionTimer(io2, room.code, room.id, q.id, effectiveTimeLimit);
       if (room.mode === "BUZZ") {
-        const config = room.config;
         const qKey = `${room.id}:${q.id}`;
-        const buzzUnlockMode = config?.buzzUnlockMode ?? "AUTO";
-        const buzzAutoDelay = Math.max(3, Number(config?.buzzAutoDelay) || 3);
-        if (buzzUnlockMode === "AUTO") {
-          const autoTimer = setTimeout(() => {
-            roomBuzzUnlocked.set(qKey, true);
-            roomBuzzDelayTimers.delete(qKey);
-            io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
-          }, buzzAutoDelay * 1e3);
-          roomBuzzDelayTimers.set(qKey, autoTimer);
-        } else {
-          roomBuzzUnlocked.set(qKey, true);
-          io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
+        roomBuzzUnlocked.set(qKey, true);
+        if (roomBuzzDelayTimers.has(qKey)) {
+          clearTimeout(roomBuzzDelayTimers.get(qKey));
+          roomBuzzDelayTimers.delete(qKey);
         }
+        io2.to(`room:${room.code}`).emit("game:buzz:unlocked");
       }
     });
     socket.on("admin:grid:advance_now", async () => {

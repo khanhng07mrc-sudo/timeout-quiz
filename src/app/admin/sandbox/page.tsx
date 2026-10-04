@@ -132,6 +132,7 @@ export default function AdminSandboxPage() {
   const offlinePrepIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const offlineWarmupIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingOfflineLaunchRef = useRef<(() => void) | null>(null);
+  const handleWagerLaunchQuestionRef = useRef<() => void>(() => {});
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -1155,7 +1156,10 @@ export default function AdminSandboxPage() {
       setRoomState(nextRoomState);
       setTimer(null);
       syncToIframes({ roomState: nextRoomState, timer: null });
-      addLog(`Admin: Bỏ qua đếm ngược cược — Đã chốt cược: [${winningTeamName || "Đội cược"}] với ${assignedHighest}đ`);
+      addLog(`Admin: Bỏ qua đếm ngược cược — Đã chốt cược: [${winningTeamName || "Đội cược"}] với ${assignedHighest}đ. Tự động mở câu hỏi sau 2.5s...`);
+      setTimeout(() => {
+        handleWagerLaunchQuestionRef.current();
+      }, 2500);
       return;
     }
     adminSocketRef.current?.emit("admin:wager:skip_timer" as any, { code });
@@ -1770,7 +1774,10 @@ export default function AdminSandboxPage() {
                 roomState: { ...(roomState || {}), wagerState: { ...newWagerState } },
                 timer: null,
               });
-              addLog(`⌛ Đã hết ${configuredWagerDuration}s cược! Nhấn [Mở câu hỏi cược] để bắt đầu trả lời.`);
+              addLog(`⌛ Đã hết ${configuredWagerDuration}s cược! Tự động chốt cược và mở câu hỏi trong 2.5s...`);
+              setTimeout(() => {
+                handleWagerLaunchQuestionRef.current();
+              }, 2500);
             }
           }, 1000);
         }
@@ -2744,6 +2751,7 @@ export default function AdminSandboxPage() {
     adminSocketRef.current?.emit("admin:wager:launch_question");
     addLog("Admin: Mở câu hỏi cược cho thí sinh (admin:wager:launch_question)");
   };
+  handleWagerLaunchQuestionRef.current = handleWagerLaunchQuestion;
 
   const handleForceActiveTeamAnswer = (isCorrect: boolean) => {
     if (!currentQuestion || !currentTeam) return;

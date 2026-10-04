@@ -794,6 +794,7 @@ export interface WagerState {
   wagerSubPhase?: "INITIAL_5S" | "MAIN_15S";
   autoAssignedTeamId?: string;
   autoAssignedTeamName?: string;
+  autoLaunchCountdown?: number;
   questionReady?: boolean;
   wagerTimeRemaining: number;
   wagerTimeTotal: number;

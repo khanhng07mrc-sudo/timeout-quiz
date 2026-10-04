@@ -1023,7 +1023,7 @@ export default function DisplayPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="min-h-screen flex flex-col xl:grid xl:grid-cols-[1fr_340px] gap-3 sm:gap-4 p-3 sm:p-4 relative" onClick={handleUnlockAudio}>
+    <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2.5 sm:gap-3 p-2 sm:p-3 relative" onClick={handleUnlockAudio}>
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}
@@ -1106,7 +1106,7 @@ export default function DisplayPage() {
 
         {/* Question (hidden if viewing full board tab in DICE_RACE) */}
         {currentQuestion && displayModeTab !== "BOARD" && (
-          <div className="flex-1 glass rounded-2xl p-4 sm:p-8 flex flex-col justify-between">
+          <div className="flex-1 glass rounded-2xl p-3.5 sm:p-6 flex flex-col justify-between">
             {currentQuestion.bouncebackSelectPhase ? (
               <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
                 <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 border border-indigo-400/50 text-indigo-300 font-black text-sm sm:text-base uppercase tracking-widest shadow-xl">
@@ -1162,7 +1162,7 @@ export default function DisplayPage() {
               <div>
 
               {/* Timer & Turn Info */}
-              <div className="flex items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex items-center justify-between gap-2.5 sm:gap-4 mb-2.5 sm:mb-4">
                 <div className="flex items-center gap-3 sm:gap-4">
                   {timer && (
                     <svg className="w-12 h-12 sm:w-16 sm:h-16 shrink-0" viewBox="0 0 64 64">
@@ -1285,23 +1285,23 @@ export default function DisplayPage() {
               </div>
 
               {/* Question content */}
-              <h2 className="text-xl sm:text-3xl font-bold mb-4 sm:mb-6 leading-relaxed">{currentQuestion.question.content}</h2>
+              <h2 className="text-lg sm:text-2xl font-bold mb-2.5 sm:mb-4 leading-snug">{currentQuestion.question.content}</h2>
 
               {currentQuestion.question.mediaUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-52 sm:max-h-64 rounded-xl mb-4 sm:mb-6 mx-auto" />
+                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-44 sm:max-h-56 rounded-xl mb-3 sm:mb-4 mx-auto" />
               )}
 
               {/* Options */}
               {currentQuestion.question.options && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
                   {currentQuestion.question.options.map((opt, i) => {
                     const labels = ["A", "B", "C", "D", "E", "F"];
                     const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
                     return (
                       <div
                         key={opt.id}
-                        className={`p-3.5 sm:p-5 rounded-xl border-2 transition-all text-base sm:text-xl font-medium ${
+                        className={`p-2.5 sm:p-3.5 rounded-xl border-2 transition-all text-sm sm:text-base font-medium ${
                           revealPayload
                             ? isRevealed
                               ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50"
@@ -1309,7 +1309,7 @@ export default function DisplayPage() {
                             : "border-border glass"
                         }`}
                       >
-                        <span className="font-black mr-2.5 sm:mr-3 text-purple-400">{labels[i]}.</span>
+                        <span className="font-black mr-2 sm:mr-2.5 text-purple-400">{labels[i]}.</span>
                         {opt.text}
                       </div>
                     );
@@ -1319,21 +1319,21 @@ export default function DisplayPage() {
 
               {/* Prominent Correct Answer Banner on Reveal */}
               {revealPayload && (
-                <div className="mt-4 p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 border-2 border-emerald-500 shadow-2xl animate-slide-up space-y-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-2xl sm:text-3xl">✅</span>
+                <div className="mt-3 p-3 sm:p-4 rounded-xl bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 border-2 border-emerald-500 shadow-xl animate-slide-up space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl">✅</span>
                     <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300">
                       ĐÁP ÁN CHÍNH XÁC
                     </span>
                   </div>
-                  <p className="text-xl sm:text-3xl font-black text-white leading-relaxed">
+                  <p className="text-lg sm:text-2xl font-black text-white leading-relaxed">
                     {revealPayload.correctAnswerText ||
                       (Array.isArray(revealPayload.correctAnswer)
                         ? revealPayload.correctAnswer.join(", ")
                         : revealPayload.correctAnswer)}
                   </p>
                   {(revealPayload.explanation || currentQuestion.question.hint) && (
-                    <div className="pt-2.5 border-t border-emerald-500/30 text-sm sm:text-base text-emerald-200/90 flex items-start gap-2">
+                    <div className="pt-2 border-t border-emerald-500/30 text-xs sm:text-sm text-emerald-200/90 flex items-start gap-1.5">
                       <span className="font-bold shrink-0">💡 Giải thích:</span>
                       <span className="leading-relaxed">
                         {revealPayload.explanation || currentQuestion.question.hint}
@@ -1498,37 +1498,39 @@ export default function DisplayPage() {
       </div>
 
       {/* Leaderboard sidebar */}
-      <div className="glass rounded-2xl p-4 flex flex-col gap-2">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold inline-flex items-center gap-2">
-            <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
+      <div className="glass rounded-2xl p-2.5 sm:p-3 flex flex-col gap-1.5 min-h-0 overflow-hidden">
+        <div className="flex items-center justify-between pb-1 border-b border-white/10 shrink-0">
+          <h3 className="text-sm font-bold inline-flex items-center gap-1.5 text-white">
+            <SystemIcon name="trophy" className="w-4 h-4 text-amber-400 shrink-0" />
             <span>Bảng điểm</span>
           </h3>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={(e) => { e.stopPropagation(); setShowRulesModal(true); }}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 text-cyan-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1"
+              className="px-2 py-0.5 rounded-lg text-[11px] font-bold glass border border-white/20 text-cyan-300 hover:text-white hover:bg-white/10 transition flex items-center gap-1"
             >
               <span>📖</span>
               <span>Luật</span>
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); toggleSound(); }}
-              className="px-2.5 py-1 rounded-lg text-xs font-bold glass border border-white/20 hover:bg-white/10 transition"
+              className="px-2 py-0.5 rounded-lg text-[11px] font-bold glass border border-white/20 hover:bg-white/10 transition"
             >
               {soundMuted ? "🔇 Tắt" : "🔊 Bật"}
             </button>
           </div>
         </div>
-        {sortedTeams.map((entry: any, i) => (
-          <div key={entry.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
-            <span className="text-xl font-black w-8">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{entry.name}</p>
+        <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 min-h-0">
+          {sortedTeams.map((entry: any, i) => (
+            <div key={entry.id} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
+              <span className="text-sm font-black w-6 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate">{entry.name}</p>
+              </div>
+              <span className="font-bold font-mono text-cyan-400 shrink-0">{entry.score.toLocaleString()}đ</span>
             </div>
-            <span className="font-black text-cyan-400">{entry.score.toLocaleString()}</span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Rules Modal */}

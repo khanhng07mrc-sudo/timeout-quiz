@@ -96,6 +96,7 @@ const roomDiceRaces = new Map<string, DiceRaceState>();
 const roomWagers = new Map<string, WagerState>();
 const roomUsedQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
 const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager timer
+const roomWagerAutoLaunchTimers = new Map<string, NodeJS.Timeout>(); // roomId -> auto launch timer after wager ends
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
 const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
 const roomIntermissions = new Map<string, GameIntermissionPayload>(); // roomId -> current intermission state
@@ -231,12 +232,140 @@ function stopGridCaroPreview(ioInstance: IO, roomId: string, roomCode: string) {
   }
 }
 
+async function assignDefaultWagerTeamIfNone(roomId: string, wagerState: WagerState) {
+  if (!wagerState.lastWagerTeamId || !wagerState.wagerHistory || wagerState.wagerHistory.length === 0) {
+    const teams = await prisma.team.findMany({ where: { roomId } });
+    const activeTeams = teams.filter((t) => !t.isEliminated);
+    const prevWagerTeamId = wagerState.previousQuestionWagerTeamId;
+    const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0
+      ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
+      : activeTeams;
+
+    const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
+    let pickedTeam: typeof activeTeams[0] | undefined;
+    let assignedWager = 10;
+
+    if (teamsGte10.length > 0) {
+      pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
+      assignedWager = 10;
+    } else {
+      const teams5 = eligibleTeams.filter((t) => t.score === 5);
+      const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
+      if (pool5.length > 0) {
+        pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
+        assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
+      }
+    }
+
+    if (pickedTeam) {
+      wagerState.currentHighestWager = assignedWager;
+      wagerState.lastWagerTeamId = pickedTeam.id;
+      wagerState.autoAssignedTeamId = pickedTeam.id;
+      wagerState.autoAssignedTeamName = pickedTeam.name;
+      wagerState.wagerHistory = [{
+        order: 1,
+        teamId: pickedTeam.id,
+        teamName: pickedTeam.name,
+        teamColor: pickedTeam.color,
+        amount: assignedWager,
+        timestamp: Date.now(),
+      }];
+      wagerState.teamWagers[pickedTeam.id] = {
+        teamId: pickedTeam.id,
+        teamName: pickedTeam.name,
+        amount: assignedWager,
+        submitted: true,
+        order: 1,
+      };
+    }
+  }
+}
+
+async function launchWagerQuestion(ioInstance: IO, roomId: string, roomCode: string) {
+  const existingAutoTimer = roomWagerAutoLaunchTimers.get(roomId);
+  if (existingAutoTimer) {
+    clearTimeout(existingAutoTimer);
+    roomWagerAutoLaunchTimers.delete(roomId);
+  }
+
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+  });
+  if (!room || room.mode !== "WAGER" || room.status !== "PLAYING") return;
+  const wagerState = roomWagers.get(room.id);
+  if (!wagerState) return;
+
+  const questions = room.quizBank?.questions ?? [];
+  const q = questions[room.currentQuestion];
+  if (!q) return;
+
+  wagerState.phase = "QUESTION_PERIOD";
+  wagerState.questionReady = true;
+  wagerState.autoLaunchCountdown = undefined;
+
+  const qKey = `${room.id}:${q.id}`;
+  roomQuestionProcessed.delete(qKey);
+
+  let winningTeamName = wagerState.autoAssignedTeamName || "Đội cược";
+  if (wagerState.lastWagerTeamId) {
+    const teamObj = await prisma.team.findUnique({ where: { id: wagerState.lastWagerTeamId } });
+    if (teamObj) winningTeamName = teamObj.name;
+  }
+
+  const answerMethod = (room.config as any)?.answerMethod ?? "DEVICE";
+  const isDeviceAnswer = answerMethod === "DEVICE";
+  const bloomLevel = getBloomLevelFromPoints(q.points);
+  const effectiveTimeLimit = isDeviceAnswer ? getStandardQuestionTimeLimit(q) : quantizeOlympiaTimeLimit(q.points, q.timeLimit);
+  const questionState = buildQuestionState(q, {
+    bloomLevel,
+    answerMethod,
+    wagerPhase: "QUESTION_PERIOD",
+    primaryTeamId: wagerState.lastWagerTeamId,
+    primaryTeamName: winningTeamName,
+  });
+  questionState.timeLimit = effectiveTimeLimit;
+  questionState.question.timeLimit = effectiveTimeLimit;
+
+  const autoTimer = (room.config as any)?.autoTimerStart ?? false;
+  if (autoTimer) {
+    questionState.timerPending = false;
+    questionState.timerStarted = true;
+    startQuestionTimer(ioInstance, room.code, room.id, q.id, effectiveTimeLimit);
+  } else {
+    questionState.timerPending = true;
+    questionState.timerStarted = false;
+  }
+  roomActiveQuestions.set(room.id, questionState);
+
+  ioInstance.to(`room:${room.code}`).emit("game:question", questionState);
+  ioInstance.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+}
+
+function scheduleWagerAutoLaunch(ioInstance: IO, roomId: string, roomCode: string) {
+  const existingAutoTimer = roomWagerAutoLaunchTimers.get(roomId);
+  if (existingAutoTimer) {
+    clearTimeout(existingAutoTimer);
+  }
+  const timer = setTimeout(async () => {
+    roomWagerAutoLaunchTimers.delete(roomId);
+    await launchWagerQuestion(ioInstance, roomId, roomCode);
+  }, 2500);
+  roomWagerAutoLaunchTimers.set(roomId, timer);
+}
+
 function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string, duration?: number) {
   const existingTimer = roomWagerTimers.get(roomId);
   if (existingTimer) {
     clearInterval(existingTimer);
     clearTimeout(existingTimer);
     roomWagerTimers.delete(roomId);
+  }
+
+  const existingAutoLaunch = roomWagerAutoLaunchTimers.get(roomId);
+  if (existingAutoLaunch) {
+    clearTimeout(existingAutoLaunch);
+    roomWagerAutoLaunchTimers.delete(roomId);
   }
 
   const wagerState = roomWagers.get(roomId);
@@ -249,16 +378,18 @@ function startWager15sCountdown(ioInstance: IO, roomId: string, roomCode: string
   ioInstance.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
 
   let wRem = wagerTime;
-  const wTimer = setInterval(() => {
+  const wTimer = setInterval(async () => {
     wRem--;
     wagerState.wagerTimeRemaining = wRem;
     if (wRem <= 0) {
       clearInterval(wTimer);
       roomWagerTimers.delete(roomId);
+      await assignDefaultWagerTeamIfNone(roomId, wagerState);
       wagerState.phase = "QUESTION_PERIOD";
-      wagerState.questionReady = false; // Await admin manual trigger to launch question!
+      wagerState.questionReady = false;
       wagerState.wagerTimeRemaining = 0;
       ioInstance.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
+      scheduleWagerAutoLaunch(ioInstance, roomId, roomCode);
     } else {
       ioInstance.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
     }
@@ -500,7 +631,13 @@ export function cleanupRoomInMemory(roomId: string) {
     const wagerTimer = roomWagerTimers.get(roomId);
     if (wagerTimer) {
       clearInterval(wagerTimer);
+      clearTimeout(wagerTimer);
       roomWagerTimers.delete(roomId);
+    }
+    const wagerAutoTimer = roomWagerAutoLaunchTimers.get(roomId);
+    if (wagerAutoTimer) {
+      clearTimeout(wagerAutoTimer);
+      roomWagerAutoLaunchTimers.delete(roomId);
     }
     const gridTimer = roomGridTimers.get(roomId);
     if (gridTimer) {
@@ -1926,7 +2063,13 @@ export function registerSocketHandlers(io: IO) {
       const existingWagerTimer = roomWagerTimers.get(room.id);
       if (existingWagerTimer) {
         clearInterval(existingWagerTimer);
+        clearTimeout(existingWagerTimer);
         roomWagerTimers.delete(room.id);
+      }
+      const existingWagerAutoTimer = roomWagerAutoLaunchTimers.get(room.id);
+      if (existingWagerAutoTimer) {
+        clearTimeout(existingWagerAutoTimer);
+        roomWagerAutoLaunchTimers.delete(room.id);
       }
 
       const q = specificQ || questions[questionIndex];
@@ -3194,17 +3337,19 @@ export function registerSocketHandlers(io: IO) {
         );
 
         if (!canAnyTeamBet) {
-          // Không còn đội nào có thể cược tiếp: Chốt phiên cược! Chờ Admin chủ động mở câu hỏi.
+          // Không còn đội nào có thể cược tiếp: Chốt phiên cược & tự động mở câu hỏi sau 2.5s
           const wTimer = roomWagerTimers.get(room.id);
           if (wTimer) {
             clearTimeout(wTimer);
             clearInterval(wTimer);
             roomWagerTimers.delete(room.id);
           }
+          await assignDefaultWagerTeamIfNone(room.id, wagerState);
           wagerState.phase = "QUESTION_PERIOD";
           wagerState.questionReady = false;
           wagerState.wagerTimeRemaining = 0;
           io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+          scheduleWagerAutoLaunch(io, room.id, room.code);
         }
       }
     });
@@ -3507,109 +3652,18 @@ export function registerSocketHandlers(io: IO) {
         roomWagerTimers.delete(room.id);
       }
 
-      // Nếu chưa có đội nào cược, hệ thống gán ngẫu nhiên 1 đội
-      if (!wagerState.lastWagerTeamId || wagerState.wagerHistory.length === 0) {
-        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-        const activeTeams = teams.filter((t) => !t.isEliminated);
-        const prevWagerTeamId = wagerState.previousQuestionWagerTeamId;
-        const eligibleTeams = prevWagerTeamId && activeTeams.filter((t) => t.id !== prevWagerTeamId).length > 0
-          ? activeTeams.filter((t) => t.id !== prevWagerTeamId)
-          : activeTeams;
-
-        const teamsGte10 = eligibleTeams.filter((t) => t.score >= 10);
-
-        let pickedTeam: typeof activeTeams[0] | undefined;
-        let assignedWager = 10;
-
-        if (teamsGte10.length > 0) {
-          pickedTeam = teamsGte10[Math.floor(Math.random() * teamsGte10.length)];
-          assignedWager = 10;
-        } else {
-          // Nếu tất cả các đội < 10đ: chọn ngẫu nhiên giữa các đội 5đ và gán 5đ
-          const teams5 = eligibleTeams.filter((t) => t.score === 5);
-          const pool5 = teams5.length > 0 ? teams5 : eligibleTeams.filter((t) => t.score > 0);
-          if (pool5.length > 0) {
-            pickedTeam = pool5[Math.floor(Math.random() * pool5.length)];
-            assignedWager = Math.min(5, pickedTeam.score > 0 ? pickedTeam.score : 5);
-          }
-        }
-
-        if (pickedTeam) {
-          wagerState.currentHighestWager = assignedWager;
-          wagerState.lastWagerTeamId = pickedTeam.id;
-          wagerState.autoAssignedTeamId = pickedTeam.id;
-          wagerState.autoAssignedTeamName = pickedTeam.name;
-          wagerState.wagerHistory = [{
-            order: 1,
-            teamId: pickedTeam.id,
-            teamName: pickedTeam.name,
-            teamColor: pickedTeam.color,
-            amount: assignedWager,
-            timestamp: Date.now(),
-          }];
-          wagerState.teamWagers[pickedTeam.id] = {
-            teamId: pickedTeam.id,
-            teamName: pickedTeam.name,
-            amount: assignedWager,
-            submitted: true,
-            order: 1,
-          };
-        }
-      }
-
+      await assignDefaultWagerTeamIfNone(room.id, wagerState);
       wagerState.phase = "QUESTION_PERIOD";
-      wagerState.questionReady = false; // Chờ Admin chủ động nhấn hiện câu hỏi
+      wagerState.questionReady = false;
       wagerState.wagerTimeRemaining = 0;
       io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+      scheduleWagerAutoLaunch(io, room.id, room.code);
     });
 
     socket.on("admin:wager:launch_question", async () => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "WAGER" || room.status !== "PLAYING") return;
-      const wagerState = roomWagers.get(room.id);
-      if (!wagerState) return;
-
-      const rCached = await prisma.room.findUnique({
-        where: { id: room.id },
-        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
-      });
-      const questions = rCached?.quizBank?.questions ?? [];
-      const q = questions[room.currentQuestion];
-      if (!q) return;
-
-      wagerState.phase = "QUESTION_PERIOD";
-      wagerState.questionReady = true;
-
-      const qKey = `${room.id}:${q.id}`;
-      roomQuestionProcessed.delete(qKey);
-
-      let winningTeamName = wagerState.autoAssignedTeamName || "Đội cược";
-      if (wagerState.lastWagerTeamId) {
-        const teamObj = await prisma.team.findUnique({ where: { id: wagerState.lastWagerTeamId } });
-        if (teamObj) winningTeamName = teamObj.name;
-      }
-
-      const answerMethod = (room.config as any)?.answerMethod ?? "DEVICE";
-      const isDeviceAnswer = answerMethod === "DEVICE";
-      const bloomLevel = getBloomLevelFromPoints(q.points);
-      const effectiveTimeLimit = isDeviceAnswer ? getStandardQuestionTimeLimit(q) : quantizeOlympiaTimeLimit(q.points, q.timeLimit);
-      const questionState = buildQuestionState(q, {
-        bloomLevel,
-        answerMethod,
-        wagerPhase: "QUESTION_PERIOD",
-        primaryTeamId: wagerState.lastWagerTeamId,
-        primaryTeamName: winningTeamName,
-      });
-      questionState.timeLimit = effectiveTimeLimit;
-      questionState.question.timeLimit = effectiveTimeLimit;
-
-      // Do NOT start timer yet! Admin clicks "Bắt đầu tính giờ" manually!
-      questionState.timerPending = true;
-      questionState.timerStarted = false;
-      roomActiveQuestions.set(room.id, questionState);
-
-      io.to(`room:${room.code}`).emit("game:question", questionState);
-      io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+      await launchWagerQuestion(io, room.id, room.code);
     });
 
     socket.on("admin:wager:grant_bailout", async ({ teamId }) => {

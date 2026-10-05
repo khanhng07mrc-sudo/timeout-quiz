@@ -1704,6 +1704,27 @@ export default function AdminSandboxPage() {
         handleDiceRollManual();
       } else if (action === "wager_submit") {
         processOfflineWager(targetTeamId, Number(e.data.amount) || 10);
+      } else if (action === "select_team") {
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const currentPid = e.data.playerId || "p_you";
+          const exists = prev.players.some((p) => p.id === currentPid);
+          let updatedPlayers: any[];
+          if (exists) {
+            updatedPlayers = prev.players.map((p) =>
+              p.id === currentPid ? { ...p, teamId: targetTeamId } : p
+            );
+          } else {
+            updatedPlayers = [
+              ...prev.players,
+              { id: currentPid, name: targetTeamName, score: 0, teamId: targetTeamId, isHost: false, isOnline: true },
+            ];
+          }
+          const nextState = { ...prev, players: updatedPlayers };
+          roomStateRef.current = nextState;
+          return nextState;
+        });
+        syncToIframes();
       } else if (e.data?.type === "TOURNAMENT_PREDICT") {
         const { matchId, predictedWinnerId, teamId } = e.data;
         setRoomState((prev) => {
@@ -3266,16 +3287,19 @@ export default function AdminSandboxPage() {
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     const targetName = idx === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
+    const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(
       {
         type: "SWITCH_ACTIVE_TEAM",
         teamId: targetTeam.id,
         teamName: targetName,
         teamIndex: idx,
+        currentAnswer: targetAnswer,
         payload: {
           teamId: targetTeam.id,
           teamName: targetName,
           teamIndex: idx,
+          currentAnswer: targetAnswer,
         },
       },
       "*"
@@ -4591,16 +4615,19 @@ export default function AdminSandboxPage() {
                     const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
                     if (targetTeam) {
                       const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
+                      const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
                       playerIframeRef.current?.contentWindow?.postMessage(
                         {
                           type: "SWITCH_ACTIVE_TEAM",
                           teamId: targetTeam.id,
                           teamName: tName,
                           teamIndex: activeTeamIndex,
+                          currentAnswer: targetAnswer,
                           payload: {
                             teamId: targetTeam.id,
                             teamName: tName,
                             teamIndex: activeTeamIndex,
+                            currentAnswer: targetAnswer,
                           },
                         },
                         "*"

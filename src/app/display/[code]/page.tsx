@@ -146,9 +146,6 @@ export default function DisplayPage() {
       if (typeof document !== "undefined" && document.visibilityState === "visible" && timer?.endsAt) {
         const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
         setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
-        if (auth.isExpired) {
-          soundManager.stopMusic();
-        }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -167,7 +164,7 @@ export default function DisplayPage() {
           setRoomState(p.roomState);
           if (p.roomState?.status === "LOBBY") {
             soundManager.playLobbyMusic();
-          } else if (p.roomState?.status) {
+          } else if (p.roomState?.status === "GAME_OVER") {
             soundManager.stopMusic(0);
           }
           if (p.roomState?.wagerState) {
@@ -193,11 +190,10 @@ export default function DisplayPage() {
             const activeMode = p.roomState?.mode || roomState?.mode;
             if (isTimerRunning && activeMode !== "BUZZ") {
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
-            } else {
-              soundManager.stopMusic(0);
             }
           } else {
             setDisplayModeTab("BOARD");
+            soundManager.stopMusic(0);
           }
         }
         if (p.revealPayload !== undefined) {
@@ -211,9 +207,6 @@ export default function DisplayPage() {
         }
         if (p.timer !== undefined) {
           setTimer(p.timer);
-          if (p.timer && p.timer.remaining <= 0) {
-            soundManager.stopMusic(0);
-          }
         }
         if (p.buzzed !== undefined) setBuzzed(p.buzzed);
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
@@ -328,7 +321,9 @@ export default function DisplayPage() {
         }
       } else {
         setTimer(null);
-        soundManager.stopMusic();
+        if (!q) {
+          soundManager.stopMusic();
+        }
       }
     });
 

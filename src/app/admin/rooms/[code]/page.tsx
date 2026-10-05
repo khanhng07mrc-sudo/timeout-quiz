@@ -174,9 +174,6 @@ export default function AdminRoomPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.isExpired && soundEnabledRef.current) {
-        soundManager.stopMusic();
-      }
     }, 100);
     return () => clearInterval(interval);
   }, [timer?.endsAt, timer?.total]);

@@ -37,6 +37,7 @@ interface Props {
   onPredictWinner?: (matchId: string, predictedWinnerId: string) => void;
   onCheer?: (matchId: string, targetTeamId: string, emoji: string) => void;
   oracleScore?: number;
+  initialAnswer?: string | string[] | null;
 }
 
 export default function GameQuestion({
@@ -65,23 +66,38 @@ export default function GameQuestion({
   onPredictWinner,
   onCheer,
   oracleScore,
+  initialAnswer,
 }: Props) {
-  const [selected, setSelected] = useState<string[]>([]);
-  const [essayText, setEssayText] = useState("");
-  const [fillText, setFillText] = useState("");
-  const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
-  const [isFinalizedLocally, setIsFinalizedLocally] = useState(false);
-
   const q = question.question;
 
-  // Clean reset of input and selection states whenever question ID changes
+  const [selected, setSelected] = useState<string[]>(() => {
+    if (!initialAnswer) return [];
+    return Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
+  });
+  const [essayText, setEssayText] = useState(() => {
+    return typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "";
+  });
+  const [fillText, setFillText] = useState(() => {
+    return typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "";
+  });
+  const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
+  const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer));
+
+  // Clean reset of input and selection states whenever question ID or active participant changes
   useEffect(() => {
-    setSelected([]);
-    setEssayText("");
-    setFillText("");
+    if (initialAnswer) {
+      setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
+      setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
+      setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
+      setIsFinalizedLocally(true);
+    } else {
+      setSelected([]);
+      setEssayText("");
+      setFillText("");
+      setIsFinalizedLocally(false);
+    }
     setIsBuzzedLocally(false);
-    setIsFinalizedLocally(false);
-  }, [q.id]);
+  }, [q.id, myTeamId, playerId, initialAnswer]);
 
   // Reset isBuzzedLocally when buzzer reopens (attempt 2, 3), or when buzz/steal state is cleared
   useEffect(() => {

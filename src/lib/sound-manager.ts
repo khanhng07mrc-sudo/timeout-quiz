@@ -277,12 +277,12 @@ class SoundManager {
     //    - Do not restart if already playing the lobby music.
     if (this.currentMusicType === type) {
       if (type === "QUESTION") {
-        if (this.currentMusicKey === audioKey && !nextAudio.paused && !nextAudio.ended) {
+        if (this.currentMusicAudio && !this.currentMusicAudio.paused && !this.currentMusicAudio.ended) {
           if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
             // Explicit different question ID -> Proceed below to restart for the new question
           } else {
             // Same question or redundant sync event -> Keep playing uninterrupted
-            if (questionId) this.currentPlayingQuestionId = questionId;
+            if (questionId && !this.currentPlayingQuestionId) this.currentPlayingQuestionId = questionId;
             return;
           }
         }
@@ -390,7 +390,6 @@ class SoundManager {
    */
   public playQuestionMusic(remainingSeconds: number = 30, questionId?: string) {
     if (remainingSeconds <= 0) {
-      this.stopMusic(400);
       return;
     }
 
@@ -405,19 +404,18 @@ class SoundManager {
       selectedKey = "olympia_60s";
     }
 
-    // Check if this exact track is already actively playing for the current question
+    // Check if this exact track or another QUESTION countdown track is already actively playing for the current question
     if (
       this.currentMusicType === "QUESTION" &&
-      this.currentMusicKey === selectedKey &&
       this.currentMusicAudio &&
       !this.currentMusicAudio.paused &&
       !this.currentMusicAudio.ended
     ) {
-      // Only restart if an explicit different questionId is provided
+      // Only restart if an explicit DIFFERENT questionId is provided
       if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
         // Proceed below to start track for new question
       } else {
-        if (questionId) this.currentPlayingQuestionId = questionId;
+        if (questionId && !this.currentPlayingQuestionId) this.currentPlayingQuestionId = questionId;
         return;
       }
     }

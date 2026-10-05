@@ -60,6 +60,7 @@ export default function PlayPage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
   const [activeTeamId, setActiveTeamId] = useState<string>("");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [activePlayerName, setActivePlayerName] = useState<string>("");
   const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
   const [usedCardTypes, setUsedCardTypes] = useState<import("@/types").CardType[]>([]);
@@ -68,6 +69,7 @@ export default function PlayPage() {
   const myTeamIdRef = useRef<string | undefined>(undefined);
   const playerIdRef = useRef<string>("");
   const lastQuestionIdRef = useRef<string | null>(null);
+  const teamAnswersRef = useRef<Map<string, string | string[]>>(new Map());
 
   const currentQuestionRef = useRef<QuestionState | null>(null);
   currentQuestionRef.current = currentQuestion;
@@ -129,9 +131,6 @@ export default function PlayPage() {
         if (prev.remaining === auth.remaining) return prev;
         return { ...prev, remaining: auth.remaining };
       });
-      if (auth.isExpired && soundEnabledRef.current) {
-        soundManager.stopMusic();
-      }
     }, 100);
     return () => clearInterval(interval);
   }, [timer?.endsAt, timer?.total]);
@@ -150,6 +149,7 @@ export default function PlayPage() {
 
     if (paramTeamId) {
       myTeamIdRef.current = paramTeamId;
+      setSelectedTeamId(paramTeamId);
     }
 
     const storageKey = paramTeamIndex !== null && paramTeamIndex !== undefined
@@ -173,10 +173,22 @@ export default function PlayPage() {
         const teamId = e.data.payload?.teamId || e.data.teamId;
         const teamName = e.data.payload?.teamName || e.data.teamName || e.data.playerName || "";
         const teamIndex = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
+        const currentAns = e.data.payload?.currentAnswer ?? e.data.currentAnswer;
         if (teamId) {
           myTeamIdRef.current = teamId;
           setActiveTeamId(teamId);
+          setSelectedTeamId(teamId);
           if (teamName) setActivePlayerName(teamName);
+
+          if (currentAns !== undefined) {
+            if (currentAns) {
+              teamAnswersRef.current.set(teamId, currentAns);
+            } else {
+              teamAnswersRef.current.delete(teamId);
+            }
+          }
+          const hasAnswered = Boolean(teamAnswersRef.current.get(teamId));
+          setAnswered(hasAnswered);
 
           const currentPid = playerIdRef.current;
           if (socketRef.current?.connected) {
@@ -199,7 +211,6 @@ export default function PlayPage() {
             }
             return { ...prev, players: updatedPlayers };
           });
-          setAnswered(false);
         }
         return;
       }
@@ -225,13 +236,30 @@ export default function PlayPage() {
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         setConnected(true);
         const p = e.data.payload;
-        if (p.roomState !== undefined) setRoomState(p.roomState);
+        if (p.roomState !== undefined) {
+          const curTeam = myTeamIdRef.current || activeTeamId;
+          const currentPid = playerIdRef.current;
+          let patchedState = p.roomState;
+          if (curTeam && patchedState?.players) {
+            const exists = patchedState.players.some((pl: any) => pl.id === currentPid);
+            if (exists) {
+              patchedState = {
+                ...patchedState,
+                players: patchedState.players.map((pl: any) => pl.id === currentPid ? { ...pl, teamId: curTeam } : pl),
+              };
+            }
+          }
+          setRoomState(patchedState);
+        }
         if (p.currentQuestion !== undefined) {
           const newQId = p.currentQuestion?.question?.id ?? null;
           const isDifferentQ = newQId !== lastQuestionIdRef.current;
           lastQuestionIdRef.current = newQId;
           setCurrentQuestion(p.currentQuestion);
-          if (isDifferentQ) setAnswered(false);
+          if (isDifferentQ) {
+            teamAnswersRef.current.clear();
+            setAnswered(false);
+          }
         }
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
@@ -351,10 +379,24 @@ export default function PlayPage() {
     });
 
     socket.on("room:state", (state) => {
-      setRoomState(state);
       const currentPid = playerIdRef.current || savedPlayerId;
-      const p = state.players.find((pl) => pl.id === currentPid);
-      if (p?.teamId) myTeamIdRef.current = p.teamId;
+      const curTeam = myTeamIdRef.current || paramTeamId;
+      let patchedState = state;
+      if (curTeam && state?.players) {
+        const p = state.players.find((pl) => pl.id === currentPid);
+        if (p && !p.teamId) {
+          patchedState = {
+            ...state,
+            players: state.players.map((pl) => pl.id === currentPid ? { ...pl, teamId: curTeam } : pl),
+          };
+        }
+      }
+      setRoomState(patchedState);
+      const p = patchedState.players.find((pl) => pl.id === currentPid);
+      if (p?.teamId) {
+        myTeamIdRef.current = p.teamId;
+        setSelectedTeamId(p.teamId);
+      }
       if (p?.name) {
         sessionStorage.setItem("playerName", p.name);
         localStorage.setItem("playerName", p.name);
@@ -404,6 +446,7 @@ export default function PlayPage() {
       // If server re-broadcasts the same question (e.g. state update after someone answers),
       // keep the current player's selection intact to avoid cross-device contamination.
       if (isNewQuestion) {
+        teamAnswersRef.current.clear();
         setRevealPayload(null);
         setAnswered(false);
         setBuzzedBy(null);
@@ -463,14 +506,10 @@ export default function PlayPage() {
         }
         return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
       });
-      if (t.remaining <= 0 && soundEnabledRef.current) {
-        soundManager.stopMusic();
-      }
     });
     socket.on("game:timer:expired", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
-        soundManager.stopMusic();
         soundManager.playTimeout();
       }
     });
@@ -751,6 +790,8 @@ export default function PlayPage() {
   const handleAnswer = (answer: string | string[]) => {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
+    const targetTeamId = effectiveTeamId || myTeamIdRef.current || "t_red";
+    teamAnswersRef.current.set(targetTeamId, answer);
     if (socketRef.current?.connected) {
       socketRef.current.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
@@ -762,7 +803,7 @@ export default function PlayPage() {
         action: "answer",
         questionId: currentQuestion.question.id,
         answer,
-        teamId: myTeamIdRef.current,
+        teamId: targetTeamId,
         playerId: playerIdRef.current,
       }, "*");
     }
@@ -879,6 +920,8 @@ export default function PlayPage() {
   const handleSelectTeam = (teamId: string) => {
     const currentPid = playerIdRef.current || playerId;
     myTeamIdRef.current = teamId;
+    setSelectedTeamId(teamId);
+    setActiveTeamId(teamId);
 
     // Optimistically update local roomState immediately
     setRoomState((prev) => {
@@ -889,12 +932,21 @@ export default function PlayPage() {
       return { ...prev, players: updatedPlayers };
     });
 
-    socketRef.current?.emit("player:select:team", { teamId, playerId: currentPid }, (res) => {
-      if (res?.error) {
-        setErrorMessage(res.error);
-        setTimeout(() => setErrorMessage(null), 5000);
-      }
-    });
+    if (socketRef.current?.connected) {
+      socketRef.current?.emit("player:select:team", { teamId, playerId: currentPid }, (res) => {
+        if (res?.error) {
+          setErrorMessage(res.error);
+          setTimeout(() => setErrorMessage(null), 5000);
+        }
+      });
+    } else {
+      window.parent?.postMessage({
+        type: "OFFLINE_PLAYER_ACTION",
+        action: "select_team",
+        teamId,
+        playerId: currentPid,
+      }, "*");
+    }
   };
 
   if (errorMessage && !roomState) {
@@ -929,21 +981,22 @@ export default function PlayPage() {
     return <GameEnd payload={gameEnd} playerId={playerId} />;
   }
 
+  const mePlayer = roomState?.players.find((p) => p.id === playerId);
+  const effectiveTeamId = activeTeamId || selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || roomState?.teams[0]?.id;
+  const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
+  const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
+
   if (roomState?.status === "LOBBY") {
     return (
       <PlayerLobby
         roomState={roomState}
         playerId={playerId}
+        selectedTeamId={selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || null}
         onSelectTeam={handleSelectTeam}
         errorMessage={errorMessage}
       />
     );
   }
-
-  const mePlayer = roomState?.players.find((p) => p.id === playerId);
-  const effectiveTeamId = activeTeamId || myTeamIdRef.current || mePlayer?.teamId || roomState?.teams[0]?.id;
-  const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
-  const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
 
   // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
   if (matchStarting) {
@@ -1188,12 +1241,13 @@ export default function PlayPage() {
             )}
 
             <GameQuestion
-              key={currentQuestion.question.id}
+              key={`${currentQuestion.question.id}_${effectiveTeamId}_${playerId}`}
               question={currentQuestion}
               timer={timer}
               onAnswer={handleAnswer}
               onBuzz={handleBuzz}
-              answered={answered}
+              answered={Boolean(effectiveTeamId && teamAnswersRef.current.get(effectiveTeamId)) || answered}
+              initialAnswer={(effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : null) || null}
               revealPayload={revealPayload}
               roomStatus={roomState?.status ?? "PLAYING"}
               hiddenOptionIds={hiddenOptionIds}

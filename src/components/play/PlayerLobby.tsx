@@ -8,14 +8,16 @@ import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 interface Props {
   roomState: RoomState;
   playerId: string;
+  selectedTeamId?: string | null;
   onSelectTeam?: (teamId: string) => void;
   errorMessage?: string | null;
 }
 
-export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMessage }: Props) {
+export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSelectTeam, errorMessage }: Props) {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const me = roomState.players.find((p) => p.id === playerId);
-  const myTeam = me?.teamId ? roomState.teams.find((t) => t.id === me.teamId) : null;
+  const effectiveTeamId = selectedTeamId || me?.teamId || null;
+  const myTeam = effectiveTeamId ? roomState.teams.find((t) => t.id === effectiveTeamId) : null;
   const isTeamMode = roomState.teamMode === "TEAM";
 
   return (
@@ -91,7 +93,7 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMe
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {roomState.teams.map((team) => {
                 const isMyTeam = myTeam?.id === team.id;
-                const members = roomState.players.filter((p) => p.teamId === team.id);
+                const members = roomState.players.filter((p) => (p.teamId === team.id) || (p.id === playerId && effectiveTeamId === team.id));
 
                 return (
                   <div
@@ -171,7 +173,7 @@ export default function PlayerLobby({ roomState, playerId, onSelectTeam, errorMe
 
           {/* Unassigned players notice */}
           {(() => {
-            const unassigned = roomState.players.filter((p) => !p.teamId);
+            const unassigned = roomState.players.filter((p) => !p.teamId && !(p.id === playerId && effectiveTeamId));
             if (unassigned.length === 0) return null;
             return (
               <div className="glass rounded-xl p-3.5 text-xs text-muted-foreground flex items-center justify-between gap-2">

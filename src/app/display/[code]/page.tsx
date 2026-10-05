@@ -112,6 +112,21 @@ export default function DisplayPage() {
     return () => clearInterval(interval);
   }, [timer?.endsAt, timer?.total]);
 
+  // Immediately recalibrate timer when switching back to this tab (prevent sleeping tab lag)
+  useEffect(() => {
+    const onVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible" && timer?.endsAt) {
+        const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
+        setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
+        if (auth.isExpired) {
+          soundManager.stopMusic();
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [timer?.endsAt, timer?.total, timer?.remaining]);
+
   useEffect(() => {
     // Default sound ON on Display
     soundManager.setMuted(false);

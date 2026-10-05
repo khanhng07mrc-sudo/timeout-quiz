@@ -705,6 +705,38 @@ export default function AdminSandboxPage() {
     }
   }, [isOfflineSandbox, roomState, currentQuestion, revealPayload, syncToIframes]);
 
+  // Immediately recalibrate timers and resync iframes when switching back to this tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        if (isOfflineSandbox) {
+          const curQ = currentQuestionRef.current;
+          if (curQ?.endsAt && curQ.timeLimit) {
+            const now = Date.now();
+            if (now >= curQ.endsAt) {
+              if (offlineTimerRef.current) {
+                clearInterval(offlineTimerRef.current);
+                offlineTimerRef.current = null;
+              }
+              offlineRemainingRef.current = 0;
+              setTimer({ remaining: 0, total: curQ.timeLimit, endsAt: 0 });
+              syncToIframes({ timer: { remaining: 0, total: curQ.timeLimit, endsAt: 0 } });
+            } else {
+              const rem = Math.max(0, Math.ceil((curQ.endsAt - now) / 1000));
+              offlineRemainingRef.current = rem;
+              setTimer({ remaining: rem, total: curQ.timeLimit, endsAt: curQ.endsAt });
+              syncToIframes({ timer: { remaining: rem, total: curQ.timeLimit, endsAt: curQ.endsAt } });
+            }
+          } else {
+            syncToIframes();
+          }
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isOfflineSandbox, syncToIframes]);
+
   // Offline Sandbox Simulator Initialization
   const startOfflineSandbox = useCallback((mode: GameMode, bankId?: string) => {
     setIsOfflineSandbox(true);
@@ -868,10 +900,28 @@ export default function AdminSandboxPage() {
     } else {
       const candidateCode = (urlCode || storedCode || "").trim();
       if (candidateCode && candidateCode.length === 6 && candidateCode !== "OFFLINE") {
-        setCode(candidateCode);
-        setIsOfflineSandbox(false);
-        saveSandboxSession(candidateCode, false);
-        connectAdminSocket(candidateCode);
+        // Validate with server first before mounting iframes to prevent flashing dead room UI
+        fetch(`/api/rooms/${candidateCode}/validate`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data?.room && data.room.status !== "FINISHED") {
+              setCode(candidateCode);
+              setIsOfflineSandbox(false);
+              saveSandboxSession(candidateCode, false);
+              connectAdminSocket(candidateCode);
+            } else {
+              clearSandboxSession();
+              setCode("");
+              setIsOfflineSandbox(false);
+              setRoomState(null);
+            }
+          })
+          .catch(() => {
+            clearSandboxSession();
+            setCode("");
+            setIsOfflineSandbox(false);
+            setRoomState(null);
+          });
       } else {
         // Fresh start: clear any stale offline flags so user starts in online selection mode
         clearSandboxSession();
@@ -2009,14 +2059,15 @@ export default function AdminSandboxPage() {
         }
 
         offlineTimerRef.current = setInterval(() => {
-          offlineRemainingRef.current -= 1;
-          const rem = offlineRemainingRef.current;
+          const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+          offlineRemainingRef.current = rem;
           setTimer({ remaining: rem, total: timeLimit, endsAt });
           if (rem <= 0) {
             if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
             offlineTimerRef.current = null;
+            syncToIframes({ timer: { remaining: 0, total: timeLimit, endsAt: 0 } });
           }
-        }, 1000);
+        }, 500);
       } else {
         setTimer(null);
         syncToIframes({
@@ -2515,8 +2566,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        offlineRemainingRef.current -= 1;
-        const rem = offlineRemainingRef.current;
+        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: timeLimit, endsAt });
         syncToIframes({ timer: { remaining: rem, total: timeLimit, endsAt } });
         if (rem <= 0) {
@@ -2524,7 +2575,7 @@ export default function AdminSandboxPage() {
           offlineTimerRef.current = null;
           syncToIframes({ timer: { remaining: 0, total: timeLimit, endsAt: 0 } });
         }
-      }, 1000);
+      }, 500);
       addLog(`Admin: Bắt đầu tính giờ (${timeLimit}s)${selectedMode === "BUZZ" ? " & Mở chuông ngay lập tức" : ""}`);
       return;
     }
@@ -2576,8 +2627,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        offlineRemainingRef.current -= 1;
-        const rem = offlineRemainingRef.current;
+        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: finalDuration, endsAt });
         syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
         if (rem <= 0) {
@@ -2585,7 +2636,7 @@ export default function AdminSandboxPage() {
           offlineTimerRef.current = null;
           syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
         }
-      }, 1000);
+      }, 500);
       addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cho đội bấm chuông`);
       return;
     }
@@ -2638,8 +2689,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        offlineRemainingRef.current -= 1;
-        const rem = offlineRemainingRef.current;
+        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: finalDuration, endsAt });
         syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
         if (rem <= 0) {
@@ -2647,7 +2698,7 @@ export default function AdminSandboxPage() {
           offlineTimerRef.current = null;
           syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
         }
-      }, 1000);
+      }, 500);
       addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cướp điểm`);
       return;
     }
@@ -4315,6 +4366,11 @@ export default function AdminSandboxPage() {
                   title="Display Preview"
                   className="w-full h-full border-0"
                   allow="autoplay; camera; microphone"
+                  onLoad={() => {
+                    if (isOfflineSandbox) {
+                      syncToIframes();
+                    }
+                  }}
                 />
               </div>
             </div>

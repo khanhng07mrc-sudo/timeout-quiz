@@ -35,6 +35,7 @@ import { isPowerupAllowedForMode } from "./game-engine/powerups";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
+import { getBroadTopic } from "./topics";
 
 type IO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -2331,7 +2332,11 @@ export function registerSocketHandlers(io: IO) {
           wagerHistory: [],
           allowanceMinScore: config?.wagerMinAllowance || 50,
           initialPoints: config?.wagerInitialPoints || 50,
-          topicPreview: q.hint || "Tổng hợp kiến thức",
+          topicPreview: getBroadTopic({
+            topic: (q as any).topic,
+            content: q.content,
+            bankTitle: room.quizBank?.title || (q as any).quizBank?.title,
+          }),
           difficultyPreview: bloomLevel,
           teamWagers: initialWagers,
           teamBailouts,

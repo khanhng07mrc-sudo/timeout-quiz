@@ -26,6 +26,8 @@ import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-eng
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+import { getBroadTopic } from "@/lib/topics";
+import { getBloomLevelFromPoints } from "@/types";
 
 function checkOfflineCanAnyTeamBet(
   teams: TeamState[],
@@ -1813,6 +1815,8 @@ export default function AdminSandboxPage() {
       const wagerMultCap = Math.max(1.0, Math.min(3.0, Number(roomState?.config?.wagerMultiplierCap) || 2.5));
       const basePts = q.points || 10;
       const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
+      const currentBankTitle = quizBanks.find((b) => b.id === selectedBankId)?.title || "";
+      const bloomLevel = getBloomLevelFromPoints(basePts);
       const configuredWagerDuration = roomState?.config?.wagerTimeSeconds || 15;
       const newWagerState: WagerState = {
         phase: "WAGER_PERIOD",
@@ -1828,8 +1832,12 @@ export default function AdminSandboxPage() {
         wagerHistory: [],
         allowanceMinScore: 50,
         initialPoints: 50,
-        topicPreview: q.hint || "Tổng hợp kiến thức",
-        difficultyPreview: "NHẬN BIẾT",
+        topicPreview: getBroadTopic({
+          topic: (q as any).topic,
+          content: q.content,
+          bankTitle: currentBankTitle,
+        }),
+        difficultyPreview: bloomLevel,
         teamWagers: initialWagers,
         teamBailouts: roomState?.wagerState?.teamBailouts || {},
         bailoutQueue: roomState?.wagerState?.bailoutQueue || [],

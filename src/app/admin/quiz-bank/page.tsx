@@ -1533,9 +1533,34 @@ export default function QuizBankPage() {
                   required
                   value={aiTopic}
                   onChange={(e) => setAiTopic(e.target.value)}
-                  placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 20, Toán logic lớp 12, Văn hóa thế giới..."
+                  placeholder="Ví dụ: Toán học & Logic, Khoa học Tự nhiên, Văn hóa - Xã hội, Lịch sử & Địa lý..."
                   className="w-full px-3.5 py-2.5 rounded-xl glass border border-white/20 text-xs text-white focus:outline-none focus:border-amber-400"
                 />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {[
+                    "Toán học & Logic",
+                    "Khoa học Tự nhiên",
+                    "Văn hóa - Xã hội",
+                    "Lịch sử & Địa lý",
+                    "Kinh tế & Quản trị",
+                    "Công nghệ & Tin học",
+                    "Ngoại ngữ",
+                    "Kiến thức Tổng hợp",
+                  ].map((top) => (
+                    <button
+                      key={top}
+                      type="button"
+                      onClick={() => setAiTopic(top)}
+                      className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition ${
+                        aiTopic === top
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/50 shadow"
+                          : "bg-white/5 text-slate-300 border-white/10 hover:bg-white/10"
+                      }`}
+                    >
+                      {top}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Grade & Question Count */}

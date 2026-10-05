@@ -802,6 +802,73 @@ function checkActionDebounce(key, cooldownMs = 500) {
 }
 var MAX_PLAYERS_PER_ROOM = 100;
 
+// src/lib/topics.ts
+var BROAD_TOPICS = [
+  "To\xE1n h\u1ECDc & Logic",
+  "Khoa h\u1ECDc T\u1EF1 nhi\xEAn",
+  "L\u1ECBch s\u1EED & \u0110\u1ECBa l\xFD",
+  "V\u0103n h\xF3a - X\xE3 h\u1ED9i",
+  "Kinh t\u1EBF & Qu\u1EA3n tr\u1ECB",
+  "C\xF4ng ngh\u1EC7 & Tin h\u1ECDc",
+  "Ngo\u1EA1i ng\u1EEF",
+  "Ki\u1EBFn th\u1EE9c T\u1ED5ng h\u1EE3p"
+];
+var TOPIC_PATTERNS = [
+  {
+    topic: "To\xE1n h\u1ECDc & Logic",
+    regex: /\b(toán|đại số|hình học|lượng giác|tích phân|đạo hàm|xác suất|thống kê|phương trình|hệ phương trình|tam giác|hình tròn|hình chóp|ma trận|vectơ|giải tích|logarit|dãy số|phép tính|số học|logic|tính toán)\b/i
+  },
+  {
+    topic: "Khoa h\u1ECDc T\u1EF1 nhi\xEAn",
+    regex: /\b(vật lý|hoá học|hóa học|sinh học|sinh thái|tế bào|gen|dna|arn|nguyên tử|phân tử|electron|proton|nhiệt độ|áp suất|năng lượng|vận tốc|quang hợp|hô hấp|khí hậu|biến đổi khí hậu|môi trường|hành tinh|vũ trụ|thiên văn|phát thải|carbon|oxi|kim loại|axit|bazơ)\b/i
+  },
+  {
+    topic: "L\u1ECBch s\u1EED & \u0110\u1ECBa l\xFD",
+    regex: /\b(lịch sử|địa lý|địa danh|thế kỷ|triều đại|chiến tranh|kháng chiến|cách mạng|khởi nghĩa|hiệp định|vua|hoàng đế|chủ tịch|thủ đô|sông|núi|biển|châu lục|quốc gia|tỉnh thành|dân số|địa hình|di tích|di sản|đô thị|bản đồ)\b/i
+  },
+  {
+    topic: "Kinh t\u1EBF & Qu\u1EA3n tr\u1ECB",
+    regex: /\b(kinh tế|quản trị|quản lý|kế toán|tài chính|ngân hàng|tiền tệ|lạm phát|gdp|doanh nghiệp|kinh doanh|chi phí|doanh thu|lợi nhuận|kế hoạch|dự án|kiểm soát|thị trường|thuế|cung cầu|nhân sự|swot|smart|cpm|pert|evm|roi|eva|bsc|fayol)\b/i
+  },
+  {
+    topic: "C\xF4ng ngh\u1EC7 & Tin h\u1ECDc",
+    regex: /\b(khoa học dữ liệu|tin học|máy tính|lập trình|phần mềm|thuật toán|trí tuệ nhân tạo|ai|machine learning|cơ sở dữ liệu|database|mạng máy tính|internet|python|java|code|crisp-dm|k-means|hồi quy|ols)\b/i
+  },
+  {
+    topic: "V\u0103n h\xF3a - X\xE3 h\u1ED9i",
+    regex: /\b(văn học|tác phẩm|tác giả|nhà thơ|nhà văn|tiểu thuyết|truyện|thơ|ca dao|tục ngữ|âm nhạc|bài hát|nhạc sĩ|hội họa|điện ảnh|phim|nghệ thuật|thể thao|bóng đá|lễ hội|phong tục|tập quán|tôn giáo|xã hội|triết học|đạo đức)\b/i
+  },
+  {
+    topic: "Ngo\u1EA1i ng\u1EEF",
+    regex: /\b(tiếng anh|english|ngữ pháp|từ vựng|ngữ âm|idiom|vocabulary|grammar|phát âm|dịch thuật|ngoại ngữ)\b/i
+  }
+];
+function getBroadTopic(params) {
+  const { topic, content, bankTitle } = params;
+  if (topic && typeof topic === "string" && topic.trim()) {
+    const raw = topic.trim().toLowerCase();
+    for (const bt of BROAD_TOPICS) {
+      if (raw.includes(bt.toLowerCase())) return bt;
+    }
+    for (const p of TOPIC_PATTERNS) {
+      if (p.regex.test(raw)) return p.topic;
+    }
+  }
+  if (bankTitle && typeof bankTitle === "string" && bankTitle.trim()) {
+    const rawTitle = bankTitle.trim();
+    for (const p of TOPIC_PATTERNS) {
+      if (p.regex.test(rawTitle)) return p.topic;
+    }
+  }
+  if (content && typeof content === "string" && content.trim()) {
+    const rawContent = content.trim();
+    for (const p of TOPIC_PATTERNS) {
+      if (p.regex.test(rawContent)) return p.topic;
+    }
+  }
+  return "Ki\u1EBFn th\u1EE9c T\u1ED5ng h\u1EE3p";
+}
+
 // src/lib/socket-handlers.ts
 var globalIO;
 var pendingDisconnects = /* @__PURE__ */ new Map();
@@ -2690,7 +2757,11 @@ function registerSocketHandlers(io2) {
           wagerHistory: [],
           allowanceMinScore: config?.wagerMinAllowance || 50,
           initialPoints: config?.wagerInitialPoints || 50,
-          topicPreview: q.hint || "T\u1ED5ng h\u1EE3p ki\u1EBFn th\u1EE9c",
+          topicPreview: getBroadTopic({
+            topic: q.topic,
+            content: q.content,
+            bankTitle: room.quizBank?.title || q.quizBank?.title
+          }),
           difficultyPreview: bloomLevel,
           teamWagers: initialWagers,
           teamBailouts,

@@ -673,10 +673,11 @@ export default function PlayPage() {
     });
     socket.on("elimination:revival", (payload) => {
       if (soundEnabledRef.current) soundManager.playFanfare();
+      const stageStr = payload.eliminatedAtStage ? ` (kiên cường từ Chặng ${payload.eliminatedAtStage})` : "";
       if (payload.revivedTeamId === effectiveTeamId) {
         setErrorMessage(`🎉 ĐỘI BẠN ĐÃ ĐƯỢC HỒI SINH THÀNH CÔNG VỚI ${payload.revivedScore} ĐIỂM!`);
       } else {
-        setErrorMessage(`✨ Đội ${payload.revivedTeamName} đã giành vé HỒI SINH với ${payload.revivedScore} điểm!`);
+        setErrorMessage(`✨ Đội ${payload.revivedTeamName}${stageStr} đã giành vé HỒI SINH với ${payload.revivedScore} điểm!`);
       }
       setTimeout(() => setErrorMessage(null), 5000);
     });

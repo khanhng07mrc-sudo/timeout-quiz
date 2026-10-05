@@ -5492,7 +5492,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   let teamSummaries = customTeamSummaries || [];
   let roomAccuracy;
   let rarityBonusPercent;
-  const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;
+  const isEliminationDeep = room.mode === "ELIMINATION" && (config?.answerMethod ?? "DEVICE") === "DEVICE" && config?.eliminationDeepScoring !== false;
   if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || isEliminationDeep) && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io2, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
@@ -5506,7 +5506,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
-      const roomGhosts = roomEliminationGhostStats.get(room.id);
+      let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         for (const [, ghostStat] of roomGhosts.entries()) {
           if (ghostStat.currentRoundCorrect >= interval) {
@@ -5539,10 +5539,31 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
             where: { id: toEliminate.id },
             data: { isEliminated: true }
           });
+          const currentStageNumber = Math.floor((room.currentQuestion + 1) / interval);
+          if (!roomGhosts) {
+            roomGhosts = /* @__PURE__ */ new Map();
+            roomEliminationGhostStats.set(room.id, roomGhosts);
+          }
+          let elimGhostStat = roomGhosts.get(toEliminate.id);
+          if (!elimGhostStat) {
+            elimGhostStat = {
+              ghostStreak: 0,
+              ghostTotalCorrect: 0,
+              ghostTotalAnswered: 0,
+              ghostRoundAllCorrect: false,
+              currentRoundCorrect: 0,
+              eliminatedAtStage: currentStageNumber,
+              eliminatedAtQuestion: room.currentQuestion
+            };
+            roomGhosts.set(toEliminate.id, elimGhostStat);
+          } else {
+            elimGhostStat.eliminatedAtStage = currentStageNumber;
+            elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+          }
           io2.to(`room:${roomCode}`).emit("game:elimination:round", {
             eliminatedTeamId: toEliminate.id,
             eliminatedTeamName: toEliminate.name,
-            reason: `\u0110i\u1EC3m s\u1ED1 th\u1EA5p nh\u1EA5t sau v\xF2ng sinh t\u1ED3n ${Math.floor((room.currentQuestion + 1) / interval)}`
+            reason: `\u0110i\u1EC3m s\u1ED1 th\u1EA5p nh\u1EA5t sau v\xF2ng sinh t\u1ED3n ${currentStageNumber}`
           });
           const allQuestions = await getRoomQuestions(room.id);
           const totalStages = Math.floor(allQuestions.length / interval);
@@ -5559,8 +5580,13 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
               qualifiedGhosts.sort((a, b) => {
                 const statA = roomGhosts.get(a.id);
                 const statB = roomGhosts.get(b.id);
-                const accA = statA.ghostTotalCorrect / statA.ghostTotalAnswered;
-                const accB = statB.ghostTotalCorrect / statB.ghostTotalAnswered;
+                const elimA = statA.eliminatedAtQuestion ?? 999999 - statA.ghostTotalAnswered;
+                const elimB = statB.eliminatedAtQuestion ?? 999999 - statB.ghostTotalAnswered;
+                if (elimA !== elimB) {
+                  return elimA - elimB;
+                }
+                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
                 if (accA !== accB) return accB - accA;
                 return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
               });
@@ -5579,7 +5605,8 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
                 round: currentStage,
                 revivedTeamId: revived.id,
                 revivedTeamName: revived.name,
-                revivedScore: minSurvivingScore
+                revivedScore: minSurvivingScore,
+                eliminatedAtStage: statRevived?.eliminatedAtStage
               });
             }
           }
@@ -5690,7 +5717,8 @@ async function buildRoomState(roomId) {
       ghostStreak: ghostStat?.ghostStreak || 0,
       ghostRoundAllCorrect: ghostStat?.ghostRoundAllCorrect || false,
       ghostTotalCorrect: ghostStat?.ghostTotalCorrect || 0,
-      ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0
+      ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0,
+      eliminatedAtStage: ghostStat?.eliminatedAtStage
     };
   });
   const players = validPlayers.map((p) => {

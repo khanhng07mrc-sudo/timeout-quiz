@@ -30,6 +30,7 @@ interface Props {
     ghostRoundAllCorrect?: boolean;
     ghostTotalCorrect?: number;
     ghostTotalAnswered?: number;
+    eliminatedAtStage?: number;
   };
   tournamentMatch?: import("@/types").TournamentMatch;
   onPredictWinner?: (matchId: string, predictedWinnerId: string) => void;
@@ -318,7 +319,7 @@ export default function GameQuestion({
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-purple-500/30 border border-purple-400/50 text-purple-200 font-bold text-xs">
-              VẪN ĐANG THI ĐẤU
+              {ghostStats?.eliminatedAtStage ? `BỊ LOẠI CHẶNG ${ghostStats.eliminatedAtStage}` : "VẪN ĐANG THI ĐẤU"}
             </span>
           </div>
 
@@ -327,7 +328,7 @@ export default function GameQuestion({
             <span>🔥 Chuỗi câu đúng: <strong>{ghostStats?.ghostStreak || 0}</strong></span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
-                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN HỒI SINH!
+                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN (Ưu tiên đội bị loại sớm!)
               </span>
             )}
           </div>

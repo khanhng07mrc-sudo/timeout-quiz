@@ -595,6 +595,7 @@ export interface TeamState {
   ghostRoundAllCorrect?: boolean;
   ghostTotalCorrect?: number;
   ghostTotalAnswered?: number;
+  eliminatedAtStage?: number;
 }
 
 export interface PlayerState {
@@ -1039,7 +1040,7 @@ export interface ServerToClientEvents {
   "game:early_completed": (payload: { questionId: string; reason: "ALL_SUBMITTED" | "ALL_FINALIZED"; message: string }) => void;
   "tournament:cheer:broadcast": (payload: { matchId: string; targetTeamId: string; emoji: string; countA: number; countB: number; percentA: number; percentB: number }) => void;
   "tournament:oracle:update": (payload: { oracleScores: Record<string, number> }) => void;
-  "elimination:revival": (payload: { round: number; revivedTeamId: string; revivedTeamName: string; revivedScore: number }) => void;
+  "elimination:revival": (payload: { round: number; revivedTeamId: string; revivedTeamName: string; revivedScore: number; eliminatedAtStage?: number }) => void;
 }
 
 export interface ClientToServerEvents {

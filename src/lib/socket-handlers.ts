@@ -119,6 +119,8 @@ interface EliminationGhostStat {
   ghostTotalAnswered: number;
   ghostRoundAllCorrect: boolean;
   currentRoundCorrect: number;
+  eliminatedAtStage?: number;
+  eliminatedAtQuestion?: number;
 }
 const roomEliminationGhostStats = new Map<string, Map<string, EliminationGhostStat>>(); // roomId -> Map(teamId -> stat)
 
@@ -5701,7 +5703,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
-      const roomGhosts = roomEliminationGhostStats.get(room.id);
+      let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         // 1. Evaluate round performance for each ghost team (100% correct in at least 1 round qualifies for revival)
         for (const [, ghostStat] of roomGhosts.entries()) {
@@ -5748,10 +5750,32 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
             data: { isEliminated: true },
           });
 
+          const currentStageNumber = Math.floor((room.currentQuestion + 1) / interval);
+          if (!roomGhosts) {
+            roomGhosts = new Map();
+            roomEliminationGhostStats.set(room.id, roomGhosts);
+          }
+          let elimGhostStat = roomGhosts.get(toEliminate.id);
+          if (!elimGhostStat) {
+            elimGhostStat = {
+              ghostStreak: 0,
+              ghostTotalCorrect: 0,
+              ghostTotalAnswered: 0,
+              ghostRoundAllCorrect: false,
+              currentRoundCorrect: 0,
+              eliminatedAtStage: currentStageNumber,
+              eliminatedAtQuestion: room.currentQuestion,
+            };
+            roomGhosts.set(toEliminate.id, elimGhostStat);
+          } else {
+            elimGhostStat.eliminatedAtStage = currentStageNumber;
+            elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+          }
+
           io.to(`room:${roomCode}`).emit("game:elimination:round", {
             eliminatedTeamId: toEliminate.id,
             eliminatedTeamName: toEliminate.name,
-            reason: `Điểm số thấp nhất sau vòng sinh tồn ${Math.floor((room.currentQuestion + 1) / interval)}`,
+            reason: `Điểm số thấp nhất sau vòng sinh tồn ${currentStageNumber}`,
           });
 
           // 2. Ghost Revival Check at Penultimate Stage (Chặng áp chót)
@@ -5773,9 +5797,20 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
               qualifiedGhosts.sort((a, b) => {
                 const statA = roomGhosts!.get(a.id)!;
                 const statB = roomGhosts!.get(b.id)!;
-                const accA = statA.ghostTotalCorrect / statA.ghostTotalAnswered;
-                const accB = statB.ghostTotalCorrect / statB.ghostTotalAnswered;
+
+                // Ưu tiên 1 (Quy tắc người dùng): Đội bị loại sớm hơn sẽ được ưu tiên duyệt hồi sinh
+                const elimA = statA.eliminatedAtQuestion ?? (999999 - statA.ghostTotalAnswered);
+                const elimB = statB.eliminatedAtQuestion ?? (999999 - statB.ghostTotalAnswered);
+                if (elimA !== elimB) {
+                  return elimA - elimB; // Chỉ số câu bị loại nhỏ hơn = bị loại sớm hơn
+                }
+
+                // Tiêu chí phụ 2: Tỷ lệ chính xác tổng thể (Accuracy)
+                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
                 if (accA !== accB) return accB - accA;
+
+                // Tiêu chí phụ 3: Tổng số câu đúng
                 return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
               });
 
@@ -5800,6 +5835,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
                 revivedTeamId: revived.id,
                 revivedTeamName: revived.name,
                 revivedScore: minSurvivingScore,
+                eliminatedAtStage: statRevived?.eliminatedAtStage,
               });
             }
           }
@@ -5924,6 +5960,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       ghostRoundAllCorrect: ghostStat?.ghostRoundAllCorrect || false,
       ghostTotalCorrect: ghostStat?.ghostTotalCorrect || 0,
       ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0,
+      eliminatedAtStage: ghostStat?.eliminatedAtStage,
     };
   });
 

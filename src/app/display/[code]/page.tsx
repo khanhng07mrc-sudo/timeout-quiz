@@ -65,6 +65,7 @@ export default function DisplayPage() {
     round: number;
     revivedTeamName: string;
     revivedScore: number;
+    eliminatedAtStage?: number;
   } | null>(null);
   const [liveCheer, setLiveCheer] = useState<{
     matchId: string;
@@ -1165,10 +1166,15 @@ export default function DisplayPage() {
               </h2>
             </div>
             <p className="text-xl sm:text-2xl font-bold text-white">
-              Đội <span className="text-cyan-300 font-black">{revivalNotice.revivedTeamName}</span> đã chính thức trở lại cuộc đua!
+              Đội <span className="text-cyan-300 font-black">{revivalNotice.revivedTeamName}</span>
+              {revivalNotice.eliminatedAtStage ? (
+                <span className="text-purple-300 font-medium text-base sm:text-lg block mt-1">
+                  (Kiên cường từ Chặng {revivalNotice.eliminatedAtStage} — Ưu tiên đội bị loại sớm)
+                </span>
+              ) : null}
             </p>
             <p className="text-sm text-purple-200/90 bg-purple-500/20 p-3 rounded-xl border border-purple-400/30">
-              Nhờ thành tích đúng trọn vẹn chặng thi đấu, đội được hồi sinh với số điểm{" "}
+              Nhờ thành tích đúng 100% trong chặng thi đấu, đội xuất sắc được hồi sinh với số điểm{" "}
               <strong className="text-yellow-300 font-mono text-base">{revivalNotice.revivedScore}đ</strong>!
             </p>
           </div>

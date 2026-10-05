@@ -1191,7 +1191,7 @@ export default function DisplayPage() {
               </div>
             )}
             <p className="text-sm text-purple-200/90 bg-purple-500/20 p-3 rounded-xl border border-purple-400/30">
-              Nhờ thành tích đúng 100% trong chặng thi đấu, {revivalNotice.revivedTeams && revivalNotice.revivedTeams.length > 1 ? "các đội" : "đội"} xuất sắc được hồi sinh với số điểm{" "}
+              Nhờ thành tích bóng ma xuất sắc nhất, {revivalNotice.revivedTeams && revivalNotice.revivedTeams.length > 1 ? "các đội" : "đội"} được hồi sinh với số điểm{" "}
               <strong className="text-yellow-300 font-mono text-base">{revivalNotice.revivedScore}đ</strong>!
             </p>
           </div>

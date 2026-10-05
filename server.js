@@ -5581,31 +5581,39 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
             const eliminatedTeams = await prisma.team.findMany({
               where: { roomId: room.id, isEliminated: true }
             });
-            const qualifiedGhosts = eliminatedTeams.filter((t) => {
+            const activeGhostCandidates = eliminatedTeams.filter((t) => {
               const stat = roomGhosts?.get(t.id);
-              return Boolean(stat && stat.ghostRoundAllCorrect && stat.ghostTotalAnswered > 0);
+              return Boolean(stat && stat.ghostTotalAnswered > 0);
             });
-            if (qualifiedGhosts.length > 0) {
-              qualifiedGhosts.sort((a, b) => {
-                const statA = roomGhosts.get(a.id);
-                const statB = roomGhosts.get(b.id);
-                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
-                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
+            const ghostCandidates = activeGhostCandidates.length > 0 ? activeGhostCandidates : eliminatedTeams;
+            if (ghostCandidates.length > 0) {
+              ghostCandidates.sort((a, b) => {
+                const statA = roomGhosts?.get(a.id);
+                const statB = roomGhosts?.get(b.id);
+                const isPerfectA = Boolean(statA?.ghostRoundAllCorrect);
+                const isPerfectB = Boolean(statB?.ghostRoundAllCorrect);
+                if (isPerfectA !== isPerfectB) {
+                  return isPerfectA ? -1 : 1;
+                }
+                const accA = statA && statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = statB && statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
                 if (accA !== accB) return accB - accA;
-                const elimA = statA.eliminatedAtQuestion ?? 999999 - statA.ghostTotalAnswered;
-                const elimB = statB.eliminatedAtQuestion ?? 999999 - statB.ghostTotalAnswered;
+                const elimA = statA?.eliminatedAtQuestion ?? 999999 - (statA?.ghostTotalAnswered || 0);
+                const elimB = statB?.eliminatedAtQuestion ?? 999999 - (statB?.ghostTotalAnswered || 0);
                 if (elimA !== elimB) {
                   return elimA - elimB;
                 }
-                const timeA = statA.ghostTotalTimeSpent ?? 999999;
-                const timeB = statB.ghostTotalTimeSpent ?? 999999;
+                const timeA = statA?.ghostTotalTimeSpent ?? 999999;
+                const timeB = statB?.ghostTotalTimeSpent ?? 999999;
                 if (timeA !== timeB) {
                   return timeA - timeB;
                 }
-                return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
+                const corrA = statA?.ghostTotalCorrect || 0;
+                const corrB = statB?.ghostTotalCorrect || 0;
+                return corrB - corrA;
               });
               const revivalLimit = Math.max(1, Math.min(3, config?.eliminationRevivalCount || 1));
-              const toRevive = qualifiedGhosts.slice(0, revivalLimit);
+              const toRevive = ghostCandidates.slice(0, revivalLimit);
               const survivingRemaining = activeTeams.filter((t) => !teamsToEliminate.some((elim) => elim.id === t.id));
               const minSurvivingScore = survivingRemaining.length > 0 ? Math.min(...survivingRemaining.map((t) => t.score)) : 0;
               for (const revived of toRevive) {

@@ -697,7 +697,7 @@ export default function CreateRoomPage() {
                     <option value={3}>3 đội</option>
                   </select>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Trận ≥ 4 chặng: Xét đội đúng 100% ít nhất 1 chặng theo 3 ưu tiên: 1. % đúng bóng ma → 2. Bị loại sớm hơn → 3. Thời gian trả lời ít hơn.
+                    Trận ≥ 4 chặng: Ưu tiên đội đạt 100% câu đúng (hoặc lấy cao nhất nếu không ai đạt 100%) theo 3 ưu tiên: 1. % đúng bóng ma → 2. Bị loại sớm hơn → 3. Thời gian trả lời ít hơn.
                   </p>
                 </div>
               </div>

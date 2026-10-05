@@ -315,7 +315,7 @@ export default function GameQuestion({
                   CHẾ ĐỘ BÓNG MA (GHOST TEAM) — ĐƯỜNG ĐUA HỒI SINH
                 </p>
                 <p className="text-[11px] sm:text-xs text-purple-200/90">
-                  Chỉ cần trả lời đúng 100% câu hỏi trong ít nhất 1 chặng bất kỳ để mở khóa điều kiện HỒI SINH ở chặng áp chót!
+                  Đạt 100% một chặng để được ưu tiên cao nhất, hoặc tích luỹ thành tích cao nhất để giành vé HỒI SINH ở chặng áp chót!
                 </p>
               </div>
             </div>
@@ -329,7 +329,7 @@ export default function GameQuestion({
             <span>🔥 Chuỗi câu đúng: <strong>{ghostStats?.ghostStreak || 0}</strong></span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
-                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN (Ưu tiên đội bị loại sớm!)
+                <span>✨</span> ĐẠT CHUẨN 100% (Ưu tiên hồi sinh cao nhất!)
               </span>
             )}
           </div>

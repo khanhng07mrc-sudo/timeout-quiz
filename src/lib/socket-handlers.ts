@@ -5803,42 +5803,54 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
             const eliminatedTeams = await prisma.team.findMany({
               where: { roomId: room.id, isEliminated: true },
             });
-            const qualifiedGhosts = eliminatedTeams.filter((t) => {
+            // 100% là điều kiện lý tưởng, nhưng nếu không ai đạt 100% thì lấy các đội có thành tích cao nhất:
+            const activeGhostCandidates = eliminatedTeams.filter((t) => {
               const stat = roomGhosts?.get(t.id);
-              return Boolean(stat && stat.ghostRoundAllCorrect && stat.ghostTotalAnswered > 0);
+              return Boolean(stat && stat.ghostTotalAnswered > 0);
             });
+            const ghostCandidates = activeGhostCandidates.length > 0 ? activeGhostCandidates : eliminatedTeams;
 
-            if (qualifiedGhosts.length > 0) {
-              qualifiedGhosts.sort((a, b) => {
-                const statA = roomGhosts!.get(a.id)!;
-                const statB = roomGhosts!.get(b.id)!;
+            if (ghostCandidates.length > 0) {
+              ghostCandidates.sort((a, b) => {
+                const statA = roomGhosts?.get(a.id);
+                const statB = roomGhosts?.get(b.id);
 
+                // Tiêu chuẩn lý tưởng: Đội từng đạt 100% trong ít nhất 1 chặng được ưu tiên cao nhất
+                const isPerfectA = Boolean(statA?.ghostRoundAllCorrect);
+                const isPerfectB = Boolean(statB?.ghostRoundAllCorrect);
+                if (isPerfectA !== isPerfectB) {
+                  return isPerfectA ? -1 : 1; // Đội đạt 100% đứng trước
+                }
+
+                // Nếu cùng đạt 100% HOẶC cùng KHÔNG đạt 100% (khi không ai đạt 100%):
                 // Ưu tiên 1 (Quy tắc người dùng): Đội có tỷ lệ % chính xác câu bóng ma cao hơn
-                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
-                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
-                if (accA !== accB) return accB - accA; // tỷ lệ cao hơn đứng trước
+                const accA = (statA && statA.ghostTotalAnswered > 0) ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = (statB && statB.ghostTotalAnswered > 0) ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
+                if (accA !== accB) return accB - accA; // tỷ lệ cao hơn đứng trước (lấy cao nhất)
 
                 // Ưu tiên 2 (Quy tắc người dùng): Đội bị loại sớm hơn
-                const elimA = statA.eliminatedAtQuestion ?? (999999 - statA.ghostTotalAnswered);
-                const elimB = statB.eliminatedAtQuestion ?? (999999 - statB.ghostTotalAnswered);
+                const elimA = statA?.eliminatedAtQuestion ?? (999999 - (statA?.ghostTotalAnswered || 0));
+                const elimB = statB?.eliminatedAtQuestion ?? (999999 - (statB?.ghostTotalAnswered || 0));
                 if (elimA !== elimB) {
                   return elimA - elimB; // chỉ số câu bị loại nhỏ hơn = bị loại sớm hơn
                 }
 
                 // Ưu tiên 3 (Quy tắc người dùng): Đội có tổng thời gian trả lời câu bóng ma ít hơn
-                const timeA = statA.ghostTotalTimeSpent ?? 999999;
-                const timeB = statB.ghostTotalTimeSpent ?? 999999;
+                const timeA = statA?.ghostTotalTimeSpent ?? 999999;
+                const timeB = statB?.ghostTotalTimeSpent ?? 999999;
                 if (timeA !== timeB) {
                   return timeA - timeB; // ít thời gian hơn = nhanh hơn đứng trước
                 }
 
                 // Tiêu chí phụ 4 (dự phòng): Tổng số câu đúng
-                return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
+                const corrA = statA?.ghostTotalCorrect || 0;
+                const corrB = statB?.ghostTotalCorrect || 0;
+                return corrB - corrA;
               });
 
               // Cài đặt số đội được duyệt hồi sinh tại chặng áp chót (1 - 3 đội, mặc định 1):
               const revivalLimit = Math.max(1, Math.min(3, config?.eliminationRevivalCount || 1));
-              const toRevive = qualifiedGhosts.slice(0, revivalLimit);
+              const toRevive = ghostCandidates.slice(0, revivalLimit);
 
               const survivingRemaining = activeTeams.filter((t) => !teamsToEliminate.some((elim) => elim.id === t.id));
               const minSurvivingScore = survivingRemaining.length > 0

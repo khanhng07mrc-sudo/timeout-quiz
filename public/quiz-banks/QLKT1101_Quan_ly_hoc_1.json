@@ -60,7 +60,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo Thuyết Hai nhân tố của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) tạo ra sự thỏa mãn thực sự trong công việc?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 35,
     "options": [
       {
@@ -138,14 +138,14 @@
     "type": "FILL_BLANK",
     "content": "Tác giả được coi là 'Cha đẻ của thuyết quản lý theo khoa học' với nguyên tắc định mức lao động và trả lương theo sản phẩm là ai? (Ghi họ của tác giả)",
     "answer": "Taylor",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "hint": "Tên đầy đủ là Frederick Winslow Taylor."
   },
   {
     "type": "MC_SINGLE",
     "content": "Theo Henry Mintzberg, vai trò nào dưới đây KHÔNG thuộc nhóm vai trò 'Quan hệ với con người' (Interpersonal roles) của nhà quản lý?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Một doanh nghiệp sản xuất ra các sản phẩm đạt tiêu chuẩn kỹ thuật cao với chi phí tối thiểu nhưng sản phẩm đó thị trường hoàn toàn không có nhu cầu tiêu thụ. Tình huống này phản ánh doanh nghiệp đang ở trạng thái nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -280,7 +280,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo Max Weber, một tổ chức quan liêu bàn giấy lý tưởng (Bureaucracy) cần sở hữu những đặc trưng cơ bản nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 35,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Theo Thuyết kỳ vọng của Victor Vroom, Động lực làm việc (Motivation) được xác định bằng công thức nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -415,7 +415,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong Lưới lãnh đạo của Robert Blake và Jane Mouton, phong cách quản trị ở tọa độ (9,9) - nơi nhà lãnh đạo quan tâm cao độ đến cả con người lẫn kết quả sản xuất - được gọi là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -463,7 +463,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khi doanh nghiệp hoạt động trong môi trường kinh doanh có độ bất định cao và công nghệ biến đổi nhanh chóng, mô hình tổ chức nào thường mang lại tính linh hoạt và thích ứng cao nhất?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Kỹ thuật động não (Brainstorming) khi áp dụng trong ra quyết định nhóm đòi hỏi tuân thủ những nguyên tắc cốt lõi nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -550,7 +550,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Delphi trong ra quyết định và dự báo nhóm có đặc điểm nổi bật nào dưới đây?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Theo nghiên cứu của Henry Mintzberg, vai trò 'Người phát ngôn' (Spokesperson) và 'Người giám sát thông tin' (Monitor) của nhà quản trị thuộc nhóm vai trò nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

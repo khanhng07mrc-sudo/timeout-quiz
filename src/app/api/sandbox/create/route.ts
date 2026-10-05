@@ -47,6 +47,10 @@ const DEFAULT_SANDBOX_CONFIG = {
   // Wager defaults
   wagerTimeSeconds: 15,
   wagerMinAllowance: 50,
+  wagerMultiplierCap: 2.5,
+  wagerRoundsPerTeam: 2,
+  wagerInitialPoints: 50,
+  wagerBailoutLimit: 1,
   // Buzz defaults
   buzzUnlockMode: "AUTO",
   buzzAutoDelay: 3,

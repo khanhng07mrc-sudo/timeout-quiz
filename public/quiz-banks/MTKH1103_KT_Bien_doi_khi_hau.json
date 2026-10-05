@@ -2,7 +2,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Dưới góc độ kinh tế học, tại sao biến đổi khí hậu toàn cầu được nhà kinh tế học Nicholas Stern nhận định là 'thất bại thị trường lớn nhất và rộng nhất từng thấy'?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -89,7 +89,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những biện pháp nào dưới đây thuộc nhóm giải pháp 'Giảm nhẹ' (Mitigation) biến đổi khí hậu nhằm triệt tiêu nguồn phát thải khí nhà kính?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -119,7 +119,7 @@
     "type": "FILL_BLANK",
     "content": "Mục tiêu cam kết đưa mức phát thải ròng khí nhà kính về bằng 0 được các quốc gia hướng đến vào năm 2050 thường được gọi bằng thuật ngữ tiếng Anh là gì?",
     "answer": "Net Zero",
-    "points": 15,
+    "points": 20,
     "timeLimit": 20,
     "hint": "Cụm từ gồm 2 từ tiếng Anh, có nghĩa là Phát thải ròng bằng 0."
   },
@@ -145,7 +145,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Cơ chế Điều chỉnh Biên giới Carbon (CBAM) do Liên minh Châu Âu (EU) ban hành nhằm mục đích chính nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -193,7 +193,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khái niệm 'Chi phí xã hội của Carbon' (Social Cost of Carbon - SCC) đo lường điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Trong đàm phán quốc tế về cắt giảm khí thải CO2, quốc gia X từ chối ký cam kết đóng cửa các nhà máy điện than để duy trì chi phí sản xuất giá rẻ, trong khi vẫn được hưởng lợi từ bầu khí quyển trong lành hơn do các nước láng giềng đã chi hàng tỷ USD để cắt giảm khí thải. Hành vi của quốc gia X minh họa rõ nét nhất cho vấn đề kinh tế học nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -328,7 +328,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Mức thuế Carbon tối ưu theo lý thuyết kinh tế Pigou (Pigouvian Tax) nên được ấn định bằng đúng đại lượng nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -357,7 +357,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Theo phân tích của Martin Weitzman về 'Giá cả và Số lượng' (Prices vs. Quantities), điểm khác biệt mấu chốt giữa Thuế Carbon và Hệ thống trao đổi hạn ngạch phát thải (ETS / Cap-and-Trade) là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo Thỏa thuận Paris năm 2015 về biến đổi khí hậu, các quốc gia tham gia cam kết những nghĩa vụ cốt lõi nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -434,7 +434,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Báo cáo Stern Review (2006) của nhà kinh tế học Nicholas Stern đã đưa ra kết luận mang tính bước ngoặt nào về mặt kinh tế?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -463,7 +463,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Cơ chế Điều chỉnh Biên giới Carbon (CBAM) do Liên minh Châu Âu (EU) ban hành nhằm giải quyết mục tiêu chính sách nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -492,7 +492,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Việc lựa chọn tỷ lệ chiết khấu xã hội (Social Discount Rate) rất thấp (khoảng 1.4% của Stern) khi đánh giá các dự án khí hậu phản ánh quan điểm triết lý kinh tế nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những giải pháp kinh tế - kỹ thuật nào dưới đây thuộc nhóm 'Thích ứng với biến đổi khí hậu' (Climate Adaptation)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -569,7 +569,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khái niệm 'Nghịch lý Jevons' (Jevons Paradox) trong kinh tế học tài nguyên và năng lượng cảnh báo điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Thuật ngữ 'Tài sản mắc kẹt' (Stranded Assets) trong tiến trình chuyển đổi năng lượng xanh đề cập đến hiện tượng nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

@@ -989,9 +989,13 @@ async function launchWagerQuestion(ioInstance, roomId, roomCode) {
   const questions = room.quizBank?.questions ?? [];
   const q = questions[room.currentQuestion];
   if (!q) return;
+  q.points = normalizeToThreeLevels(q.points || 10);
   wagerState.phase = "QUESTION_PERIOD";
   wagerState.questionReady = true;
   wagerState.autoLaunchCountdown = void 0;
+  wagerState.baseQuestionPoints = q.points;
+  const mult = wagerState.wagerMultiplierCap ?? 2.5;
+  wagerState.maxBetCap = Math.floor(q.points * mult);
   const qKey = `${room.id}:${q.id}`;
   roomQuestionProcessed.delete(qKey);
   let winningTeamName = wagerState.autoAssignedTeamName || "\u0110\u1ED9i c\u01B0\u1EE3c";
@@ -1010,6 +1014,7 @@ async function launchWagerQuestion(ioInstance, roomId, roomCode) {
     primaryTeamId: wagerState.lastWagerTeamId,
     primaryTeamName: winningTeamName
   });
+  questionState.question.points = q.points;
   questionState.timeLimit = effectiveTimeLimit;
   questionState.question.timeLimit = effectiveTimeLimit;
   const autoTimer = room.config?.autoTimerStart ?? false;
@@ -3905,6 +3910,30 @@ function registerSocketHandlers(io2) {
         const roomState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", roomState);
       }
+    });
+    socket.on("admin:room:update_config", async ({ key, value, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+      const config = room.config || {};
+      config[key] = value;
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config }
+      });
+      room.config = config;
+      roomCache.set(room.id, room);
+      if (key === "wagerMultiplierCap" && room.mode === "WAGER") {
+        const wagerState = roomWagers.get(room.id);
+        if (wagerState) {
+          const newMult = Number(value) || 2.5;
+          const basePts = wagerState.baseQuestionPoints || 20;
+          wagerState.wagerMultiplierCap = newMult;
+          wagerState.maxBetCap = Math.floor(basePts * newMult);
+          io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+        }
+      }
+      const roomState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", roomState);
     });
     socket.on("admin:timer:set", async ({ seconds }) => {
       const room = await getAdminRoom(socket);

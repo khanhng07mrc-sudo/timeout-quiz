@@ -107,6 +107,7 @@ export default function CreateRoomPage() {
   const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
   const [wagerInitialPoints, setWagerInitialPoints] = useState(50);
   const [wagerBailoutLimit, setWagerBailoutLimit] = useState(1);
+  const [wagerMultiplierCap, setWagerMultiplierCap] = useState(2.5);
   // Buzz config
   const [buzzUnlockMode, setBuzzUnlockMode] = useState<"AUTO" | "MANUAL">("AUTO");
   const [buzzAutoDelay, setBuzzAutoDelay] = useState(3);
@@ -249,6 +250,7 @@ export default function CreateRoomPage() {
             wagerMinAllowance: mode === "WAGER" ? wagerMinAllowance : 50,
             wagerInitialPoints: mode === "WAGER" ? wagerInitialPoints : 50,
             wagerBailoutLimit: mode === "WAGER" ? wagerBailoutLimit : 1,
+            wagerMultiplierCap: mode === "WAGER" ? wagerMultiplierCap : 2.5,
             // Buzz config
             buzzUnlockMode: mode === "BUZZ" ? buzzUnlockMode : "AUTO",
             buzzAutoDelay: mode === "BUZZ" ? Math.max(3, buzzAutoDelay) : 3,
@@ -1032,6 +1034,21 @@ export default function CreateRoomPage() {
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
                     Mỗi đội được cứu trợ tối đa {wagerBailoutLimit} lần khi tụt xuống &le; 0 điểm.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Trần cược tối đa (Hệ số nhân điểm câu hỏi)</label>
+                  <select
+                    value={wagerMultiplierCap}
+                    onChange={(e) => setWagerMultiplierCap(parseFloat(e.target.value) || 2.5)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  >
+                    <option value={2}>x2.0 (Câu 10đ trần 20đ, Câu 20đ trần 40đ, Câu 30đ trần 60đ)</option>
+                    <option value={2.5}>x2.5 (Mặc định - Câu 10đ trần 25đ, Câu 20đ trần 50đ, Câu 30đ trần 75đ)</option>
+                    <option value={3}>x3.0 (Câu 10đ trần 30đ, Câu 20đ trần 60đ, Câu 30đ trần 90đ)</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Mức cược tối đa mà các đội có thể đặt cho câu hỏi.
                   </p>
                 </div>
               </div>

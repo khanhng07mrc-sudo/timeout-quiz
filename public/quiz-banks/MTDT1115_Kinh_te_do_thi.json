@@ -31,7 +31,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong Mô hình thành phố đơn tâm (Monocentric City Model) của William Alonso, đường Giá thầu địa tô (Bid-rent curve) của khu vực thương mại dịch vụ có đặc điểm nào so với khu vực nhà ở dân cư?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -60,7 +60,7 @@
   {
     "type": "MC_MULTI",
     "content": "Dưới góc độ kinh tế học, tại sao hiện tượng ùn tắc giao thông giờ cao điểm tại các đô thị lớn được coi là một thất bại thị trường?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 35,
     "options": [
       {
@@ -126,7 +126,7 @@
   {
     "type": "TRUE_FALSE",
     "content": "Nghịch lý Braess trong giao thông đô thị chỉ ra rằng việc xây thêm một tuyến đường mới đôi khi có thể làm tăng tổng thời gian di chuyển của tất cả các phương tiện thay vì giảm ùn tắc.",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -193,7 +193,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Quy mô đô thị tối ưu (Optimal City Size) đạt được tại điểm mà:",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Một chính quyền thành phố mở rộng vùng ven bằng việc phê duyệt ồ ạt các khu nhà ở phân tán mật độ thấp cách xa trung tâm. Sau 5 năm, ngân sách thành phố thâm hụt nặng nề do phải kéo dài mạng lưới cấp thoát nước và đường xá, trong khi người dân chịu chi phí xăng dầu tăng vọt và kẹt xe nghiêm trọng do bắt buộc phải dùng xe cá nhân đi làm. Hiện tượng này minh chứng cho tác động tiêu cực của:",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -357,7 +357,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Định luật Downs (Downs' Law) hay hiện tượng 'Nhu cầu cảm ứng' (Induced Demand) trong giao thông đô thị cảnh báo điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_MULTI",
     "content": "Chính sách Thu phí chống ùn tắc khu vực trung tâm (Congestion Pricing) như áp dụng tại Singapore (ERP) hay London mang lại những lợi ích kinh tế nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -434,7 +434,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Tràn lan đô thị' (Urban Sprawl) có đặc trưng không gian và xã hội nổi bật nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -492,7 +492,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Chỉnh trang đô thị' (Gentrification) khi cải tạo các khu vực nhà ở cũ thường mang lại mặt trái xã hội nào cần lưu ý?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Khi quy mô dân số đô thị phát triển vượt qua ngưỡng tối ưu, những yếu tố 'Phi kinh tế tập tụ' (Diseconomies of Agglomeration) nào sẽ bắt đầu xuất hiện?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -569,7 +569,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Ngoại vi hóa người nghèo' (Suburbanization of Poverty) trong cấu trúc không gian đô thị hiện đại phản ánh điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Chính sách 'Thu hồi giá trị gia tăng từ đất' (Land Value Capture - LVC) cho phép chính quyền đô thị thực hiện giải pháp nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

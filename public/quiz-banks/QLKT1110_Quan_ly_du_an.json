@@ -31,7 +31,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong phương pháp sơ đồ mạng CPM (Critical Path Method), 'Đường găng' (Critical Path) được định nghĩa là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -60,7 +60,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong phương pháp Quản lý Giá trị Thu được (EVM), nếu chỉ số hiệu suất chi phí CPI = EV / AC > 1, điều này có ý nghĩa gì đối với dự án?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -90,14 +90,14 @@
     "type": "FILL_BLANK",
     "content": "Công cụ phân rã mục tiêu toàn bộ dự án thành các gói công việc (Work Packages) nhỏ hơn, có thể quản lý và giao quyền được gọi là gì? (Ghi tên viết tắt 3 chữ cái)",
     "answer": "WBS",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "hint": "Viết tắt của thuật ngữ Work Breakdown Structure."
   },
   {
     "type": "MC_MULTI",
     "content": "Trong quản trị rủi ro dự án, những chiến lược nào dưới đây được sử dụng để ứng phó với các 'Rủi ro tiêu cực' (Threats)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 35,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Trong dự án phát triển ứng dụng di động, khách hàng liên tục yêu cầu bổ sung các tính năng nhỏ ngoài hợp đồng ban đầu. Quản trị dự án (PM) đều chấp thuận miệng mà không thông qua quy trình đánh giá thay đổi chính thức, khiến dự án chậm tiến độ 3 tháng và vượt 35% ngân sách. Hiện tượng này được gọi là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -357,7 +357,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Một dự án tại thời điểm kiểm tra có Chỉ số hiệu quả tiến độ SPI = 0.85 và Chỉ số hiệu quả chi phí CPI = 1.15. Dự án đang ở tình trạng nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong phương pháp ước lượng PERT 3 điểm, công thức tính Thời gian kỳ vọng (Te) từ thời gian Lạc quan (o), Thường gặp (m) và Bi quan (p) là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -415,7 +415,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo hướng dẫn chuẩn của PMBOK, Đường cơ sở phạm vi dự án (Scope Baseline) bao gồm những tài liệu phê duyệt nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -492,7 +492,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật 'Theo dõi nhanh' (Fast-tracking) nhằm rút ngắn tiến độ dự án được thực hiện bằng cách nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật 'Đâm nén tiến độ' (Crashing) khác với 'Theo dõi nhanh' (Fast-tracking) ở điểm căn bản nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -550,7 +550,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Một sự kiện rủi ro có xác suất xảy ra là 20% và nếu xảy ra sẽ gây tổn thất tài chính 500 triệu đồng. Giá trị tiền tệ kỳ vọng (Expected Monetary Value - EMV) của rủi ro này là bao nhiêu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -579,7 +579,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những chiến lược nào dưới đây được sử dụng để ứng phó với các rủi ro tiêu cực (đe dọa) trong quản lý dự án?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {

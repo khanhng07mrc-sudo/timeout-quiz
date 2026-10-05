@@ -56,6 +56,8 @@ async function main() {
 
       for (let i = 0; i < questionsData.length; i++) {
         const q = questionsData[i];
+        const rawPts = Number(q.points) || 10;
+        const normalizedPts = rawPts <= 10 ? 10 : rawPts <= 20 ? 20 : 30;
         await prisma.question.create({
           data: {
             quizBankId: bank.id,
@@ -63,7 +65,7 @@ async function main() {
             content: q.content,
             options: q.options || undefined,
             answer: q.answer || null,
-            points: q.points || 10,
+            points: normalizedPts,
             timeLimit: q.timeLimit || 30,
             hint: q.hint || null,
             order: i + 1,

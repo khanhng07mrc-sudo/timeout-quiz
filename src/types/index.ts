@@ -1112,6 +1112,7 @@ export interface ClientToServerEvents {
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
   "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
+  "admin:room:update_config": (payload: { key: string; value: any; code?: string }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

@@ -31,7 +31,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC), 4 khía cạnh đo lường hiệu quả hoạt động toàn diện của tổ chức bao gồm:",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -60,7 +60,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo khuôn khổ Kiểm soát Nội bộ COSO (2013), những thành phần nào dưới đây nằm trong 5 bộ phận cấu thành của hệ thống kiểm soát nội bộ?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 35,
     "options": [
       {
@@ -89,7 +89,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Chỉ số Lợi nhuận còn lại (Residual Income - RI) để đánh giá trung tâm đầu tư được tính theo công thức nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -145,7 +145,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khi thị trường bên ngoài là cạnh tranh hoàn hảo, phương pháp định giá chuyển nhượng nội bộ nào được xem là tối ưu nhất để vừa đảm bảo tính tự chủ vừa tối ưu hóa lợi ích tập đoàn?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Để đạt chỉ tiêu lợi nhuận quý IV theo KPI nghiêm ngặt của tập đoàn nhằm nhận thưởng lớn, giám đốc nhà máy đã hoãn toàn bộ chi phí bảo dưỡng máy móc định kỳ sang năm sau và ghi nhận trước doanh thu các đơn hàng chưa giao. Hành vi này phản ánh hiện tượng gì trong kiểm soát quản lý?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -309,7 +309,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Chỉ số Thu nhập thặng dư (Residual Income - RI) dùng để đo lường hiệu quả trung tâm đầu tư được xác định theo công thức nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -357,7 +357,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Chỉ số Giá trị kinh tế gia tăng (Economic Value Added - EVA) khác biệt căn bản so với Lợi nhuận kế toán ở điểm mấu chốt nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_MULTI",
     "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC) của Kaplan và Norton, 4 góc nhìn thước đo chiến lược bao gồm những khía cạnh nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -434,7 +434,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khi chuyển nhượng sản phẩm giữa hai bộ phận trong cùng một tập đoàn và có một thị trường bên ngoài hoàn hảo, cạnh tranh gay gắt, phương pháp định giá chuyển nhượng nào tối ưu hóa lợi ích của toàn tập đoàn?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -463,7 +463,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khi bộ phận bán còn dư thừa năng lực sản xuất (không thể bán hết công suất ra ngoài thị trường), mức giá chuyển nhượng nội bộ tối thiểu mà bộ phận bán có thể chấp nhận là bao nhiêu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -492,7 +492,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Bất kiêm nhiệm / Phân chia trách nhiệm' (Segregation of Duties) trong kiểm soát nội bộ đòi hỏi phải tách biệt các chức năng nào để ngăn ngừa rủi ro gian lận và sai sót?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những chỉ tiêu tài chính nào dưới đây thường được áp dụng phù hợp để đánh giá trách nhiệm của Trưởng Trung tâm Lợi nhuận (Profit Center)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khái niệm 'Ngân sách linh hoạt' (Flexible Budget) có ưu điểm nổi bật nào so với 'Ngân sách tĩnh' (Static Budget) khi phân tích biến động chi phí?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

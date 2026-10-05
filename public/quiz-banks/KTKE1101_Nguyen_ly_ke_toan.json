@@ -60,7 +60,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua nguyên vật liệu nhập kho trị giá 50 triệu đồng, chưa thanh toán cho người bán. Nghiệp vụ này sẽ làm thay đổi cấu trúc bảng cân đối kế toán như thế nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -97,7 +97,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những báo cáo nào dưới đây thuộc Hệ thống Báo cáo Tài chính bắt buộc hàng năm của doanh nghiệp?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -126,7 +126,7 @@
   {
     "type": "TRUE_FALSE",
     "content": "Trong điều kiện giá cả nguyên vật liệu trên thị trường có xu hướng tăng liên tục qua các đợt nhập, phương pháp tính giá xuất kho FIFO (Nhập trước - Xuất trước) sẽ cho ra Giá vốn hàng bán thấp hơn và Lợi nhuận gộp cao hơn so với phương pháp Bình quân gia quyền.",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -145,7 +145,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khoản tiền mà khách hàng đã thanh toán trước cho dịch vụ mà doanh nghiệp chưa cung cấp (chẳng hạn khách trả trước tiền thuê văn phòng 1 năm) được kế toán phân loại vào đâu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong thực tế, một doanh nghiệp có Báo cáo kết quả kinh doanh đạt mức 'Lợi nhuận dương rất cao' nhưng vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản chủ yếu là do nguyên nhân nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -328,7 +328,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khách hàng chuyển khoản đặt cọc trước 100 triệu đồng để mua hàng vào tháng sau. Doanh nghiệp ghi nhận khoản tiền nhận trước này vào khoản mục nào trên Báo cáo tài chính?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_MULTI",
     "content": "Tài khoản kế toán nào dưới đây có kết cấu điều chỉnh giảm tài sản (mang số dư bên Có trên Bảng cân đối kế toán)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -434,7 +434,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp trả trước tiền thuê văn phòng 1 năm trị giá 120 triệu đồng bằng tiền chuyển khoản. Tại thời điểm chi tiền, khoản chi này được phân loại là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -463,7 +463,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Báo cáo Lưu chuyển tiền tệ (Cash Flow Statement) phân loại các luồng tiền thu - chi thành 3 hoạt động căn bản nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những nghiệp vụ kinh tế nào dưới đây chỉ làm thay đổi cơ cấu bên trong của Tài sản mà KHÔNG làm thay đổi tổng quy mô tài sản của doanh nghiệp?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -569,7 +569,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Thận trọng' (Prudence / Conservatism) trong kế toán quy định việc ghi nhận doanh thu và chi phí như thế nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một xe tải chở hàng có nguyên giá 600 triệu đồng, thời gian sử dụng ước tính là 5 năm, giá trị thanh lý ước tính bằng 0. Theo phương pháp khấu hao đường thẳng, mức trích khấu hao hàng tháng là bao nhiêu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

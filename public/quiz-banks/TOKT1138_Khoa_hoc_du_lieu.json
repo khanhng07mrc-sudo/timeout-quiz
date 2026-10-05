@@ -65,7 +65,7 @@
   {
     "type": "MC_MULTI",
     "content": "Để đánh giá hiệu năng của một mô hình bài toán Phân loại (Classification) khi tập dữ liệu bị mất cân bằng lớp nghiêm trọng (Imbalanced Data), những chỉ số nào dưới đây đáng tin cậy hơn độ chính xác thông thường (Accuracy)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -94,7 +94,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Quá khớp' (Overfitting) trong mô hình máy học xảy ra khi:",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -124,7 +124,7 @@
     "type": "FILL_BLANK",
     "content": "Trong thuật toán phân cụm K-Means, phương pháp phổ biến nhất để lựa chọn số cụm K tối ưu dựa trên đồ thị suy giảm của tổng bình phương khoảng cách nội cụm (WCSS) được gọi là phương pháp đường gì?",
     "answer": "Khuỷu tay",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "hint": "Tiếng Anh là Elbow Method (Điểm gấp khúc như cùi chỏ / khuỷu tay)."
   },
@@ -198,7 +198,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tiêu chí nào thường được sử dụng trong thuật toán Cây quyết định (Decision Tree - CART) để đo lường mức độ tinh khiết (Purity) khi phân nhánh?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -227,7 +227,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Một ngân hàng xây dựng mô hình máy học phát hiện giao dịch gian lận thẻ tín dụng. Do giao dịch gian lận chỉ chiếm 0.1% tổng số (mất cân bằng dữ liệu nghiêm trọng - Imbalanced Data), một mô hình 'ngây thơ' luôn dự đoán 'Không gian lận' vẫn đạt độ chính xác Accuracy = 99.9% nhưng bỏ sót 100% các vụ lừa đảo. Nhóm khoa học dữ liệu nên ưu tiên dùng chỉ số nào để đánh giá mô hình?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -333,7 +333,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Khi tập dữ liệu gặp tình trạng mất cân bằng lớp nghiêm trọng (ví dụ 99.5% giao dịch bình thường, chỉ 0.5% giao dịch gian lận thẻ tín dụng), chỉ số đánh giá mô hình nào đáng tin cậy hơn Accuracy?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -391,7 +391,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những kỹ thuật nào dưới đây thường được áp dụng hiệu quả để khắc phục hiện tượng Quá khớp (Overfitting) trong các mô hình máy học?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -439,7 +439,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong thuật toán phân cụm K-Means, phương pháp trực quan đồ thị nào thường được sử dụng phổ biến nhất để xác định số lượng cụm K tối ưu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -468,7 +468,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Giảm chiều dữ liệu Phân tích thành phần chính (PCA) tìm kiếm các trục tọa độ mới nhằm mục tiêu tối ưu hóa điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -497,7 +497,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Kiểm định chéo K-Fold (K-Fold Cross-Validation) có mục đích chính là gì trong quy trình học máy?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -526,7 +526,7 @@
   {
     "type": "MC_MULTI",
     "content": "Những phương pháp tiền xử lý nào dưới đây thường được áp dụng để phát hiện và xử lý giá trị ngoại lai (Outliers)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -574,7 +574,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong mô hình hồi quy Logistic, hàm số toán học nào có vai trò ánh xạ giá trị đầu ra tuyến tính thành xác suất nằm trong khoảng (0, 1)?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -603,7 +603,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong bài toán phát hiện giao dịch gian lận ngân hàng, chỉ số Độ nhạy (Recall) đo lường điều gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

@@ -60,7 +60,7 @@
   {
     "type": "MC_MULTI",
     "content": "Phương pháp dự báo định tính nào dưới đây thu thập ý kiến chuyên gia qua nhiều vòng ẩn danh và phản hồi tổng hợp nhằm đạt được sự đồng thuận cao?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -89,7 +89,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Phương pháp lập ngân sách nào yêu cầu mọi khoản chi phí đều phải được giải trình và chứng minh lại từ đầu cho mỗi kỳ kế hoạch mới, bất kể ngân sách kỳ trước là bao nhiêu?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -138,7 +138,7 @@
     "type": "FILL_BLANK",
     "content": "Phương pháp quản lý theo mục tiêu phổ biến trong lập kế hoạch, nơi cấp trên và cấp dưới cùng thống nhất xác định mục tiêu và tiêu chuẩn đánh giá, viết tắt là gì?",
     "answer": "MBO",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "hint": "Viết tắt của 3 chữ cái tiếng Anh: Management by Objectives."
   },
@@ -193,7 +193,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao nhưng hoạt động trong ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -222,7 +222,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Tình huống: Một doanh nghiệp bán lẻ xây dựng bản kế hoạch mở rộng chuỗi cửa hàng chi tiết trong 2 năm. Tuy nhiên sau 6 tháng thực hiện, doanh số sụt giảm mạnh do xuất hiện xu hướng mua sắm trực tuyến tăng vọt bất ngờ và chi phí mặt bằng tăng cao. Yếu tố cốt lõi nào khiến bản kế hoạch trên thất bại?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -309,7 +309,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Theo ma trận phát triển thị trường - sản phẩm của Igor Ansoff, chiến lược bán các sản phẩm hiện có vào các thị trường địa lý mới được gọi là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -338,7 +338,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo nguyên tắc thiết lập mục tiêu SMART, những chữ cái nào đại diện đúng cho các thuộc tính chuẩn hóa?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -386,7 +386,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Phương pháp lập ngân sách từ số 0 (Zero-Based Budgeting - ZBB) có đặc trưng ưu việt nào so với phương pháp lập ngân sách gia tăng truyền thống?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -463,7 +463,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong phương pháp dự báo san bằng mũ (Exponential Smoothing), trọng số lớn nhất được gán cho đại lượng nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -492,7 +492,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Trong ma trận 9 ô GE-McKinsey dùng để lập kế hoạch danh mục kinh doanh, hai trục đánh giá bao gồm những yếu tố nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -521,7 +521,7 @@
   {
     "type": "MC_MULTI",
     "content": "Theo mô hình 5 áp lực cạnh tranh của Michael Porter (Five Forces), những yếu tố nào quyết định mức độ hấp dẫn và tỷ suất sinh lời của ngành?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 30,
     "options": [
       {
@@ -550,7 +550,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Chiến lược 'Tích hợp ngược về phía sau' (Backward Vertical Integration) trong hoạch định chiến lược kinh doanh có nghĩa là gì?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {
@@ -598,7 +598,7 @@
   {
     "type": "MC_SINGLE",
     "content": "Phương pháp lập kế hoạch theo kịch bản (Scenario Planning) phát huy giá trị cao nhất trong điều kiện môi trường nào?",
-    "points": 15,
+    "points": 20,
     "timeLimit": 25,
     "options": [
       {

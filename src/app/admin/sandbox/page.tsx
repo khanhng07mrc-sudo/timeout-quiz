@@ -551,13 +551,15 @@ export default function AdminSandboxPage() {
         botSocketsRef.current.forEach((bSock) => {
           setTimeout(() => {
             const currentHighest = wager.currentHighestWager || 0;
-            const validSteps = [10, 15, 20, 25, 30, 35, 40, 45, 50].filter(
-              (amt) => amt > currentHighest
+            const maxCap = wager.maxBetCap || 999;
+            const allSteps = [10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90];
+            const validSteps = allSteps.filter(
+              (amt) => amt > currentHighest && amt <= maxCap
             );
             if (validSteps.length > 0 && Math.random() > 0.4) {
               const bet = validSteps[Math.floor(Math.random() * Math.min(2, validSteps.length))];
               bSock.emit("game:wager:submit", { amount: bet });
-              addLog(`Bot đã cược ${bet}đ (chia hết cho 5)`);
+              addLog(`Bot đã cược ${bet}đ (trần cược: ${maxCap}đ)`);
             }
           }, 1500 + Math.random() * 2000);
         });
@@ -2026,11 +2028,31 @@ export default function AdminSandboxPage() {
   const updateConfig = useCallback(<K extends keyof NonNullable<RoomState["config"]>>(key: K, value: NonNullable<RoomState["config"]>[K]) => {
     setRoomState((prev) => {
       if (!prev) return prev;
-      return { ...prev, config: { ...prev.config, [key]: value } };
+      let nextWager = prev.wagerState;
+      if (key === "wagerMultiplierCap" && nextWager) {
+        const newMult = Number(value) || 2.5;
+        const basePts = nextWager.baseQuestionPoints || 20;
+        const newMaxBetCap = Math.floor(basePts * newMult);
+        nextWager = {
+          ...nextWager,
+          wagerMultiplierCap: newMult,
+          maxBetCap: newMaxBetCap,
+        };
+      }
+      return {
+        ...prev,
+        config: { ...prev.config, [key]: value },
+        wagerState: nextWager,
+      };
     });
     addLog(`⚙️ Cài đặt [${String(key)}] = ${JSON.stringify(value)}`);
-    if (isOfflineSandbox) setTimeout(() => syncToIframes(), 50);
-  }, [addLog, isOfflineSandbox, syncToIframes]);
+
+    if (!isOfflineSandbox) {
+      adminSocketRef.current?.emit("admin:room:update_config", { key, value, code });
+    } else {
+      setTimeout(() => syncToIframes(), 50);
+    }
+  }, [addLog, isOfflineSandbox, syncToIframes, code]);
 
   const handleAdminNext = () => {
     if (isOfflineSandbox) {

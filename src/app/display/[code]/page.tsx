@@ -1599,22 +1599,51 @@ export default function DisplayPage() {
                       <span>📊</span> Điểm đồng đội câu này:
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                      {revealPayload.teamSummaries.map((ts) => (
-                        <div key={ts.teamId} className="p-3 rounded-xl bg-card border border-border flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-4 h-4 rounded-full shrink-0" style={{ background: ts.teamColor }} />
-                            <span className="font-bold truncate text-base">{ts.teamName}</span>
+                      {revealPayload.teamSummaries.map((ts) => {
+                        const isGhostTeam = roomState.mode === "ELIMINATION" && (ts.isEliminated || (ts.pointsAwarded === 0 && ts.correctMembers > 0));
+                        return (
+                          <div key={ts.teamId} className="p-3 rounded-xl bg-card border border-border flex flex-col justify-between gap-1.5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-4 h-4 rounded-full shrink-0" style={{ background: ts.teamColor }} />
+                                <span className="font-bold truncate text-base">{ts.teamName}</span>
+                                {isGhostTeam && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 font-sans">
+                                    Bóng ma
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</p>
+                                <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {roomState.mode === "DICE_RACE"
+                                    ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
+                                    : isGhostTeam
+                                    ? (ts.correctMembers > 0 ? "✓ Hồi sinh +1" : "✗ 0đ")
+                                    : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded.toLocaleString()}` : ts.pointsAwarded.toLocaleString()} pts`}
+                                </p>
+                              </div>
+                            </div>
+                            {(roomState.mode === "CLASSIC" || roomState.mode === "ELIMINATION") && !isGhostTeam && ts.pointsAwarded > 0 && (
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
+                                <span className="text-zinc-400">Gốc: {(ts.basePoints ?? 1000).toLocaleString()}</span>
+                                {(ts.speedPoints ?? 0) > 0 && (
+                                  <span className="text-blue-400 font-semibold">⚡+{(ts.speedPoints ?? 0).toLocaleString()}</span>
+                                )}
+                                {(ts.streakPoints ?? 0) > 0 && (
+                                  <span className="text-amber-400 font-semibold">🔥+{(ts.streakPoints ?? 0).toLocaleString()}</span>
+                                )}
+                                {(ts.rarityPoints ?? 0) > 0 && (
+                                  <span className="text-purple-400 font-semibold">✨+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
+                                )}
+                                {ts.avgTimeSpent !== undefined && ts.avgTimeSpent > 0 && (
+                                  <span className="text-zinc-500 font-mono">({(ts.avgTimeSpent / 1000).toFixed(2)}s)</span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xs text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</p>
-                            <p className={`font-mono font-bold text-lg ${ts.pointsAwarded >= 0 ? "text-green-400" : "text-red-400"}`}>
-                              {roomState.mode === "DICE_RACE"
-                                ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
-                                : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts`}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}

@@ -1,4 +1,4 @@
-import { GameConfig } from "@/types";
+import { GameConfig, GameMode } from "@/types";
 
 export interface ScoringContext {
   basePoints: number;
@@ -11,10 +11,37 @@ export interface ScoringContext {
   multiplier?: number; // from DOUBLE or SCORE_X2 card
   shielded?: boolean; // from SHIELD card
   penaltyMultiplier?: number; // from PENALTY card
+  mode?: GameMode;
+}
+
+export interface DetailedPointsResult {
+  points: number;
+  basePoints: number;
+  speedPoints: number;
+  streakPoints: number;
+  rarityPoints: number;
 }
 
 /**
- * Chuẩn hóa điểm câu hỏi về 3 mức chuẩn 10, 20, 30 điểm
+ * Chuẩn hóa điểm gốc theo chế độ chơi:
+ * - Đối với CLASSIC & ELIMINATION: Thang điểm chuẩn Kahoot 1.000 - 2.000 điểm
+ *   + Dễ (<= 10đ): 1.000 điểm
+ *   + Trung bình (11 - 20đ): 1.500 điểm
+ *   + Khó (> 20đ): 2.000 điểm
+ * - Đối với các mode khác (BOUNCEBACK, GRID_CARO, DICE_RACE, BUZZ, WAGER, POWERUP, TOURNAMENT):
+ *   Giữ nguyên thang 10, 20, 30 điểm truyền thống.
+ */
+export function getBasePointsForMode(rawPoints: number, mode?: GameMode): number {
+  if (mode === "CLASSIC" || mode === "ELIMINATION") {
+    if (rawPoints <= 10) return 1000;
+    if (rawPoints <= 20) return 1500;
+    return 2000;
+  }
+  return normalizeToThreeLevels(rawPoints);
+}
+
+/**
+ * Chuẩn hóa điểm câu hỏi về 3 mức chuẩn 10, 20, 30 điểm cho các chế độ truyền thống
  * Dễ (<=10đ) -> 10đ; Trung bình (11-20đ) -> 20đ; Khó (>20đ) -> 30đ
  */
 export function normalizeToThreeLevels(points: number): 10 | 20 | 30 {
@@ -24,53 +51,62 @@ export function normalizeToThreeLevels(points: number): 10 | 20 | 30 {
 }
 
 /**
- * Tính điểm đa tiêu chí cho cá nhân:
+ * Tính điểm đa tiêu chí chi tiết cho cá nhân (Kahoot-level accuracy):
  * 1. Đúng/Sai (Điểm gốc)
- * 2. Tốc độ phản xạ (Speed bonus: tối đa +50% theo thời gian còn lại)
+ * 2. Tốc độ phản xạ theo mili-giây (tối đa +50% theo tỷ lệ thời gian còn lại)
  * 3. Chuỗi đúng liên tiếp (Streak Combo: 2 -> +10%, 3 -> +20%, 4 -> +30%, 5+ -> +50%)
  * 4. Độ hiếm đáp án (Rarity: phòng < 30% đúng được thưởng tối đa +45%)
  */
-export function computePointsAwarded(ctx: ScoringContext): number {
+export function computeDetailedPointsAwarded(ctx: ScoringContext): DetailedPointsResult {
+  const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
+
   if (!ctx.isCorrect) {
-    if (!ctx.config.penaltyForWrong) return 0;
-    // Điểm trừ luôn mặc định = nửa số điểm câu hỏi (-50%)
-    const penalty = Math.floor(ctx.basePoints * 0.5);
-    if (ctx.shielded) return 0;
+    if (!ctx.config.penaltyForWrong) {
+      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+    }
+    const penalty = Math.floor(base * 0.5);
+    if (ctx.shielded) {
+      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+    }
     const pm = ctx.penaltyMultiplier ?? 1;
-    return -Math.floor(penalty * pm);
+    const finalPenalty = -Math.floor(penalty * pm);
+    return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
   }
 
-  let score = ctx.basePoints;
+  const multiplier = ctx.multiplier ?? 1;
+  const basePoints = Math.round(base * multiplier);
 
-  // 1. Tốc độ (Speed bonus)
+  // 1. Tốc độ phản xạ (Speed bonus theo mili-giây)
+  let speedPoints = 0;
   if (ctx.config.timeBonusEnabled) {
-    const remainingRatio = Math.max(
-      0,
-      1 - ctx.timeSpent / (ctx.timeLimit * 1000)
-    );
-    const speedBonus = Math.floor(ctx.basePoints * 0.5 * remainingRatio);
-    score += speedBonus;
+    const totalMs = ctx.timeLimit * 1000;
+    const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+    speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
   }
 
   // 2. Chuỗi đúng liên tiếp (Streak bonus)
+  let streakPoints = 0;
   if (ctx.streak && ctx.streak >= 2) {
     let streakRate = 0.1;
     if (ctx.streak === 3) streakRate = 0.2;
     else if (ctx.streak === 4) streakRate = 0.3;
     else if (ctx.streak >= 5) streakRate = 0.5;
-    const streakBonus = Math.floor(ctx.basePoints * streakRate);
-    score += streakBonus;
+    streakPoints = Math.round(base * streakRate * multiplier);
   }
 
-  // 3. Độ hiếm đáp án (Rarity multiplier)
+  // 3. Độ hiếm đáp án (Rarity multiplier khi phòng < 30% đúng)
+  let rarityPoints = 0;
   if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
     const rarityDelta = 0.30 - Math.max(0, ctx.roomAccuracy);
-    const rarityBonus = Math.floor(ctx.basePoints * rarityDelta * 1.5);
-    score += rarityBonus;
+    rarityPoints = Math.round(base * rarityDelta * 1.5 * multiplier);
   }
 
-  const multiplier = ctx.multiplier ?? 1;
-  return Math.floor(score * multiplier);
+  const points = basePoints + speedPoints + streakPoints + rarityPoints;
+  return { points, basePoints, speedPoints, streakPoints, rarityPoints };
+}
+
+export function computePointsAwarded(ctx: ScoringContext): number {
+  return computeDetailedPointsAwarded(ctx).points;
 }
 
 export interface TeamScoringContext {
@@ -85,10 +121,15 @@ export interface TeamScoringContext {
   shielded?: boolean; // from SHIELD / SCORE_X2
   penaltyMultiplier?: number; // from PENALTY
   roomAccuracy?: number; // Tỷ lệ đúng của toàn phòng (0 - 1)
+  mode?: GameMode;
 }
 
 export interface TeamScoreResult {
   points: number;
+  basePoints: number;
+  speedPoints: number;
+  streakPoints: number;
+  rarityPoints: number;
   accuracyRatio: number;
   speedBonus: number;
   avgTimeSpent: number;
@@ -97,30 +138,55 @@ export interface TeamScoreResult {
 }
 
 /**
- * Tính điểm đa tiêu chí tập thể cho Đội (Team):
- * Accuracy ratio * Base * Speed * Streak * Empirical Rarity
+ * Tính điểm đa tiêu chí tập thể cho Đội (Team) với thang điểm và bóc tách thành phần:
+ * Base + Speed + Streak + Rarity x Accuracy ratio x Multiplier
  */
 export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResult {
+  const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
   const total = Math.max(1, ctx.totalOnlineMembers);
   const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
 
   // 1. Hệ số hiếm thực nghiệm
   let empiricalMultiplier = 1.0;
+  let rarityBonus = 0;
   if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
     const rarityDelta = 0.30 - Math.max(0, ctx.roomAccuracy);
     empiricalMultiplier = 1 + rarityDelta * 1.5;
+    rarityBonus = rarityDelta * 1.5;
   }
 
   if (ctx.correctMembers === 0) {
     if (!ctx.config.penaltyForWrong || ctx.shielded) {
-      return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier, streakBonus: 0 };
+      return {
+        points: 0,
+        basePoints: 0,
+        speedPoints: 0,
+        streakPoints: 0,
+        rarityPoints: 0,
+        accuracyRatio: 0,
+        speedBonus: 0,
+        avgTimeSpent: 0,
+        empiricalMultiplier,
+        streakBonus: 0,
+      };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
-    const penalty = Math.floor(ctx.basePoints * 0.5 * pm);
-    return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier, streakBonus: 0 };
+    const penalty = -Math.floor(base * 0.5 * pm);
+    return {
+      points: penalty,
+      basePoints: penalty,
+      speedPoints: 0,
+      streakPoints: 0,
+      rarityPoints: 0,
+      accuracyRatio: 0,
+      speedBonus: 0,
+      avgTimeSpent: 0,
+      empiricalMultiplier,
+      streakBonus: 0,
+    };
   }
 
-  // 2. Tốc độ trung bình
+  // 2. Tốc độ trung bình (ms)
   const avgTimeSpent =
     ctx.correctTimes.length > 0
       ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length
@@ -133,21 +199,35 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
   }
 
   // 3. Chuỗi đúng liên tiếp của Đội
-  let streakMultiplier = 1.0;
   let streakBonus = 0;
   if (ctx.streak && ctx.streak >= 2) {
     if (ctx.streak === 2) streakBonus = 0.1;
     else if (ctx.streak === 3) streakBonus = 0.2;
     else if (ctx.streak === 4) streakBonus = 0.3;
     else if (ctx.streak >= 5) streakBonus = 0.5;
-    streakMultiplier = 1.0 + streakBonus;
   }
 
   const multiplier = ctx.multiplier ?? 1;
-  const rawScore = ctx.basePoints * empiricalMultiplier * streakMultiplier * (1 + speedBonus) * accuracyRatio * multiplier;
-  const points = Math.floor(rawScore);
 
-  return { points, accuracyRatio, speedBonus, avgTimeSpent, empiricalMultiplier, streakBonus };
+  // Bóc tách từng phần điểm số chuẩn xác:
+  const basePoints = Math.round(base * accuracyRatio * multiplier);
+  const speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
+  const streakPoints = Math.round(base * streakBonus * accuracyRatio * multiplier);
+  const rarityPoints = Math.round(base * rarityBonus * accuracyRatio * multiplier);
+  const points = basePoints + speedPoints + streakPoints + rarityPoints;
+
+  return {
+    points,
+    basePoints,
+    speedPoints,
+    streakPoints,
+    rarityPoints,
+    accuracyRatio,
+    speedBonus,
+    avgTimeSpent,
+    empiricalMultiplier,
+    streakBonus,
+  };
 }
 
 export function computeTeamScore(

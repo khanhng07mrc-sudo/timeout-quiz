@@ -221,59 +221,100 @@ function getStandardQuestionTimeLimit(question, overridePoints) {
 }
 
 // src/lib/game-engine/scoring.ts
+function getBasePointsForMode(rawPoints, mode) {
+  if (mode === "CLASSIC" || mode === "ELIMINATION") {
+    if (rawPoints <= 10) return 1e3;
+    if (rawPoints <= 20) return 1500;
+    return 2e3;
+  }
+  return normalizeToThreeLevels(rawPoints);
+}
 function normalizeToThreeLevels(points) {
   if (points <= 10) return 10;
   if (points <= 20) return 20;
   return 30;
 }
-function computePointsAwarded(ctx) {
+function computeDetailedPointsAwarded(ctx) {
+  const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
   if (!ctx.isCorrect) {
-    if (!ctx.config.penaltyForWrong) return 0;
-    const penalty = Math.floor(ctx.basePoints * 0.5);
-    if (ctx.shielded) return 0;
+    if (!ctx.config.penaltyForWrong) {
+      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+    }
+    const penalty = Math.floor(base * 0.5);
+    if (ctx.shielded) {
+      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+    }
     const pm = ctx.penaltyMultiplier ?? 1;
-    return -Math.floor(penalty * pm);
+    const finalPenalty = -Math.floor(penalty * pm);
+    return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
   }
-  let score = ctx.basePoints;
+  const multiplier = ctx.multiplier ?? 1;
+  const basePoints = Math.round(base * multiplier);
+  let speedPoints = 0;
   if (ctx.config.timeBonusEnabled) {
-    const remainingRatio = Math.max(
-      0,
-      1 - ctx.timeSpent / (ctx.timeLimit * 1e3)
-    );
-    const speedBonus = Math.floor(ctx.basePoints * 0.5 * remainingRatio);
-    score += speedBonus;
+    const totalMs = ctx.timeLimit * 1e3;
+    const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+    speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
   }
+  let streakPoints = 0;
   if (ctx.streak && ctx.streak >= 2) {
     let streakRate = 0.1;
     if (ctx.streak === 3) streakRate = 0.2;
     else if (ctx.streak === 4) streakRate = 0.3;
     else if (ctx.streak >= 5) streakRate = 0.5;
-    const streakBonus = Math.floor(ctx.basePoints * streakRate);
-    score += streakBonus;
+    streakPoints = Math.round(base * streakRate * multiplier);
   }
+  let rarityPoints = 0;
   if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
     const rarityDelta = 0.3 - Math.max(0, ctx.roomAccuracy);
-    const rarityBonus = Math.floor(ctx.basePoints * rarityDelta * 1.5);
-    score += rarityBonus;
+    rarityPoints = Math.round(base * rarityDelta * 1.5 * multiplier);
   }
-  const multiplier = ctx.multiplier ?? 1;
-  return Math.floor(score * multiplier);
+  const points = basePoints + speedPoints + streakPoints + rarityPoints;
+  return { points, basePoints, speedPoints, streakPoints, rarityPoints };
+}
+function computePointsAwarded(ctx) {
+  return computeDetailedPointsAwarded(ctx).points;
 }
 function computeTeamQuestionScore(ctx) {
+  const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
   const total = Math.max(1, ctx.totalOnlineMembers);
   const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
   let empiricalMultiplier = 1;
+  let rarityBonus = 0;
   if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
     const rarityDelta = 0.3 - Math.max(0, ctx.roomAccuracy);
     empiricalMultiplier = 1 + rarityDelta * 1.5;
+    rarityBonus = rarityDelta * 1.5;
   }
   if (ctx.correctMembers === 0) {
     if (!ctx.config.penaltyForWrong || ctx.shielded) {
-      return { points: 0, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier, streakBonus: 0 };
+      return {
+        points: 0,
+        basePoints: 0,
+        speedPoints: 0,
+        streakPoints: 0,
+        rarityPoints: 0,
+        accuracyRatio: 0,
+        speedBonus: 0,
+        avgTimeSpent: 0,
+        empiricalMultiplier,
+        streakBonus: 0
+      };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
-    const penalty = Math.floor(ctx.basePoints * 0.5 * pm);
-    return { points: -penalty, accuracyRatio: 0, speedBonus: 0, avgTimeSpent: 0, empiricalMultiplier, streakBonus: 0 };
+    const penalty = -Math.floor(base * 0.5 * pm);
+    return {
+      points: penalty,
+      basePoints: penalty,
+      speedPoints: 0,
+      streakPoints: 0,
+      rarityPoints: 0,
+      accuracyRatio: 0,
+      speedBonus: 0,
+      avgTimeSpent: 0,
+      empiricalMultiplier,
+      streakBonus: 0
+    };
   }
   const avgTimeSpent = ctx.correctTimes.length > 0 ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length : ctx.timeLimit * 1e3;
   let speedBonus = 0;
@@ -281,19 +322,31 @@ function computeTeamQuestionScore(ctx) {
     const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1e3));
     speedBonus = remainingRatio * 0.5;
   }
-  let streakMultiplier = 1;
   let streakBonus = 0;
   if (ctx.streak && ctx.streak >= 2) {
     if (ctx.streak === 2) streakBonus = 0.1;
     else if (ctx.streak === 3) streakBonus = 0.2;
     else if (ctx.streak === 4) streakBonus = 0.3;
     else if (ctx.streak >= 5) streakBonus = 0.5;
-    streakMultiplier = 1 + streakBonus;
   }
   const multiplier = ctx.multiplier ?? 1;
-  const rawScore = ctx.basePoints * empiricalMultiplier * streakMultiplier * (1 + speedBonus) * accuracyRatio * multiplier;
-  const points = Math.floor(rawScore);
-  return { points, accuracyRatio, speedBonus, avgTimeSpent, empiricalMultiplier, streakBonus };
+  const basePoints = Math.round(base * accuracyRatio * multiplier);
+  const speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
+  const streakPoints = Math.round(base * streakBonus * accuracyRatio * multiplier);
+  const rarityPoints = Math.round(base * rarityBonus * accuracyRatio * multiplier);
+  const points = basePoints + speedPoints + streakPoints + rarityPoints;
+  return {
+    points,
+    basePoints,
+    speedPoints,
+    streakPoints,
+    rarityPoints,
+    accuracyRatio,
+    speedBonus,
+    avgTimeSpent,
+    empiricalMultiplier,
+    streakBonus
+  };
 }
 function computeStealAmount(leaderScore, stealerScore) {
   const diff = leaderScore - stealerScore;
@@ -5460,7 +5513,8 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
       isCorrect,
       config: effectiveConfig,
       streak: pStreak,
-      roomAccuracy
+      roomAccuracy,
+      mode: room.mode
     });
     await prisma.answer.update({
       where: { id: ans.id },
@@ -5976,7 +6030,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       ...room.config,
       timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean(room.config?.timeBonusEnabled !== false) : false
     };
-    const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
+    const teamScoreRes = computeTeamQuestionScore({
       basePoints: question.points,
       timeLimit: question.timeLimit,
       totalOnlineMembers: totalOnline,
@@ -5987,8 +6041,13 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       shielded,
       penaltyMultiplier,
       roomAccuracy,
-      streak: teamStreak
+      streak: teamStreak,
+      mode: room.mode
     });
+    const teamPoints = teamScoreRes.points;
+    const accuracyRatio = teamScoreRes.accuracyRatio;
+    const speedBonus = teamScoreRes.speedBonus;
+    const empiricalMultiplier = teamScoreRes.empiricalMultiplier;
     if (room.mode === "ELIMINATION" && team.isEliminated) {
       teamSummaries.push({
         teamId: team.id,
@@ -5997,10 +6056,16 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
         totalOnlineMembers: totalOnline,
         correctMembers: correctAnswers.length,
         pointsAwarded: 0,
-        speedBonus: 0,
+        speedBonus: Math.round(speedBonus * 100),
         multiplier,
         activeCard: activeCards[0]?.type,
-        empiricalMultiplier
+        empiricalMultiplier,
+        basePoints: teamScoreRes.basePoints,
+        speedPoints: teamScoreRes.speedPoints,
+        streakPoints: teamScoreRes.streakPoints,
+        rarityPoints: teamScoreRes.rarityPoints,
+        streak: teamStreak,
+        avgTimeSpent: teamScoreRes.avgTimeSpent
       });
       continue;
     }
@@ -6026,7 +6091,13 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       speedBonus: Math.round(speedBonus * 100),
       multiplier,
       activeCard: activeCards[0]?.type,
-      empiricalMultiplier
+      empiricalMultiplier,
+      basePoints: teamScoreRes.basePoints,
+      speedPoints: teamScoreRes.speedPoints,
+      streakPoints: teamScoreRes.streakPoints,
+      rarityPoints: teamScoreRes.rarityPoints,
+      streak: teamStreak,
+      avgTimeSpent: teamScoreRes.avgTimeSpent
     });
   }
   return { teamScoresUpdates, teamSummaries, roomAccuracy, rarityBonusPercent };

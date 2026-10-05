@@ -56,25 +56,25 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "CLASSIC",
     nameVi: "Truyền thống (Classic)",
     emoji: "⚡",
-    taglineVi: "Đua điểm đồng đội đa tiêu chí",
-    summaryVi: "Chế độ thi đấu trắc nghiệm kinh điển tính điểm đa tiêu chí: Đúng/Sai (Điểm gốc) + Tốc độ phản xạ (lên tới +50%) + Chuỗi đúng liên tiếp (Streak Combo lên tới +50%) + Độ hiếm đáp án (thưởng lên tới +45% khi phòng < 30% đúng).",
+    taglineVi: "Thang điểm chuẩn Kahoot 1.000 - 2.000đ & Thưởng tốc độ mili-giây",
+    summaryVi: "Chế độ thi đấu trắc nghiệm kinh điển với thang điểm chuẩn Kahoot/Wayground: Dễ (1.000đ), Trung bình (1.500đ), Khó (2.000đ). Phân hóa điểm số cực chuẩn theo mili-giây phản xạ (tối đa +50%) + Chuỗi đúng liên tiếp (Streak combo lên tới +50%) + Thưởng độ hiếm phòng (tối đa +45%). Không bao giờ bị hòa điểm!",
     mechanicsVi: [
-      "Mỗi câu hỏi có giới hạn thời gian (thường 20-30 giây).",
-      "Các thành viên trong cùng một đội cùng thảo luận và nộp đáp án trên thiết bị cá nhân hoặc đọc qua MC.",
-      "Tính điểm đa tiêu chí: Tốc độ phản xạ càng nhanh thưởng càng cao (tối đa +50% điểm).",
+      "Thang điểm chuẩn Kahoot/Wayground: Câu hỏi phân bổ theo 3 bậc nhận thức: Dễ (1.000 điểm), Trung bình (1.500 điểm), Khó (2.000 điểm).",
+      "Thưởng tốc độ phản xạ chuẩn xác theo mili-giây: Càng trả lời nhanh càng nhận thêm điểm thưởng tốc độ (tối đa +50% điểm cơ sở).",
       "Chuỗi đúng liên tiếp (Streak Combo): Đúng 2 câu (+10%), 3 câu (+20%), 4 câu (+30%), 5+ câu (+50%). Trả lời sai đưa chuỗi về 0.",
       "Độ hiếm đáp án (Empirical Rarity): Khi tỷ lệ cả phòng trả lời đúng < 30%, câu hỏi được đánh giá hóc búa và thưởng thêm tối đa +45%.",
+      "Câu hỏi Vàng (Gold Rush): Nhân đôi toàn bộ điểm số câu hỏi (x2).",
     ],
     scoringVi: [
-      "Điểm chuẩn hoá: 10, 20 hoặc 30 điểm tuỳ cấp độ nhận thức Bloom.",
-      "Thưởng tốc độ: Lên tới +50% điểm câu hỏi tuỳ thời gian còn lại.",
-      "Thưởng Streak Combo: +10% đến +50% điểm câu hỏi.",
+      "Điểm cơ sở: Dễ 1.000đ | Trung bình 1.500đ | Khó 2.000đ.",
+      "Thưởng tốc độ: Lên tới +50% điểm cơ sở tùy thời gian phản xạ tính theo mili-giây.",
+      "Thưởng Streak Combo: +10% đến +50% điểm cơ sở (lên tới +500đ - +1.000đ/câu).",
       "Thưởng độ hiếm: Lên tới +45% khi dưới 30% phòng giải đúng.",
-      "Sai bị phạt trừ 50% điểm câu hỏi (nếu bật phạt điểm).",
+      "Bóc tách điểm chi tiết: Màn hình vinh danh thể hiện rõ Điểm gốc + Thưởng tốc độ + Thưởng chuỗi.",
     ],
     tipsVi: [
-      "Nhanh tay và duy trì chuỗi đúng liên tiếp để bứt phá điểm số ngoạn mục!",
-      "Hợp tác nhóm để giải các câu hỏi hóc búa nhằm nhận trọn thưởng độ hiếm.",
+      "Nhanh tay bấm đáp án trong những giây đầu tiên để giật trọn +500đ thưởng tốc độ!",
+      "Duy trì chuỗi đúng liên tiếp để nhân thêm điểm thưởng chuỗi rực cháy 🔥.",
     ],
   },
   BUZZ: {
@@ -909,6 +909,13 @@ export interface TeamRevealSummary {
   multiplier: number;
   activeCard?: CardType;
   empiricalMultiplier?: number;
+  basePoints?: number;
+  speedPoints?: number;
+  streakPoints?: number;
+  rarityPoints?: number;
+  streak?: number;
+  avgTimeSpent?: number;
+  isEliminated?: boolean;
 }
 
 export interface AnswerRevealPayload {
@@ -924,6 +931,11 @@ export interface AnswerRevealPayload {
     isCorrect: boolean;
     pointsAwarded: number;
     timeSpent: number;
+    basePoints?: number;
+    speedPoints?: number;
+    streakPoints?: number;
+    rarityPoints?: number;
+    streak?: number;
   }>;
   teamSummaries?: TeamRevealSummary[];
   roomAccuracy?: number; // Tỷ lệ đúng toàn phòng (0 - 1)

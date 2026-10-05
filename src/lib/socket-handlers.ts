@@ -5657,6 +5657,7 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
       config: effectiveConfig,
       streak: pStreak,
       roomAccuracy,
+      mode: room.mode as any,
     });
 
     await prisma.answer.update({
@@ -6312,7 +6313,7 @@ async function resolveQuestionTeamScores(
       timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
     };
 
-    const { points: teamPoints, accuracyRatio, speedBonus, empiricalMultiplier } = computeTeamQuestionScore({
+    const teamScoreRes = computeTeamQuestionScore({
       basePoints: question.points,
       timeLimit: question.timeLimit,
       totalOnlineMembers: totalOnline,
@@ -6324,7 +6325,12 @@ async function resolveQuestionTeamScores(
       penaltyMultiplier,
       roomAccuracy,
       streak: teamStreak,
+      mode: room.mode as any,
     });
+    const teamPoints = teamScoreRes.points;
+    const accuracyRatio = teamScoreRes.accuracyRatio;
+    const speedBonus = teamScoreRes.speedBonus;
+    const empiricalMultiplier = teamScoreRes.empiricalMultiplier;
 
     if (room.mode === "ELIMINATION" && team.isEliminated) {
       // Eliminated ghost team does not gain live score on main board
@@ -6335,10 +6341,16 @@ async function resolveQuestionTeamScores(
         totalOnlineMembers: totalOnline,
         correctMembers: correctAnswers.length,
         pointsAwarded: 0,
-        speedBonus: 0,
+        speedBonus: Math.round(speedBonus * 100),
         multiplier,
         activeCard: activeCards[0]?.type,
         empiricalMultiplier,
+        basePoints: teamScoreRes.basePoints,
+        speedPoints: teamScoreRes.speedPoints,
+        streakPoints: teamScoreRes.streakPoints,
+        rarityPoints: teamScoreRes.rarityPoints,
+        streak: teamStreak,
+        avgTimeSpent: teamScoreRes.avgTimeSpent,
       });
       continue;
     }
@@ -6369,6 +6381,12 @@ async function resolveQuestionTeamScores(
       multiplier,
       activeCard: activeCards[0]?.type,
       empiricalMultiplier,
+      basePoints: teamScoreRes.basePoints,
+      speedPoints: teamScoreRes.speedPoints,
+      streakPoints: teamScoreRes.streakPoints,
+      rarityPoints: teamScoreRes.rarityPoints,
+      streak: teamStreak,
+      avgTimeSpent: teamScoreRes.avgTimeSpent,
     });
   }
 

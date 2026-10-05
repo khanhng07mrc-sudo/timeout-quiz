@@ -1106,21 +1106,67 @@ export default function GameQuestion({
       {revealPayload && (
         <div className="space-y-3 pt-2">
           <div className="text-center py-2 font-bold text-lg">
-            {revealPayload.answers.some((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect) ? (
-              <span className="text-green-400">
-                {roomMode === "DICE_RACE"
-                  ? "✓ Đúng rồi!"
-                  : isGhost
-                  ? "✓ Đúng rồi! (Tích luỹ hồi sinh: +1 câu đúng 🔥)"
-                  : `✓ Đúng rồi! +${
-                      revealPayload.teamSummaries?.find((ts) => (myTeamId ? ts.teamId === myTeamId : true))?.pointsAwarded
-                      ?? revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded
-                      ?? 0
-                    } điểm`}
-              </span>
-            ) : (
-              <span className="text-red-400">✗ Chưa chính xác!</span>
-            )}
+            {(() => {
+              const myTs = revealPayload.teamSummaries?.find((ts) => (myTeamId ? ts.teamId === myTeamId : true));
+              const myAns = revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect);
+              const isMyCorrect = Boolean(myAns || (myTs && myTs.correctMembers > 0));
+              const myPts = myTs?.pointsAwarded ?? myAns?.pointsAwarded ?? 0;
+              const timeDisplay = myTs?.avgTimeSpent
+                ? `${(myTs.avgTimeSpent / 1000).toFixed(2)}s`
+                : myAns?.timeSpent
+                ? `${(myAns.timeSpent / 1000).toFixed(2)}s`
+                : null;
+
+              if (!isMyCorrect) {
+                return <span className="text-red-400">✗ Chưa chính xác!</span>;
+              }
+
+              if (roomMode === "DICE_RACE") {
+                return <span className="text-green-400">✓ Đúng rồi!</span>;
+              }
+
+              if (isGhost) {
+                return (
+                  <div className="space-y-1">
+                    <span className="text-emerald-400">
+                      ✓ Đúng rồi! (Tích luỹ hồi sinh: +1 câu đúng 🔥{timeDisplay ? ` • ${timeDisplay}` : ""})
+                    </span>
+                    <p className="text-xs text-zinc-400 font-normal">
+                      Hãy duy trì phong độ để được hồi sinh khi kết thúc chặng!
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-1.5">
+                  <span className="text-green-400">✓ Đúng rồi! +{myPts.toLocaleString()} điểm</span>
+                  {(roomMode === "CLASSIC" || roomMode === "ELIMINATION") && (
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-normal">
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        🎯 Gốc: {(myTs?.basePoints ?? myAns?.basePoints ?? 1000).toLocaleString()}
+                      </span>
+                      {(myTs?.speedPoints ?? myAns?.speedPoints ?? 0) > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">
+                          ⚡ Tốc độ: +{(myTs?.speedPoints ?? myAns?.speedPoints ?? 0).toLocaleString()}
+                          {timeDisplay ? ` (${timeDisplay})` : ""}
+                        </span>
+                      )}
+                      {(myTs?.streakPoints ?? myAns?.streakPoints ?? 0) > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
+                          🔥 Chuỗi {(myTs?.streak ?? myAns?.streak) ? `x${myTs?.streak ?? myAns?.streak}` : ""}: +{(myTs?.streakPoints ?? myAns?.streakPoints ?? 0).toLocaleString()}
+                        </span>
+                      )}
+                      {(myTs?.rarityPoints ?? myAns?.rarityPoints ?? 0) > 0 && (
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
+                          ✨ Hiếm: +{(myTs?.rarityPoints ?? myAns?.rarityPoints ?? 0).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           {/* Prominent Correct Answer Banner on Reveal */}
@@ -1161,25 +1207,54 @@ export default function GameQuestion({
             <div className="p-3 rounded-xl bg-card/90 border border-border space-y-2">
               <p className="text-xs font-bold text-cyan-400 uppercase tracking-wider">📊 Điểm đồng đội câu này</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {revealPayload.teamSummaries.map((ts) => (
-                  <div key={ts.teamId} className="flex items-center justify-between p-2 rounded-lg bg-background/60 border border-border text-xs">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: ts.teamColor }} />
-                      <span className="font-bold truncate">{ts.teamName}</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-mono shrink-0">
-                      <span className="text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</span>
-                      {ts.empiricalMultiplier && ts.empiricalMultiplier > 1 && (
-                        <span className="text-amber-400 font-bold text-[10px]">🔥+{Math.round((ts.empiricalMultiplier - 1) * 100)}%</span>
+                {revealPayload.teamSummaries.map((ts) => {
+                  const isGhostTeam = roomMode === "ELIMINATION" && (ts.isEliminated || (ts.pointsAwarded === 0 && ts.correctMembers > 0));
+                  return (
+                    <div key={ts.teamId} className="flex flex-col p-2.5 rounded-lg bg-background/60 border border-border text-xs gap-1.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-3 h-3 rounded-full shrink-0" style={{ background: ts.teamColor }} />
+                          <span className="font-bold truncate">{ts.teamName}</span>
+                          {isGhostTeam && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                              Bóng ma
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 font-mono shrink-0">
+                          <span className="text-muted-foreground">{ts.correctMembers}/{ts.totalOnlineMembers} đúng</span>
+                          {ts.empiricalMultiplier && ts.empiricalMultiplier > 1 && (
+                            <span className="text-amber-400 font-bold text-[10px]">🔥+{Math.round((ts.empiricalMultiplier - 1) * 100)}%</span>
+                          )}
+                          <span className={ts.pointsAwarded >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
+                            {roomMode === "DICE_RACE"
+                              ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
+                              : isGhostTeam
+                              ? (ts.correctMembers > 0 ? "✓ Hồi sinh +1" : "✗ 0đ")
+                              : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded.toLocaleString()}` : ts.pointsAwarded.toLocaleString()} pts`}
+                          </span>
+                        </div>
+                      </div>
+                      {(roomMode === "CLASSIC" || roomMode === "ELIMINATION") && !isGhostTeam && ts.pointsAwarded > 0 && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground pl-5 flex-wrap">
+                          <span>Gốc: {(ts.basePoints ?? 1000).toLocaleString()}</span>
+                          {(ts.speedPoints ?? 0) > 0 && (
+                            <span className="text-blue-400 font-medium">⚡+{(ts.speedPoints ?? 0).toLocaleString()}</span>
+                          )}
+                          {(ts.streakPoints ?? 0) > 0 && (
+                            <span className="text-amber-400 font-medium">🔥+{(ts.streakPoints ?? 0).toLocaleString()}</span>
+                          )}
+                          {(ts.rarityPoints ?? 0) > 0 && (
+                            <span className="text-purple-400 font-medium">✨+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
+                          )}
+                          {ts.avgTimeSpent !== undefined && ts.avgTimeSpent > 0 && (
+                            <span className="text-zinc-500 font-mono">({(ts.avgTimeSpent / 1000).toFixed(2)}s)</span>
+                          )}
+                        </div>
                       )}
-                      <span className={ts.pointsAwarded >= 0 ? "text-green-400 font-bold" : "text-red-400 font-bold"}>
-                        {roomMode === "DICE_RACE"
-                          ? (ts.correctMembers > 0 ? "✓ Đúng" : "✗ Sai")
-                          : `${ts.pointsAwarded >= 0 ? `+${ts.pointsAwarded}` : ts.pointsAwarded} pts`}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

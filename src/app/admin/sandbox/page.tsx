@@ -25,7 +25,7 @@ import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
-import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+import { normalizeToThreeLevels, getBasePointsForMode } from "@/lib/game-engine/scoring";
 import { getBroadTopic } from "@/lib/topics";
 import { getBloomLevelFromPoints } from "@/types";
 
@@ -79,7 +79,7 @@ export default function AdminSandboxPage() {
   const offlineQIndexRef = useRef<number>(-1);
   const offlineTimerRef = useRef<NodeJS.Timeout | null>(null);
   const offlineRemainingRef = useRef<number>(0);
-  const offlineAnswersRef = useRef<Map<string, { answer: any; isCorrect: boolean; points: number }>>(new Map());
+  const offlineAnswersRef = useRef<Map<string, { answer: any; isCorrect: boolean; points: number; timeSpent?: number }>>(new Map());
   const offlineUsedQuestionIdsRef = useRef<Set<string>>(new Set());
   const offlineFinalizedActorsRef = useRef<Set<string>>(new Set());
 
@@ -1636,8 +1636,22 @@ export default function AdminSandboxPage() {
              (Array.isArray(answer) && answer.includes(correctOpt.id)) ||
              (typeof answer === "string" && (correctOpt.text?.trim() === answer.trim() || correctOpt.id === answer.trim())))
           : false;
-        const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
-        offlineAnswersRef.current.set(targetTeamId, { answer, isCorrect, points: awarded });
+        const timeLimit = currentQuestion.timeLimit || 30;
+        const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
+        const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
+
+        const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
+        let awarded = 0;
+        if (isCorrect) {
+          if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+            const ratio = Math.max(0, 1 - timeSpentMs / (timeLimit * 1000));
+            const speedBonus = Math.round(base * 0.5 * ratio);
+            awarded = base + speedBonus;
+          } else {
+            awarded = base;
+          }
+        }
+        offlineAnswersRef.current.set(targetTeamId, { answer, isCorrect, points: awarded, timeSpent: timeSpentMs });
 
         const isSingleSubmit = roomState?.config.answerSubmissionMode === "SINGLE_SUBMIT";
         const isStealInBounceback = selectedMode === "BOUNCEBACK" && currentQuestion.stealBuzzedTeamId === targetTeamId;
@@ -1662,8 +1676,22 @@ export default function AdminSandboxPage() {
                (Array.isArray(finalAns) && finalAns.includes(correctOpt.id)) ||
                (typeof finalAns === "string" && (correctOpt.text?.trim() === finalAns.trim() || correctOpt.id === finalAns.trim())))
             : false;
-          const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
-          offlineAnswersRef.current.set(targetTeamId, { answer: finalAns, isCorrect, points: awarded });
+          const timeLimit = currentQuestion.timeLimit || 30;
+          const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
+          const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
+
+          const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
+          let awarded = 0;
+          if (isCorrect) {
+            if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+              const ratio = Math.max(0, 1 - timeSpentMs / (timeLimit * 1000));
+              const speedBonus = Math.round(base * 0.5 * ratio);
+              awarded = base + speedBonus;
+            } else {
+              awarded = base;
+            }
+          }
+          offlineAnswersRef.current.set(targetTeamId, { answer: finalAns, isCorrect, points: awarded, timeSpent: timeSpentMs });
 
           if (selectedMode === "BOUNCEBACK") {
             const isSteal = Boolean(currentQuestion.stealBuzzedTeamId);
@@ -2464,20 +2492,41 @@ export default function AdminSandboxPage() {
         const recorded = offlineAnswersRef.current.get(t.id);
         const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
         const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        const timeSpent = recorded?.timeSpent ?? 3000;
 
         let pts = 0;
+        let basePts = 0;
+        let speedPts = 0;
+
         if (isWagerMode) {
           if (t.id === lastWagerTeamId) {
             pts = isCorrect ? wagerAmount : -wagerPenalty;
           } else {
             pts = isCorrect ? nonWagerCorrectPoints : 0;
           }
+          basePts = pts;
         } else if (selectedMode === "ELIMINATION" && t.isEliminated) {
           pts = 0;
-        } else {
+          basePts = 0;
+        } else if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+          const rawBase = currentQuestion.question.points || 10;
+          const base = getBasePointsForMode(rawBase, selectedMode);
           const isGold = selectedMode === "CLASSIC" && Boolean(currentQuestion.isGoldQuestion);
+          const effBase = isGold ? base * 2 : base;
+          if (isCorrect) {
+            const timeLimit = currentQuestion.timeLimit || 30;
+            const ratio = Math.max(0, 1 - timeSpent / (timeLimit * 1000));
+            speedPts = Math.round(effBase * 0.5 * ratio);
+            basePts = effBase;
+            pts = basePts + speedPts;
+          } else {
+            pts = 0;
+            basePts = 0;
+          }
+        } else {
           const base = currentQuestion.question.points || 10;
-          pts = isCorrect ? (isGold ? base * 2 : base) : 0;
+          pts = isCorrect ? base : 0;
+          basePts = pts;
         }
 
         answers.push({
@@ -2486,7 +2535,9 @@ export default function AdminSandboxPage() {
           answer: [ansId],
           isCorrect,
           pointsAwarded: pts,
-          timeSpent: 3000,
+          timeSpent,
+          basePoints: basePts,
+          speedPoints: speedPts,
         });
         scoreDeltas.push({ teamId: t.id, delta: pts });
       });
@@ -2494,6 +2545,7 @@ export default function AdminSandboxPage() {
       const teamSummaries = (roomState?.teams || []).map((t) => {
         const delta = scoreDeltas.find((d) => d.teamId === t.id)?.delta || 0;
         const ans = answers.find((a) => a.teamId === t.id);
+        const recorded = offlineAnswersRef.current.get(t.id);
         return {
           teamId: t.id,
           teamName: t.name,
@@ -2501,8 +2553,12 @@ export default function AdminSandboxPage() {
           totalOnlineMembers: 1,
           correctMembers: ans?.isCorrect ? 1 : 0,
           pointsAwarded: delta,
-          speedBonus: 0,
+          speedBonus: ans?.speedPoints ? Math.round((ans.speedPoints / (ans.basePoints || 1)) * 100) : 0,
           multiplier: t.id === lastWagerTeamId ? Number((wagerAmount / baseQPoints).toFixed(1)) : 1,
+          basePoints: ans?.basePoints ?? 0,
+          speedPoints: ans?.speedPoints ?? 0,
+          avgTimeSpent: recorded?.timeSpent ?? ans?.timeSpent ?? 3000,
+          isEliminated: t.isEliminated,
         };
       });
 
@@ -2512,7 +2568,7 @@ export default function AdminSandboxPage() {
         correctAnswerText: correctAnswerText || undefined,
         explanation: qRaw.hint || currentQuestion.question.hint || undefined,
         answers,
-        teamSummaries: isWagerMode ? teamSummaries : undefined,
+        teamSummaries,
       };
 
       const curTurnTeamId = roomState?.diceRaceState?.currentTurnTeamId;
@@ -3187,11 +3243,24 @@ export default function AdminSandboxPage() {
     const opt = isCorrect ? correctOpt : wrongOpt;
 
     if (isOfflineSandbox) {
-      const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
+      const timeLimit = currentQuestion.timeLimit || 30;
+      const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
+      const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
+      const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
+      let awarded = 0;
+      if (isCorrect) {
+        if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+          const ratio = Math.max(0, 1 - timeSpentMs / (timeLimit * 1000));
+          awarded = base + Math.round(base * 0.5 * ratio);
+        } else {
+          awarded = base;
+        }
+      }
       offlineAnswersRef.current.set(currentTeam.id, {
         answer: opt.id,
         isCorrect,
         points: awarded,
+        timeSpent: timeSpentMs,
       });
       addLog(`[${currentTeam.name}] nộp đáp án: ${isCorrect ? "ĐÚNG" : "SAI"}`);
       return;
@@ -3262,11 +3331,23 @@ export default function AdminSandboxPage() {
         const isBotCorrect = Math.random() < 0.75;
         const opt = isBotCorrect ? (correctOpt || opts[0]) : (opts.find((o: any) => o.id !== correctOpt?.id) || opts[opts.length - 1]);
         const isCorrect = correctOpt ? correctOpt.id === opt.id : false;
-        const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
+        const timeLimit = currentQuestion.timeLimit || 30;
+        const botTimeSpentMs = Math.floor(1200 + Math.random() * 3300);
+        const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
+        let awarded = 0;
+        if (isCorrect) {
+          if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+            const ratio = Math.max(0, 1 - botTimeSpentMs / (timeLimit * 1000));
+            awarded = base + Math.round(base * 0.5 * ratio);
+          } else {
+            awarded = base;
+          }
+        }
         offlineAnswersRef.current.set(t.id, {
           answer: opt.id,
           isCorrect,
           points: awarded,
+          timeSpent: botTimeSpentMs,
         });
         offlineFinalizedActorsRef.current.add(t.id);
         addLog(`🤖 Cho Bot [${t.name}] nộp đáp án: ${opt.text}`);

@@ -4349,7 +4349,10 @@ function evaluateAnswerCorrectness(
   let isAutoCorrect = false;
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
     const correctOption = options.find((o: any) => o.isCorrect);
-    isAutoCorrect = correctOption ? submittedAnswer.includes(correctOption.id) : false;
+    isAutoCorrect = correctOption
+      ? (submittedAnswer.includes(correctOption.id) ||
+         submittedAnswer.some((ans: any) => typeof ans === "string" && ans.trim() === correctOption.text?.trim()))
+      : false;
   } else if (question.type === "MC_MULTI") {
     const correctIds = options.filter((o: any) => o.isCorrect).map((o: any) => o.id);
     isAutoCorrect = correctIds.length === submittedAnswer.length &&
@@ -4416,14 +4419,21 @@ async function processAnswerSubmission({
   const options = question.options as any[] | null;
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
     const correctOption = options?.find((o: any) => o.isCorrect);
-    isCorrect = correctOption?.id === answer;
+    const submittedId = Array.isArray(answer) ? answer[0] : answer;
+    isCorrect = correctOption
+      ? (correctOption.id === submittedId ||
+         (typeof submittedId === "string" && correctOption.text?.trim() === submittedId.trim()) ||
+         (Array.isArray(answer) && answer.includes(correctOption.id)))
+      : false;
   } else if (question.type === "MC_MULTI") {
     const correctIds = options?.filter((o: any) => o.isCorrect).map((o: any) => o.id) ?? [];
     const submittedIds = Array.isArray(answer) ? answer : [answer];
     isCorrect = correctIds.length === submittedIds.length &&
       correctIds.every((id: string) => submittedIds.includes(id));
   } else if (question.type === "FILL_BLANK") {
-    isCorrect = question.answer?.toLowerCase().trim() === (answer as string).toLowerCase().trim();
+    const expected = (question.answer || "").toLowerCase().trim();
+    const actual = (Array.isArray(answer) ? answer[0] : (answer as string) || "").toLowerCase().trim();
+    isCorrect = expected === actual;
   } else if (question.type === "ESSAY") {
     isCorrect = null as any;
   }

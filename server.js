@@ -4420,7 +4420,7 @@ function evaluateAnswerCorrectness(question, submittedAnswer) {
   let isAutoCorrect = false;
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
     const correctOption = options.find((o) => o.isCorrect);
-    isAutoCorrect = correctOption ? submittedAnswer.includes(correctOption.id) : false;
+    isAutoCorrect = correctOption ? submittedAnswer.includes(correctOption.id) || submittedAnswer.some((ans) => typeof ans === "string" && ans.trim() === correctOption.text?.trim()) : false;
   } else if (question.type === "MC_MULTI") {
     const correctIds = options.filter((o) => o.isCorrect).map((o) => o.id);
     isAutoCorrect = correctIds.length === submittedAnswer.length && correctIds.every((id) => submittedAnswer.includes(id));
@@ -4469,13 +4469,16 @@ async function processAnswerSubmission({
   const options = question.options;
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
     const correctOption = options?.find((o) => o.isCorrect);
-    isCorrect = correctOption?.id === answer;
+    const submittedId = Array.isArray(answer) ? answer[0] : answer;
+    isCorrect = correctOption ? correctOption.id === submittedId || typeof submittedId === "string" && correctOption.text?.trim() === submittedId.trim() || Array.isArray(answer) && answer.includes(correctOption.id) : false;
   } else if (question.type === "MC_MULTI") {
     const correctIds = options?.filter((o) => o.isCorrect).map((o) => o.id) ?? [];
     const submittedIds = Array.isArray(answer) ? answer : [answer];
     isCorrect = correctIds.length === submittedIds.length && correctIds.every((id) => submittedIds.includes(id));
   } else if (question.type === "FILL_BLANK") {
-    isCorrect = question.answer?.toLowerCase().trim() === answer.toLowerCase().trim();
+    const expected = (question.answer || "").toLowerCase().trim();
+    const actual = (Array.isArray(answer) ? answer[0] : answer || "").toLowerCase().trim();
+    isCorrect = expected === actual;
   } else if (question.type === "ESSAY") {
     isCorrect = null;
   }

@@ -5685,7 +5685,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   let rarityBonusPercent: number | undefined;
 
   // Collective team scoring in CLASSIC, POWERUP mode, OR in ELIMINATION mode when device & eliminationDeepScoring are active
-  const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;
+  const isEliminationDeep = room.mode === "ELIMINATION" && (config?.answerMethod ?? "DEVICE") === "DEVICE" && config?.eliminationDeepScoring !== false;
   if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || isEliminationDeep) && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;

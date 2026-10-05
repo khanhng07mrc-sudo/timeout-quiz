@@ -313,7 +313,7 @@ export default function GameQuestion({
                   CHẾ ĐỘ BÓNG MA (GHOST TEAM) — ĐƯỜNG ĐUA HỒI SINH
                 </p>
                 <p className="text-[11px] sm:text-xs text-purple-200/90">
-                  Trả lời đúng 100% câu hỏi trong một chặng để giành vé HỒI SINH ở chặng áp chót!
+                  Chỉ cần trả lời đúng 100% câu hỏi trong ít nhất 1 chặng bất kỳ để mở khóa điều kiện HỒI SINH ở chặng áp chót!
                 </p>
               </div>
             </div>

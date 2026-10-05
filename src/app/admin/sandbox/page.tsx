@@ -2286,8 +2286,30 @@ export default function AdminSandboxPage() {
       const lastWagerTeamId = curWager?.lastWagerTeamId;
       const wagerAmount = curWager?.currentHighestWager || 10;
       const baseQPoints = currentQuestion.question.points || 20;
-      const wagerMult = curWager?.wagerMultiplierCap ?? 2.5;
-      const halfQuestionPoints = Math.max(5, Math.ceil(((baseQPoints / 2) * wagerMult) / 5) * 5);
+
+      // 1. Điểm các đội không cược khi đúng: 1/2 điểm gốc cố định (5đ/10đ/15đ), sai = 0đ
+      const nonWagerCorrectPoints = Math.max(5, Math.floor(baseQPoints / 2));
+
+      // 2. Tính số đội khác (không phải đội cược) trả lời đúng
+      let otherCorrectCount = 0;
+      (roomState?.teams || []).forEach((t) => {
+        if (t.id !== lastWagerTeamId) {
+          const recorded = offlineAnswersRef.current.get(t.id);
+          const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
+          const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+          if (isCorrect) otherCorrectCount++;
+        }
+      });
+
+      // 3. Tính điểm phạt đội cược nếu trả lời SAI:
+      // Đơn vị phạt U = Round(Mức cược / 2), làm tròn về số chia hết cho 5 gần nhất
+      const unitPenalty = Math.max(5, Math.round((wagerAmount / 2) / 5) * 5);
+      let wagerPenalty = 0;
+      if (otherCorrectCount > 0) {
+        const maxPenaltyTeams = baseQPoints <= 10 ? 1 : (baseQPoints <= 20 ? 2 : 3);
+        const effectiveTeams = Math.min(otherCorrectCount, maxPenaltyTeams);
+        wagerPenalty = effectiveTeams * unitPenalty;
+      }
 
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
@@ -2297,9 +2319,9 @@ export default function AdminSandboxPage() {
         let pts = 0;
         if (isWagerMode) {
           if (t.id === lastWagerTeamId) {
-            pts = isCorrect ? wagerAmount : -wagerAmount;
+            pts = isCorrect ? wagerAmount : -wagerPenalty;
           } else {
-            pts = isCorrect ? halfQuestionPoints : 0;
+            pts = isCorrect ? nonWagerCorrectPoints : 0;
           }
         } else {
           pts = isCorrect ? (currentQuestion.question.points || 10) : 0;
@@ -2316,12 +2338,28 @@ export default function AdminSandboxPage() {
         scoreDeltas.push({ teamId: t.id, delta: pts });
       });
 
+      const teamSummaries = (roomState?.teams || []).map((t) => {
+        const delta = scoreDeltas.find((d) => d.teamId === t.id)?.delta || 0;
+        const ans = answers.find((a) => a.teamId === t.id);
+        return {
+          teamId: t.id,
+          teamName: t.name,
+          teamColor: t.color,
+          totalOnlineMembers: 1,
+          correctMembers: ans?.isCorrect ? 1 : 0,
+          pointsAwarded: delta,
+          speedBonus: 0,
+          multiplier: t.id === lastWagerTeamId ? Number((wagerAmount / baseQPoints).toFixed(1)) : 1,
+        };
+      });
+
       const payload = {
         questionId: currentQuestion.question.id,
         correctAnswer: [correctId],
         correctAnswerText: correctAnswerText || undefined,
         explanation: qRaw.hint || currentQuestion.question.hint || undefined,
         answers,
+        teamSummaries: isWagerMode ? teamSummaries : undefined,
       };
 
       const curTurnTeamId = roomState?.diceRaceState?.currentTurnTeamId;

@@ -128,7 +128,21 @@ export default function WagerPanel({
           )}
         </div>
         <div className="text-[11px] text-amber-200/80 font-medium">
-          {isMeWinning ? "Đúng = +" : "Đội cược: Đúng = +"}{wagerAmt}đ, Sai = -{wagerAmt}đ · Các đội khác: Đúng = +{Math.max(5, Math.ceil((((baseQuestionPoints || 20) / 2) * wagerMultiplierCap) / 5) * 5)}đ
+          {(() => {
+            const basePts = baseQuestionPoints || 20;
+            const unitPen = Math.max(5, Math.round((wagerAmt / 2) / 5) * 5);
+            const maxPenTeams = basePts <= 10 ? 1 : (basePts <= 20 ? 2 : 3);
+            const maxPen = maxPenTeams * unitPen;
+            const nonWagerPts = Math.max(5, Math.floor(basePts / 2));
+            return (
+              <>
+                {isMeWinning ? "Đội bạn: " : "Đội cược: "}
+                Đúng = +{wagerAmt}đ, Sai = -0đ ~ -{maxPen}đ (theo số đội khác đúng)
+                {" · "}
+                Đội khác: Đúng = +{nonWagerPts}đ, Sai = 0đ
+              </>
+            );
+          })()}
         </div>
       </div>
     );

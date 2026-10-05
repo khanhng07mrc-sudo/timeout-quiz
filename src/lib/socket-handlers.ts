@@ -5028,27 +5028,64 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
 
   wagerState.phase = "REVEAL_PERIOD";
   const scoreUpdates: ScoreUpdate[] = [];
+  const teamSummaries: TeamRevealSummary[] = [];
 
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  const wagerMultiplier = wagerState.wagerMultiplierCap ?? 2.5;
-  // Điểm cho các đội không cược khi đúng: (1/2 Điểm gốc) × Hệ số trần (làm tròn lên chia hết cho 5)
-  const halfQuestionPoints = Math.max(5, Math.ceil(((question.points / 2) * wagerMultiplier) / 5) * 5);
+  const basePoints = question.points || 20;
+
+  // 1. Điểm cho các đội không cược khi đúng: cố định 1/2 điểm gốc câu hỏi (5đ / 10đ / 15đ), sai = 0đ
+  const nonWagerCorrectPoints = Math.max(5, Math.floor(basePoints / 2));
+
+  // 2. Thu thập câu trả lời của tất cả các đội cho câu hỏi này
+  const teamAnswers = await prisma.answer.findMany({
+    where: { roomId, questionId },
+  });
+  const answerMap = new Map<string, any>();
+  for (const ans of teamAnswers) {
+    if (ans.teamId) {
+      answerMap.set(ans.teamId, ans);
+    }
+  }
+
+  // 3. Đếm số đội KHÁC (không phải đội cược) trả lời ĐÚNG
+  let otherCorrectCount = 0;
+  for (const team of room.teams) {
+    if (team.id !== lastWagerTeamId) {
+      const ans = answerMap.get(team.id);
+      if (ans?.isCorrect === true) {
+        otherCorrectCount++;
+      }
+    }
+  }
+
+  // 4. Tính điểm phạt cho Đội cược nếu trả lời SAI:
+  // Đơn vị phạt U = Round(Mức cược / 2), làm tròn về số chia hết cho 5 gần nhất
+  const unitPenalty = Math.max(5, Math.round((wagerAmount / 2) / 5) * 5);
+
+  // Quy tắc phạt theo điểm gốc câu hỏi:
+  // - Cả 4 đội đều sai (otherCorrectCount = 0): phạt 0 điểm
+  // - Câu 10đ: có ít nhất 1 đội khác đúng -> phạt 1 * unitPenalty
+  // - Câu 20đ: mỗi đội khác đúng phạt 1 * unitPenalty (tối đa 2 đội)
+  // - Câu 30đ: mỗi đội khác đúng phạt 1 * unitPenalty (tối đa 3 đội)
+  let wagerPenalty = 0;
+  if (otherCorrectCount > 0) {
+    const maxPenaltyTeams = basePoints <= 10 ? 1 : (basePoints <= 20 ? 2 : 3);
+    const effectiveTeams = Math.min(otherCorrectCount, maxPenaltyTeams);
+    wagerPenalty = effectiveTeams * unitPenalty;
+  }
 
   for (const team of room.teams) {
-    const ans = await prisma.answer.findFirst({
-      where: { roomId, questionId, teamId: team.id },
-    });
-
+    const ans = answerMap.get(team.id);
     const isCorrect = ans?.isCorrect === true;
     let delta = 0;
 
     if (team.id === lastWagerTeamId) {
-      // Đội cược cuối cùng: Đúng = nhận điểm cược, Sai = trừ điểm cược
-      delta = isCorrect ? wagerAmount : -wagerAmount;
+      // Đội cược: Đúng = nhận điểm cược, Sai = trừ điểm phạt đã tính
+      delta = isCorrect ? wagerAmount : -wagerPenalty;
     } else {
-      // Các đội còn lại: Đúng = 1/2 điểm câu hỏi (làm tròn lên chia hết cho 5), Sai = 0đ (không mất gì)
-      delta = isCorrect ? halfQuestionPoints : 0;
+      // Các đội còn lại: Đúng = 1/2 điểm gốc cố định (5đ, 10đ, 15đ), Sai = 0đ (không mất gì)
+      delta = isCorrect ? nonWagerCorrectPoints : 0;
     }
 
     if (ans) {
@@ -5060,6 +5097,17 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
 
     const tRes = await applyScoreDeltaToTeam(team.id, delta);
     scoreUpdates.push({ teamId: team.id, score: tRes.newScore, delta: tRes.effectiveDelta });
+
+    teamSummaries.push({
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color,
+      totalOnlineMembers: 1,
+      correctMembers: isCorrect ? 1 : 0,
+      pointsAwarded: delta,
+      speedBonus: 0,
+      multiplier: team.id === lastWagerTeamId ? Number((wagerAmount / basePoints).toFixed(1)) : 1,
+    });
 
     if (!wagerState.bailoutQueue) wagerState.bailoutQueue = [];
     const bailoutsRem = wagerState.teamBailouts?.[team.id]?.remaining ?? 1;
@@ -5091,7 +5139,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
-  await revealCurrentAnswer(io, roomId, roomCode, questionId);
+  await revealCurrentAnswer(io, roomId, roomCode, questionId, teamSummaries);
 
   // Check Sudden Victory (Knockout Win):
   // Ở bất kỳ câu nào mà chỉ còn 1 đội còn sống, đội duy nhất nghiễm nhiên thắng, quyền trợ cấp bị huỷ hoàn toàn!
@@ -5482,7 +5530,7 @@ async function getRoomQuestions(roomId: string) {
   return questions;
 }
 
-async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, questionId: string) {
+async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, questionId: string, customTeamSummaries?: TeamRevealSummary[]) {
   stopQuestionTimer(roomId);
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
@@ -5491,7 +5539,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
 
   const config = room.config as any;
   let teamScoresUpdates: ScoreUpdate[] = [];
-  let teamSummaries: TeamRevealSummary[] = [];
+  let teamSummaries: TeamRevealSummary[] = customTeamSummaries || [];
   let roomAccuracy: number | undefined;
   let rarityBonusPercent: number | undefined;
 

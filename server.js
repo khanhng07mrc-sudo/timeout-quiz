@@ -4927,20 +4927,44 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
   if (!wagerState || !room || !question) return;
   wagerState.phase = "REVEAL_PERIOD";
   const scoreUpdates = [];
+  const teamSummaries = [];
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  const wagerMultiplier = wagerState.wagerMultiplierCap ?? 2.5;
-  const halfQuestionPoints = Math.max(5, Math.ceil(question.points / 2 * wagerMultiplier / 5) * 5);
+  const basePoints = question.points || 20;
+  const nonWagerCorrectPoints = Math.max(5, Math.floor(basePoints / 2));
+  const teamAnswers = await prisma.answer.findMany({
+    where: { roomId, questionId }
+  });
+  const answerMap = /* @__PURE__ */ new Map();
+  for (const ans of teamAnswers) {
+    if (ans.teamId) {
+      answerMap.set(ans.teamId, ans);
+    }
+  }
+  let otherCorrectCount = 0;
   for (const team of room.teams) {
-    const ans = await prisma.answer.findFirst({
-      where: { roomId, questionId, teamId: team.id }
-    });
+    if (team.id !== lastWagerTeamId) {
+      const ans = answerMap.get(team.id);
+      if (ans?.isCorrect === true) {
+        otherCorrectCount++;
+      }
+    }
+  }
+  const unitPenalty = Math.max(5, Math.round(wagerAmount / 2 / 5) * 5);
+  let wagerPenalty = 0;
+  if (otherCorrectCount > 0) {
+    const maxPenaltyTeams = basePoints <= 10 ? 1 : basePoints <= 20 ? 2 : 3;
+    const effectiveTeams = Math.min(otherCorrectCount, maxPenaltyTeams);
+    wagerPenalty = effectiveTeams * unitPenalty;
+  }
+  for (const team of room.teams) {
+    const ans = answerMap.get(team.id);
     const isCorrect = ans?.isCorrect === true;
     let delta = 0;
     if (team.id === lastWagerTeamId) {
-      delta = isCorrect ? wagerAmount : -wagerAmount;
+      delta = isCorrect ? wagerAmount : -wagerPenalty;
     } else {
-      delta = isCorrect ? halfQuestionPoints : 0;
+      delta = isCorrect ? nonWagerCorrectPoints : 0;
     }
     if (ans) {
       await prisma.answer.update({
@@ -4950,6 +4974,16 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
     }
     const tRes = await applyScoreDeltaToTeam(team.id, delta);
     scoreUpdates.push({ teamId: team.id, score: tRes.newScore, delta: tRes.effectiveDelta });
+    teamSummaries.push({
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color,
+      totalOnlineMembers: 1,
+      correctMembers: isCorrect ? 1 : 0,
+      pointsAwarded: delta,
+      speedBonus: 0,
+      multiplier: team.id === lastWagerTeamId ? Number((wagerAmount / basePoints).toFixed(1)) : 1
+    });
     if (!wagerState.bailoutQueue) wagerState.bailoutQueue = [];
     const bailoutsRem = wagerState.teamBailouts?.[team.id]?.remaining ?? 1;
     if (tRes.newScore <= 0) {
@@ -4976,7 +5010,7 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
     io2.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io2.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
-  await revealCurrentAnswer(io2, roomId, roomCode, questionId);
+  await revealCurrentAnswer(io2, roomId, roomCode, questionId, teamSummaries);
   const updatedTeams = await prisma.team.findMany({ where: { roomId } });
   if (updatedTeams.length > 1) {
     const positiveTeams = updatedTeams.filter((t) => t.score > 0);
@@ -5289,14 +5323,14 @@ async function getRoomQuestions(roomId) {
   }
   return questions;
 }
-async function revealCurrentAnswer(io2, roomId, roomCode, questionId) {
+async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeamSummaries) {
   stopQuestionTimer(roomId);
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   const q = await prisma.question.findUnique({ where: { id: questionId } });
   if (!room || !q) return;
   const config = room.config;
   let teamScoresUpdates = [];
-  let teamSummaries = [];
+  let teamSummaries = customTeamSummaries || [];
   let roomAccuracy;
   let rarityBonusPercent;
   const isEliminationDeep = room.mode === "ELIMINATION" && config?.answerMethod === "DEVICE" && config?.eliminationDeepScoring !== false;

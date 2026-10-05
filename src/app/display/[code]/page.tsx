@@ -61,6 +61,32 @@ export default function DisplayPage() {
     survivingTeamsCount: number;
     isGameOver: boolean;
   } | null>(null);
+  const [revivalNotice, setRevivalNotice] = useState<{
+    round: number;
+    revivedTeamName: string;
+    revivedScore: number;
+  } | null>(null);
+  const [liveCheer, setLiveCheer] = useState<{
+    matchId: string;
+    targetTeamId: string;
+    countA: number;
+    countB: number;
+    percentA: number;
+    percentB: number;
+  } | null>(null);
+  const [floatingEmojis, setFloatingEmojis] = useState<
+    Array<{ id: number; emoji: string; left: number }>
+  >([]);
+  const [oracleScores, setOracleScores] = useState<Record<string, number> | null>(null);
+
+  const triggerFloatingCheer = useCallback((emoji: string, _targetTeamId: string) => {
+    const id = Date.now() + Math.random();
+    const left = Math.floor(Math.random() * 70) + 15;
+    setFloatingEmojis((prev) => [...prev.slice(-15), { id, emoji, left }]);
+    setTimeout(() => {
+      setFloatingEmojis((prev) => prev.filter((item) => item.id !== id));
+    }, 2500);
+  }, []);
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -195,6 +221,18 @@ export default function DisplayPage() {
         if (p.isStealOpen !== undefined) setIsStealOpen(p.isStealOpen);
         if (p.stealBuzzed !== undefined) setStealBuzzed(p.stealBuzzed);
         if (p.eliminationNotice !== undefined) setEliminationNotice(p.eliminationNotice);
+        if (p.liveCheer !== undefined) {
+          setLiveCheer(p.liveCheer);
+          triggerFloatingCheer(p.liveCheer.emoji, p.liveCheer.targetTeamId);
+        }
+        if (p.oracleScores !== undefined) {
+          setOracleScores(p.oracleScores);
+        }
+        if (p.revivalNotice !== undefined) {
+          setRevivalNotice(p.revivalNotice);
+          soundManager.playFanfare();
+          setTimeout(() => setRevivalNotice(null), 7000);
+        }
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
           soundManager.playFanfare();
@@ -471,6 +509,31 @@ export default function DisplayPage() {
     });
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("tournament:cheer:broadcast", (payload) => {
+      setLiveCheer(payload);
+      triggerFloatingCheer(payload.emoji, payload.targetTeamId);
+      soundManager.playBuzz();
+    });
+    socket.on("tournament:oracle:update", ({ oracleScores }) => {
+      setOracleScores(oracleScores);
+      setRoomState((prev) => {
+        if (!prev || !prev.tournamentState) return prev;
+        return {
+          ...prev,
+          tournamentState: {
+            ...prev.tournamentState,
+            oracleScores,
+          },
+        };
+      });
+    });
+    socket.on("elimination:revival", (payload) => {
+      setRevivalNotice(payload);
+      soundManager.playFanfare();
+      setTimeout(() => {
+        setRevivalNotice(null);
+      }, 7000);
     });
     socket.on("game:grid:caro:celebrate", () => {
       soundManager.playCorrect();
@@ -1088,6 +1151,45 @@ export default function DisplayPage() {
         </div>
       )}
 
+      {/* Ghost Revival Celebration Modal */}
+      {revivalNotice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-fade-in">
+          <div className="glass bg-gradient-to-br from-purple-950/95 via-indigo-950/95 to-purple-950/95 border-4 border-yellow-400 rounded-3xl p-6 sm:p-10 max-w-lg w-full text-center shadow-[0_0_60px_rgba(234,179,8,0.5)] animate-bounce-in space-y-4">
+            <span className="text-7xl block animate-bounce">✨👻✨</span>
+            <div className="space-y-1">
+              <span className="px-4 py-1 rounded-full bg-yellow-400 text-black font-black text-xs uppercase tracking-widest">
+                ĐẶC CÁCH HỒI SINH (STAGE #{revivalNotice.round})
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-black text-yellow-300 pt-2">
+                HỒI SINH THÀNH CÔNG!
+              </h2>
+            </div>
+            <p className="text-xl sm:text-2xl font-bold text-white">
+              Đội <span className="text-cyan-300 font-black">{revivalNotice.revivedTeamName}</span> đã chính thức trở lại cuộc đua!
+            </p>
+            <p className="text-sm text-purple-200/90 bg-purple-500/20 p-3 rounded-xl border border-purple-400/30">
+              Nhờ thành tích đúng trọn vẹn chặng thi đấu, đội được hồi sinh với số điểm{" "}
+              <strong className="text-yellow-300 font-mono text-base">{revivalNotice.revivedScore}đ</strong>!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Cheers Animation */}
+      {floatingEmojis.map((item) => (
+        <div
+          key={item.id}
+          style={{
+            left: `${item.left}%`,
+            bottom: "12%",
+            animation: "floatUp 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards",
+          }}
+          className="fixed z-50 text-4xl sm:text-5xl pointer-events-none drop-shadow-2xl select-none"
+        >
+          {item.emoji}
+        </div>
+      ))}
+
       {/* Main content area */}
       <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
         {/* Powerup notification */}
@@ -1256,6 +1358,14 @@ export default function DisplayPage() {
                         </span>
                       )}
 
+                      {/* Classic Gold Rush Indicator */}
+                      {currentQuestion.isGoldQuestion && (
+                        <span className="px-3 py-1 rounded-full text-xs font-black border-2 border-yellow-400 bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)] flex items-center gap-1.5 animate-pulse whitespace-nowrap">
+                          <span>⭐</span>
+                          <span>CÂU HỎI ĐIỂM VÀNG (x2 ĐIỂM)</span>
+                        </span>
+                      )}
+
                       {/* Mode tab switch for DICE_RACE */}
                       {roomState.mode === "DICE_RACE" && (
                         <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-amber-500/40 shrink-0 ml-auto shadow">
@@ -1306,12 +1416,52 @@ export default function DisplayPage() {
                       </div>
                     )}
                     {roomState.mode === "TOURNAMENT" && (
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-black shadow-md border-2 border-slate-200">
+                      <div className="flex flex-col gap-2 mt-1.5 w-full">
+                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-black shadow-md border-2 border-slate-200 w-fit">
                           <span className="text-yellow-600">🏆</span>
                           <span className="text-xs uppercase tracking-wider text-slate-600 font-bold">Đối đầu 1v1:</span>
                           <span className="text-base text-slate-950 font-black">{currentQuestion.primaryTeamName ?? "..."}</span>
                         </div>
+
+                        {/* Live Fan Support Meter */}
+                        {(() => {
+                          const match = roomState.tournamentState?.matches.find(
+                            (m) => m.id === (currentQuestion.tournamentMatchId || roomState.tournamentState?.currentMatchId)
+                          );
+                          const countA = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countA : (match?.cheers?.countA || 0);
+                          const countB = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countB : (match?.cheers?.countB || 0);
+                          const total = countA + countB;
+                          const pctA = total > 0 ? Math.round((countA / total) * 100) : 50;
+                          const pctB = 100 - pctA;
+
+                          return (
+                            <div className="p-3 rounded-2xl bg-black/50 border border-white/10 shadow-lg space-y-1.5 max-w-2xl">
+                              <div className="flex items-center justify-between text-xs font-bold px-1">
+                                <span className="text-cyan-300 flex items-center gap-1.5 truncate max-w-[40%]">
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team1Color || "#06b6d4" }} />
+                                  <span className="truncate">{match?.team1Name || "Đội 1"}: <strong>{pctA}%</strong> ({countA})</span>
+                                </span>
+                                <span className="text-muted-foreground uppercase tracking-widest text-[10px] font-black flex items-center gap-1 shrink-0">
+                                  <span>🔥</span> FAN SUPPORT METER <span>🔥</span>
+                                </span>
+                                <span className="text-pink-300 flex items-center gap-1.5 truncate max-w-[40%] justify-end">
+                                  <span className="truncate">{match?.team2Name || "Đội 2"}: <strong>{pctB}%</strong> ({countB})</span>
+                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team2Color || "#ec4899" }} />
+                                </span>
+                              </div>
+                              <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex border border-white/20">
+                                <div
+                                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500"
+                                  style={{ width: `${pctA}%` }}
+                                />
+                                <div
+                                  className="h-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                                  style={{ width: `${pctB}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                     {roomState.mode === "GRID_CARO" && (
@@ -1614,6 +1764,23 @@ export default function DisplayPage() {
           onComplete={() => setStealPrepCountdown(null)}
         />
       )}
+
+      <style jsx global>{`
+        @keyframes floatUp {
+          0% {
+            transform: translateY(0) scale(0.8) rotate(0deg);
+            opacity: 1;
+          }
+          50% {
+            transform: translateY(-160px) scale(1.3) rotate(-8deg);
+            opacity: 0.95;
+          }
+          100% {
+            transform: translateY(-340px) scale(1.6) rotate(8deg);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

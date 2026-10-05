@@ -24,6 +24,17 @@ interface Props {
   onStopEarly?: () => void;
   onFinalizeAnswer?: (answer?: string | string[]) => void;
   isSpectator?: boolean;
+  isGhost?: boolean;
+  ghostStats?: {
+    ghostStreak?: number;
+    ghostRoundAllCorrect?: boolean;
+    ghostTotalCorrect?: number;
+    ghostTotalAnswered?: number;
+  };
+  tournamentMatch?: import("@/types").TournamentMatch;
+  onPredictWinner?: (matchId: string, predictedWinnerId: string) => void;
+  onCheer?: (matchId: string, targetTeamId: string, emoji: string) => void;
+  oracleScore?: number;
 }
 
 export default function GameQuestion({
@@ -46,6 +57,12 @@ export default function GameQuestion({
   onStopEarly,
   onFinalizeAnswer,
   isSpectator = false,
+  isGhost = false,
+  ghostStats,
+  tournamentMatch,
+  onPredictWinner,
+  onCheer,
+  oracleScore,
 }: Props) {
   const [selected, setSelected] = useState<string[]>([]);
   const [essayText, setEssayText] = useState("");
@@ -128,7 +145,7 @@ export default function GameQuestion({
   const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE"].includes(roomMode);
 
   const canAnswerThisQuestion = () => {
-    if (isSpectator) return false;
+    if (isSpectator && !(roomMode === "ELIMINATION" && isGhost)) return false;
     if (isFinalizedLocally) return false;
     if (isSingleSubmit && answered) return false;
     if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
@@ -262,6 +279,166 @@ export default function GameQuestion({
               style={{ width: `${timerPercent}%`, background: timerColor }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Classic Gold Rush Banner */}
+      {roomMode === "CLASSIC" && question.isGoldQuestion && (
+        <div className="rounded-xl p-3 sm:p-4 border-2 border-yellow-400 bg-gradient-to-r from-amber-500/25 via-yellow-500/35 to-amber-500/25 text-yellow-200 shadow-[0_0_25px_rgba(245,158,11,0.4)] animate-pulse flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl sm:text-3xl">⭐</span>
+            <div>
+              <p className="font-black text-sm sm:text-base text-yellow-300 uppercase tracking-wider">
+                CÂU HỎI ĐIỂM VÀNG — NHÂN ĐÔI ĐIỂM SỐ (X2)!
+              </p>
+              <p className="text-[11px] sm:text-xs text-yellow-200/90 font-medium">
+                Cơ hội bứt phá ngoạn mục! Điểm nhận được ở câu hỏi này sẽ được nhân đôi cho tất cả câu trả lời đúng.
+              </p>
+            </div>
+          </div>
+          <span className="shrink-0 px-3 py-1 rounded-full bg-yellow-400 text-black font-black text-xs sm:text-sm shadow">
+            x2 ĐIỂM
+          </span>
+        </div>
+      )}
+
+      {/* Elimination Ghost Mode HUD */}
+      {roomMode === "ELIMINATION" && (isGhost || (isSpectator && roomMode === "ELIMINATION")) && (
+        <div className="rounded-xl p-3 sm:p-4 border-2 border-purple-500/60 bg-gradient-to-r from-purple-950/90 via-indigo-950/90 to-purple-950/90 text-purple-200 shadow-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl animate-bounce">👻</span>
+              <div>
+                <p className="font-black text-sm sm:text-base text-purple-300 uppercase tracking-wider">
+                  CHẾ ĐỘ BÓNG MA (GHOST TEAM) — ĐƯỜNG ĐUA HỒI SINH
+                </p>
+                <p className="text-[11px] sm:text-xs text-purple-200/90">
+                  Trả lời đúng 100% câu hỏi trong một chặng để giành vé HỒI SINH ở chặng áp chót!
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-purple-500/30 border border-purple-400/50 text-purple-200 font-bold text-xs">
+              VẪN ĐANG THI ĐẤU
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs font-semibold bg-black/30 p-2 rounded-lg border border-purple-500/30">
+            <span>🎯 Đã trả lời: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong></span>
+            <span>🔥 Chuỗi câu đúng: <strong>{ghostStats?.ghostStreak || 0}</strong></span>
+            {ghostStats?.ghostRoundAllCorrect && (
+              <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
+                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN HỒI SINH!
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tournament Spectator / Waiting Interactive Panel */}
+      {roomMode === "TOURNAMENT" && !isTournamentCompetitor && (
+        <div className="rounded-2xl p-4 sm:p-5 border-2 border-cyan-500/40 bg-gradient-to-br from-slate-900/95 via-indigo-950/80 to-slate-900/95 shadow-2xl space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔮</span>
+              <div>
+                <p className="font-black text-sm sm:text-base text-cyan-300 uppercase tracking-wide">
+                  GÓC KHÁN GIẢ: DỰ ĐOÁN & CỔ VŨ
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Dự đoán đúng đội chiến thắng để nhận +10 Điểm Tiên Tri!
+                </p>
+              </div>
+            </div>
+            {oracleScore !== undefined && (
+              <span className="px-3 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-200 font-mono font-bold text-xs">
+                Điểm tiên tri: {oracleScore} pts
+              </span>
+            )}
+          </div>
+
+          {/* Match Prediction Buttons */}
+          {tournamentMatch && (
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Dự đoán đội thắng trận:
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => tournamentMatch.team1Id && onPredictWinner?.(tournamentMatch.id, tournamentMatch.team1Id)}
+                  disabled={tournamentMatch.status === "COMPLETED"}
+                  className={`p-3 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team1Id
+                      ? "border-cyan-400 bg-cyan-500/30 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] scale-102"
+                      : "border-white/10 bg-white/5 hover:bg-white/10 text-slate-300"
+                  }`}
+                >
+                  <span className="text-base font-black truncate max-w-[140px]">{tournamentMatch.team1Name || "Đội 1"}</span>
+                  <span className="text-[10px] text-cyan-300">
+                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team1Id ? "✓ Đã dự đoán" : "Chọn thắng (+10đ)"}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => tournamentMatch.team2Id && onPredictWinner?.(tournamentMatch.id, tournamentMatch.team2Id)}
+                  disabled={tournamentMatch.status === "COMPLETED"}
+                  className={`p-3 rounded-xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
+                    tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team2Id
+                      ? "border-pink-400 bg-pink-500/30 text-white shadow-[0_0_15px_rgba(236,72,153,0.4)] scale-102"
+                      : "border-white/10 bg-white/5 hover:bg-white/10 text-slate-300"
+                  }`}
+                >
+                  <span className="text-base font-black truncate max-w-[140px]">{tournamentMatch.team2Name || "Đội 2"}</span>
+                  <span className="text-[10px] text-pink-300">
+                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team2Id ? "✓ Đã dự đoán" : "Chọn thắng (+10đ)"}
+                  </span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Live Cheer Emojis */}
+          {tournamentMatch && (
+            <div className="space-y-2 pt-1 border-t border-white/5">
+              <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Thả cảm xúc cổ vũ trực tiếp lên màn hình:
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-cyan-950/40 border border-cyan-500/30">
+                  <span className="text-[10px] font-bold text-cyan-300 truncate max-w-[60px] mr-1">
+                    {tournamentMatch.team1Name || "Đội 1"}:
+                  </span>
+                  {["❤️", "🔥", "👏", "⚡"].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => tournamentMatch.team1Id && onCheer?.(tournamentMatch.id, tournamentMatch.team1Id, emoji)}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 active:scale-125 transition text-base cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-pink-950/40 border border-pink-500/30">
+                  <span className="text-[10px] font-bold text-pink-300 truncate max-w-[60px] mr-1">
+                    {tournamentMatch.team2Name || "Đội 2"}:
+                  </span>
+                  {["❤️", "🔥", "👏", "⚡"].map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => tournamentMatch.team2Id && onCheer?.(tournamentMatch.id, tournamentMatch.team2Id, emoji)}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/20 active:scale-125 transition text-base cursor-pointer"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -153,6 +153,42 @@ export default function TournamentBracket({
           );
         })}
       </div>
+
+      {/* Oracle Leaderboard (Nhà Tiên Tri Đại Tài) */}
+      {tournamentState.oracleScores && Object.keys(tournamentState.oracleScores).length > 0 && (
+        <div className="pt-4 border-t border-border/40">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xl">🔮</span>
+            <h4 className="font-bold text-sm uppercase tracking-wider text-cyan-300">
+              Bảng Xếp Hạng Tiên Tri (Khán Giả Dự Đoán Đúng)
+            </h4>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {Object.entries(tournamentState.oracleScores)
+              .sort(([, a], [, b]) => b - a)
+              .map(([tId, pts], rank) => {
+                let tName = tId;
+                for (const m of tournamentState.matches) {
+                  if (m.team1Id === tId && m.team1Name) { tName = m.team1Name; break; }
+                  if (m.team2Id === tId && m.team2Name) { tName = m.team2Name; break; }
+                }
+
+                return (
+                  <div
+                    key={tId}
+                    className="p-2.5 rounded-xl bg-cyan-950/30 border border-cyan-500/30 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-black text-yellow-400">#{rank + 1}</span>
+                      <span className="text-xs font-bold text-white truncate">{tName}</span>
+                    </div>
+                    <span className="text-xs font-mono font-black text-cyan-300">{pts} pts</span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

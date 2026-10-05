@@ -109,6 +109,44 @@ const roomFinalizedActors = new Map<string, Set<string>>(); // qKey -> set of ac
 const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of actors who submitted at least once
 const roomTeamImmunity = new Map<string, number>(); // roomId:teamId -> immuneUntilQuestionIndex
 
+// Classic Gold Rush Questions (Double Points)
+const roomGoldQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
+
+// Elimination Ghost Stats
+interface EliminationGhostStat {
+  ghostStreak: number;
+  ghostTotalCorrect: number;
+  ghostTotalAnswered: number;
+  ghostRoundAllCorrect: boolean;
+  currentRoundCorrect: number;
+}
+const roomEliminationGhostStats = new Map<string, Map<string, EliminationGhostStat>>(); // roomId -> Map(teamId -> stat)
+
+function selectGoldQuestions(questions: any[]): Set<string> {
+  const goldSet = new Set<string>();
+  if (questions.length < 7) return goldSet;
+  const count = Math.max(1, Math.floor(questions.length * 0.15));
+
+  const highDiffIndices: number[] = [];
+  const otherIndices: number[] = [];
+
+  questions.forEach((q, idx) => {
+    const isHigh = q.points === 30 || ["APPLY", "ANALYZE", "EVALUATE", "CREATE"].includes(q.bloomLevel);
+    if (isHigh) {
+      highDiffIndices.push(idx);
+    } else {
+      otherIndices.push(idx);
+    }
+  });
+
+  const candidates = [...highDiffIndices, ...otherIndices.reverse()];
+  for (const idx of candidates) {
+    if (goldSet.size >= count) break;
+    goldSet.add(questions[idx].id);
+  }
+  return goldSet;
+}
+
 /**
  * Áp dụng thay đổi điểm số cho Đội, đảm bảo quy định:
  * "Điểm số của các đội xuyên suốt cuộc chơi luôn >= 0, nếu có một phép trừ có thể khiến điểm về âm, hệ thống chuyển điểm về 0 thay vì âm."
@@ -720,6 +758,8 @@ export function cleanupRoomInMemory(roomId: string) {
     roomIntermissions.delete(roomId);
     roomCache.delete(roomId);
     roomQuestionsCache.delete(roomId);
+    roomGoldQuestions.delete(roomId);
+    roomEliminationGhostStats.delete(roomId);
 
     // 5. Delete qKey-level entries (qKey starts with `${roomId}:`)
     const prefix = `${roomId}:`;
@@ -2248,6 +2288,12 @@ export function registerSocketHandlers(io: IO) {
           answerSubmissionMode: config?.answerSubmissionMode || "ALLOW_CHANGE",
         });
 
+        if (room.mode === "CLASSIC" && !roomGoldQuestions.has(room.id)) {
+          const goldSet = selectGoldQuestions(questions);
+          roomGoldQuestions.set(room.id, goldSet);
+        }
+        questionState.isGoldQuestion = room.mode === "CLASSIC" && Boolean(roomGoldQuestions.get(room.id)?.has(q.id));
+
         if (buzzMode) {
           questionState.buzzAttemptNumber = 1;
           questionState.buzzMaxAttempts = buzzMaxAttempts;
@@ -2560,7 +2606,10 @@ export function registerSocketHandlers(io: IO) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         const config = room.config as any;
 
-        if (room.mode === "TOURNAMENT") {
+        if (room.mode === "CLASSIC") {
+          const goldSet = selectGoldQuestions(questions);
+          roomGoldQuestions.set(room.id, goldSet);
+        } else if (room.mode === "TOURNAMENT") {
           const questionsPerMatch = config?.tournamentQuestionsPerMatch || 3;
           const matches = buildTournamentMatches(teams, questionsPerMatch);
           roomTournaments.set(room.id, {
@@ -3681,6 +3730,86 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
+    socket.on("tournament:predict", async ({ matchId, predictedWinnerId }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true, team: true },
+      });
+      if (!player || !player.room || player.room.mode !== "TOURNAMENT") return;
+      const tournament = roomTournaments.get(player.room.id);
+      if (!tournament) return;
+      const match = tournament.matches.find((m) => m.id === matchId);
+      if (!match || match.status === "COMPLETED") return;
+      const teamId = player.teamId;
+      if (!teamId) return;
+      if (teamId === match.team1Id || teamId === match.team2Id) return;
+
+      match.predictions = match.predictions || {};
+      match.predictions[teamId] = predictedWinnerId;
+      io.to(`room:${player.room.code}`).emit("game:tournament:update", tournament);
+    });
+
+    socket.on("tournament:cheer", async ({ matchId, targetTeamId, emoji }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode: string | undefined;
+      let roomId: string | undefined;
+
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          select: { roomId: true, room: { select: { code: true, mode: true } } },
+        });
+        if (player?.room?.mode === "TOURNAMENT") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room = await prisma.room.findUnique({
+            where: { id: roomId },
+            select: { code: true, mode: true },
+          });
+          if (room?.mode === "TOURNAMENT") {
+            roomCode = room.code;
+          }
+        }
+      }
+
+      if (!roomId || !roomCode) return;
+      const tournament = roomTournaments.get(roomId);
+      if (!tournament) return;
+      const match = tournament.matches.find((m) => m.id === matchId) ||
+                    tournament.matches.find((m) => m.id === tournament.currentMatchId);
+      if (!match) return;
+
+      match.cheers = match.cheers || { countA: 0, countB: 0 };
+      if (targetTeamId === match.team1Id) {
+        match.cheers.countA = (match.cheers.countA || 0) + 1;
+      } else if (targetTeamId === match.team2Id) {
+        match.cheers.countB = (match.cheers.countB || 0) + 1;
+      }
+      tournament.cheers = match.cheers;
+
+      const countA = match.cheers.countA;
+      const countB = match.cheers.countB;
+      const total = countA + countB;
+      const percentA = total > 0 ? Math.round((countA / total) * 100) : 50;
+      const percentB = 100 - percentA;
+
+      io.to(`room:${roomCode}`).emit("tournament:cheer:broadcast", {
+        matchId: match.id,
+        targetTeamId,
+        emoji: emoji || "🔥",
+        countA,
+        countB,
+        percentA,
+        percentB,
+      });
+    });
+
     socket.on("admin:wager:skip_timer", async () => {
       const room = await getAdminRoom(socket);
       if (!room || room.mode !== "WAGER") return;
@@ -4366,13 +4495,7 @@ async function processAnswerSubmission({
       return;
     }
   } else if (room.mode === "ELIMINATION" && !isAdminOverride) {
-    if (effectiveTeamId) {
-      const team = await prisma.team.findUnique({ where: { id: effectiveTeamId } });
-      if (team?.isEliminated) {
-        if (socket) socket.emit("error", "Đội bạn đã bị loại và đang ở chế độ Khán giả (Spectator)!");
-        return;
-      }
-    }
+    // Eliminated teams act as Ghost teams: they can answer to build Revival momentum!
   }
 
   const timeSpent = Date.now() - (roomTimers.get(`${room.id}:startedAt`) ? parseInt(roomTimers.get(`${room.id}:startedAt`) as any) : Date.now());
@@ -4845,6 +4968,17 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
         nextPending.status = "IN_PROGRESS";
         tournament.currentMatchId = nextPending.id;
       }
+    }
+
+    // Award Oracle Points (+10 points) for spectators who correctly predicted the winner
+    if (currentMatch.predictions && winnerId) {
+      tournament.oracleScores = tournament.oracleScores || {};
+      for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
+        if (predWinnerId === winnerId) {
+          tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+        }
+      }
+      io.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
     }
   }
 
@@ -5486,8 +5620,11 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
       playerStreakMap.set(ans.playerId, 0);
     }
 
+    const isGold = room.mode === "CLASSIC" && Boolean(roomGoldQuestions.get(room.id)?.has(question.id));
+    const effectiveBasePoints = isGold ? question.points * 2 : question.points;
+
     const points = computePointsAwarded({
-      basePoints: question.points,
+      basePoints: effectiveBasePoints,
       timeSpent: ans.timeSpent,
       timeLimit: question.timeLimit,
       isCorrect,
@@ -5564,6 +5701,17 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
+      const roomGhosts = roomEliminationGhostStats.get(room.id);
+      if (roomGhosts) {
+        // 1. Evaluate round performance for each ghost team (100% correct in at least 1 round qualifies for revival)
+        for (const [, ghostStat] of roomGhosts.entries()) {
+          if (ghostStat.currentRoundCorrect >= interval) {
+            ghostStat.ghostRoundAllCorrect = true;
+          }
+          ghostStat.currentRoundCorrect = 0; // reset for next round
+        }
+      }
+
       if (room.teamMode === "TEAM") {
         const activeTeams = await prisma.team.findMany({
           where: { roomId: room.id, isEliminated: false },
@@ -5606,12 +5754,64 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
             reason: `Điểm số thấp nhất sau vòng sinh tồn ${Math.floor((room.currentQuestion + 1) / interval)}`,
           });
 
+          // 2. Ghost Revival Check at Penultimate Stage (Chặng áp chót)
+          // Áp dụng khi trận đấu có từ 4 chặng trở lên (totalStages >= 4) và hiện đang ở chặng áp chót
+          const allQuestions = await getRoomQuestions(room.id);
+          const totalStages = Math.floor(allQuestions.length / interval);
+          const currentStage = Math.floor((room.currentQuestion + 1) / interval);
+
+          if (totalStages >= 4 && currentStage === totalStages - 1) {
+            const eliminatedTeams = await prisma.team.findMany({
+              where: { roomId: room.id, isEliminated: true },
+            });
+            const qualifiedGhosts = eliminatedTeams.filter((t) => {
+              const stat = roomGhosts?.get(t.id);
+              return Boolean(stat && stat.ghostRoundAllCorrect && stat.ghostTotalAnswered > 0);
+            });
+
+            if (qualifiedGhosts.length > 0) {
+              qualifiedGhosts.sort((a, b) => {
+                const statA = roomGhosts!.get(a.id)!;
+                const statB = roomGhosts!.get(b.id)!;
+                const accA = statA.ghostTotalCorrect / statA.ghostTotalAnswered;
+                const accB = statB.ghostTotalCorrect / statB.ghostTotalAnswered;
+                if (accA !== accB) return accB - accA;
+                return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
+              });
+
+              const revived = qualifiedGhosts[0];
+              const survivingRemaining = activeTeams.filter((t) => t.id !== toEliminate.id);
+              const minSurvivingScore = survivingRemaining.length > 0
+                ? Math.min(...survivingRemaining.map((t) => t.score))
+                : 0;
+
+              await prisma.team.update({
+                where: { id: revived.id },
+                data: { isEliminated: false, score: minSurvivingScore },
+              });
+
+              const statRevived = roomGhosts?.get(revived.id);
+              if (statRevived) {
+                statRevived.ghostRoundAllCorrect = false;
+              }
+
+              io.to(`room:${roomCode}`).emit("elimination:revival", {
+                round: currentStage,
+                revivedTeamId: revived.id,
+                revivedTeamName: revived.name,
+                revivedScore: minSurvivingScore,
+              });
+            }
+          }
+
           const refreshedState = await buildRoomState(room.id);
           io.to(`room:${roomCode}`).emit("room:state", refreshedState);
 
-          // Nếu chỉ còn duy nhất 1 đội sống sót, đội đó nghiễm nhiên chiến thắng trận đấu!
-          const surviving = activeTeams.filter((t) => t.id !== toEliminate.id);
-          if (surviving.length === 1) {
+          // Nếu chỉ còn duy nhất 1 đội sống sót sau khi tính cả hồi sinh, đội đó nghiễm nhiên chiến thắng!
+          const finalSurviving = await prisma.team.findMany({
+            where: { roomId: room.id, isEliminated: false },
+          });
+          if (finalSurviving.length === 1) {
             await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
             const leaderboard = await buildLeaderboard(room.id);
             io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
@@ -5698,6 +5898,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
 
   const teams: TeamState[] = room.teams.map((t) => {
     const teamPlayers = validPlayers.filter((p) => p.teamId === t.id);
+    const ghostStat = roomEliminationGhostStats.get(room.id)?.get(t.id);
     return {
       id: t.id,
       name: t.name,
@@ -5718,6 +5919,11 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       bailoutsRemaining: roomWagers.get(room.id)?.teamBailouts?.[t.id]?.remaining,
       streak: teamStreakMap.get(t.id) || 0,
       isSpectator: t.isEliminated,
+      isGhost: room.mode === "ELIMINATION" && t.isEliminated,
+      ghostStreak: ghostStat?.ghostStreak || 0,
+      ghostRoundAllCorrect: ghostStat?.ghostRoundAllCorrect || false,
+      ghostTotalCorrect: ghostStat?.ghostTotalCorrect || 0,
+      ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0,
     };
   });
 
@@ -5945,6 +6151,36 @@ async function resolveQuestionTeamScores(
       shielded = true;
     }
 
+    // Classic Gold Rush Question (x2 Points)
+    const isGold = room.mode === "CLASSIC" && Boolean(roomGoldQuestions.get(room.id)?.has(question.id));
+    if (isGold) {
+      multiplier *= 2;
+    }
+
+    // In ELIMINATION mode: Ghost teams accumulate revival statistics instead of live board points
+    if (room.mode === "ELIMINATION" && team.isEliminated) {
+      let roomGhosts = roomEliminationGhostStats.get(room.id);
+      if (!roomGhosts) {
+        roomGhosts = new Map();
+        roomEliminationGhostStats.set(room.id, roomGhosts);
+      }
+      let ghostStat = roomGhosts.get(team.id);
+      if (!ghostStat) {
+        ghostStat = { ghostStreak: 0, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostRoundAllCorrect: false, currentRoundCorrect: 0 };
+        roomGhosts.set(team.id, ghostStat);
+      }
+      if (teamAnswers.length > 0) {
+        ghostStat.ghostTotalAnswered++;
+        if (correctAnswers.length > 0) {
+          ghostStat.ghostTotalCorrect++;
+          ghostStat.ghostStreak++;
+          ghostStat.currentRoundCorrect++;
+        } else {
+          ghostStat.ghostStreak = 0;
+        }
+      }
+    }
+
     let penaltyMultiplier = 1;
     if (teamCardsMap) {
       for (const [, otherCards] of teamCardsMap) {
@@ -5972,6 +6208,23 @@ async function resolveQuestionTeamScores(
       roomAccuracy,
       streak: teamStreak,
     });
+
+    if (room.mode === "ELIMINATION" && team.isEliminated) {
+      // Eliminated ghost team does not gain live score on main board
+      teamSummaries.push({
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color,
+        totalOnlineMembers: totalOnline,
+        correctMembers: correctAnswers.length,
+        pointsAwarded: 0,
+        speedBonus: 0,
+        multiplier,
+        activeCard: activeCards[0]?.type,
+        empiricalMultiplier,
+      });
+      continue;
+    }
 
     const tRes = await applyScoreDeltaToTeam(team.id, teamPoints);
 

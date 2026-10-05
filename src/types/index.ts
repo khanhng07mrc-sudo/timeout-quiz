@@ -590,6 +590,11 @@ export interface TeamState {
   correctAnswersCount?: number;
   totalAnswersCount?: number;
   isSpectator?: boolean;
+  isGhost?: boolean;
+  ghostStreak?: number;
+  ghostRoundAllCorrect?: boolean;
+  ghostTotalCorrect?: number;
+  ghostTotalAnswered?: number;
 }
 
 export interface PlayerState {
@@ -623,6 +628,8 @@ export interface TournamentMatch {
   status: "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
   currentQuestionInMatch: number;
   totalQuestionsInMatch: number;
+  predictions?: Record<string, string>; // teamId -> predictedWinnerId
+  cheers?: { countA: number; countB: number };
 }
 
 export interface TournamentState {
@@ -631,6 +638,8 @@ export interface TournamentState {
   questionsPerMatch: number;
   championTeamId?: string;
   championTeamName?: string;
+  oracleScores?: Record<string, number>; // teamId -> prediction points (+10 each correct)
+  cheers?: { countA: number; countB: number };
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -867,6 +876,7 @@ export interface QuestionState {
   bouncebackAnswerText?: string;
   endsAt?: number;
   serverTime?: number;
+  isGoldQuestion?: boolean; // CLASSIC mode: Double Points Question (x2 Base Points)
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
   finalizedActors?: string[];
   totalParticipantsCount?: number;
@@ -1027,6 +1037,9 @@ export interface ServerToClientEvents {
   }) => void;
   "game:answer:finalized": (payload: { questionId: string; actorId: string; actorName?: string; finalizedCount: number; totalParticipantsCount: number }) => void;
   "game:early_completed": (payload: { questionId: string; reason: "ALL_SUBMITTED" | "ALL_FINALIZED"; message: string }) => void;
+  "tournament:cheer:broadcast": (payload: { matchId: string; targetTeamId: string; emoji: string; countA: number; countB: number; percentA: number; percentB: number }) => void;
+  "tournament:oracle:update": (payload: { oracleScores: Record<string, number> }) => void;
+  "elimination:revival": (payload: { round: number; revivedTeamId: string; revivedTeamName: string; revivedScore: number }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -1073,6 +1086,8 @@ export interface ClientToServerEvents {
   "admin:dice:roll:manual": () => void;
   "admin:dice:advance_to_board": (payload?: { code?: string }) => void;
   "admin:tournament:advance": () => void;
+  "tournament:predict": (payload: { matchId: string; predictedWinnerId: string }) => void;
+  "tournament:cheer": (payload: { matchId: string; targetTeamId: string; emoji: string }) => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;

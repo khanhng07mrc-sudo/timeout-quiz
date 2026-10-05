@@ -259,6 +259,29 @@ export default function PlayPage() {
         }
         if (p.isStealOpen !== undefined) setIsStealPhase(p.isStealOpen);
         if (p.stealBuzzed !== undefined) setStealBuzzedTeam(p.stealBuzzed);
+        if (p.tournamentState !== undefined) {
+          setRoomState((prev) => (prev ? { ...prev, tournamentState: p.tournamentState } : prev));
+        }
+        if (p.oracleScores !== undefined) {
+          setRoomState((prev) => {
+            if (!prev || !prev.tournamentState) return prev;
+            return {
+              ...prev,
+              tournamentState: {
+                ...prev.tournamentState,
+                oracleScores: p.oracleScores,
+              },
+            };
+          });
+        }
+        if (p.revivalNotice !== undefined) {
+          if (p.revivalNotice.revivedTeamId === effectiveTeamId) {
+            setErrorMessage(`🎉 ĐỘI BẠN ĐÃ ĐƯỢC HỒI SINH THÀNH CÔNG VỚI ${p.revivalNotice.revivedScore} ĐIỂM!`);
+          } else {
+            setErrorMessage(`✨ Đội ${p.revivalNotice.revivedTeamName} đã giành vé HỒI SINH với ${p.revivalNotice.revivedScore} điểm!`);
+          }
+          setTimeout(() => setErrorMessage(null), 5000);
+        }
       }
     };
     window.addEventListener("message", handlePostMessage);
@@ -635,6 +658,27 @@ export default function PlayPage() {
     });
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("tournament:oracle:update", ({ oracleScores }) => {
+      setRoomState((prev) => {
+        if (!prev || !prev.tournamentState) return prev;
+        return {
+          ...prev,
+          tournamentState: {
+            ...prev.tournamentState,
+            oracleScores,
+          },
+        };
+      });
+    });
+    socket.on("elimination:revival", (payload) => {
+      if (soundEnabledRef.current) soundManager.playFanfare();
+      if (payload.revivedTeamId === effectiveTeamId) {
+        setErrorMessage(`🎉 ĐỘI BẠN ĐÃ ĐƯỢC HỒI SINH THÀNH CÔNG VỚI ${payload.revivedScore} ĐIỂM!`);
+      } else {
+        setErrorMessage(`✨ Đội ${payload.revivedTeamName} đã giành vé HỒI SINH với ${payload.revivedScore} điểm!`);
+      }
+      setTimeout(() => setErrorMessage(null), 5000);
     });
     socket.on("game:grid:caro:celebrate", () => {
       if (soundEnabledRef.current) soundManager.playCorrect();
@@ -1162,6 +1206,27 @@ export default function PlayPage() {
               onStopEarly={handleStopEarly}
               onFinalizeAnswer={handleFinalizeAnswer}
               isSpectator={isSpectator}
+              isGhost={roomState?.mode === "ELIMINATION" && Boolean(myTeam?.isEliminated || myTeam?.isGhost)}
+              ghostStats={{
+                ghostStreak: myTeam?.ghostStreak,
+                ghostRoundAllCorrect: myTeam?.ghostRoundAllCorrect,
+                ghostTotalCorrect: myTeam?.ghostTotalCorrect,
+                ghostTotalAnswered: myTeam?.ghostTotalAnswered,
+              }}
+              tournamentMatch={roomState?.tournamentState?.matches.find((m) => m.id === (currentQuestion.tournamentMatchId || roomState.tournamentState?.currentMatchId))}
+              onPredictWinner={(matchId, predictedWinnerId) => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "TOURNAMENT_PREDICT", matchId, predictedWinnerId, teamId: effectiveTeamId }, "*");
+                }
+                socketRef.current?.emit("tournament:predict", { matchId, predictedWinnerId });
+              }}
+              onCheer={(matchId, targetTeamId, emoji) => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "TOURNAMENT_CHEER", matchId, targetTeamId, emoji }, "*");
+                }
+                socketRef.current?.emit("tournament:cheer", { matchId, targetTeamId, emoji });
+              }}
+              oracleScore={effectiveTeamId ? roomState?.tournamentState?.oracleScores?.[effectiveTeamId] : undefined}
             />
 
             {/* Wager Reveal results for players */}

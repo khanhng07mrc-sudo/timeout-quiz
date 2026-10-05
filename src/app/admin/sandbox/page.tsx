@@ -1704,6 +1704,43 @@ export default function AdminSandboxPage() {
         handleDiceRollManual();
       } else if (action === "wager_submit") {
         processOfflineWager(targetTeamId, Number(e.data.amount) || 10);
+      } else if (e.data?.type === "TOURNAMENT_PREDICT") {
+        const { matchId, predictedWinnerId, teamId } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.tournamentState) return prev;
+          const matches = prev.tournamentState.matches.map((m) => {
+            if (m.id === matchId) {
+              const predictions = { ...(m.predictions || {}), [teamId]: predictedWinnerId };
+              return { ...m, predictions };
+            }
+            return m;
+          });
+          const nextTournament = { ...prev.tournamentState, matches };
+          syncToIframes({ tournamentState: nextTournament });
+          return { ...prev, tournamentState: nextTournament };
+        });
+        addLog(`🔮 Đội [${targetTeamName}] đã DỰ ĐOÁN đội thắng cho trận [${matchId}]!`);
+      } else if (e.data?.type === "TOURNAMENT_CHEER") {
+        const { matchId, targetTeamId: cheerTeamId, emoji } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.tournamentState) return prev;
+          const match = prev.tournamentState.matches.find((m) => m.id === matchId);
+          if (!match) return prev;
+          const currentCheers = match.cheers || { countA: 0, countB: 0 };
+          const countA = cheerTeamId === match.team1Id ? currentCheers.countA + 1 : currentCheers.countA;
+          const countB = cheerTeamId === match.team2Id ? currentCheers.countB + 1 : currentCheers.countB;
+          const total = countA + countB;
+          const percentA = total > 0 ? Math.round((countA / total) * 100) : 50;
+          const percentB = 100 - percentA;
+          const cheers = { countA, countB };
+          const matches = prev.tournamentState.matches.map((m) => m.id === matchId ? { ...m, cheers } : m);
+          const nextTour = { ...prev.tournamentState, matches, cheers };
+          syncToIframes({
+            tournamentState: nextTour,
+            liveCheer: { matchId, targetTeamId: cheerTeamId, emoji, countA, countB, percentA, percentB },
+          });
+          return { ...prev, tournamentState: nextTour };
+        });
       }
     };
 
@@ -1832,6 +1869,9 @@ export default function AdminSandboxPage() {
           : undefined,
       tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
       tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
+      isGoldQuestion: selectedMode === "CLASSIC" && questions.length >= 7 && (
+        q.points === 30 || nextIdx >= Math.floor(questions.length * 0.7)
+      ),
     };
 
     setRoomState((prev) => {
@@ -2382,8 +2422,12 @@ export default function AdminSandboxPage() {
           } else {
             pts = isCorrect ? nonWagerCorrectPoints : 0;
           }
+        } else if (selectedMode === "ELIMINATION" && t.isEliminated) {
+          pts = 0;
         } else {
-          pts = isCorrect ? (currentQuestion.question.points || 10) : 0;
+          const isGold = selectedMode === "CLASSIC" && Boolean(currentQuestion.isGoldQuestion);
+          const base = currentQuestion.question.points || 10;
+          pts = isCorrect ? (isGold ? base * 2 : base) : 0;
         }
 
         answers.push({

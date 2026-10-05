@@ -85,6 +85,7 @@ export default function AdminSandboxPage() {
 
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
+  const activeTeamIdRef = useRef<string>("");
   const initialTeamOrderRef = useRef<string[]>([]);
 
   // Stable team ordering: keeps teams in deterministic positions (index 0, 1, 2, 3) across questions & score updates
@@ -115,6 +116,12 @@ export default function AdminSandboxPage() {
   }, [roomState?.teams, isOfflineSandbox]);
 
   const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
+
+  useEffect(() => {
+    if (currentTeam?.id) {
+      activeTeamIdRef.current = currentTeam.id;
+    }
+  }, [currentTeam?.id]);
 
   // Bot automation state (default: OFF, manual on-demand control)
   const [botAutoEnabled, setBotAutoEnabled] = useState(false);
@@ -225,8 +232,8 @@ export default function AdminSandboxPage() {
       pendingBotDiceTimerRef.current = null;
     }
 
-    // Spawn sockets for Teams 2, 3, 4 (Teams[1], [2], [3])
-    teams.slice(1).forEach((team, botIdx) => {
+    // Spawn bot sockets for all teams
+    teams.forEach((team, botIdx) => {
       const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
         transports: ["websocket", "polling"],
         query: { sandbox: "1" },
@@ -253,6 +260,9 @@ export default function AdminSandboxPage() {
 
       const triggerBotAnswer = (qState: QuestionState) => {
         if (!botAutoEnabled) return;
+        // If human tester is controlling this team, do not answer for this bot!
+        if (team.id === activeTeamIdRef.current) return;
+
         const qData = qState.question;
         const opts = qData.options || [];
         if (opts.length === 0) return;
@@ -264,6 +274,7 @@ export default function AdminSandboxPage() {
 
         const delay = 2000 + Math.random() * 2000;
         setTimeout(() => {
+          if (team.id === activeTeamIdRef.current) return;
           const chosenOpt = opts[Math.floor(Math.random() * opts.length)];
           sock.emit("game:answer:submit", {
             questionId: qData.id,
@@ -274,12 +285,14 @@ export default function AdminSandboxPage() {
       };
 
       sock.on("game:question", (q) => {
+        if (team.id === activeTeamIdRef.current) return;
         if (q.bouncebackSelectPhase) {
           pendingBotAnswerQ = q;
           if (botAutoEnabled && q.primaryTeamId === team.id) {
             const levels: (10 | 20 | 30)[] = [10, 20, 30];
             const picked = levels[Math.floor(Math.random() * levels.length)];
             setTimeout(() => {
+              if (team.id === activeTeamIdRef.current) return;
               sock.emit("game:bounceback:select_points", { points: picked });
               addLog(`Bot [${team.name}] tự động chọn gói ${picked} điểm (Về đích Olympia)`);
             }, 1200);
@@ -294,6 +307,7 @@ export default function AdminSandboxPage() {
       });
 
       sock.on("game:bounceback:points_selected", (payload) => {
+        if (team.id === activeTeamIdRef.current) return;
         if (pendingBotAnswerQ) {
           const q = {
             ...pendingBotAnswerQ,
@@ -307,6 +321,7 @@ export default function AdminSandboxPage() {
       });
 
       sock.on("game:timer:started", () => {
+        if (team.id === activeTeamIdRef.current) return;
         if (pendingBotAnswerQ) {
           const q = pendingBotAnswerQ;
           pendingBotAnswerQ = null;
@@ -317,9 +332,11 @@ export default function AdminSandboxPage() {
       // Handle Bounceback open steal buzz
       sock.on("game:bounceback:open_steal", () => {
         if (!botAutoEnabled) return;
+        if (team.id === activeTeamIdRef.current) return;
         if (Math.random() > 0.4) {
           const delay = 1000 + Math.random() * 2000;
           setTimeout(() => {
+            if (team.id === activeTeamIdRef.current) return;
             sock.emit("game:buzz");
             addLog(`Bot [${team.name}] bấm chuông CƯỚP LƯỢT!`);
           }, delay);
@@ -329,9 +346,11 @@ export default function AdminSandboxPage() {
       // Handle Buzz mode auto buzz when unlocked
       sock.on("game:buzz:unlocked", () => {
         if (!botAutoEnabled) return;
+        if (team.id === activeTeamIdRef.current) return;
         if (Math.random() > 0.3) {
           const delay = 800 + Math.random() * 2000;
           setTimeout(() => {
+            if (team.id === activeTeamIdRef.current) return;
             sock.emit("game:buzz");
             addLog(`Bot [${team.name}] bấm chuông BUZZ!`);
           }, delay);
@@ -3153,7 +3172,9 @@ export default function AdminSandboxPage() {
     const opts = currentQuestion.question.options || [];
     if (opts.length === 0) return;
 
-    const opt = isCorrect ? opts[0] : opts[opts.length - 1];
+    const correctOpt = opts.find((o: any) => o.isCorrect) || opts[0];
+    const wrongOpt = opts.find((o: any) => !o.isCorrect) || opts[opts.length - 1];
+    const opt = isCorrect ? correctOpt : wrongOpt;
 
     if (isOfflineSandbox) {
       const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
@@ -3166,25 +3187,16 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    const sock = botSocketsRef.current.get(currentTeam.id);
-    if (!sock || activeTeamIndex === 0) {
-      playerIframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "FORCE_TESTER_ACTION",
-          action: "answer",
-          answer: opt.id,
-          isCorrect,
-        },
-        "*"
-      );
-      addLog(`[${currentTeam.name}] nộp đáp án qua điện thoại: ${isCorrect ? "ĐÚNG" : "SAI"}`);
-    } else {
-      sock.emit("game:answer:submit", {
-        questionId: currentQuestion.question.id,
+    playerIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "FORCE_TESTER_ACTION",
+        action: "answer",
         answer: opt.id,
-      });
-      addLog(`[${currentTeam.name}] nộp đáp án: ${isCorrect ? "ĐÚNG" : "SAI"}`);
-    }
+        isCorrect,
+      },
+      "*"
+    );
+    addLog(`[${currentTeam.name}] nộp đáp án qua điện thoại: ${isCorrect ? "ĐÚNG" : "SAI"} (${opt.text})`);
   };
 
   const handleForceActiveTeamBuzz = () => {
@@ -3196,20 +3208,14 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    const sock = botSocketsRef.current.get(currentTeam.id);
-    if (!sock || activeTeamIndex === 0) {
-      playerIframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "FORCE_TESTER_ACTION",
-          action: "buzz",
-        },
-        "*"
-      );
-      addLog(`[${currentTeam.name}] bấm Buzz qua điện thoại!`);
-    } else {
-      sock.emit("game:buzz");
-      addLog(`[${currentTeam.name}] bấm Buzz!`);
-    }
+    playerIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "FORCE_TESTER_ACTION",
+        action: "buzz",
+      },
+      "*"
+    );
+    addLog(`[${currentTeam.name}] bấm Buzz qua điện thoại!`);
   };
 
   const handleForceActiveTeamWager = (amount: number) => {
@@ -3222,21 +3228,16 @@ export default function AdminSandboxPage() {
       processOfflineWager(currentTeam.id, amount);
       return;
     }
-    const sock = botSocketsRef.current.get(currentTeam.id);
-    if (!sock || activeTeamIndex === 0) {
-      playerIframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "FORCE_TESTER_ACTION",
-          action: "wager",
-          amount,
-        },
-        "*"
-      );
-      addLog(`[${currentTeam.name}] cược ${amount}đ qua điện thoại`);
-    } else {
-      sock.emit("game:wager:submit", { amount });
-      addLog(`[${currentTeam.name}] cược ${amount}đ`);
-    }
+
+    playerIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "FORCE_TESTER_ACTION",
+        action: "wager",
+        amount,
+      },
+      "*"
+    );
+    addLog(`[${currentTeam.name}] cược ${amount}đ qua điện thoại`);
   };
 
   const handleTriggerAllBotsAnswer = () => {
@@ -3247,9 +3248,9 @@ export default function AdminSandboxPage() {
     if (isOfflineSandbox) {
       (roomState?.teams || []).forEach((t) => {
         if (t.id === (currentTeam?.id || "t_red")) return;
-        const opt = opts[Math.floor(Math.random() * opts.length)];
-        const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion.question;
-        const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
+        const correctOpt = opts.find((o: any) => o.isCorrect);
+        const isBotCorrect = Math.random() < 0.75;
+        const opt = isBotCorrect ? (correctOpt || opts[0]) : (opts.find((o: any) => o.id !== correctOpt?.id) || opts[opts.length - 1]);
         const isCorrect = correctOpt ? correctOpt.id === opt.id : false;
         const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
         offlineAnswersRef.current.set(t.id, {
@@ -3265,8 +3266,12 @@ export default function AdminSandboxPage() {
     }
 
     botSocketsRef.current.forEach((sock, bTeamId) => {
-      if (bTeamId === currentTeam?.id) return;
-      const opt = opts[Math.floor(Math.random() * opts.length)];
+      if (bTeamId === (activeTeamIdRef.current || currentTeam?.id)) return;
+      const correctOpt = opts.find((o: any) => o.isCorrect);
+      const isBotCorrect = Math.random() < 0.75;
+      const opt = isBotCorrect
+        ? (correctOpt || opts[0])
+        : (opts.find((o: any) => o.id !== correctOpt?.id) || opts[opts.length - 1]);
       sock.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
         answer: opt.id,
@@ -3286,6 +3291,7 @@ export default function AdminSandboxPage() {
     setActiveTeamIndex(idx);
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
+    activeTeamIdRef.current = targetTeam.id;
     const targetName = idx === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
     const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(
@@ -3304,7 +3310,7 @@ export default function AdminSandboxPage() {
       },
       "*"
     );
-    addLog(`📱 Chuyển thiết bị điện thoại sang điều khiển: [${targetTeam.name}]`);
+    addLog(`📱 Chuyển thiết bị điện thoại sang điều khiển: [${targetTeam.name}] (Bot đội này tạm dừng)`);
   };
 
   const handleGrantCard = async () => {

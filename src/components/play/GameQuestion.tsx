@@ -1124,7 +1124,11 @@ export default function GameQuestion({
               <span className="text-green-400">
                 {roomMode === "DICE_RACE"
                   ? "✓ Đúng rồi!"
-                  : `✓ Đúng rồi! +${revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded ?? 0} điểm`}
+                  : `✓ Đúng rồi! +${
+                      revealPayload.teamSummaries?.find((ts) => (myTeamId ? ts.teamId === myTeamId : true))?.pointsAwarded
+                      ?? revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded
+                      ?? 0
+                    } điểm`}
               </span>
             ) : (
               <span className="text-red-400">✗ Chưa chính xác!</span>

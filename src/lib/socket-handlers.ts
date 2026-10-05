@@ -4508,14 +4508,19 @@ async function processAnswerSubmission({
   const targetTeamId = effectiveTeamId;
   const targetPlayerId = playerId;
 
+  const isSingleTeamTurnMode = room.mode === "BOUNCEBACK" || room.mode === "BUZZ" || room.mode === "GRID_CARO" || room.mode === "DICE_RACE";
   let existingAnswer: any = null;
-  if (targetTeamId) {
+  if (isSingleTeamTurnMode && targetTeamId) {
     existingAnswer = await prisma.answer.findFirst({
       where: { roomId: room.id, questionId, teamId: targetTeamId },
     });
   } else if (targetPlayerId) {
     existingAnswer = await prisma.answer.findFirst({
       where: { roomId: room.id, questionId, playerId: targetPlayerId },
+    });
+  } else if (targetTeamId) {
+    existingAnswer = await prisma.answer.findFirst({
+      where: { roomId: room.id, questionId, teamId: targetTeamId },
     });
   }
 
@@ -5218,8 +5223,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   }
 
   for (const team of room.teams) {
-    const ans = answerMap.get(team.id);
-    const isCorrect = ans?.isCorrect === true;
+    const isCorrect = teamAnswers.some((a) => a.teamId === team.id && a.isCorrect === true);
     let delta = 0;
 
     if (team.id === lastWagerTeamId) {
@@ -5230,12 +5234,10 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
       delta = isCorrect ? nonWagerCorrectPoints : 0;
     }
 
-    if (ans) {
-      await prisma.answer.update({
-        where: { id: ans.id },
-        data: { pointsAwarded: delta },
-      }).catch(console.error);
-    }
+    await prisma.answer.updateMany({
+      where: { roomId, questionId, teamId: team.id },
+      data: { pointsAwarded: delta },
+    }).catch(console.error);
 
     const tRes = await applyScoreDeltaToTeam(team.id, delta);
     scoreUpdates.push({ teamId: team.id, score: tRes.newScore, delta: tRes.effectiveDelta });
@@ -5688,9 +5690,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   let roomAccuracy: number | undefined;
   let rarityBonusPercent: number | undefined;
 
-  // Collective team scoring in CLASSIC, POWERUP mode, OR in ELIMINATION mode when device & eliminationDeepScoring are active
-  const isEliminationDeep = room.mode === "ELIMINATION" && (config?.answerMethod ?? "DEVICE") === "DEVICE" && config?.eliminationDeepScoring !== false;
-  if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || isEliminationDeep) && room.teamMode === "TEAM") {
+  // Collective team scoring in CLASSIC, POWERUP, and ELIMINATION mode
+  if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -6212,10 +6213,17 @@ async function resolveQuestionTeamScores(
   const teamSummaries: TeamRevealSummary[] = [];
 
   for (const team of room.teams) {
-    const onlineMembers = team.players.filter((p) => !!p.socketId);
-    const totalOnline = onlineMembers.length > 0 ? onlineMembers.length : (team.players.length || 1);
+    const hasHuman = team.players.some((p) => !p.id.startsWith("bot_") && !!p.socketId);
+    const activeMembers = hasHuman
+      ? team.players.filter((p) => !p.id.startsWith("bot_") && !!p.socketId)
+      : team.players.filter((p) => !!p.socketId);
+    const totalOnline = activeMembers.length > 0 ? activeMembers.length : (team.players.length || 1);
 
-    const teamAnswers = answers.filter((a) => a.teamId === team.id);
+    const teamAnswers = answers.filter((a) => {
+      if (a.teamId !== team.id) return false;
+      if (hasHuman && a.playerId?.startsWith("bot_")) return false;
+      return true;
+    });
     const correctAnswers = teamAnswers.filter((a) => a.isCorrect === true);
     const correctTimes = correctAnswers.map((a) => a.timeSpent);
 
@@ -6316,6 +6324,13 @@ async function resolveQuestionTeamScores(
     }
 
     const tRes = await applyScoreDeltaToTeam(team.id, teamPoints);
+
+    if (teamAnswers.length > 0) {
+      await prisma.answer.updateMany({
+        where: { roomId, questionId, teamId: team.id },
+        data: { pointsAwarded: teamPoints },
+      }).catch(console.error);
+    }
 
     teamScoresUpdates.push({
       teamId: team.id,

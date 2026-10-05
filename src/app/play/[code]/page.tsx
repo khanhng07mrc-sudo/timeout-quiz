@@ -194,23 +194,37 @@ export default function PlayPage() {
           const hasAnswered = Boolean(teamAnswersRef.current.has(teamId));
           setAnswered(hasAnswered);
 
-          const currentPid = playerIdRef.current;
+          const teamPlayerId = isSandbox
+            ? `sb_${code}_t${teamIndex}`
+            : playerIdRef.current;
+          playerIdRef.current = teamPlayerId;
+          setPlayerId(teamPlayerId);
+
           if (socketRef.current?.connected) {
-            socketRef.current.emit("player:select:team", { teamId, playerId: currentPid });
+            if (isSandbox) {
+              socketRef.current.emit("room:join", {
+                code,
+                playerName: teamName || `Đội ${teamIndex + 1}`,
+                playerId: teamPlayerId,
+                teamId,
+              }, () => {});
+            } else {
+              socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId });
+            }
           }
           setRoomState((prev) => {
             if (!prev) return prev;
             const pName = teamName || (teamIndex === 0 ? "Bạn (Tester)" : `Đội ${teamIndex + 1} 🤖`);
-            const exists = prev.players.some((p) => p.id === currentPid);
+            const exists = prev.players.some((p) => p.id === teamPlayerId);
             let updatedPlayers: any[];
             if (exists) {
               updatedPlayers = prev.players.map((p) =>
-                p.id === currentPid ? { ...p, teamId, name: pName } : p
+                p.id === teamPlayerId ? { ...p, teamId, name: pName } : p
               );
             } else {
               updatedPlayers = [
                 ...prev.players,
-                { id: currentPid, name: pName, score: 0, teamId, isHost: teamIndex === 0, isOnline: true },
+                { id: teamPlayerId, name: pName, score: 0, teamId, isHost: teamIndex === 0, isOnline: true },
               ];
             }
             return { ...prev, players: updatedPlayers };
@@ -219,7 +233,25 @@ export default function PlayPage() {
         return;
       }
       if (e.data?.type === "FORCE_TESTER_ACTION") {
-        const { action, answer, isCorrect, amount } = e.data;
+        const { action, answer, isCorrect, amount, teamId, teamIndex } = e.data;
+        if (teamId) {
+          myTeamIdRef.current = teamId;
+          setActiveTeamId(teamId);
+          setSelectedTeamId(teamId);
+          if (isSandbox && typeof teamIndex === "number") {
+            const teamPlayerId = `sb_${code}_t${teamIndex}`;
+            playerIdRef.current = teamPlayerId;
+            setPlayerId(teamPlayerId);
+            if (socketRef.current?.connected) {
+              socketRef.current.emit("room:join", {
+                code,
+                playerName: `Đội ${teamIndex + 1}`,
+                playerId: teamPlayerId,
+                teamId,
+              }, () => {});
+            }
+          }
+        }
         if (action === "buzz") {
           handleBuzzRef.current();
         } else if (action === "wager" && typeof amount === "number") {

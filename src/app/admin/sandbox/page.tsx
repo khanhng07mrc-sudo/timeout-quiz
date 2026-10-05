@@ -2492,10 +2492,11 @@ export default function AdminSandboxPage() {
       const currentTeamsList = roomState?.teams || [];
       const totalSandboxAnswers = currentTeamsList.length;
       let correctSandboxCount = 0;
+      const hasAnyRecorded = offlineAnswersRef.current.size > 0;
       currentTeamsList.forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
-        const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         if (isCorrect) correctSandboxCount++;
       });
       const sandboxAccuracy = totalSandboxAnswers > 0 ? correctSandboxCount / totalSandboxAnswers : 1.0;
@@ -2512,8 +2513,8 @@ export default function AdminSandboxPage() {
 
       currentTeamsList.forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
-        const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         if (topHalfIds.has(t.id)) {
           topHalfTotal++;
           if (isCorrect) topHalfCorrect++;
@@ -2539,8 +2540,8 @@ export default function AdminSandboxPage() {
 
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
-        const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         const timeSpent = recorded?.timeSpent ?? 3000;
 
         let pts = 0;
@@ -3331,6 +3332,8 @@ export default function AdminSandboxPage() {
         action: "answer",
         answer: opt.id,
         isCorrect,
+        teamId: currentTeam.id,
+        teamIndex: activeTeamIndex,
       },
       "*"
     );

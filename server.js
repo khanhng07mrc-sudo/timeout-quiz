@@ -4713,6 +4713,10 @@ async function processAnswerSubmission({
     existingAnswer = await prisma.answer.findFirst({
       where: { roomId: room.id, questionId, teamId: targetTeamId }
     });
+  } else if (targetPlayerId && targetTeamId) {
+    existingAnswer = await prisma.answer.findFirst({
+      where: { roomId: room.id, questionId, playerId: targetPlayerId, teamId: targetTeamId }
+    });
   } else if (targetPlayerId) {
     existingAnswer = await prisma.answer.findFirst({
       where: { roomId: room.id, questionId, playerId: targetPlayerId }
@@ -4742,7 +4746,9 @@ async function processAnswerSubmission({
         answer: normalizedAnswer,
         isCorrect: question.type === "ESSAY" ? null : isCorrect,
         timeSpent: isAdminOverride ? 0 : timeSpent,
-        submittedAt: /* @__PURE__ */ new Date()
+        submittedAt: /* @__PURE__ */ new Date(),
+        teamId: targetTeamId ?? existingAnswer.teamId,
+        playerId: targetPlayerId ?? existingAnswer.playerId
       }
     });
   } else {

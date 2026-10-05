@@ -264,7 +264,7 @@ export default function AdminRoomPage() {
       if (soundEnabledRef.current) {
         if (state.status === "LOBBY") {
           soundManager.playLobbyMusic();
-        } else {
+        } else if (state.status === "FINISHED" || state.status === "PAUSED") {
           soundManager.stopMusic(0);
         }
       }

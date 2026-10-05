@@ -250,7 +250,7 @@ export default function DisplayPage() {
       setRoomState(state);
       if (state.status === "LOBBY") {
         soundManager.playLobbyMusic();
-      } else {
+      } else if (state.status === "FINISHED" || state.status === "PAUSED") {
         soundManager.stopMusic(0);
       }
     });

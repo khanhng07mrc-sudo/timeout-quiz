@@ -128,7 +128,7 @@ export default function WagerPanel({
           )}
         </div>
         <div className="text-[11px] text-amber-200/80 font-medium">
-          {isMeWinning ? "Đúng = +" : "Đội cược: Đúng = +"}{wagerAmt}đ, Sai = -{wagerAmt}đ · Các đội khác: Đúng = +{Math.ceil((baseQuestionPoints || 10) / 2)}đ
+          {isMeWinning ? "Đúng = +" : "Đội cược: Đúng = +"}{wagerAmt}đ, Sai = -{wagerAmt}đ · Các đội khác: Đúng = +{Math.max(5, Math.ceil((((baseQuestionPoints || 20) / 2) * wagerMultiplierCap) / 5) * 5)}đ
         </div>
       </div>
     );
@@ -201,7 +201,7 @@ export default function WagerPanel({
             )}
           </div>
           <span className="text-[10px] text-muted-foreground hidden lg:inline">
-            · Đúng: +cược, Sai: -cược · Đội khác: +1/2 điểm
+            · Đúng: +cược, Sai: -cược · Đội khác: +1/2 điểm × hệ số trần
           </span>
         </div>
 

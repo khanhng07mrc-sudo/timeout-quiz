@@ -5031,8 +5031,9 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
 
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  // Làm tròn lên số chia hết cho 5 gần nhất của một nửa điểm câu hỏi
-  const halfQuestionPoints = Math.max(5, Math.ceil((question.points / 2) / 5) * 5);
+  const wagerMultiplier = wagerState.wagerMultiplierCap ?? 2.5;
+  // Điểm cho các đội không cược khi đúng: (1/2 Điểm gốc) × Hệ số trần (làm tròn lên chia hết cho 5)
+  const halfQuestionPoints = Math.max(5, Math.ceil(((question.points / 2) * wagerMultiplier) / 5) * 5);
 
   for (const team of room.teams) {
     const ans = await prisma.answer.findFirst({

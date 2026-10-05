@@ -4929,7 +4929,8 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
   const scoreUpdates = [];
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  const halfQuestionPoints = Math.max(5, Math.ceil(question.points / 2 / 5) * 5);
+  const wagerMultiplier = wagerState.wagerMultiplierCap ?? 2.5;
+  const halfQuestionPoints = Math.max(5, Math.ceil(question.points / 2 * wagerMultiplier / 5) * 5);
   for (const team of room.teams) {
     const ans = await prisma.answer.findFirst({
       where: { roomId, questionId, teamId: team.id }

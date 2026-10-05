@@ -2286,7 +2286,8 @@ export default function AdminSandboxPage() {
       const lastWagerTeamId = curWager?.lastWagerTeamId;
       const wagerAmount = curWager?.currentHighestWager || 10;
       const baseQPoints = currentQuestion.question.points || 20;
-      const halfQuestionPoints = Math.max(5, Math.ceil((baseQPoints / 2) / 5) * 5);
+      const wagerMult = curWager?.wagerMultiplierCap ?? 2.5;
+      const halfQuestionPoints = Math.max(5, Math.ceil(((baseQPoints / 2) * wagerMult) / 5) * 5);
 
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);

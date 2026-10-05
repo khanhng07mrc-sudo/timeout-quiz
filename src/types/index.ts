@@ -529,6 +529,8 @@ export interface GameConfig {
   answerMethod?: "DEVICE" | "MC";
   eliminationDeepScoring?: boolean;
   eliminationIntervalQuestions?: number;
+  eliminationTeamsPerStage?: number;
+  eliminationRevivalCount?: number;
   // Tournament config
   tournamentQuestionsPerMatch?: number;
   // Grid Caro config
@@ -1032,6 +1034,7 @@ export interface ServerToClientEvents {
     cycleQuestions?: number;
     eliminatedTeamId: string;
     eliminatedTeamName: string;
+    eliminatedTeams?: { id: string; name: string }[];
     survivingTeamsCount?: number;
     isGameOver?: boolean;
     reason?: string;
@@ -1040,7 +1043,14 @@ export interface ServerToClientEvents {
   "game:early_completed": (payload: { questionId: string; reason: "ALL_SUBMITTED" | "ALL_FINALIZED"; message: string }) => void;
   "tournament:cheer:broadcast": (payload: { matchId: string; targetTeamId: string; emoji: string; countA: number; countB: number; percentA: number; percentB: number }) => void;
   "tournament:oracle:update": (payload: { oracleScores: Record<string, number> }) => void;
-  "elimination:revival": (payload: { round: number; revivedTeamId: string; revivedTeamName: string; revivedScore: number; eliminatedAtStage?: number }) => void;
+  "elimination:revival": (payload: {
+    round: number;
+    revivedTeamId: string;
+    revivedTeamName: string;
+    revivedScore: number;
+    eliminatedAtStage?: number;
+    revivedTeams?: { id: string; name: string; score: number; eliminatedAtStage?: number }[];
+  }) => void;
 }
 
 export interface ClientToServerEvents {

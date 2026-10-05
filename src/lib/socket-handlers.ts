@@ -117,6 +117,7 @@ interface EliminationGhostStat {
   ghostStreak: number;
   ghostTotalCorrect: number;
   ghostTotalAnswered: number;
+  ghostTotalTimeSpent: number;
   ghostRoundAllCorrect: boolean;
   currentRoundCorrect: number;
   eliminatedAtStage?: number;
@@ -5744,38 +5745,48 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
             return timeB - timeA; // Sắp xếp thời gian lớn hơn (chậm hơn) lên đầu để loại
           });
 
-          const toEliminate = activeTeams[0];
-          await prisma.team.update({
-            where: { id: toEliminate.id },
-            data: { isEliminated: true },
-          });
+          // Xác định số đội bị loại theo setting (mặc định 1, cho phép chọn 1 - 3 đội):
+          // Lưu ý quy tắc an toàn: Không loại toàn bộ các đội còn sống!
+          const configuredTeamsPerStage = Math.max(1, Math.min(3, config?.eliminationTeamsPerStage || 1));
+          const numToEliminate = Math.min(configuredTeamsPerStage, activeTeams.length - 1);
+          const teamsToEliminate = activeTeams.slice(0, numToEliminate);
 
           const currentStageNumber = Math.floor((room.currentQuestion + 1) / interval);
           if (!roomGhosts) {
             roomGhosts = new Map();
             roomEliminationGhostStats.set(room.id, roomGhosts);
           }
-          let elimGhostStat = roomGhosts.get(toEliminate.id);
-          if (!elimGhostStat) {
-            elimGhostStat = {
-              ghostStreak: 0,
-              ghostTotalCorrect: 0,
-              ghostTotalAnswered: 0,
-              ghostRoundAllCorrect: false,
-              currentRoundCorrect: 0,
-              eliminatedAtStage: currentStageNumber,
-              eliminatedAtQuestion: room.currentQuestion,
-            };
-            roomGhosts.set(toEliminate.id, elimGhostStat);
-          } else {
-            elimGhostStat.eliminatedAtStage = currentStageNumber;
-            elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+
+          for (const toElim of teamsToEliminate) {
+            await prisma.team.update({
+              where: { id: toElim.id },
+              data: { isEliminated: true },
+            });
+
+            let elimGhostStat = roomGhosts.get(toElim.id);
+            if (!elimGhostStat) {
+              elimGhostStat = {
+                ghostStreak: 0,
+                ghostTotalCorrect: 0,
+                ghostTotalAnswered: 0,
+                ghostTotalTimeSpent: 0,
+                ghostRoundAllCorrect: false,
+                currentRoundCorrect: 0,
+                eliminatedAtStage: currentStageNumber,
+                eliminatedAtQuestion: room.currentQuestion,
+              };
+              roomGhosts.set(toElim.id, elimGhostStat);
+            } else {
+              elimGhostStat.eliminatedAtStage = currentStageNumber;
+              elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+            }
           }
 
           io.to(`room:${roomCode}`).emit("game:elimination:round", {
-            eliminatedTeamId: toEliminate.id,
-            eliminatedTeamName: toEliminate.name,
-            reason: `Điểm số thấp nhất sau vòng sinh tồn ${currentStageNumber}`,
+            eliminatedTeamId: teamsToEliminate.map((t) => t.id).join(","),
+            eliminatedTeamName: teamsToEliminate.map((t) => t.name).join(", "),
+            eliminatedTeams: teamsToEliminate.map((t) => ({ id: t.id, name: t.name })),
+            reason: `Điểm số thấp nhất sau vòng sinh tồn ${currentStageNumber} (${teamsToEliminate.length} đội bị loại)`,
           });
 
           // 2. Ghost Revival Check at Penultimate Stage (Chặng áp chót)
@@ -5798,45 +5809,67 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
                 const statA = roomGhosts!.get(a.id)!;
                 const statB = roomGhosts!.get(b.id)!;
 
-                // Ưu tiên 1 (Quy tắc người dùng): Đội bị loại sớm hơn sẽ được ưu tiên duyệt hồi sinh
+                // Ưu tiên 1 (Quy tắc người dùng): Đội có tỷ lệ % chính xác câu bóng ma cao hơn
+                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
+                if (accA !== accB) return accB - accA; // tỷ lệ cao hơn đứng trước
+
+                // Ưu tiên 2 (Quy tắc người dùng): Đội bị loại sớm hơn
                 const elimA = statA.eliminatedAtQuestion ?? (999999 - statA.ghostTotalAnswered);
                 const elimB = statB.eliminatedAtQuestion ?? (999999 - statB.ghostTotalAnswered);
                 if (elimA !== elimB) {
-                  return elimA - elimB; // Chỉ số câu bị loại nhỏ hơn = bị loại sớm hơn
+                  return elimA - elimB; // chỉ số câu bị loại nhỏ hơn = bị loại sớm hơn
                 }
 
-                // Tiêu chí phụ 2: Tỷ lệ chính xác tổng thể (Accuracy)
-                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
-                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
-                if (accA !== accB) return accB - accA;
+                // Ưu tiên 3 (Quy tắc người dùng): Đội có tổng thời gian trả lời câu bóng ma ít hơn
+                const timeA = statA.ghostTotalTimeSpent ?? 999999;
+                const timeB = statB.ghostTotalTimeSpent ?? 999999;
+                if (timeA !== timeB) {
+                  return timeA - timeB; // ít thời gian hơn = nhanh hơn đứng trước
+                }
 
-                // Tiêu chí phụ 3: Tổng số câu đúng
+                // Tiêu chí phụ 4 (dự phòng): Tổng số câu đúng
                 return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
               });
 
-              const revived = qualifiedGhosts[0];
-              const survivingRemaining = activeTeams.filter((t) => t.id !== toEliminate.id);
+              // Cài đặt số đội được duyệt hồi sinh tại chặng áp chót (1 - 3 đội, mặc định 1):
+              const revivalLimit = Math.max(1, Math.min(3, config?.eliminationRevivalCount || 1));
+              const toRevive = qualifiedGhosts.slice(0, revivalLimit);
+
+              const survivingRemaining = activeTeams.filter((t) => !teamsToEliminate.some((elim) => elim.id === t.id));
               const minSurvivingScore = survivingRemaining.length > 0
                 ? Math.min(...survivingRemaining.map((t) => t.score))
                 : 0;
 
-              await prisma.team.update({
-                where: { id: revived.id },
-                data: { isEliminated: false, score: minSurvivingScore },
-              });
+              for (const revived of toRevive) {
+                await prisma.team.update({
+                  where: { id: revived.id },
+                  data: { isEliminated: false, score: minSurvivingScore },
+                });
 
-              const statRevived = roomGhosts?.get(revived.id);
-              if (statRevived) {
-                statRevived.ghostRoundAllCorrect = false;
+                const statRevived = roomGhosts?.get(revived.id);
+                if (statRevived) {
+                  statRevived.ghostRoundAllCorrect = false;
+                }
               }
 
-              io.to(`room:${roomCode}`).emit("elimination:revival", {
-                round: currentStage,
-                revivedTeamId: revived.id,
-                revivedTeamName: revived.name,
-                revivedScore: minSurvivingScore,
-                eliminatedAtStage: statRevived?.eliminatedAtStage,
-              });
+              if (toRevive.length > 0) {
+                const revivedPayloadList = toRevive.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  score: minSurvivingScore,
+                  eliminatedAtStage: roomGhosts?.get(r.id)?.eliminatedAtStage,
+                }));
+
+                io.to(`room:${roomCode}`).emit("elimination:revival", {
+                  round: currentStage,
+                  revivedTeamId: toRevive[0].id,
+                  revivedTeamName: toRevive.map((r) => r.name).join(", "),
+                  revivedScore: minSurvivingScore,
+                  eliminatedAtStage: roomGhosts?.get(toRevive[0].id)?.eliminatedAtStage,
+                  revivedTeams: revivedPayloadList,
+                });
+              }
             }
           }
 
@@ -6203,11 +6236,13 @@ async function resolveQuestionTeamScores(
       }
       let ghostStat = roomGhosts.get(team.id);
       if (!ghostStat) {
-        ghostStat = { ghostStreak: 0, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostRoundAllCorrect: false, currentRoundCorrect: 0 };
+        ghostStat = { ghostStreak: 0, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostTotalTimeSpent: 0, ghostRoundAllCorrect: false, currentRoundCorrect: 0 };
         roomGhosts.set(team.id, ghostStat);
       }
       if (teamAnswers.length > 0) {
         ghostStat.ghostTotalAnswered++;
+        const timeSpentThisQ = teamAnswers[0]?.timeSpent || 0;
+        ghostStat.ghostTotalTimeSpent = (ghostStat.ghostTotalTimeSpent || 0) + timeSpentThisQ;
         if (correctAnswers.length > 0) {
           ghostStat.ghostTotalCorrect++;
           ghostStat.ghostStreak++;

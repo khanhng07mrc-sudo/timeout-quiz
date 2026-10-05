@@ -66,6 +66,7 @@ export default function DisplayPage() {
     revivedTeamName: string;
     revivedScore: number;
     eliminatedAtStage?: number;
+    revivedTeams?: { id: string; name: string; score: number; eliminatedAtStage?: number }[];
   } | null>(null);
   const [liveCheer, setLiveCheer] = useState<{
     matchId: string;
@@ -1167,14 +1168,30 @@ export default function DisplayPage() {
             </div>
             <p className="text-xl sm:text-2xl font-bold text-white">
               Đội <span className="text-cyan-300 font-black">{revivalNotice.revivedTeamName}</span>
-              {revivalNotice.eliminatedAtStage ? (
+              {revivalNotice.eliminatedAtStage && (!revivalNotice.revivedTeams || revivalNotice.revivedTeams.length <= 1) ? (
                 <span className="text-purple-300 font-medium text-base sm:text-lg block mt-1">
                   (Kiên cường từ Chặng {revivalNotice.eliminatedAtStage} — Ưu tiên đội bị loại sớm)
                 </span>
               ) : null}
             </p>
+            {revivalNotice.revivedTeams && revivalNotice.revivedTeams.length > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                {revivalNotice.revivedTeams.map((team) => (
+                  <span
+                    key={team.id}
+                    className="px-3 py-1.5 rounded-xl bg-purple-500/30 border border-purple-400/50 text-white font-bold text-sm flex items-center gap-1.5"
+                  >
+                    <span>✨</span>
+                    <strong className="text-cyan-300">{team.name}</strong>
+                    {team.eliminatedAtStage ? (
+                      <span className="text-xs text-purple-200/80">(từ Chặng {team.eliminatedAtStage})</span>
+                    ) : null}
+                  </span>
+                ))}
+              </div>
+            )}
             <p className="text-sm text-purple-200/90 bg-purple-500/20 p-3 rounded-xl border border-purple-400/30">
-              Nhờ thành tích đúng 100% trong chặng thi đấu, đội xuất sắc được hồi sinh với số điểm{" "}
+              Nhờ thành tích đúng 100% trong chặng thi đấu, {revivalNotice.revivedTeams && revivalNotice.revivedTeams.length > 1 ? "các đội" : "đội"} xuất sắc được hồi sinh với số điểm{" "}
               <strong className="text-yellow-300 font-mono text-base">{revivalNotice.revivedScore}đ</strong>!
             </p>
           </div>

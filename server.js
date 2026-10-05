@@ -5534,36 +5534,42 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
             const timeB = totalB > 0 ? b.answers.reduce((acc, curr) => acc + curr.timeSpent, 0) / totalB : 999999;
             return timeB - timeA;
           });
-          const toEliminate = activeTeams[0];
-          await prisma.team.update({
-            where: { id: toEliminate.id },
-            data: { isEliminated: true }
-          });
+          const configuredTeamsPerStage = Math.max(1, Math.min(3, config?.eliminationTeamsPerStage || 1));
+          const numToEliminate = Math.min(configuredTeamsPerStage, activeTeams.length - 1);
+          const teamsToEliminate = activeTeams.slice(0, numToEliminate);
           const currentStageNumber = Math.floor((room.currentQuestion + 1) / interval);
           if (!roomGhosts) {
             roomGhosts = /* @__PURE__ */ new Map();
             roomEliminationGhostStats.set(room.id, roomGhosts);
           }
-          let elimGhostStat = roomGhosts.get(toEliminate.id);
-          if (!elimGhostStat) {
-            elimGhostStat = {
-              ghostStreak: 0,
-              ghostTotalCorrect: 0,
-              ghostTotalAnswered: 0,
-              ghostRoundAllCorrect: false,
-              currentRoundCorrect: 0,
-              eliminatedAtStage: currentStageNumber,
-              eliminatedAtQuestion: room.currentQuestion
-            };
-            roomGhosts.set(toEliminate.id, elimGhostStat);
-          } else {
-            elimGhostStat.eliminatedAtStage = currentStageNumber;
-            elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+          for (const toElim of teamsToEliminate) {
+            await prisma.team.update({
+              where: { id: toElim.id },
+              data: { isEliminated: true }
+            });
+            let elimGhostStat = roomGhosts.get(toElim.id);
+            if (!elimGhostStat) {
+              elimGhostStat = {
+                ghostStreak: 0,
+                ghostTotalCorrect: 0,
+                ghostTotalAnswered: 0,
+                ghostTotalTimeSpent: 0,
+                ghostRoundAllCorrect: false,
+                currentRoundCorrect: 0,
+                eliminatedAtStage: currentStageNumber,
+                eliminatedAtQuestion: room.currentQuestion
+              };
+              roomGhosts.set(toElim.id, elimGhostStat);
+            } else {
+              elimGhostStat.eliminatedAtStage = currentStageNumber;
+              elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+            }
           }
           io2.to(`room:${roomCode}`).emit("game:elimination:round", {
-            eliminatedTeamId: toEliminate.id,
-            eliminatedTeamName: toEliminate.name,
-            reason: `\u0110i\u1EC3m s\u1ED1 th\u1EA5p nh\u1EA5t sau v\xF2ng sinh t\u1ED3n ${currentStageNumber}`
+            eliminatedTeamId: teamsToEliminate.map((t) => t.id).join(","),
+            eliminatedTeamName: teamsToEliminate.map((t) => t.name).join(", "),
+            eliminatedTeams: teamsToEliminate.map((t) => ({ id: t.id, name: t.name })),
+            reason: `\u0110i\u1EC3m s\u1ED1 th\u1EA5p nh\u1EA5t sau v\xF2ng sinh t\u1ED3n ${currentStageNumber} (${teamsToEliminate.length} \u0111\u1ED9i b\u1ECB lo\u1EA1i)`
           });
           const allQuestions = await getRoomQuestions(room.id);
           const totalStages = Math.floor(allQuestions.length / interval);
@@ -5580,34 +5586,51 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
               qualifiedGhosts.sort((a, b) => {
                 const statA = roomGhosts.get(a.id);
                 const statB = roomGhosts.get(b.id);
+                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
+                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
+                if (accA !== accB) return accB - accA;
                 const elimA = statA.eliminatedAtQuestion ?? 999999 - statA.ghostTotalAnswered;
                 const elimB = statB.eliminatedAtQuestion ?? 999999 - statB.ghostTotalAnswered;
                 if (elimA !== elimB) {
                   return elimA - elimB;
                 }
-                const accA = statA.ghostTotalAnswered > 0 ? statA.ghostTotalCorrect / statA.ghostTotalAnswered : 0;
-                const accB = statB.ghostTotalAnswered > 0 ? statB.ghostTotalCorrect / statB.ghostTotalAnswered : 0;
-                if (accA !== accB) return accB - accA;
+                const timeA = statA.ghostTotalTimeSpent ?? 999999;
+                const timeB = statB.ghostTotalTimeSpent ?? 999999;
+                if (timeA !== timeB) {
+                  return timeA - timeB;
+                }
                 return statB.ghostTotalCorrect - statA.ghostTotalCorrect;
               });
-              const revived = qualifiedGhosts[0];
-              const survivingRemaining = activeTeams.filter((t) => t.id !== toEliminate.id);
+              const revivalLimit = Math.max(1, Math.min(3, config?.eliminationRevivalCount || 1));
+              const toRevive = qualifiedGhosts.slice(0, revivalLimit);
+              const survivingRemaining = activeTeams.filter((t) => !teamsToEliminate.some((elim) => elim.id === t.id));
               const minSurvivingScore = survivingRemaining.length > 0 ? Math.min(...survivingRemaining.map((t) => t.score)) : 0;
-              await prisma.team.update({
-                where: { id: revived.id },
-                data: { isEliminated: false, score: minSurvivingScore }
-              });
-              const statRevived = roomGhosts?.get(revived.id);
-              if (statRevived) {
-                statRevived.ghostRoundAllCorrect = false;
+              for (const revived of toRevive) {
+                await prisma.team.update({
+                  where: { id: revived.id },
+                  data: { isEliminated: false, score: minSurvivingScore }
+                });
+                const statRevived = roomGhosts?.get(revived.id);
+                if (statRevived) {
+                  statRevived.ghostRoundAllCorrect = false;
+                }
               }
-              io2.to(`room:${roomCode}`).emit("elimination:revival", {
-                round: currentStage,
-                revivedTeamId: revived.id,
-                revivedTeamName: revived.name,
-                revivedScore: minSurvivingScore,
-                eliminatedAtStage: statRevived?.eliminatedAtStage
-              });
+              if (toRevive.length > 0) {
+                const revivedPayloadList = toRevive.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  score: minSurvivingScore,
+                  eliminatedAtStage: roomGhosts?.get(r.id)?.eliminatedAtStage
+                }));
+                io2.to(`room:${roomCode}`).emit("elimination:revival", {
+                  round: currentStage,
+                  revivedTeamId: toRevive[0].id,
+                  revivedTeamName: toRevive.map((r) => r.name).join(", "),
+                  revivedScore: minSurvivingScore,
+                  eliminatedAtStage: roomGhosts?.get(toRevive[0].id)?.eliminatedAtStage,
+                  revivedTeams: revivedPayloadList
+                });
+              }
             }
           }
           const refreshedState = await buildRoomState(room.id);
@@ -5897,11 +5920,13 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       }
       let ghostStat = roomGhosts.get(team.id);
       if (!ghostStat) {
-        ghostStat = { ghostStreak: 0, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostRoundAllCorrect: false, currentRoundCorrect: 0 };
+        ghostStat = { ghostStreak: 0, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostTotalTimeSpent: 0, ghostRoundAllCorrect: false, currentRoundCorrect: 0 };
         roomGhosts.set(team.id, ghostStat);
       }
       if (teamAnswers.length > 0) {
         ghostStat.ghostTotalAnswered++;
+        const timeSpentThisQ = teamAnswers[0]?.timeSpent || 0;
+        ghostStat.ghostTotalTimeSpent = (ghostStat.ghostTotalTimeSpent || 0) + timeSpentThisQ;
         if (correctAnswers.length > 0) {
           ghostStat.ghostTotalCorrect++;
           ghostStat.ghostStreak++;

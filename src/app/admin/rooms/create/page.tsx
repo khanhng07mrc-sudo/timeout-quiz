@@ -85,6 +85,8 @@ export default function CreateRoomPage() {
   const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
   const [eliminationDeepScoring, setEliminationDeepScoring] = useState(true);
   const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
+  const [eliminationTeamsPerStage, setEliminationTeamsPerStage] = useState(1);
+  const [eliminationRevivalCount, setEliminationRevivalCount] = useState(1);
   // Tournament config
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
   // Grid Caro config
@@ -231,6 +233,8 @@ export default function CreateRoomPage() {
             answerMethod: finalAnswerMethod,
             eliminationDeepScoring: mode === "ELIMINATION" ? eliminationDeepScoring : false,
             eliminationIntervalQuestions,
+            eliminationTeamsPerStage: mode === "ELIMINATION" ? eliminationTeamsPerStage : 1,
+            eliminationRevivalCount: mode === "ELIMINATION" ? eliminationRevivalCount : 1,
             // Tournament config
             tournamentQuestionsPerMatch: mode === "TOURNAMENT" ? tournamentQuestionsPerMatch : 3,
             // Grid Caro config
@@ -642,7 +646,7 @@ export default function CreateRoomPage() {
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Cứ sau {eliminationIntervalQuestions} câu, đội có điểm số thấp nhất sẽ bị loại khỏi cuộc chơi.
+                    Cứ sau {eliminationIntervalQuestions} câu, các đội có điểm số thấp nhất sẽ bị loại khỏi cuộc chơi.
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-[#151728]/80 border border-border flex flex-col justify-between">
@@ -663,6 +667,38 @@ export default function CreateRoomPage() {
                         : "Tắt: Chỉ tính điểm đúng/sai thuần túy theo điểm gốc của câu."}
                     </p>
                   </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số đội bị loại mỗi chặng</label>
+                  <select
+                    value={eliminationTeamsPerStage}
+                    onChange={(e) => setEliminationTeamsPerStage(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  >
+                    <option value={1}>1 đội (Mặc định)</option>
+                    <option value={2}>2 đội (Khốc liệt)</option>
+                    <option value={3}>3 đội (Tử chiến)</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Số đội điểm thấp nhất bị loại mỗi chặng (luôn tự động kẹp giữ tối thiểu 1 đội sống sót).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số đội hồi sinh ở chặng áp chót</label>
+                  <select
+                    value={eliminationRevivalCount}
+                    onChange={(e) => setEliminationRevivalCount(parseInt(e.target.value) || 1)}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  >
+                    <option value={1}>1 đội (Mặc định)</option>
+                    <option value={2}>2 đội</option>
+                    <option value={3}>3 đội</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Trận ≥ 4 chặng: Xét đội đúng 100% ít nhất 1 chặng theo 3 ưu tiên: 1. % đúng bóng ma → 2. Bị loại sớm hơn → 3. Thời gian trả lời ít hơn.
+                  </p>
                 </div>
               </div>
             </div>

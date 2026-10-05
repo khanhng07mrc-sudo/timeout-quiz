@@ -125,7 +125,7 @@ export default function GameQuestion({
     (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||
     (roomMode === "BOUNCEBACK" && Boolean(effStealTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
 
-  const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE", "WAGER"].includes(roomMode);
+  const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE"].includes(roomMode);
 
   const canAnswerThisQuestion = () => {
     if (isSpectator) return false;
@@ -159,9 +159,10 @@ export default function GameQuestion({
       return isPrimaryTeam;
     }
 
-    // 5. WAGER: Only the winning wager team can answer!
+    // 5. WAGER: Tất cả các đội đều được trả lời!
+    // Đội cược điểm nhận/mất điểm cược, các đội còn lại nhận +5/+10/+15đ nếu đúng (0đ nếu sai) và kích hoạt phạt đội cược.
     if (roomMode === "WAGER") {
-      return isPrimaryTeam;
+      return true;
     }
 
     // 6. TOURNAMENT:
@@ -383,35 +384,35 @@ export default function GameQuestion({
                   </p>
                 </div>
               ) : (
-                <div className="bg-purple-500/20 border border-purple-500/40 p-4 rounded-xl text-purple-200 text-center space-y-1 my-1">
-                  <p className="text-base font-black text-cyan-300">
-                    ⚡ Đội của bạn đang trong thời gian trả lời! (Chỉ 1 lần chọn duy nhất)
+                <div className="bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 border-2 border-white/60 p-4 rounded-xl text-white text-center space-y-1 my-1 shadow-xl">
+                  <p className="text-base font-black text-white">
+                    🚨 ĐỘI BẤM CHUÔNG: Đội bạn đang trong thời gian trả lời! (Chỉ 1 lần chọn duy nhất)
                   </p>
-                  <p className="text-xs text-purple-300">
+                  <p className="text-xs text-rose-100">
                     Hãy chọn hoặc nhập câu trả lời trên màn hình trước khi hết giờ.
                   </p>
                 </div>
               )
             ) : (
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-300 text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow">
-                <span className="text-lg">⚡</span>
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-red-950 via-rose-950 to-blue-950 border-2 border-rose-500/60 text-white text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow-lg">
+                <span className="text-lg animate-pulse">🚨</span>
                 <span>
-                  Đội <strong className="text-amber-300 font-bold">{effStealTeam.teamName}</strong> đã giành quyền bấm chuông. Hãy cùng chú ý theo dõi...
+                  Đội bấm chuông: <strong className="text-rose-300 font-black underline decoration-yellow-300 decoration-2">{effStealTeam.teamName}</strong> đã giành quyền bấm chuông. Hãy cùng chú ý theo dõi...
                 </span>
               </div>
             )
           ) : (
-            <div className="bg-blue-500/15 border border-blue-500/30 p-3 rounded-lg flex items-center justify-between">
+            <div className="bg-white text-slate-900 border-2 border-slate-200 p-3.5 rounded-xl flex items-center justify-between shadow-md">
               <div>
-                <span className="text-xs uppercase text-blue-300 tracking-wider">🎯 Đội trả lời chính: </span>
-                <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang xác định"}</span>
+                <span className="text-xs uppercase text-slate-600 font-black tracking-wider">🎯 Đội trả lời chính: </span>
+                <span className="font-black text-slate-950 text-base">{question.primaryTeamName ?? "Đang xác định"}</span>
               </div>
               {isPrimaryTeam ? (
-                <span className="px-2.5 py-1 rounded-full bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/30 whitespace-nowrap shrink-0">
+                <span className="px-3 py-1 rounded-full bg-emerald-600 text-white text-xs font-black shadow whitespace-nowrap shrink-0">
                   Lượt của bạn
                 </span>
               ) : (
-                <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">Chờ đội chính</span>
+                <span className="text-xs text-slate-600 font-bold whitespace-nowrap shrink-0">Chờ đội chính</span>
               )}
             </div>
           )}
@@ -519,15 +520,20 @@ export default function GameQuestion({
                   </p>
                 </div>
               ) : (
-                <div className="bg-yellow-500/20 border border-yellow-500/40 p-3 rounded-lg text-yellow-200 my-1">
-                  ⚡ Đội <span className="font-bold text-white">{buzzedBy.teamName ?? buzzedBy.playerName}</span> đang trong thời gian trả lời!
+                <div className="bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 border-2 border-white/60 p-4 rounded-xl text-white text-center space-y-1 my-1 shadow-xl">
+                  <p className="text-base font-black text-white">
+                    🚨 ĐỘI BẤM CHUÔNG: Đội bạn đang trong thời gian trả lời!
+                  </p>
+                  <p className="text-xs text-rose-100">
+                    Hãy nhanh chóng chọn câu trả lời trên màn hình trước khi hết giờ.
+                  </p>
                 </div>
               )
             ) : (
-              <div className="p-3.5 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-300 text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow">
-                <span className="text-lg">⚡</span>
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-red-950 via-rose-950 to-blue-950 border-2 border-rose-500/60 text-white text-center text-xs sm:text-sm my-1 flex items-center justify-center gap-2 shadow-lg">
+                <span className="text-lg animate-pulse">🚨</span>
                 <span>
-                  Đội <strong className="text-amber-300 font-bold">{buzzedBy.teamName ?? buzzedBy.playerName}</strong> đã bấm chuông sớm nhất. Hãy cùng chú ý theo dõi...
+                  Đội bấm chuông: <strong className="text-rose-300 font-black underline decoration-yellow-300 decoration-2">{buzzedBy.teamName ?? buzzedBy.playerName}</strong> đã bấm chuông sớm nhất. Hãy cùng chú ý theo dõi...
                 </span>
               </div>
             )
@@ -596,10 +602,10 @@ export default function GameQuestion({
       {roomMode === "WAGER" && (
         <div className={`rounded-xl p-3 border text-xs sm:text-sm font-medium transition-all ${
           isPrimaryTeam
-            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-200 shadow-sm"
-            : "bg-amber-500/15 border-amber-500/30 text-amber-200"
+            ? "bg-amber-500/20 border-amber-500/50 text-amber-200 shadow-sm"
+            : "bg-emerald-500/15 border-emerald-500/30 text-emerald-200"
         }`}>
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-base shrink-0">👑</span>
               <span>
@@ -607,12 +613,12 @@ export default function GameQuestion({
               </span>
             </div>
             {isPrimaryTeam ? (
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-black border border-emerald-500/50 animate-pulse whitespace-nowrap">
-                Lượt của bạn!
+              <span className="px-3 py-1 rounded-full bg-amber-500/30 text-yellow-200 text-xs font-black border border-yellow-500/50 animate-pulse whitespace-nowrap w-fit">
+                Lượt cược điểm của bạn!
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
-                🔒 Đang quan sát
+              <span className="px-3 py-1 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-black border border-emerald-500/50 whitespace-nowrap w-fit">
+                🎯 Lượt trả lời thường: +{Math.max(5, Math.floor((q.points || 10) / 2))}đ nếu đúng!
               </span>
             )}
           </div>
@@ -634,10 +640,12 @@ export default function GameQuestion({
         <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between gap-2 transition-all ${
           canAnswerThisQuestion()
             ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-200 shadow-sm"
+            : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam))
+            ? "bg-gradient-to-r from-red-950/80 to-blue-950/80 border-rose-500/50 text-rose-200 shadow"
             : "bg-slate-900/80 border-slate-700/60 text-slate-400"
         }`}>
           <div className="flex items-center gap-2">
-            <span>{canAnswerThisQuestion() ? "✨" : "🔒"}</span>
+            <span>{canAnswerThisQuestion() ? "✨" : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam)) ? "🚨" : "🔒"}</span>
             <span>
               {canAnswerThisQuestion()
                 ? "LƯỢT CỦA BẠN: Hãy chọn đáp án để ghi điểm!"
@@ -645,13 +653,13 @@ export default function GameQuestion({
                     roomMode === "BUZZ"
                       ? (question.buzzedTeamName || buzzedBy?.teamName || "đội bấm chuông")
                       : roomMode === "BOUNCEBACK" && effStealTeam
-                      ? (effStealTeam.teamName)
+                      ? (effStealTeam.teamName + " (Đội cướp chuông)")
                       : (question.primaryTeamName || "đội chính")
                   }`}
             </span>
           </div>
           <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-mono ${
-            canAnswerThisQuestion() ? "bg-emerald-500/30 text-emerald-300" : "bg-white/10 text-slate-400"
+            canAnswerThisQuestion() ? "bg-emerald-500/30 text-emerald-300" : (roomMode === "BUZZ" || (roomMode === "BOUNCEBACK" && effStealTeam)) ? "bg-rose-500/30 text-rose-300" : "bg-white/10 text-slate-400"
           }`}>
             {canAnswerThisQuestion() ? "Đã mở khóa" : "Đang khóa"}
           </span>

@@ -21,7 +21,7 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
 };
 
 const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
-  lobby: { primary: "/sounds/lobby.mp3", fallbacks: ["/sounds/lobby.ogg", "/sounds/lobby.wav"] },
+  lobby: { primary: "/sounds/lobby.ogg", fallbacks: ["/sounds/lobby.mp3", "/sounds/lobby.wav"] },
   olympia_5s: { primary: "/sounds/olympia_5s.mp3", fallbacks: ["/sounds/olympia_5s_left.mp3"] },
   olympia_15s: { primary: "/sounds/olympia_15s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_20s: { primary: "/sounds/olympia_20s.ogg", fallbacks: ["/sounds/olympia_20s.mp3", "/sounds/question_suspense.mp3"] },
@@ -177,7 +177,12 @@ class SoundManager {
   // ── True Crossfading & Smooth Fade In/Out ──────────────────────────────────
 
   private fadeOutAudio(audio: HTMLAudioElement, durationMs: number = 450) {
-    if (audio.paused || audio.volume <= 0) {
+    if (this.fadeInterval) {
+      clearInterval(this.fadeInterval);
+      this.fadeInterval = null;
+    }
+
+    if (audio.paused || audio.volume <= 0 || durationMs <= 0) {
       try {
         audio.pause();
         audio.currentTime = 0;
@@ -191,14 +196,17 @@ class SoundManager {
     const volStep = startVol / steps;
     let currentVol = startVol;
 
-    const interval = setInterval(() => {
+    this.fadeInterval = setInterval(() => {
       currentVol = Math.max(0, currentVol - volStep);
       try {
         audio.volume = currentVol;
       } catch {}
 
       if (currentVol <= 0) {
-        clearInterval(interval);
+        if (this.fadeInterval) {
+          clearInterval(this.fadeInterval);
+          this.fadeInterval = null;
+        }
         try {
           audio.pause();
           audio.currentTime = 0;
@@ -288,6 +296,18 @@ class SoundManager {
 
     if (type === "QUESTION") {
       // Countdown music must start IMMEDIATELY at full volume, without fade-in or crossfade lag
+      if (this.fadeInterval) {
+        clearInterval(this.fadeInterval);
+        this.fadeInterval = null;
+      }
+      this.bgmMap.forEach((audio, key) => {
+        if (key !== audioKey) {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+          } catch {}
+        }
+      });
       if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
         try {
           prevAudio.pause();
@@ -433,11 +453,15 @@ class SoundManager {
   }
 
   /**
-   * Smoothly stops background music with a gentle crossfade / fade-out instead of cutting abruptly.
-   * @param fadeDurationMs Duration of fade out in milliseconds (defaults to 450ms)
+   * Immediately stops background music (or smoothly fades out if fadeDurationMs > 0 is explicitly specified).
+   * @param fadeDurationMs Duration of fade out in milliseconds (defaults to 0 for instant cut)
    */
-  public stopMusic(fadeDurationMs: number = 450) {
+  public stopMusic(fadeDurationMs: number = 0) {
     this.pendingMusicTrack = null;
+    if (this.fadeInterval) {
+      clearInterval(this.fadeInterval);
+      this.fadeInterval = null;
+    }
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
@@ -446,12 +470,24 @@ class SoundManager {
     this.currentPlayingQuestionId = null;
     this.currentMusicKey = null;
 
+    if (fadeDurationMs <= 0) {
+      this.currentMusicAudio = null;
+      this.currentMusicType = null;
+      this.bgmMap.forEach((audio) => {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
+      });
+      return;
+    }
+
     if (this.currentMusicAudio) {
       const audio = this.currentMusicAudio;
       this.currentMusicAudio = null;
       this.currentMusicType = null;
 
-      if (fadeDurationMs > 0 && !audio.paused) {
+      if (!audio.paused) {
         this.fadeOutAudio(audio, fadeDurationMs);
       } else {
         try {

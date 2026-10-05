@@ -2673,7 +2673,7 @@ function registerSocketHandlers(io2) {
         const teamsCount = Math.max(1, teams.length);
         const wagerRounds = config?.wagerRoundsPerTeam || 2;
         const currentRoundIdx = Math.floor(questionIndex / teamsCount);
-        const wagerMultCap = config?.wagerMultiplierCap ?? 2.5;
+        const wagerMultCap = Math.max(1, Math.min(3, Number(config?.wagerMultiplierCap) || 2.5));
         const basePts = q.points || 10;
         const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
         const wagerState = {
@@ -3925,7 +3925,8 @@ function registerSocketHandlers(io2) {
       if (key === "wagerMultiplierCap" && room.mode === "WAGER") {
         const wagerState = roomWagers.get(room.id);
         if (wagerState) {
-          const newMult = Number(value) || 2.5;
+          const rawMult = Number(value) || 2.5;
+          const newMult = Math.max(1, Math.min(3, rawMult));
           const basePts = wagerState.baseQuestionPoints || 20;
           wagerState.wagerMultiplierCap = newMult;
           wagerState.maxBetCap = Math.floor(basePts * newMult);

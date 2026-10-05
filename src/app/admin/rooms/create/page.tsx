@@ -1037,18 +1037,20 @@ export default function CreateRoomPage() {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">Trần cược tối đa (Hệ số nhân điểm câu hỏi)</label>
+                  <label className="block text-xs font-medium mb-1">Trần cược tối đa (Hệ số x1.0 - x3.0 điểm câu hỏi)</label>
                   <select
                     value={wagerMultiplierCap}
-                    onChange={(e) => setWagerMultiplierCap(parseFloat(e.target.value) || 2.5)}
+                    onChange={(e) => setWagerMultiplierCap(Math.max(1.0, Math.min(3.0, parseFloat(e.target.value) || 2.5)))}
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   >
+                    <option value={1}>x1.0 (Bằng điểm câu: Câu 10đ trần 10đ, Câu 20đ trần 20đ, Câu 30đ trần 30đ)</option>
+                    <option value={1.5}>x1.5 (Câu 10đ trần 15đ, Câu 20đ trần 30đ, Câu 30đ trần 45đ)</option>
                     <option value={2}>x2.0 (Câu 10đ trần 20đ, Câu 20đ trần 40đ, Câu 30đ trần 60đ)</option>
                     <option value={2.5}>x2.5 (Mặc định - Câu 10đ trần 25đ, Câu 20đ trần 50đ, Câu 30đ trần 75đ)</option>
-                    <option value={3}>x3.0 (Câu 10đ trần 30đ, Câu 20đ trần 60đ, Câu 30đ trần 90đ)</option>
+                    <option value={3}>x3.0 (Tối đa - Câu 10đ trần 30đ, Câu 20đ trần 60đ, Câu 30đ trần 90đ)</option>
                   </select>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Mức cược tối đa mà các đội có thể đặt cho câu hỏi.
+                    Mức cược tối đa mà các đội có thể đặt cho câu hỏi (cho phép từ x1.0 đến x3.0).
                   </p>
                 </div>
               </div>

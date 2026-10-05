@@ -1810,7 +1810,7 @@ export default function AdminSandboxPage() {
       const teamsCount = Math.max(1, (roomState?.teams || []).length);
       const wagerRounds = roomState?.config?.wagerRoundsPerTeam || 2;
       const currentRoundIdx = Math.floor(nextIdx / teamsCount);
-      const wagerMultCap = roomState?.config?.wagerMultiplierCap ?? 2.5;
+      const wagerMultCap = Math.max(1.0, Math.min(3.0, Number(roomState?.config?.wagerMultiplierCap) || 2.5));
       const basePts = q.points || 10;
       const calculatedMaxBetCap = Math.floor(basePts * wagerMultCap);
       const configuredWagerDuration = roomState?.config?.wagerTimeSeconds || 15;
@@ -2281,11 +2281,29 @@ export default function AdminSandboxPage() {
       const answers: any[] = [];
       const scoreDeltas: { teamId: string; delta: number }[] = [];
 
+      const isWagerMode = selectedMode === "WAGER";
+      const curWager = roomState?.wagerState;
+      const lastWagerTeamId = curWager?.lastWagerTeamId;
+      const wagerAmount = curWager?.currentHighestWager || 10;
+      const baseQPoints = currentQuestion.question.points || 20;
+      const halfQuestionPoints = Math.max(5, Math.ceil((baseQPoints / 2) / 5) * 5);
+
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
         const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
         const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
-        const pts = isCorrect ? (currentQuestion.question.points || 10) : 0;
+
+        let pts = 0;
+        if (isWagerMode) {
+          if (t.id === lastWagerTeamId) {
+            pts = isCorrect ? wagerAmount : -wagerAmount;
+          } else {
+            pts = isCorrect ? halfQuestionPoints : 0;
+          }
+        } else {
+          pts = isCorrect ? (currentQuestion.question.points || 10) : 0;
+        }
+
         answers.push({
           teamId: t.id,
           name: t.name,
@@ -2319,6 +2337,11 @@ export default function AdminSandboxPage() {
           return { ...t, score: t.score + delta };
         });
 
+        let nextWager = prev.wagerState;
+        if (nextWager) {
+          nextWager = { ...nextWager, phase: "REVEAL_PERIOD" };
+        }
+
         let nextDice = prev.diceRaceState;
         if (prev.diceRaceState) {
           const teamIds = (prev.teams || []).map((t) => t.id);
@@ -2335,7 +2358,7 @@ export default function AdminSandboxPage() {
           };
         }
 
-        return { ...prev, teams: updatedTeams, diceRaceState: nextDice };
+        return { ...prev, teams: updatedTeams, diceRaceState: nextDice, wagerState: nextWager };
       });
 
       if (selectedMode === "DICE_RACE") {
@@ -3914,18 +3937,18 @@ export default function AdminSandboxPage() {
                             </div>
                           </div>
 
-                          {/* Wager Max Bet Cap Multiplier */}
+                          {/* Wager Max Bet Cap Multiplier (Cố định 5 mức chia hết cho 5: x1.0 - x3.0) */}
                           <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                            <span className="text-slate-300">Trần cược tối đa</span>
-                            <div className="flex items-center gap-1">
-                              {[2, 2.5, 3].map((mult) => (
+                            <span className="text-slate-300">Trần cược</span>
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {[1, 1.5, 2, 2.5, 3].map((mult) => (
                                 <button
                                   key={mult}
                                   type="button"
                                   onClick={() => updateConfig("wagerMultiplierCap", mult)}
                                   className={`px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
                                     (roomState.config.wagerMultiplierCap ?? 2.5) === mult
-                                      ? "bg-amber-500/30 border-amber-400 text-amber-300"
+                                      ? "bg-amber-500/30 border-amber-400 text-amber-300 ring-1 ring-amber-400/50"
                                       : "glass border-white/10 text-slate-400 hover:text-white"
                                   }`}
                                 >

@@ -29,7 +29,7 @@ import {
   WagerState,
   GameIntermissionPayload,
 } from "@/types";
-import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels } from "./game-engine/scoring";
+import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
 import { isPowerupAllowedForMode } from "./game-engine/powerups";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -5631,6 +5631,29 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
   const correctAnswersTotal = answers.filter((a) => a.isCorrect === true).length;
   const roomAccuracy = totalAnswers > 0 ? correctAnswersTotal / totalAnswers : 1.0;
 
+  const allPlayers = await prisma.player.findMany({
+    where: { roomId },
+    orderBy: { score: "desc" },
+  });
+  const midPoint = Math.max(1, Math.floor(allPlayers.length / 2));
+  const topHalfPlayerIds = new Set(allPlayers.slice(0, midPoint).map((p) => p.id));
+  const bottomHalfPlayerIds = new Set(allPlayers.slice(midPoint).map((p) => p.id));
+
+  let topHalfCorrect = 0;
+  let topHalfTotal = 0;
+  let bottomHalfCorrect = 0;
+  let bottomHalfTotal = 0;
+
+  for (const a of answers) {
+    if (a.playerId && topHalfPlayerIds.has(a.playerId)) {
+      topHalfTotal++;
+      if (a.isCorrect) topHalfCorrect++;
+    } else if (a.playerId && bottomHalfPlayerIds.has(a.playerId)) {
+      bottomHalfTotal++;
+      if (a.isCorrect) bottomHalfCorrect++;
+    }
+  }
+
   const scoreUpdates: ScoreUpdate[] = [];
 
   for (const ans of answers) {
@@ -5657,6 +5680,11 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
       config: effectiveConfig,
       streak: pStreak,
       roomAccuracy,
+      topHalfCorrect,
+      topHalfTotal,
+      bottomHalfCorrect,
+      bottomHalfTotal,
+      totalParticipants: totalAnswers || allPlayers.length,
       mode: room.mode as any,
     });
 
@@ -5710,6 +5738,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   let teamSummaries: TeamRevealSummary[] = customTeamSummaries || [];
   let roomAccuracy: number | undefined;
   let rarityBonusPercent: number | undefined;
+  let effectiveDifficulty: number | undefined;
+  let itemDiscrimination: number | undefined;
 
   // Collective team scoring in CLASSIC, POWERUP, and ELIMINATION mode
   if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
@@ -5718,6 +5748,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     teamSummaries = res.teamSummaries;
     roomAccuracy = res.roomAccuracy;
     rarityBonusPercent = res.rarityBonusPercent;
+    effectiveDifficulty = res.effectiveDifficulty;
+    itemDiscrimination = res.itemDiscrimination;
     if (teamScoresUpdates.length > 0) {
       io.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
     }
@@ -5970,6 +6002,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     roomAccuracy,
     rarityBonusPercent,
     bloomLevel: getBloomLevelFromPoints(q.points),
+    effectiveDifficulty,
+    itemDiscrimination,
   });
 }
 
@@ -6194,6 +6228,8 @@ async function resolveQuestionTeamScores(
   teamSummaries: TeamRevealSummary[];
   roomAccuracy: number;
   rarityBonusPercent: number;
+  effectiveDifficulty?: number;
+  itemDiscrimination?: number;
 }> {
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) {
@@ -6227,7 +6263,43 @@ async function resolveQuestionTeamScores(
   const totalAnswers = answers.length;
   const correctAnswersTotal = answers.filter((a) => a.isCorrect === true).length;
   const roomAccuracy = totalAnswers > 0 ? correctAnswersTotal / totalAnswers : 1.0;
-  const rarityBonusPercent = roomAccuracy < 0.30 ? Math.round((0.30 - roomAccuracy) * 1.5 * 100) : 0;
+
+  const sortedTeams = [...room.teams].sort((a, b) => b.score - a.score);
+  const midPoint = Math.max(1, Math.floor(sortedTeams.length / 2));
+  const topHalfTeamIds = new Set(sortedTeams.slice(0, midPoint).map((t) => t.id));
+  const bottomHalfTeamIds = new Set(sortedTeams.slice(midPoint).map((t) => t.id));
+
+  let topHalfCorrect = 0;
+  let topHalfTotal = 0;
+  let bottomHalfCorrect = 0;
+  let bottomHalfTotal = 0;
+
+  for (const a of answers) {
+    if (a.teamId && topHalfTeamIds.has(a.teamId)) {
+      topHalfTotal++;
+      if (a.isCorrect) topHalfCorrect++;
+    } else if (a.teamId && bottomHalfTeamIds.has(a.teamId)) {
+      bottomHalfTotal++;
+      if (a.isCorrect) bottomHalfCorrect++;
+    }
+  }
+
+  const irtMetrics = calculateItemIRTMetrics({
+    rawPoints: question.points || 10,
+    roomAccuracy,
+    totalParticipants: totalAnswers || room.teams.length,
+    topHalfCorrect,
+    topHalfTotal,
+    bottomHalfCorrect,
+    bottomHalfTotal,
+  });
+
+  const rarityBonusPercent =
+    room.mode === "CLASSIC" || room.mode === "ELIMINATION"
+      ? Math.round(irtMetrics.bonusRate * 100)
+      : roomAccuracy < 0.30
+      ? Math.round((0.30 - roomAccuracy) * 1.5 * 100)
+      : 0;
 
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
   const teamScoresUpdates: ScoreUpdate[] = [];
@@ -6324,6 +6396,10 @@ async function resolveQuestionTeamScores(
       shielded,
       penaltyMultiplier,
       roomAccuracy,
+      topHalfCorrect,
+      topHalfTotal,
+      bottomHalfCorrect,
+      bottomHalfTotal,
       streak: teamStreak,
       mode: room.mode as any,
     });
@@ -6351,6 +6427,9 @@ async function resolveQuestionTeamScores(
         rarityPoints: teamScoreRes.rarityPoints,
         streak: teamStreak,
         avgTimeSpent: teamScoreRes.avgTimeSpent,
+        isEliminated: true,
+        effectiveDifficulty: teamScoreRes.effectiveDifficulty,
+        discrimination: teamScoreRes.discrimination,
       });
       continue;
     }
@@ -6387,10 +6466,20 @@ async function resolveQuestionTeamScores(
       rarityPoints: teamScoreRes.rarityPoints,
       streak: teamStreak,
       avgTimeSpent: teamScoreRes.avgTimeSpent,
+      isEliminated: false,
+      effectiveDifficulty: teamScoreRes.effectiveDifficulty,
+      discrimination: teamScoreRes.discrimination,
     });
   }
 
-  return { teamScoresUpdates, teamSummaries, roomAccuracy, rarityBonusPercent };
+  return {
+    teamScoresUpdates,
+    teamSummaries,
+    roomAccuracy,
+    rarityBonusPercent,
+    effectiveDifficulty: irtMetrics.bEffective,
+    itemDiscrimination: irtMetrics.discrimination,
+  };
 }
 
 async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string) {

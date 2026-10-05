@@ -916,6 +916,8 @@ export interface TeamRevealSummary {
   streak?: number;
   avgTimeSpent?: number;
   isEliminated?: boolean;
+  effectiveDifficulty?: number;
+  discrimination?: number;
 }
 
 export interface AnswerRevealPayload {
@@ -936,11 +938,15 @@ export interface AnswerRevealPayload {
     streakPoints?: number;
     rarityPoints?: number;
     streak?: number;
+    effectiveDifficulty?: number;
+    discrimination?: number;
   }>;
   teamSummaries?: TeamRevealSummary[];
   roomAccuracy?: number; // Tỷ lệ đúng toàn phòng (0 - 1)
-  rarityBonusPercent?: number; // % thưởng hiếm nếu tỷ lệ < 30%
+  rarityBonusPercent?: number; // % thưởng độ khó & phân hóa thực nghiệm
   bloomLevel?: BloomLevel;
+  effectiveDifficulty?: number;
+  itemDiscrimination?: number;
 }
 
 export interface ScoreUpdate {

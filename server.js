@@ -221,6 +221,41 @@ function getStandardQuestionTimeLimit(question, overridePoints) {
 }
 
 // src/lib/game-engine/scoring.ts
+function calculateItemIRTMetrics(params) {
+  const { rawPoints, roomAccuracy } = params;
+  const total = params.totalParticipants ?? 4;
+  let bPrior = 0;
+  if (rawPoints <= 10) bPrior = -0.8;
+  else if (rawPoints <= 20) bPrior = 0;
+  else bPrior = 1;
+  const pClamped = Math.max(0.02, Math.min(0.98, roomAccuracy));
+  const bEmpirical = Math.max(-2, Math.min(2, Math.log((1 - pClamped) / pClamped)));
+  const w = Math.min(0.85, total / (total + 4));
+  const bEffective = Number((w * bEmpirical + (1 - w) * bPrior).toFixed(2));
+  let discrimination = 0;
+  if (params.topHalfTotal && params.topHalfTotal > 0 && params.bottomHalfTotal && params.bottomHalfTotal > 0) {
+    const pTop = (params.topHalfCorrect ?? 0) / params.topHalfTotal;
+    const pBottom = (params.bottomHalfCorrect ?? 0) / params.bottomHalfTotal;
+    discrimination = Number((pTop - pBottom).toFixed(2));
+  } else {
+    discrimination = Number((Math.max(0, bEffective) * 0.25).toFixed(2));
+  }
+  let bonusRate = 0;
+  if (bEffective > 0) {
+    bonusRate += Math.min(0.35, bEffective * 0.2);
+  }
+  if (discrimination > 0.15) {
+    bonusRate += Math.min(0.15, discrimination * 0.2);
+  }
+  bonusRate = Math.min(0.5, Math.max(0, Number(bonusRate.toFixed(2))));
+  return {
+    bPrior,
+    bEmpirical,
+    bEffective,
+    discrimination,
+    bonusRate
+  };
+}
 function getBasePointsForMode(rawPoints, mode) {
   if (mode === "CLASSIC" || mode === "ELIMINATION") {
     if (rawPoints <= 10) return 1e3;
@@ -265,12 +300,31 @@ function computeDetailedPointsAwarded(ctx) {
     streakPoints = Math.round(base * streakRate * multiplier);
   }
   let rarityPoints = 0;
-  if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
+  let effectiveDifficulty;
+  let discrimination;
+  if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+    if (ctx.roomAccuracy !== void 0) {
+      const irt = calculateItemIRTMetrics({
+        rawPoints: ctx.basePoints,
+        roomAccuracy: ctx.roomAccuracy,
+        totalParticipants: ctx.totalParticipants ?? 4,
+        topHalfCorrect: ctx.topHalfCorrect,
+        topHalfTotal: ctx.topHalfTotal,
+        bottomHalfCorrect: ctx.bottomHalfCorrect,
+        bottomHalfTotal: ctx.bottomHalfTotal
+      });
+      effectiveDifficulty = irt.bEffective;
+      discrimination = irt.discrimination;
+      if (irt.bonusRate > 0) {
+        rarityPoints = Math.round(base * irt.bonusRate * multiplier);
+      }
+    }
+  } else if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
     const rarityDelta = 0.3 - Math.max(0, ctx.roomAccuracy);
     rarityPoints = Math.round(base * rarityDelta * 1.5 * multiplier);
   }
   const points = basePoints + speedPoints + streakPoints + rarityPoints;
-  return { points, basePoints, speedPoints, streakPoints, rarityPoints };
+  return { points, basePoints, speedPoints, streakPoints, rarityPoints, effectiveDifficulty, discrimination };
 }
 function computePointsAwarded(ctx) {
   return computeDetailedPointsAwarded(ctx).points;
@@ -281,7 +335,25 @@ function computeTeamQuestionScore(ctx) {
   const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
   let empiricalMultiplier = 1;
   let rarityBonus = 0;
-  if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
+  let effectiveDifficulty;
+  let discrimination;
+  if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+    if (ctx.roomAccuracy !== void 0) {
+      const irt = calculateItemIRTMetrics({
+        rawPoints: ctx.basePoints,
+        roomAccuracy: ctx.roomAccuracy,
+        totalParticipants: ctx.totalOnlineMembers,
+        topHalfCorrect: ctx.topHalfCorrect,
+        topHalfTotal: ctx.topHalfTotal,
+        bottomHalfCorrect: ctx.bottomHalfCorrect,
+        bottomHalfTotal: ctx.bottomHalfTotal
+      });
+      effectiveDifficulty = irt.bEffective;
+      discrimination = irt.discrimination;
+      rarityBonus = irt.bonusRate;
+      empiricalMultiplier = 1 + irt.bonusRate;
+    }
+  } else if (ctx.roomAccuracy !== void 0 && ctx.roomAccuracy < 0.3) {
     const rarityDelta = 0.3 - Math.max(0, ctx.roomAccuracy);
     empiricalMultiplier = 1 + rarityDelta * 1.5;
     rarityBonus = rarityDelta * 1.5;
@@ -345,7 +417,9 @@ function computeTeamQuestionScore(ctx) {
     speedBonus,
     avgTimeSpent,
     empiricalMultiplier,
-    streakBonus
+    streakBonus,
+    effectiveDifficulty,
+    discrimination
   };
 }
 function computeStealAmount(leaderScore, stealerScore) {
@@ -5492,6 +5566,26 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
   const totalAnswers = answers.length;
   const correctAnswersTotal = answers.filter((a) => a.isCorrect === true).length;
   const roomAccuracy = totalAnswers > 0 ? correctAnswersTotal / totalAnswers : 1;
+  const allPlayers = await prisma.player.findMany({
+    where: { roomId },
+    orderBy: { score: "desc" }
+  });
+  const midPoint = Math.max(1, Math.floor(allPlayers.length / 2));
+  const topHalfPlayerIds = new Set(allPlayers.slice(0, midPoint).map((p) => p.id));
+  const bottomHalfPlayerIds = new Set(allPlayers.slice(midPoint).map((p) => p.id));
+  let topHalfCorrect = 0;
+  let topHalfTotal = 0;
+  let bottomHalfCorrect = 0;
+  let bottomHalfTotal = 0;
+  for (const a of answers) {
+    if (a.playerId && topHalfPlayerIds.has(a.playerId)) {
+      topHalfTotal++;
+      if (a.isCorrect) topHalfCorrect++;
+    } else if (a.playerId && bottomHalfPlayerIds.has(a.playerId)) {
+      bottomHalfTotal++;
+      if (a.isCorrect) bottomHalfCorrect++;
+    }
+  }
   const scoreUpdates = [];
   for (const ans of answers) {
     if (!ans.playerId) continue;
@@ -5514,6 +5608,11 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
       config: effectiveConfig,
       streak: pStreak,
       roomAccuracy,
+      topHalfCorrect,
+      topHalfTotal,
+      bottomHalfCorrect,
+      bottomHalfTotal,
+      totalParticipants: totalAnswers || allPlayers.length,
       mode: room.mode
     });
     await prisma.answer.update({
@@ -5558,12 +5657,16 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   let teamSummaries = customTeamSummaries || [];
   let roomAccuracy;
   let rarityBonusPercent;
+  let effectiveDifficulty;
+  let itemDiscrimination;
   if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io2, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
     roomAccuracy = res.roomAccuracy;
     rarityBonusPercent = res.rarityBonusPercent;
+    effectiveDifficulty = res.effectiveDifficulty;
+    itemDiscrimination = res.itemDiscrimination;
     if (teamScoresUpdates.length > 0) {
       io2.to(`room:${roomCode}`).emit("game:score:update", teamScoresUpdates);
     }
@@ -5761,7 +5864,9 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
     teamSummaries: teamSummaries.length > 0 ? teamSummaries : void 0,
     roomAccuracy,
     rarityBonusPercent,
-    bloomLevel: getBloomLevelFromPoints(q.points)
+    bloomLevel: getBloomLevelFromPoints(q.points),
+    effectiveDifficulty,
+    itemDiscrimination
   });
 }
 function stopQuestionTimer(roomId) {
@@ -5958,7 +6063,33 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   const totalAnswers = answers.length;
   const correctAnswersTotal = answers.filter((a) => a.isCorrect === true).length;
   const roomAccuracy = totalAnswers > 0 ? correctAnswersTotal / totalAnswers : 1;
-  const rarityBonusPercent = roomAccuracy < 0.3 ? Math.round((0.3 - roomAccuracy) * 1.5 * 100) : 0;
+  const sortedTeams = [...room.teams].sort((a, b) => b.score - a.score);
+  const midPoint = Math.max(1, Math.floor(sortedTeams.length / 2));
+  const topHalfTeamIds = new Set(sortedTeams.slice(0, midPoint).map((t) => t.id));
+  const bottomHalfTeamIds = new Set(sortedTeams.slice(midPoint).map((t) => t.id));
+  let topHalfCorrect = 0;
+  let topHalfTotal = 0;
+  let bottomHalfCorrect = 0;
+  let bottomHalfTotal = 0;
+  for (const a of answers) {
+    if (a.teamId && topHalfTeamIds.has(a.teamId)) {
+      topHalfTotal++;
+      if (a.isCorrect) topHalfCorrect++;
+    } else if (a.teamId && bottomHalfTeamIds.has(a.teamId)) {
+      bottomHalfTotal++;
+      if (a.isCorrect) bottomHalfCorrect++;
+    }
+  }
+  const irtMetrics = calculateItemIRTMetrics({
+    rawPoints: question.points || 10,
+    roomAccuracy,
+    totalParticipants: totalAnswers || room.teams.length,
+    topHalfCorrect,
+    topHalfTotal,
+    bottomHalfCorrect,
+    bottomHalfTotal
+  });
+  const rarityBonusPercent = room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Math.round(irtMetrics.bonusRate * 100) : roomAccuracy < 0.3 ? Math.round((0.3 - roomAccuracy) * 1.5 * 100) : 0;
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
   const teamScoresUpdates = [];
   const teamSummaries = [];
@@ -6041,6 +6172,10 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       shielded,
       penaltyMultiplier,
       roomAccuracy,
+      topHalfCorrect,
+      topHalfTotal,
+      bottomHalfCorrect,
+      bottomHalfTotal,
       streak: teamStreak,
       mode: room.mode
     });
@@ -6065,7 +6200,10 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
         streakPoints: teamScoreRes.streakPoints,
         rarityPoints: teamScoreRes.rarityPoints,
         streak: teamStreak,
-        avgTimeSpent: teamScoreRes.avgTimeSpent
+        avgTimeSpent: teamScoreRes.avgTimeSpent,
+        isEliminated: true,
+        effectiveDifficulty: teamScoreRes.effectiveDifficulty,
+        discrimination: teamScoreRes.discrimination
       });
       continue;
     }
@@ -6097,10 +6235,20 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       streakPoints: teamScoreRes.streakPoints,
       rarityPoints: teamScoreRes.rarityPoints,
       streak: teamStreak,
-      avgTimeSpent: teamScoreRes.avgTimeSpent
+      avgTimeSpent: teamScoreRes.avgTimeSpent,
+      isEliminated: false,
+      effectiveDifficulty: teamScoreRes.effectiveDifficulty,
+      discrimination: teamScoreRes.discrimination
     });
   }
-  return { teamScoresUpdates, teamSummaries, roomAccuracy, rarityBonusPercent };
+  return {
+    teamScoresUpdates,
+    teamSummaries,
+    roomAccuracy,
+    rarityBonusPercent,
+    effectiveDifficulty: irtMetrics.bEffective,
+    itemDiscrimination: irtMetrics.discrimination
+  };
 }
 async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
   stopQuestionTimer(roomId);

@@ -25,7 +25,7 @@ import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
-import { normalizeToThreeLevels, getBasePointsForMode } from "@/lib/game-engine/scoring";
+import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
 import { getBroadTopic } from "@/lib/topics";
 import { getBloomLevelFromPoints } from "@/types";
 
@@ -2488,6 +2488,55 @@ export default function AdminSandboxPage() {
         wagerPenalty = effectiveTeams * unitPenalty;
       }
 
+      // Tính tỷ lệ đúng toàn phòng và độ phân biệt Top/Bottom trong sandbox
+      const currentTeamsList = roomState?.teams || [];
+      const totalSandboxAnswers = currentTeamsList.length;
+      let correctSandboxCount = 0;
+      currentTeamsList.forEach((t) => {
+        const recorded = offlineAnswersRef.current.get(t.id);
+        const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
+        const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        if (isCorrect) correctSandboxCount++;
+      });
+      const sandboxAccuracy = totalSandboxAnswers > 0 ? correctSandboxCount / totalSandboxAnswers : 1.0;
+
+      const sortedSandboxTeams = [...currentTeamsList].sort((a, b) => b.score - a.score);
+      const midPoint = Math.max(1, Math.floor(sortedSandboxTeams.length / 2));
+      const topHalfIds = new Set(sortedSandboxTeams.slice(0, midPoint).map((t) => t.id));
+      const bottomHalfIds = new Set(sortedSandboxTeams.slice(midPoint).map((t) => t.id));
+
+      let topHalfCorrect = 0;
+      let topHalfTotal = 0;
+      let bottomHalfCorrect = 0;
+      let bottomHalfTotal = 0;
+
+      currentTeamsList.forEach((t) => {
+        const recorded = offlineAnswersRef.current.get(t.id);
+        const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
+        const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
+        if (topHalfIds.has(t.id)) {
+          topHalfTotal++;
+          if (isCorrect) topHalfCorrect++;
+        } else if (bottomHalfIds.has(t.id)) {
+          bottomHalfTotal++;
+          if (isCorrect) bottomHalfCorrect++;
+        }
+      });
+
+      const irtMetrics = calculateItemIRTMetrics({
+        rawPoints: currentQuestion.question.points || 10,
+        roomAccuracy: sandboxAccuracy,
+        totalParticipants: totalSandboxAnswers,
+        topHalfCorrect,
+        topHalfTotal,
+        bottomHalfCorrect,
+        bottomHalfTotal,
+      });
+
+      const irtBonusPercent = (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION")
+        ? Math.round(irtMetrics.bonusRate * 100)
+        : (sandboxAccuracy < 0.30 ? Math.round((0.30 - sandboxAccuracy) * 1.5 * 100) : 0);
+
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
         const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
@@ -2497,6 +2546,7 @@ export default function AdminSandboxPage() {
         let pts = 0;
         let basePts = 0;
         let speedPts = 0;
+        let rarityPts = 0;
 
         if (isWagerMode) {
           if (t.id === lastWagerTeamId) {
@@ -2518,7 +2568,8 @@ export default function AdminSandboxPage() {
             const ratio = Math.max(0, 1 - timeSpent / (timeLimit * 1000));
             speedPts = Math.round(effBase * 0.5 * ratio);
             basePts = effBase;
-            pts = basePts + speedPts;
+            rarityPts = irtMetrics.bonusRate > 0 ? Math.round(effBase * irtMetrics.bonusRate) : 0;
+            pts = basePts + speedPts + rarityPts;
           } else {
             pts = 0;
             basePts = 0;
@@ -2538,6 +2589,7 @@ export default function AdminSandboxPage() {
           timeSpent,
           basePoints: basePts,
           speedPoints: speedPts,
+          rarityPoints: rarityPts,
         });
         scoreDeltas.push({ teamId: t.id, delta: pts });
       });
@@ -2557,8 +2609,11 @@ export default function AdminSandboxPage() {
           multiplier: t.id === lastWagerTeamId ? Number((wagerAmount / baseQPoints).toFixed(1)) : 1,
           basePoints: ans?.basePoints ?? 0,
           speedPoints: ans?.speedPoints ?? 0,
+          rarityPoints: ans?.rarityPoints ?? 0,
           avgTimeSpent: recorded?.timeSpent ?? ans?.timeSpent ?? 3000,
           isEliminated: t.isEliminated,
+          effectiveDifficulty: irtMetrics.bEffective,
+          discrimination: irtMetrics.discrimination,
         };
       });
 
@@ -2569,6 +2624,10 @@ export default function AdminSandboxPage() {
         explanation: qRaw.hint || currentQuestion.question.hint || undefined,
         answers,
         teamSummaries,
+        roomAccuracy: sandboxAccuracy,
+        rarityBonusPercent: irtBonusPercent,
+        effectiveDifficulty: irtMetrics.bEffective,
+        itemDiscrimination: irtMetrics.discrimination,
       };
 
       const curTurnTeamId = roomState?.diceRaceState?.currentTurnTeamId;

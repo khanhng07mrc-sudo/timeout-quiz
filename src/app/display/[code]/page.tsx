@@ -1583,12 +1583,12 @@ export default function DisplayPage() {
             {revealPayload && (
               <div className="mt-6 space-y-3 animate-slide-up">
                 {revealPayload.rarityBonusPercent !== undefined && revealPayload.rarityBonusPercent > 0 && (
-                  <div className="p-4 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 border border-amber-500/40 text-center animate-bounce-in">
+                  <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-amber-500/20 border border-purple-500/40 text-center animate-bounce-in">
                     <p className="font-black text-amber-300 text-lg">
-                      🔥 CÂU HỎI HÓC BÚA (Độ hiếm toàn phòng: {Math.round((revealPayload.roomAccuracy ?? 0) * 100)}% đúng)
+                      🌟 CÂU HỎI PHÂN HÓA CAO (Tỷ lệ đúng toàn phòng: {Math.round((revealPayload.roomAccuracy ?? 0) * 100)}%)
                     </p>
-                    <p className="text-sm text-amber-200/90 mt-1">
-                      Các đội đúng được cộng thưởng thêm <strong>+{revealPayload.rarityBonusPercent}%</strong> điểm hiếm thực nghiệm!
+                    <p className="text-sm text-purple-200/90 mt-1">
+                      Các đội đúng được cộng thưởng thêm <strong>+{revealPayload.rarityBonusPercent}%</strong> điểm theo độ khó thực nghiệm &amp; độ phân loại!
                     </p>
                   </div>
                 )}
@@ -1634,7 +1634,7 @@ export default function DisplayPage() {
                                   <span className="text-amber-400 font-semibold">🔥+{(ts.streakPoints ?? 0).toLocaleString()}</span>
                                 )}
                                 {(ts.rarityPoints ?? 0) > 0 && (
-                                  <span className="text-purple-400 font-semibold">✨+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
+                                  <span className="text-purple-400 font-semibold">🌟+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
                                 )}
                                 {ts.avgTimeSpent !== undefined && ts.avgTimeSpent > 0 && (
                                   <span className="text-zinc-500 font-mono">({(ts.avgTimeSpent / 1000).toFixed(2)}s)</span>

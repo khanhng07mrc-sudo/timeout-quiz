@@ -8,6 +8,11 @@ export interface ScoringContext {
   config: GameConfig;
   streak?: number; // Current correct streak count
   roomAccuracy?: number; // Tỷ lệ đúng của toàn phòng (0 - 1)
+  topHalfCorrect?: number;
+  topHalfTotal?: number;
+  bottomHalfCorrect?: number;
+  bottomHalfTotal?: number;
+  totalParticipants?: number;
   multiplier?: number; // from DOUBLE or SCORE_X2 card
   shielded?: boolean; // from SHIELD card
   penaltyMultiplier?: number; // from PENALTY card
@@ -20,6 +25,84 @@ export interface DetailedPointsResult {
   speedPoints: number;
   streakPoints: number;
   rarityPoints: number;
+  effectiveDifficulty?: number;
+  discrimination?: number;
+}
+
+export interface ItemIRTMetrics {
+  bPrior: number;
+  bEmpirical: number;
+  bEffective: number;
+  discrimination: number;
+  bonusRate: number;
+}
+
+/**
+ * Ước lượng độ khó hiệu dụng b_eff và độ phân biệt a theo mô hình IRT thực nghiệm:
+ * - Prior: Dễ (b=-0.8), Trung bình (b=0.0), Khó (b=+1.0)
+ * - Logit phòng: b_emp = ln((1 - P_room + 0.05)/(P_room + 0.05))
+ * - Bayesian shrinkage weight: w = N / (N + 4)
+ * - Discrimination index a: so sánh tỷ lệ đúng nhóm nửa trên và nửa dưới bảng xếp hạng
+ * - Dynamic bonus: thưởng độ khó và phân hóa (tối đa +50% điểm gốc)
+ */
+export function calculateItemIRTMetrics(params: {
+  rawPoints: number;
+  roomAccuracy: number;
+  totalParticipants?: number;
+  topHalfCorrect?: number;
+  topHalfTotal?: number;
+  bottomHalfCorrect?: number;
+  bottomHalfTotal?: number;
+}): ItemIRTMetrics {
+  const { rawPoints, roomAccuracy } = params;
+  const total = params.totalParticipants ?? 4;
+
+  // 1. Prior b từ độ khó ban đầu
+  let bPrior = 0.0;
+  if (rawPoints <= 10) bPrior = -0.8;
+  else if (rawPoints <= 20) bPrior = 0.0;
+  else bPrior = 1.0;
+
+  // 2. Logit thực nghiệm từ tỷ lệ đúng của phòng
+  const pClamped = Math.max(0.02, Math.min(0.98, roomAccuracy));
+  const bEmpirical = Math.max(-2.0, Math.min(2.0, Math.log((1 - pClamped) / pClamped)));
+
+  // 3. Bayesian shrinkage
+  const w = Math.min(0.85, total / (total + 4));
+  const bEffective = Number((w * bEmpirical + (1 - w) * bPrior).toFixed(2));
+
+  // 4. Độ phân biệt a (Discrimination index: P_top - P_bottom)
+  let discrimination = 0;
+  if (
+    params.topHalfTotal &&
+    params.topHalfTotal > 0 &&
+    params.bottomHalfTotal &&
+    params.bottomHalfTotal > 0
+  ) {
+    const pTop = (params.topHalfCorrect ?? 0) / params.topHalfTotal;
+    const pBottom = (params.bottomHalfCorrect ?? 0) / params.bottomHalfTotal;
+    discrimination = Number((pTop - pBottom).toFixed(2));
+  } else {
+    discrimination = Number((Math.max(0, bEffective) * 0.25).toFixed(2));
+  }
+
+  // 5. Thưởng phân hóa (ẩn dưới dạng Thưởng Phân Loại / Độ Khó)
+  let bonusRate = 0;
+  if (bEffective > 0) {
+    bonusRate += Math.min(0.35, bEffective * 0.2);
+  }
+  if (discrimination > 0.15) {
+    bonusRate += Math.min(0.15, discrimination * 0.2);
+  }
+  bonusRate = Math.min(0.50, Math.max(0, Number(bonusRate.toFixed(2))));
+
+  return {
+    bPrior,
+    bEmpirical,
+    bEffective,
+    discrimination,
+    bonusRate,
+  };
 }
 
 /**
@@ -51,11 +134,11 @@ export function normalizeToThreeLevels(points: number): 10 | 20 | 30 {
 }
 
 /**
- * Tính điểm đa tiêu chí chi tiết cho cá nhân (Kahoot-level accuracy):
+ * Tính điểm đa tiêu chí chi tiết cho cá nhân:
  * 1. Đúng/Sai (Điểm gốc)
  * 2. Tốc độ phản xạ theo mili-giây (tối đa +50% theo tỷ lệ thời gian còn lại)
  * 3. Chuỗi đúng liên tiếp (Streak Combo: 2 -> +10%, 3 -> +20%, 4 -> +30%, 5+ -> +50%)
- * 4. Độ hiếm đáp án (Rarity: phòng < 30% đúng được thưởng tối đa +45%)
+ * 4. Thưởng độ khó & phân hóa (Empirical IRT: b_eff & discrimination a)
  */
 export function computeDetailedPointsAwarded(ctx: ScoringContext): DetailedPointsResult {
   const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
@@ -94,15 +177,34 @@ export function computeDetailedPointsAwarded(ctx: ScoringContext): DetailedPoint
     streakPoints = Math.round(base * streakRate * multiplier);
   }
 
-  // 3. Độ hiếm đáp án (Rarity multiplier khi phòng < 30% đúng)
+  // 3. Thưởng độ khó & phân loại thực nghiệm
   let rarityPoints = 0;
-  if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
+  let effectiveDifficulty: number | undefined;
+  let discrimination: number | undefined;
+  if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+    if (ctx.roomAccuracy !== undefined) {
+      const irt = calculateItemIRTMetrics({
+        rawPoints: ctx.basePoints,
+        roomAccuracy: ctx.roomAccuracy,
+        totalParticipants: ctx.totalParticipants ?? 4,
+        topHalfCorrect: ctx.topHalfCorrect,
+        topHalfTotal: ctx.topHalfTotal,
+        bottomHalfCorrect: ctx.bottomHalfCorrect,
+        bottomHalfTotal: ctx.bottomHalfTotal,
+      });
+      effectiveDifficulty = irt.bEffective;
+      discrimination = irt.discrimination;
+      if (irt.bonusRate > 0) {
+        rarityPoints = Math.round(base * irt.bonusRate * multiplier);
+      }
+    }
+  } else if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
     const rarityDelta = 0.30 - Math.max(0, ctx.roomAccuracy);
     rarityPoints = Math.round(base * rarityDelta * 1.5 * multiplier);
   }
 
   const points = basePoints + speedPoints + streakPoints + rarityPoints;
-  return { points, basePoints, speedPoints, streakPoints, rarityPoints };
+  return { points, basePoints, speedPoints, streakPoints, rarityPoints, effectiveDifficulty, discrimination };
 }
 
 export function computePointsAwarded(ctx: ScoringContext): number {
@@ -121,6 +223,10 @@ export interface TeamScoringContext {
   shielded?: boolean; // from SHIELD / SCORE_X2
   penaltyMultiplier?: number; // from PENALTY
   roomAccuracy?: number; // Tỷ lệ đúng của toàn phòng (0 - 1)
+  topHalfCorrect?: number;
+  topHalfTotal?: number;
+  bottomHalfCorrect?: number;
+  bottomHalfTotal?: number;
   mode?: GameMode;
 }
 
@@ -135,6 +241,8 @@ export interface TeamScoreResult {
   avgTimeSpent: number;
   empiricalMultiplier: number;
   streakBonus: number;
+  effectiveDifficulty?: number;
+  discrimination?: number;
 }
 
 /**
@@ -146,10 +254,29 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
   const total = Math.max(1, ctx.totalOnlineMembers);
   const accuracyRatio = Math.min(1, Math.max(0, ctx.correctMembers / total));
 
-  // 1. Hệ số hiếm thực nghiệm
+  // 1. Hệ số phân hóa / hiếm thực nghiệm
   let empiricalMultiplier = 1.0;
   let rarityBonus = 0;
-  if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
+  let effectiveDifficulty: number | undefined;
+  let discrimination: number | undefined;
+
+  if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+    if (ctx.roomAccuracy !== undefined) {
+      const irt = calculateItemIRTMetrics({
+        rawPoints: ctx.basePoints,
+        roomAccuracy: ctx.roomAccuracy,
+        totalParticipants: ctx.totalOnlineMembers,
+        topHalfCorrect: ctx.topHalfCorrect,
+        topHalfTotal: ctx.topHalfTotal,
+        bottomHalfCorrect: ctx.bottomHalfCorrect,
+        bottomHalfTotal: ctx.bottomHalfTotal,
+      });
+      effectiveDifficulty = irt.bEffective;
+      discrimination = irt.discrimination;
+      rarityBonus = irt.bonusRate;
+      empiricalMultiplier = 1 + irt.bonusRate;
+    }
+  } else if (ctx.roomAccuracy !== undefined && ctx.roomAccuracy < 0.30) {
     const rarityDelta = 0.30 - Math.max(0, ctx.roomAccuracy);
     empiricalMultiplier = 1 + rarityDelta * 1.5;
     rarityBonus = rarityDelta * 1.5;
@@ -227,6 +354,8 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
     avgTimeSpent,
     empiricalMultiplier,
     streakBonus,
+    effectiveDifficulty,
+    discrimination,
   };
 }
 

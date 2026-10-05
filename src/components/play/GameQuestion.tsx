@@ -1159,7 +1159,7 @@ export default function GameQuestion({
                       )}
                       {(myTs?.rarityPoints ?? myAns?.rarityPoints ?? 0) > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
-                          ✨ Hiếm: +{(myTs?.rarityPoints ?? myAns?.rarityPoints ?? 0).toLocaleString()}
+                          🌟 Phân loại: +{(myTs?.rarityPoints ?? myAns?.rarityPoints ?? 0).toLocaleString()}
                         </span>
                       )}
                     </div>
@@ -1190,14 +1190,14 @@ export default function GameQuestion({
             )}
           </div>
 
-          {/* Rarity Empirical Bonus Banner */}
+          {/* Rarity & Discrimination Empirical Bonus Banner */}
           {revealPayload.rarityBonusPercent !== undefined && revealPayload.rarityBonusPercent > 0 && (
-            <div className="p-3 rounded-xl bg-gradient-to-r from-red-500/20 to-amber-500/20 border border-amber-500/40 text-center animate-bounce-in">
+            <div className="p-3 rounded-xl bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-amber-500/20 border border-purple-500/40 text-center animate-bounce-in">
               <p className="font-black text-amber-300 text-sm">
-                🔥 CÂU HỎI HÓC BÚA (Độ hiếm toàn phòng: {Math.round((revealPayload.roomAccuracy ?? 0) * 100)}% đúng)
+                🌟 CÂU HỎI PHÂN HÓA CAO (Tỷ lệ đúng: {Math.round((revealPayload.roomAccuracy ?? 0) * 100)}%)
               </p>
-              <p className="text-xs text-amber-200/80 mt-0.5">
-                Các đội trả lời đúng được cộng thưởng thêm <strong>+{revealPayload.rarityBonusPercent}%</strong> điểm hiếm thực nghiệm!
+              <p className="text-xs text-purple-200/90 mt-0.5">
+                Các đội trả lời đúng được cộng thưởng thêm <strong>+{revealPayload.rarityBonusPercent}%</strong> điểm theo độ khó thực nghiệm &amp; độ phân loại!
               </p>
             </div>
           )}
@@ -1245,7 +1245,7 @@ export default function GameQuestion({
                             <span className="text-amber-400 font-medium">🔥+{(ts.streakPoints ?? 0).toLocaleString()}</span>
                           )}
                           {(ts.rarityPoints ?? 0) > 0 && (
-                            <span className="text-purple-400 font-medium">✨+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
+                            <span className="text-purple-400 font-medium">🌟+{(ts.rarityPoints ?? 0).toLocaleString()}</span>
                           )}
                           {ts.avgTimeSpent !== undefined && ts.avgTimeSpent > 0 && (
                             <span className="text-zinc-500 font-mono">({(ts.avgTimeSpent / 1000).toFixed(2)}s)</span>

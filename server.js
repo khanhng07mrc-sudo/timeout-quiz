@@ -5506,11 +5506,12 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
+      const currentStageJustFinished = Math.floor((room.currentQuestion + 1) / interval);
       let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         for (const [, ghostStat] of roomGhosts.entries()) {
-          if (ghostStat.currentRoundCorrect >= interval) {
-            ghostStat.ghostRoundAllCorrect = true;
+          if (ghostStat.firstGhostStage !== void 0 && currentStageJustFinished === ghostStat.firstGhostStage) {
+            ghostStat.ghostRoundAllCorrect = ghostStat.currentRoundCorrect >= interval;
           }
           ghostStat.currentRoundCorrect = 0;
         }
@@ -5557,12 +5558,14 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
                 ghostRoundAllCorrect: false,
                 currentRoundCorrect: 0,
                 eliminatedAtStage: currentStageNumber,
-                eliminatedAtQuestion: room.currentQuestion
+                eliminatedAtQuestion: room.currentQuestion,
+                firstGhostStage: currentStageNumber + 1
               };
               roomGhosts.set(toElim.id, elimGhostStat);
             } else {
               elimGhostStat.eliminatedAtStage = currentStageNumber;
               elimGhostStat.eliminatedAtQuestion = room.currentQuestion;
+              elimGhostStat.firstGhostStage = currentStageNumber + 1;
             }
           }
           io2.to(`room:${roomCode}`).emit("game:elimination:round", {
@@ -5741,7 +5744,8 @@ async function buildRoomState(roomId) {
       ghostRoundAllCorrect: ghostStat?.ghostRoundAllCorrect || false,
       ghostTotalCorrect: ghostStat?.ghostTotalCorrect || 0,
       ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0,
-      eliminatedAtStage: ghostStat?.eliminatedAtStage
+      eliminatedAtStage: ghostStat?.eliminatedAtStage,
+      firstGhostStage: ghostStat?.firstGhostStage
     };
   });
   const players = validPlayers.map((p) => {

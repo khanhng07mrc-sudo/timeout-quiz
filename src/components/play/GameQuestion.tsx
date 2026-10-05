@@ -31,6 +31,7 @@ interface Props {
     ghostTotalCorrect?: number;
     ghostTotalAnswered?: number;
     eliminatedAtStage?: number;
+    firstGhostStage?: number;
   };
   tournamentMatch?: import("@/types").TournamentMatch;
   onPredictWinner?: (matchId: string, predictedWinnerId: string) => void;
@@ -314,7 +315,9 @@ export default function GameQuestion({
                   CHẾ ĐỘ BÓNG MA (GHOST TEAM) — ĐƯỜNG ĐUA HỒI SINH
                 </p>
                 <p className="text-[11px] sm:text-xs text-purple-200/90">
-                  Chỉ cần trả lời đúng 100% câu hỏi trong ít nhất 1 chặng bất kỳ để mở khóa điều kiện HỒI SINH ở chặng áp chót!
+                  {ghostStats?.firstGhostStage
+                    ? `Thử thách sinh tử: Phải trả lời đúng 100% tất cả câu hỏi trong Chặng ${ghostStats.firstGhostStage} (chặng đầu tiên sau khi bị loại) để mở khóa vé HỒI SINH!`
+                    : "Phải trả lời đúng 100% tất cả câu hỏi trong chặng đầu tiên sau khi bị loại để mở khóa vé HỒI SINH!"}
                 </p>
               </div>
             </div>
@@ -328,7 +331,7 @@ export default function GameQuestion({
             <span>🔥 Chuỗi câu đúng: <strong>{ghostStats?.ghostStreak || 0}</strong></span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
-                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN (Ưu tiên đội bị loại sớm!)
+                <span>✨</span> ĐÃ ĐỦ ĐIỀU KIỆN (100% chặng đầu tiên sau khi bị loại!)
               </span>
             )}
           </div>

@@ -598,6 +598,7 @@ export interface TeamState {
   ghostTotalCorrect?: number;
   ghostTotalAnswered?: number;
   eliminatedAtStage?: number;
+  firstGhostStage?: number;
 }
 
 export interface PlayerState {

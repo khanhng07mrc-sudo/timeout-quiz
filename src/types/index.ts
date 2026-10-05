@@ -409,24 +409,18 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
   if (explicitLevel === "REMEMBER" || explicitLevel === "APPLY" || explicitLevel === "ANALYZE") {
     return explicitLevel;
   }
-  if (points >= 20) return "ANALYZE";
-  if (points >= 15) return "APPLY";
+  if (points >= 30) return "ANALYZE";
+  if (points >= 20) return "APPLY";
   return "REMEMBER";
 }
 
 /**
- * Quantizes question thinking time and countdown music to official Olympia tiers:
- * - <= 10 points (Nhận biết) -> 15 seconds (olympia_15s.mp3)
- * - <= 20 points (Thông hiểu / Vận dụng) -> 20 seconds (olympia_20s.ogg)
- * - >= 30 points (Vận dụng cao) -> 30 seconds (olympia_30s.mp3)
- *
- * If an explicit standard Olympia time limit is provided (15s, 20s, 30s, 60s), it preserves that duration.
- * This decouples variable betting points (in Wager mode) from audio countdown playback, ensuring 100% exact sync.
+ * Quy chuẩn thời gian đếm ngược chính xác theo 3 mức điểm chuẩn của Timeout Quiz:
+ * - 10 điểm (Nhận biết) -> 15 giây (olympia_15s.mp3)
+ * - 20 điểm (Thông hiểu / Vận dụng) -> 20 giây (olympia_20s.ogg)
+ * - 30 điểm (Vận dụng cao) -> 30 giây (olympia_30s.mp3)
  */
-export function quantizeOlympiaTimeLimit(points: number = 10, explicitTimeLimit?: number): number {
-  if (explicitTimeLimit === 15 || explicitTimeLimit === 20 || explicitTimeLimit === 30 || explicitTimeLimit === 60) {
-    return explicitTimeLimit;
-  }
+export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit?: number): number {
   if (points <= 10) return 15;
   if (points <= 20) return 20;
   return 30;
@@ -454,7 +448,7 @@ export function getBuzzedAnswerTimeLimit(
   const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
   const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
   const isHigh = bloom === "ANALYZE" || effPoints >= 30;
-  const isMedium = bloom === "APPLY" || effPoints >= 15;
+  const isMedium = bloom === "APPLY" || effPoints >= 20;
 
   if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
     if (isHigh) return 25;
@@ -469,43 +463,20 @@ export function getBuzzedAnswerTimeLimit(
 }
 
 /**
- * Tính thời gian thi đấu bình thường cả phòng (không bấm chuông) khi trả lời trên máy tính:
- * - Nếu câu hỏi có thời gian cấu hình riêng (khác giá trị mặc định 30s và > 0) -> ưu tiên thời gian riêng đó.
- * - Ngược lại, chuẩn hoá tự động theo bảng tiêu chuẩn:
- *   + Trắc nghiệm 1 đáp án & Đúng/Sai: 15s (Dễ) / 20s (Trung bình) / 30s (Khó).
- *   + Trắc nghiệm nhiều đáp án & Tự luận: 20s (Dễ) / 30s (Trung bình) / 45s (Khó).
- *   + Nối cặp & Kéo thả: 30s (Dễ) / 45s (Trung bình) / 60s (Khó).
+ * Tính thời gian tiêu chuẩn cho câu hỏi trả lời trên thiết bị cá nhân hoặc hiển thị phòng:
+ * Luôn khóa cứng theo quy chuẩn 3 mức điểm 10/20/30:
+ * - 10 điểm -> 15 giây
+ * - 20 điểm -> 20 giây
+ * - 30 điểm -> 30 giây
  */
 export function getStandardQuestionTimeLimit(
-  question: { type: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel },
+  question: { type?: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel },
   overridePoints?: number
 ): number {
-  // Nếu câu hỏi đã được cấu hình thời gian riêng biệt (khác mặc định 30s và > 0), ưu tiên thời gian đó
-  if (question.timeLimit && question.timeLimit > 0 && question.timeLimit !== 30) {
-    return question.timeLimit;
-  }
-
   const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
-  const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
-  const isHigh = bloom === "ANALYZE" || effPoints >= 30;
-  const isMedium = bloom === "APPLY" || effPoints >= 15;
-
-  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
-    if (isHigh) return 30;
-    if (isMedium) return 20;
-    return 15;
-  }
-
-  if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
-    if (isHigh) return 60;
-    if (isMedium) return 45;
-    return 30;
-  }
-
-  // MC_MULTI, FILL_BLANK, ESSAY
-  if (isHigh) return 45;
-  if (isMedium) return 30;
-  return 20;
+  if (effPoints <= 10) return 15;
+  if (effPoints <= 20) return 20;
+  return 30;
 }
 
 

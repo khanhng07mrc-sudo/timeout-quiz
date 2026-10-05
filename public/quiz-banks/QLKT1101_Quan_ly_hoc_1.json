@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Henry Fayol, nguyên tắc nào yêu cầu mỗi nhân viên chỉ nên nhận mệnh lệnh từ một người cấp trên duy nhất?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Trong các chức năng quản lý cơ bản, chức năng nào đóng vai trò 'kim chỉ nam', định hướng mục tiêu và phương thức đạt được mục tiêu cho tổ chức?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -61,7 +61,7 @@
     "type": "MC_MULTI",
     "content": "Theo Thuyết Hai nhân tố của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) tạo ra sự thỏa mãn thực sự trong công việc?",
     "points": 20,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -90,7 +90,7 @@
     "type": "TRUE_FALSE",
     "content": "Khi tầm hạn quản trị (Span of control) của nhà quản lý càng rộng, cơ cấu tổ chức của doanh nghiệp sẽ có xu hướng càng nhiều tầng nấc trung gian (cơ cấu hình tháp cao).",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -109,7 +109,7 @@
     "type": "MC_SINGLE",
     "content": "Loại hình kiểm soát nào được thực hiện TRƯỚC KHI hoạt động thực tế bắt đầu nhằm ngăn chặn sai lệch từ khâu chuẩn bị nguồn lực?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -139,14 +139,14 @@
     "content": "Tác giả được coi là 'Cha đẻ của thuyết quản lý theo khoa học' với nguyên tắc định mức lao động và trả lương theo sản phẩm là ai? (Ghi họ của tác giả)",
     "answer": "Taylor",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "hint": "Tên đầy đủ là Frederick Winslow Taylor."
   },
   {
     "type": "MC_SINGLE",
     "content": "Theo Henry Mintzberg, vai trò nào dưới đây KHÔNG thuộc nhóm vai trò 'Quan hệ với con người' (Interpersonal roles) của nhà quản lý?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -175,7 +175,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phong cách lãnh đạo theo mô hình Kurt Lewin, phong cách nào phát huy tối đa tính sáng tạo và trách nhiệm của nhân viên có trình độ chuyên môn cao?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -204,7 +204,7 @@
     "type": "TRUE_FALSE",
     "content": "Kỹ năng tư duy (Conceptual skills) có vai trò và tỷ trọng quan trọng nhất đối với nhà quản trị cấp cơ sở (tổ trưởng, trưởng ca) so với nhà quản trị cấp cao.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Một doanh nghiệp sản xuất ra các sản phẩm đạt tiêu chuẩn kỹ thuật cao với chi phí tối thiểu nhưng sản phẩm đó thị trường hoàn toàn không có nhu cầu tiêu thụ. Tình huống này phản ánh doanh nghiệp đang ở trạng thái nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -252,7 +252,7 @@
     "type": "MC_SINGLE",
     "content": "Trường phái quản trị khoa học của Frederick Winslow Taylor tập trung chủ yếu vào cấp độ quản trị nào trong doanh nghiệp?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -281,7 +281,7 @@
     "type": "MC_MULTI",
     "content": "Theo Max Weber, một tổ chức quan liêu bàn giấy lý tưởng (Bureaucracy) cần sở hữu những đặc trưng cơ bản nào?",
     "points": 20,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -310,7 +310,7 @@
     "type": "TRUE_FALSE",
     "content": "Thí nghiệm Hawthorne của Elton Mayo chứng minh rằng các yếu tố vật lý như ánh sáng và nhiệt độ tại nơi làm việc là nhân tố duy nhất quyết định năng suất lao động.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -329,7 +329,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thang bậc nhu cầu của Abraham Maslow, sau khi nhu cầu An toàn (Safety) đã được thỏa mãn cơ bản, con người sẽ có động lực hướng tới bậc nhu cầu nào tiếp theo?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -358,7 +358,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Thuyết X và Thuyết Y của Douglas McGregor, nhà quản lý theo Thuyết Y nhìn nhận bản chất người lao động như thế nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -387,7 +387,7 @@
     "type": "MC_SINGLE",
     "content": "Theo Thuyết kỳ vọng của Victor Vroom, Động lực làm việc (Motivation) được xác định bằng công thức nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -416,7 +416,7 @@
     "type": "MC_SINGLE",
     "content": "Trong Lưới lãnh đạo của Robert Blake và Jane Mouton, phong cách quản trị ở tọa độ (9,9) - nơi nhà lãnh đạo quan tâm cao độ đến cả con người lẫn kết quả sản xuất - được gọi là gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -445,7 +445,7 @@
     "type": "TRUE_FALSE",
     "content": "Cơ cấu tổ chức kiểu Ma trận (Matrix Structure) vi phạm nguyên tắc 'Thống nhất chỉ huy' của Henry Fayol vì một nhân viên có thể chịu sự giám sát của hai người quản lý cùng lúc.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -464,7 +464,7 @@
     "type": "MC_SINGLE",
     "content": "Khi doanh nghiệp hoạt động trong môi trường kinh doanh có độ bất định cao và công nghệ biến đổi nhanh chóng, mô hình tổ chức nào thường mang lại tính linh hoạt và thích ứng cao nhất?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -493,7 +493,7 @@
     "type": "MC_SINGLE",
     "content": "Bước đầu tiên có tính quyết định trong quy trình ra quyết định quản trị hợp lý là gì?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_MULTI",
     "content": "Kỹ thuật động não (Brainstorming) khi áp dụng trong ra quyết định nhóm đòi hỏi tuân thủ những nguyên tắc cốt lõi nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -551,7 +551,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Delphi trong ra quyết định và dự báo nhóm có đặc điểm nổi bật nào dưới đây?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -580,7 +580,7 @@
     "type": "TRUE_FALSE",
     "content": "Điểm hòa vốn (Break-even point) là mức sản lượng tại đó Tổng doanh thu vừa đủ bù đắp Tổng chi phí (cả định phí và biến phí), và Lợi nhuận của doanh nghiệp bằng 0.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -599,7 +599,7 @@
     "type": "MC_SINGLE",
     "content": "Theo nghiên cứu của Henry Mintzberg, vai trò 'Người phát ngôn' (Spokesperson) và 'Người giám sát thông tin' (Monitor) của nhà quản trị thuộc nhóm vai trò nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -628,7 +628,7 @@
     "type": "MC_SINGLE",
     "content": "Một công ty công nghệ phát hiện một lỗ hổng bảo mật nghiêm trọng trong sản phẩm vừa xuất xưởng. Tổng giám đốc ngay lập tức ra lệnh thu hồi sản phẩm toàn cầu và xin lỗi công khai, chấp nhận sụt giảm 20% lợi nhuận ngắn hạn để bảo vệ an toàn dữ liệu khách hàng. Quyết định này thể hiện quan điểm đạo đức quản trị nào?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

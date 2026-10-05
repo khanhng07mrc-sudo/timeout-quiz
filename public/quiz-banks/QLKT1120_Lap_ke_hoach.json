@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quy trình lập kế hoạch kinh doanh tiêu chuẩn, bước đầu tiên mang tính nền tảng quyết định hướng đi là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Theo tiêu chí SMART, chữ 'M' trong một mục tiêu kế hoạch hiệu quả đại diện cho đặc tính nào?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -61,7 +61,7 @@
     "type": "MC_MULTI",
     "content": "Phương pháp dự báo định tính nào dưới đây thu thập ý kiến chuyên gia qua nhiều vòng ẩn danh và phản hồi tổng hợp nhằm đạt được sự đồng thuận cao?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -90,7 +90,7 @@
     "type": "MC_SINGLE",
     "content": "Phương pháp lập ngân sách nào yêu cầu mọi khoản chi phí đều phải được giải trình và chứng minh lại từ đầu cho mỗi kỳ kế hoạch mới, bất kể ngân sách kỳ trước là bao nhiêu?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -119,7 +119,7 @@
     "type": "TRUE_FALSE",
     "content": "Kế hoạch chiến lược thường có tầm nhìn dài hạn (từ 3 đến 5 năm trở lên), do nhà quản trị cấp cao phê duyệt và tập trung vào các mục tiêu tổng thể của toàn tổ chức.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -139,14 +139,14 @@
     "content": "Phương pháp quản lý theo mục tiêu phổ biến trong lập kế hoạch, nơi cấp trên và cấp dưới cùng thống nhất xác định mục tiêu và tiêu chuẩn đánh giá, viết tắt là gì?",
     "answer": "MBO",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "hint": "Viết tắt của 3 chữ cái tiếng Anh: Management by Objectives."
   },
   {
     "type": "MC_SINGLE",
     "content": "Trong ma trận SWOT, việc kết hợp giữa 'Điểm mạnh bên trong' (Strengths) và 'Cơ hội bên ngoài' (Opportunities) sẽ hình thành nên chiến lược nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -175,7 +175,7 @@
     "type": "TRUE_FALSE",
     "content": "Kế hoạch dự phòng (Contingency plan) là bản kế hoạch chỉ được kích hoạt khi các sự cố hoặc kịch bản rủi ro bất khả kháng đã được dự báo trước xảy ra.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -194,7 +194,7 @@
     "type": "MC_SINGLE",
     "content": "Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao nhưng hoạt động trong ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Một doanh nghiệp bán lẻ xây dựng bản kế hoạch mở rộng chuỗi cửa hàng chi tiết trong 2 năm. Tuy nhiên sau 6 tháng thực hiện, doanh số sụt giảm mạnh do xuất hiện xu hướng mua sắm trực tuyến tăng vọt bất ngờ và chi phí mặt bằng tăng cao. Yếu tố cốt lõi nào khiến bản kế hoạch trên thất bại?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -252,7 +252,7 @@
     "type": "MC_SINGLE",
     "content": "Trong ma trận phân tích SWOT, chiến lược WO (Weaknesses - Opportunities) hướng đến mục tiêu hành động nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -281,7 +281,7 @@
     "type": "MC_SINGLE",
     "content": "Trong ma trận danh mục đầu tư BCG của Boston Consulting Group, đơn vị kinh doanh chiến lược (SBU) có thị phần tương đối cao trong một ngành có tốc độ tăng trưởng thấp được xếp vào ô nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -310,7 +310,7 @@
     "type": "MC_SINGLE",
     "content": "Theo ma trận phát triển thị trường - sản phẩm của Igor Ansoff, chiến lược bán các sản phẩm hiện có vào các thị trường địa lý mới được gọi là gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -339,7 +339,7 @@
     "type": "MC_MULTI",
     "content": "Theo nguyên tắc thiết lập mục tiêu SMART, những chữ cái nào đại diện đúng cho các thuộc tính chuẩn hóa?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -368,7 +368,7 @@
     "type": "TRUE_FALSE",
     "content": "Phương pháp dự báo theo chuỗi thời gian (Time-series Forecasting) dựa trên giả định căn bản rằng các quy luật và xu hướng biến động trong quá khứ sẽ tiếp tục lặp lại trong tương lai.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -387,7 +387,7 @@
     "type": "MC_SINGLE",
     "content": "Phương pháp lập ngân sách từ số 0 (Zero-Based Budgeting - ZBB) có đặc trưng ưu việt nào so với phương pháp lập ngân sách gia tăng truyền thống?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -416,7 +416,7 @@
     "type": "MC_SINGLE",
     "content": "Các công cụ kế hoạch như chính sách công ty (Policies), quy trình chuẩn (SOPs) và nội quy quy chế được xếp vào loại kế hoạch nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -445,7 +445,7 @@
     "type": "TRUE_FALSE",
     "content": "Kế hoạch dự phòng (Contingency Planning) là việc xác định trước các phương án hành động thay thế khả dĩ khi xảy ra những biến cố bất ngờ làm gián đoạn kế hoạch tác nghiệp ban đầu.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -464,7 +464,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phương pháp dự báo san bằng mũ (Exponential Smoothing), trọng số lớn nhất được gán cho đại lượng nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -493,7 +493,7 @@
     "type": "MC_SINGLE",
     "content": "Trong ma trận 9 ô GE-McKinsey dùng để lập kế hoạch danh mục kinh doanh, hai trục đánh giá bao gồm những yếu tố nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_MULTI",
     "content": "Theo mô hình 5 áp lực cạnh tranh của Michael Porter (Five Forces), những yếu tố nào quyết định mức độ hấp dẫn và tỷ suất sinh lời của ngành?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -551,7 +551,7 @@
     "type": "MC_SINGLE",
     "content": "Chiến lược 'Tích hợp ngược về phía sau' (Backward Vertical Integration) trong hoạch định chiến lược kinh doanh có nghĩa là gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -580,7 +580,7 @@
     "type": "TRUE_FALSE",
     "content": "Phương pháp Quản trị theo mục tiêu (MBO - Management by Objectives) là quá trình trong đó mục tiêu do Tổng giám đốc đơn phương ấn định và áp đặt hoàn toàn từ trên xuống mà không cần thảo luận với cấp dưới.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -599,7 +599,7 @@
     "type": "MC_SINGLE",
     "content": "Phương pháp lập kế hoạch theo kịch bản (Scenario Planning) phát huy giá trị cao nhất trong điều kiện môi trường nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -628,7 +628,7 @@
     "type": "MC_SINGLE",
     "content": "Một tập đoàn bán lẻ điện máy lập kế hoạch mở thêm 30 siêu thị mới trong năm tài chính. Khi phân tích ngân sách dự án vốn đầu tư (CapEx), chỉ số tài chính nào cho biết tỷ suất sinh lời thực tế làm cho Giá trị hiện giá thuần (NPV) của dự án bằng đúng 0?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

@@ -2255,7 +2255,7 @@ export function registerSocketHandlers(io: IO) {
         }
 
         const isDeviceAnswer = (config?.answerMethod ?? "DEVICE") === "DEVICE";
-        const standardTimeLimit = isDeviceAnswer ? getStandardQuestionTimeLimit(q, chosenPoints) : (q.timeLimit || 30);
+        const standardTimeLimit = getStandardQuestionTimeLimit(q, chosenPoints);
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
 
@@ -3491,8 +3491,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const isDeviceAnswerMode = ((room.config as any)?.answerMethod ?? "DEVICE") === "DEVICE";
-      const effectiveTimeLimit = activeQ?.timeLimit || (isDeviceAnswerMode ? getStandardQuestionTimeLimit(q) : quantizeOlympiaTimeLimit(q.points, q.timeLimit));
+      const effectiveTimeLimit = getStandardQuestionTimeLimit(q);
       const endsAt = Date.now() + effectiveTimeLimit * 1000;
       if (activeQ) {
         activeQ.timerPending = false;

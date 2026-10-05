@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Phương trình kế toán cơ bản thể hiện mối quan hệ bất biến trên Bảng cân đối kế toán là:",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Theo nguyên tắc 'Cơ sở dồn tích' (Accrual Basis), doanh thu bán hàng được ghi nhận vào thời điểm nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -61,7 +61,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua nguyên vật liệu nhập kho trị giá 50 triệu đồng, chưa thanh toán cho người bán. Nghiệp vụ này sẽ làm thay đổi cấu trúc bảng cân đối kế toán như thế nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -91,14 +91,14 @@
     "content": "Trong quy ước kế toán ghi sổ kép đối với các tài khoản phản ánh Tài sản (loại 1, 2) và Chi phí (loại 6): Số tiền phát sinh TĂNG sẽ được ghi vào bên nào (Nợ hay Có)?",
     "answer": "Nợ",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "hint": "Tài sản tăng ghi bên Nợ (Debit), giảm ghi bên Có (Credit)."
   },
   {
     "type": "MC_MULTI",
     "content": "Những báo cáo nào dưới đây thuộc Hệ thống Báo cáo Tài chính bắt buộc hàng năm của doanh nghiệp?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -127,7 +127,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong điều kiện giá cả nguyên vật liệu trên thị trường có xu hướng tăng liên tục qua các đợt nhập, phương pháp tính giá xuất kho FIFO (Nhập trước - Xuất trước) sẽ cho ra Giá vốn hàng bán thấp hơn và Lợi nhuận gộp cao hơn so với phương pháp Bình quân gia quyền.",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -146,7 +146,7 @@
     "type": "MC_SINGLE",
     "content": "Khoản tiền mà khách hàng đã thanh toán trước cho dịch vụ mà doanh nghiệp chưa cung cấp (chẳng hạn khách trả trước tiền thuê văn phòng 1 năm) được kế toán phân loại vào đâu?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -175,7 +175,7 @@
     "type": "TRUE_FALSE",
     "content": "Bảng cân đối kế toán phản ánh tình hình tài sản và nguồn vốn của doanh nghiệp trong suốt một thời kỳ (ví dụ cả một năm hoặc quý).",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -194,7 +194,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Thận trọng' (Prudence/Conservatism) trong kế toán đòi hỏi người làm kế toán phải ứng xử thế nào khi lập báo cáo tài chính?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thực tế, một doanh nghiệp có Báo cáo kết quả kinh doanh đạt mức 'Lợi nhuận dương rất cao' nhưng vẫn có thể rơi vào tình trạng mất khả năng thanh toán và phá sản chủ yếu là do nguyên nhân nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -252,7 +252,7 @@
     "type": "MC_SINGLE",
     "content": "Phương trình kế toán mở rộng phản ánh đúng đắn mối quan hệ giữa các thành phần tài chính trong doanh nghiệp là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -281,7 +281,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một lô máy móc thiết bị phục vụ sản xuất trị giá 300 triệu đồng, chưa thanh toán cho nhà cung cấp. Nghiệp vụ này làm biến động Bảng cân đối kế toán như thế nào?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -310,7 +310,7 @@
     "type": "TRUE_FALSE",
     "content": "Theo Nguyên tắc Cơ sở dồn tích (Accrual Basis Accounting), doanh thu chỉ được phép ghi nhận trên sổ sách kế toán khi doanh nghiệp đã thực tế thu được tiền mặt vào quỹ hoặc tài khoản ngân hàng.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -329,7 +329,7 @@
     "type": "MC_SINGLE",
     "content": "Khách hàng chuyển khoản đặt cọc trước 100 triệu đồng để mua hàng vào tháng sau. Doanh nghiệp ghi nhận khoản tiền nhận trước này vào khoản mục nào trên Báo cáo tài chính?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -358,7 +358,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Phù hợp' (Matching Principle) trong kế toán yêu cầu điều gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -387,7 +387,7 @@
     "type": "MC_MULTI",
     "content": "Tài khoản kế toán nào dưới đây có kết cấu điều chỉnh giảm tài sản (mang số dư bên Có trên Bảng cân đối kế toán)?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -416,7 +416,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong phương pháp tính giá xuất kho FIFO (Nhập trước - Xuất trước), khi giá cả thị trường có xu hướng tăng dần theo thời gian, giá trị hàng tồn kho cuối kỳ trên Bảng cân đối kế toán sẽ phản ánh sát giá thị trường nhất.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -435,7 +435,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp trả trước tiền thuê văn phòng 1 năm trị giá 120 triệu đồng bằng tiền chuyển khoản. Tại thời điểm chi tiền, khoản chi này được phân loại là gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -464,7 +464,7 @@
     "type": "MC_SINGLE",
     "content": "Báo cáo Lưu chuyển tiền tệ (Cash Flow Statement) phân loại các luồng tiền thu - chi thành 3 hoạt động căn bản nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -493,7 +493,7 @@
     "type": "MC_SINGLE",
     "content": "Khoản mục 'Lợi nhuận sau thuế chưa phân phối' được trình bày ở phần nào trên Bảng cân đối kế toán?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_MULTI",
     "content": "Những nghiệp vụ kinh tế nào dưới đây chỉ làm thay đổi cơ cấu bên trong của Tài sản mà KHÔNG làm thay đổi tổng quy mô tài sản của doanh nghiệp?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -551,7 +551,7 @@
     "type": "TRUE_FALSE",
     "content": "Nếu Bảng cân đối thử (Trial Balance) có Tổng số dư Nợ bằng đúng Tổng số dư Có, điều này chứng minh chắc chắn 100% rằng sổ sách kế toán hoàn toàn không có bất kỳ lỗi sai sót nào.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -570,7 +570,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Thận trọng' (Prudence / Conservatism) trong kế toán quy định việc ghi nhận doanh thu và chi phí như thế nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -599,7 +599,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp mua một xe tải chở hàng có nguyên giá 600 triệu đồng, thời gian sử dụng ước tính là 5 năm, giá trị thanh lý ước tính bằng 0. Theo phương pháp khấu hao đường thẳng, mức trích khấu hao hàng tháng là bao nhiêu?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -628,7 +628,7 @@
     "type": "MC_SINGLE",
     "content": "Doanh nghiệp xuất kho một lô hàng hóa có giá vốn là 80 triệu đồng bán cho khách hàng với giá bán chưa thuế là 120 triệu đồng (thuế GTGT phương pháp khấu trừ 10%), khách hàng chưa thanh toán tiền hàng. Kế toán phản ánh giá vốn và doanh thu của nghiệp vụ này như thế nào?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

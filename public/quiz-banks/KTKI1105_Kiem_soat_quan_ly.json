@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Một chi nhánh hoặc bộ phận trong doanh nghiệp mà người quản lý có quyền quyết định và chịu trách nhiệm về cả Doanh thu, Chi phí và Vốn đầu tư vào tài sản được gọi là:",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC), 4 khía cạnh đo lường hiệu quả hoạt động toàn diện của tổ chức bao gồm:",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -61,7 +61,7 @@
     "type": "MC_MULTI",
     "content": "Theo khuôn khổ Kiểm soát Nội bộ COSO (2013), những thành phần nào dưới đây nằm trong 5 bộ phận cấu thành của hệ thống kiểm soát nội bộ?",
     "points": 20,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -90,7 +90,7 @@
     "type": "MC_SINGLE",
     "content": "Chỉ số Lợi nhuận còn lại (Residual Income - RI) để đánh giá trung tâm đầu tư được tính theo công thức nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -119,7 +119,7 @@
     "type": "TRUE_FALSE",
     "content": "Một ưu điểm lớn của chỉ số Lợi nhuận còn lại (RI) so với ROI là giúp ngăn chặn xu hướng người quản lý từ chối các dự án đầu tư có lợi cho toàn công ty nhưng thấp hơn ROI hiện tại của bộ phận.",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -139,14 +139,14 @@
     "content": "Mức giá dùng để chuyển giao hàng hóa hoặc dịch vụ giữa các đơn vị thành viên độc lập bên trong cùng một tập đoàn được gọi là giá gì?",
     "answer": "Giá chuyển nhượng",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "hint": "Thuật ngữ tiếng Anh tương đương là Transfer Price."
   },
   {
     "type": "MC_SINGLE",
     "content": "Khi thị trường bên ngoài là cạnh tranh hoàn hảo, phương pháp định giá chuyển nhượng nội bộ nào được xem là tối ưu nhất để vừa đảm bảo tính tự chủ vừa tối ưu hóa lợi ích tập đoàn?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -175,7 +175,7 @@
     "type": "TRUE_FALSE",
     "content": "Kiểm soát hành vi (Action Control) là hình thức kiểm soát chỉ tập trung vào việc đo lường các kết quả đầu ra cuối cùng mà không cần can thiệp hay giám sát quy trình thực hiện.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -194,7 +194,7 @@
     "type": "MC_SINGLE",
     "content": "Hình thức kiểm soát nào dưới đây thuộc nhóm 'Kiểm soát nhân sự / văn hóa' (Personnel/Cultural Control)?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Để đạt chỉ tiêu lợi nhuận quý IV theo KPI nghiêm ngặt của tập đoàn nhằm nhận thưởng lớn, giám đốc nhà máy đã hoãn toàn bộ chi phí bảo dưỡng máy móc định kỳ sang năm sau và ghi nhận trước doanh thu các đơn hàng chưa giao. Hành vi này phản ánh hiện tượng gì trong kiểm soát quản lý?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -252,7 +252,7 @@
     "type": "MC_SINGLE",
     "content": "Theo báo cáo COSO 2013, thành tố nào đóng vai trò là nền tảng cốt lõi định hình văn hóa liêm chính và kỷ luật cho toàn bộ hệ thống kiểm soát nội bộ?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -281,7 +281,7 @@
     "type": "MC_SINGLE",
     "content": "Một trung tâm trách nhiệm mà nhà quản lý có toàn quyền tự chủ và chịu trách nhiệm về Doanh thu, Chi phí lẫn các quyết định phân bổ Vốn đầu tư vào tài sản được gọi là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -310,7 +310,7 @@
     "type": "MC_SINGLE",
     "content": "Chỉ số Thu nhập thặng dư (Residual Income - RI) dùng để đo lường hiệu quả trung tâm đầu tư được xác định theo công thức nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -339,7 +339,7 @@
     "type": "TRUE_FALSE",
     "content": "Chỉ số ROI (Return on Investment) có nhược điểm cố hữu là có thể khiến nhà quản lý từ chối các dự án đầu tư sinh lời có tỷ suất cao hơn chi phí vốn tập đoàn nhưng thấp hơn mức ROI trung bình hiện tại của bộ phận mình (hiện tượng cận thị mục tiêu).",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -358,7 +358,7 @@
     "type": "MC_SINGLE",
     "content": "Chỉ số Giá trị kinh tế gia tăng (Economic Value Added - EVA) khác biệt căn bản so với Lợi nhuận kế toán ở điểm mấu chốt nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -387,7 +387,7 @@
     "type": "MC_MULTI",
     "content": "Trong Thẻ điểm cân bằng (Balanced Scorecard - BSC) của Kaplan và Norton, 4 góc nhìn thước đo chiến lược bao gồm những khía cạnh nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -416,7 +416,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong chuỗi quan hệ nguyên nhân - kết quả của BSC, việc nâng cao năng lực nhân sự và văn hóa học hỏi (Học hỏi & Phát triển) là cội nguồn nền tảng thúc đẩy hoàn thiện các quy trình nội bộ, từ đó tạo ra giá trị vượt trội cho khách hàng và dẫn tới thành công tài chính.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -435,7 +435,7 @@
     "type": "MC_SINGLE",
     "content": "Khi chuyển nhượng sản phẩm giữa hai bộ phận trong cùng một tập đoàn và có một thị trường bên ngoài hoàn hảo, cạnh tranh gay gắt, phương pháp định giá chuyển nhượng nào tối ưu hóa lợi ích của toàn tập đoàn?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -464,7 +464,7 @@
     "type": "MC_SINGLE",
     "content": "Khi bộ phận bán còn dư thừa năng lực sản xuất (không thể bán hết công suất ra ngoài thị trường), mức giá chuyển nhượng nội bộ tối thiểu mà bộ phận bán có thể chấp nhận là bao nhiêu?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -493,7 +493,7 @@
     "type": "MC_SINGLE",
     "content": "Nguyên tắc 'Bất kiêm nhiệm / Phân chia trách nhiệm' (Segregation of Duties) trong kiểm soát nội bộ đòi hỏi phải tách biệt các chức năng nào để ngăn ngừa rủi ro gian lận và sai sót?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_MULTI",
     "content": "Những chỉ tiêu tài chính nào dưới đây thường được áp dụng phù hợp để đánh giá trách nhiệm của Trưởng Trung tâm Lợi nhuận (Profit Center)?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -551,7 +551,7 @@
     "type": "TRUE_FALSE",
     "content": "Mục tiêu tối thượng của Hệ thống kiểm soát quản lý (Management Control System) là đạt được sự tương thích về mục tiêu (Goal Congruence) - nghĩa là thúc đẩy các cá nhân hành động vì lợi ích cá nhân của họ mà đồng thời cũng phục vụ tốt nhất lợi ích của tổ chức.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -570,7 +570,7 @@
     "type": "MC_SINGLE",
     "content": "Hình thức kiểm soát tập trung vào việc giám sát và đánh giá trực tiếp các hành vi và sự tuân thủ quy chuẩn thao tác của nhân viên tại nơi làm việc được gọi là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -599,7 +599,7 @@
     "type": "MC_SINGLE",
     "content": "Khái niệm 'Ngân sách linh hoạt' (Flexible Budget) có ưu điểm nổi bật nào so với 'Ngân sách tĩnh' (Static Budget) khi phân tích biến động chi phí?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -628,7 +628,7 @@
     "type": "MC_SINGLE",
     "content": "Bộ phận Y có Lợi nhuận hoạt động thuần trong năm là 150 triệu đồng, Tài sản hoạt động bình quân là 1.000 triệu đồng. Ban Giám đốc tập đoàn quy định tỷ suất sinh lời tối thiểu đối với tài sản đầu tư là 12%. Thu nhập thặng dư (RI) của Bộ phận Y trong năm là bao nhiêu?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

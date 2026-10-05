@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quy trình chuẩn khai phá dữ liệu công nghiệp CRISP-DM, giai đoạn nào chiếm trung bình từ 60% đến 80% thời gian của một dự án phân tích dữ liệu?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Bài toán nào dưới đây thuộc nhóm 'Học có giám sát' (Supervised Learning) với nhãn mục tiêu dạng phân loại (Classification)?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -66,7 +66,7 @@
     "type": "MC_MULTI",
     "content": "Để đánh giá hiệu năng của một mô hình bài toán Phân loại (Classification) khi tập dữ liệu bị mất cân bằng lớp nghiêm trọng (Imbalanced Data), những chỉ số nào dưới đây đáng tin cậy hơn độ chính xác thông thường (Accuracy)?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -95,7 +95,7 @@
     "type": "MC_SINGLE",
     "content": "Hiện tượng 'Quá khớp' (Overfitting) trong mô hình máy học xảy ra khi:",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -125,14 +125,14 @@
     "content": "Trong thuật toán phân cụm K-Means, phương pháp phổ biến nhất để lựa chọn số cụm K tối ưu dựa trên đồ thị suy giảm của tổng bình phương khoảng cách nội cụm (WCSS) được gọi là phương pháp đường gì?",
     "answer": "Khuỷu tay",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "hint": "Tiếng Anh là Elbow Method (Điểm gấp khúc như cùi chỏ / khuỷu tay)."
   },
   {
     "type": "TRUE_FALSE",
     "content": "Hệ số xác định R-squared (R²) trong mô hình hồi quy tuyến tính luôn nằm trong khoảng từ -1 đến +1.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -151,7 +151,7 @@
     "type": "MC_SINGLE",
     "content": "Khi dữ liệu có phân phối lệch nhiều và xuất hiện các điểm ngoại lai (Outliers) cực đoan, giá trị đại diện hướng tâm nào nên được ưu tiên sử dụng để điền khuyết thiếu thay cho giá trị trung bình (Mean)?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -180,7 +180,7 @@
     "type": "TRUE_FALSE",
     "content": "Kỹ thuật K-Fold Cross-Validation giúp đánh giá độ ổn định và giảm thiểu nguy cơ phụ thuộc vào việc chia ngẫu nhiên tập dữ liệu Train/Test.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -199,7 +199,7 @@
     "type": "MC_SINGLE",
     "content": "Tiêu chí nào thường được sử dụng trong thuật toán Cây quyết định (Decision Tree - CART) để đo lường mức độ tinh khiết (Purity) khi phân nhánh?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -228,7 +228,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Một ngân hàng xây dựng mô hình máy học phát hiện giao dịch gian lận thẻ tín dụng. Do giao dịch gian lận chỉ chiếm 0.1% tổng số (mất cân bằng dữ liệu nghiêm trọng - Imbalanced Data), một mô hình 'ngây thơ' luôn dự đoán 'Không gian lận' vẫn đạt độ chính xác Accuracy = 99.9% nhưng bỏ sót 100% các vụ lừa đảo. Nhóm khoa học dữ liệu nên ưu tiên dùng chỉ số nào để đánh giá mô hình?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -257,7 +257,7 @@
     "type": "MC_SINGLE",
     "content": "Trong mô hình hồi quy tuyến tính cổ điển OLS, hệ số phóng đại phương sai VIF (Variance Inflation Factor) của một biến độc lập vượt quá 10 là dấu hiệu cảnh báo khuyết tật gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -286,7 +286,7 @@
     "type": "MC_SINGLE",
     "content": "Để kiểm định hiện tượng Tự tương quan bậc 1 (Autocorrelation) trong phần dư của mô hình hồi quy chuỗi thời gian, đại lượng thống kê nào được sử dụng phổ biến nhất?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -315,7 +315,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong bài toán phân loại nhị phân (Binary Classification), diện tích dưới đường cong ROC (ROC-AUC) bằng 0.5 phản ánh mô hình có khả năng phân biệt tương đương với việc tung đồng xu ngẫu nhiên.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -334,7 +334,7 @@
     "type": "MC_SINGLE",
     "content": "Khi tập dữ liệu gặp tình trạng mất cân bằng lớp nghiêm trọng (ví dụ 99.5% giao dịch bình thường, chỉ 0.5% giao dịch gian lận thẻ tín dụng), chỉ số đánh giá mô hình nào đáng tin cậy hơn Accuracy?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -363,7 +363,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thuật toán Cây quyết định (Decision Tree), chỉ số nào thường được sử dụng để đo lường mức độ hỗn loạn (độ bất thuần) của dữ liệu tại mỗi nút phân chia?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -392,7 +392,7 @@
     "type": "MC_MULTI",
     "content": "Những kỹ thuật nào dưới đây thường được áp dụng hiệu quả để khắc phục hiện tượng Quá khớp (Overfitting) trong các mô hình máy học?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -421,7 +421,7 @@
     "type": "TRUE_FALSE",
     "content": "Thuật toán Hồi quy Lasso (L1 Regularization) có đặc tính co các hệ số hồi quy của các biến không quan trọng về đúng bằng 0, nhờ đó có thể sử dụng làm công cụ tự động lựa chọn biến (Feature Selection).",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -440,7 +440,7 @@
     "type": "MC_SINGLE",
     "content": "Trong thuật toán phân cụm K-Means, phương pháp trực quan đồ thị nào thường được sử dụng phổ biến nhất để xác định số lượng cụm K tối ưu?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -469,7 +469,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Giảm chiều dữ liệu Phân tích thành phần chính (PCA) tìm kiếm các trục tọa độ mới nhằm mục tiêu tối ưu hóa điều gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -498,7 +498,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Kiểm định chéo K-Fold (K-Fold Cross-Validation) có mục đích chính là gì trong quy trình học máy?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -527,7 +527,7 @@
     "type": "MC_MULTI",
     "content": "Những phương pháp tiền xử lý nào dưới đây thường được áp dụng để phát hiện và xử lý giá trị ngoại lai (Outliers)?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -556,7 +556,7 @@
     "type": "TRUE_FALSE",
     "content": "Phương pháp chuẩn hóa Min-Max Scaling biến đổi dữ liệu về khoảng giá trị cố định [0, 1], trong khi Standard Scaling đưa biến về phân phối có giá trị trung bình bằng 0 và độ lệch chuẩn bằng 1.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -575,7 +575,7 @@
     "type": "MC_SINGLE",
     "content": "Trong mô hình hồi quy Logistic, hàm số toán học nào có vai trò ánh xạ giá trị đầu ra tuyến tính thành xác suất nằm trong khoảng (0, 1)?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -604,7 +604,7 @@
     "type": "MC_SINGLE",
     "content": "Trong bài toán phát hiện giao dịch gian lận ngân hàng, chỉ số Độ nhạy (Recall) đo lường điều gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -633,7 +633,7 @@
     "type": "MC_SINGLE",
     "content": "Một sàn thương mại điện tử muốn phân nhóm 500.000 khách hàng thành các phân khúc tiếp thị đặc thù dựa trên 3 tiêu chí: Độ mới giao dịch (Recency), Tần suất mua hàng (Frequency) và Tổng chi tiêu (Monetary). Do dữ liệu khách hàng chưa có nhãn phân loại sẵn trước, thuật toán học máy nào là lựa chọn phù hợp nhất?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

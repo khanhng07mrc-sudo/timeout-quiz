@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { io, Socket } from "socket.io-client";
 import type {
@@ -122,6 +122,9 @@ export default function DisplayPage() {
         const p = e.data.payload;
         if (p.roomState !== undefined) {
           setRoomState(p.roomState);
+          if (p.roomState?.status === "LOBBY") {
+            soundManager.playLobbyMusic();
+          }
           if (p.roomState?.wagerState) {
             const ws = p.roomState.wagerState;
             if (ws.phase === "WAGER_PERIOD") {
@@ -142,7 +145,8 @@ export default function DisplayPage() {
               p.currentQuestion.endsAt &&
               p.currentQuestion.endsAt > Date.now()
             );
-            if (isTimerRunning && p.roomState?.mode !== "BUZZ") {
+            const activeMode = p.roomState?.mode || roomState?.mode;
+            if (isTimerRunning && activeMode !== "BUZZ") {
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
             } else {
               soundManager.stopMusic();
@@ -537,7 +541,7 @@ export default function DisplayPage() {
     };
   }, [code]);
 
-  const handleUnlockAudio = () => {
+  const handleUnlockAudio = useCallback(() => {
     soundManager.unlockAudio();
     soundManager.setMuted(false);
     setAudioUnlocked(true);
@@ -557,7 +561,22 @@ export default function DisplayPage() {
         soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }
     }
-  };
+  }, [currentQuestion, matchStarting, questionPrepare, revealPayload, roomState?.mode, roomState?.status]);
+
+  useEffect(() => {
+    if (audioUnlocked) return;
+    const onUserInteraction = () => {
+      handleUnlockAudio();
+    };
+    window.addEventListener("click", onUserInteraction);
+    window.addEventListener("pointerdown", onUserInteraction);
+    window.addEventListener("keydown", onUserInteraction);
+    return () => {
+      window.removeEventListener("click", onUserInteraction);
+      window.removeEventListener("pointerdown", onUserInteraction);
+      window.removeEventListener("keydown", onUserInteraction);
+    };
+  }, [audioUnlocked, handleUnlockAudio]);
 
   const toggleSound = () => {
     const next = !soundMuted;

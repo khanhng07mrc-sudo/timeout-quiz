@@ -3,7 +3,7 @@
     "type": "MC_SINGLE",
     "content": "Tam giác ràng buộc cốt lõi (Project Management Iron Triangle) trong quản lý dự án bao gồm 3 yếu tố cơ bản nào?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -32,7 +32,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phương pháp sơ đồ mạng CPM (Critical Path Method), 'Đường găng' (Critical Path) được định nghĩa là gì?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -61,7 +61,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phương pháp Quản lý Giá trị Thu được (EVM), nếu chỉ số hiệu suất chi phí CPI = EV / AC > 1, điều này có ý nghĩa gì đối với dự án?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -91,14 +91,14 @@
     "content": "Công cụ phân rã mục tiêu toàn bộ dự án thành các gói công việc (Work Packages) nhỏ hơn, có thể quản lý và giao quyền được gọi là gì? (Ghi tên viết tắt 3 chữ cái)",
     "answer": "WBS",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "hint": "Viết tắt của thuật ngữ Work Breakdown Structure."
   },
   {
     "type": "MC_MULTI",
     "content": "Trong quản trị rủi ro dự án, những chiến lược nào dưới đây được sử dụng để ứng phó với các 'Rủi ro tiêu cực' (Threats)?",
     "points": 20,
-    "timeLimit": 35,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -127,7 +127,7 @@
     "type": "TRUE_FALSE",
     "content": "Trong kỹ thuật ước tính 3 điểm của PERT, thời gian kỳ vọng Te được tính theo công thức: Te = (To + 4Tm + Tp) / 6 (với To: lạc quan, Tm: khả dĩ nhất, Tp: bi quan).",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -146,7 +146,7 @@
     "type": "MC_SINGLE",
     "content": "Mô hình tổ chức dự án nào mà ở đó người quản lý dự án có toàn quyền quyết định về nhân sự, ngân sách và nguồn lực cao nhất?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -175,7 +175,7 @@
     "type": "TRUE_FALSE",
     "content": "Chỉ số chênh lệch tiến độ SV (Schedule Variance) trong EVM được tính bằng công thức SV = EV - AC.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -194,7 +194,7 @@
     "type": "MC_SINGLE",
     "content": "Giai đoạn nào trong vòng đời dự án thường tiêu hao phần lớn thời gian, nhân lực và nguồn lực tài chính của dự án nhất?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -223,7 +223,7 @@
     "type": "MC_SINGLE",
     "content": "Tình huống: Trong dự án phát triển ứng dụng di động, khách hàng liên tục yêu cầu bổ sung các tính năng nhỏ ngoài hợp đồng ban đầu. Quản trị dự án (PM) đều chấp thuận miệng mà không thông qua quy trình đánh giá thay đổi chính thức, khiến dự án chậm tiến độ 3 tháng và vượt 35% ngân sách. Hiện tượng này được gọi là gì?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -252,7 +252,7 @@
     "type": "MC_SINGLE",
     "content": "Trong quản trị dự án bằng phương pháp Sơ đồ mạng CPM, 'Đường găng' (Critical Path) được định nghĩa là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -281,7 +281,7 @@
     "type": "MC_SINGLE",
     "content": "Độ dự trữ toàn phần (Total Float / Total Slack) của các công việc nằm trên Đường găng luôn bằng bao nhiêu?",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -310,7 +310,7 @@
     "type": "TRUE_FALSE",
     "content": "Nếu một công việc không nằm trên đường găng bị chậm trễ trong phạm vi Độ dự trữ tự do (Free Float), nó sẽ không làm ảnh hưởng đến thời điểm bắt đầu sớm nhất của bất kỳ công việc tiếp theo nào.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -329,7 +329,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phương pháp Quản lý giá trị thu được (EVM), công thức chuẩn để tính Chênh lệch chi phí (Cost Variance - CV) là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -358,7 +358,7 @@
     "type": "MC_SINGLE",
     "content": "Một dự án tại thời điểm kiểm tra có Chỉ số hiệu quả tiến độ SPI = 0.85 và Chỉ số hiệu quả chi phí CPI = 1.15. Dự án đang ở tình trạng nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -387,7 +387,7 @@
     "type": "MC_SINGLE",
     "content": "Trong phương pháp ước lượng PERT 3 điểm, công thức tính Thời gian kỳ vọng (Te) từ thời gian Lạc quan (o), Thường gặp (m) và Bi quan (p) là gì?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -416,7 +416,7 @@
     "type": "MC_MULTI",
     "content": "Theo hướng dẫn chuẩn của PMBOK, Đường cơ sở phạm vi dự án (Scope Baseline) bao gồm những tài liệu phê duyệt nào?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -445,7 +445,7 @@
     "type": "TRUE_FALSE",
     "content": "Hiện tượng 'Bành trướng phạm vi' (Scope Creep) xảy ra khi phạm vi dự án bị mở rộng thêm các tính năng mà không thông qua quy trình kiểm soát thay đổi chính thức và không được điều chỉnh thời gian, chi phí tương ứng.",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -464,7 +464,7 @@
     "type": "MC_SINGLE",
     "content": "Biểu đồ Gantt (Gantt Chart) có ưu điểm trực quan nổi bật nhất trong quản trị dự án là gì?",
     "points": 10,
-    "timeLimit": 25,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -493,7 +493,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật 'Theo dõi nhanh' (Fast-tracking) nhằm rút ngắn tiến độ dự án được thực hiện bằng cách nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -522,7 +522,7 @@
     "type": "MC_SINGLE",
     "content": "Kỹ thuật 'Đâm nén tiến độ' (Crashing) khác với 'Theo dõi nhanh' (Fast-tracking) ở điểm căn bản nào?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -551,7 +551,7 @@
     "type": "MC_SINGLE",
     "content": "Một sự kiện rủi ro có xác suất xảy ra là 20% và nếu xảy ra sẽ gây tổn thất tài chính 500 triệu đồng. Giá trị tiền tệ kỳ vọng (Expected Monetary Value - EMV) của rủi ro này là bao nhiêu?",
     "points": 20,
-    "timeLimit": 25,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -580,7 +580,7 @@
     "type": "MC_MULTI",
     "content": "Những chiến lược nào dưới đây được sử dụng để ứng phó với các rủi ro tiêu cực (đe dọa) trong quản lý dự án?",
     "points": 20,
-    "timeLimit": 30,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -609,7 +609,7 @@
     "type": "TRUE_FALSE",
     "content": "Hợp đồng trọn gói giá cố định (Firm Fixed Price - FFP) đẩy phần lớn rủi ro phát sinh vượt chi phí sang cho Bên nhận thầu (nhà thầu).",
     "points": 10,
-    "timeLimit": 20,
+    "timeLimit": 15,
     "options": [
       {
         "id": "true",
@@ -628,7 +628,7 @@
     "type": "MC_SINGLE",
     "content": "Dự án phát triển phần mềm có Tổng ngân sách phê duyệt BAC = 600 triệu đồng. Tại ngày kiểm toán, Giá trị thu được EV = 240 triệu, Chi phí thực tế đã thanh toán AC = 300 triệu. Giả định hiệu quả chi phí từ nay đến khi kết thúc dự án vẫn giữ nguyên tỷ lệ CPI hiện tại, Tổng chi phí dự báo khi hoàn thành (EAC) là bao nhiêu?",
     "points": 30,
-    "timeLimit": 35,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",

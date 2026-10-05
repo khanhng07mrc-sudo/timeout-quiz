@@ -187,14 +187,11 @@ function getBloomLevelFromPoints(points, explicitLevel) {
   if (explicitLevel === "REMEMBER" || explicitLevel === "APPLY" || explicitLevel === "ANALYZE") {
     return explicitLevel;
   }
-  if (points >= 20) return "ANALYZE";
-  if (points >= 15) return "APPLY";
+  if (points >= 30) return "ANALYZE";
+  if (points >= 20) return "APPLY";
   return "REMEMBER";
 }
-function quantizeOlympiaTimeLimit(points = 10, explicitTimeLimit) {
-  if (explicitTimeLimit === 15 || explicitTimeLimit === 20 || explicitTimeLimit === 30 || explicitTimeLimit === 60) {
-    return explicitTimeLimit;
-  }
+function quantizeOlympiaTimeLimit(points = 10, _explicitTimeLimit) {
   if (points <= 10) return 15;
   if (points <= 20) return 20;
   return 30;
@@ -206,7 +203,7 @@ function getBuzzedAnswerTimeLimit(question, overridePoints) {
   const effPoints = overridePoints !== void 0 ? overridePoints : question.points ?? 10;
   const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
   const isHigh = bloom === "ANALYZE" || effPoints >= 30;
-  const isMedium = bloom === "APPLY" || effPoints >= 15;
+  const isMedium = bloom === "APPLY" || effPoints >= 20;
   if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
     if (isHigh) return 25;
     if (isMedium) return 20;
@@ -217,26 +214,10 @@ function getBuzzedAnswerTimeLimit(question, overridePoints) {
   return 10;
 }
 function getStandardQuestionTimeLimit(question, overridePoints) {
-  if (question.timeLimit && question.timeLimit > 0 && question.timeLimit !== 30) {
-    return question.timeLimit;
-  }
   const effPoints = overridePoints !== void 0 ? overridePoints : question.points ?? 10;
-  const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
-  const isHigh = bloom === "ANALYZE" || effPoints >= 30;
-  const isMedium = bloom === "APPLY" || effPoints >= 15;
-  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
-    if (isHigh) return 30;
-    if (isMedium) return 20;
-    return 15;
-  }
-  if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
-    if (isHigh) return 60;
-    if (isMedium) return 45;
-    return 30;
-  }
-  if (isHigh) return 45;
-  if (isMedium) return 30;
-  return 20;
+  if (effPoints <= 10) return 15;
+  if (effPoints <= 20) return 20;
+  return 30;
 }
 
 // src/lib/game-engine/scoring.ts
@@ -2688,7 +2669,7 @@ function registerSocketHandlers(io2) {
           questionState.buzzDisqualifiedTeamIds = [];
         }
         const isDeviceAnswer = (config?.answerMethod ?? "DEVICE") === "DEVICE";
-        const standardTimeLimit = isDeviceAnswer ? getStandardQuestionTimeLimit(q, chosenPoints) : q.timeLimit || 30;
+        const standardTimeLimit = getStandardQuestionTimeLimit(q, chosenPoints);
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
         const isAutoTimer = config?.autoTimerStart === true && !bouncebackSelectPhase;
@@ -3720,8 +3701,7 @@ function registerSocketHandlers(io2) {
         await openBuzzWindow(io2, room.id, room.code, q.id);
         return;
       }
-      const isDeviceAnswerMode = (room.config?.answerMethod ?? "DEVICE") === "DEVICE";
-      const effectiveTimeLimit = activeQ?.timeLimit || (isDeviceAnswerMode ? getStandardQuestionTimeLimit(q) : quantizeOlympiaTimeLimit(q.points, q.timeLimit));
+      const effectiveTimeLimit = getStandardQuestionTimeLimit(q);
       const endsAt = Date.now() + effectiveTimeLimit * 1e3;
       if (activeQ) {
         activeQ.timerPending = false;

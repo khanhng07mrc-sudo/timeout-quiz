@@ -4314,6 +4314,7 @@ export default function AdminSandboxPage() {
                   src={`/display/${code}`}
                   title="Display Preview"
                   className="w-full h-full border-0"
+                  allow="autoplay; camera; microphone"
                 />
               </div>
             </div>
@@ -4482,6 +4483,7 @@ export default function AdminSandboxPage() {
                 <iframe
                   ref={playerIframeRef}
                   src={`/play/${code}?sandbox=1`}
+                  allow="autoplay; camera; microphone"
                   onLoad={() => {
                     if (isOfflineSandbox) {
                       syncToIframes();

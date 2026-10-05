@@ -21,7 +21,7 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
 };
 
 const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
-  lobby: { primary: "/sounds/lobby.ogg", fallbacks: ["/sounds/lobby.mp3", "/sounds/lobby.wav"] },
+  lobby: { primary: "/sounds/lobby.mp3", fallbacks: ["/sounds/lobby.ogg", "/sounds/lobby.wav"] },
   olympia_5s: { primary: "/sounds/olympia_5s.mp3", fallbacks: ["/sounds/olympia_5s_left.mp3"] },
   olympia_15s: { primary: "/sounds/olympia_15s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_20s: { primary: "/sounds/olympia_20s.ogg", fallbacks: ["/sounds/olympia_20s.mp3", "/sounds/question_suspense.mp3"] },
@@ -43,6 +43,16 @@ class SoundManager {
   private fadeInterval: NodeJS.Timeout | null = null;
   private questionMusicTimeout: NodeJS.Timeout | null = null;
 
+  // Pending audio track if blocked by browser autoplay policy
+  private pendingMusicTrack: {
+    type: "LOBBY" | "QUESTION";
+    audioKey: BGMKey;
+    targetVolFactor: number;
+    crossfadeMs: number;
+    questionId?: string;
+  } | null = null;
+  private unlockListenerAttached: boolean = false;
+
   // Preloaded audio elements
   private sfxMap: Map<string, HTMLAudioElement> = new Map();
   private bgmMap: Map<string, HTMLAudioElement> = new Map();
@@ -51,7 +61,20 @@ class SoundManager {
   constructor() {
     if (typeof window !== "undefined") {
       this.initAudioAssets();
+      this.setupGlobalUnlockListener();
     }
+  }
+
+  private setupGlobalUnlockListener() {
+    if (typeof window === "undefined" || this.unlockListenerAttached) return;
+    this.unlockListenerAttached = true;
+    const unlockEvents = ["pointerdown", "touchstart", "click", "keydown"];
+    const handleInteraction = () => {
+      unlockEvents.forEach((ev) => window.removeEventListener(ev, handleInteraction, true));
+      this.unlockListenerAttached = false;
+      this.unlockAudio();
+    };
+    unlockEvents.forEach((ev) => window.addEventListener(ev, handleInteraction, { capture: true, once: false }));
   }
 
   private createAudioWithFallbacks(config: AudioSourceConfig, loop: boolean = false): HTMLAudioElement {
@@ -108,6 +131,18 @@ class SoundManager {
         tick.currentTime = 0;
         tick.volume = this.volume;
       }).catch(() => {});
+    }
+
+    if (this.pendingMusicTrack && !this.isMuted) {
+      const pending = this.pendingMusicTrack;
+      this.pendingMusicTrack = null;
+      this.playMusicTrack(
+        pending.type,
+        pending.audioKey,
+        pending.targetVolFactor,
+        pending.crossfadeMs,
+        pending.questionId
+      );
     }
   }
 
@@ -172,7 +207,12 @@ class SoundManager {
     }, stepInterval);
   }
 
-  private fadeInAudio(audio: HTMLAudioElement, targetVol: number, durationMs: number = 400) {
+  private fadeInAudio(
+    audio: HTMLAudioElement,
+    targetVol: number,
+    durationMs: number = 400,
+    onAutoplayBlocked?: () => void
+  ) {
     const steps = 15;
     const stepInterval = Math.max(15, Math.floor(durationMs / steps));
     const initialVol = 0.02;
@@ -194,6 +234,10 @@ class SoundManager {
       }, stepInterval);
     }).catch(() => {
       // Autoplay policy fallback
+      if (onAutoplayBlocked) {
+        onAutoplayBlocked();
+      }
+      this.setupGlobalUnlockListener();
     });
   }
 
@@ -268,7 +312,10 @@ class SoundManager {
           this.currentPlayingQuestionId = null;
         }
       };
-      nextAudio.play().catch(() => {});
+      nextAudio.play().catch(() => {
+        this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };
+        this.setupGlobalUnlockListener();
+      });
     } else {
       // For Lobby or ambient music, crossfade smoothly
       if (prevAudio && prevAudio !== nextAudio && !prevAudio.paused) {
@@ -281,7 +328,9 @@ class SoundManager {
       this.currentPlayingQuestionId = null;
       this.lastMusicStartTime = now;
 
-      this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50));
+      this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50), () => {
+        this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };
+      });
     }
   }
 
@@ -388,6 +437,7 @@ class SoundManager {
    * @param fadeDurationMs Duration of fade out in milliseconds (defaults to 450ms)
    */
   public stopMusic(fadeDurationMs: number = 450) {
+    this.pendingMusicTrack = null;
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;

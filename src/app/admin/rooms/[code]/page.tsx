@@ -118,7 +118,14 @@ export default function AdminRoomPage() {
     setSoundEnabled(next);
     soundEnabledRef.current = next;
     soundManager.setMuted(!next);
-    if (next) soundManager.unlockAudio();
+    if (next) {
+      soundManager.unlockAudio();
+      if (roomState?.status === "LOBBY") {
+        soundManager.playLobbyMusic();
+      }
+    } else {
+      soundManager.stopMusic();
+    }
   };
 
   // Local ticker for match warmup countdown (5s)
@@ -255,7 +262,12 @@ export default function AdminRoomPage() {
       setTimeout(() => setErrorMessage(""), 6000);
     });
 
-    socket.on("room:state", setRoomState);
+    socket.on("room:state", (state) => {
+      setRoomState(state);
+      if (soundEnabledRef.current && state.status === "LOBBY") {
+        soundManager.playLobbyMusic();
+      }
+    });
 
     socket.on("game:starting", (p) => {
       setMatchStarting({ seconds: p.seconds });

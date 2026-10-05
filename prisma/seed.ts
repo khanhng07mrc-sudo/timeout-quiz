@@ -66,7 +66,7 @@ async function main() {
             options: q.options || undefined,
             answer: q.answer || null,
             points: normalizedPts,
-            timeLimit: q.timeLimit || 30,
+            timeLimit: normalizedPts <= 10 ? 15 : normalizedPts <= 20 ? 20 : 30,
             hint: q.hint || null,
             order: i + 1,
           },

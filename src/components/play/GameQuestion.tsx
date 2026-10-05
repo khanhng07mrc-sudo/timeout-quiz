@@ -1081,26 +1081,12 @@ export default function GameQuestion({
               : (fillText || essayText || undefined);
             if (onFinalizeAnswer) {
               onFinalizeAnswer(finalAns);
-            } else if (onStopEarly) {
-              onStopEarly();
             }
           }}
           className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-emerald-300/40 hover:border-emerald-300"
         >
           <span className="text-base">🔒</span>
           <span>Chốt đáp án ({timerDisplayRemaining}s còn lại — Hoàn thành sớm)</span>
-        </button>
-      )}
-
-      {/* Early Stop Button for Host/Special bypass if provided */}
-      {onStopEarly && !isFinalizedLocally && !answered && !revealPayload && timer && timerDisplayRemaining > 0 && canAnswerThisQuestion() && (
-        <button
-          type="button"
-          onClick={onStopEarly}
-          className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-rose-300/30 hover:border-rose-300"
-        >
-          <span className="text-base">⏹️</span>
-          <span>Dừng thời gian sớm ({timerDisplayRemaining}s)</span>
         </button>
       )}
 
@@ -1124,6 +1110,8 @@ export default function GameQuestion({
               <span className="text-green-400">
                 {roomMode === "DICE_RACE"
                   ? "✓ Đúng rồi!"
+                  : isGhost
+                  ? "✓ Đúng rồi! (Tích luỹ hồi sinh: +1 câu đúng 🔥)"
                   : `✓ Đúng rồi! +${
                       revealPayload.teamSummaries?.find((ts) => (myTeamId ? ts.teamId === myTeamId : true))?.pointsAwarded
                       ?? revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect)?.pointsAwarded

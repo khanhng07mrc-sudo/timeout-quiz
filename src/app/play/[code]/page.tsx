@@ -60,7 +60,15 @@ export default function PlayPage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
   const [activeTeamId, setActiveTeamId] = useState<string>("");
-  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+  const [selectedTeamId, setSelectedTeamId] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const pt = searchParams.get("teamId");
+      if (pt) return pt;
+      return sessionStorage.getItem(`timeout_team_id_${code}`) || "";
+    }
+    return "";
+  });
   const [activePlayerName, setActivePlayerName] = useState<string>("");
   const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
   const [usedCardTypes, setUsedCardTypes] = useState<import("@/types").CardType[]>([]);
@@ -180,14 +188,10 @@ export default function PlayPage() {
           setSelectedTeamId(teamId);
           if (teamName) setActivePlayerName(teamName);
 
-          if (currentAns !== undefined) {
-            if (currentAns) {
-              teamAnswersRef.current.set(teamId, currentAns);
-            } else {
-              teamAnswersRef.current.delete(teamId);
-            }
+          if (currentAns !== undefined && currentAns !== null) {
+            teamAnswersRef.current.set(teamId, currentAns);
           }
-          const hasAnswered = Boolean(teamAnswersRef.current.get(teamId));
+          const hasAnswered = Boolean(teamAnswersRef.current.has(teamId));
           setAnswered(hasAnswered);
 
           const currentPid = playerIdRef.current;
@@ -922,6 +926,9 @@ export default function PlayPage() {
     myTeamIdRef.current = teamId;
     setSelectedTeamId(teamId);
     setActiveTeamId(teamId);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(`timeout_team_id_${code}`, teamId);
+    }
 
     // Optimistically update local roomState immediately
     setRoomState((prev) => {
@@ -1246,7 +1253,7 @@ export default function PlayPage() {
               timer={timer}
               onAnswer={handleAnswer}
               onBuzz={handleBuzz}
-              answered={Boolean(effectiveTeamId && teamAnswersRef.current.get(effectiveTeamId)) || answered}
+              answered={Boolean(effectiveTeamId && teamAnswersRef.current.has(effectiveTeamId))}
               initialAnswer={(effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : null) || null}
               revealPayload={revealPayload}
               roomStatus={roomState?.status ?? "PLAYING"}
@@ -1259,7 +1266,6 @@ export default function PlayPage() {
               stealBuzzedTeam={stealBuzzedTeam}
               buzzedBy={buzzedBy}
               onSelectPoints={handleSelectPoints}
-              onStopEarly={handleStopEarly}
               onFinalizeAnswer={handleFinalizeAnswer}
               isSpectator={isSpectator}
               isGhost={roomState?.mode === "ELIMINATION" && Boolean(myTeam?.isEliminated || myTeam?.isGhost)}

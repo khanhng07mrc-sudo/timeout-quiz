@@ -4125,6 +4125,9 @@ function registerSocketHandlers(io2) {
         include: { room: true }
       });
       if (!player?.room || player.room.status !== "PLAYING") return;
+      if (!player.isHost) {
+        return;
+      }
       if (answer !== void 0) {
         await processAnswerSubmission({
           io: io2,
@@ -4396,8 +4399,12 @@ async function getActiveParticipantsForQuestion(room, questionId) {
     return [currentMatch?.team1Id, currentMatch?.team2Id].filter(Boolean);
   }
   if (room.teamMode === "TEAM") {
+    const whereClause = { roomId: room.id };
+    if (room.mode !== "ELIMINATION") {
+      whereClause.isEliminated = false;
+    }
     const teams = await prisma.team.findMany({
-      where: { roomId: room.id, isEliminated: false }
+      where: whereClause
     });
     return teams.map((t) => t.id);
   } else {

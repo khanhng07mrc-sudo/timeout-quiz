@@ -4012,6 +4012,10 @@ export function registerSocketHandlers(io: IO) {
         include: { room: true },
       });
       if (!player?.room || player.room.status !== "PLAYING") return;
+      // Normal contestants must NEVER be able to stop question timer early for everyone!
+      if (!player.isHost) {
+        return;
+      }
 
       if (answer !== undefined) {
         await processAnswerSubmission({
@@ -4317,8 +4321,14 @@ async function getActiveParticipantsForQuestion(room: any, questionId: string): 
   }
   // CLASSIC, POWERUP, ELIMINATION, WAGER
   if (room.teamMode === "TEAM") {
+    // In ELIMINATION mode, ghost teams (isEliminated: true) are active participants answering for revival stats!
+    // They must NOT be excluded, otherwise the question terminates prematurely as soon as surviving teams answer.
+    const whereClause: any = { roomId: room.id };
+    if (room.mode !== "ELIMINATION") {
+      whereClause.isEliminated = false;
+    }
     const teams = await prisma.team.findMany({
-      where: { roomId: room.id, isEliminated: false },
+      where: whereClause,
     });
     return teams.map((t) => t.id);
   } else {

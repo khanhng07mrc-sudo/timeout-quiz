@@ -973,6 +973,8 @@ export default function AdminSandboxPage() {
       if (curQ.tournamentTeam1Id && curQ.tournamentTeam2Id) {
         neededTeamIds = [curQ.tournamentTeam1Id, curQ.tournamentTeam2Id];
       }
+    } else if (selectedMode === "ELIMINATION") {
+      neededTeamIds = teams.map((t) => t.id);
     } else {
       neededTeamIds = teams.filter((t) => !t.isEliminated).map((t) => t.id);
     }
@@ -1629,7 +1631,11 @@ export default function AdminSandboxPage() {
         const chosenOpt = opts.find((o: any) => o.id === answer || o.text === answer);
         const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
         const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
-        const isCorrect = correctOpt ? correctOpt.id === answer : false;
+        const isCorrect = correctOpt
+          ? (correctOpt.id === answer ||
+             (Array.isArray(answer) && answer.includes(correctOpt.id)) ||
+             (typeof answer === "string" && (correctOpt.text?.trim() === answer.trim() || correctOpt.id === answer.trim())))
+          : false;
         const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
         offlineAnswersRef.current.set(targetTeamId, { answer, isCorrect, points: awarded });
 
@@ -1651,7 +1657,11 @@ export default function AdminSandboxPage() {
         const existingAns = offlineAnswersRef.current.get(targetTeamId)?.answer;
         const finalAns = answer || existingAns;
         if (finalAns) {
-          const isCorrect = correctOpt ? correctOpt.id === finalAns : false;
+          const isCorrect = correctOpt
+            ? (correctOpt.id === finalAns ||
+               (Array.isArray(finalAns) && finalAns.includes(correctOpt.id)) ||
+               (typeof finalAns === "string" && (correctOpt.text?.trim() === finalAns.trim() || correctOpt.id === finalAns.trim())))
+            : false;
           const awarded = isCorrect ? (currentQuestion.question.points || 10) : 0;
           offlineAnswersRef.current.set(targetTeamId, { answer: finalAns, isCorrect, points: awarded });
 

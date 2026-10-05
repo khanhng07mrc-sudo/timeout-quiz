@@ -5510,8 +5510,8 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
       let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         for (const [, ghostStat] of roomGhosts.entries()) {
-          if (ghostStat.firstGhostStage !== void 0 && currentStageJustFinished === ghostStat.firstGhostStage) {
-            ghostStat.ghostRoundAllCorrect = ghostStat.currentRoundCorrect >= interval;
+          if (ghostStat.currentRoundCorrect >= interval) {
+            ghostStat.ghostRoundAllCorrect = true;
           }
           ghostStat.currentRoundCorrect = 0;
         }

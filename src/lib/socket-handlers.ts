@@ -5708,10 +5708,10 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
       const currentStageJustFinished = Math.floor((room.currentQuestion + 1) / interval);
       let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
-        // ĐIỀU KIỆN TIÊN QUYẾT: Đội bóng ma PHẢI trả lời đúng 100% tất cả các câu trong CHẶNG ĐẦU TIÊN ngay sau khi bị loại!
+        // 1. Evaluate round performance for each ghost team (100% correct in at least 1 round qualifies for revival)
         for (const [, ghostStat] of roomGhosts.entries()) {
-          if (ghostStat.firstGhostStage !== undefined && currentStageJustFinished === ghostStat.firstGhostStage) {
-            ghostStat.ghostRoundAllCorrect = ghostStat.currentRoundCorrect >= interval;
+          if (ghostStat.currentRoundCorrect >= interval) {
+            ghostStat.ghostRoundAllCorrect = true;
           }
           ghostStat.currentRoundCorrect = 0; // reset for next round
         }

@@ -239,12 +239,13 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
       "Điều kiện công bằng & Thắng Knockout: Quyền trợ cấp CHỈ sử dụng được khi còn ít nhất 2 đội có điểm > 0. Nếu chỉ còn duy nhất 1 đội có điểm > 0, đội đó lập tức CHIẾN THẮNG ngay (Knockout Win)!",
     ],
     scoringVi: [
-      "Đội cược cuối cùng: Đúng = Nhận đúng số điểm cược; Sai = Bị trừ đúng số điểm cược.",
-      "Các đội còn lại: Đúng = Nhận 1/2 điểm câu hỏi (làm tròn lên số chia hết cho 5 gần nhất); Sai = Không mất điểm (0đ).",
-      "Trợ cấp: Hồi sinh về mức điểm bằng đội thấp nhất còn dương điểm (> 0).",
+      "Đội cược: Đúng = Nhận trọn vẹn số điểm cược (+W); Sai = Trừ điểm động theo số đội khác giải được: Cả 4 đội cùng sai phạt 0đ; Có đội khác đúng phạt theo đơn vị U = Round(W/2) (Câu 10đ: phạt 1×U; Câu 20đ: phạt tối đa 2×U; Câu 30đ: phạt tối đa 3×U).",
+      "Các đội còn lại: Đúng = Nhận cố định 1/2 điểm gốc câu hỏi (+5đ / +10đ / +15đ); Sai = Không bị trừ điểm (0đ).",
+      "Trợ cấp (Bailout): Hồi sinh về mức điểm bằng đội thấp nhất còn dương điểm (> 0).",
     ],
     tipsVi: [
-      "Đội cược cuối gánh rủi ro cao nhất nên hãy cân nhắc kỹ giữa việc giành trọn điểm cược hay giữ an toàn hưởng 1/2 điểm câu hỏi!",
+      "Đội cược cần tự tin và cân nhắc kỹ mức cược để tối ưu điểm số và tránh bị phạt nếu các đối thủ cùng giải đúng!",
+      "Các đội không cược hãy luôn tập trung trả lời đúng để vừa tích lũy điểm thưởng vừa trừng phạt sai lầm của đội cược.",
       "Tận dụng cơ hội Knockout bằng cách cược thông minh để loại dần các đối thủ về ≤ 0 điểm.",
     ],
   },

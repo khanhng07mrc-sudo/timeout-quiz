@@ -159,15 +159,26 @@ export function computeDetailedPointsAwarded(ctx: ScoringContext): DetailedPoint
     return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
   }
 
+  const isKahootScaleMode = ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION";
   const multiplier = ctx.multiplier ?? 1;
-  const basePoints = Math.round(base * multiplier);
 
-  // 1. Tốc độ phản xạ (Speed bonus theo mili-giây)
+  let basePoints = 0;
   let speedPoints = 0;
-  if (ctx.config.timeBonusEnabled) {
+
+  // 1. Điểm cơ bản và Tốc độ phản xạ theo chuẩn Kahoot:
+  // Tối đa 100% điểm (1000/1500/2000) khi trả lời tức thì, giảm tuyến tính về 50% (500/750/1000) ở giây cuối cùng.
+  if (isKahootScaleMode) {
     const totalMs = ctx.timeLimit * 1000;
     const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+    basePoints = Math.round(base * 0.5 * multiplier);
     speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
+  } else {
+    basePoints = Math.round(base * multiplier);
+    if (ctx.config.timeBonusEnabled) {
+      const totalMs = ctx.timeLimit * 1000;
+      const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+      speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
+    }
   }
 
   // 2. Chuỗi đúng liên tiếp (Streak bonus)
@@ -345,10 +356,25 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
       ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length
       : ctx.timeLimit * 1000;
 
+  const isKahootScaleMode = ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION";
+  const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1000));
+  const multiplier = ctx.multiplier ?? 1;
+
   let speedBonus = 0;
-  if (ctx.config.timeBonusEnabled) {
-    const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1000));
+  let basePoints = 0;
+  let speedPoints = 0;
+
+  if (isKahootScaleMode) {
     speedBonus = remainingRatio * 0.5;
+    // Chuẩn Kahoot: Điểm sàn cố định 50% và Thưởng thời gian phản xạ tối đa 50%
+    basePoints = Math.round(base * 0.5 * accuracyRatio * multiplier);
+    speedPoints = Math.round(base * 0.5 * remainingRatio * accuracyRatio * multiplier);
+  } else {
+    if (ctx.config.timeBonusEnabled) {
+      speedBonus = remainingRatio * 0.5;
+    }
+    basePoints = Math.round(base * accuracyRatio * multiplier);
+    speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
   }
 
   // 3. Chuỗi đúng liên tiếp của Đội
@@ -360,11 +386,7 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
     else if (ctx.streak >= 5) streakBonus = 0.5;
   }
 
-  const multiplier = ctx.multiplier ?? 1;
-
   // Bóc tách từng phần điểm số chuẩn xác:
-  const basePoints = Math.round(base * accuracyRatio * multiplier);
-  const speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
   const streakPoints = Math.round(base * streakBonus * accuracyRatio * multiplier);
   const rarityPoints = Math.round(base * rarityBonus * accuracyRatio * multiplier);
   const points = basePoints + speedPoints + streakPoints + rarityPoints;

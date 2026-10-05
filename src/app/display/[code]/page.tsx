@@ -1626,7 +1626,7 @@ export default function DisplayPage() {
                             </div>
                             {(roomState.mode === "CLASSIC" || roomState.mode === "ELIMINATION") && !isGhostTeam && ts.pointsAwarded > 0 && (
                               <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1 border-t border-border/50 flex-wrap">
-                                <span className="text-zinc-400">Gốc: {(ts.basePoints ?? 1000).toLocaleString()}</span>
+                                <span className="text-zinc-400">Sàn: {(ts.basePoints ?? 500).toLocaleString()}</span>
                                 {(ts.speedPoints ?? 0) > 0 && (
                                   <span className="text-blue-400 font-semibold">⚡+{(ts.speedPoints ?? 0).toLocaleString()}</span>
                                 )}

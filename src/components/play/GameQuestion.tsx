@@ -1144,7 +1144,7 @@ export default function GameQuestion({
                   {(roomMode === "CLASSIC" || roomMode === "ELIMINATION") && (
                     <div className="flex flex-wrap items-center justify-center gap-1.5 text-xs font-normal">
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        🎯 Gốc: {(myTs?.basePoints ?? myAns?.basePoints ?? 1000).toLocaleString()}
+                        🎯 Sàn: {(myTs?.basePoints ?? myAns?.basePoints ?? 500).toLocaleString()}
                       </span>
                       {(myTs?.speedPoints ?? myAns?.speedPoints ?? 0) > 0 && (
                         <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">

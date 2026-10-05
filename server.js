@@ -284,13 +284,22 @@ function computeDetailedPointsAwarded(ctx) {
     const finalPenalty = -Math.floor(penalty * pm);
     return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
   }
+  const isKahootScaleMode = ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION";
   const multiplier = ctx.multiplier ?? 1;
-  const basePoints = Math.round(base * multiplier);
+  let basePoints = 0;
   let speedPoints = 0;
-  if (ctx.config.timeBonusEnabled) {
+  if (isKahootScaleMode) {
     const totalMs = ctx.timeLimit * 1e3;
     const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+    basePoints = Math.round(base * 0.5 * multiplier);
     speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
+  } else {
+    basePoints = Math.round(base * multiplier);
+    if (ctx.config.timeBonusEnabled) {
+      const totalMs = ctx.timeLimit * 1e3;
+      const remainingRatio = Math.max(0, 1 - ctx.timeSpent / totalMs);
+      speedPoints = Math.round(base * 0.5 * remainingRatio * multiplier);
+    }
   }
   let streakPoints = 0;
   if (ctx.streak && ctx.streak >= 2) {
@@ -411,10 +420,22 @@ function computeTeamQuestionScore(ctx) {
     };
   }
   const avgTimeSpent = ctx.correctTimes.length > 0 ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length : ctx.timeLimit * 1e3;
+  const isKahootScaleMode = ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION";
+  const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1e3));
+  const multiplier = ctx.multiplier ?? 1;
   let speedBonus = 0;
-  if (ctx.config.timeBonusEnabled) {
-    const remainingRatio = Math.max(0, 1 - avgTimeSpent / (ctx.timeLimit * 1e3));
+  let basePoints = 0;
+  let speedPoints = 0;
+  if (isKahootScaleMode) {
     speedBonus = remainingRatio * 0.5;
+    basePoints = Math.round(base * 0.5 * accuracyRatio * multiplier);
+    speedPoints = Math.round(base * 0.5 * remainingRatio * accuracyRatio * multiplier);
+  } else {
+    if (ctx.config.timeBonusEnabled) {
+      speedBonus = remainingRatio * 0.5;
+    }
+    basePoints = Math.round(base * accuracyRatio * multiplier);
+    speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
   }
   let streakBonus = 0;
   if (ctx.streak && ctx.streak >= 2) {
@@ -423,9 +444,6 @@ function computeTeamQuestionScore(ctx) {
     else if (ctx.streak === 4) streakBonus = 0.3;
     else if (ctx.streak >= 5) streakBonus = 0.5;
   }
-  const multiplier = ctx.multiplier ?? 1;
-  const basePoints = Math.round(base * accuracyRatio * multiplier);
-  const speedPoints = Math.round(base * speedBonus * accuracyRatio * multiplier);
   const streakPoints = Math.round(base * streakBonus * accuracyRatio * multiplier);
   const rarityPoints = Math.round(base * rarityBonus * accuracyRatio * multiplier);
   const points = basePoints + speedPoints + streakPoints + rarityPoints;

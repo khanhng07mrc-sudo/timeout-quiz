@@ -2567,8 +2567,8 @@ export default function AdminSandboxPage() {
           if (isCorrect) {
             const timeLimit = currentQuestion.timeLimit || 30;
             const ratio = Math.max(0, 1 - timeSpent / (timeLimit * 1000));
+            basePts = Math.round(effBase * 0.5);
             speedPts = Math.round(effBase * 0.5 * ratio);
-            basePts = effBase;
             rarityPts = irtMetrics.bonusRate > 0 ? Math.round(effBase * irtMetrics.bonusRate) : 0;
             pts = basePts + speedPts + rarityPts;
           } else {
@@ -3311,7 +3311,7 @@ export default function AdminSandboxPage() {
       if (isCorrect) {
         if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
           const ratio = Math.max(0, 1 - timeSpentMs / (timeLimit * 1000));
-          awarded = base + Math.round(base * 0.5 * ratio);
+          awarded = Math.round(base * 0.5) + Math.round(base * 0.5 * ratio);
         } else {
           awarded = base;
         }

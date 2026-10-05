@@ -5672,6 +5672,23 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
     const isGold = room.mode === "CLASSIC" && Boolean(roomGoldQuestions.get(room.id)?.has(question.id));
     const effectiveBasePoints = isGold ? question.points * 2 : question.points;
 
+    const qKey = `${room.id}:${question.id}`;
+    const teamCardsMap = roomQuestionTeamCards.get(qKey);
+    const activeCards = (ans.teamId && teamCardsMap?.get(ans.teamId)) || [];
+    let penaltyMultiplier = 1;
+    let isTargetedWithRiskCard = false;
+    if (teamCardsMap && ans.teamId) {
+      for (const [, otherCards] of teamCardsMap) {
+        if (otherCards.some((c) => (c.type === "PENALTY" || c.type === "ATTACK") && c.targetTeamId === ans.teamId)) {
+          penaltyMultiplier = 2;
+          isTargetedWithRiskCard = true;
+        }
+      }
+    }
+    const hasDoubleCard = activeCards.some((c) => c.type === "DOUBLE");
+    const hasRiskPowerup = hasDoubleCard || isTargetedWithRiskCard;
+    const shielded = activeCards.some((c) => c.type === "SHIELD");
+
     const points = computePointsAwarded({
       basePoints: effectiveBasePoints,
       timeSpent: ans.timeSpent,
@@ -5686,6 +5703,9 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
       bottomHalfTotal,
       totalParticipants: totalAnswers || allPlayers.length,
       mode: room.mode as any,
+      hasRiskPowerup,
+      shielded,
+      penaltyMultiplier,
     });
 
     await prisma.answer.update({
@@ -6372,13 +6392,18 @@ async function resolveQuestionTeamScores(
     }
 
     let penaltyMultiplier = 1;
+    let isTargetedWithRiskCard = false;
     if (teamCardsMap) {
       for (const [, otherCards] of teamCardsMap) {
-        if (otherCards.some((c) => c.type === "PENALTY" && c.targetTeamId === team.id)) {
+        if (otherCards.some((c) => (c.type === "PENALTY" || c.type === "ATTACK") && c.targetTeamId === team.id)) {
           penaltyMultiplier = 2;
+          isTargetedWithRiskCard = true;
         }
       }
     }
+
+    const hasDoubleCard = activeCards.some((c) => c.type === "DOUBLE");
+    const hasRiskPowerup = hasDoubleCard || isTargetedWithRiskCard;
 
     const effectiveTeamConfig = {
       ...(room.config as any),
@@ -6395,6 +6420,7 @@ async function resolveQuestionTeamScores(
       multiplier,
       shielded,
       penaltyMultiplier,
+      hasRiskPowerup,
       roomAccuracy,
       topHalfCorrect,
       topHalfTotal,

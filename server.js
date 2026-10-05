@@ -272,13 +272,14 @@ function normalizeToThreeLevels(points) {
 function computeDetailedPointsAwarded(ctx) {
   const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
   if (!ctx.isCorrect) {
-    if (!ctx.config.penaltyForWrong) {
+    if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+      if (!ctx.hasRiskPowerup || ctx.shielded) {
+        return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+      }
+    } else if (!ctx.config.penaltyForWrong || ctx.shielded) {
       return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
     }
     const penalty = Math.floor(base * 0.5);
-    if (ctx.shielded) {
-      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
-    }
     const pm = ctx.penaltyMultiplier ?? 1;
     const finalPenalty = -Math.floor(penalty * pm);
     return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
@@ -359,7 +360,24 @@ function computeTeamQuestionScore(ctx) {
     rarityBonus = rarityDelta * 1.5;
   }
   if (ctx.correctMembers === 0) {
-    if (!ctx.config.penaltyForWrong || ctx.shielded) {
+    if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+      if (!ctx.hasRiskPowerup || ctx.shielded) {
+        return {
+          points: 0,
+          basePoints: 0,
+          speedPoints: 0,
+          streakPoints: 0,
+          rarityPoints: 0,
+          accuracyRatio: 0,
+          speedBonus: 0,
+          avgTimeSpent: 0,
+          empiricalMultiplier,
+          streakBonus: 0,
+          effectiveDifficulty,
+          discrimination
+        };
+      }
+    } else if (!ctx.config.penaltyForWrong || ctx.shielded) {
       return {
         points: 0,
         basePoints: 0,
@@ -370,7 +388,9 @@ function computeTeamQuestionScore(ctx) {
         speedBonus: 0,
         avgTimeSpent: 0,
         empiricalMultiplier,
-        streakBonus: 0
+        streakBonus: 0,
+        effectiveDifficulty,
+        discrimination
       };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
@@ -385,7 +405,9 @@ function computeTeamQuestionScore(ctx) {
       speedBonus: 0,
       avgTimeSpent: 0,
       empiricalMultiplier,
-      streakBonus: 0
+      streakBonus: 0,
+      effectiveDifficulty,
+      discrimination
     };
   }
   const avgTimeSpent = ctx.correctTimes.length > 0 ? ctx.correctTimes.reduce((a, b) => a + b, 0) / ctx.correctTimes.length : ctx.timeLimit * 1e3;
@@ -5600,6 +5622,22 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
     }
     const isGold = room.mode === "CLASSIC" && Boolean(roomGoldQuestions.get(room.id)?.has(question.id));
     const effectiveBasePoints = isGold ? question.points * 2 : question.points;
+    const qKey2 = `${room.id}:${question.id}`;
+    const teamCardsMap = roomQuestionTeamCards.get(qKey2);
+    const activeCards = ans.teamId && teamCardsMap?.get(ans.teamId) || [];
+    let penaltyMultiplier = 1;
+    let isTargetedWithRiskCard = false;
+    if (teamCardsMap && ans.teamId) {
+      for (const [, otherCards] of teamCardsMap) {
+        if (otherCards.some((c) => (c.type === "PENALTY" || c.type === "ATTACK") && c.targetTeamId === ans.teamId)) {
+          penaltyMultiplier = 2;
+          isTargetedWithRiskCard = true;
+        }
+      }
+    }
+    const hasDoubleCard = activeCards.some((c) => c.type === "DOUBLE");
+    const hasRiskPowerup = hasDoubleCard || isTargetedWithRiskCard;
+    const shielded = activeCards.some((c) => c.type === "SHIELD");
     const points = computePointsAwarded({
       basePoints: effectiveBasePoints,
       timeSpent: ans.timeSpent,
@@ -5613,7 +5651,10 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
       bottomHalfCorrect,
       bottomHalfTotal,
       totalParticipants: totalAnswers || allPlayers.length,
-      mode: room.mode
+      mode: room.mode,
+      hasRiskPowerup,
+      shielded,
+      penaltyMultiplier
     });
     await prisma.answer.update({
       where: { id: ans.id },
@@ -6150,13 +6191,17 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       }
     }
     let penaltyMultiplier = 1;
+    let isTargetedWithRiskCard = false;
     if (teamCardsMap) {
       for (const [, otherCards] of teamCardsMap) {
-        if (otherCards.some((c) => c.type === "PENALTY" && c.targetTeamId === team.id)) {
+        if (otherCards.some((c) => (c.type === "PENALTY" || c.type === "ATTACK") && c.targetTeamId === team.id)) {
           penaltyMultiplier = 2;
+          isTargetedWithRiskCard = true;
         }
       }
     }
+    const hasDoubleCard = activeCards.some((c) => c.type === "DOUBLE");
+    const hasRiskPowerup = hasDoubleCard || isTargetedWithRiskCard;
     const effectiveTeamConfig = {
       ...room.config,
       timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean(room.config?.timeBonusEnabled !== false) : false
@@ -6171,6 +6216,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       multiplier,
       shielded,
       penaltyMultiplier,
+      hasRiskPowerup,
       roomAccuracy,
       topHalfCorrect,
       topHalfTotal,

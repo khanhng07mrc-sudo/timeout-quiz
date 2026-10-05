@@ -17,6 +17,7 @@ export interface ScoringContext {
   shielded?: boolean; // from SHIELD card
   penaltyMultiplier?: number; // from PENALTY card
   mode?: GameMode;
+  hasRiskPowerup?: boolean; // When true, answering wrong carries a penalty in CLASSIC / ELIMINATION
 }
 
 export interface DetailedPointsResult {
@@ -144,13 +145,15 @@ export function computeDetailedPointsAwarded(ctx: ScoringContext): DetailedPoint
   const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
 
   if (!ctx.isCorrect) {
-    if (!ctx.config.penaltyForWrong) {
+    if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+      // Ở chế độ CLASSIC & ELIMINATION: Trả lời sai KHÔNG bị trừ điểm, trừ khi có powerup rủi ro (DOUBLE/PENALTY) và không có khiên
+      if (!ctx.hasRiskPowerup || ctx.shielded) {
+        return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
+      }
+    } else if (!ctx.config.penaltyForWrong || ctx.shielded) {
       return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
     }
     const penalty = Math.floor(base * 0.5);
-    if (ctx.shielded) {
-      return { points: 0, basePoints: 0, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
-    }
     const pm = ctx.penaltyMultiplier ?? 1;
     const finalPenalty = -Math.floor(penalty * pm);
     return { points: finalPenalty, basePoints: finalPenalty, speedPoints: 0, streakPoints: 0, rarityPoints: 0 };
@@ -228,6 +231,7 @@ export interface TeamScoringContext {
   bottomHalfCorrect?: number;
   bottomHalfTotal?: number;
   mode?: GameMode;
+  hasRiskPowerup?: boolean; // When true, answering wrong carries a penalty in CLASSIC / ELIMINATION
 }
 
 export interface TeamScoreResult {
@@ -283,7 +287,25 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
   }
 
   if (ctx.correctMembers === 0) {
-    if (!ctx.config.penaltyForWrong || ctx.shielded) {
+    if (ctx.mode === "CLASSIC" || ctx.mode === "ELIMINATION") {
+      // Ở chế độ CLASSIC & ELIMINATION: Cả đội không ai trả lời đúng thì KHÔNG bị trừ điểm, trừ khi có powerup rủi ro (DOUBLE/PENALTY) và không có khiên
+      if (!ctx.hasRiskPowerup || ctx.shielded) {
+        return {
+          points: 0,
+          basePoints: 0,
+          speedPoints: 0,
+          streakPoints: 0,
+          rarityPoints: 0,
+          accuracyRatio: 0,
+          speedBonus: 0,
+          avgTimeSpent: 0,
+          empiricalMultiplier,
+          streakBonus: 0,
+          effectiveDifficulty,
+          discrimination,
+        };
+      }
+    } else if (!ctx.config.penaltyForWrong || ctx.shielded) {
       return {
         points: 0,
         basePoints: 0,
@@ -295,6 +317,8 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
         avgTimeSpent: 0,
         empiricalMultiplier,
         streakBonus: 0,
+        effectiveDifficulty,
+        discrimination,
       };
     }
     const pm = ctx.penaltyMultiplier ?? 1;
@@ -310,6 +334,8 @@ export function computeTeamQuestionScore(ctx: TeamScoringContext): TeamScoreResu
       avgTimeSpent: 0,
       empiricalMultiplier,
       streakBonus: 0,
+      effectiveDifficulty,
+      discrimination,
     };
   }
 

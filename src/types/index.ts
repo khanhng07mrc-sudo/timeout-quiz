@@ -29,7 +29,6 @@ export type GameMode =
   | "CLASSIC"
   | "BUZZ"
   | "BOUNCEBACK"
-  | "POWERUP"
   | "ELIMINATION"
   | "TOURNAMENT"
   | "GRID_CARO"
@@ -119,23 +118,6 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     tipsVi: [
       "Cân nhắc chọn mức điểm phù hợp với năng lực của đội để tránh bị đối thủ cướp điểm!",
       "Luôn sẵn sàng bấm chuông cướp lượt ngay khi đội chính trả lời sai.",
-    ],
-  },
-  POWERUP: {
-    mode: "POWERUP",
-    nameVi: "Thẻ Hỗ Trợ (Power-up)",
-    emoji: "🃏",
-    taglineVi: "Chiến thuật thẻ bài biến hóa",
-    summaryVi: "Chế độ kết hợp các thẻ quyền năng đặc biệt: Phong tỏa, Đổi câu, Cướp điểm, Nhân đôi, Tái sinh...",
-    mechanicsVi: [
-      "Mỗi đội được phát các thẻ hỗ trợ ngẫu nhiên khi vào trận.",
-      "Sử dụng thẻ chiến thuật đúng thời điểm để gia tăng lợi thế hoặc kìm chân đối thủ.",
-    ],
-    scoringVi: [
-      "Điểm số kết hợp với hiệu ứng các thẻ bài nhân đôi hoặc trừ phạt.",
-    ],
-    tipsVi: [
-      "Giữ thẻ Tái sinh cho các câu hỏi khó để tránh bị mất điểm!",
     ],
   },
   ELIMINATION: {

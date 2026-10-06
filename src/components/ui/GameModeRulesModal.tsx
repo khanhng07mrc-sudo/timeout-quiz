@@ -68,7 +68,7 @@ export default function GameModeRulesModal({ mode = "CLASSIC", isOpen, onClose }
 
         {/* Mode Selector Tabs */}
         <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          {(Object.keys(MODE_RULES) as GameMode[]).filter((m) => m !== "POWERUP").map((m) => {
+          {(Object.keys(MODE_RULES) as GameMode[]).map((m) => {
             const r = MODE_RULES[m];
             const active = m === currentMode;
             return (

@@ -780,9 +780,8 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   DICE_RACE: ["DOUBLE", "SCORE_X2", "TIME_PLUS", "FIFTY_FIFTY", "SKIP"],
   // WAGER: Cược điểm -> FIFTY_FIFTY, SHIELD (Bảo hiểm cược mất 50%), TIME_PLUS, SKIP. CẤM STEAL và FREEZE.
   WAGER: ["FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "SKIP"],
-  // CLASSIC / POWERUP: Toàn bộ 10 thẻ.
-  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
-  POWERUP: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
+  // CLASSIC: Toàn bộ 10 thẻ.
+  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
 };
 function getDefaultAllowedPowerupsForMode(mode) {
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
@@ -5724,7 +5723,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   let rarityBonusPercent;
   let effectiveDifficulty;
   let itemDiscrimination;
-  if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
+  if ((room.mode === "CLASSIC" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io2, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -6114,7 +6113,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       }
     }
   });
-  if (!room || room.teamMode !== "TEAM" || room.mode !== "CLASSIC" && room.mode !== "ELIMINATION" && room.mode !== "POWERUP") {
+  if (!room || room.teamMode !== "TEAM" || room.mode !== "CLASSIC" && room.mode !== "ELIMINATION") {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
   const question = await prisma.question.findUnique({ where: { id: questionId } });
@@ -6228,7 +6227,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
     const hasRiskPowerup = hasDoubleCard || isTargetedWithRiskCard;
     const effectiveTeamConfig = {
       ...room.config,
-      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean(room.config?.timeBonusEnabled !== false) : false
+      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Boolean(room.config?.timeBonusEnabled !== false) : false
     };
     const teamScoreRes = computeTeamQuestionScore({
       basePoints: question.points,
@@ -6419,7 +6418,7 @@ async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
     io2.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
   } else if (room.mode === "DICE_RACE") {
     await finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId);
-  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP") {
+  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
     if (room.teamMode === "TEAM") {
       const { teamScoresUpdates } = await resolveQuestionTeamScores(io2, roomId, questionId);
       if (teamScoresUpdates.length > 0) {

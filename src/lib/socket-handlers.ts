@@ -5767,8 +5767,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   let effectiveDifficulty: number | undefined;
   let itemDiscrimination: number | undefined;
 
-  // Collective team scoring in CLASSIC, POWERUP, and ELIMINATION mode
-  if ((room.mode === "CLASSIC" || room.mode === "POWERUP" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
+  // Collective team scoring in CLASSIC and ELIMINATION mode
+  if ((room.mode === "CLASSIC" || room.mode === "ELIMINATION") && room.teamMode === "TEAM") {
     const res = await resolveQuestionTeamScores(io, room.id, q.id);
     teamScoresUpdates = res.teamScoresUpdates;
     teamSummaries = res.teamSummaries;
@@ -6272,7 +6272,7 @@ async function resolveQuestionTeamScores(
       },
     },
   });
-  if (!room || room.teamMode !== "TEAM" || (room.mode !== "CLASSIC" && room.mode !== "ELIMINATION" && room.mode !== "POWERUP")) {
+  if (!room || room.teamMode !== "TEAM" || (room.mode !== "CLASSIC" && room.mode !== "ELIMINATION")) {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
 
@@ -6413,7 +6413,7 @@ async function resolveQuestionTeamScores(
 
     const effectiveTeamConfig = {
       ...(room.config as any),
-      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
+      timeBonusEnabled: room.mode === "CLASSIC" || room.mode === "ELIMINATION" ? Boolean((room.config as any)?.timeBonusEnabled !== false) : false,
     };
 
     const teamScoreRes = computeTeamQuestionScore({
@@ -6617,7 +6617,7 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
     io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
   } else if (room.mode === "DICE_RACE") {
     await finalizeDiceRaceQuestion(io, roomId, roomCode, questionId);
-  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION" || room.mode === "POWERUP") {
+  } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {
     if (room.teamMode === "TEAM") {
       const { teamScoresUpdates } = await resolveQuestionTeamScores(io, roomId, questionId);
       if (teamScoresUpdates.length > 0) {

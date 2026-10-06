@@ -4373,7 +4373,7 @@ export default function AdminSandboxPage() {
                       )}
 
                       {/* Simultaneous Modes Max Questions */}
-                      {["CLASSIC", "BUZZ", "POWERUP", "ELIMINATION"].includes(roomState.mode) && (
+                      {["CLASSIC", "BUZZ", "ELIMINATION"].includes(roomState.mode) && (
                         <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
                           <span className="text-slate-300">Tổng số câu hỏi</span>
                           <div className="flex items-center gap-1 flex-wrap justify-end">

@@ -112,7 +112,7 @@ export function calculateItemIRTMetrics(params: {
  *   + Dễ (<= 10đ): 1.000 điểm
  *   + Trung bình (11 - 20đ): 1.500 điểm
  *   + Khó (> 20đ): 2.000 điểm
- * - Đối với các mode khác (BOUNCEBACK, GRID_CARO, DICE_RACE, BUZZ, WAGER, POWERUP, TOURNAMENT):
+ * - Đối với các mode khác (BOUNCEBACK, GRID_CARO, DICE_RACE, BUZZ, WAGER, TOURNAMENT):
  *   Giữ nguyên thang 10, 20, 30 điểm truyền thống.
  */
 export function getBasePointsForMode(rawPoints: number, mode?: GameMode): number {

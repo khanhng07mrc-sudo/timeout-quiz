@@ -58,7 +58,16 @@ export default function PlayPage() {
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
-  const [isSandbox, setIsSandbox] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+  const [isSandbox, setIsSandbox] = useState(() => {
+    if (typeof window !== "undefined") {
+      return new URLSearchParams(window.location.search).get("sandbox") === "1" || window.self !== window.top;
+    }
+    return false;
+  });
+  const isSandboxRef = useRef(false);
+  const joinRoomRef = useRef<() => void>(() => {});
+  const retryJoinTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [activeTeamId, setActiveTeamId] = useState<string>("");
   const [selectedTeamId, setSelectedTeamId] = useState<string>(() => {
     if (typeof window !== "undefined") {
@@ -148,7 +157,8 @@ export default function PlayPage() {
     soundManager.setMuted(true);
 
     const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const isSandboxParam = searchParams?.get("sandbox") === "1";
+    const isSandboxParam = searchParams?.get("sandbox") === "1" || (typeof window !== "undefined" && window.self !== window.top);
+    isSandboxRef.current = isSandboxParam;
     if (isSandboxParam) setIsSandbox(true);
     const paramTeamId = searchParams?.get("teamId") || "";
     const paramTeamIndex = searchParams?.get("teamIndex");
@@ -356,11 +366,20 @@ export default function PlayPage() {
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
       transports: ["websocket", "polling"],
-      query: isSandbox ? { sandbox: "1" } : {},
+      query: isSandboxRef.current ? { sandbox: "1" } : {},
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
     });
     socketRef.current = socket;
 
     const joinRoom = () => {
+      if (retryJoinTimerRef.current) {
+        clearTimeout(retryJoinTimerRef.current);
+        retryJoinTimerRef.current = null;
+      }
       const currentPid = playerIdRef.current || savedPlayerId;
       const currentName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
 
@@ -372,6 +391,7 @@ export default function PlayPage() {
       }, (result) => {
         if (result.success) {
           setErrorMessage(null);
+          setIsReconnecting(false);
           const finalId = result.playerId || currentPid;
           playerIdRef.current = finalId;
           setPlayerId(finalId);
@@ -383,20 +403,31 @@ export default function PlayPage() {
             sessionStorage.setItem("playerName", p.name);
             localStorage.setItem("playerName", p.name);
           }
-          if (p?.teamId) myTeamIdRef.current = p.teamId;
-        } else {
-          setErrorMessage(result.error ?? "Không thể vào phòng");
-          if (!isSandbox) {
-            setTimeout(() => {
-              router.push("/play");
-            }, 3500);
+          if (p?.teamId) {
+            myTeamIdRef.current = p.teamId;
+            setSelectedTeamId(p.teamId);
           }
+        } else {
+          // Lỗi kết nối hoặc join phòng tạm thời
+          setErrorMessage(result.error ?? "Không thể vào phòng thi");
+          setIsReconnecting(true);
+
+          // TUYỆT ĐỐI KHÔNG REDIRECT VỀ /play KHI MẠNG LAG!
+          // Tự động thử lại sau 2.5s
+          retryJoinTimerRef.current = setTimeout(() => {
+            if (socketRef.current?.connected) {
+              joinRoom();
+            }
+          }, 2500);
         }
       });
     };
+    joinRoomRef.current = joinRoom;
 
     socket.on("connect", () => {
       setConnected(true);
+      setIsReconnecting(false);
+      setErrorMessage(null);
       syncClockWithServer(socket);
       joinRoom();
       const curTeam = myTeamIdRef.current || paramTeamId;
@@ -405,7 +436,29 @@ export default function PlayPage() {
       }
     });
 
+    socket.on("disconnect", (reason) => {
+      setConnected(false);
+      setIsReconnecting(true);
+      if (reason === "io server disconnect" || reason === "transport close") {
+        setTimeout(() => {
+          if (!socket.connected) socket.connect();
+        }, 1000);
+      }
+    });
+
+    socket.on("connect_error", () => {
+      setConnected(false);
+      setIsReconnecting(true);
+    });
+
+    socket.io.on("reconnect_attempt", () => {
+      setIsReconnecting(true);
+    });
+
     socket.io.on("reconnect", () => {
+      setConnected(true);
+      setIsReconnecting(false);
+      setErrorMessage(null);
       syncClockWithServer(socket);
       joinRoom();
       const curTeam = myTeamIdRef.current || paramTeamId;
@@ -805,6 +858,10 @@ export default function PlayPage() {
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
     return () => {
+      if (retryJoinTimerRef.current) {
+        clearTimeout(retryJoinTimerRef.current);
+        retryJoinTimerRef.current = null;
+      }
       window.removeEventListener("message", handlePostMessage);
       socket.disconnect();
     };
@@ -988,6 +1045,26 @@ export default function PlayPage() {
     }
   };
 
+  const reconnectBanner = (!connected || isReconnecting) && roomState ? (
+    <div className="fixed top-0 left-0 right-0 z-[9999] bg-amber-500/95 text-slate-950 px-4 py-2 flex items-center justify-between text-xs sm:text-sm font-bold shadow-lg backdrop-blur animate-pulse border-b border-amber-600">
+      <div className="flex items-center gap-2">
+        <span className="text-base animate-bounce">📡</span>
+        <span>Mạng chập chờn, đang tự động kết nối lại...</span>
+      </div>
+      <button
+        onClick={() => {
+          if (socketRef.current) {
+            if (!socketRef.current.connected) socketRef.current.connect();
+            joinRoomRef.current();
+          }
+        }}
+        className="bg-black/90 hover:bg-black text-amber-300 px-3 py-1 rounded-lg text-xs font-bold cursor-pointer transition shadow"
+      >
+        Thử lại ngay
+      </button>
+    </div>
+  ) : null;
+
   if (errorMessage && !roomState) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -995,8 +1072,15 @@ export default function PlayPage() {
           <div className="text-3xl">⚠️</div>
           <p className="text-sm font-bold text-red-300">{errorMessage}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs"
+            onClick={() => {
+              if (socketRef.current) {
+                if (!socketRef.current.connected) socketRef.current.connect();
+                joinRoomRef.current();
+              } else {
+                window.location.reload();
+              }
+            }}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer"
           >
             Thử kết nối lại
           </button>
@@ -1005,19 +1089,36 @@ export default function PlayPage() {
     );
   }
 
-  if (!connected && !code.startsWith("OFFLINE")) {
+  if (!roomState && !code.startsWith("OFFLINE")) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-4xl mb-4 animate-spin">⚡</div>
-          <p className="text-muted-foreground">Đang kết nối...</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="glass rounded-2xl p-6 max-w-sm text-center border border-purple-500/30 space-y-4">
+          <div className="text-4xl animate-spin">⚡</div>
+          <p className="text-white font-bold text-base">Đang kết nối vào phòng thi...</p>
+          <p className="text-xs text-slate-400">Vui lòng chờ trong giây lát, hệ thống đang đồng bộ dữ liệu.</p>
+          <button
+            onClick={() => {
+              if (socketRef.current) {
+                if (!socketRef.current.connected) socketRef.current.connect();
+                joinRoomRef.current();
+              }
+            }}
+            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer"
+          >
+            Thử lại
+          </button>
         </div>
       </div>
     );
   }
 
   if (gameEnd) {
-    return <GameEnd payload={gameEnd} playerId={playerId} />;
+    return (
+      <>
+        {reconnectBanner}
+        <GameEnd payload={gameEnd} playerId={playerId} />
+      </>
+    );
   }
 
   const mePlayer = roomState?.players.find((p) => p.id === playerId);
@@ -1027,13 +1128,16 @@ export default function PlayPage() {
 
   if (roomState?.status === "LOBBY") {
     return (
-      <PlayerLobby
-        roomState={roomState}
-        playerId={playerId}
-        selectedTeamId={selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || null}
-        onSelectTeam={handleSelectTeam}
-        errorMessage={errorMessage}
-      />
+      <>
+        {reconnectBanner}
+        <PlayerLobby
+          roomState={roomState}
+          playerId={playerId}
+          selectedTeamId={selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || null}
+          onSelectTeam={handleSelectTeam}
+          errorMessage={errorMessage}
+        />
+      </>
     );
   }
 
@@ -1041,56 +1145,62 @@ export default function PlayPage() {
   if (matchStarting) {
     if (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) {
       return (
-        <div className="min-h-screen flex flex-col p-3 sm:p-4 gap-3 max-w-4xl mx-auto w-full">
-          <div className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl glass border border-amber-500/40 bg-amber-500/10 shadow animate-slide-up">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="text-2xl animate-bounce shrink-0">🏁</span>
-              <div className="min-w-0">
-                <p className="font-black text-amber-300 text-xs sm:text-sm truncate">
-                  CUỘC ĐUA CỜ XÍ NGẦU BẮT ĐẦU!
-                </p>
-                <p className="text-[11px] text-amber-200/90 truncate">
-                  Xem toàn cảnh vị trí các quân cờ ở ô xuất phát
-                </p>
+        <>
+          {reconnectBanner}
+          <div className="min-h-screen flex flex-col p-3 sm:p-4 gap-3 max-w-4xl mx-auto w-full">
+            <div className="w-full flex items-center justify-between gap-3 p-3 rounded-2xl glass border border-amber-500/40 bg-amber-500/10 shadow animate-slide-up">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="text-2xl animate-bounce shrink-0">🏁</span>
+                <div className="min-w-0">
+                  <p className="font-black text-amber-300 text-xs sm:text-sm truncate">
+                    CUỘC ĐUA CỜ XÍ NGẦU BẮT ĐẦU!
+                  </p>
+                  <p className="text-[11px] text-amber-200/90 truncate">
+                    Xem toàn cảnh vị trí các quân cờ ở ô xuất phát
+                  </p>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-black font-black text-lg flex items-center justify-center shadow shrink-0">
+                {matchStarting.seconds}s
               </div>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-black font-black text-lg flex items-center justify-center shadow shrink-0">
-              {matchStarting.seconds}s
+
+            <div className="flex-1 flex flex-col justify-center">
+              <DiceRaceTrack
+                diceState={roomState.diceRaceState}
+                myTeamId={effectiveTeamId}
+                mode="full"
+              />
             </div>
           </div>
-
-          <div className="flex-1 flex flex-col justify-center">
-            <DiceRaceTrack
-              diceState={roomState.diceRaceState}
-              myTeamId={effectiveTeamId}
-              mode="full"
-            />
-          </div>
-        </div>
+        </>
       );
     }
 
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
-          ⚡ Sẵn sàng thi đấu
+      <>
+        {reconnectBanner}
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
+            ⚡ Sẵn sàng thi đấu
+          </div>
+          <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
+            Trận đấu bắt đầu sau
+          </h1>
+          <div className="inline-flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-5xl sm:text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
+            {matchStarting.seconds}
+          </div>
+          <p className="text-muted-foreground text-xs sm:text-sm max-w-xs">
+            Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
+          </p>
+          <button
+            onClick={toggleSound}
+            className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
+          >
+            {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
+          </button>
         </div>
-        <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-          Trận đấu bắt đầu sau
-        </h1>
-        <div className="inline-flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-5xl sm:text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
-          {matchStarting.seconds}
-        </div>
-        <p className="text-muted-foreground text-xs sm:text-sm max-w-xs">
-          Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
-        </p>
-        <button
-          onClick={toggleSound}
-          className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
-        >
-          {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
-        </button>
-      </div>
+      </>
     );
   }
 
@@ -1112,91 +1222,94 @@ export default function PlayPage() {
     const myRank = me ? participants.findIndex((p: any) => p.id === me.id) + 1 : 0;
 
     return (
-      <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto space-y-4 animate-slide-up justify-between">
-        <div className="space-y-4 pt-2">
-          {/* Intermission Header */}
-          <div className="text-center space-y-1.5">
-            <span className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              📊 Tổng kết điểm số giữa hiệp
-            </span>
-            <h2 className="text-2xl font-black text-white">BẢNG XẾP HẠNG</h2>
-            {intermission && (
-              <p className="text-xs text-cyan-300 font-semibold">
-                Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
-              </p>
-            )}
-          </div>
-
-          {/* My Team / Player Ranking Highlight Card */}
-          {me && (
-            <div
-              className="p-4 rounded-2xl glass border-2 flex items-center justify-between shadow-xl"
-              style={{ borderColor: (me as any).color || "#a855f7" }}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-white shadow"
-                  style={{ background: (me as any).color || "#a855f7" }}
-                >
-                  {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : `#${myRank}`}
-                </div>
-                <div>
-                  <p className="font-bold text-base text-white">{me.name} (Bạn)</p>
-                  <p className="text-xs text-muted-foreground">Hạng #{myRank} trong bảng đấu</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="font-mono font-black text-2xl text-cyan-400">{me.score?.toLocaleString() || 0}</span>
-                <span className="text-xs text-muted-foreground block">điểm</span>
-              </div>
+      <>
+        {reconnectBanner}
+        <div className="min-h-screen flex flex-col p-4 max-w-lg mx-auto space-y-4 animate-slide-up justify-between">
+          <div className="space-y-4 pt-2">
+            {/* Intermission Header */}
+            <div className="text-center space-y-1.5">
+              <span className="px-3.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                📊 Tổng kết điểm số giữa hiệp
+              </span>
+              <h2 className="text-2xl font-black text-white">BẢNG XẾP HẠNG</h2>
+              {intermission && (
+                <p className="text-xs text-cyan-300 font-semibold">
+                  Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
+                </p>
+              )}
             </div>
-          )}
 
-          {/* Standings List */}
-          <div className="glass rounded-2xl p-4 border border-white/10 space-y-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-              Thứ hạng các đội
-            </h3>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
-              {participants.map((p: any, idx: number) => {
-                const isMe = me && p.id === me.id;
-                return (
+            {/* My Team / Player Ranking Highlight Card */}
+            {me && (
+              <div
+                className="p-4 rounded-2xl glass border-2 flex items-center justify-between shadow-xl"
+                style={{ borderColor: (me as any).color || "#a855f7" }}
+              >
+                <div className="flex items-center gap-3">
                   <div
-                    key={p.id}
-                    className={`flex items-center justify-between p-2.5 rounded-xl border text-sm transition-all ${
-                      isMe
-                        ? "bg-purple-500/20 border-purple-500/50 text-white font-bold"
-                        : "bg-white/5 border-white/5 text-slate-300"
-                    }`}
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black text-white shadow"
+                    style={{ background: (me as any).color || "#a855f7" }}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-6 text-center font-black text-xs shrink-0">
-                        {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
-                      </span>
-                      <div className="w-3 h-3 rounded-full shrink-0" style={{ background: p.color || "#6366f1" }} />
-                      <span className="truncate">{p.name} {isMe ? "(Bạn)" : ""}</span>
-                    </div>
-                    <span className="font-mono font-bold text-cyan-400 shrink-0">{p.score?.toLocaleString() || 0}</span>
+                    {myRank === 1 ? "🥇" : myRank === 2 ? "🥈" : myRank === 3 ? "🥉" : `#${myRank}`}
                   </div>
-                );
-              })}
+                  <div>
+                    <p className="font-bold text-base text-white">{me.name} (Bạn)</p>
+                    <p className="text-xs text-muted-foreground">Hạng #{myRank} trong bảng đấu</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-black text-2xl text-cyan-400">{me.score?.toLocaleString() || 0}</span>
+                  <span className="text-xs text-muted-foreground block">điểm</span>
+                </div>
+              </div>
+            )}
+
+            {/* Standings List */}
+            <div className="glass rounded-2xl p-4 border border-white/10 space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Thứ hạng các đội
+              </h3>
+              <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                {participants.map((p: any, idx: number) => {
+                  const isMe = me && p.id === me.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border text-sm transition-all ${
+                        isMe
+                          ? "bg-purple-500/20 border-purple-500/50 text-white font-bold"
+                          : "bg-white/5 border-white/5 text-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-6 text-center font-black text-xs shrink-0">
+                          {idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`}
+                        </span>
+                        <div className="w-3 h-3 rounded-full shrink-0" style={{ background: p.color || "#6366f1" }} />
+                        <span className="truncate">{p.name} {isMe ? "(Bạn)" : ""}</span>
+                      </div>
+                      <span className="font-mono font-bold text-cyan-400 shrink-0">{p.score?.toLocaleString() || 0}</span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Waiting message & sound toggle */}
-        <div className="text-center py-4 space-y-3">
-          <p className="text-xs text-muted-foreground animate-pulse">
-            ⏳ Quản trò đang tổng kết... Câu hỏi tiếp theo sẽ hiển thị ngay khi bắt đầu!
-          </p>
-          <button
-            onClick={toggleSound}
-            className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
-          >
-            {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
-          </button>
+          {/* Waiting message & sound toggle */}
+          <div className="text-center py-4 space-y-3">
+            <p className="text-xs text-muted-foreground animate-pulse">
+              ⏳ Quản trò đang tổng kết... Câu hỏi tiếp theo sẽ hiển thị ngay khi bắt đầu!
+            </p>
+            <button
+              onClick={toggleSound}
+              className="px-4 py-2 rounded-xl glass border border-white/20 text-xs font-bold flex items-center gap-2 mx-auto hover:bg-white/10 transition"
+            >
+              {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -1207,7 +1320,9 @@ export default function PlayPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
+    <>
+      {reconnectBanner}
+      <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
       {/* Header with score and sound toggle */}
       <div className="flex items-center gap-2">
         <div className="flex-1 min-w-0">
@@ -1460,5 +1575,6 @@ export default function PlayPage() {
         onClose={() => setShowRulesModal(false)}
       />
     </div>
+    </>
   );
 }

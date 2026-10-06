@@ -1077,6 +1077,7 @@ var roomWagerTimers = /* @__PURE__ */ new Map();
 var roomWagerAutoLaunchTimers = /* @__PURE__ */ new Map();
 var roomGridTimers = /* @__PURE__ */ new Map();
 var roomActiveQuestions = /* @__PURE__ */ new Map();
+var roomRevealPayloads = /* @__PURE__ */ new Map();
 var roomIntermissions = /* @__PURE__ */ new Map();
 var roomIntermissionTimers = /* @__PURE__ */ new Map();
 var teamStreakMap = /* @__PURE__ */ new Map();
@@ -1598,6 +1599,7 @@ function cleanupRoomInMemory(roomId) {
       }
     }
     roomActiveQuestions.delete(roomId);
+    roomRevealPayloads.delete(roomId);
     roomRemainingTimes.delete(roomId);
     roomTimerEndsAt.delete(roomId);
     roomPrepareStates.delete(roomId);
@@ -1802,10 +1804,12 @@ function registerSocketHandlers(io2) {
       try {
         const isSandbox = Boolean(socket.handshake.query?.sandbox === "1") || Boolean(playerName?.includes("\u{1F916}")) || Boolean(playerName?.includes("(Tester)"));
         if (!isSandbox) {
-          const clientIp = socket.handshake.headers["x-forwarded-for"]?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
-          const joinLimit = checkPlayerJoinLimit(clientIp);
-          if (!joinLimit.allowed) {
-            return callback({ success: false, error: `B\u1EA1n \u0111ang g\u1EEDi y\xEAu c\u1EA7u qu\xE1 nhanh. Vui l\xF2ng th\u1EED l\u1EA1i sau ${joinLimit.retryAfterSeconds}s.` });
+          if (!playerId) {
+            const clientIp = socket.handshake.headers["x-forwarded-for"]?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
+            const joinLimit = checkPlayerJoinLimit(clientIp);
+            if (!joinLimit.allowed) {
+              return callback({ success: false, error: `B\u1EA1n \u0111ang g\u1EEDi y\xEAu c\u1EA7u qu\xE1 nhanh. Vui l\xF2ng th\u1EED l\u1EA1i sau ${joinLimit.retryAfterSeconds}s.` });
+            }
           }
         }
         const room = await prisma.room.findUnique({
@@ -1932,48 +1936,74 @@ function registerSocketHandlers(io2) {
         const isPreparing = roomPrepareStates.has(room.id);
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id));
-        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
-          const activeQ = roomActiveQuestions.get(room.id);
-          if (activeQ) {
-            socket.emit("game:question", activeQ);
-            const remaining = roomRemainingTimes.get(`${room.id}:timer`);
-            const endsAt = roomTimerEndsAt.get(room.id) || activeQ.endsAt;
-            if (activeQ.timerStarted && typeof remaining === "number" && remaining > 0) {
-              socket.emit("game:timer", { remaining, total: activeQ.timeLimit, endsAt, serverTime: Date.now() });
+        } else if (room.status === "PLAYING" && !isPreparing) {
+          if (roomRevealPayloads.has(room.id)) {
+            socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id));
+          } else if (room.quizBank?.questions) {
+            const activeQ = roomActiveQuestions.get(room.id);
+            if (activeQ) {
+              socket.emit("game:question", activeQ);
+              const remaining = roomRemainingTimes.get(`${room.id}:timer`);
+              const endsAt = roomTimerEndsAt.get(room.id) || activeQ.endsAt;
+              if (activeQ.timerStarted && typeof remaining === "number" && remaining > 0) {
+                socket.emit("game:timer", { remaining, total: activeQ.timeLimit, endsAt, serverTime: Date.now() });
+              }
+            } else {
+              const currentQ2 = room.quizBank.questions[room.currentQuestion];
+              if (currentQ2) {
+                const qKey = `${room.id}:${currentQ2.id}`;
+                const primary = roomPrimaryTeams.get(qKey);
+                const stealBuzzed = roomStealBuzzed.get(qKey);
+                const buzzFirst = roomBuzzFirst.get(qKey);
+                const isSteal = roomStealPhase.get(qKey) ?? false;
+                const config = room.config;
+                const qState = buildQuestionState(currentQ2, {
+                  primaryTeamId: primary?.teamId,
+                  primaryTeamName: primary?.teamName,
+                  bloomLevel: getBloomLevelFromPoints(currentQ2.points),
+                  answerMethod: config?.answerMethod ?? "DEVICE",
+                  isStealPhase: isSteal,
+                  stealBuzzedTeamId: stealBuzzed?.teamId,
+                  stealBuzzedTeamName: stealBuzzed?.teamName,
+                  buzzedTeamId: buzzFirst?.teamId,
+                  buzzedTeamName: buzzFirst?.teamName,
+                  timerPending: true,
+                  timerStarted: false
+                });
+                const timerKey = `${room.id}:timer`;
+                const remaining = roomRemainingTimes.get(timerKey);
+                const endsAt = roomTimerEndsAt.get(room.id);
+                if (endsAt) {
+                  qState.endsAt = endsAt;
+                  qState.serverTime = Date.now();
+                }
+                socket.emit("game:question", qState);
+                if (typeof remaining === "number" && remaining > 0) {
+                  socket.emit("game:timer", { remaining, total: currentQ2.timeLimit, endsAt, serverTime: Date.now() });
+                }
+              }
             }
-          } else {
-            const currentQ = room.quizBank.questions[room.currentQuestion];
-            if (currentQ) {
-              const qKey = `${room.id}:${currentQ.id}`;
-              const primary = roomPrimaryTeams.get(qKey);
-              const stealBuzzed = roomStealBuzzed.get(qKey);
-              const buzzFirst = roomBuzzFirst.get(qKey);
-              const isSteal = roomStealPhase.get(qKey) ?? false;
-              const config = room.config;
-              const qState = buildQuestionState(currentQ, {
-                primaryTeamId: primary?.teamId,
-                primaryTeamName: primary?.teamName,
-                bloomLevel: getBloomLevelFromPoints(currentQ.points),
-                answerMethod: config?.answerMethod ?? "DEVICE",
-                isStealPhase: isSteal,
-                stealBuzzedTeamId: stealBuzzed?.teamId,
-                stealBuzzedTeamName: stealBuzzed?.teamName,
-                buzzedTeamId: buzzFirst?.teamId,
-                buzzedTeamName: buzzFirst?.teamName,
-                timerPending: true,
-                timerStarted: false
-              });
-              const timerKey = `${room.id}:timer`;
-              const remaining = roomRemainingTimes.get(timerKey);
-              const endsAt = roomTimerEndsAt.get(room.id);
-              if (endsAt) {
-                qState.endsAt = endsAt;
-                qState.serverTime = Date.now();
-              }
-              socket.emit("game:question", qState);
-              if (typeof remaining === "number" && remaining > 0) {
-                socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
-              }
+          }
+          if (roomDiceRaces.has(room.id)) {
+            socket.emit("game:dice:update", roomDiceRaces.get(room.id));
+          }
+          if (roomGridCaros.has(room.id)) {
+            socket.emit("game:grid:update", roomGridCaros.get(room.id));
+          }
+          if (roomWagers.has(room.id)) {
+            socket.emit("game:wager:update", roomWagers.get(room.id));
+          }
+          if (roomTournaments.has(room.id)) {
+            socket.emit("game:tournament:update", roomTournaments.get(room.id));
+          }
+          const currentQ = room.quizBank?.questions?.[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            if (roomStealPhase.get(qKey)) {
+              socket.emit("game:bounceback:open_steal", { questionId: currentQ.id, timeLimit: 5 });
+            }
+            if (roomStealBuzzed.has(qKey)) {
+              socket.emit("game:bounceback:steal_buzzed", roomStealBuzzed.get(qKey));
             }
           }
         }
@@ -2747,6 +2777,7 @@ function registerSocketHandlers(io2) {
     });
     async function startQuestionPrepareAndLaunch(room, questions, questionIndex, specificQ) {
       stopQuestionTimer(room.id);
+      roomRevealPayloads.delete(room.id);
       roomIntermissions.delete(room.id);
       if (roomIntermissionTimers.has(room.id)) {
         clearTimeout(roomIntermissionTimers.get(room.id));
@@ -4563,7 +4594,7 @@ function registerSocketHandlers(io2) {
           const state = await buildRoomState(player.room.id);
           io2.to(`room:${player.room.code}`).emit("room:state", state);
         }
-      }, 2500);
+      }, 3e4);
       pendingDisconnects.set(playerId, timer);
     });
   });
@@ -5942,7 +5973,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
     correctAnswer = [q.answer];
     correctAnswerText = q.answer;
   }
-  io2.to(`room:${roomCode}`).emit("game:answer:reveal", {
+  const revealPayload = {
     questionId: q.id,
     correctAnswer: Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer],
     correctAnswerText: correctAnswerText || void 0,
@@ -5962,7 +5993,9 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
     bloomLevel: getBloomLevelFromPoints(q.points),
     effectiveDifficulty,
     itemDiscrimination
-  });
+  };
+  roomRevealPayloads.set(roomId, revealPayload);
+  io2.to(`room:${roomCode}`).emit("game:answer:reveal", revealPayload);
 }
 function stopQuestionTimer(roomId) {
   const key = `${roomId}:timer`;

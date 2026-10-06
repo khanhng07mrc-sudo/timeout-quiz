@@ -100,6 +100,7 @@ const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager ti
 const roomWagerAutoLaunchTimers = new Map<string, NodeJS.Timeout>(); // roomId -> auto launch timer after wager ends
 const roomGridTimers = new Map<string, NodeJS.Timeout>(); // roomId -> preview timer
 const roomActiveQuestions = new Map<string, QuestionState>(); // roomId -> active question
+const roomRevealPayloads = new Map<string, any>(); // roomId -> active reveal payload for reconnect recovery
 const roomIntermissions = new Map<string, GameIntermissionPayload>(); // roomId -> current intermission state
 const roomIntermissionTimers = new Map<string, NodeJS.Timeout>(); // roomId -> auto-advance timer for intermission
 const teamStreakMap = new Map<string, number>(); // teamId -> streak count
@@ -751,6 +752,7 @@ export function cleanupRoomInMemory(roomId: string) {
 
     // 4. Delete room-level entries
     roomActiveQuestions.delete(roomId);
+    roomRevealPayloads.delete(roomId);
     roomRemainingTimes.delete(roomId);
     roomTimerEndsAt.delete(roomId);
     roomPrepareStates.delete(roomId);
@@ -987,10 +989,13 @@ export function registerSocketHandlers(io: IO) {
           Boolean(playerName?.includes("(Tester)"));
 
         if (!isSandbox) {
-          const clientIp = (socket.handshake.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
-          const joinLimit = checkPlayerJoinLimit(clientIp);
-          if (!joinLimit.allowed) {
-            return callback({ success: false, error: `Bạn đang gửi yêu cầu quá nhanh. Vui lòng thử lại sau ${joinLimit.retryAfterSeconds}s.` });
+          // Bỏ qua rate limit nếu người chơi đang kết nối lại (đã có playerId hợp lệ) để tránh bị chặn khi mạng chập chờn
+          if (!playerId) {
+            const clientIp = (socket.handshake.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || socket.handshake.address || socket.id;
+            const joinLimit = checkPlayerJoinLimit(clientIp);
+            if (!joinLimit.allowed) {
+              return callback({ success: false, error: `Bạn đang gửi yêu cầu quá nhanh. Vui lòng thử lại sau ${joinLimit.retryAfterSeconds}s.` });
+            }
           }
         }
 
@@ -1147,52 +1152,80 @@ export function registerSocketHandlers(io: IO) {
         const isPreparing = roomPrepareStates.has(room.id);
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
-          const activeQ = roomActiveQuestions.get(room.id);
-          if (activeQ) {
-            socket.emit("game:question", activeQ);
-            const remaining = roomRemainingTimes.get(`${room.id}:timer`);
-            const endsAt = roomTimerEndsAt.get(room.id) || activeQ.endsAt;
-            if (activeQ.timerStarted && typeof remaining === "number" && remaining > 0) {
-              socket.emit("game:timer", { remaining, total: activeQ.timeLimit, endsAt, serverTime: Date.now() });
+        } else if (room.status === "PLAYING" && !isPreparing) {
+          if (roomRevealPayloads.has(room.id)) {
+            socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id)!);
+          } else if (room.quizBank?.questions) {
+            const activeQ = roomActiveQuestions.get(room.id);
+            if (activeQ) {
+              socket.emit("game:question", activeQ);
+              const remaining = roomRemainingTimes.get(`${room.id}:timer`);
+              const endsAt = roomTimerEndsAt.get(room.id) || activeQ.endsAt;
+              if (activeQ.timerStarted && typeof remaining === "number" && remaining > 0) {
+                socket.emit("game:timer", { remaining, total: activeQ.timeLimit, endsAt, serverTime: Date.now() });
+              }
+            } else {
+              const currentQ = room.quizBank.questions[room.currentQuestion];
+              if (currentQ) {
+                const qKey = `${room.id}:${currentQ.id}`;
+                const primary = roomPrimaryTeams.get(qKey);
+                const stealBuzzed = roomStealBuzzed.get(qKey);
+                const buzzFirst = roomBuzzFirst.get(qKey);
+                const isSteal = roomStealPhase.get(qKey) ?? false;
+                const config = room.config as any;
+
+                const qState = buildQuestionState(currentQ, {
+                  primaryTeamId: primary?.teamId,
+                  primaryTeamName: primary?.teamName,
+                  bloomLevel: getBloomLevelFromPoints(currentQ.points),
+                  answerMethod: config?.answerMethod ?? "DEVICE",
+                  isStealPhase: isSteal,
+                  stealBuzzedTeamId: stealBuzzed?.teamId,
+                  stealBuzzedTeamName: stealBuzzed?.teamName,
+                  buzzedTeamId: buzzFirst?.teamId,
+                  buzzedTeamName: buzzFirst?.teamName,
+                  timerPending: true,
+                  timerStarted: false,
+                });
+
+                const timerKey = `${room.id}:timer`;
+                const remaining = roomRemainingTimes.get(timerKey);
+                const endsAt = roomTimerEndsAt.get(room.id);
+                if (endsAt) {
+                  qState.endsAt = endsAt;
+                  qState.serverTime = Date.now();
+                }
+
+                socket.emit("game:question", qState);
+
+                if (typeof remaining === "number" && remaining > 0) {
+                  socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
+                }
+              }
             }
-          } else {
-            const currentQ = room.quizBank.questions[room.currentQuestion];
-            if (currentQ) {
-              const qKey = `${room.id}:${currentQ.id}`;
-              const primary = roomPrimaryTeams.get(qKey);
-              const stealBuzzed = roomStealBuzzed.get(qKey);
-              const buzzFirst = roomBuzzFirst.get(qKey);
-              const isSteal = roomStealPhase.get(qKey) ?? false;
-              const config = room.config as any;
+          }
 
-              const qState = buildQuestionState(currentQ, {
-                primaryTeamId: primary?.teamId,
-                primaryTeamName: primary?.teamName,
-                bloomLevel: getBloomLevelFromPoints(currentQ.points),
-                answerMethod: config?.answerMethod ?? "DEVICE",
-                isStealPhase: isSteal,
-                stealBuzzedTeamId: stealBuzzed?.teamId,
-                stealBuzzedTeamName: stealBuzzed?.teamName,
-                buzzedTeamId: buzzFirst?.teamId,
-                buzzedTeamName: buzzFirst?.teamName,
-                timerPending: true,
-                timerStarted: false,
-              });
-
-              const timerKey = `${room.id}:timer`;
-              const remaining = roomRemainingTimes.get(timerKey);
-              const endsAt = roomTimerEndsAt.get(room.id);
-              if (endsAt) {
-                qState.endsAt = endsAt;
-                qState.serverTime = Date.now();
-              }
-
-              socket.emit("game:question", qState);
-
-              if (typeof remaining === "number" && remaining > 0) {
-                socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
-              }
+          // Phục hồi sub-states của các game mode đặc thù khi reconnect
+          if (roomDiceRaces.has(room.id)) {
+            socket.emit("game:dice:update", roomDiceRaces.get(room.id)!);
+          }
+          if (roomGridCaros.has(room.id)) {
+            socket.emit("game:grid:update", roomGridCaros.get(room.id)!);
+          }
+          if (roomWagers.has(room.id)) {
+            socket.emit("game:wager:update", roomWagers.get(room.id)!);
+          }
+          if (roomTournaments.has(room.id)) {
+            socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
+          }
+          const currentQ = room.quizBank?.questions?.[room.currentQuestion];
+          if (currentQ) {
+            const qKey = `${room.id}:${currentQ.id}`;
+            if (roomStealPhase.get(qKey)) {
+              socket.emit("game:bounceback:open_steal", { questionId: currentQ.id, timeLimit: 5 });
+            }
+            if (roomStealBuzzed.has(qKey)) {
+              socket.emit("game:bounceback:steal_buzzed", roomStealBuzzed.get(qKey)!);
             }
           }
         }
@@ -2140,6 +2173,7 @@ export function registerSocketHandlers(io: IO) {
       specificQ?: any
     ) {
       stopQuestionTimer(room.id);
+      roomRevealPayloads.delete(room.id);
       roomIntermissions.delete(room.id);
       if (roomIntermissionTimers.has(room.id)) {
         clearTimeout(roomIntermissionTimers.get(room.id)!);
@@ -4253,7 +4287,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      // 2.5s grace period to allow seamless page refresh without turning offline
+      // 30s grace period to allow seamless reconnect over shaky mobile/wifi network without turning offline
       const existingTimer = pendingDisconnects.get(playerId);
       if (existingTimer) clearTimeout(existingTimer);
 
@@ -4288,7 +4322,7 @@ export function registerSocketHandlers(io: IO) {
           const state = await buildRoomState(player.room.id);
           io.to(`room:${player.room.code}`).emit("room:state", state);
         }
-      }, 2500);
+      }, 30000);
 
       pendingDisconnects.set(playerId, timer);
     });
@@ -6015,7 +6049,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     correctAnswerText = q.answer;
   }
 
-  io.to(`room:${roomCode}`).emit("game:answer:reveal", {
+  const revealPayload = {
     questionId: q.id,
     correctAnswer: Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer as string],
     correctAnswerText: correctAnswerText || undefined,
@@ -6035,7 +6069,10 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     bloomLevel: getBloomLevelFromPoints(q.points),
     effectiveDifficulty,
     itemDiscrimination,
-  });
+  };
+
+  roomRevealPayloads.set(roomId, revealPayload);
+  io.to(`room:${roomCode}`).emit("game:answer:reveal", revealPayload);
 }
 
 function stopQuestionTimer(roomId: string) {

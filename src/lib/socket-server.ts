@@ -15,7 +15,9 @@ export function initSocketServer(
 
   io = new SocketIOServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
     cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      origin: (origin, callback) => {
+        callback(null, true);
+      },
       methods: ["GET", "POST"],
       credentials: true,
     },

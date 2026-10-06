@@ -28,6 +28,8 @@ import {
   TeamWager,
   WagerState,
   GameIntermissionPayload,
+  GameMode,
+  TeamMode,
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
@@ -64,6 +66,36 @@ let globalIO: IO | undefined;
 const pendingDisconnects = new Map<string, NodeJS.Timeout>(); // playerId -> timeout for graceful reconnect
 
 // In-memory session store
+interface CachedPlayerSession {
+  playerId: string;
+  playerName: string;
+  roomId: string;
+  roomCode: string;
+  teamId?: string;
+  teamName?: string;
+  roomMode?: GameMode;
+  teamMode?: TeamMode;
+}
+const socketPlayerSessions = new Map<string, CachedPlayerSession>(); // socketId -> session
+const playerSessions = new Map<string, CachedPlayerSession>(); // playerId -> session
+
+// Fair Reaction Buzzer Arbitration
+interface BuzzCandidate {
+  teamId: string;
+  teamName: string;
+  playerId: string;
+  playerName: string;
+  clientBuzzedAt: number;
+  receivedAt: number;
+  socket: Sock;
+  mode: "BUZZ" | "BOUNCEBACK";
+}
+const roomBuzzArbitration = new Map<string, { timer: NodeJS.Timeout; candidates: BuzzCandidate[]; deadline: number }>(); // qKey -> arbitration window
+const roomBuzzWindowOpenedAt = new Map<string, number>(); // qKey -> timestamp when buzz window unlocked
+const roomStealOpenedAt = new Map<string, number>(); // qKey -> timestamp when steal window opened
+const roomStealEndsAt = new Map<string, number>(); // qKey -> timestamp when steal window ends
+const roomQuestionStartedAt = new Map<string, number>(); // roomId -> timestamp when question answering timer started (ms)
+
 const playerSockets = new Map<string, string>(); // socketId -> playerId
 const adminSockets = new Map<string, string>(); // socketId -> roomId
 const roomTimers = new Map<string, NodeJS.Timeout>(); // roomId -> timer
@@ -832,6 +864,22 @@ export function cleanupRoomInMemory(roomId: string) {
     for (const key of roomActiveAnswers.keys()) {
       if (key.startsWith(prefix)) roomActiveAnswers.delete(key);
     }
+    for (const [key, val] of roomBuzzArbitration.entries()) {
+      if (key.startsWith(prefix)) {
+        clearTimeout(val.timer);
+        roomBuzzArbitration.delete(key);
+      }
+    }
+    for (const key of roomBuzzWindowOpenedAt.keys()) {
+      if (key.startsWith(prefix)) roomBuzzWindowOpenedAt.delete(key);
+    }
+    for (const key of roomStealOpenedAt.keys()) {
+      if (key.startsWith(prefix)) roomStealOpenedAt.delete(key);
+    }
+    for (const key of roomStealEndsAt.keys()) {
+      if (key.startsWith(prefix)) roomStealEndsAt.delete(key);
+    }
+    roomQuestionStartedAt.delete(roomId);
   } catch (err) {
     console.error(`[cleanupRoomInMemory] Error clearing room ${roomId}:`, err);
   }
@@ -968,6 +1016,151 @@ export function registerSocketHandlers(io: IO) {
       questionId: currentQ.id,
     });
     startQuestionTimer(io, roomCode, roomId, currentQ.id, timeLimit);
+  };
+
+  const resolveBuzzArbitrationWinner = async (
+    roomId: string,
+    roomCode: string,
+    questionId: string,
+    mode: "BUZZ" | "BOUNCEBACK",
+    candidates: BuzzCandidate[]
+  ) => {
+    if (!candidates || candidates.length === 0) return;
+    const qKey = `${roomId}:${questionId}`;
+
+    // Sort candidates by clientBuzzedAt ascending; tiebreak by receivedAt
+    candidates.sort((a, b) => {
+      if (a.clientBuzzedAt !== b.clientBuzzedAt) {
+        return a.clientBuzzedAt - b.clientBuzzedAt;
+      }
+      return a.receivedAt - b.receivedAt;
+    });
+
+    const winner = candidates[0];
+
+    if (mode === "BUZZ") {
+      if (roomBuzzFirst.has(qKey)) return;
+
+      const attempts = roomBuzzAttemptOrder.get(qKey) || [];
+      const attemptNumber = attempts.length + 1;
+      const multiplier = attemptNumber === 1 ? 1.5 : attemptNumber === 2 ? 1.0 : 0.5;
+      const buzzInfo = {
+        teamId: winner.teamId,
+        teamName: winner.teamName,
+        playerId: winner.playerId,
+        playerName: winner.playerName,
+        attemptNumber,
+        multiplier,
+      };
+
+      roomBuzzFirst.set(qKey, buzzInfo);
+      attempts.push(buzzInfo);
+      roomBuzzAttemptOrder.set(qKey, attempts);
+
+      // Stop standard question timer
+      stopQuestionTimer(roomId);
+
+      const questions = await getRoomQuestions(roomId);
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { currentQuestion: true, config: true },
+      });
+      const currentQ = questions[room?.currentQuestion ?? 0];
+      const isDeviceAnswer = (room?.config as any)?.answerMethod !== "MC";
+      const answerTimeLimit = isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15;
+      const answerEndsAt = Date.now() + answerTimeLimit * 1000;
+
+      const activeQ = roomActiveQuestions.get(roomId);
+      if (activeQ) {
+        activeQ.buzzedTeamId = winner.teamId;
+        activeQ.buzzedTeamName = winner.teamName;
+        activeQ.buzzedBy = winner.playerName;
+        activeQ.buzzAnsweringActive = true;
+        activeQ.buzzAttemptNumber = attemptNumber;
+        activeQ.buzzMaxAttempts = activeQ.buzzMaxAttempts ?? (attempts.length <= 2 ? 2 : 3);
+        activeQ.buzzMultiplier = multiplier;
+        activeQ.buzzWindowActive = false;
+        activeQ.timeLimit = answerTimeLimit;
+        activeQ.startedAt = Date.now();
+        activeQ.endsAt = answerEndsAt;
+        activeQ.timerPending = false;
+        activeQ.timerStarted = true;
+        io.to(`room:${roomCode}`).emit("game:question", activeQ);
+      }
+
+      io.to(`room:${roomCode}`).emit("game:buzz", buzzInfo);
+      io.to(`room:${roomCode}`).emit("game:buzz:answering", {
+        teamId: winner.teamId,
+        teamName: winner.teamName,
+        timeLimit: answerTimeLimit,
+        attemptNumber,
+        maxAttempts: activeQ?.buzzMaxAttempts,
+        multiplier,
+      });
+      io.to(`room:${roomCode}`).emit("game:timer:started", {
+        timeLimit: answerTimeLimit,
+        endsAt: answerEndsAt,
+        serverTime: Date.now(),
+        questionId,
+      });
+
+      startQuestionTimer(io, roomCode, roomId, questionId, answerTimeLimit);
+    } else if (mode === "BOUNCEBACK") {
+      if (roomStealBuzzed.has(qKey)) return;
+
+      // Stop steal timer & ticker
+      if (roomStealTimer.has(qKey)) {
+        clearTimeout(roomStealTimer.get(qKey)!);
+        roomStealTimer.delete(qKey);
+      }
+      roomStealPhase.set(qKey, false);
+      stopQuestionTimer(roomId);
+
+      const stealInfo = {
+        teamId: winner.teamId,
+        teamName: winner.teamName,
+        playerId: winner.playerId,
+        playerName: winner.playerName,
+      };
+      roomStealBuzzed.set(qKey, stealInfo);
+
+      const questions = await getRoomQuestions(roomId);
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        select: { currentQuestion: true, config: true },
+      });
+      const currentQ = questions[room?.currentQuestion ?? 0];
+
+      const activeQ = roomActiveQuestions.get(roomId);
+      if (activeQ) {
+        activeQ.isStealPhase = false;
+        activeQ.stealBuzzedTeamId = stealInfo.teamId;
+        activeQ.stealBuzzedTeamName = stealInfo.teamName;
+        activeQ.stealAnsweringActive = false; // 3s buffer first
+        activeQ.timerPending = true;
+        activeQ.timerStarted = false;
+        io.to(`room:${roomCode}`).emit("game:question", activeQ);
+      }
+
+      io.to(`room:${roomCode}`).emit("game:bounceback:steal_buzzed", {
+        ...stealInfo,
+        prepSeconds: 3,
+      });
+
+      // 3 giây đệm 'SẴN SÀNG' để thí sinh chuẩn bị tâm lý trước khi đồng hồ trả lời chính thức chạy
+      const prepKey = `${roomId}:steal_prep`;
+      if (roomStealTimer.has(prepKey)) {
+        clearTimeout(roomStealTimer.get(prepKey)!);
+      }
+      const prepTimeout = setTimeout(async () => {
+        roomStealTimer.delete(prepKey);
+        const currentActiveQ = roomActiveQuestions.get(roomId);
+        if (currentActiveQ && currentActiveQ.stealBuzzedTeamId === stealInfo.teamId && !currentActiveQ.stealAnsweringActive) {
+          await startStealAnsweringTimer(roomId, roomCode, currentQ);
+        }
+      }, 3000);
+      roomStealTimer.set(prepKey, prepTimeout);
+    }
   };
 
   io.on("connection", (socket: Sock) => {
@@ -1144,6 +1337,19 @@ export function registerSocketHandlers(io: IO) {
         socket.join(`room:${code}:players`);
 
         const roomState = await buildRoomState(room.id);
+        const matchedTeam = roomState.teams.find((t) => t.id === player.teamId);
+        const cachedSession: CachedPlayerSession = {
+          playerId: player.id,
+          playerName: player.name,
+          roomId: room.id,
+          roomCode: code,
+          teamId: player.teamId ?? undefined,
+          teamName: matchedTeam?.name ?? undefined,
+          roomMode: room.mode as any,
+          teamMode: room.teamMode as any,
+        };
+        socketPlayerSessions.set(socket.id, cachedSession);
+        playerSessions.set(player.id, cachedSession);
 
         // Broadcast updated room state so all participants see the online status & team counts
         io.to(`room:${code}`).emit("room:state", roomState);
@@ -1420,6 +1626,27 @@ export function registerSocketHandlers(io: IO) {
         });
 
         const state = await buildRoomState(player.room.id);
+        const sess = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+        if (sess) {
+          sess.teamId = team.id;
+          sess.teamName = team.name;
+          socketPlayerSessions.set(socket.id, sess);
+          playerSessions.set(playerId, sess);
+        } else {
+          const newSess: CachedPlayerSession = {
+            playerId,
+            playerName: player.name,
+            roomId: player.room.id,
+            roomCode: player.room.code,
+            teamId: team.id,
+            teamName: team.name,
+            roomMode: player.room.mode as any,
+            teamMode: player.room.teamMode as any,
+          };
+          socketPlayerSessions.set(socket.id, newSess);
+          playerSessions.set(playerId, newSess);
+        }
+
         io.to(`room:${player.room.code}`).emit("room:state", state);
         socket.emit("room:state", state);
         callback?.({ success: true });
@@ -1508,25 +1735,41 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Submit Answer (Player Device) ─────────────────────────────────────────
-    socket.on("game:answer:submit", async ({ questionId, answer }) => {
-      if (!checkActionDebounce(socket.id, 200)) return;
+    socket.on("game:answer:submit", async ({ questionId, answer, clientAnsweredAt }: any) => {
+      if (!checkActionDebounce(socket.id, 150)) return;
 
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
 
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true, team: true },
-      });
-      if (!player || !player.room) return;
+      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+      if (!session) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true, team: true },
+        });
+        if (!player || !player.room) return;
+        session = {
+          playerId: player.id,
+          playerName: player.name,
+          roomId: player.room.id,
+          roomCode: player.room.code,
+          teamId: player.teamId ?? undefined,
+          teamName: player.team?.name ?? player.name,
+          roomMode: player.room.mode as any,
+          teamMode: player.room.teamMode as any,
+        };
+        socketPlayerSessions.set(socket.id, session);
+        playerSessions.set(player.id, session);
+      }
 
       await processAnswerSubmission({
         io,
-        roomId: player.room.id,
+        roomId: session.roomId,
         questionId,
         playerId,
-        teamId: player.teamId ?? undefined,
+        teamId: session.teamId ?? undefined,
         answer,
+        clientAnsweredAt,
         isAdminOverride: false,
         socket,
       });
@@ -1584,47 +1827,68 @@ export function registerSocketHandlers(io: IO) {
 
 
     // ── Buzz ────────────────────────────────────────────────────────────────
-    socket.on("game:buzz", async () => {
-      if (!checkActionDebounce(socket.id, 300)) return;
+    socket.on("game:buzz", async (payload?: { clientBuzzedAt?: number }) => {
+      if (!checkActionDebounce(socket.id, 150)) return;
+
+      const now = Date.now();
+      const clientBuzzedAt = typeof payload?.clientBuzzedAt === "number" ? payload.clientBuzzedAt : now;
 
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true, team: true },
-      });
-      if (!player?.room || player.room.status !== "PLAYING") return;
 
-      const room = player.room;
-      const questions = await getRoomQuestions(room.id);
-      const currentQ = questions[room.currentQuestion];
-      if (!currentQ) return;
-      const qKey = `${room.id}:${currentQ.id}`;
+      // Fast-path: read from memory cache (0ms DB query)
+      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+      if (!session) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true, team: true },
+        });
+        if (!player?.room || player.room.status !== "PLAYING") return;
+        session = {
+          playerId: player.id,
+          playerName: player.name,
+          roomId: player.room.id,
+          roomCode: player.room.code,
+          teamId: player.teamId ?? undefined,
+          teamName: player.team?.name ?? player.name,
+          roomMode: player.room.mode as any,
+          teamMode: player.room.teamMode as any,
+        };
+        socketPlayerSessions.set(socket.id, session);
+        playerSessions.set(player.id, session);
+      }
 
-      if (room.mode === "BUZZ") {
-        // Buzzer lock check
-        if (!roomBuzzUnlocked.get(qKey)) {
+      const activeQ = roomActiveQuestions.get(session.roomId);
+      if (!activeQ || !activeQ.question?.id) return;
+      const questionId = activeQ.question.id;
+      const qKey = `${session.roomId}:${questionId}`;
+      const mode = session.roomMode;
+
+      if (mode === "BUZZ") {
+        // Buzzer lock check with network latency grace period
+        const isUnlocked = roomBuzzUnlocked.get(qKey) ?? false;
+        const windowEndsAt = roomBuzzWindowEndsAt.get(qKey);
+        const inGracePeriod = Boolean(windowEndsAt && (clientBuzzedAt <= windowEndsAt + 200 || now <= windowEndsAt + 400));
+
+        if (!isUnlocked && !inGracePeriod) {
           socket.emit("error", "Chuông đang bị khóa! Vui lòng chờ mở chuông.");
           return;
         }
 
-        const teamId = player.teamId ?? player.id;
-        const teamName = player.team?.name ?? player.name;
+        // Only accept if no team is currently in answering mode
+        if (roomBuzzFirst.has(qKey)) return;
 
-        // Total participating actors (teams in TEAM mode, players in INDIVIDUAL mode)
-        const totalActors = room.teamMode === "TEAM"
-          ? (await prisma.team.count({ where: { roomId: room.id } }))
-          : (await prisma.player.count({ where: { roomId: room.id } }));
-        // Quy tắc: 2 đội -> tối đa 2 lần bấm; 3 đội trở lên -> tối đa 3 lần bấm (không có phòng 1 đội)
-        const maxAttempts = totalActors <= 2 ? 2 : 3;
-
+        const teamId = session.teamId ?? session.playerId;
+        const teamName = session.teamName ?? session.playerName;
+        const maxAttempts = activeQ.buzzMaxAttempts ?? 3;
         const attempts = roomBuzzAttemptOrder.get(qKey) || [];
+
         if (attempts.length >= maxAttempts) {
           socket.emit("error", `Đã hết ${maxAttempts} lượt bấm chuông cho câu hỏi này!`);
           return;
         }
 
-        // Rule: "tất cả đội có tối đa 1 lần bấm"
+        // Rule: "mỗi đội có tối đa 1 lần bấm"
         const disqSet = roomBuzzDisqualified.get(qKey);
         const alreadyBuzzed = attempts.some((a) => a.teamId === teamId) || Boolean(disqSet && disqSet.has(teamId));
         if (alreadyBuzzed) {
@@ -1632,77 +1896,71 @@ export function registerSocketHandlers(io: IO) {
           return;
         }
 
-        // Only accept if no team is currently in answering mode
-        if (roomBuzzFirst.has(qKey)) return;
+        // Anti-cheat / timestamp normalization
+        const minAllowedTime = (roomBuzzWindowOpenedAt.get(qKey) ?? (now - 2000)) - 150;
+        const safeClientBuzzedAt = Math.min(Math.max(clientBuzzedAt, minAllowedTime), now + 150);
 
-        // Lock buzzer immediately
+        // Check active arbitration window
+        if (roomBuzzArbitration.has(qKey)) {
+          const arb = roomBuzzArbitration.get(qKey)!;
+          if (!arb.candidates.some((c) => c.teamId === teamId)) {
+            arb.candidates.push({
+              teamId,
+              teamName,
+              playerId: session.playerId,
+              playerName: session.playerName,
+              clientBuzzedAt: safeClientBuzzedAt,
+              receivedAt: now,
+              socket,
+              mode: "BUZZ",
+            });
+          }
+          return;
+        }
+
+        // First candidate: lock buzzer immediately in RAM & open 120ms arbitration window
         roomBuzzUnlocked.set(qKey, false);
 
-        // Pause the 5s buzz window timer and save remaining ms
         if (roomBuzzWindowTimers.has(qKey)) {
           clearTimeout(roomBuzzWindowTimers.get(qKey)!);
           roomBuzzWindowTimers.delete(qKey);
         }
-        const windowEndsAt = roomBuzzWindowEndsAt.get(qKey) || Date.now();
-        const remWindowMs = Math.max(0, windowEndsAt - Date.now());
+        const wEndsAt = roomBuzzWindowEndsAt.get(qKey) || now;
+        const remWindowMs = Math.max(0, wEndsAt - now);
         roomBuzzWindowRemaining.set(qKey, remWindowMs);
 
-        const attemptNumber = attempts.length + 1;
-        const multiplier = attemptNumber === 1 ? 1.5 : attemptNumber === 2 ? 1.0 : 0.5;
-        const buzzInfo = { teamId, teamName, playerId, playerName: player.name, attemptNumber, multiplier };
-        roomBuzzFirst.set(qKey, buzzInfo);
-        attempts.push(buzzInfo);
-        roomBuzzAttemptOrder.set(qKey, attempts);
-
-        // Stop standard question timer
-        stopQuestionTimer(room.id);
-
-        const isDeviceAnswer = (room.config as any)?.answerMethod !== "MC";
-        const answerTimeLimit = isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15;
-        const answerEndsAt = Date.now() + answerTimeLimit * 1000;
-
-        const activeQ = roomActiveQuestions.get(room.id);
-        if (activeQ) {
-          activeQ.buzzedTeamId = teamId;
-          activeQ.buzzedTeamName = teamName;
-          activeQ.buzzedBy = player.name;
-          activeQ.buzzAnsweringActive = true;
-          activeQ.buzzAttemptNumber = attemptNumber;
-          activeQ.buzzMaxAttempts = maxAttempts;
-          activeQ.buzzMultiplier = multiplier;
-          activeQ.buzzWindowActive = false;
-          activeQ.timeLimit = answerTimeLimit;
-          activeQ.startedAt = Date.now();
-          activeQ.endsAt = answerEndsAt;
-          activeQ.timerPending = false;
-          activeQ.timerStarted = true;
-          io.to(`room:${room.code}`).emit("game:question", activeQ);
-        }
-
-        io.to(`room:${room.code}`).emit("game:buzz", buzzInfo);
-        io.to(`room:${room.code}`).emit("game:buzz:answering", {
+        const candidates: BuzzCandidate[] = [{
           teamId,
           teamName,
-          timeLimit: answerTimeLimit,
-          attemptNumber,
-          maxAttempts,
-          multiplier,
-        });
-        io.to(`room:${room.code}`).emit("game:timer:started", {
-          timeLimit: answerTimeLimit,
-          endsAt: answerEndsAt,
-          serverTime: Date.now(),
-          questionId: currentQ.id,
+          playerId: session.playerId,
+          playerName: session.playerName,
+          clientBuzzedAt: safeClientBuzzedAt,
+          receivedAt: now,
+          socket,
+          mode: "BUZZ",
+        }];
+
+        const arbTimer = setTimeout(async () => {
+          roomBuzzArbitration.delete(qKey);
+          await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BUZZ", candidates);
+        }, 120);
+
+        roomBuzzArbitration.set(qKey, {
+          timer: arbTimer,
+          candidates,
+          deadline: now + 120,
         });
 
-        startQuestionTimer(io, room.code, room.id, currentQ.id, answerTimeLimit);
-      } else if (room.mode === "BOUNCEBACK") {
-        // Must be in the 5s steal buzz window
-        if (!roomStealPhase.get(qKey)) return;
+      } else if (mode === "BOUNCEBACK") {
+        const isSteal = roomStealPhase.get(qKey) ?? false;
+        const stealEndsAt = roomStealEndsAt.get(qKey);
+        const inGracePeriod = Boolean(stealEndsAt && (clientBuzzedAt <= stealEndsAt + 200 || now <= stealEndsAt + 400));
+
+        if (!isSteal && !inGracePeriod) return;
 
         // Primary team cannot steal their own question!
         const primary = roomPrimaryTeams.get(qKey);
-        if (player.teamId && primary && player.teamId === primary.teamId) {
+        if (session.teamId && primary && session.teamId === primary.teamId) {
           socket.emit("error", "Đội của bạn là đội trả lời chính, không thể cướp lượt câu này!");
           return;
         }
@@ -1710,50 +1968,57 @@ export function registerSocketHandlers(io: IO) {
         // Only first steal buzz wins
         if (roomStealBuzzed.has(qKey)) return;
 
-        // Cancel the 5s timer
+        const teamId = session.teamId ?? session.playerId;
+        const teamName = session.teamName ?? session.playerName;
+
+        const minAllowedTime = (roomStealOpenedAt.get(qKey) ?? (now - 2000)) - 150;
+        const safeClientBuzzedAt = Math.min(Math.max(clientBuzzedAt, minAllowedTime), now + 150);
+
+        if (roomBuzzArbitration.has(qKey)) {
+          const arb = roomBuzzArbitration.get(qKey)!;
+          if (!arb.candidates.some((c) => c.teamId === teamId)) {
+            arb.candidates.push({
+              teamId,
+              teamName,
+              playerId: session.playerId,
+              playerName: session.playerName,
+              clientBuzzedAt: safeClientBuzzedAt,
+              receivedAt: now,
+              socket,
+              mode: "BOUNCEBACK",
+            });
+          }
+          return;
+        }
+
+        // First candidate: lock steal phase & open 120ms arbitration window
         if (roomStealTimer.has(qKey)) {
           clearTimeout(roomStealTimer.get(qKey)!);
           roomStealTimer.delete(qKey);
         }
         roomStealPhase.set(qKey, false);
 
-        // Stop steal ticker timer if any
-        stopQuestionTimer(room.id);
+        const candidates: BuzzCandidate[] = [{
+          teamId,
+          teamName,
+          playerId: session.playerId,
+          playerName: session.playerName,
+          clientBuzzedAt: safeClientBuzzedAt,
+          receivedAt: now,
+          socket,
+          mode: "BOUNCEBACK",
+        }];
 
-        const teamId = player.teamId ?? player.id;
-        const teamName = player.team?.name ?? player.name;
-        const stealInfo = { teamId, teamName, playerId, playerName: player.name };
-        roomStealBuzzed.set(qKey, stealInfo);
+        const arbTimer = setTimeout(async () => {
+          roomBuzzArbitration.delete(qKey);
+          await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BOUNCEBACK", candidates);
+        }, 120);
 
-        const activeQ = roomActiveQuestions.get(room.id);
-        if (activeQ) {
-          activeQ.isStealPhase = false;
-          activeQ.stealBuzzedTeamId = stealInfo.teamId;
-          activeQ.stealBuzzedTeamName = stealInfo.teamName;
-          activeQ.stealAnsweringActive = false; // Do NOT start answering immediately! 3s buffer first!
-          activeQ.timerPending = true;
-          activeQ.timerStarted = false;
-          io.to(`room:${room.code}`).emit("game:question", activeQ);
-        }
-
-        io.to(`room:${room.code}`).emit("game:bounceback:steal_buzzed", {
-          ...stealInfo,
-          prepSeconds: 3,
+        roomBuzzArbitration.set(qKey, {
+          timer: arbTimer,
+          candidates,
+          deadline: now + 120,
         });
-
-        // 3 giây đệm 'SẴN SÀNG' để thí sinh chuẩn bị tâm lý trước khi đồng hồ trả lời chính thức chạy
-        const prepKey = `${room.id}:steal_prep`;
-        if (roomStealTimer.has(prepKey)) {
-          clearTimeout(roomStealTimer.get(prepKey)!);
-        }
-        const prepTimeout = setTimeout(async () => {
-          roomStealTimer.delete(prepKey);
-          const currentActiveQ = roomActiveQuestions.get(room.id);
-          if (currentActiveQ && currentActiveQ.stealBuzzedTeamId === stealInfo.teamId && !currentActiveQ.stealAnsweringActive) {
-            await startStealAnsweringTimer(room.id, room.code, currentQ);
-          }
-        }, 3000);
-        roomStealTimer.set(prepKey, prepTimeout);
       }
     });
 
@@ -2214,8 +2479,15 @@ export function registerSocketHandlers(io: IO) {
       // Reset mode states for new question
       roomStealPhase.delete(qKey);
       roomStealBuzzed.delete(qKey);
+      roomStealOpenedAt.delete(qKey);
+      roomStealEndsAt.delete(qKey);
       roomBuzzFirst.delete(qKey);
       roomBuzzUnlocked.delete(qKey);
+      roomBuzzWindowOpenedAt.delete(qKey);
+      if (roomBuzzArbitration.has(qKey)) {
+        clearTimeout(roomBuzzArbitration.get(qKey)!.timer);
+        roomBuzzArbitration.delete(qKey);
+      }
       if (roomBuzzDelayTimers.has(qKey)) {
         clearTimeout(roomBuzzDelayTimers.get(qKey)!);
         roomBuzzDelayTimers.delete(qKey);
@@ -4258,6 +4530,7 @@ export function registerSocketHandlers(io: IO) {
       if (!playerId) return;
 
       playerSockets.delete(socket.id);
+      socketPlayerSessions.delete(socket.id);
 
       const player = await prisma.player.findUnique({
         where: { id: playerId },
@@ -4422,6 +4695,7 @@ async function processAnswerSubmission({
   playerId,
   teamId,
   answer,
+  clientAnsweredAt,
   isAdminOverride = false,
   socket,
 }: {
@@ -4431,6 +4705,7 @@ async function processAnswerSubmission({
   playerId?: string;
   teamId?: string;
   answer: string | string[];
+  clientAnsweredAt?: number;
   isAdminOverride?: boolean;
   socket?: Sock;
 }) {
@@ -4561,7 +4836,28 @@ async function processAnswerSubmission({
     // Eliminated teams act as Ghost teams: they can answer to build Revival momentum!
   }
 
-  const timeSpent = Date.now() - (roomTimers.get(`${room.id}:startedAt`) ? parseInt(roomTimers.get(`${room.id}:startedAt`) as any) : Date.now());
+  const now = Date.now();
+  let qStartedAt = roomQuestionStartedAt.get(room.id);
+  if (!qStartedAt) {
+    if (activeQ?.startedAt) {
+      qStartedAt = activeQ.startedAt;
+    } else if (roomTimerEndsAt.has(room.id) && activeQ?.timeLimit) {
+      qStartedAt = roomTimerEndsAt.get(room.id)! - (activeQ.timeLimit * 1000);
+    } else {
+      qStartedAt = now;
+    }
+  }
+
+  let timeSpent = Math.max(100, now - qStartedAt);
+  if (
+    typeof clientAnsweredAt === "number" &&
+    clientAnsweredAt >= qStartedAt - 500 &&
+    clientAnsweredAt <= now + 500
+  ) {
+    timeSpent = Math.max(100, clientAnsweredAt - qStartedAt);
+  }
+  const maxAllowedLimitMs = ((activeQ?.timeLimit || question?.timeLimit || 30) * 1000);
+  timeSpent = Math.min(timeSpent, maxAllowedLimitMs);
 
   // Upsert Answer in database: Allows continuous answer switching while timer is running!
   const targetTeamId = effectiveTeamId;
@@ -4806,6 +5102,7 @@ async function openBuzzWindow(io: IO, roomId: string, roomCode: string, question
   const nextMultiplier = nextAttemptNum === 1 ? 1.5 : nextAttemptNum === 2 ? 1.0 : 0.5;
 
   roomBuzzUnlocked.set(qKey, true);
+  roomBuzzWindowOpenedAt.set(qKey, Date.now());
   const endsAt = Date.now() + remainingMs;
   roomBuzzWindowEndsAt.set(qKey, endsAt);
 
@@ -4846,7 +5143,7 @@ async function openBuzzWindow(io: IO, roomId: string, roomCode: string, question
     }
     io.to(`room:${roomCode}`).emit("game:buzz:closed");
     await revealCurrentAnswer(io, roomId, roomCode, questionId);
-  }, remainingMs);
+  }, remainingMs + 350);
 
   roomBuzzWindowTimers.set(qKey, timer);
 }
@@ -5382,6 +5679,8 @@ async function openBouncebackStealWindow(io: IO, roomId: string, roomCode: strin
   }
 
   roomStealPhase.set(qKey, true);
+  roomStealOpenedAt.set(qKey, Date.now());
+  roomStealEndsAt.set(qKey, Date.now() + 5000);
   const activeQ = roomActiveQuestions.get(roomId);
   if (activeQ) {
     activeQ.isStealPhase = true;
@@ -5410,7 +5709,7 @@ async function openBouncebackStealWindow(io: IO, roomId: string, roomCode: strin
       roomQuestionProcessed.add(qKey);
       await revealCurrentAnswer(io, roomId, roomCode, questionId);
     }
-  }, 5000);
+  }, 5350);
   roomStealTimer.set(qKey, timer);
 }
 
@@ -6683,6 +6982,7 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
 
   const key = `${roomId}:timer`;
   const endsAt = Date.now() + timeLimit * 1000;
+  roomQuestionStartedAt.set(roomId, Date.now());
   roomTimerEndsAt.set(roomId, endsAt);
   roomRemainingTimes.set(key, timeLimit);
 

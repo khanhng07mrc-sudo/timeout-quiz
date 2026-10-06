@@ -1062,8 +1062,8 @@ export interface ClientToServerEvents {
   "time:sync": (clientTime: number, callback: (result: { clientTime: number; serverTime: number }) => void) => void;
   "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
   "room:leave": () => void;
-  "game:answer:submit": (payload: { questionId: string; answer: string | string[] }) => void;
-  "game:buzz": () => void;
+  "game:answer:submit": (payload: { questionId: string; answer: string | string[]; clientAnsweredAt?: number }) => void;
+  "game:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
   "admin:next": (payload?: { code?: string }) => void;
   "admin:skip:prepare": (payload?: { code?: string }) => void;

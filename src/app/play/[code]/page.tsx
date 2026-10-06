@@ -32,6 +32,7 @@ import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
   calibrateClockFromPacket,
+  getServerTime,
 } from "@/lib/clock-sync";
 
 export default function PlayPage() {
@@ -869,7 +870,7 @@ export default function PlayPage() {
 
   const handleBuzz = () => {
     if (socketRef.current?.connected) {
-      socketRef.current.emit("game:buzz");
+      socketRef.current.emit("game:buzz", { clientBuzzedAt: getServerTime() });
     } else {
       window.parent?.postMessage({
         type: "OFFLINE_PLAYER_ACTION",
@@ -889,6 +890,7 @@ export default function PlayPage() {
       socketRef.current.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
         answer,
+        clientAnsweredAt: getServerTime(),
       });
     } else {
       window.parent?.postMessage({

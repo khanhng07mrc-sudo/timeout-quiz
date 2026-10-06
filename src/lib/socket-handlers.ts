@@ -432,6 +432,13 @@ async function launchWagerQuestion(ioInstance: IO, roomId: string, roomCode: str
   roomActiveQuestions.set(room.id, questionState);
 
   ioInstance.to(`room:${room.code}`).emit("game:question", questionState);
+  ioInstance.to(`room:${room.code}:admin`).emit("admin:question:data", {
+    questionId: q.id,
+    options: q.options,
+    answer: q.answer,
+    type: q.type,
+    explanation: q.hint || (q as any).explanation,
+  });
   ioInstance.to(`room:${room.code}`).emit("game:wager:update", wagerState);
 }
 
@@ -1538,6 +1545,16 @@ export function registerSocketHandlers(io: IO) {
           const activeQ = roomActiveQuestions.get(room.id);
           if (activeQ) {
             socket.emit("game:question", activeQ);
+            const rawQ = room.quizBank.questions.find((item: any) => item.id === activeQ.question.id) || room.quizBank.questions[room.currentQuestion];
+            if (rawQ) {
+              socket.emit("admin:question:data", {
+                questionId: rawQ.id,
+                options: rawQ.options,
+                answer: rawQ.answer,
+                type: rawQ.type,
+                explanation: rawQ.hint || (rawQ as any).explanation,
+              });
+            }
             const remaining = roomRemainingTimes.get(`${room.id}:timer`);
             const endsAt = roomTimerEndsAt.get(room.id) || activeQ.endsAt;
             if (activeQ.timerStarted && typeof remaining === "number" && remaining > 0) {
@@ -1576,6 +1593,13 @@ export function registerSocketHandlers(io: IO) {
               }
 
               socket.emit("game:question", qState);
+              socket.emit("admin:question:data", {
+                questionId: currentQ.id,
+                options: currentQ.options,
+                answer: currentQ.answer,
+                type: currentQ.type,
+                explanation: currentQ.hint || (currentQ as any).explanation,
+              });
 
               if (typeof remaining === "number" && remaining > 0) {
                 socket.emit("game:timer", { remaining, total: currentQ.timeLimit, endsAt, serverTime: Date.now() });
@@ -1749,10 +1773,20 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Submit Answer (Player Device) ─────────────────────────────────────────
-    socket.on("game:answer:submit", async ({ questionId, answer, teamId, clientAnsweredAt }: any) => {
+    socket.on("game:answer:submit", async ({ questionId, answer, teamId, playerId: clientPlayerId, clientAnsweredAt }: any) => {
       if (!checkActionDebounce(socket.id, 150)) return;
 
-      const playerId = playerSockets.get(socket.id);
+      let playerId = clientPlayerId || playerSockets.get(socket.id);
+      if (!playerId) {
+        const dbPlayer = await prisma.player.findFirst({
+          where: { socketId: socket.id },
+          include: { room: true },
+        }).catch(() => null);
+        if (dbPlayer) {
+          playerId = dbPlayer.id;
+          playerSockets.set(socket.id, dbPlayer.id);
+        }
+      }
       if (!playerId) return;
 
       let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
@@ -2669,6 +2703,14 @@ export function registerSocketHandlers(io: IO) {
             startQuestionTimer(io, room.code, room.id, q.id, standardTimeLimit);
           }
         }
+
+        io.to(`room:${room.code}:admin`).emit("admin:question:data", {
+          questionId: q.id,
+          options: q.options,
+          answer: q.answer,
+          type: q.type,
+          explanation: q.hint || (q as any).explanation,
+        });
       };
 
       if (room.mode === "WAGER") {
@@ -3846,6 +3888,30 @@ export function registerSocketHandlers(io: IO) {
       roomActiveQuestions.set(room.id, questionState);
 
       io.to(`room:${room.code}`).emit("game:question", questionState);
+      io.to(`room:${room.code}:admin`).emit("admin:question:data", {
+        questionId: q.id,
+        options: q.options,
+        answer: q.answer,
+        type: q.type,
+        explanation: q.hint || (q as any).explanation,
+      });
+    });
+
+    socket.on("admin:question:get_data", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+      const activeQ = roomActiveQuestions.get(room.id);
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];
+      if (q) {
+        socket.emit("admin:question:data", {
+          questionId: q.id,
+          options: q.options,
+          answer: q.answer,
+          type: q.type,
+          explanation: q.hint || (q as any).explanation,
+        });
+      }
     });
 
     socket.on("admin:question:start_timer", async (payload?: { code?: string }) => {
@@ -4712,9 +4778,73 @@ async function getActiveParticipantsForQuestion(room: any, questionId: string): 
 
 function isPlayerBot(p?: { id?: string | null; name?: string | null } | null): boolean {
   if (!p) return false;
+  // Human testers and sandbox players are NEVER bots!
+  if (p.id?.startsWith("p_sb_") || p.id?.startsWith("sb_") || p.name?.includes("Tester")) return false;
   if (p.id?.startsWith("bot_")) return true;
   if (p.name?.includes("🤖")) return true;
   if (p.name?.toLowerCase().startsWith("bot ")) return true;
+  return false;
+}
+
+function normalizeTextForComparison(text: string): string {
+  if (!text) return "";
+  return text
+    .toString()
+    .normalize("NFC")
+    .toLowerCase()
+    .trim()
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[.,!?;:]+$/, "")
+    .replace(/\s+/g, " ");
+}
+
+function matchFillBlankText(expectedAnswer: string, submittedAnswer: string): boolean {
+  const normExpected = normalizeTextForComparison(expectedAnswer);
+  const normSubmitted = normalizeTextForComparison(submittedAnswer);
+
+  if (!normExpected || !normSubmitted) return false;
+  if (normExpected === normSubmitted) return true;
+
+  const variants = expectedAnswer
+    .split(/[/;|]/)
+    .flatMap((part) => {
+      if (part.includes(",") && !/\d,\d/.test(part)) {
+        return part.split(",");
+      }
+      return [part];
+    })
+    .map((v) => normalizeTextForComparison(v))
+    .filter(Boolean);
+
+  if (variants.includes(normSubmitted)) return true;
+
+  const cleanExpNum = Number(normExpected.replace(",", "."));
+  const cleanSubNum = Number(normSubmitted.replace(",", "."));
+  if (!isNaN(cleanExpNum) && !isNaN(cleanSubNum) && cleanExpNum === cleanSubNum) {
+    return true;
+  }
+
+  return false;
+}
+
+function matchTrueFalseText(expectedTextOrId: string, submittedTextOrId: string): boolean {
+  const normExp = normalizeTextForComparison(expectedTextOrId);
+  const normSub = normalizeTextForComparison(submittedTextOrId);
+
+  if (normExp === normSub) return true;
+
+  const trueTokens = ["true", "đúng", "dung", "t", "d", "1", "yes", "có", "co"];
+  const falseTokens = ["false", "sai", "f", "s", "0", "no", "không", "khong"];
+
+  const isExpTrue = trueTokens.includes(normExp);
+  const isExpFalse = falseTokens.includes(normExp);
+
+  const isSubTrue = trueTokens.includes(normSub);
+  const isSubFalse = falseTokens.includes(normSub);
+
+  if (isExpTrue && isSubTrue) return true;
+  if (isExpFalse && isSubFalse) return true;
+
   return false;
 }
 
@@ -4777,36 +4907,90 @@ async function hasUnfinalizedHumanParticipants(
 
 function evaluateAnswerCorrectness(
   question: any,
-  submittedAnswer: string[]
-): { isAutoCorrect: boolean; answerText: string } {
+  submittedAnswer: string | string[]
+): { isAutoCorrect: boolean | undefined; answerText: string } {
   if (!question) {
     return { isAutoCorrect: false, answerText: "(Không có câu hỏi)" };
   }
   const options = (question.options as any[]) || [];
-  if (!submittedAnswer || submittedAnswer.length === 0) {
+  const ansArray = Array.isArray(submittedAnswer)
+    ? submittedAnswer
+    : submittedAnswer !== undefined && submittedAnswer !== null
+    ? [String(submittedAnswer)]
+    : [];
+
+  if (ansArray.length === 0) {
     return { isAutoCorrect: false, answerText: "(Chưa chọn đáp án / Hết giờ)" };
   }
 
-  const selectedOptions = options.filter((o: any) => submittedAnswer.includes(o.id));
+  const selectedOptions = options.filter((o: any) =>
+    ansArray.some((ans) =>
+      ans === o.id ||
+      normalizeTextForComparison(ans) === normalizeTextForComparison(o.id) ||
+      normalizeTextForComparison(ans) === normalizeTextForComparison(o.text)
+    )
+  );
   const answerText = selectedOptions.length > 0
     ? selectedOptions.map((o: any) => `${o.text}`).join(", ")
-    : submittedAnswer.join(", ");
+    : ansArray.join(", ");
+
+  if (question.type === "ESSAY") {
+    return { isAutoCorrect: undefined, answerText };
+  }
 
   let isAutoCorrect = false;
-  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
+
+  if (question.type === "MC_SINGLE") {
     const correctOption = options.find((o: any) => o.isCorrect);
-    isAutoCorrect = correctOption
-      ? (submittedAnswer.includes(correctOption.id) ||
-         submittedAnswer.some((ans: any) => typeof ans === "string" && ans.trim() === correctOption.text?.trim()))
-      : false;
+    if (correctOption) {
+      const normCorrectId = normalizeTextForComparison(correctOption.id);
+      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
+
+      isAutoCorrect = ansArray.some((ans) => {
+        const normAns = normalizeTextForComparison(ans);
+        return (
+          normAns === normCorrectId ||
+          normAns === normCorrectText ||
+          ans === correctOption.id
+        );
+      });
+    }
+  } else if (question.type === "TRUE_FALSE") {
+    const correctOption = options.find((o: any) => o.isCorrect);
+    if (correctOption) {
+      const normCorrectId = normalizeTextForComparison(correctOption.id);
+      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
+
+      isAutoCorrect = ansArray.some((ans) => {
+        const normAns = normalizeTextForComparison(ans);
+        return (
+          normAns === normCorrectId ||
+          normAns === normCorrectText ||
+          ans === correctOption.id ||
+          matchTrueFalseText(correctOption.text || correctOption.id, ans)
+        );
+      });
+    }
   } else if (question.type === "MC_MULTI") {
-    const correctIds = options.filter((o: any) => o.isCorrect).map((o: any) => o.id);
-    isAutoCorrect = correctIds.length === submittedAnswer.length &&
-      correctIds.every((id: string) => submittedAnswer.includes(id));
+    const correctOptions = options.filter((o: any) => o.isCorrect);
+    const correctIds = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.id)));
+    const correctTexts = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.text || "")));
+
+    const submittedNormalized = ansArray.map((ans) => normalizeTextForComparison(ans));
+    let matchedCount = 0;
+    for (const sub of submittedNormalized) {
+      if (correctIds.has(sub) || correctTexts.has(sub)) {
+        matchedCount++;
+      } else {
+        matchedCount = -1;
+        break;
+      }
+    }
+    isAutoCorrect = matchedCount === correctOptions.length && correctOptions.length === ansArray.length;
   } else if (question.type === "FILL_BLANK") {
-    const expected = (question.answer || "").toLowerCase().trim();
-    const actual = (submittedAnswer[0] || "").toLowerCase().trim();
-    isAutoCorrect = expected === actual;
+    const expected = question.answer || (options.find((o: any) => o.isCorrect)?.text) || "";
+    const submitted = ansArray[0] || "";
+    isAutoCorrect = matchFillBlankText(expected, submitted);
   }
 
   return { isAutoCorrect, answerText };
@@ -4844,9 +5028,33 @@ async function processAnswerSubmission({
   const qKey = `${room.id}:${questionId}`;
 
   const activeQ = roomActiveQuestions.get(room.id);
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id) ||
+    socket?.handshake?.query?.sandbox === "1"
+  );
+
   if (activeQ?.timerPending && !isAdminOverride) {
-    if (socket) socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
-    return;
+    if (isSandboxRoom) {
+      // In Sandbox, if a tester or bot answers while timer is pending, automatically activate the timer!
+      activeQ.timerPending = false;
+      activeQ.timerStarted = true;
+      activeQ.startedAt = Date.now();
+      const effLimit = getStandardQuestionTimeLimit(question);
+      activeQ.endsAt = Date.now() + effLimit * 1000;
+      io.to(`room:${room.code}`).emit("game:question", activeQ);
+      io.to(`room:${room.code}`).emit("game:timer:started", {
+        timeLimit: effLimit,
+        endsAt: activeQ.endsAt,
+        serverTime: Date.now(),
+        questionId: question.id,
+      });
+      startQuestionTimer(io, room.code, room.id, question.id, effLimit);
+    } else {
+      if (socket) socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
+      return;
+    }
   }
   if (activeQ?.isExpired && !isAdminOverride) {
     if (socket) socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
@@ -4862,36 +5070,12 @@ async function processAnswerSubmission({
     }
   }
 
-  // Determine correctness
-  let isCorrect = false;
-  const options = question.options as any[] | null;
-  if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
-    const correctOption = options?.find((o: any) => o.isCorrect);
-    const submittedId = Array.isArray(answer) ? answer[0] : answer;
-    isCorrect = correctOption
-      ? (correctOption.id === submittedId ||
-         (typeof submittedId === "string" && correctOption.text?.trim() === submittedId.trim()) ||
-         (Array.isArray(answer) && answer.includes(correctOption.id)))
-      : false;
-  } else if (question.type === "MC_MULTI") {
-    const correctIds = options?.filter((o: any) => o.isCorrect).map((o: any) => o.id) ?? [];
-    const submittedIds = Array.isArray(answer) ? answer : [answer];
-    isCorrect = correctIds.length === submittedIds.length &&
-      correctIds.every((id: string) => submittedIds.includes(id));
-  } else if (question.type === "FILL_BLANK") {
-    const expected = (question.answer || "").toLowerCase().trim();
-    const actual = (Array.isArray(answer) ? answer[0] : (answer as string) || "").toLowerCase().trim();
-    isCorrect = expected === actual;
-  } else if (question.type === "ESSAY") {
-    isCorrect = null as any;
-  }
+  // Determine correctness via unified robust evaluator
+  const evalResult = evaluateAnswerCorrectness(question, answer);
+  const isCorrect = evalResult.isAutoCorrect;
 
   // Mode permissions check (supports both TEAM and INDIVIDUAL mode)
   let effectiveTeamId = teamId;
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    socket?.handshake?.query?.sandbox === "1"
-  );
 
   if (!effectiveTeamId && playerId) {
     const pRecord = await prisma.player.findFirst({
@@ -5053,9 +5237,19 @@ async function processAnswerSubmission({
     room.mode === "TOURNAMENT" ||
     room.mode === "WAGER";
 
+  // Check if incoming submission is from a human tester/player
+  const isTesterPlayer = Boolean(
+    playerId?.startsWith("p_sb_") ||
+    playerId?.startsWith("sb_") ||
+    (socket?.handshake?.query?.sandbox === "1" && !playerId?.startsWith("bot_")) ||
+    (isSandboxRoom && !playerId?.startsWith("bot_"))
+  );
+
   // Check if incoming submission is from a bot
-  const isBotSender = isPlayerBot({ id: playerId }) ||
-                      Boolean(socket?.handshake?.query?.sandbox === "1" && playerId?.startsWith("bot_"));
+  const isBotSender = !isTesterPlayer && (
+    isPlayerBot({ id: playerId }) ||
+    Boolean(socket?.handshake?.query?.sandbox === "1" && playerId?.startsWith("bot_"))
+  );
 
   // Anti-collision: If a human player is in this team, Bot must NEVER submit or overwrite!
   if (targetTeamId && isBotSender) {
@@ -5106,7 +5300,7 @@ async function processAnswerSubmission({
       const prevPlayer = await prisma.player.findUnique({
         where: { id: existingAnswer.playerId },
         select: { id: true, name: true },
-      });
+      }).catch(() => null);
       if (prevPlayer && isPlayerBot(prevPlayer)) {
         existingWasBot = true;
       }
@@ -5150,41 +5344,94 @@ async function processAnswerSubmission({
     }
   }
 
-  if (existingAnswer) {
-    await prisma.answer.update({
-      where: { id: existingAnswer.id },
-      data: {
-        answer: normalizedAnswer,
-        isCorrect: question.type === "ESSAY" ? null : isCorrect,
-        timeSpent: isAdminOverride ? 0 : timeSpent,
-        submittedAt: new Date(),
-        teamId: targetTeamId ?? existingAnswer.teamId,
-        playerId: targetPlayerId ?? existingAnswer.playerId,
-      },
-    });
-    if (targetTeamId) {
-      await prisma.answer.deleteMany({
-        where: {
+  // Verify foreign key integrity before persisting to avoid unhandled database constraint exceptions
+  let safePlayerId: string | null = null;
+  if (targetPlayerId) {
+    const pExists = await prisma.player.findUnique({
+      where: { id: targetPlayerId },
+      select: { id: true },
+    }).catch(() => null);
+    if (pExists) {
+      safePlayerId = pExists.id;
+    } else if (socket?.id) {
+      const sockPlayer = await prisma.player.findFirst({
+        where: { roomId: room.id, socketId: socket.id },
+        select: { id: true },
+      }).catch(() => null);
+      if (sockPlayer) {
+        safePlayerId = sockPlayer.id;
+      }
+    }
+  }
+
+  let safeTeamId: string | null = null;
+  if (targetTeamId) {
+    const tExists = await prisma.team.findUnique({
+      where: { id: targetTeamId },
+      select: { id: true },
+    }).catch(() => null);
+    if (tExists) {
+      safeTeamId = tExists.id;
+    }
+  }
+
+  try {
+    if (existingAnswer) {
+      await prisma.answer.update({
+        where: { id: existingAnswer.id },
+        data: {
+          answer: normalizedAnswer,
+          isCorrect: question.type === "ESSAY" ? null : isCorrect,
+          timeSpent: isAdminOverride ? 0 : timeSpent,
+          submittedAt: new Date(),
+          teamId: safeTeamId ?? existingAnswer.teamId,
+          playerId: safePlayerId ?? existingAnswer.playerId,
+        },
+      });
+      if (safeTeamId) {
+        await prisma.answer.deleteMany({
+          where: {
+            roomId: room.id,
+            questionId,
+            teamId: safeTeamId,
+            id: { not: existingAnswer.id },
+          },
+        }).catch(() => {});
+      }
+    } else {
+      await prisma.answer.create({
+        data: {
           roomId: room.id,
           questionId,
-          teamId: targetTeamId,
-          id: { not: existingAnswer.id },
+          playerId: safePlayerId,
+          teamId: safeTeamId,
+          answer: normalizedAnswer,
+          isCorrect: question.type === "ESSAY" ? null : isCorrect,
+          pointsAwarded: 0,
+          timeSpent: isAdminOverride ? 0 : timeSpent,
         },
-      }).catch(() => {});
+      });
     }
-  } else {
-    await prisma.answer.create({
-      data: {
-        roomId: room.id,
-        questionId,
-        playerId: targetPlayerId ?? null,
-        teamId: targetTeamId ?? null,
-        answer: normalizedAnswer,
-        isCorrect: question.type === "ESSAY" ? null : isCorrect,
-        pointsAwarded: 0,
-        timeSpent: isAdminOverride ? 0 : timeSpent,
-      },
-    });
+  } catch (err: any) {
+    console.error("[processAnswerSubmission] Error persisting answer:", err?.message);
+    if (err?.code === "P2003" || err?.message?.includes("foreign key")) {
+      try {
+        await prisma.answer.create({
+          data: {
+            roomId: room.id,
+            questionId,
+            playerId: null,
+            teamId: safeTeamId,
+            answer: normalizedAnswer,
+            isCorrect: question.type === "ESSAY" ? null : isCorrect,
+            pointsAwarded: 0,
+            timeSpent: isAdminOverride ? 0 : timeSpent,
+          },
+        });
+      } catch (innerErr) {
+        console.error("[processAnswerSubmission] Fallback create failed:", innerErr);
+      }
+    }
   }
 
   // 1. Send positive acknowledgment (Ack) to the submitting player
@@ -5541,12 +5788,21 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
   roomQuestionProcessed.add(qKey);
 
   const tournament = roomTournaments.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { include: { players: true } } },
+  });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!tournament || !room || !question) return;
 
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
   if (!currentMatch) return;
+
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id)
+  );
 
   const t1Ans = currentMatch.team1Id
     ? await prisma.answer.findFirst({
@@ -5563,13 +5819,18 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
 
   const scoreUpdates: ScoreUpdate[] = [];
 
-  if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id) {
+  const team1Obj = room.teams.find((t) => t.id === currentMatch.team1Id);
+  const team2Obj = room.teams.find((t) => t.id === currentMatch.team2Id);
+  const team1HasHuman = team1Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
+  const team2HasHuman = team2Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
+
+  if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id && (isSandboxRoom || team1HasHuman)) {
     currentMatch.team1Score += question.points;
     const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, question.points);
     scoreUpdates.push({ teamId: currentMatch.team1Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
 
-  if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id) {
+  if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id && (isSandboxRoom || team2HasHuman)) {
     currentMatch.team2Score += question.points;
     const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, question.points);
     scoreUpdates.push({ teamId: currentMatch.team2Id, score: tRes.newScore, delta: tRes.effectiveDelta });
@@ -5676,17 +5937,27 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
   roomQuestionProcessed.add(qKey);
 
   const gridState = roomGridCaros.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { include: { players: true } } },
+  });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!gridState || !room || !question) return;
+
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id)
+  );
 
   const currentTeamId = gridState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
   const cell = gridState.selectedCellId ? gridState.cells.find((c) => c.id === gridState.selectedCellId) : null;
+  const hasHuman = currentTeam?.players?.some((p) => !isPlayerBot(p)) ?? true;
 
   const scoreUpdates: ScoreUpdate[] = [];
 
-  if (currentTeam && cell) {
+  if (currentTeam && cell && (isSandboxRoom || hasHuman)) {
     const ans = await prisma.answer.findFirst({
       where: { roomId, questionId, teamId: currentTeam.id },
       orderBy: { submittedAt: "desc" },
@@ -5759,11 +6030,22 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
   roomQuestionProcessed.add(qKey);
 
   const diceState = roomDiceRaces.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { include: { players: true } } },
+  });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!diceState || !room || !question) return;
 
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id)
+  );
+
   const currentTeamId = diceState.currentTurnTeamId;
+  const currentTeam = room.teams.find((t) => t.id === currentTeamId);
+  const hasHuman = currentTeam?.players?.some((p) => !isPlayerBot(p)) ?? true;
   const scoreUpdates: ScoreUpdate[] = [];
 
   const ans = await prisma.answer.findFirst({
@@ -5771,7 +6053,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
     orderBy: { submittedAt: "desc" },
   });
 
-  const isCorrect = ans?.isCorrect === true;
+  const isCorrect = ans?.isCorrect === true && (isSandboxRoom || hasHuman);
 
   if (isCorrect && currentTeamId) {
     // Trả lời đúng: ĐƯỢC QUYỀN GIEO XÚC XẮC! (Xếp hạng theo vị trí ô đua cờ, không cộng điểm độc lập)
@@ -5799,7 +6081,10 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   roomQuestionProcessed.add(qKey);
 
   const wagerState = roomWagers.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { include: { players: true } } },
+  });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!wagerState || !room || !question) return;
 
@@ -5826,10 +6111,18 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     }
   }
 
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id)
+  );
+
   // 3. Đếm số đội KHÁC (không phải đội cược) trả lời ĐÚNG
   let otherCorrectCount = 0;
   for (const team of room.teams) {
     if (team.id !== lastWagerTeamId) {
+      const hasHuman = team.players?.some((p: any) => !isPlayerBot(p)) ?? true;
+      if (!isSandboxRoom && !hasHuman) continue;
       const ans = answerMap.get(team.id);
       if (ans?.isCorrect === true) {
         otherCorrectCount++;
@@ -5854,6 +6147,22 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
   }
 
   for (const team of room.teams) {
+    const hasHuman = team.players?.some((p: any) => !isPlayerBot(p)) ?? true;
+    if (!isSandboxRoom && !hasHuman) {
+      scoreUpdates.push({ teamId: team.id, score: team.score, delta: 0 });
+      teamSummaries.push({
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color,
+        totalOnlineMembers: 0,
+        correctMembers: 0,
+        pointsAwarded: 0,
+        speedBonus: 0,
+        multiplier: 1,
+      });
+      continue;
+    }
+
     const isCorrect = Boolean(answerMap.get(team.id)?.isCorrect === true);
     let delta = 0;
 
@@ -6944,27 +7253,90 @@ async function resolveQuestionTeamScores(
   const teamScoresUpdates: ScoreUpdate[] = [];
   const teamSummaries: TeamRevealSummary[] = [];
 
-  for (const team of room.teams) {
-    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_") || p.id?.startsWith("sb_")));
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    roomSandboxActiveTeam.has(room.id)
+  );
 
-    // Get all answers for this team, sorted by submittedAt desc (latest first)
+  for (const team of room.teams) {
     const teamAnswers = answers
       .filter((a) => a.teamId === team.id)
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
 
-    // If team has human, prioritize human submissions over bot submissions
-    const validTeamAnswers = hasHuman
-      ? teamAnswers.filter((a) => !a.playerId || !isPlayerBot({ id: a.playerId }))
-      : teamAnswers;
+    const humanMembers = team.players.filter((p) =>
+      !isPlayerBot(p) && !p.id?.startsWith("bot_") && !p.name?.includes("🤖")
+    );
+    const hasHuman = humanMembers.length > 0 || team.players.some((p) =>
+      p.name?.includes("Tester") || p.id?.startsWith("p_sb_") || p.id?.startsWith("sb_")
+    );
 
-    const repAnswer = validTeamAnswers[0] || teamAnswers[0];
-    const isRepCorrect = repAnswer?.isCorrect === true;
-    const correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
-    const correctTimes = repAnswer?.timeSpent !== undefined ? [repAnswer.timeSpent] : [];
+    let totalOnline = 1;
+    let correctAnswers: any[] = [];
+    let correctTimes: number[] = [];
 
-    // Unified Team Rule: 1 representative answer for the entire team (100% score if correct)
-    const totalOnline = 1;
-    const correctMembers = isRepCorrect ? 1 : 0;
+    if (!isSandboxRoom) {
+      // ── REAL ROOM RULES ─────────────────────────────────────────────
+      // "đối với bot, hệ thống không tính điểm, tức nghĩa đội không thể chỉ toàn bot"
+      if (!hasHuman) {
+        // Team has only bots or no human players -> cannot score in real room!
+        teamScoresUpdates.push({ teamId: team.id, score: team.score, delta: 0 });
+        teamSummaries.push({
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color,
+          totalOnlineMembers: 0,
+          correctMembers: 0,
+          pointsAwarded: 0,
+          speedBonus: 0,
+          multiplier: 1,
+          streak: 0,
+          avgTimeSpent: 0,
+          basePoints: 0,
+          speedPoints: 0,
+          streakPoints: 0,
+          rarityPoints: 0,
+        });
+        continue;
+      }
+
+      // Filter answers to ONLY include human members of this team
+      const humanAnswers = teamAnswers.filter((a) =>
+        !a.playerId || !isPlayerBot({ id: a.playerId })
+      );
+
+      // Average mechanism: Điểm trung bình cộng các thành viên
+      const onlineHumans = humanMembers.filter((hm) => !!hm.socketId);
+      totalOnline = Math.max(1, humanAnswers.length > 0 ? humanAnswers.length : (onlineHumans.length > 0 ? onlineHumans.length : humanMembers.length));
+
+      correctAnswers = humanAnswers.filter((a) => a.isCorrect === true);
+      correctTimes = correctAnswers
+        .map((a) => a.timeSpent)
+        .filter((t) => typeof t === "number" && t > 0);
+    } else {
+      // ── SANDBOX ROOM RULES ──────────────────────────────────────────
+      // In sandbox mode, virtual bots can score to simulate 4-team leaderboards!
+      const activeSbTeamId = roomSandboxActiveTeam.get(room.id);
+      const isTesterTeam = (activeSbTeamId && activeSbTeamId === team.id) || hasHuman;
+
+      if (isTesterTeam) {
+        const testerAnswers = teamAnswers.filter((a) =>
+          !a.playerId || !isPlayerBot({ id: a.playerId }) || a.playerId.startsWith("sb_") || a.playerId.startsWith("p_sb_")
+        );
+        const repAnswer = testerAnswers[0] || teamAnswers[0];
+        const isRepCorrect = repAnswer?.isCorrect === true;
+        totalOnline = 1;
+        correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
+        correctTimes = isRepCorrect && typeof repAnswer?.timeSpent === "number" ? [repAnswer.timeSpent] : [];
+      } else {
+        // Bot team: allow bot answer to score for leaderboard testing
+        const repAnswer = teamAnswers[0];
+        const isRepCorrect = repAnswer?.isCorrect === true;
+        totalOnline = 1;
+        correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
+        correctTimes = isRepCorrect && typeof repAnswer?.timeSpent === "number" ? [repAnswer.timeSpent] : [1500];
+      }
+    }
 
     let teamStreak = teamStreakMap.get(team.id) || 0;
     if (correctAnswers.length > 0) {

@@ -1126,9 +1126,11 @@ export default function GameQuestion({
         <div className="space-y-3 pt-2">
           <div className="text-center py-2 font-bold text-lg">
             {(() => {
-              const myTs = revealPayload.teamSummaries?.find((ts) => (myTeamId ? ts.teamId === myTeamId : true));
-              const myAns = revealPayload.answers.find((a) => (myTeamId ? a.teamId === myTeamId : true) && a.isCorrect);
-              const isMyCorrect = Boolean(myAns || (myTs && myTs.correctMembers > 0));
+              const myTs = revealPayload.teamSummaries?.find((ts) => Boolean(myTeamId && ts.teamId === myTeamId));
+              const myAns = revealPayload.answers.find((a) =>
+                Boolean((myTeamId && a.teamId === myTeamId) || (playerId && a.playerId === playerId))
+              );
+              const isMyCorrect = Boolean((myAns && myAns.isCorrect) || (myTs && myTs.correctMembers > 0));
               const myPts = myTs?.pointsAwarded ?? myAns?.pointsAwarded ?? 0;
               const timeDisplay = myTs?.avgTimeSpent
                 ? `${(myTs.avgTimeSpent / 1000).toFixed(2)}s`

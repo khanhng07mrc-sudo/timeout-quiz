@@ -1056,13 +1056,21 @@ export interface ServerToClientEvents {
     eliminatedAtStage?: number;
     revivedTeams?: { id: string; name: string; score: number; eliminatedAtStage?: number }[];
   }) => void;
+  "admin:question:data": (payload: {
+    questionId: string;
+    options: any;
+    answer: string | string[] | null;
+    type: string;
+    explanation?: string;
+  }) => void;
 }
 
 export interface ClientToServerEvents {
+  "admin:question:get_data": (payload?: { code?: string }) => void;
   "time:sync": (clientTime: number, callback: (result: { clientTime: number; serverTime: number }) => void) => void;
   "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
   "room:leave": () => void;
-  "game:answer:submit": (payload: { questionId: string; answer: string | string[]; teamId?: string; clientAnsweredAt?: number }) => void;
+  "game:answer:submit": (payload: { questionId: string; answer: string | string[]; teamId?: string; playerId?: string; clientAnsweredAt?: number }) => void;
   "game:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
   "admin:next": (payload?: { code?: string }) => void;

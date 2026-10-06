@@ -205,17 +205,17 @@ export default function PlayPage() {
           const hasAnswered = Boolean(teamAnswersRef.current.has(teamId));
           setAnswered(hasAnswered);
 
-          const teamPlayerId = isSandbox
+          const teamPlayerId = isSandboxRef.current
             ? `sb_${code}_t${teamIndex}`
             : playerIdRef.current;
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
 
           if (socketRef.current?.connected) {
-            if (isSandbox) {
+            if (isSandboxRef.current) {
               socketRef.current.emit("room:join", {
                 code,
-                playerName: teamName || `Đội ${teamIndex + 1}`,
+                playerName: teamName || `Bạn - Đội ${teamIndex + 1} (Tester)`,
                 playerId: teamPlayerId,
                 teamId,
               }, () => {});
@@ -225,7 +225,7 @@ export default function PlayPage() {
           }
           setRoomState((prev) => {
             if (!prev) return prev;
-            const pName = teamName || (teamIndex === 0 ? "Bạn (Tester)" : `Đội ${teamIndex + 1} 🤖`);
+            const pName = teamName || (teamIndex === 0 ? "Bạn (Tester)" : `Bạn - Đội ${teamIndex + 1} (Tester)`);
             const exists = prev.players.some((p) => p.id === teamPlayerId);
             let updatedPlayers: any[];
             if (exists) {
@@ -249,14 +249,14 @@ export default function PlayPage() {
           myTeamIdRef.current = teamId;
           setActiveTeamId(teamId);
           setSelectedTeamId(teamId);
-          if (isSandbox && typeof teamIndex === "number") {
+          if (isSandboxRef.current && typeof teamIndex === "number") {
             const teamPlayerId = `sb_${code}_t${teamIndex}`;
             playerIdRef.current = teamPlayerId;
             setPlayerId(teamPlayerId);
             if (socketRef.current?.connected) {
               socketRef.current.emit("room:join", {
                 code,
-                playerName: `Đội ${teamIndex + 1}`,
+                playerName: `Bạn - Đội ${teamIndex + 1} (Tester)`,
                 playerId: teamPlayerId,
                 teamId,
               }, () => {});
@@ -891,6 +891,7 @@ export default function PlayPage() {
         questionId: currentQuestion.question.id,
         answer,
         teamId: targetTeamId,
+        playerId: playerIdRef.current,
         clientAnsweredAt: getServerTime(),
       });
     } else {

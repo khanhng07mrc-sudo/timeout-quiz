@@ -70,6 +70,20 @@ export default function AdminSandboxPage() {
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
+  const [adminQuestionData, setAdminQuestionData] = useState<{
+    questionId: string;
+    options: any[];
+    answer?: string;
+    type?: string;
+    explanation?: string;
+  } | null>(null);
+  const adminQuestionDataRef = useRef<{
+    questionId: string;
+    options: any[];
+    answer?: string;
+    type?: string;
+    explanation?: string;
+  } | null>(null);
 
   // Offline Sandbox Simulator State & Iframe Refs
   const [isOfflineSandbox, setIsOfflineSandbox] = useState(false);
@@ -265,8 +279,10 @@ export default function AdminSandboxPage() {
         if (team.id === activeTeamIdRef.current) return;
 
         const qData = qState.question;
-        const opts = qData.options || [];
-        if (opts.length === 0) return;
+        const rawOpts = (adminQuestionDataRef.current?.questionId === qData.id
+          ? adminQuestionDataRef.current.options
+          : null) || (qData.options as any[]) || [];
+        if (rawOpts.length === 0) return;
 
         // If turn-based mode, only answer if it is this bot's turn:
         if (qState.primaryTeamId && qState.primaryTeamId !== team.id) {
@@ -276,13 +292,19 @@ export default function AdminSandboxPage() {
         const delay = 2000 + Math.random() * 2000;
         setTimeout(() => {
           if (team.id === activeTeamIdRef.current) return;
-          const chosenOpt = opts[Math.floor(Math.random() * opts.length)];
+          const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
+          const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
+          const wrongOpt = wrongOpts.length > 0
+            ? wrongOpts[Math.floor(Math.random() * wrongOpts.length)]
+            : (rawOpts.find((o: any) => o.id !== correctOpt.id) || rawOpts[rawOpts.length - 1]);
+          const isBotCorrect = Math.random() < 0.70;
+          const chosenOpt = isBotCorrect ? correctOpt : wrongOpt;
           sock.emit("game:answer:submit", {
             questionId: qData.id,
             answer: chosenOpt.id,
             teamId: team.id,
           });
-          addLog(`Bot [${team.name}] nộp đáp án: ${chosenOpt.text}`);
+          addLog(`Bot [${team.name}] nộp đáp án: ${chosenOpt.text || chosenOpt.id}`);
         }, delay);
       };
 
@@ -458,7 +480,12 @@ export default function AdminSandboxPage() {
     });
 
     sock.on("room:state", (state) => setRoomState(state));
+    sock.on("admin:question:data", (data: any) => {
+      setAdminQuestionData(data);
+      adminQuestionDataRef.current = data;
+    });
     sock.on("game:question", (q) => {
+      sock.emit("admin:question:get_data");
       setCurrentQuestion(q);
       setRevealPayload(null);
       const curTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id;
@@ -1918,12 +1945,23 @@ export default function AdminSandboxPage() {
     const timeLimit = quantizeOlympiaTimeLimit(q.points || 10, q.timeLimit);
     const endsAt = Date.now() + timeLimit * 1000;
     const autoTimer = roomState?.config.autoTimerStart === true;
+    const offlineQId = q.id || `q_${nextIdx + 1}`;
+
+    adminQuestionDataRef.current = {
+      questionId: offlineQId,
+      options: q.options || [],
+      answer: q.answer,
+      type: q.type,
+      explanation: q.hint,
+    };
+    setAdminQuestionData(adminQuestionDataRef.current);
+
     const qState: QuestionState = {
       question: {
-        id: q.id || `q_${nextIdx + 1}`,
+        id: offlineQId,
         type: q.type || "MC_SINGLE",
         content: q.content,
-        options: q.options?.map((o: any) => ({ id: o.id, text: o.text })),
+        options: q.options?.map((o: any) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })),
         points: q.points || 10,
         timeLimit,
         hint: q.hint,
@@ -3281,7 +3319,7 @@ export default function AdminSandboxPage() {
             id: q.id || `q_${offlineQIndexRef.current + 1}`,
             type: q.type || "MC_SINGLE",
             content: q.content,
-            options: q.options?.map((o: any) => ({ id: o.id, text: o.text })),
+            options: q.options?.map((o: any) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })),
             points: q.points || 10,
             timeLimit,
             hint: q.hint,
@@ -3314,11 +3352,16 @@ export default function AdminSandboxPage() {
 
   const handleForceActiveTeamAnswer = (isCorrect: boolean) => {
     if (!currentQuestion || !currentTeam) return;
-    const opts = currentQuestion.question.options || [];
-    if (opts.length === 0) return;
+    const rawOpts = (adminQuestionDataRef.current?.questionId === currentQuestion.question.id
+      ? adminQuestionDataRef.current.options
+      : null) || (currentQuestion.question.options as any[]) || [];
+    if (rawOpts.length === 0) return;
 
-    const correctOpt = opts.find((o: any) => o.isCorrect) || opts[0];
-    const wrongOpt = opts.find((o: any) => !o.isCorrect) || opts[opts.length - 1];
+    const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
+    const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
+    const wrongOpt = wrongOpts.length > 0
+      ? wrongOpts[0]
+      : (rawOpts.find((o: any) => o.id !== correctOpt.id) || rawOpts[rawOpts.length - 1]);
     const opt = isCorrect ? correctOpt : wrongOpt;
 
     if (isOfflineSandbox) {
@@ -3345,6 +3388,14 @@ export default function AdminSandboxPage() {
       return;
     }
 
+    // Direct submit via admin to ensure reliable recording in the backend
+    adminSocketRef.current?.emit("admin:submit:answer", {
+      questionId: currentQuestion.question.id,
+      teamId: currentTeam.id,
+      answer: opt.id,
+      code,
+    });
+
     playerIframeRef.current?.contentWindow?.postMessage(
       {
         type: "FORCE_TESTER_ACTION",
@@ -3356,7 +3407,7 @@ export default function AdminSandboxPage() {
       },
       "*"
     );
-    addLog(`[${currentTeam.name}] nộp đáp án qua điện thoại: ${isCorrect ? "ĐÚNG" : "SAI"} (${opt.text})`);
+    addLog(`[${currentTeam.name}] nộp đáp án: ${isCorrect ? "ĐÚNG" : "SAI"} (${opt.text || opt.id})`);
   };
 
   const handleForceActiveTeamBuzz = () => {
@@ -3402,16 +3453,23 @@ export default function AdminSandboxPage() {
 
   const handleTriggerAllBotsAnswer = () => {
     if (!currentQuestion) return;
-    const opts = currentQuestion.question.options || [];
-    if (opts.length === 0) return;
+    const rawOpts = (adminQuestionDataRef.current?.questionId === currentQuestion.question.id
+      ? adminQuestionDataRef.current.options
+      : null) || (currentQuestion.question.options as any[]) || [];
+    if (rawOpts.length === 0) return;
+
+    const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
+    const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
+    const wrongOpt = wrongOpts.length > 0
+      ? wrongOpts[0]
+      : (rawOpts.find((o: any) => o.id !== correctOpt.id) || rawOpts[rawOpts.length - 1]);
 
     if (isOfflineSandbox) {
       (roomState?.teams || []).forEach((t) => {
         if (t.id === (currentTeam?.id || "t_red")) return;
-        const correctOpt = opts.find((o: any) => o.isCorrect);
         const isBotCorrect = Math.random() < 0.75;
-        const opt = isBotCorrect ? (correctOpt || opts[0]) : (opts.find((o: any) => o.id !== correctOpt?.id) || opts[opts.length - 1]);
-        const isCorrect = correctOpt ? correctOpt.id === opt.id : false;
+        const opt = isBotCorrect ? correctOpt : wrongOpt;
+        const isCorrect = isBotCorrect;
         const timeLimit = currentQuestion.timeLimit || 30;
         const botTimeSpentMs = Math.floor(1200 + Math.random() * 3300);
         const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
@@ -3431,7 +3489,7 @@ export default function AdminSandboxPage() {
           timeSpent: botTimeSpentMs,
         });
         offlineFinalizedActorsRef.current.add(t.id);
-        addLog(`🤖 Cho Bot [${t.name}] nộp đáp án: ${opt.text}`);
+        addLog(`🤖 Cho Bot [${t.name}] nộp đáp án: ${opt.text || opt.id}`);
       });
       checkOfflineEarlyCompletion();
       return;
@@ -3440,11 +3498,8 @@ export default function AdminSandboxPage() {
     const humanTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || currentTeam?.id;
     botSocketsRef.current.forEach((sock, bTeamId) => {
       if (bTeamId === humanTeamId) return;
-      const correctOpt = opts.find((o: any) => o.isCorrect);
       const isBotCorrect = Math.random() < 0.75;
-      const opt = isBotCorrect
-        ? (correctOpt || opts[0])
-        : (opts.find((o: any) => o.id !== correctOpt?.id) || opts[opts.length - 1]);
+      const opt = isBotCorrect ? correctOpt : wrongOpt;
       sock.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
         answer: opt.id,
@@ -3456,7 +3511,7 @@ export default function AdminSandboxPage() {
         teamId: bTeamId,
       });
       const tName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
-      addLog(`🤖 Cho Bot [${tName || bTeamId}] nộp & chốt đáp án: ${opt.text}`);
+      addLog(`🤖 Cho Bot [${tName || bTeamId}] nộp & chốt đáp án: ${opt.text || opt.id}`);
     });
   };
 

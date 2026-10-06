@@ -190,23 +190,24 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "DICE_RACE",
     nameVi: "Đua cờ Xí ngầu (Dice Race)",
     emoji: "🎲",
-    taglineVi: "Đua linh vật theo vị trí ô, Khiên bảo vệ & x2 Cơ hội",
-    summaryVi: "Chế độ đua cờ linh vật đặc thù xếp hạng thuần tuý theo vị trí đứng trên đường đua hoặc thứ tự cán đích (không dùng điểm số độc lập). Bao gồm ô Khiên bảo vệ và ô x2 Cơ hội gieo thêm lượt.",
+    taglineVi: "Đua marathon 60 - 100 ô, Gieo 2 xí ngầu (2-12 bước) & Ô chức năng cân bằng",
+    summaryVi: "Chế độ đua cờ marathon quy mô lớn từ 60 đến 100 ô. Mỗi lượt trả lời đúng được gieo 2 viên xí ngầu (tổng 2 – 12 bước với phân phối Gauss ổn định). Mật độ ô chức năng được kiểm soát chặt chẽ ở mức 15-20%, đảm bảo cuộc đua marathon kịch tính, công bằng và giàu tính kỹ năng.",
     mechanicsVi: [
-      "Xếp hạng theo vị trí: Bảng xếp hạng căn cứ theo số thứ tự ô đang đứng (#X) hoặc thứ tự cán đích đầu tiên.",
-      "Đổ xí ngầu & Trả lời: Đội đến lượt đổ xí ngầu 1-6 nút. Trả lời ĐÚNG để quân cờ tiến bước; trả lời SAI quân cờ đứng yên.",
-      "🛡️ Khiên bảo vệ (Shield): Dừng ở ô Khiên nhận được khiên bảo vệ, giúp vô hiệu hoá bẫy lùi bước hoặc chặn bị đối thủ hoán đổi vị trí.",
-      "🎲x2 Cơ hội (Extra Roll): Dừng ở ô x2 Cơ hội được quyền gieo xí ngầu thêm lần thứ 2 trước khi chuyển lượt (hai ô x2 liên tiếp luôn cách nhau ít nhất 7 ô).",
-      "🚀 Tăng tốc (+2 bước), 💥 Bẫy (-2 bước, trừ khi có khiên), 🔀 Đổi chỗ với đội dẫn đầu.",
-      "Cán đích: Đội đầu tiên tiến tới ô cuối cùng sẽ chiến thắng trận đấu ngay lập tức!",
+      "Quy mô marathon 60 - 100 ô: Đường đua dài hơi giúp giảm thiểu may rủi ngắn hạn, tạo điều kiện cho các đội phát huy kiến thức qua nhiều vòng câu hỏi.",
+      "Gieo 2 viên xí ngầu (2 – 12 bước): Đi tổng số nút của 2 viên xúc xắc, xác suất tập trung cao nhất ở mức trung bình ~7 bước (phân phối Gauss chuẩn), hạn chế may rủi cực đoan.",
+      "Ô chức năng cân bằng (15 - 20%): Các ô chức năng cách nhau tối thiểu 3-4 ô; Vùng an toàn 5 ô đầu và 5 ô cuối tuyệt đối an toàn.",
+      "🔀 Ô Vượt mặt (Leapfrog): Chỉ hoán đổi vị trí với đội đứng liền kề phía trước, không gây đảo lộn thế trận vô lý.",
+      "🛡️ Khiên bảo vệ (Shield): Vô hiệu hoá bẫy lùi bước hoặc chặn bị đối thủ hoán đổi vị trí.",
+      "🎲x2 Cơ hội (Extra Roll): Dừng ở ô x2 Cơ hội được quyền gieo xí ngầu thêm lần thứ 2 trước khi chuyển lượt.",
+      "Cán đích: Đội đầu tiên tiến tới hoặc vượt qua ô cuối cùng sẽ chiến thắng trận đấu ngay lập tức 🏆!",
     ],
     scoringVi: [
       "Xếp hạng dựa trên thứ tự ô trên đường đua (#X / Tổng số ô).",
-      "Đội về đích đầu tiên giành chiến thắng tuyệt đối 🏆.",
+      "Đội cán đích đầu tiên giành chiến thắng tuyệt đối 🏆.",
     ],
     tipsVi: [
+      "Kiên trì trả lời đúng các câu hỏi để liên tục được tung 2 viên xúc xắc bứt phá!",
       "Nhặt Khiên bảo vệ để an tâm vượt qua các ô Bẫy hiểm trở!",
-      "Canh ô x2 Cơ hội để tạo đột phá 2 lần tung xí ngầu liên tiếp.",
     ],
   },
   WAGER: {
@@ -721,6 +722,7 @@ export interface DiceRaceState {
   currentTurnTeamId?: string;
   currentTurnTeamName?: string;
   lastDiceRoll?: number;
+  lastDiceValues?: [number, number];
   rollTimestamp?: number;
   isRolling: boolean;
   dicePendingAnswer: boolean;
@@ -1010,7 +1012,7 @@ export interface ServerToClientEvents {
   // New Mode Events
   "game:grid:update": (state: GridCaroState) => void;
   "game:grid:caro:celebrate": (payload: { teamId: string; teamName: string; bonusPoints: number }) => void;
-  "game:dice:rolled": (payload: { teamId: string; teamName: string; roll: number }) => void;
+  "game:dice:rolled": (payload: { teamId: string; teamName: string; roll: number; diceValues?: [number, number] }) => void;
   "game:dice:update": (state: DiceRaceState) => void;
   "game:wager:update": (state: WagerState) => void;
   "game:wager:bailout_granted": (payload: { teamId: string; teamName: string; newScore: number; bailoutsRemaining: number }) => void;

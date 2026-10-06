@@ -17,7 +17,7 @@ const GAME_MODES = [
   { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
   { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Bảng đấu đối kháng trực tiếp (Tứ kết, Bán kết, Chung kết)", emoji: "🏆", badge: "Đối kháng", badgeColor: "text-yellow-300 bg-yellow-500/20 border-yellow-500/30" },
   { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
-  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Bàn cờ đua 30-50 ô, đổ xúc xắc 1-6 và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
+  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Đường đua marathon 60-100 ô, gieo 2 xí ngầu 2-12 bước và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
 ];
 
@@ -103,7 +103,7 @@ export default function CreateRoomPage() {
   // Modal state
   const [showRulesModal, setShowRulesModal] = useState(false);
   // Dice Race config
-  const [diceTrackTotalTiles, setDiceTrackTotalTiles] = useState(30);
+  const [diceTrackTotalTiles, setDiceTrackTotalTiles] = useState(60);
   // Wager config
   const [wagerTimeSeconds, setWagerTimeSeconds] = useState(15);
   const [wagerMinAllowance, setWagerMinAllowance] = useState(50);
@@ -248,7 +248,7 @@ export default function CreateRoomPage() {
             gridMediumCells: mode === "GRID_CARO" ? gridMediumCells : undefined,
             gridHardCells: mode === "GRID_CARO" ? gridHardCells : undefined,
             // Dice Race config
-            diceTrackTotalTiles: mode === "DICE_RACE" ? diceTrackTotalTiles : 30,
+            diceTrackTotalTiles: mode === "DICE_RACE" ? diceTrackTotalTiles : 60,
             // Wager config
             wagerTimeSeconds: mode === "WAGER" ? wagerTimeSeconds : 15,
             wagerMinAllowance: mode === "WAGER" ? wagerMinAllowance : 50,
@@ -1003,20 +1003,37 @@ export default function CreateRoomPage() {
             <div className="p-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 space-y-4">
               <div className="flex items-center gap-2">
                 <GameModeIcon mode="DICE_RACE" className="w-6 h-6 shrink-0" />
-                <h3 className="font-bold text-sm text-indigo-300">Cấu hình Đua cờ Xí ngầu (Board Game Track)</h3>
+                <h3 className="font-bold text-sm text-indigo-300">Cấu hình Đua cờ Xí ngầu (Board Game Marathon Track)</h3>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Độ dài đường đua (Số ô bàn cờ: 30 - 50 ô)</label>
+                <label className="block text-xs font-medium mb-1">Độ dài đường đua marathon (60 - 100 ô)</label>
+                <div className="flex items-center gap-2 mb-2">
+                  {[60, 70, 80, 90, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setDiceTrackTotalTiles(preset)}
+                      className={`px-2.5 py-1 rounded text-xs font-semibold transition-all ${
+                        diceTrackTotalTiles === preset
+                          ? "bg-indigo-600 text-white shadow"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {preset} ô
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="number"
-                  min={30}
-                  max={50}
+                  min={60}
+                  max={100}
+                  step={10}
                   value={diceTrackTotalTiles}
-                  onChange={(e) => setDiceTrackTotalTiles(Math.min(50, Math.max(30, parseInt(e.target.value) || 30)))}
+                  onChange={(e) => setDiceTrackTotalTiles(Math.min(100, Math.max(60, parseInt(e.target.value) || 60)))}
                   className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                 />
                 <p className="text-[11px] text-muted-foreground mt-1.5">
-                  Mỗi lượt chơi, đội tung xúc xắc 1-6 bước trên điện thoại/máy tính. Nếu trả lời ĐÚNG, đội sẽ tiến số bước tương ứng. Bàn cờ rải rác các ô đặc biệt: 🚀 Tăng tốc (+2 bước), 💥 Bẫy hụt (-2 bước), 💎 Ngọc thưởng (+150đ), 🔀 Đổi chỗ, và 🏆 Về đích nhận cúp vàng!
+                  Đường đua marathon quy mô lớn (mặc định 60 ô). Mỗi lượt trả lời ĐÚNG, đội được gieo 2 viên xí ngầu (tổng 2–12 bước với phân phối Gauss). Mật độ ô chức năng được kiểm soát ở mức 15-20% với ô 🔀 Vượt mặt đội đứng liền trước, 🛡️ Khiên bảo hộ, 🚀 Tăng tốc (+2 bước), 💥 Bẫy hụt (-2 bước), 🎲 Thêm lượt, và 🏆 Về đích!
                 </p>
               </div>
             </div>

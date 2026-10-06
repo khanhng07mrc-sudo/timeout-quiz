@@ -469,14 +469,14 @@ function computeStealAmount(leaderScore, stealerScore) {
 }
 
 // src/lib/game-engine/dice-race.ts
-function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true }) {
-  const count = Math.max(30, Math.min(50, totalTiles || 30));
+function generateBalancedDiceTiles(totalTiles = 60, options = { randomize: true }) {
+  const count = Math.max(60, Math.min(100, totalTiles || 60));
   const tiles = [];
   const validateLayout = (map) => {
     const indices = Object.keys(map).map((k) => parseInt(k, 10)).sort((a, b) => a - b);
-    if (indices.some((idx) => idx <= 2 || idx >= count - 2)) return false;
+    if (indices.some((idx) => idx <= 4 || idx >= count - 5)) return false;
     for (let i = 0; i < indices.length - 1; i++) {
-      if (Math.abs(indices[i] - indices[i + 1]) < 2) return false;
+      if (Math.abs(indices[i] - indices[i + 1]) < 3) return false;
     }
     const boostIndices = indices.filter((idx) => map[idx].type === "BOOST");
     const trapIndices = indices.filter((idx) => map[idx].type === "TRAP");
@@ -496,7 +496,7 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
     }
     for (let i = 0; i < extraRollIndices.length; i++) {
       for (let j = i + 1; j < extraRollIndices.length; j++) {
-        if (Math.abs(extraRollIndices[i] - extraRollIndices[j]) < 7) return false;
+        if (Math.abs(extraRollIndices[i] - extraRollIndices[j]) < 12) return false;
       }
     }
     return true;
@@ -508,14 +508,14 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const tempMap = {};
       const reservedNormalIndices = /* @__PURE__ */ new Set();
-      const alphaIn = 7 + Math.floor(Math.random() * Math.min(4, Math.max(1, count - 20)));
-      const alphaOut = alphaIn + 6 + Math.floor(Math.random() * Math.min(3, Math.max(1, count - alphaIn - 8)));
+      const alphaIn = 12 + Math.floor(Math.random() * 5);
+      const alphaOut = alphaIn + 5 + Math.floor(Math.random() * 3);
       tempMap[alphaIn] = { type: "TELEPORT", label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian", portalId: "Alpha", teleportTargetIndex: alphaOut };
       tempMap[alphaOut] = { type: "TELEPORT_EXIT", label: "\u2728 C\u1ED5ng Ra An To\xE0n", portalId: "Alpha" };
-      if (count >= 40) {
-        const betaIn = alphaOut + 4 + Math.floor(Math.random() * Math.min(6, count - alphaOut - 10));
-        const betaOut = betaIn + 6 + Math.floor(Math.random() * Math.min(4, count - betaIn - 4));
-        if (betaIn < count - 7 && betaOut < count - 2 && Math.abs(betaIn - alphaOut) >= 2) {
+      if (count >= 80) {
+        const betaIn = alphaOut + 15 + Math.floor(Math.random() * 10);
+        const betaOut = betaIn + 5 + Math.floor(Math.random() * 3);
+        if (betaIn < count - 15 && betaOut < count - 5 && Math.abs(betaIn - alphaOut) >= 4) {
           tempMap[betaIn] = { type: "TELEPORT", label: "\u{1F300} C\u1ED5ng Beta", portalId: "Beta", teleportTargetIndex: betaOut };
           tempMap[betaOut] = { type: "TELEPORT_EXIT", label: "\u2728 C\u1ED5ng Ra Beta", portalId: "Beta" };
         }
@@ -529,14 +529,24 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
         { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" },
         { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
         { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" },
-        { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" }
+        { type: "SWAP", label: "\u{1F500} V\u01B0\u1EE3t m\u1EB7t" }
       ];
+      if (count >= 80) {
+        pool.push(
+          { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 },
+          { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 },
+          { type: "SWAP", label: "\u{1F500} V\u01B0\u1EE3t m\u1EB7t" }
+        );
+      }
+      if (count >= 100) {
+        pool.push({ type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" });
+      }
       for (let i = pool.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
       const candidateSlots = [];
-      for (let s = 3; s <= count - 4; s++) {
+      for (let s = 5; s <= count - 6; s++) {
         candidateSlots.push(s);
       }
       for (let i = candidateSlots.length - 1; i > 0; i--) {
@@ -549,7 +559,7 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
         for (const slot of candidateSlots) {
           if (tempMap[slot] !== void 0) continue;
           if (reservedNormalIndices.has(slot)) continue;
-          const violatesGap = Object.keys(tempMap).some((k) => Math.abs(parseInt(k, 10) - slot) < 2);
+          const violatesGap = Object.keys(tempMap).some((k) => Math.abs(parseInt(k, 10) - slot) < 3);
           if (violatesGap) continue;
           if (item.type === "BOOST") {
             const violatesTrapDistance = Object.entries(tempMap).some(
@@ -569,7 +579,7 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
           }
           if (item.type === "EXTRA_ROLL") {
             const violatesExtraRollGap = Object.entries(tempMap).some(
-              ([k, v]) => v.type === "EXTRA_ROLL" && Math.abs(parseInt(k, 10) - slot) < 7
+              ([k, v]) => v.type === "EXTRA_ROLL" && Math.abs(parseInt(k, 10) - slot) < 12
             );
             if (violatesExtraRollGap) continue;
           }
@@ -604,25 +614,40 @@ function generateBalancedDiceTiles(totalTiles = 30, options = { randomize: true 
   }
   if (!generationSuccess) {
     specialMap = {};
-    specialMap[4] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[7] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
-    specialMap[10] = {
+    const scale = (idx) => Math.round(idx / 60 * count);
+    const iExtra1 = scale(8);
+    const iBoost1 = scale(11);
+    const iTeleIn = scale(14);
+    const iShield1 = scale(17);
+    const iTeleOut = scale(20);
+    const iTrap1 = scale(24);
+    const iSwap = scale(28);
+    const iExtra2 = scale(32);
+    const iBoost2 = scale(36);
+    const iShield2 = scale(40);
+    const iBoost3 = scale(44);
+    const iTrap2 = scale(48);
+    specialMap[iExtra1] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[iBoost1] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[iTeleIn] = {
       type: "TELEPORT",
       label: "\u{1F300} C\u1ED5ng Kh\xF4ng Gian",
       portalId: "Alpha",
-      teleportTargetIndex: 17
+      teleportTargetIndex: iTeleOut
     };
-    specialMap[12] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
-    specialMap[15] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
-    specialMap[17] = {
+    specialMap[iShield1] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
+    specialMap[iTeleOut] = {
       type: "TELEPORT_EXIT",
       label: "\u2728 C\u1ED5ng Ra An To\xE0n",
       portalId: "Alpha"
     };
-    specialMap[19] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
-    specialMap[21] = { type: "SWAP", label: "\u{1F500} \u0110\u1ED5i ch\u1ED7" };
-    specialMap[23] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
-    specialMap[26] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[iTrap1] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
+    specialMap[iSwap] = { type: "SWAP", label: "\u{1F500} V\u01B0\u1EE3t m\u1EB7t" };
+    specialMap[iExtra2] = { type: "EXTRA_ROLL", label: "\u{1F3B2} x2 C\u01A1 h\u1ED9i" };
+    specialMap[iBoost2] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[iShield2] = { type: "SHIELD", label: "\u{1F6E1}\uFE0F Khi\xEAn" };
+    specialMap[iBoost3] = { type: "BOOST", label: "\u{1F680} +2 B\u01B0\u1EDBc", effectValue: 2 };
+    specialMap[iTrap2] = { type: "TRAP", label: "\u{1F4A5} B\u1EABy -2 B\u01B0\u1EDBc", effectValue: -2 };
   }
   for (let i = 0; i < count; i++) {
     if (i === 0) {
@@ -733,22 +758,23 @@ function handleDiceRaceLanding({
       grantAnotherRoll = true;
       effectMessage += ` \u2794 \u{1F3B2} R\u01A1i v\xE0o \xF4 x2 C\u01A1 h\u1ED9i! \u0110\u01B0\u1EE3c tung x\xFAc x\u1EAFc th\xEAm m\u1ED9t l\u1EA7n n\u1EEFa!`;
     } else if (landingTile.type === "SWAP") {
-      const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-      otherTeams.sort((a, b) => b.position - a.position);
-      if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-        const opp = otherTeams[0];
+      const teamsAhead = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId && t.position > newPos).sort((a, b) => a.position - b.position);
+      if (teamsAhead.length > 0) {
+        const opp = teamsAhead[0];
         if (opp.hasShield) {
           opp.hasShield = false;
-          effectMessage += ` \u2794 \u{1F500} C\u1ED1 ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED v\u1EDBi ${opp.teamName} nh\u01B0ng b\u1ECB Khi\xEAn \u0111\u1ED1i th\u1EE7 ch\u1EB7n \u0111\u1EE9ng!`;
+          effectMessage += ` \u2794 \u{1F500} C\u1ED1 v\u01B0\u1EE3t m\u1EB7t \u0111\u1ED5i ch\u1ED7 v\u1EDBi ${opp.teamName} nh\u01B0ng b\u1ECB Khi\xEAn \u0111\u1ED1i th\u1EE7 ch\u1EB7n \u0111\u1EE9ng!`;
         } else {
           const tempPos = opp.position;
           opp.position = newPos;
           newPos = tempPos;
           swappedWithTeamId = opp.teamId;
-          effectMessage += ` \u2794 \u{1F500} Ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED th\u1EA7n th\xE1nh v\u1EDBi ${opp.teamName}! B\u1EA1n v\u1ECDt l\xEAn \xD4 #${newPos + 1}!`;
+          effectMessage += ` \u2794 \u{1F500} V\u01B0\u1EE3t m\u1EB7t ngo\u1EA1n m\u1EE5c! Ho\xE1n \u0111\u1ED5i v\u1ECB tr\xED v\u1EDBi ${opp.teamName} \u0111\u1EE9ng li\u1EC1n tr\u01B0\u1EDBc! B\u1EA1n v\u1ECDt l\xEAn \xD4 #${newPos + 1}!`;
         }
       } else {
-        effectMessage += ` \u2794 \u{1F500} \xD4 \u0110\u1ED5i ch\u1ED7, nh\u01B0ng kh\xF4ng c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o ph\xEDa tr\u01B0\u1EDBc \u0111\u1EC3 ho\xE1n \u0111\u1ED5i.`;
+        const bonusPos = Math.min(diceState.totalTiles - 1, newPos + 2);
+        newPos = bonusPos;
+        effectMessage += ` \u2794 \u{1F500} \xD4 V\u01B0\u1EE3t m\u1EB7t: B\u1EA1n \u0111ang d\u1EABn \u0111\u1EA7u cu\u1ED9c \u0111ua! T\u0103ng t\u1ED1c th\xEAm +2 b\u01B0\u1EDBc \u0111\u1EBFn \xD4 #${newPos + 1}!`;
       }
     }
   }
@@ -3202,7 +3228,8 @@ function registerSocketHandlers(io2) {
           };
           roomGridCaros.set(room.id, gridCaroState);
         } else if (room.mode === "DICE_RACE") {
-          const totalTiles = config2?.diceTrackTotalTiles || 30;
+          const configuredTiles = config2?.diceTrackTotalTiles || 60;
+          const totalTiles = Math.min(100, Math.max(60, configuredTiles));
           const tiles = generateBalancedDiceTiles(totalTiles);
           const teamPositions = {};
           for (const t of teams) {
@@ -3655,8 +3682,11 @@ function registerSocketHandlers(io2) {
     async function executeDiceRoll(room, diceState, teamId) {
       const teamProg = diceState.teamPositions[teamId];
       if (!teamProg) return;
-      const roll = Math.floor(Math.random() * 6) + 1;
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+      const roll = d1 + d2;
       diceState.lastDiceRoll = roll;
+      diceState.lastDiceValues = [d1, d2];
       diceState.rollTimestamp = Date.now();
       const landingResult = handleDiceRaceLanding({ diceState, teamId, roll });
       const newPos = landingResult.finalPosition;
@@ -3672,7 +3702,8 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("game:dice:rolled", {
         teamId,
         teamName: teamProg.teamName,
-        roll
+        roll,
+        diceValues: [d1, d2]
       });
       if (landingResult.effectMessage) {
         console.log(`[DiceRace] ${teamProg.teamName}: ${landingResult.effectMessage}`);

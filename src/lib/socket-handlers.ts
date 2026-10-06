@@ -698,7 +698,7 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
   return matches;
 }
 
-function generateDiceTiles(totalTiles: number = 30): DiceTile[] {
+function generateDiceTiles(totalTiles: number = 60): DiceTile[] {
   return generateBalancedDiceTiles(totalTiles);
 }
 
@@ -2679,7 +2679,8 @@ export function registerSocketHandlers(io: IO) {
           };
           roomGridCaros.set(room.id, gridCaroState);
         } else if (room.mode === "DICE_RACE") {
-          const totalTiles = config?.diceTrackTotalTiles || 30;
+          const configuredTiles = config?.diceTrackTotalTiles || 60;
+          const totalTiles = Math.min(100, Math.max(60, configuredTiles));
           const tiles = generateBalancedDiceTiles(totalTiles);
           const teamPositions: Record<string, TeamRaceProgress> = {};
           for (const t of teams) {
@@ -3222,8 +3223,11 @@ export function registerSocketHandlers(io: IO) {
       const teamProg = diceState.teamPositions[teamId];
       if (!teamProg) return;
 
-      const roll = Math.floor(Math.random() * 6) + 1;
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+      const roll = d1 + d2;
       diceState.lastDiceRoll = roll;
+      diceState.lastDiceValues = [d1, d2];
       diceState.rollTimestamp = Date.now();
 
       const landingResult = handleDiceRaceLanding({ diceState, teamId, roll });
@@ -3246,6 +3250,7 @@ export function registerSocketHandlers(io: IO) {
         teamId,
         teamName: teamProg.teamName,
         roll,
+        diceValues: [d1, d2],
       });
 
       // Log/message if special effect or teleport triggered

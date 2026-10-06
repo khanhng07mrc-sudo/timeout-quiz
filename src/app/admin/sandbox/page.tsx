@@ -3066,7 +3066,9 @@ export default function AdminSandboxPage() {
         syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
       }
 
-      const roll = Math.floor(Math.random() * 6) + 1;
+      const d1 = Math.floor(Math.random() * 6) + 1;
+      const d2 = Math.floor(Math.random() * 6) + 1;
+      const roll = d1 + d2;
       setRoomState((prev) => {
         if (!prev || !prev.diceRaceState) return prev;
         const curTurnId = prev.diceRaceState.currentTurnTeamId;
@@ -3110,6 +3112,7 @@ export default function AdminSandboxPage() {
         const nextDiceRaceState: DiceRaceState = {
           ...prev.diceRaceState,
           lastDiceRoll: roll,
+          lastDiceValues: [d1, d2],
           rollTimestamp: Date.now(),
           teamPositions: updatedPositions,
           currentTurnTeamId: nextTeamId,

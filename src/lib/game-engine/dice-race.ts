@@ -11,28 +11,24 @@ import { DiceRaceState, DiceTile, DiceTileType } from "@/types";
  *    - Exit (TELEPORT_EXIT): Safe landing point.
  * 5. Fully scalable for any totalTiles count from 30 to 50+.
  */
+/**
+ * Generates a balanced, strategic, and strictly spaced Dice Race marathon board (60 - 100 tiles).
+ * Guarantees:
+ * 1. Safe Zones: Start (idx 0 to 4) and Finish approach (idx N-5 to N-1) are 100% safe.
+ * 2. Strict Min Distance >= 3 between any special tiles (no two functional tiles close together).
+ * 3. Special tile density strictly capped at ~15-20%.
+ * 4. Paired one-way Teleport Portals (Alpha & Beta, max 5-7 tiles warp).
+ * 5. Fully scalable for any totalTiles count from 60 to 100.
+ */
 export interface TileGenerationOptions {
   randomize?: boolean;
 }
 
-/**
- * Generates a balanced, strategic, and strictly spaced Dice Race board.
- * Guarantees:
- * 1. Safe Zones: Start (idx 0, 1, 2) and Finish approach (idx N-3, N-2, N-1) are safe.
- * 2. Strict Min Distance >= 2 between any special tiles (no two functional tiles can ever be adjacent).
- * 3. NO LOOP RULE: |BoostIndex - TrapIndex| !== 2.
- *    (A +2 Boost tile and a -2 Trap tile can NEVER be 2 tiles apart, preventing infinite ping-pong bounce loops).
- * 4. NO DOUBLE BENEFIT: Destination of BOOST (boostIndex + 2) is strictly a NORMAL tile (or Finish).
- * 5. Paired one-way Teleport Portals (Alpha & Beta):
- *    - Entrance (TELEPORT): Instant forward warp to target exit.
- *    - Exit (TELEPORT_EXIT): Safe landing point.
- * 6. Procedural Randomization: Generates a fresh, dynamic board each match while guaranteeing 100% compliance.
- */
 export function generateBalancedDiceTiles(
-  totalTiles: number = 30,
+  totalTiles: number = 60,
   options: TileGenerationOptions = { randomize: true }
 ): DiceTile[] {
-  const count = Math.max(30, Math.min(50, totalTiles || 30));
+  const count = Math.max(60, Math.min(100, totalTiles || 60));
   const tiles: DiceTile[] = [];
 
   type SpecialSpec = {
@@ -47,12 +43,12 @@ export function generateBalancedDiceTiles(
   const validateLayout = (map: Record<number, SpecialSpec>): boolean => {
     const indices = Object.keys(map).map((k) => parseInt(k, 10)).sort((a, b) => a - b);
 
-    // Rule 1: No functional tiles in safe zones
-    if (indices.some((idx) => idx <= 2 || idx >= count - 2)) return false;
+    // Rule 1: No functional tiles in safe zones (First 5 tiles and Last 5 tiles are strictly normal)
+    if (indices.some((idx) => idx <= 4 || idx >= count - 5)) return false;
 
-    // Rule 2: Minimum gap >= 2 between any special tiles
+    // Rule 2: Minimum gap >= 3 between any special tiles
     for (let i = 0; i < indices.length - 1; i++) {
-      if (Math.abs(indices[i] - indices[i + 1]) < 2) return false;
+      if (Math.abs(indices[i] - indices[i + 1]) < 3) return false;
     }
 
     const boostIndices = indices.filter((idx) => map[idx].type === "BOOST");
@@ -78,10 +74,10 @@ export function generateBalancedDiceTiles(
       if (map[t - 2] !== undefined) return false;
     }
 
-    // Rule 6: Hai ô x2 cơ hội (EXTRA_ROLL) phải cách nhau ít nhất 7 ô (|r1 - r2| >= 7)
+    // Rule 6: Hai ô x2 cơ hội (EXTRA_ROLL) phải cách nhau ít nhất 12 ô
     for (let i = 0; i < extraRollIndices.length; i++) {
       for (let j = i + 1; j < extraRollIndices.length; j++) {
-        if (Math.abs(extraRollIndices[i] - extraRollIndices[j]) < 7) return false;
+        if (Math.abs(extraRollIndices[i] - extraRollIndices[j]) < 12) return false;
       }
     }
 
@@ -98,24 +94,24 @@ export function generateBalancedDiceTiles(
       const tempMap: Record<number, SpecialSpec> = {};
       const reservedNormalIndices = new Set<number>();
 
-      // 1. Teleport Portal Alpha (Entrance between 7 and 10, Exit forward by 6 to 8 tiles)
-      const alphaIn = 7 + Math.floor(Math.random() * Math.min(4, Math.max(1, count - 20)));
-      const alphaOut = alphaIn + 6 + Math.floor(Math.random() * Math.min(3, Math.max(1, count - alphaIn - 8)));
+      // 1. Teleport Portal Alpha (Entrance between 12 and 16, Exit forward by 5 to 7 tiles)
+      const alphaIn = 12 + Math.floor(Math.random() * 5);
+      const alphaOut = alphaIn + 5 + Math.floor(Math.random() * 3);
 
       tempMap[alphaIn] = { type: "TELEPORT", label: "🌀 Cổng Không Gian", portalId: "Alpha", teleportTargetIndex: alphaOut };
       tempMap[alphaOut] = { type: "TELEPORT_EXIT", label: "✨ Cổng Ra An Toàn", portalId: "Alpha" };
 
-      // 2. Teleport Portal Beta (Only for large boards >= 40 tiles)
-      if (count >= 40) {
-        const betaIn = alphaOut + 4 + Math.floor(Math.random() * Math.min(6, count - alphaOut - 10));
-        const betaOut = betaIn + 6 + Math.floor(Math.random() * Math.min(4, count - betaIn - 4));
-        if (betaIn < count - 7 && betaOut < count - 2 && Math.abs(betaIn - alphaOut) >= 2) {
+      // 2. Teleport Portal Beta (Only for boards >= 80 tiles)
+      if (count >= 80) {
+        const betaIn = alphaOut + 15 + Math.floor(Math.random() * 10);
+        const betaOut = betaIn + 5 + Math.floor(Math.random() * 3);
+        if (betaIn < count - 15 && betaOut < count - 5 && Math.abs(betaIn - alphaOut) >= 4) {
           tempMap[betaIn] = { type: "TELEPORT", label: "🌀 Cổng Beta", portalId: "Beta", teleportTargetIndex: betaOut };
           tempMap[betaOut] = { type: "TELEPORT_EXIT", label: "✨ Cổng Ra Beta", portalId: "Beta" };
         }
       }
 
-      // Spec items to distribute randomly
+      // Spec items to distribute randomly (Strictly 15 - 20% density)
       const pool: Array<{ type: DiceTileType; label: string; effectValue?: number }> = [
         { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 },
         { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 },
@@ -125,8 +121,19 @@ export function generateBalancedDiceTiles(
         { type: "SHIELD", label: "🛡️ Khiên" },
         { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" },
         { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" },
-        { type: "SWAP", label: "🔀 Đổi chỗ" },
+        { type: "SWAP", label: "🔀 Vượt mặt" },
       ];
+
+      if (count >= 80) {
+        pool.push(
+          { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 },
+          { type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 },
+          { type: "SWAP", label: "🔀 Vượt mặt" }
+        );
+      }
+      if (count >= 100) {
+        pool.push({ type: "SHIELD", label: "🛡️ Khiên" });
+      }
 
       // Shuffle pool
       for (let i = pool.length - 1; i > 0; i--) {
@@ -134,9 +141,9 @@ export function generateBalancedDiceTiles(
         [pool[i], pool[j]] = [pool[j], pool[i]];
       }
 
-      // Available candidate slots between 3 and count - 4
+      // Available candidate slots: Safe zones 0..4 (start) and count-5..count-1 (finish) are excluded!
       const candidateSlots: number[] = [];
-      for (let s = 3; s <= count - 4; s++) {
+      for (let s = 5; s <= count - 6; s++) {
         candidateSlots.push(s);
       }
       // Shuffle candidate slots
@@ -153,8 +160,8 @@ export function generateBalancedDiceTiles(
           if (tempMap[slot] !== undefined) continue;
           if (reservedNormalIndices.has(slot)) continue;
 
-          // Check min distance >= 2 from all existing specials
-          const violatesGap = Object.keys(tempMap).some((k) => Math.abs(parseInt(k, 10) - slot) < 2);
+          // Check min distance >= 3 from all existing specials
+          const violatesGap = Object.keys(tempMap).some((k) => Math.abs(parseInt(k, 10) - slot) < 3);
           if (violatesGap) continue;
 
           // Check |Boost - Trap| !== 2 and 2 normal tiles after Boost
@@ -164,7 +171,6 @@ export function generateBalancedDiceTiles(
             );
             if (violatesTrapDistance) continue;
 
-            // 2 ô sau ô tiến hai bước phải là ô bình thường (chưa có special và trong phạm vi)
             if (slot + 2 >= count - 1) continue;
             if (tempMap[slot + 1] !== undefined || tempMap[slot + 2] !== undefined) continue;
           }
@@ -176,15 +182,14 @@ export function generateBalancedDiceTiles(
             );
             if (violatesBoostDistance) continue;
 
-            // 2 ô trước ô bẫy phải là ô bình thường
             if (slot - 2 <= 0) continue;
             if (tempMap[slot - 1] !== undefined || tempMap[slot - 2] !== undefined) continue;
           }
 
-          // Check min 7 tiles between two Extra Roll tiles
+          // Check min 12 tiles between two Extra Roll tiles
           if (item.type === "EXTRA_ROLL") {
             const violatesExtraRollGap = Object.entries(tempMap).some(
-              ([k, v]) => v.type === "EXTRA_ROLL" && Math.abs(parseInt(k, 10) - slot) < 7
+              ([k, v]) => v.type === "EXTRA_ROLL" && Math.abs(parseInt(k, 10) - slot) < 12
             );
             if (violatesExtraRollGap) continue;
           }
@@ -202,12 +207,10 @@ export function generateBalancedDiceTiles(
           };
 
           if (item.type === "BOOST") {
-            // Reserve 2 tiles after Boost strictly as NORMAL!
             reservedNormalIndices.add(placedSlot + 1);
             reservedNormalIndices.add(placedSlot + 2);
           }
           if (item.type === "TRAP") {
-            // Reserve 2 tiles before Trap strictly as NORMAL!
             reservedNormalIndices.add(placedSlot - 1);
             reservedNormalIndices.add(placedSlot - 2);
           }
@@ -225,34 +228,45 @@ export function generateBalancedDiceTiles(
     }
   }
 
-  // ── Fallback Golden Blueprint (Guaranteed 100% compliant with all rules) ──
+  // ── Fallback Golden Blueprint (Guaranteed 100% compliant with all rules for 60 - 100 tiles) ──
   if (!generationSuccess) {
     specialMap = {};
-    // Indices: 4, 7, 10, 12, 15, 17, 19, 21, 23, 26
-    // Traps at [15, 26]. Boosts at [4, 7].
-    // |4 - 15| = 11, |4 - 26| = 22, |7 - 15| = 8, |7 - 26| = 19 (Zero loop risk!).
-    // 2 tiles after Boost 4: 5, 6 (NORMAL). 2 tiles after Boost 7: 8, 9 (NORMAL).
-    // 2 tiles before Trap 15: 13, 14 (NORMAL). 2 tiles before Trap 26: 24, 25 (NORMAL).
-    // Extra Rolls at [12, 19]: |19 - 12| = 7 >= 7 (Strict min 7-tile gap!).
-    specialMap[4] = { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 };
-    specialMap[7] = { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 };
-    specialMap[10] = {
+    // Proportional mapping based on count
+    const scale = (idx: number) => Math.round((idx / 60) * count);
+    const iExtra1 = scale(8);
+    const iBoost1 = scale(11);
+    const iTeleIn = scale(14);
+    const iShield1 = scale(17);
+    const iTeleOut = scale(20);
+    const iTrap1 = scale(24);
+    const iSwap = scale(28);
+    const iExtra2 = scale(32);
+    const iBoost2 = scale(36);
+    const iShield2 = scale(40);
+    const iBoost3 = scale(44);
+    const iTrap2 = scale(48);
+
+    specialMap[iExtra1] = { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" };
+    specialMap[iBoost1] = { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 };
+    specialMap[iTeleIn] = {
       type: "TELEPORT",
       label: "🌀 Cổng Không Gian",
       portalId: "Alpha",
-      teleportTargetIndex: 17,
+      teleportTargetIndex: iTeleOut,
     };
-    specialMap[12] = { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" };
-    specialMap[15] = { type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 };
-    specialMap[17] = {
+    specialMap[iShield1] = { type: "SHIELD", label: "🛡️ Khiên" };
+    specialMap[iTeleOut] = {
       type: "TELEPORT_EXIT",
       label: "✨ Cổng Ra An Toàn",
       portalId: "Alpha",
     };
-    specialMap[19] = { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" };
-    specialMap[21] = { type: "SWAP", label: "🔀 Đổi chỗ" };
-    specialMap[23] = { type: "SHIELD", label: "🛡️ Khiên" };
-    specialMap[26] = { type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 };
+    specialMap[iTrap1] = { type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 };
+    specialMap[iSwap] = { type: "SWAP", label: "🔀 Vượt mặt" };
+    specialMap[iExtra2] = { type: "EXTRA_ROLL", label: "🎲 x2 Cơ hội" };
+    specialMap[iBoost2] = { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 };
+    specialMap[iShield2] = { type: "SHIELD", label: "🛡️ Khiên" };
+    specialMap[iBoost3] = { type: "BOOST", label: "🚀 +2 Bước", effectValue: 2 };
+    specialMap[iTrap2] = { type: "TRAP", label: "💥 Bẫy -2 Bước", effectValue: -2 };
   }
 
   // Build the complete tiles array
@@ -394,22 +408,26 @@ export function handleDiceRaceLanding({
       grantAnotherRoll = true;
       effectMessage += ` ➔ 🎲 Rơi vào ô x2 Cơ hội! Được tung xúc xắc thêm một lần nữa!`;
     } else if (landingTile.type === "SWAP") {
-      const otherTeams = Object.values(diceState.teamPositions).filter((t) => t.teamId !== teamId);
-      otherTeams.sort((a, b) => b.position - a.position);
-      if (otherTeams.length > 0 && otherTeams[0].position > newPos) {
-        const opp = otherTeams[0];
+      const teamsAhead = Object.values(diceState.teamPositions)
+        .filter((t) => t.teamId !== teamId && t.position > newPos)
+        .sort((a, b) => a.position - b.position); // Ascending: smallest position ahead is immediate frontrunner
+
+      if (teamsAhead.length > 0) {
+        const opp = teamsAhead[0]; // Đội đứng ngay liền kề phía trước mình!
         if (opp.hasShield) {
           opp.hasShield = false;
-          effectMessage += ` ➔ 🔀 Cố hoán đổi vị trí với ${opp.teamName} nhưng bị Khiên đối thủ chặn đứng!`;
+          effectMessage += ` ➔ 🔀 Cố vượt mặt đổi chỗ với ${opp.teamName} nhưng bị Khiên đối thủ chặn đứng!`;
         } else {
           const tempPos = opp.position;
           opp.position = newPos;
           newPos = tempPos;
           swappedWithTeamId = opp.teamId;
-          effectMessage += ` ➔ 🔀 Hoán đổi vị trí thần thánh với ${opp.teamName}! Bạn vọt lên Ô #${newPos + 1}!`;
+          effectMessage += ` ➔ 🔀 Vượt mặt ngoạn mục! Hoán đổi vị trí với ${opp.teamName} đứng liền trước! Bạn vọt lên Ô #${newPos + 1}!`;
         }
       } else {
-        effectMessage += ` ➔ 🔀 Ô Đổi chỗ, nhưng không có đối thủ nào phía trước để hoán đổi.`;
+        const bonusPos = Math.min(diceState.totalTiles - 1, newPos + 2);
+        newPos = bonusPos;
+        effectMessage += ` ➔ 🔀 Ô Vượt mặt: Bạn đang dẫn đầu cuộc đua! Tăng tốc thêm +2 bước đến Ô #${newPos + 1}!`;
       }
     }
   }

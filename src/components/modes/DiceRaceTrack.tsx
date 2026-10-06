@@ -28,71 +28,146 @@ export interface TileGeometry {
  * for every tile along the Serpentine Racetrack Circuit.
  * Eliminates chopped rectangular grids; delivers a real continuous circuit with U-turn bends.
  */
-export function getSerpentineTileGeometry(index: number, totalTiles: number = 30): TileGeometry {
-  if (totalTiles === 30) {
-    // ── Exact Golden Precision for 30 tiles (all tiles upright at rotateZ = 0) ──
-    // Row 1 (Tiles 0 to 8: 9 tiles, moving East)
-    if (index >= 0 && index <= 8) {
-      const x = 6.2 + index * 8.5; // 6.2, 14.7, 23.2, 31.7, 40.2, 48.7, 57.2, 65.7, 74.2
-      return { x, y: 15.0, rotateZ: 0 };
-    }
-    // Curve 1 (Right U-turn bend: Tiles 9, 10, 11, curving South then West)
-    if (index === 9) return { x: 83.2, y: 22.0, rotateZ: 0 };
-    if (index === 10) return { x: 88.5, y: 34.0, rotateZ: 0 };
-    if (index === 11) return { x: 83.2, y: 46.0, rotateZ: 0 };
+export function getSerpentineTileGeometry(index: number, totalTiles: number = 60): TileGeometry {
+  if (totalTiles <= 35) {
+    // 3 rows for legacy small boards
+    const numRows = 3;
+    const numCurves = 2;
+    const curveTilesCount = 3;
+    const totalCurveTiles = numCurves * curveTilesCount;
+    const straightTilesTotal = totalTiles - totalCurveTiles;
+    const r1 = Math.round(straightTilesTotal * 0.38);
+    const r2 = Math.round(straightTilesTotal * 0.31);
+    const r3 = straightTilesTotal - (r1 + r2);
+    const tilesPerRow = [r1, r2, r3];
 
-    // Row 2 (Tiles 12 to 18: 7 tiles, moving West - upright, never inverted!)
-    if (index >= 12 && index <= 18) {
-      const step = index - 12;
-      const x = 74.2 - step * 8.5; // 74.2, 65.7, 57.2, 48.7, 40.2, 31.7, 23.2
-      return { x, y: 52.0, rotateZ: 0 };
-    }
-    // Curve 2 (Left U-turn bend: Tiles 19, 20, 21, curving South then East)
-    if (index === 19) return { x: 14.5, y: 58.0, rotateZ: 0 };
-    if (index === 20) return { x: 9.2, y: 70.0, rotateZ: 0 };
-    if (index === 21) return { x: 14.5, y: 82.0, rotateZ: 0 };
+    const yStart = 15.0;
+    const yEnd = 88.0;
+    const yStep = (yEnd - yStart) / 2;
+    const xLeft = 6.2;
+    const xRight = 74.2;
 
-    // Row 3 (Tiles 22 to 28: 7 tiles, moving East)
-    if (index >= 22 && index <= 28) {
-      const step = index - 22;
-      const x = 23.2 + step * 8.5; // 23.2, 31.7, 40.2, 48.7, 57.2, 65.7, 74.2
-      return { x, y: 88.0, rotateZ: 0 };
+    let currentIndex = 0;
+    for (let r = 0; r < numRows; r++) {
+      const rowCount = tilesPerRow[r];
+      const yRow = yStart + r * yStep;
+      const isEven = r % 2 === 0;
+
+      if (index >= currentIndex && index < currentIndex + rowCount) {
+        const step = index - currentIndex;
+        const frac = rowCount > 1 ? step / (rowCount - 1) : 0.5;
+        const x = isEven ? xLeft + frac * (xRight - xLeft) : xRight - frac * (xRight - xLeft);
+        return { x: Number(x.toFixed(2)), y: Number(yRow.toFixed(2)), rotateZ: 0 };
+      }
+      currentIndex += rowCount;
+
+      if (r < numCurves) {
+        if (index >= currentIndex && index < currentIndex + curveTilesCount) {
+          const cStep = index - currentIndex;
+          const cFrac = (cStep + 1) / (curveTilesCount + 1);
+          const yCurve = yRow + cFrac * yStep;
+          const xCurve = isEven ? xRight + 9.0 : xLeft - 2.0;
+          return { x: Number(xCurve.toFixed(2)), y: Number(yCurve.toFixed(2)), rotateZ: 0 };
+        }
+        currentIndex += curveTilesCount;
+      }
     }
-    // Tile 29 (Grand Finish Trophy Shrine)
     return { x: 86.5, y: 88.0, rotateZ: 0 };
   }
 
-  // Scalable parametric spline for 31 - 50 tiles (all tiles upright at rotateZ = 0)
-  const r1 = Math.round(totalTiles * 0.28);
-  const c1 = 3;
-  const r2 = Math.round(totalTiles * 0.24);
-  const c2 = 3;
-  const r3 = totalTiles - (r1 + c1 + r2 + c2);
+  // Continuous S-Curve circuit for marathon boards (50 - 100 tiles)
+  const numRows = totalTiles >= 80 ? 6 : 5;
+  const numCurves = numRows - 1;
+  const curveTilesCount = 2;
+  const totalCurveTiles = numCurves * curveTilesCount;
+  const straightTilesTotal = totalTiles - totalCurveTiles;
 
-  if (index < r1) {
-    const frac = index / (r1 - 1 || 1);
-    return { x: 6.2 + frac * 68.0, y: 15.0, rotateZ: 0 };
+  const basePerRow = Math.floor(straightTilesTotal / numRows);
+  const remainder = straightTilesTotal % numRows;
+  const tilesPerRow: number[] = [];
+  for (let r = 0; r < numRows; r++) {
+    const extra = (r === 0 || r === numRows - 1) ? Math.ceil(remainder / 2) : 0;
+    tilesPerRow.push(basePerRow + extra);
   }
-  let curr = index - r1;
-  if (curr < c1) {
-    const angle = 30 + (curr / (c1 - 1 || 1)) * 120;
-    const rad = ((angle - 90) * Math.PI) / 180;
-    return { x: 74.2 + Math.cos(rad) * 14.3, y: 34.0 + Math.sin(rad) * 18.0, rotateZ: 0 };
+  let sum = tilesPerRow.reduce((a, b) => a + b, 0);
+  while (sum > straightTilesTotal) { tilesPerRow[1]--; sum--; }
+  while (sum < straightTilesTotal) { tilesPerRow[1]++; sum++; }
+
+  const yStart = numRows === 6 ? 10.0 : 11.0;
+  const yEnd = numRows === 6 ? 90.0 : 89.0;
+  const yStep = (yEnd - yStart) / (numRows - 1);
+  const xLeft = 6.5;
+  const xRight = 93.5;
+
+  let currentIndex = 0;
+  for (let r = 0; r < numRows; r++) {
+    const rowCount = tilesPerRow[r];
+    const yRow = yStart + r * yStep;
+    const isEven = r % 2 === 0;
+
+    if (index >= currentIndex && index < currentIndex + rowCount) {
+      const step = index - currentIndex;
+      const frac = rowCount > 1 ? step / (rowCount - 1) : 0.5;
+      const x = isEven ? xLeft + frac * (xRight - xLeft) : xRight - frac * (xRight - xLeft);
+      return { x: Number(x.toFixed(2)), y: Number(yRow.toFixed(2)), rotateZ: 0 };
+    }
+    currentIndex += rowCount;
+
+    if (r < numCurves) {
+      if (index >= currentIndex && index < currentIndex + curveTilesCount) {
+        const cStep = index - currentIndex;
+        const cFrac = (cStep + 1) / (curveTilesCount + 1);
+        const yCurve = yRow + cFrac * yStep;
+        const xCurve = isEven ? xRight + 2.5 : xLeft - 2.5;
+        return { x: Number(xCurve.toFixed(2)), y: Number(yCurve.toFixed(2)), rotateZ: 0 };
+      }
+      currentIndex += curveTilesCount;
+    }
   }
-  curr -= c1;
-  if (curr < r2) {
-    const frac = curr / (r2 - 1 || 1);
-    return { x: 74.2 - frac * 51.0, y: 52.0, rotateZ: 0 };
+
+  return { x: 50, y: 50, rotateZ: 0 };
+}
+
+export function getSerpentineSvgPath(totalTiles: number = 60): string {
+  if (totalTiles <= 35) {
+    return "M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528";
   }
-  curr -= r2;
-  if (curr < c2) {
-    const angle = 210 + (curr / (c2 - 1 || 1)) * 120;
-    const rad = ((angle - 270) * Math.PI) / 180;
-    return { x: 23.2 - Math.cos(rad) * 14.0, y: 70.0 + Math.sin(rad) * 18.0, rotateZ: 0 };
+
+  const numRows = totalTiles >= 80 ? 6 : 5;
+  const yStart = numRows === 6 ? 10.0 : 11.0;
+  const yEnd = numRows === 6 ? 90.0 : 89.0;
+  const yStep = (yEnd - yStart) / (numRows - 1);
+  const xLeft = 6.5;
+  const xRight = 93.5;
+
+  let path = "";
+  for (let r = 0; r < numRows; r++) {
+    const yRow = (yStart + r * yStep) * 6; // Scale to 600 height
+    const xL = xLeft * 10; // Scale to 1000 width
+    const xR = xRight * 10;
+    const isEven = r % 2 === 0;
+
+    if (r === 0) {
+      path += `M ${xL} ${yRow} L ${xR} ${yRow}`;
+    } else if (isEven) {
+      path += ` L ${xR} ${yRow}`;
+    } else {
+      path += ` L ${xL} ${yRow}`;
+    }
+
+    if (r < numRows - 1) {
+      const nextY = (yStart + (r + 1) * yStep) * 6;
+      const radiusY = ((nextY - yRow) / 2);
+      const radiusX = 40;
+      if (isEven) {
+        path += ` A ${radiusX} ${radiusY} 0 0 1 ${xR} ${nextY}`;
+      } else {
+        path += ` A ${radiusX} ${radiusY} 0 0 0 ${xL} ${nextY}`;
+      }
+    }
   }
-  curr -= c2;
-  const frac = curr / (r3 - 1 || 1);
-  return { x: 23.2 + frac * 63.3, y: 88.0, rotateZ: 0 };
+
+  return path;
 }
 
 /**
@@ -120,7 +195,10 @@ export default function DiceRaceTrack({
   // 3D Dice Roll Animation States
   const [rollSessionId, setRollSessionId] = useState(0);
   const [isRolling3D, setIsRolling3D] = useState(false);
-  const [activeRollValue, setActiveRollValue] = useState<number>(diceState?.lastDiceRoll || 6);
+  const [activeRollValue, setActiveRollValue] = useState<number>(diceState?.lastDiceRoll || 7);
+  const [activeDiceValues, setActiveDiceValues] = useState<[number, number]>(
+    diceState?.lastDiceValues || [3, 4]
+  );
   const [originCorner, setOriginCorner] = useState<0 | 1 | 2 | 3>(0);
   const [landingPos, setLandingPos] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
   const [hasLandedDice, setHasLandedDice] = useState<boolean>(Boolean(diceState?.lastDiceRoll));
@@ -173,6 +251,15 @@ export default function DiceRaceTrack({
         prevRollTimestampRef.current = diceState.rollTimestamp ?? Date.now();
         prevLastRollRef.current = lastDiceRoll;
         setActiveRollValue(lastDiceRoll);
+
+        let dVals: [number, number];
+        if (diceState.lastDiceValues && Array.isArray(diceState.lastDiceValues) && diceState.lastDiceValues.length === 2) {
+          dVals = [diceState.lastDiceValues[0], diceState.lastDiceValues[1]];
+        } else {
+          const half = Math.floor(lastDiceRoll / 2);
+          dVals = [Math.max(1, Math.min(6, lastDiceRoll - half)), Math.max(1, Math.min(6, half))];
+        }
+        setActiveDiceValues(dVals);
 
         // Random corner outside board (0: TL, 1: TR, 2: BL, 3: BR)
         const randCorner = Math.floor(Math.random() * 4) as 0 | 1 | 2 | 3;
@@ -493,9 +580,9 @@ export default function DiceRaceTrack({
           left: `${geo.x}%`,
           top: `${geo.y}%`,
           transform: `translate(-50%, -50%) rotateZ(${geo.rotateZ}deg)`,
-          width: isDisplay ? "7.6%" : "7.2%",
-          maxWidth: "84px",
-          minWidth: "46px",
+          width: totalTiles >= 80 ? (isDisplay ? "5.4%" : "5.0%") : totalTiles >= 50 ? (isDisplay ? "6.4%" : "5.8%") : (isDisplay ? "7.6%" : "7.2%"),
+          maxWidth: totalTiles >= 80 ? "56px" : totalTiles >= 50 ? "68px" : "84px",
+          minWidth: totalTiles >= 80 ? "30px" : totalTiles >= 50 ? "36px" : "46px",
         }}
       >
         {/* 3D Stepping Stone Block with Tangent rotateZ Angle */}
@@ -585,11 +672,13 @@ export default function DiceRaceTrack({
                           color={team.teamColor}
                           name={team.teamName}
                           size={
-                            teamsHere.length >= 3
+                            totalTiles >= 60
+                              ? teamsHere.length >= 2 ? "xs" : isDisplay ? "sm" : "xs"
+                              : teamsHere.length >= 3
                               ? "xs"
                               : teamsHere.length === 2
-                              ? (isDisplay ? "sm" : "xs")
-                              : (isDisplay ? "md" : "sm")
+                              ? isDisplay ? "sm" : "xs"
+                              : isDisplay ? "md" : "sm"
                           }
                           hasShield={team.hasShield}
                           isCurrentTurn={team.teamId === currentTurnTeamId}
@@ -629,21 +718,55 @@ export default function DiceRaceTrack({
         }}
       />
 
-      {/* 3D Dice Toss Simulated on Real Gameboard with Dismiss / Recall Support */}
+      {/* 3D Dual Dice Toss Simulated on Real Gameboard with Dismiss / Recall Support */}
       {hasLandedDice && (
-        <Dice3DRoller
-          key={rollSessionId}
-          value={activeRollValue}
-          isRolling={isRolling3D}
-          durationMs={2000}
-          onComplete={handle3DComplete}
-          simulateToss={true}
-          landingPos={landingPos}
-          originCorner={originCorner}
-          size={isDisplay ? 76 : 68}
-          isDismissed={isDiceDismissed}
-          onDismiss={() => setIsDiceDismissed(true)}
-        />
+        <>
+          {/* Dice 1 */}
+          <Dice3DRoller
+            key={`${rollSessionId}-d1`}
+            value={activeDiceValues[0]}
+            isRolling={isRolling3D}
+            durationMs={2000}
+            onComplete={handle3DComplete}
+            simulateToss={true}
+            landingPos={{ x: Math.max(22, landingPos.x - (isDisplay ? 6.5 : 5.5)), y: landingPos.y }}
+            originCorner={originCorner === 1 || originCorner === 3 ? 0 : 2}
+            size={isDisplay ? 72 : 62}
+            isDismissed={isDiceDismissed}
+            onDismiss={() => setIsDiceDismissed(true)}
+          />
+          {/* Dice 2 */}
+          <Dice3DRoller
+            key={`${rollSessionId}-d2`}
+            value={activeDiceValues[1]}
+            isRolling={isRolling3D}
+            durationMs={2000}
+            simulateToss={true}
+            landingPos={{ x: Math.min(78, landingPos.x + (isDisplay ? 6.5 : 5.5)), y: landingPos.y }}
+            originCorner={originCorner === 0 || originCorner === 2 ? 1 : 3}
+            size={isDisplay ? 72 : 62}
+            isDismissed={isDiceDismissed}
+            onDismiss={() => setIsDiceDismissed(true)}
+          />
+          {/* Sum Banner Floating Above Landed Dice */}
+          {!isDiceDismissed && !isRolling3D && (
+            <div
+              className="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-full flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-2xl bg-black/90 border-2 border-amber-400 text-amber-300 shadow-[0_0_25px_rgba(245,158,11,0.6)] font-black text-xs sm:text-sm animate-pulse"
+              style={{
+                left: `${landingPos.x}%`,
+                top: `${Math.max(12, landingPos.y - 12)}%`,
+              }}
+            >
+              <span className="font-mono text-white text-xs sm:text-sm bg-white/10 px-1.5 py-0.5 rounded">🎲 {activeDiceValues[0]}</span>
+              <span className="text-amber-400 font-black">+</span>
+              <span className="font-mono text-white text-xs sm:text-sm bg-white/10 px-1.5 py-0.5 rounded">🎲 {activeDiceValues[1]}</span>
+              <span className="text-amber-400 font-black">=</span>
+              <span className="text-black bg-gradient-to-r from-amber-400 to-yellow-300 px-2 py-0.5 rounded-xl font-mono font-black text-xs sm:text-base shadow">
+                {activeRollValue} BƯỚC
+              </span>
+            </div>
+          )}
+        </>
       )}
 
       {/* Landing Event Splash Banner */}
@@ -670,7 +793,7 @@ export default function DiceRaceTrack({
               </span>
             </div>
             <p className="text-[9px] sm:text-[11px] text-slate-300 flex items-center gap-1.5 flex-wrap mt-0.5">
-              <span>Đổ 1-6</span>
+              <span className="text-cyan-300 font-bold">Đổ 2 Xí Ngầu (2–12 bước)</span>
               <span>•</span>
               <span className="text-amber-300 font-bold">Điểm = Vị trí ô (Tối thiểu 1đ)</span>
               <span>•</span>
@@ -680,9 +803,7 @@ export default function DiceRaceTrack({
               <span>•</span>
               <span className="text-blue-400 font-bold">🛡️ Khiên</span>
               <span>•</span>
-              <span className="text-fuchsia-400 font-bold">🌀 Cổng Không Gian</span>
-              <span>•</span>
-              <span className="text-purple-400 font-bold">🔀 Đổi chỗ</span>
+              <span className="text-purple-400 font-bold">🔀 Vượt mặt</span>
               <span>•</span>
               <span className="text-emerald-400 font-bold">🎲 x2 Cơ hội</span>
             </p>
@@ -801,10 +922,10 @@ export default function DiceRaceTrack({
 
           {/* Ambient Glow */}
           <path
-            d="M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528"
+            d={getSerpentineSvgPath(totalTiles)}
             fill="none"
             stroke="url(#cyberNeonGlow)"
-            strokeWidth="92"
+            strokeWidth={totalTiles >= 50 ? "62" : "92"}
             strokeLinecap="round"
             strokeLinejoin="round"
             filter="url(#roadGlowFilter)"
@@ -813,10 +934,10 @@ export default function DiceRaceTrack({
 
           {/* Outer Guardrails / Neon Curb */}
           <path
-            d="M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528"
+            d={getSerpentineSvgPath(totalTiles)}
             fill="none"
             stroke="#06b6d4"
-            strokeWidth="78"
+            strokeWidth={totalTiles >= 50 ? "52" : "78"}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity="0.3"
@@ -824,20 +945,20 @@ export default function DiceRaceTrack({
 
           {/* Deep Asphalt Tarmac Roadbed */}
           <path
-            d="M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528"
+            d={getSerpentineSvgPath(totalTiles)}
             fill="none"
             stroke="#0b0e22"
-            strokeWidth="70"
+            strokeWidth={totalTiles >= 50 ? "46" : "70"}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
           {/* Road Texture Core */}
           <path
-            d="M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528"
+            d={getSerpentineSvgPath(totalTiles)}
             fill="none"
             stroke="#141a3a"
-            strokeWidth="58"
+            strokeWidth={totalTiles >= 50 ? "38" : "58"}
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity="0.85"
@@ -845,26 +966,35 @@ export default function DiceRaceTrack({
 
           {/* Glowing Dashed Centerline Track Marking */}
           <path
-            d="M 62 90 L 742 90 A 108 111 0 0 1 742 312 L 232 312 A 108 108 0 0 0 232 528 L 865 528"
+            d={getSerpentineSvgPath(totalTiles)}
             fill="none"
             stroke="#06b6d4"
-            strokeWidth="3.5"
+            strokeWidth={totalTiles >= 50 ? "2.5" : "3.5"}
             strokeDasharray="14 14"
             strokeLinecap="round"
             opacity="0.7"
           />
         </svg>
 
-        {/* Direction Chevrons along the Track */}
+        {/* Direction Chevrons along each Straight Row */}
         <div className="absolute inset-0 pointer-events-none select-none z-5">
-          <div className="absolute top-[13.5%] left-[20%] text-cyan-400/40 text-xs font-black">➤ ➤ ➤ ➤</div>
-          <div className="absolute top-[13.5%] left-[48%] text-cyan-400/40 text-xs font-black">➤ ➤ ➤ ➤</div>
-          <div className="absolute top-[32%] right-[7%] text-cyan-300/50 text-xs font-black rotate-90">➤ ➤</div>
-          <div className="absolute top-[50.5%] left-[32%] text-cyan-400/40 text-xs font-black">◀ ◀ ◀ ◀</div>
-          <div className="absolute top-[50.5%] left-[58%] text-cyan-400/40 text-xs font-black">◀ ◀ ◀ ◀</div>
-          <div className="absolute top-[68%] left-[6.5%] text-cyan-300/50 text-xs font-black rotate-90">➤ ➤</div>
-          <div className="absolute top-[86.5%] left-[32%] text-cyan-400/40 text-xs font-black">➤ ➤ ➤ ➤</div>
-          <div className="absolute top-[86.5%] left-[60%] text-cyan-400/40 text-xs font-black">➤ ➤ 🏁</div>
+          {Array.from({ length: totalTiles >= 80 ? 6 : totalTiles >= 50 ? 5 : 3 }).map((_, rIdx) => {
+            const numR = totalTiles >= 80 ? 6 : totalTiles >= 50 ? 5 : 3;
+            const yStart = numR === 6 ? 10.0 : 11.0;
+            const yEnd = numR === 6 ? 90.0 : 89.0;
+            const yRow = yStart + rIdx * ((yEnd - yStart) / (numR - 1));
+            const isEven = rIdx % 2 === 0;
+            return (
+              <div
+                key={rIdx}
+                className="absolute text-cyan-400/35 text-[9px] sm:text-[11px] font-black -translate-y-1/2 flex items-center justify-between pointer-events-none"
+                style={{ top: `${yRow}%`, left: "28%", right: "28%" }}
+              >
+                <span>{isEven ? "➤ ➤" : "◀ ◀"}</span>
+                <span>{isEven ? "➤ ➤" : "◀ ◀"}</span>
+              </div>
+            );
+          })}
         </div>
 
         {/* All Continuous Serpentine Tiles with Tangent Z-Rotation */}

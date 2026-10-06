@@ -1,7 +1,7 @@
 "use client";
 
 import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { calculateAuthoritativeTimer } from "@/lib/clock-sync";
 
 interface Props {
@@ -83,8 +83,11 @@ export default function GameQuestion({
   const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
   const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer));
 
+  const isSubmittingSingleRef = useRef(false);
+
   // Clean reset of input and selection states whenever question ID or active participant changes
   useEffect(() => {
+    isSubmittingSingleRef.current = Boolean(initialAnswer);
     if (initialAnswer) {
       setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
       setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
@@ -211,6 +214,10 @@ export default function GameQuestion({
   const handleOptionClick = (optId: string) => {
     if (!canAnswerThisQuestion() || hiddenOptionIds?.includes(optId)) return;
     if (q.type === "MC_SINGLE" || q.type === "TRUE_FALSE") {
+      if (isSingleSubmit) {
+        if (isSubmittingSingleRef.current) return;
+        isSubmittingSingleRef.current = true;
+      }
       setSelected([optId]);
       onAnswer(optId);
       if (isSingleSubmit) {
@@ -226,6 +233,10 @@ export default function GameQuestion({
 
   const handleSubmitMulti = () => {
     if (selected.length > 0 && canAnswerThisQuestion()) {
+      if (isSingleSubmit) {
+        if (isSubmittingSingleRef.current) return;
+        isSubmittingSingleRef.current = true;
+      }
       onAnswer(selected);
       if (isSingleSubmit) {
         setIsFinalizedLocally(true);
@@ -235,6 +246,10 @@ export default function GameQuestion({
 
   const handleSubmitEssay = () => {
     if (essayText.trim() && canAnswerThisQuestion()) {
+      if (isSingleSubmit) {
+        if (isSubmittingSingleRef.current) return;
+        isSubmittingSingleRef.current = true;
+      }
       onAnswer(essayText.trim());
       if (isSingleSubmit) {
         setIsFinalizedLocally(true);
@@ -244,6 +259,10 @@ export default function GameQuestion({
 
   const handleSubmitFill = () => {
     if (fillText.trim() && canAnswerThisQuestion()) {
+      if (isSingleSubmit) {
+        if (isSubmittingSingleRef.current) return;
+        isSubmittingSingleRef.current = true;
+      }
       onAnswer(fillText.trim());
       if (isSingleSubmit) {
         setIsFinalizedLocally(true);

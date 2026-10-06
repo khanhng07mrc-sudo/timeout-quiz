@@ -4786,7 +4786,7 @@ export default function AdminSandboxPage() {
                     }
                     const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
                     if (targetTeam) {
-                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
+                      const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
                       const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
                       playerIframeRef.current?.contentWindow?.postMessage(
                         {

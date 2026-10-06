@@ -5026,12 +5026,45 @@ async function processAnswerSubmission({
     }
   }
 
+  // Check if existing answer was submitted by a bot:
+  let existingWasBot = false;
+  if (existingAnswer?.playerId) {
+    if (isPlayerBot({ id: existingAnswer.playerId }) || existingAnswer.playerId.startsWith("bot_")) {
+      existingWasBot = true;
+    } else {
+      const prevPlayer = await prisma.player.findUnique({
+        where: { id: existingAnswer.playerId },
+        select: { id: true, name: true },
+      });
+      if (prevPlayer && isPlayerBot(prevPlayer)) {
+        existingWasBot = true;
+      }
+    }
+  }
+
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") ||
+    socket?.handshake?.query?.sandbox === "1"
+  );
+
+  // If a bot submitted earlier, but now a human player/tester is submitting,
+  // or if in Sandbox a tester is submitting for a team whose answer was from a bot or another actor,
+  // the human MUST override the bot answer (do not block human by bot placeholder submission)!
+  const isHumanOverridingBot = !isBotSender && (
+    existingWasBot ||
+    (isSandboxRoom && existingAnswer?.playerId !== targetPlayerId)
+  );
+
+  if (isHumanOverridingBot) {
+    console.log(`[processAnswerSubmission] Human player/tester overriding prior bot/placeholder answer for team ${targetTeamId || playerId}`);
+  }
+
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
 
   // 1. BOUNCEBACK Steal Team rule: Đội bấm chuông chỉ tính MỘT LẦN TRẢ LỜI DUY NHẤT (Admin không thể chỉnh điều đó)!
   const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
-  if (isBouncebackSteal && existingAnswer && !isAdminOverride) {
+  if (isBouncebackSteal && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "Đội bấm chuông chỉ được chọn 1 đáp án duy nhất!");
     return;
   }
@@ -5039,7 +5072,7 @@ async function processAnswerSubmission({
   // 2. Chế độ cấu hình tuỳ chỉnh SINGLE_SUBMIT ở các mode khác:
   const config = room.config as any;
   const isSingleSubmitMode = config?.answerSubmissionMode === "SINGLE_SUBMIT";
-  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride) {
+  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "Chế độ này chỉ cho phép chọn 1 lần duy nhất, bạn đã hoàn thành câu hỏi!");
     return;
   }
@@ -6836,7 +6869,7 @@ async function resolveQuestionTeamScores(
   const teamSummaries: TeamRevealSummary[] = [];
 
   for (const team of room.teams) {
-    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_")));
+    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_") || p.id?.startsWith("sb_")));
 
     // Get all answers for this team, sorted by submittedAt desc (latest first)
     const teamAnswers = answers

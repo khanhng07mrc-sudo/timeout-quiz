@@ -5148,16 +5148,37 @@ async function processAnswerSubmission({
       return;
     }
   }
+  let existingWasBot = false;
+  if (existingAnswer?.playerId) {
+    if (isPlayerBot({ id: existingAnswer.playerId }) || existingAnswer.playerId.startsWith("bot_")) {
+      existingWasBot = true;
+    } else {
+      const prevPlayer = await prisma.player.findUnique({
+        where: { id: existingAnswer.playerId },
+        select: { id: true, name: true }
+      });
+      if (prevPlayer && isPlayerBot(prevPlayer)) {
+        existingWasBot = true;
+      }
+    }
+  }
+  const isSandboxRoom = Boolean(
+    room.name?.startsWith("[Sandbox]") || socket?.handshake?.query?.sandbox === "1"
+  );
+  const isHumanOverridingBot = !isBotSender && (existingWasBot || isSandboxRoom && existingAnswer?.playerId !== targetPlayerId);
+  if (isHumanOverridingBot) {
+    console.log(`[processAnswerSubmission] Human player/tester overriding prior bot/placeholder answer for team ${targetTeamId || playerId}`);
+  }
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
   const isBouncebackSteal = room.mode === "BOUNCEBACK" && roomStealBuzzed.has(qKey);
-  if (isBouncebackSteal && existingAnswer && !isAdminOverride) {
+  if (isBouncebackSteal && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "\u0110\u1ED9i b\u1EA5m chu\xF4ng ch\u1EC9 \u0111\u01B0\u1EE3c ch\u1ECDn 1 \u0111\xE1p \xE1n duy nh\u1EA5t!");
     return;
   }
   const config = room.config;
   const isSingleSubmitMode = config?.answerSubmissionMode === "SINGLE_SUBMIT";
-  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride) {
+  if (!isBouncebackSteal && isSingleSubmitMode && existingAnswer && !isAdminOverride && !isHumanOverridingBot) {
     if (socket) socket.emit("error", "Ch\u1EBF \u0111\u1ED9 n\xE0y ch\u1EC9 cho ph\xE9p ch\u1ECDn 1 l\u1EA7n duy nh\u1EA5t, b\u1EA1n \u0111\xE3 ho\xE0n th\xE0nh c\xE2u h\u1ECFi!");
     return;
   }
@@ -6589,7 +6610,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   const teamScoresUpdates = [];
   const teamSummaries = [];
   for (const team of room.teams) {
-    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_")));
+    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_") || p.id?.startsWith("sb_")));
     const teamAnswers = answers.filter((a) => a.teamId === team.id).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     const validTeamAnswers = hasHuman ? teamAnswers.filter((a) => !a.playerId || !isPlayerBot({ id: a.playerId })) : teamAnswers;
     const repAnswer = validTeamAnswers[0] || teamAnswers[0];

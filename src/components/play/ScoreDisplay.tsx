@@ -25,7 +25,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
   const displayName = overridePlayerName || me?.name || "Bạn";
 
   return (
-    <div className="glass rounded-xl p-2.5 sm:p-3 flex items-center justify-between gap-2 border border-white/10 shadow-sm">
+    <div className="glass rounded-xl p-2 sm:p-3 flex items-center justify-between gap-1.5 sm:gap-2 border border-white/10 shadow-sm">
       {/* Player & Team Info */}
       <div className="flex-1 min-w-0 pr-1">
         <p className="text-[10px] sm:text-xs text-muted-foreground truncate whitespace-nowrap">
@@ -37,7 +37,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
           </span>
           {myTeam && (
             <span
-              className="text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full truncate shrink-0 max-w-[110px] whitespace-nowrap"
+              className="text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full truncate shrink-0 max-w-[85px] sm:max-w-[110px] whitespace-nowrap"
               style={{ background: `${myTeam.color}25`, color: myTeam.color, border: `1px solid ${myTeam.color}40` }}
             >
               {myTeam.name}

@@ -139,6 +139,7 @@ export default function AdminSandboxPage() {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
+  const [mobileTab, setMobileTab] = useState<"PLAYER" | "DISPLAY" | "HOST">("PLAYER");
 
   // Sockets
   const adminSocketRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
@@ -3500,27 +3501,113 @@ export default function AdminSandboxPage() {
     setShowCardModal(false);
   };
 
+  const renderQuickMcAction = () => {
+    if (matchStarting || questionPrepare) {
+      return (
+        <button
+          type="button"
+          onClick={handleSkipPrepare}
+          className="px-2 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[10px] animate-pulse flex items-center gap-1 shadow cursor-pointer whitespace-nowrap"
+          title="Bỏ qua đếm ngược chuẩn bị"
+        >
+          <span>⚡ Bỏ qua 3s</span>
+        </button>
+      );
+    }
+    if (currentQuestion?.timerPending) {
+      return (
+        <button
+          type="button"
+          onClick={handleStartTimer}
+          className="px-2 py-0.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-black text-[10px] animate-pulse flex items-center gap-1 shadow cursor-pointer whitespace-nowrap"
+          title="Bắt đầu tính giờ câu hỏi"
+        >
+          <span>⏱️ Bắt đầu giờ</span>
+        </button>
+      );
+    }
+    if (roomState?.mode === "GRID_CARO" && !currentQuestion && roomState.gridCaroState?.selectedCellId) {
+      return (
+        <button
+          type="button"
+          onClick={handleGridLaunchQuestion}
+          className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-black text-[10px] animate-pulse flex items-center gap-1 shadow cursor-pointer whitespace-nowrap"
+        >
+          <span>📖 Hiện câu #{roomState.gridCaroState.selectedCellId}</span>
+        </button>
+      );
+    }
+    if (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState?.canRollDice && (!currentQuestion || revealPayload)) {
+      return (
+        <button
+          type="button"
+          onClick={handleDiceRollManual}
+          className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-amber-400 to-yellow-500 text-black font-black text-[10px] animate-pulse flex items-center gap-1 shadow cursor-pointer whitespace-nowrap"
+        >
+          <span>🎲 Tung xúc xắc</span>
+        </button>
+      );
+    }
+    if (currentQuestion && !revealPayload) {
+      return (
+        <button
+          type="button"
+          onClick={handleAdminReveal}
+          className="px-2 py-0.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-[10px] animate-pulse flex items-center gap-1 shadow cursor-pointer whitespace-nowrap"
+          title="Công bố kết quả câu hỏi"
+        >
+          <span>👁️ Công bố</span>
+        </button>
+      );
+    }
+    if (revealPayload || (!currentQuestion && roomState?.status === "PLAYING")) {
+      return (
+        <button
+          type="button"
+          onClick={handleAdminNext}
+          className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 text-white font-black text-[10px] shadow cursor-pointer whitespace-nowrap flex items-center gap-1"
+          title="Chuyển sang câu hỏi kế tiếp"
+        >
+          <span>⏩ Câu kế</span>
+        </button>
+      );
+    }
+    if (roomState?.status === "LOBBY") {
+      return (
+        <button
+          type="button"
+          onClick={handleAdminNext}
+          className="px-2 py-0.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black text-[10px] shadow cursor-pointer whitespace-nowrap flex items-center gap-1"
+          title="Bắt đầu trận đấu"
+        >
+          <span>🚀 Bắt đầu</span>
+        </button>
+      );
+    }
+    return null;
+  };
+
   return (
     <div
-      className="h-full max-h-full flex flex-col min-h-0 gap-2 overflow-hidden"
+      className="h-full max-h-full flex flex-col min-h-0 gap-1.5 sm:gap-2 overflow-hidden"
       onClick={() => { if (showSettingsDropdown) setShowSettingsDropdown(false); if (showCheatDropdown) setShowCheatDropdown(false); }}
     >
       {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
-      <div className="glass rounded-xl px-3 py-2 border border-white/10 flex flex-wrap items-center justify-between gap-2 shadow-lg shrink-0 bg-[#121424]">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-base shadow glow-purple shrink-0">
+      <div className="glass rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 border border-white/10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424]">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center text-sm sm:text-base shadow glow-purple shrink-0">
             🧪
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-white whitespace-nowrap">Sandbox Studio</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap">Sandbox</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap hidden md:inline">
                 1 Người Điều Khiển
               </span>
               {isOfflineSandbox && (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap">
-                    ⚡ Ngoại tuyến
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold whitespace-nowrap">
+                    ⚡ Offline
                   </span>
                   <button
                     type="button"
@@ -3531,32 +3618,74 @@ export default function AdminSandboxPage() {
                       setRoomState(null);
                       setCurrentQuestion(null);
                     }}
-                    className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold whitespace-nowrap flex items-center gap-1 transition cursor-pointer"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-bold whitespace-nowrap hidden lg:flex items-center gap-1 transition cursor-pointer"
                     title="Thoát chế độ ngoại tuyến và mở phòng online với bộ đề trên máy chủ"
                   >
                     <span>🌐</span>
-                    <span>Chuyển sang Online</span>
+                    <span>Online</span>
                   </button>
                 </div>
               )}
               {code && (
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs">
+                <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs shrink-0">
                   <span className="text-muted-foreground text-[10px]">PIN:</span>
-                  <span className="font-mono font-black text-cyan-300">{code}</span>
-                  <span className="text-purple-300 font-bold inline-flex items-center gap-1 text-[11px]">
+                  <span className="font-mono font-black text-cyan-300 text-xs">{code}</span>
+                  <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1 text-[11px]">
                     <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3 h-3" />
                     [{roomState?.mode || selectedMode}]
                   </span>
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
                     roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
                   }`}>
-                    {roomState?.status || "ĐANG KẾT NỐI..."}
+                    {roomState?.status || "KẾT NỐI..."}
                   </span>
                 </div>
               )}
             </div>
           </div>
         </div>
+
+        {/* Mobile Segmented Viewport Switcher (< lg:) */}
+        {code && (
+          <div className="flex lg:hidden items-center p-0.5 rounded-xl bg-black/40 border border-white/10 shrink-0">
+            <button
+              type="button"
+              onClick={() => setMobileTab("PLAYER")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                mobileTab === "PLAYER"
+                  ? "bg-purple-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span>📱</span>
+              <span>Thí sinh</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("DISPLAY")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                mobileTab === "DISPLAY"
+                  ? "bg-cyan-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span>📺</span>
+              <span>Màn chiếu</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab("HOST")}
+              className={`px-2 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                mobileTab === "HOST"
+                  ? "bg-amber-600 text-white shadow"
+                  : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <span>🎛️</span>
+              <span>Quản trò</span>
+            </button>
+          </div>
+        )}
 
         {/* Room Launch or Connected Status Controls */}
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
@@ -3629,8 +3758,8 @@ export default function AdminSandboxPage() {
             </div>
           ) : (
             <>
-              {/* Center Section: Primary Smart MC Flow */}
-              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              {/* Center Section: Primary Smart MC Flow (Desktop only, mobile has Host Tab & Quick MC Button) */}
+              <div className="hidden lg:flex items-center gap-1.5 flex-wrap justify-center">
                 {/* 0a. Skip Countdown (Match Starting or Question Prepare) */}
                 {(matchStarting || questionPrepare) && (
                   <button
@@ -4583,7 +4712,9 @@ export default function AdminSandboxPage() {
           {/* ══════════════════════════════════════════════════════════════════
               LEFT COLUMN (7 cols ~58%): Large Display + Host Master Controls
              ══════════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden">
+          <div className={`lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden ${
+            mobileTab === "DISPLAY" ? "flex" : "hidden lg:flex"
+          }`}>
             {/* Display Iframe Viewport (Fills Remaining Height) */}
             <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden flex flex-col shadow-2xl bg-black">
               <div className="bg-[#151728] px-3 py-1.5 border-b border-white/10 flex items-center justify-between text-xs font-bold text-slate-300 shrink-0">
@@ -4637,10 +4768,12 @@ export default function AdminSandboxPage() {
           {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
-          <div className="lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden">
+          <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden ${
+            mobileTab === "PLAYER" ? "flex" : "hidden lg:flex"
+          }`}>
             {/* Team Switcher Tabs (Ultra-Compact Single Row) */}
             <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0">📱 Chọn Đội:</span>
+              <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
               <div className="grid grid-cols-4 gap-1 flex-1">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
@@ -4649,7 +4782,7 @@ export default function AdminSandboxPage() {
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-1 cursor-pointer ${
+                      className={`px-1 sm:px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-0.5 sm:gap-1 cursor-pointer ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
@@ -4671,11 +4804,11 @@ export default function AdminSandboxPage() {
             {/* Mobile Device Frame with Integrated Quick Testing Header */}
             <div className="flex-1 min-h-0 glass rounded-2xl border border-white/10 overflow-hidden shadow-2xl flex flex-col bg-[#0b0c16]">
               {/* Integrated Tester Header (Single Slim Bar) */}
-              <div className="bg-[#151728] px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-2 shrink-0">
+              <div className="bg-[#151728] px-2 sm:px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
                 {/* Active Team Identity Badge */}
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
-                  <span className="font-black text-xs text-white truncate">
+                  <span className="font-black text-xs text-white truncate max-w-[75px] sm:max-w-[120px]">
                     {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
@@ -4685,10 +4818,13 @@ export default function AdminSandboxPage() {
 
                 {/* Quick Test Controls */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Contextual Quick MC Action */}
+                  {renderQuickMcAction()}
+
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(true)}
-                    className="px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
                     title="Giả lập đội này chọn đáp án đúng"
                   >
                     ✓ Đúng
@@ -4696,7 +4832,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(false)}
-                    className="px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
                     title="Giả lập đội này chọn đáp án sai"
                   >
                     ✗ Sai
@@ -4704,7 +4840,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={handleForceActiveTeamBuzz}
-                    className="px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
                     title="Giả lập đội này bấm chuông"
                   >
                     ⚡ Buzz
@@ -4716,7 +4852,7 @@ export default function AdminSandboxPage() {
                         if (currentTeam) setDirectAnswerTargetTeamId(currentTeam.id);
                         setShowDirectAnswerModal(true);
                       }}
-                      className="px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm hidden sm:inline-block"
                       title="MC nộp đáp án trực tiếp cho đội này hoặc đội khác"
                     >
                       🎙️ MC nộp
@@ -4728,7 +4864,7 @@ export default function AdminSandboxPage() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setShowCheatDropdown(!showCheatDropdown); }}
-                      className="px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 cursor-pointer"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 cursor-pointer"
                       title="Chỉnh điểm nhanh cho đội này"
                     >
                       <span>Cheat</span>
@@ -4810,6 +4946,514 @@ export default function AdminSandboxPage() {
                   className="w-full h-full border-0"
                 />
               </div>
+            </div>
+          </div>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              MOBILE HOST CONTROL PANEL (Only visible on mobile when mobileTab === 'HOST')
+             ══════════════════════════════════════════════════════════════════ */}
+          <div
+            className={`lg:hidden flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] ${
+              mobileTab === "HOST" ? "flex" : "hidden"
+            }`}
+          >
+            {/* 1. Header & Primary Game Flow Card */}
+            <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-base">🎛️</span>
+                  <span className="font-black text-xs text-white uppercase tracking-wider">Tiến trình trận đấu</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    {roomState?.mode || selectedMode}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : "bg-yellow-500/20 text-yellow-300"
+                  }`}>
+                    {roomState?.status || "LOBBY"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Primary Action Buttons */}
+              <div className="space-y-1.5">
+                {(matchStarting || questionPrepare) && (
+                  <button
+                    type="button"
+                    onClick={handleSkipPrepare}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-black text-xs font-black shadow animate-pulse flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    <span>Bỏ qua chuẩn bị ({matchStarting?.seconds ?? questionPrepare?.seconds ?? 3}s)</span>
+                  </button>
+                )}
+
+                {currentQuestion?.timerPending && (
+                  <button
+                    type="button"
+                    onClick={handleStartTimer}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-green-500 text-black text-xs font-black shadow animate-pulse flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>⏱️</span>
+                    <span>
+                      {selectedMode === "BOUNCEBACK" && currentQuestion?.stealBuzzedTeamId
+                        ? `Bắt đầu tính giờ cướp (${currentQuestion.stealBuzzedTeamName || "Đội cướp"})`
+                        : selectedMode === "BUZZ" && currentQuestion?.buzzedTeamId
+                        ? `Bắt đầu tính giờ (${currentQuestion.buzzedTeamName || "Đội chuông"})`
+                        : "Bắt đầu tính giờ"}
+                    </span>
+                  </button>
+                )}
+
+                {/* Next / Start / Conclude */}
+                {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
+                  (() => {
+                    const targetTotal = getTargetTotalQuestions(
+                      selectedMode,
+                      roomState?.config,
+                      roomState?.teams.length || 4,
+                      offlineQuestionsRef.current.length || 25
+                    );
+                    const isLimitReached = (offlineQIndexRef.current + 1 >= targetTotal) || (offlineUsedQuestionIdsRef.current.size >= targetTotal);
+
+                    if (roomState?.status === "PLAYING" && revealPayload && isLimitReached) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleConcludeMatch}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-xs font-black shadow-lg border border-yellow-300 animate-pulse flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span className="text-sm">🏆</span>
+                          <span>Tổng kết trận & Trao giải (Đủ {targetTotal} câu)</span>
+                        </button>
+                      );
+                    }
+
+                    if (intermission) {
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleAdminNext}
+                          className="w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-500 text-white text-xs font-black shadow-lg animate-pulse flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>🚀</span>
+                          <span>Bắt đầu câu #{intermission.nextQuestionIndex + 1}</span>
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        onClick={handleAdminNext}
+                        className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
+                      >
+                        <span>
+                          {roomState?.status === "LOBBY"
+                            ? "🚀 Bắt đầu trận đấu"
+                            : roomState?.mode === "DICE_RACE" && !currentQuestion
+                            ? "🎯 Hiện câu hỏi"
+                            : revealPayload
+                            ? "⏩ Sang câu hỏi tiếp theo"
+                            : "⏩ Câu kế tiếp"}
+                        </span>
+                      </button>
+                    );
+                  })()
+                )}
+
+                {/* Reveal & In-Question Controls */}
+                {currentQuestion && !revealPayload && (
+                  <div className="space-y-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAdminReveal}
+                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                    >
+                      <span>👁️</span>
+                      <span>Công bố đáp án ngay</span>
+                    </button>
+
+                    <div className="grid grid-cols-3 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handleAdminStopEarly}
+                        disabled={Boolean(timer && timer.remaining <= 0)}
+                        className="py-1.5 px-2 rounded-lg bg-rose-600/30 border border-rose-500/40 text-rose-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40"
+                      >
+                        <span>⏹️ Dừng sớm</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSkipTimerToOneSecond}
+                        disabled={Boolean(!timer || timer.remaining <= 1)}
+                        className="py-1.5 px-2 rounded-lg glass border border-white/20 text-yellow-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40"
+                      >
+                        <span>⚡ Tua 1s</span>
+                      </button>
+                      {currentQuestion.question.options && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDirectAnswerModal(true)}
+                          className="py-1.5 px-2 rounded-lg bg-purple-600/30 border border-purple-500/50 text-purple-300 text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>🎙️ MC nộp</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Essay Grading */}
+                {revealPayload && (
+                  <button
+                    type="button"
+                    onClick={() => setShowEssayModal(true)}
+                    className="w-full py-2 rounded-xl bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>✏️</span>
+                    <span>Chấm điểm tự luận / tay ({revealPayload.answers?.length ?? 0})</span>
+                  </button>
+                )}
+
+                {/* Mode Specific Controls */}
+                {roomState?.mode === "BUZZ" && currentQuestion && (
+                  <div className="pt-2 border-t border-white/10 space-y-1.5">
+                    <span className="text-[11px] font-bold text-amber-300 block">🛎️ Điều khiển bấm chuông:</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {!currentQuestion.buzzUnlocked && (
+                        <button
+                          type="button"
+                          onClick={handleBuzzUnlock}
+                          className="px-3 py-1.5 rounded-lg bg-yellow-500 text-black text-xs font-black shadow flex items-center gap-1"
+                        >
+                          <span>🔔 Mở chuông</span>
+                        </button>
+                      )}
+                      {currentQuestion.buzzedTeamId && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-slate-300 mr-1">Thời gian:</span>
+                          {[5, 10, 15, 20].map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => handleBuzzStartAnswer(s)}
+                              className="px-2 py-1 rounded bg-cyan-600 text-white font-bold text-[11px]"
+                            >
+                              {s}s
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {roomState?.mode === "BOUNCEBACK" && currentQuestion && (
+                  <div className="pt-2 border-t border-white/10 space-y-1.5">
+                    <span className="text-[11px] font-bold text-blue-300 block">🔄 Điều khiển Về đích:</span>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {currentQuestion.bouncebackSelectPhase && ([10, 20, 30] as const).map((pts) => (
+                        <button
+                          key={pts}
+                          type="button"
+                          onClick={() => handleAdminBouncebackSelectPoints(pts)}
+                          className="px-2.5 py-1 rounded-lg bg-blue-600 text-white text-xs font-black"
+                        >
+                          Gói {pts}đ
+                        </button>
+                      ))}
+                      {!revealPayload && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleBouncebackJudge(true)}
+                            className="px-2.5 py-1 rounded-lg bg-green-600 text-white text-xs font-black"
+                          >
+                            ✓ Đúng
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBouncebackJudge(false)}
+                            className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-black"
+                          >
+                            ✗ Sai
+                          </button>
+                        </>
+                      )}
+                      {!currentQuestion.stealBuzzedTeamId && !currentQuestion.isStealPhase && !revealPayload && (
+                        <button
+                          type="button"
+                          onClick={handleBouncebackOpenSteal}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500 text-black text-xs font-black"
+                        >
+                          🔔 Mở cướp 5s
+                        </button>
+                      )}
+                      {currentQuestion.stealBuzzedTeamId && (
+                        <button
+                          type="button"
+                          onClick={() => handleBouncebackStartStealAnswer(5)}
+                          className="px-2.5 py-1 rounded-lg bg-cyan-600 text-white text-xs font-black"
+                        >
+                          ⏱️ Cho cướp 5s
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {roomState?.mode === "GRID_CARO" && (
+                  <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 flex-wrap">
+                    {!currentQuestion && roomState.gridCaroState?.selectedCellId && (
+                      <button
+                        type="button"
+                        onClick={handleGridLaunchQuestion}
+                        className="px-3 py-1.5 rounded-lg bg-purple-600 text-white text-xs font-black"
+                      >
+                        📖 Hiện câu #{roomState.gridCaroState.selectedCellId}
+                      </button>
+                    )}
+                    {!currentQuestion && !roomState.gridCaroState?.previewActive && !roomState.gridCaroState?.selectedCellId && (
+                      <button
+                        type="button"
+                        onClick={handleGridPreviewStart}
+                        className="px-2.5 py-1 rounded-lg glass border border-purple-500/40 text-purple-300 text-xs font-bold"
+                      >
+                        👁️ Xem độ khó
+                      </button>
+                    )}
+                    {!currentQuestion && roomState.gridCaroState?.previewActive && (
+                      <button
+                        type="button"
+                        onClick={handleGridPreviewStop}
+                        className="px-2.5 py-1 rounded-lg bg-red-600 text-white text-xs font-bold"
+                      >
+                        🙈 Lật úp
+                      </button>
+                    )}
+                    {revealPayload && (
+                      <button
+                        type="button"
+                        onClick={handleGridAdvanceNow}
+                        className="px-3 py-1.5 rounded-lg bg-cyan-600 text-white text-xs font-black"
+                      >
+                        🏁 Về bảng ô
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {roomState?.mode === "DICE_RACE" && (
+                  <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 flex-wrap">
+                    {roomState?.diceRaceState?.canRollDice && (!currentQuestion || revealPayload) && (
+                      <button
+                        type="button"
+                        onClick={handleDiceRollManual}
+                        className="px-3 py-1.5 rounded-lg bg-amber-400 text-black text-xs font-black shadow animate-pulse"
+                      >
+                        🎲 Tung xúc xắc
+                      </button>
+                    )}
+                    {revealPayload && (
+                      <button
+                        type="button"
+                        onClick={handleDiceAdvanceToBoard}
+                        className="px-3 py-1.5 rounded-lg bg-amber-500 text-black text-xs font-black"
+                      >
+                        🗺️ Về bàn cờ
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {roomState?.mode === "WAGER" && (
+                  <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 flex-wrap">
+                    {roomState?.wagerState?.phase === "QUESTION_PERIOD" && !roomState?.wagerState?.questionReady && (
+                      <button
+                        type="button"
+                        onClick={handleWagerLaunchQuestion}
+                        className="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-black text-xs animate-pulse"
+                      >
+                        📢 Mở câu hỏi cược
+                      </button>
+                    )}
+                    {roomState?.wagerState?.bailoutQueue && roomState.wagerState.bailoutQueue.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={roomState.wagerState.currentQuestionBailoutUsed}
+                        onClick={() => handleGrantBailout(roomState.wagerState!.bailoutQueue![0].teamId)}
+                        className="px-3 py-1.5 rounded-lg text-xs font-black bg-rose-600 text-white disabled:opacity-40"
+                      >
+                        🆘 Cứu trợ {roomState.wagerState.bailoutQueue[0].teamName}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {roomState?.mode === "TOURNAMENT" && (
+                  <div className="pt-2 border-t border-white/10">
+                    <button
+                      type="button"
+                      onClick={handleTournamentAdvance}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-black"
+                    >
+                      {roomState?.tournamentState?.championTeamName
+                        ? `👑 Vô địch: ${roomState.tournamentState.championTeamName}`
+                        : "➡️ Trận kế (1v1)"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Teams & Scoring Card */}
+            <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                <span className="font-black text-xs text-white uppercase tracking-wider">👥 4 Đội thi & Chấm điểm</span>
+                <span className="text-[10px] text-slate-400">Chạm để đổi người chơi</span>
+              </div>
+              <div className="space-y-1.5">
+                {stableTeams.map((t: TeamState, idx: number) => {
+                  const isActive = activeTeamIndex === idx;
+                  return (
+                    <div
+                      key={t.id}
+                      className={`p-2 rounded-xl border flex items-center justify-between gap-1.5 transition ${
+                        isActive
+                          ? "bg-purple-900/30 border-purple-500 ring-1 ring-purple-400/50"
+                          : "bg-black/30 border-white/10"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleSwitchActiveTeam(idx);
+                          setMobileTab("PLAYER");
+                        }}
+                        className="flex items-center gap-1.5 min-w-0 flex-1 text-left cursor-pointer"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color }} />
+                        <span className="font-bold text-xs truncate text-white">{t.name}</span>
+                        {isActive && (
+                          <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/30 text-purple-300 font-bold">
+                            Đang xem
+                          </span>
+                        )}
+                      </button>
+                      <span className="font-mono font-black text-cyan-300 text-xs shrink-0 mr-1">
+                        {t.score}đ
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustScore(t.id, 20)}
+                          className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px]"
+                        >
+                          +20
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustScore(t.id, -20)}
+                          className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px]"
+                        >
+                          -20
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Automation & Utilities Card */}
+            <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
+              <span className="font-black text-xs text-white uppercase tracking-wider block border-b border-white/10 pb-1.5">
+                🛠️ Tiện ích & Tự động
+              </span>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setBotAutoEnabled(!botAutoEnabled)}
+                  className={`p-2 rounded-xl border flex items-center justify-between text-left transition ${
+                    botAutoEnabled ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300" : "glass border-white/10 text-slate-300"
+                  }`}
+                >
+                  <span className="font-bold text-[11px]">🤖 Bot tự động</span>
+                  <span className="font-mono text-[10px] font-black">{botAutoEnabled ? "BẬT" : "TẮT"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTriggerAllBotsAnswer}
+                  disabled={!currentQuestion || !!revealPayload || Boolean(timer && timer.remaining <= 0)}
+                  className="p-2 rounded-xl glass border border-white/10 text-slate-300 hover:text-white font-bold text-[11px] disabled:opacity-40 text-left"
+                >
+                  ⚡ Bot nộp bài ngay
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (roomState) updateConfig("autoTimerStart", !roomState.config.autoTimerStart);
+                  }}
+                  className={`p-2 rounded-xl border flex items-center justify-between text-left transition ${
+                    roomState?.config.autoTimerStart ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300" : "glass border-white/10 text-slate-300"
+                  }`}
+                >
+                  <span className="font-bold text-[11px]">⏱️ Đếm tự động</span>
+                  <span className="font-mono text-[10px] font-black">{roomState?.config.autoTimerStart ? "BẬT" : "TẮT"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowRulesModal(true)}
+                  className="p-2 rounded-xl glass border border-white/10 text-cyan-300 font-bold text-[11px] text-left"
+                >
+                  📖 Luật chơi mode
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (roomState?.teams && roomState.teams.length > 0) {
+                      setGrantTargetTeamId(roomState.teams[0].id);
+                    }
+                    setShowCardModal(true);
+                  }}
+                  className="p-2 rounded-xl glass border border-white/10 text-purple-300 font-bold text-[11px] text-left"
+                >
+                  🃏 Cấp thẻ bổ trợ
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowLogsModal(true)}
+                  className="p-2 rounded-xl glass border border-white/10 text-amber-300 font-bold text-[11px] text-left flex items-center justify-between"
+                >
+                  <span>📜 Xem nhật ký</span>
+                  <span className="font-mono text-[10px] opacity-70">({botLogs.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4. Exit / Reset Button */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  clearSandboxSession();
+                  setCode("");
+                  setRoomState(null);
+                  setCurrentQuestion(null);
+                  setIsOfflineSandbox(false);
+                }}
+                className="w-full py-2.5 rounded-xl glass hover:bg-red-500/20 border border-red-500/30 text-red-400 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>✕</span>
+                <span>Thoát và đổi phòng</span>
+              </button>
             </div>
           </div>
         </div>

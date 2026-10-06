@@ -271,7 +271,7 @@ export default function GameQuestion({
   };
 
   return (
-    <div className={`glass rounded-2xl p-3 sm:p-5 flex flex-col gap-2.5 sm:gap-3.5 animate-slide-up transition-all duration-500 ${
+    <div className={`glass rounded-2xl p-2.5 sm:p-5 flex flex-col gap-2 sm:gap-3.5 animate-slide-up transition-all duration-500 ${
       isBuzzedWaitingPrep
         ? "border-2 border-emerald-400/90 shadow-[0_0_35px_rgba(16,185,129,0.35)] ring-2 ring-emerald-400/30"
         : ""
@@ -907,7 +907,7 @@ export default function GameQuestion({
           )}
         </div>
 
-        <h2 className="text-xl font-bold leading-relaxed">{q.content}</h2>
+        <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug sm:leading-relaxed">{q.content}</h2>
         {q.mediaUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={q.mediaUrl} alt="Media" className="max-h-48 rounded-xl mt-3 mx-auto" />

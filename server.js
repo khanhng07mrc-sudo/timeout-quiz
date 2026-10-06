@@ -2419,36 +2419,43 @@ function registerSocketHandlers(io2) {
         }
       }
     });
-    socket.on("game:answer:submit", async ({ questionId, answer, clientAnsweredAt }) => {
+    socket.on("game:answer:submit", async ({ questionId, answer, teamId, clientAnsweredAt }) => {
       if (!checkActionDebounce(socket.id, 150)) return;
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
-      if (!session) {
-        const player = await prisma.player.findUnique({
-          where: { id: playerId },
+      if (!session || !session.teamId) {
+        const player = await prisma.player.findFirst({
+          where: {
+            OR: [
+              { id: playerId },
+              { socketId: socket.id }
+            ]
+          },
           include: { room: true, team: true }
         });
         if (!player || !player.room) return;
+        const effTeamId = teamId || player.teamId || session?.teamId || void 0;
         session = {
           playerId: player.id,
           playerName: player.name,
           roomId: player.room.id,
           roomCode: player.room.code,
-          teamId: player.teamId ?? void 0,
-          teamName: player.team?.name ?? player.name,
+          teamId: effTeamId,
+          teamName: player.team?.name ?? session?.teamName ?? player.name,
           roomMode: player.room.mode,
           teamMode: player.room.teamMode
         };
         socketPlayerSessions.set(socket.id, session);
         playerSessions.set(player.id, session);
       }
+      const submissionTeamId = teamId || session.teamId || void 0;
       await processAnswerSubmission({
         io: io2,
         roomId: session.roomId,
         questionId,
         playerId,
-        teamId: session.teamId ?? void 0,
+        teamId: submissionTeamId,
         answer,
         clientAnsweredAt,
         isAdminOverride: false,
@@ -4593,18 +4600,23 @@ function registerSocketHandlers(io2) {
       }
       await finalizeQuestionOnTimeUp(io2, player.room.id, player.room.code, questionId);
     });
-    socket.on("game:answer:finalize", async ({ questionId, answer }) => {
+    socket.on("game:answer:finalize", async ({ questionId, answer, teamId }) => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
+      const player = await prisma.player.findFirst({
+        where: {
+          OR: [
+            { id: playerId },
+            { socketId: socket.id }
+          ]
+        },
         include: { room: true, team: true }
       });
       if (!player?.room || player.room.status !== "PLAYING") return;
       const room = player.room;
       const qKey = `${room.id}:${questionId}`;
-      let effectiveTeamId = player.teamId;
-      if (!effectiveTeamId && (playerId.startsWith("p_sb_") || player.name.includes("Tester"))) {
+      let effectiveTeamId = teamId || player.teamId;
+      if (!effectiveTeamId && (playerId.startsWith("p_sb_") || playerId.startsWith("sb_") || player.name.includes("Tester"))) {
         const primary = roomPrimaryTeams.get(qKey);
         effectiveTeamId = primary?.teamId ?? null;
         if (!effectiveTeamId) {
@@ -4650,7 +4662,8 @@ function registerSocketHandlers(io2) {
         finalizedCount,
         totalParticipantsCount
       });
-      if (totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+      const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, finSet);
+      if (!hasPendingHumans && totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
         if (room.mode === "BOUNCEBACK") {
           stopQuestionTimer(room.id);
           const stealInfo = roomStealBuzzed.get(qKey);
@@ -4866,6 +4879,49 @@ async function getActiveParticipantsForQuestion(room, questionId) {
     return players.map((p) => p.id);
   }
 }
+function isPlayerBot(p) {
+  if (!p) return false;
+  if (p.id?.startsWith("bot_")) return true;
+  if (p.name?.includes("\u{1F916}")) return true;
+  if (p.name?.toLowerCase().startsWith("bot ")) return true;
+  return false;
+}
+async function hasUnfinalizedHumanParticipants(room, questionId, finSet) {
+  const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+  if (activeParticipants.length === 0) return false;
+  const players = await prisma.player.findMany({
+    where: { roomId: room.id, isHost: false },
+    include: { team: true }
+  });
+  const isSandbox = Boolean(room.name?.startsWith("[Sandbox]"));
+  for (const partId of activeParticipants) {
+    const teamPlayers = players.filter((p) => p.teamId === partId);
+    if (teamPlayers.length > 0) {
+      const humanPlayers = teamPlayers.filter((p) => {
+        if (isPlayerBot(p)) return false;
+        if (isSandbox) {
+          return !p.id.startsWith("bot_") && !p.name?.includes("\u{1F916}");
+        }
+        return !p.id.startsWith("bot_") && !p.name?.includes("\u{1F916}") && !!p.socketId;
+      });
+      if (humanPlayers.length > 0) {
+        const teamFinalized = finSet.has(partId);
+        const anyHumanFinalized = humanPlayers.some((hp) => finSet.has(hp.id));
+        if (!teamFinalized && !anyHumanFinalized) {
+          return true;
+        }
+      }
+    } else {
+      const p = players.find((pl) => pl.id === partId);
+      if (p && !isPlayerBot(p) && (isSandbox || !!p.socketId)) {
+        if (!finSet.has(partId)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 function evaluateAnswerCorrectness(question, submittedAnswer) {
   if (!question) {
     return { isAutoCorrect: false, answerText: "(Kh\xF4ng c\xF3 c\xE2u h\u1ECFi)" };
@@ -4944,18 +5000,47 @@ async function processAnswerSubmission({
   }
   let effectiveTeamId = teamId;
   if (!effectiveTeamId && playerId) {
-    const pRecord = await prisma.player.findUnique({ where: { id: playerId } });
+    const pRecord = await prisma.player.findFirst({
+      where: {
+        roomId: room.id,
+        OR: [
+          { id: playerId },
+          { socketId: socket?.id }
+        ]
+      },
+      include: { team: true }
+    });
     if (pRecord?.teamId) {
       effectiveTeamId = pRecord.teamId;
-    } else if (pRecord?.name?.includes("Tester") || playerId.startsWith("p_sb_")) {
+      if (socket) {
+        const sess = socketPlayerSessions.get(socket.id);
+        if (sess) sess.teamId = pRecord.teamId;
+      }
+    } else if (pRecord?.name?.includes("Tester") || playerId.startsWith("p_sb_") || playerId.startsWith("sb_")) {
       const primary = roomPrimaryTeams.get(qKey);
       effectiveTeamId = primary?.teamId || room.teams[0]?.id;
-      if (effectiveTeamId) {
+      if (effectiveTeamId && pRecord?.id) {
         await prisma.player.update({
-          where: { id: playerId },
+          where: { id: pRecord.id },
           data: { teamId: effectiveTeamId }
         }).catch(() => {
         });
+      }
+    }
+  }
+  if (!effectiveTeamId && room.teamMode === "TEAM" && room.teams.length > 0) {
+    const pRecord = await prisma.player.findFirst({
+      where: { roomId: room.id, OR: [{ id: playerId }, { socketId: socket?.id }] }
+    });
+    if (pRecord?.teamId) {
+      effectiveTeamId = pRecord.teamId;
+    } else if (room.name?.startsWith("[Sandbox]")) {
+      const match = playerId?.match(/_t(\d+)/);
+      if (match) {
+        const tIdx = parseInt(match[1], 10) - 1;
+        effectiveTeamId = room.teams[tIdx]?.id || room.teams[0]?.id;
+      } else {
+        effectiveTeamId = room.teams[0]?.id;
       }
     }
   }
@@ -4964,13 +5049,13 @@ async function processAnswerSubmission({
     const stealInfo = roomStealBuzzed.get(qKey);
     const primary = roomPrimaryTeams.get(qKey);
     if (stealInfo) {
-      const isStealActor = effectiveTeamId && effectiveTeamId === stealInfo.teamId || playerId && (playerId === stealInfo.playerId || playerId === stealInfo.teamId);
+      const isStealActor = effectiveTeamId && effectiveTeamId === stealInfo.teamId || actorId && actorId === stealInfo.teamId || playerId && (playerId === stealInfo.playerId || playerId === stealInfo.teamId);
       if (!isAdminOverride && !isStealActor) {
         if (socket) socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i c\u01B0\u1EDBp chu\xF4ng m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
         return;
       }
     } else if (primary) {
-      const isPrimaryActor = effectiveTeamId && effectiveTeamId === primary.teamId || playerId && playerId === primary.teamId;
+      const isPrimaryActor = effectiveTeamId && effectiveTeamId === primary.teamId || actorId && actorId === primary.teamId || playerId && playerId === primary.teamId;
       if (!isAdminOverride && !isPrimaryActor) {
         if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i ch\xEDnh!");
         return;
@@ -4982,7 +5067,7 @@ async function processAnswerSubmission({
       if (socket) socket.emit("error", "Ch\u01B0a c\xF3 \u0111\u1ED9i n\xE0o b\u1EA5m chu\xF4ng!");
       return;
     }
-    const isBuzzActor = buzz ? effectiveTeamId && effectiveTeamId === buzz.teamId || playerId && (playerId === buzz.playerId || playerId === buzz.teamId) : false;
+    const isBuzzActor = buzz ? effectiveTeamId && effectiveTeamId === buzz.teamId || actorId && actorId === buzz.teamId || playerId && (playerId === buzz.playerId || playerId === buzz.teamId) : false;
     if (!isAdminOverride && !isBuzzActor) {
       if (socket) socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i b\u1EA5m chu\xF4ng \u0111\u1EA7u ti\xEAn m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
       return;
@@ -4990,19 +5075,22 @@ async function processAnswerSubmission({
   } else if (room.mode === "TOURNAMENT") {
     const tournament = roomTournaments.get(room.id);
     const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
-    if (currentMatch && actorId !== currentMatch.team1Id && actorId !== currentMatch.team2Id && !isAdminOverride) {
+    const isMatchActor = currentMatch && (actorId === currentMatch.team1Id || actorId === currentMatch.team2Id || effectiveTeamId === currentMatch.team1Id || effectiveTeamId === currentMatch.team2Id);
+    if (currentMatch && !isMatchActor && !isAdminOverride) {
       if (socket) socket.emit("error", "Ch\u1EC9 2 \u0111\u1ED9i trong tr\u1EADn \u0111\u1ED1i \u0111\u1EA7u hi\u1EC7n t\u1EA1i m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
       return;
     }
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
-    if (gridState && actorId !== gridState.currentTurnTeamId && !isAdminOverride) {
+    const isGridActor = gridState && (actorId === gridState.currentTurnTeamId || effectiveTeamId === gridState.currentTurnTeamId);
+    if (gridState && !isGridActor && !isAdminOverride) {
       if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
       return;
     }
   } else if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
-    if (diceState && actorId !== diceState.currentTurnTeamId && !isAdminOverride) {
+    const isDiceActor = diceState && (actorId === diceState.currentTurnTeamId || effectiveTeamId === diceState.currentTurnTeamId);
+    if (diceState && !isDiceActor && !isAdminOverride) {
       if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
       return;
     }
@@ -5027,24 +5115,38 @@ async function processAnswerSubmission({
   timeSpent = Math.min(timeSpent, maxAllowedLimitMs);
   const targetTeamId = effectiveTeamId;
   const targetPlayerId = playerId;
-  const isSingleTeamTurnMode = room.mode === "BOUNCEBACK" || room.mode === "BUZZ" || room.mode === "GRID_CARO" || room.mode === "DICE_RACE";
-  let existingAnswer = null;
-  if (isSingleTeamTurnMode && targetTeamId) {
-    existingAnswer = await prisma.answer.findFirst({
-      where: { roomId: room.id, questionId, teamId: targetTeamId }
+  const isTeamMode = room.teamMode === "TEAM" || room.mode === "BOUNCEBACK" || room.mode === "BUZZ" || room.mode === "GRID_CARO" || room.mode === "DICE_RACE" || room.mode === "TOURNAMENT" || room.mode === "WAGER";
+  const isBotSender = isPlayerBot({ id: playerId }) || Boolean(socket?.handshake?.query?.sandbox === "1" && playerId?.startsWith("bot_"));
+  if (targetTeamId && isBotSender) {
+    const teamMembers = await prisma.player.findMany({
+      where: { roomId: room.id, teamId: targetTeamId }
     });
-  } else if (targetPlayerId && targetTeamId) {
+    const hasHumanMember = teamMembers.some(
+      (m) => !isPlayerBot(m) && (m.socketId || m.name?.includes("Tester") || m.id?.startsWith("p_sb_") || m.id?.startsWith("sb_"))
+    );
+    if (hasHumanMember) {
+      console.log(`[processAnswerSubmission] Ignored bot answer for human-controlled team ${targetTeamId}`);
+      return;
+    }
+  }
+  let existingAnswer = null;
+  if (isTeamMode && targetTeamId) {
     existingAnswer = await prisma.answer.findFirst({
-      where: { roomId: room.id, questionId, playerId: targetPlayerId, teamId: targetTeamId }
+      where: { roomId: room.id, questionId, teamId: targetTeamId },
+      orderBy: { submittedAt: "desc" }
     });
   } else if (targetPlayerId) {
     existingAnswer = await prisma.answer.findFirst({
-      where: { roomId: room.id, questionId, playerId: targetPlayerId }
+      where: { roomId: room.id, questionId, playerId: targetPlayerId },
+      orderBy: { submittedAt: "desc" }
     });
-  } else if (targetTeamId) {
-    existingAnswer = await prisma.answer.findFirst({
-      where: { roomId: room.id, questionId, teamId: targetTeamId }
-    });
+  }
+  if (existingAnswer && targetTeamId && isBotSender) {
+    const prevSubWasHuman = existingAnswer.playerId && !isPlayerBot({ id: existingAnswer.playerId });
+    if (prevSubWasHuman) {
+      console.log(`[processAnswerSubmission] Prevented bot from overwriting human answer for team ${targetTeamId}`);
+      return;
+    }
   }
   const isUpdate = Boolean(existingAnswer);
   const normalizedAnswer = Array.isArray(answer) ? answer : [answer];
@@ -5071,6 +5173,17 @@ async function processAnswerSubmission({
         playerId: targetPlayerId ?? existingAnswer.playerId
       }
     });
+    if (targetTeamId) {
+      await prisma.answer.deleteMany({
+        where: {
+          roomId: room.id,
+          questionId,
+          teamId: targetTeamId,
+          id: { not: existingAnswer.id }
+        }
+      }).catch(() => {
+      });
+    }
   } else {
     await prisma.answer.create({
       data: {
@@ -5184,8 +5297,9 @@ async function processAnswerSubmission({
   }
   if (isSingleSubmitMode && !isAdminOverride) {
     const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
-    const subSet = roomSubmittedActors.get(qKey);
-    if (activeParticipants.length > 0 && activeParticipants.every((id) => subSet?.has(id))) {
+    const subSet = roomSubmittedActors.get(qKey) || /* @__PURE__ */ new Set();
+    const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
+    if (!hasPendingHumans && activeParticipants.length > 0 && activeParticipants.every((id) => subSet.has(id))) {
       io2.to(`room:${room.code}`).emit("game:early_completed", {
         questionId,
         reason: "ALL_SUBMITTED",
@@ -5374,8 +5488,14 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   if (!tournament || !room || !question) return;
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
   if (!currentMatch) return;
-  const t1Ans = currentMatch.team1Id ? await prisma.answer.findFirst({ where: { roomId, questionId, teamId: currentMatch.team1Id } }) : null;
-  const t2Ans = currentMatch.team2Id ? await prisma.answer.findFirst({ where: { roomId, questionId, teamId: currentMatch.team2Id } }) : null;
+  const t1Ans = currentMatch.team1Id ? await prisma.answer.findFirst({
+    where: { roomId, questionId, teamId: currentMatch.team1Id },
+    orderBy: { submittedAt: "desc" }
+  }) : null;
+  const t2Ans = currentMatch.team2Id ? await prisma.answer.findFirst({
+    where: { roomId, questionId, teamId: currentMatch.team2Id },
+    orderBy: { submittedAt: "desc" }
+  }) : null;
   const scoreUpdates = [];
   if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id) {
     currentMatch.team1Score += question.points;
@@ -5482,7 +5602,8 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
   const scoreUpdates = [];
   if (currentTeam && cell) {
     const ans = await prisma.answer.findFirst({
-      where: { roomId, questionId, teamId: currentTeam.id }
+      where: { roomId, questionId, teamId: currentTeam.id },
+      orderBy: { submittedAt: "desc" }
     });
     if (ans && ans.isCorrect) {
       cell.isCompleted = true;
@@ -5546,7 +5667,8 @@ async function finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId) {
   const currentTeamId = diceState.currentTurnTeamId;
   const scoreUpdates = [];
   const ans = await prisma.answer.findFirst({
-    where: { roomId, questionId, teamId: currentTeamId }
+    where: { roomId, questionId, teamId: currentTeamId },
+    orderBy: { submittedAt: "desc" }
   });
   const isCorrect = ans?.isCorrect === true;
   if (isCorrect && currentTeamId) {
@@ -5581,11 +5703,12 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
   const basePoints = question.points || 20;
   const nonWagerCorrectPoints = Math.max(5, Math.floor(basePoints / 2));
   const teamAnswers = await prisma.answer.findMany({
-    where: { roomId, questionId }
+    where: { roomId, questionId },
+    orderBy: { submittedAt: "desc" }
   });
   const answerMap = /* @__PURE__ */ new Map();
   for (const ans of teamAnswers) {
-    if (ans.teamId) {
+    if (ans.teamId && !answerMap.has(ans.teamId)) {
       answerMap.set(ans.teamId, ans);
     }
   }
@@ -5606,7 +5729,7 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
     wagerPenalty = effectiveTeams * unitPenalty;
   }
   for (const team of room.teams) {
-    const isCorrect = teamAnswers.some((a) => a.teamId === team.id && a.isCorrect === true);
+    const isCorrect = Boolean(answerMap.get(team.id)?.isCorrect === true);
     let delta = 0;
     if (team.id === lastWagerTeamId) {
       delta = isCorrect ? wagerAmount : -wagerPenalty;
@@ -6466,16 +6589,15 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   const teamScoresUpdates = [];
   const teamSummaries = [];
   for (const team of room.teams) {
-    const hasHuman = team.players.some((p) => !p.id.startsWith("bot_") && !!p.socketId);
-    const activeMembers = hasHuman ? team.players.filter((p) => !p.id.startsWith("bot_") && !!p.socketId) : team.players.filter((p) => !!p.socketId);
-    const totalOnline = activeMembers.length > 0 ? activeMembers.length : team.players.length || 1;
-    const teamAnswers = answers.filter((a) => {
-      if (a.teamId !== team.id) return false;
-      if (hasHuman && a.playerId?.startsWith("bot_")) return false;
-      return true;
-    });
-    const correctAnswers = teamAnswers.filter((a) => a.isCorrect === true);
-    const correctTimes = correctAnswers.map((a) => a.timeSpent);
+    const hasHuman = team.players.some((p) => !isPlayerBot(p) && (!!p.socketId || p.name?.includes("Tester") || p.id?.startsWith("p_sb_")));
+    const teamAnswers = answers.filter((a) => a.teamId === team.id).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    const validTeamAnswers = hasHuman ? teamAnswers.filter((a) => !a.playerId || !isPlayerBot({ id: a.playerId })) : teamAnswers;
+    const repAnswer = validTeamAnswers[0] || teamAnswers[0];
+    const isRepCorrect = repAnswer?.isCorrect === true;
+    const correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
+    const correctTimes = repAnswer?.timeSpent !== void 0 ? [repAnswer.timeSpent] : [];
+    const totalOnline = 1;
+    const correctMembers = isRepCorrect ? 1 : 0;
     let teamStreak = teamStreakMap.get(team.id) || 0;
     if (correctAnswers.length > 0) {
       teamStreak += 1;

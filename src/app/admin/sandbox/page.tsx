@@ -279,6 +279,7 @@ export default function AdminSandboxPage() {
           sock.emit("game:answer:submit", {
             questionId: qData.id,
             answer: chosenOpt.id,
+            teamId: team.id,
           });
           addLog(`Bot [${team.name}] nộp đáp án: ${chosenOpt.text}`);
         }, delay);
@@ -3431,10 +3432,12 @@ export default function AdminSandboxPage() {
       sock.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
         answer: opt.id,
+        teamId: bTeamId,
       });
       sock.emit("game:answer:finalize", {
         questionId: currentQuestion.question.id,
         answer: opt.id,
+        teamId: bTeamId,
       });
       const tName = roomState?.teams.find((t) => t.id === bTeamId)?.name;
       addLog(`🤖 Cho Bot [${tName || bTeamId}] nộp & chốt đáp án: ${opt.text}`);
@@ -3448,7 +3451,7 @@ export default function AdminSandboxPage() {
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     activeTeamIdRef.current = targetTeam.id;
-    const targetName = idx === 0 ? "Bạn (Tester)" : `${targetTeam.name} 🤖`;
+    const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
     const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(
       {

@@ -884,12 +884,13 @@ export default function PlayPage() {
   const handleAnswer = (answer: string | string[]) => {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
-    const targetTeamId = effectiveTeamId || myTeamIdRef.current || "t_red";
-    teamAnswersRef.current.set(targetTeamId, answer);
+    const targetTeamId = effectiveTeamId || myTeamIdRef.current || (isSandbox ? "t_red" : undefined);
+    if (targetTeamId) teamAnswersRef.current.set(targetTeamId, answer);
     if (socketRef.current?.connected) {
       socketRef.current.emit("game:answer:submit", {
         questionId: currentQuestion.question.id,
         answer,
+        teamId: targetTeamId,
         clientAnsweredAt: getServerTime(),
       });
     } else {
@@ -996,9 +997,11 @@ export default function PlayPage() {
 
   const handleFinalizeAnswer = (answer?: string | string[]) => {
     if (socketRef.current?.connected && currentQuestion) {
+      const targetTeamId = effectiveTeamId || myTeamIdRef.current;
       socketRef.current.emit("game:answer:finalize", {
         questionId: currentQuestion.question.id,
         answer,
+        teamId: targetTeamId,
       });
     } else {
       window.parent?.postMessage({

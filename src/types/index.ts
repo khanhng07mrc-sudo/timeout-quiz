@@ -1062,7 +1062,7 @@ export interface ClientToServerEvents {
   "time:sync": (clientTime: number, callback: (result: { clientTime: number; serverTime: number }) => void) => void;
   "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
   "room:leave": () => void;
-  "game:answer:submit": (payload: { questionId: string; answer: string | string[]; clientAnsweredAt?: number }) => void;
+  "game:answer:submit": (payload: { questionId: string; answer: string | string[]; teamId?: string; clientAnsweredAt?: number }) => void;
   "game:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "game:powerup:use": (payload: { cardId: string; targetTeamId?: string }) => void;
   "admin:next": (payload?: { code?: string }) => void;
@@ -1111,7 +1111,7 @@ export interface ClientToServerEvents {
   "admin:timer:set": (payload: { seconds: number }) => void;
   "admin:timer:stop_early": (payload?: { code?: string }) => void;
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
-  "game:answer:finalize": (payload: { questionId: string; answer?: string | string[] }) => void;
+  "game:answer:finalize": (payload: { questionId: string; answer?: string | string[]; teamId?: string }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
   "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;

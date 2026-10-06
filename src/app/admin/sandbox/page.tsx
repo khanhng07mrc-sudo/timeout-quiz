@@ -980,6 +980,13 @@ export default function AdminSandboxPage() {
       neededTeamIds = teams.filter((t) => !t.isEliminated).map((t) => t.id);
     }
 
+    const testerTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || "t_red";
+    const testerNeedsToFinalize = neededTeamIds.includes(testerTeamId);
+    if (testerNeedsToFinalize && !offlineFinalizedActorsRef.current.has(testerTeamId)) {
+      // Tester is playing this question and has not finalized yet! Do not end early!
+      return;
+    }
+
     if (neededTeamIds.length > 0 && neededTeamIds.every((id) => offlineFinalizedActorsRef.current.has(id))) {
       if (offlineTimerRef.current) {
         clearInterval(offlineTimerRef.current);

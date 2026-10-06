@@ -461,6 +461,13 @@ export default function AdminSandboxPage() {
     sock.on("game:question", (q) => {
       setCurrentQuestion(q);
       setRevealPayload(null);
+      const curTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id;
+      if (curTeamId) {
+        sock.emit("admin:sandbox:set_active_team", {
+          teamId: curTeamId,
+          teamIndex: activeTeamIndex,
+        });
+      }
       if (pendingBotGridTimerRef.current) {
         clearTimeout(pendingBotGridTimerRef.current);
         pendingBotGridTimerRef.current = null;
@@ -3430,8 +3437,9 @@ export default function AdminSandboxPage() {
       return;
     }
 
+    const humanTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || currentTeam?.id;
     botSocketsRef.current.forEach((sock, bTeamId) => {
-      if (bTeamId === (activeTeamIdRef.current || currentTeam?.id)) return;
+      if (bTeamId === humanTeamId) return;
       const correctOpt = opts.find((o: any) => o.isCorrect);
       const isBotCorrect = Math.random() < 0.75;
       const opt = isBotCorrect
@@ -3459,6 +3467,12 @@ export default function AdminSandboxPage() {
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     activeTeamIdRef.current = targetTeam.id;
+    if (!isOfflineSandbox) {
+      adminSocketRef.current?.emit("admin:sandbox:set_active_team", {
+        teamId: targetTeam.id,
+        teamIndex: idx,
+      });
+    }
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
     const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(

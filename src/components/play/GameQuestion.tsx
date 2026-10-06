@@ -918,7 +918,7 @@ export default function GameQuestion({
       {roomStatus === "PAUSED" ? (
         <div className="text-center py-6 text-muted-foreground text-sm font-semibold glass rounded-xl">⏸️ Game đã tạm dừng</div>
       ) : q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           {q.options?.map((opt, i) => {
             const labels = ["A", "B", "C", "D", "E", "F"];
             const badgeClasses = [
@@ -939,7 +939,7 @@ export default function GameQuestion({
                 key={opt.id}
                 onClick={() => handleOptionClick(opt.id)}
                 disabled={disabled}
-                className={`flex items-center gap-2.5 sm:gap-3 p-2.5 sm:p-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.98] min-h-[44px] sm:min-h-[52px] ${
+                className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3.5 rounded-xl border-2 text-left transition-all active:scale-[0.98] min-h-[40px] sm:min-h-[52px] ${
                   isHidden
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
@@ -953,7 +953,7 @@ export default function GameQuestion({
                     : "border-border hover:border-purple-400 hover:bg-white/5 active:bg-purple-500/10 cursor-pointer"
                 }`}
               >
-                <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black shrink-0 shadow ${
+                <span className={`w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center text-xs sm:text-sm font-black shrink-0 shadow ${
                   badgeClasses[i % badgeClasses.length]
                 }`}>
                   {labels[i] ?? i + 1}

@@ -91,7 +91,7 @@ export default function PlayPage() {
 
   const currentQuestionRef = useRef<QuestionState | null>(null);
   currentQuestionRef.current = currentQuestion;
-  const handleAnswerRef = useRef<(ans: string | string[]) => void>(() => {});
+  const handleAnswerRef = useRef<(ans: string | string[], explicitTeamId?: string) => void>(() => {});
   const handleBuzzRef = useRef<() => void>(() => {});
   const handleSubmitWagerRef = useRef<(amt: number) => void>(() => {});
 
@@ -269,12 +269,12 @@ export default function PlayPage() {
           handleSubmitWagerRef.current(amount);
         } else if (action === "answer") {
           if (answer) {
-            handleAnswerRef.current(answer);
+            handleAnswerRef.current(answer, teamId);
           } else if (currentQuestionRef.current && isCorrect !== undefined) {
             const opts = currentQuestionRef.current.question.options || [];
             if (opts.length > 0) {
               const chosen = isCorrect ? opts[0] : opts[opts.length - 1];
-              handleAnswerRef.current(chosen.id);
+              handleAnswerRef.current(chosen.id, teamId);
             }
           }
         }
@@ -881,10 +881,10 @@ export default function PlayPage() {
     }
   };
 
-  const handleAnswer = (answer: string | string[]) => {
+  const handleAnswer = (answer: string | string[], explicitTeamId?: string) => {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
-    const targetTeamId = effectiveTeamId || myTeamIdRef.current || (isSandbox ? "t_red" : undefined);
+    const targetTeamId = explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId || mePlayer?.teamId || roomState?.teams[0]?.id;
     if (targetTeamId) teamAnswersRef.current.set(targetTeamId, answer);
     if (socketRef.current?.connected) {
       socketRef.current.emit("game:answer:submit", {
@@ -995,9 +995,9 @@ export default function PlayPage() {
     }
   };
 
-  const handleFinalizeAnswer = (answer?: string | string[]) => {
+  const handleFinalizeAnswer = (answer?: string | string[], explicitTeamId?: string) => {
     if (socketRef.current?.connected && currentQuestion) {
-      const targetTeamId = effectiveTeamId || myTeamIdRef.current;
+      const targetTeamId = explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId || mePlayer?.teamId || roomState?.teams[0]?.id;
       socketRef.current.emit("game:answer:finalize", {
         questionId: currentQuestion.question.id,
         answer,
@@ -1009,7 +1009,7 @@ export default function PlayPage() {
         action: "finalize_answer",
         questionId: currentQuestion?.question.id,
         answer,
-        teamId: myTeamIdRef.current,
+        teamId: explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId,
         playerId: playerIdRef.current,
       }, "*");
     }
@@ -1327,9 +1327,9 @@ export default function PlayPage() {
   return (
     <>
       {reconnectBanner}
-      <div className="min-h-screen flex flex-col p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl mx-auto w-full">
+      <div className={`flex flex-col mx-auto w-full ${isSandbox ? "h-full min-h-0 p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-full overflow-y-auto" : "min-h-screen p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl"}`}>
       {/* Header with score and sound toggle */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 sm:gap-2">
         <div className="flex-1 min-w-0">
           <ScoreDisplay
             roomState={roomState}
@@ -1338,17 +1338,19 @@ export default function PlayPage() {
             overridePlayerName={activePlayerName}
           />
         </div>
-        <button
-          onClick={() => setShowRulesModal(true)}
-          title="Xem thể lệ và luật chơi"
-          className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0 text-cyan-300"
-        >
-          📖
-        </button>
+        {!isSandbox && (
+          <button
+            onClick={() => setShowRulesModal(true)}
+            title="Xem thể lệ và luật chơi"
+            className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0 text-cyan-300"
+          >
+            📖
+          </button>
+        )}
         <button
           onClick={toggleSound}
           title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
-          className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0"
+          className={`${isSandbox ? "p-1.5 text-xs" : "p-2.5 sm:p-3.5 text-sm sm:text-base"} rounded-xl glass border border-white/20 hover:bg-white/10 transition shrink-0`}
         >
           {soundEnabled ? "🔊" : "🔇"}
         </button>

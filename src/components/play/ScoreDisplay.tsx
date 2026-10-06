@@ -25,7 +25,7 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
   const displayName = overridePlayerName || me?.name || "Bạn";
 
   return (
-    <div className="glass rounded-xl p-2 sm:p-3 flex items-center justify-between gap-1.5 sm:gap-2 border border-white/10 shadow-sm">
+    <div className="glass rounded-xl p-1.5 sm:p-2.5 flex items-center justify-between gap-1 sm:gap-2 border border-white/10 shadow-sm">
       {/* Player & Team Info */}
       <div className="flex-1 min-w-0 pr-1">
         <p className="text-[10px] sm:text-xs text-muted-foreground truncate whitespace-nowrap">

@@ -493,6 +493,7 @@ export default function AdminSandboxPage() {
         sock.emit("admin:sandbox:set_active_team", {
           teamId: curTeamId,
           teamIndex: activeTeamIndex,
+          code: roomCode,
         });
       }
       if (pendingBotGridTimerRef.current) {
@@ -3526,6 +3527,7 @@ export default function AdminSandboxPage() {
       adminSocketRef.current?.emit("admin:sandbox:set_active_team", {
         teamId: targetTeam.id,
         teamIndex: idx,
+        code,
       });
     }
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;

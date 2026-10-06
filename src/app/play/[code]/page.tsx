@@ -1429,6 +1429,8 @@ export default function PlayPage() {
                 ghostRoundAllCorrect: myTeam?.ghostRoundAllCorrect,
                 ghostTotalCorrect: myTeam?.ghostTotalCorrect,
                 ghostTotalAnswered: myTeam?.ghostTotalAnswered,
+                ghostCurrentRoundCorrect: myTeam?.ghostCurrentRoundCorrect,
+                eliminationInterval: myTeam?.eliminationInterval || roomState?.config?.eliminationIntervalQuestions || 3,
               }}
               tournamentMatch={roomState?.tournamentState?.matches.find((m) => m.id === (currentQuestion.tournamentMatchId || roomState.tournamentState?.currentMatchId))}
               onPredictWinner={(matchId, predictedWinnerId) => {
@@ -1561,8 +1563,17 @@ export default function PlayPage() {
           roomState={roomState}
           playerId={playerId}
           onUse={handleUsePowerup}
-          disabled={roomState?.mode === "BOUNCEBACK" && Boolean(isStealPhase || stealBuzzedTeam)}
-          disabledReason="Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm"
+          disabled={
+            (roomState?.mode === "BOUNCEBACK" && Boolean(isStealPhase || stealBuzzedTeam)) ||
+            (timer?.remaining !== undefined && timer.remaining <= 5 && !revealPayload)
+          }
+          disabledReason={
+            roomState?.mode === "BOUNCEBACK" && Boolean(isStealPhase || stealBuzzedTeam)
+              ? "Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm"
+              : timer?.remaining !== undefined && timer.remaining <= 5 && !revealPayload
+              ? "Khóa dùng thẻ trong 5 giây cuối của câu hỏi để đảm bảo tính công bằng"
+              : undefined
+          }
           activeCardTypes={usedCardTypes}
         />
       )}

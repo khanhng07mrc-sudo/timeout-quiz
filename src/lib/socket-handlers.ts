@@ -194,6 +194,54 @@ function selectGoldQuestions(questions: any[]): Set<string> {
 }
 
 /**
+ * Snapshot & Recovery helpers (Solution 2):
+ * Tự động sao lưu và khôi phục trạng thái bàn cờ (Grid Caro, Dice, Wager, Tournament, Ghost Stats) vào Database.
+ */
+async function persistGameStateSnapshot(roomId: string) {
+  try {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { config: true } });
+    if (!room) return;
+    const currentConfig = (room.config as any) || {};
+    const snapshot: any = {};
+    if (roomGridCaros.has(roomId)) snapshot.gridCaroState = roomGridCaros.get(roomId);
+    if (roomDiceRaces.has(roomId)) snapshot.diceRaceState = roomDiceRaces.get(roomId);
+    if (roomWagers.has(roomId)) snapshot.wagerState = roomWagers.get(roomId);
+    if (roomTournaments.has(roomId)) snapshot.tournamentState = roomTournaments.get(roomId);
+    if (roomEliminationGhostStats.has(roomId)) {
+      snapshot.ghostStats = Array.from(roomEliminationGhostStats.get(roomId)!.entries());
+    }
+    await prisma.room.update({
+      where: { id: roomId },
+      data: { config: { ...currentConfig, gameStateSnapshot: snapshot } },
+    });
+  } catch (err) {
+    console.error("[persistGameStateSnapshot] Error:", err);
+  }
+}
+
+function restoreGameStateSnapshot(room: any) {
+  if (!room) return;
+  const snapshot = (room.config as any)?.gameStateSnapshot;
+  if (!snapshot) return;
+
+  if (snapshot.gridCaroState && !roomGridCaros.has(room.id)) {
+    roomGridCaros.set(room.id, snapshot.gridCaroState);
+  }
+  if (snapshot.diceRaceState && !roomDiceRaces.has(room.id)) {
+    roomDiceRaces.set(room.id, snapshot.diceRaceState);
+  }
+  if (snapshot.wagerState && !roomWagers.has(room.id)) {
+    roomWagers.set(room.id, snapshot.wagerState);
+  }
+  if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
+    roomTournaments.set(room.id, snapshot.tournamentState);
+  }
+  if (snapshot.ghostStats && !roomEliminationGhostStats.has(room.id)) {
+    roomEliminationGhostStats.set(room.id, new Map(snapshot.ghostStats));
+  }
+}
+
+/**
  * Áp dụng thay đổi điểm số cho Đội, đảm bảo quy định:
  * "Điểm số của các đội xuyên suốt cuộc chơi luôn >= 0, nếu có một phép trừ có thể khiến điểm về âm, hệ thống chuyển điểm về 0 thay vì âm."
  */
@@ -971,10 +1019,12 @@ async function getAdminRoom(socket: Sock, payloadCode?: string) {
         if (r) {
           roomCache.set(roomId, r);
           if (r.quizBank?.questions) roomQuestionsCache.set(roomId, r.quizBank.questions);
+          restoreGameStateSnapshot(r);
           return r;
         }
       }
     }
+    restoreGameStateSnapshot(cached);
     return cached;
   }
 
@@ -987,6 +1037,7 @@ async function getAdminRoom(socket: Sock, payloadCode?: string) {
     if (r.quizBank?.questions) {
       roomQuestionsCache.set(roomId, r.quizBank.questions);
     }
+    restoreGameStateSnapshot(r);
   }
   return r;
 }
@@ -1257,6 +1308,15 @@ export function registerSocketHandlers(io: IO) {
             where: { id: playerId, roomId: room.id },
           });
           if (existingById) {
+            // Enforce single active session: disconnect prior active socket if different
+            if (!isSandbox && existingById.socketId && existingById.socketId !== socket.id) {
+              const oldSock = io.sockets.sockets.get(existingById.socketId);
+              if (oldSock && oldSock.connected) {
+                oldSock.emit("error", "Tài khoản của bạn đã được đăng nhập từ một thiết bị hoặc tab khác!");
+                oldSock.disconnect(true);
+              }
+            }
+
             // Cancel pending disconnect timer
             if (pendingDisconnects.has(existingById.id)) {
               clearTimeout(pendingDisconnects.get(existingById.id)!);
@@ -1868,6 +1928,10 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
+      if ((room.name?.startsWith("[Sandbox]") || (room.config as any)?.isSandbox) && effTeamId) {
+        roomSandboxActiveTeam.set(room.id, effTeamId);
+      }
+
       await processAnswerSubmission({
         io,
         roomId: room.id,
@@ -2304,6 +2368,14 @@ export function registerSocketHandlers(io: IO) {
 
       const currentQ = room.quizBank?.questions[room.currentQuestion];
       const qKey = currentQ ? `${room.id}:${currentQ.id}` : "";
+
+      // Khóa dùng thẻ ở 5s cuối câu hỏi để đảm bảo nhịp độ thi đấu
+      const timerKey = `${room.id}:timer`;
+      const curRem = roomRemainingTimes.get(timerKey);
+      if (typeof curRem === "number" && curRem <= 5) {
+        socket.emit("error", "Đã vào 5 giây đếm ngược cuối cùng, thẻ hỗ trợ đã bị khóa để đảm bảo nhịp độ thi đấu!");
+        return;
+      }
 
       if (room.mode === "BOUNCEBACK" && qKey) {
         if (roomStealPhase.get(qKey) || roomStealBuzzed.has(qKey)) {
@@ -4027,8 +4099,8 @@ export function registerSocketHandlers(io: IO) {
       ]);
     });
 
-    socket.on("admin:sandbox:set_active_team", async ({ teamId, teamIndex }: { teamId: string; teamIndex?: number }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:sandbox:set_active_team", async ({ teamId, teamIndex, code }: { teamId: string; teamIndex?: number; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
 
       roomSandboxActiveTeam.set(room.id, teamId);
@@ -5057,8 +5129,12 @@ async function processAnswerSubmission({
     }
   }
   if (activeQ?.isExpired && !isAdminOverride) {
-    if (socket) socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
-    return;
+    const endsAt = activeQ.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
+    const isWithinGrace = typeof clientAnsweredAt === "number" && endsAt > 0 && clientAnsweredAt <= (endsAt + 1500);
+    if (!isWithinGrace) {
+      if (socket) socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
+      return;
+    }
   }
 
   // Check if team is frozen
@@ -5551,8 +5627,8 @@ async function processAnswerSubmission({
     subSet.add(actorKey);
   }
 
-  // 5. Nếu chế độ SINGLE_SUBMIT: kiểm tra nếu tất cả thí sinh/đội hợp lệ đã hoàn thành sớm
-  if (isSingleSubmitMode && !isAdminOverride) {
+  // 5. Smart Auto-Complete: Kiểm tra nếu tất cả thí sinh/đội hợp lệ đã nộp bài đầy đủ
+  if (!isAdminOverride) {
     const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
     const subSet = roomSubmittedActors.get(qKey) || new Set<string>();
     const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
@@ -5560,7 +5636,7 @@ async function processAnswerSubmission({
       io.to(`room:${room.code}`).emit("game:early_completed", {
         questionId,
         reason: "ALL_SUBMITTED",
-        message: "Tất cả người chơi đã hoàn thành bài thi!",
+        message: "Tất cả các đội đã hoàn thành nộp bài!",
       });
       await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
     }
@@ -5884,6 +5960,7 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io.to(`room:${roomCode}`).emit("game:tournament:update", tournament);
+  await persistGameStateSnapshot(roomId);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 }
 
@@ -6021,6 +6098,7 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
+  await persistGameStateSnapshot(roomId);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 }
 
@@ -6072,6 +6150,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
   }
 
   io.to(`room:${roomCode}`).emit("game:dice:update", diceState);
+  await persistGameStateSnapshot(roomId);
   await revealCurrentAnswer(io, roomId, roomCode, questionId);
 }
 
@@ -6223,6 +6302,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     io.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);
   }
   io.to(`room:${roomCode}`).emit("game:wager:update", wagerState);
+  await persistGameStateSnapshot(roomId);
   await revealCurrentAnswer(io, roomId, roomCode, questionId, teamSummaries);
 
   // Check Sudden Victory (Knockout Win):
@@ -7010,6 +7090,8 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
       ghostRoundAllCorrect: ghostStat?.ghostRoundAllCorrect || false,
       ghostTotalCorrect: ghostStat?.ghostTotalCorrect || 0,
       ghostTotalAnswered: ghostStat?.ghostTotalAnswered || 0,
+      ghostCurrentRoundCorrect: ghostStat?.currentRoundCorrect || 0,
+      eliminationInterval: (config?.eliminationIntervalQuestions || 3),
       eliminatedAtStage: ghostStat?.eliminatedAtStage,
       firstGhostStage: ghostStat?.firstGhostStage,
     };
@@ -7323,14 +7405,17 @@ async function resolveQuestionTeamScores(
         const testerAnswers = teamAnswers.filter((a) =>
           !a.playerId || !isPlayerBot({ id: a.playerId }) || a.playerId.startsWith("sb_") || a.playerId.startsWith("p_sb_")
         );
-        const repAnswer = testerAnswers[0] || teamAnswers[0];
+        const repAnswer = testerAnswers.find((a) => a.isCorrect === true) ||
+                          teamAnswers.find((a) => a.isCorrect === true) ||
+                          testerAnswers[0] ||
+                          teamAnswers[0];
         const isRepCorrect = repAnswer?.isCorrect === true;
         totalOnline = 1;
         correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
         correctTimes = isRepCorrect && typeof repAnswer?.timeSpent === "number" ? [repAnswer.timeSpent] : [];
       } else {
         // Bot team: allow bot answer to score for leaderboard testing
-        const repAnswer = teamAnswers[0];
+        const repAnswer = teamAnswers.find((a) => a.isCorrect === true) || teamAnswers[0];
         const isRepCorrect = repAnswer?.isCorrect === true;
         totalOnline = 1;
         correctAnswers = isRepCorrect && repAnswer ? [repAnswer] : [];
@@ -7602,13 +7687,10 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
     }
   } else if (room.mode === "TOURNAMENT") {
     await finalizeTournamentQuestion(io, roomId, roomCode, questionId);
-  } else if (room.mode === "GRID_CARO" || room.mode === "WAGER") {
-    const activeQ = roomActiveQuestions.get(roomId);
-    if (activeQ) {
-      activeQ.isExpired = true;
-      activeQ.timerStarted = false;
-    }
-    io.to(`room:${roomCode}`).emit("game:timer:expired", { questionId });
+  } else if (room.mode === "GRID_CARO") {
+    await finalizeGridCaroQuestion(io, roomId, roomCode, questionId);
+  } else if (room.mode === "WAGER") {
+    await finalizeWagerQuestion(io, roomId, roomCode, questionId);
   } else if (room.mode === "DICE_RACE") {
     await finalizeDiceRaceQuestion(io, roomId, roomCode, questionId);
   } else if (room.mode === "CLASSIC" || room.mode === "ELIMINATION") {

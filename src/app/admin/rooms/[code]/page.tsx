@@ -60,6 +60,14 @@ export default function AdminRoomPage() {
   const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
   const [adminSelectedAnswerId, setAdminSelectedAnswerId] = useState<string | null>(null);
   const [submissionProgress, setSubmissionProgress] = useState<{ finalizedCount: number; totalCount: number; reason?: string } | null>(null);
+  const [adminQuestionData, setAdminQuestionData] = useState<{
+    questionId: string;
+    options: any[];
+    answer?: string | string[] | null;
+    type?: string;
+    explanation?: string;
+  } | null>(null);
+  const [showMcCheatSheet, setShowMcCheatSheet] = useState(true);
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
@@ -240,6 +248,7 @@ export default function AdminRoomPage() {
           }
           if (result.roomState) {
             setRoomState(result.roomState);
+            socket.emit("admin:question:get_data", { code });
           }
         } else {
           if (result?.requiresAuth || result?.error) {
@@ -252,6 +261,11 @@ export default function AdminRoomPage() {
 
     socket.io.on("reconnect", () => {
       syncClockWithServer(socket);
+      socket.emit("admin:question:get_data", { code });
+    });
+
+    socket.on("admin:question:data", (data: any) => {
+      setAdminQuestionData(data);
     });
 
     socket.on("error", (msg) => {
@@ -275,6 +289,7 @@ export default function AdminRoomPage() {
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
+      setAdminQuestionData(null);
       setRevealPayload(null);
       soundManager.stopMusic(0);
       if (soundEnabledRef.current) {
@@ -287,6 +302,7 @@ export default function AdminRoomPage() {
       setQuestionPrepare(p);
       setIntermission(null);
       setCurrentQuestion(null);
+      setAdminQuestionData(null);
       setRevealPayload(null);
       soundManager.stopMusic(0);
       if (soundEnabledRef.current) {
@@ -299,11 +315,13 @@ export default function AdminRoomPage() {
       setMatchStarting(null);
       setQuestionPrepare(null);
       setCurrentQuestion(null);
+      setAdminQuestionData(null);
       setRevealPayload(null);
       setTimer(null);
     });
 
     socket.on("game:question", (q) => {
+      socket.emit("admin:question:get_data", { code });
       if (q.serverTime) calibrateClockFromPacket(q.serverTime);
       setMatchStarting(null);
       setQuestionPrepare(null);
@@ -1396,6 +1414,56 @@ export default function AdminRoomPage() {
 
               <p className="font-medium">{currentQuestion.question.content}</p>
 
+              {/* MC Answer Key & Explanation Cheat Sheet */}
+              {adminQuestionData && adminQuestionData.questionId === currentQuestion.question.id && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2 animate-slide-up">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                      <span>🔑</span>
+                      <span>Phao đáp án & Lời giải MC</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowMcCheatSheet((prev) => !prev)}
+                      className="text-[11px] text-amber-400 hover:text-amber-200 underline font-medium cursor-pointer"
+                    >
+                      {showMcCheatSheet ? "Thu gọn ▲" : "Xem chi tiết ▼"}
+                    </button>
+                  </div>
+                  {showMcCheatSheet && (
+                    <div className="pt-2 border-t border-amber-500/20 space-y-1.5">
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
+                        <span className="font-bold text-emerald-300">
+                          {(() => {
+                            if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
+                              const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
+                              if (correctOpts.length > 0) {
+                                return correctOpts.map((o: any) => o.text).join(", ");
+                              }
+                            }
+                            if (adminQuestionData.answer) {
+                              return Array.isArray(adminQuestionData.answer)
+                                ? adminQuestionData.answer.join(", ")
+                                : String(adminQuestionData.answer);
+                            }
+                            return "Chưa có đáp án cấu hình";
+                          })()}
+                        </span>
+                      </div>
+                      {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                        <div className="flex items-start gap-1.5">
+                          <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
+                          <span className="text-amber-100/90 leading-relaxed">
+                            {adminQuestionData.explanation || currentQuestion.question.hint}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Direct Answer Click on Admin screen (MC mode / Fail-safe override) */}
               {currentQuestion.question.options && (() => {
                 const effTargetTeamId = (roomState?.mode === "GRID_CARO" && roomState.gridCaroState?.currentTurnTeamId)
@@ -1515,6 +1583,13 @@ export default function AdminRoomPage() {
                         const labels = ["A", "B", "C", "D"];
                         const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
                         const isSelected = currentTargetAnswerId === opt.id;
+                        const isCheatCorrect = Boolean(
+                          adminQuestionData?.questionId === currentQuestion.question.id && (
+                            adminQuestionData?.options?.some((o: any) => o.id === opt.id && o.isCorrect) ||
+                            adminQuestionData?.answer === opt.id ||
+                            (Array.isArray(adminQuestionData?.answer) && adminQuestionData.answer.includes(opt.id))
+                          )
+                        );
 
                         let btnStyle = "border-border hover:border-cyan-400 hover:bg-cyan-500/10 text-muted-foreground hover:text-foreground";
                         if (revealPayload) {
@@ -1527,6 +1602,8 @@ export default function AdminRoomPage() {
                           }
                         } else if (isSelected) {
                           btnStyle = "border-cyan-400 bg-cyan-500/25 text-cyan-200 ring-2 ring-cyan-400/60 shadow-lg font-bold";
+                        } else if (isCheatCorrect) {
+                          btnStyle = "border-amber-500/50 bg-amber-500/10 text-amber-200/90 hover:border-amber-400";
                         }
 
                         return (
@@ -1539,6 +1616,8 @@ export default function AdminRoomPage() {
                               className={`w-6 h-6 rounded flex items-center justify-center text-xs font-black shrink-0 ${
                                 isSelected
                                   ? "bg-cyan-400 text-black"
+                                  : isCheatCorrect && !revealPayload
+                                  ? "bg-amber-400/90 text-black font-black"
                                   : "bg-muted text-muted-foreground group-hover:bg-cyan-500 group-hover:text-black"
                               }`}
                             >
@@ -1548,6 +1627,11 @@ export default function AdminRoomPage() {
                             {isSelected && !revealPayload && (
                               <span className="px-1.5 py-0.5 rounded bg-cyan-400 text-black text-[10px] font-black uppercase tracking-wider shrink-0">
                                 ✓ Đang chọn
+                              </span>
+                            )}
+                            {!revealPayload && isCheatCorrect && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider shrink-0">
+                                🔑 Chuẩn
                               </span>
                             )}
                             {revealPayload && isRevealed && (

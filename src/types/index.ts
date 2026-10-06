@@ -582,6 +582,8 @@ export interface TeamState {
   ghostRoundAllCorrect?: boolean;
   ghostTotalCorrect?: number;
   ghostTotalAnswered?: number;
+  ghostCurrentRoundCorrect?: number;
+  eliminationInterval?: number;
   eliminatedAtStage?: number;
   firstGhostStage?: number;
 }
@@ -1121,7 +1123,7 @@ export interface ClientToServerEvents {
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
   "game:answer:finalize": (payload: { questionId: string; answer?: string | string[]; teamId?: string }) => void;
   "admin:sandbox:grant:card": (payload: { teamId: string; cardType: CardType }) => void;
-  "admin:sandbox:set_active_team": (payload: { teamId: string; teamIndex?: number }) => void;
+  "admin:sandbox:set_active_team": (payload: { teamId: string; teamIndex?: number; code?: string }) => void;
   "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:room:update_config": (payload: { key: string; value: any; code?: string }) => void;

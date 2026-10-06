@@ -30,6 +30,8 @@ interface Props {
     ghostRoundAllCorrect?: boolean;
     ghostTotalCorrect?: number;
     ghostTotalAnswered?: number;
+    ghostCurrentRoundCorrect?: number;
+    eliminationInterval?: number;
     eliminatedAtStage?: number;
     firstGhostStage?: number;
   };
@@ -359,9 +361,9 @@ export default function GameQuestion({
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-xs font-semibold bg-black/30 p-2 rounded-lg border border-purple-500/30">
-            <span>🎯 Đã trả lời: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong></span>
-            <span>🔥 Chuỗi câu đúng: <strong>{ghostStats?.ghostStreak || 0}</strong></span>
+          <div className="flex flex-wrap items-center gap-3 text-xs font-semibold bg-black/30 p-2.5 rounded-lg border border-purple-500/30">
+            <span>🎯 Chặng này: <strong>{ghostStats?.ghostCurrentRoundCorrect || 0}/{ghostStats?.eliminationInterval || 3} câu đúng</strong> (Cần {ghostStats?.eliminationInterval || 3}/{ghostStats?.eliminationInterval || 3} để ưu tiên hồi sinh)</span>
+            <span>🔥 Tích luỹ: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong> ({ghostStats?.ghostStreak || 0} câu liên tiếp)</span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
                 <span>✨</span> ĐẠT CHUẨN 100% (Ưu tiên hồi sinh cao nhất!)

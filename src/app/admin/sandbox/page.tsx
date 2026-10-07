@@ -2561,7 +2561,7 @@ export default function AdminSandboxPage() {
         ? { ...prev.diceRaceState, canRollDice: false }
         : undefined;
       const nextMystery = prev.mysteryQuestState
-        ? { ...prev.mysteryQuestState, phase: "QUESTION_ACTIVE" as const }
+        ? { ...prev.mysteryQuestState, phase: "QUESTION_ACTIVE" as const, potPoints: 0, bombExploded: undefined, turnFinishedReason: undefined }
         : undefined;
       return {
         ...prev,

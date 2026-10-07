@@ -22,6 +22,7 @@ import TournamentBracket from "@/components/modes/TournamentBracket";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
+import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 import GameModeIcon from "@/components/ui/GameModeIcon";
@@ -231,6 +232,9 @@ export default function DisplayPage() {
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
           soundManager.playFanfare();
+        }
+        if (p.mysteryQuestState !== undefined) {
+          setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
         }
       }
     };
@@ -507,6 +511,25 @@ export default function DisplayPage() {
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
+    socket.on("game:mystery:update", (mysteryQuestState) => {
+      setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+    });
+    socket.on("game:mystery:card_flipped", (payload) => {
+      if (payload.isBomb || payload.bombExploded) {
+        soundManager.playWrong();
+      } else {
+        soundManager.playCorrect();
+      }
+    });
+    socket.on("game:mystery:cashed_out", () => {
+      soundManager.playFanfare();
+    });
+    socket.on("game:mystery:steal_open", () => {
+      soundManager.playBuzz();
+    });
+    socket.on("game:mystery:steal_buzzed", () => {
+      soundManager.playBuzz();
+    });
     socket.on("tournament:cheer:broadcast", (payload) => {
       setLiveCheer(payload);
       triggerFloatingCheer(payload.emoji, payload.targetTeamId);
@@ -776,6 +799,7 @@ export default function DisplayPage() {
     const isDice = roomState?.mode === "DICE_RACE" && roomState.diceRaceState;
     const isWager = roomState?.mode === "WAGER" && roomState.wagerState;
     const isTour = roomState?.mode === "TOURNAMENT" && roomState.tournamentState;
+    const isMystery = roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState;
 
     const participants = [...(roomState?.teamMode === "TEAM" ? roomState.teams : roomState?.players ?? [])]
       .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
@@ -866,6 +890,10 @@ export default function DisplayPage() {
               </p>
             </div>
             <TournamentBracket tournamentState={roomState.tournamentState!} isDisplay={true} />
+          </div>
+        ) : isMystery ? (
+          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+            <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
           </div>
         ) : (
           /* Grand Leaderboard Intermission for BUZZ, CLASSIC, OLYMPIA, ELIMINATION, etc. */
@@ -1515,6 +1543,20 @@ export default function DisplayPage() {
                         </div>
                       </div>
                     )}
+                    {roomState.mode === "MYSTERY_QUEST" && (
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40 shadow-sm text-sm">
+                          <GameModeIcon mode="MYSTERY_QUEST" className="w-4 h-4 shrink-0 inline-block" />
+                          <span className="text-xs uppercase tracking-wider opacity-80">Lượt thi đấu:</span>
+                          <span className="text-white font-black">{roomState.mysteryQuestState?.currentTurnTeamName || currentQuestion.primaryTeamName || "..."}</span>
+                          <span className="text-amber-300 font-mono font-black">(Hũ: {roomState.mysteryQuestState?.potPoints || 0}đ)</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-xs">
+                          <span>🗝️</span>
+                          <span>Đúng để mở khóa bản đồ lật thẻ may mắn!</span>
+                        </div>
+                      </div>
+                    )}
                     {roomState.config.answerMethod === "MC" && (
                       <p className="text-xs text-yellow-300 font-medium mt-0.5 inline-flex items-center gap-1.5">
                         <SystemIcon name="mc" className="w-3.5 h-3.5 shrink-0 text-yellow-300" />
@@ -1706,6 +1748,15 @@ export default function DisplayPage() {
                 />
               </div>
             )}
+            {revealPayload && roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (
+              <div className="mt-4">
+                <MysteryQuestBoard
+                  mysteryState={roomState.mysteryQuestState}
+                  isDisplay={true}
+                  teams={roomState.teams}
+                />
+              </div>
+            )}
           </div>
         )}
 
@@ -1750,6 +1801,14 @@ export default function DisplayPage() {
                     }
                     socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
                   }}
+                />
+              </div>
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState ? (
+              <div className="w-full max-w-5xl">
+                <MysteryQuestBoard
+                  mysteryState={roomState.mysteryQuestState}
+                  isDisplay={true}
+                  teams={roomState.teams}
                 />
               </div>
             ) : (

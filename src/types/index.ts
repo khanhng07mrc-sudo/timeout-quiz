@@ -33,7 +33,8 @@ export type GameMode =
   | "TOURNAMENT"
   | "GRID_CARO"
   | "DICE_RACE"
-  | "WAGER";
+  | "WAGER"
+  | "MYSTERY_QUEST";
 export type TeamMode = "INDIVIDUAL" | "TEAM";
 export type RoomStatus = "LOBBY" | "PLAYING" | "PAUSED" | "FINISHED";
 
@@ -232,6 +233,30 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
       "Đội cược cần tự tin và cân nhắc kỹ mức cược để tối ưu điểm số và tránh bị phạt nếu các đối thủ cùng giải đúng!",
       "Các đội không cược hãy luôn tập trung trả lời đúng để vừa tích lũy điểm thưởng vừa trừng phạt sai lầm của đội cược.",
       "Tận dụng cơ hội Knockout bằng cách cược thông minh để loại dần các đối thủ về ≤ 0 điểm.",
+    ],
+  },
+  MYSTERY_QUEST: {
+    mode: "MYSTERY_QUEST",
+    nameVi: "Hành Trình Bí Ẩn (Mystery Quest)",
+    emoji: "🗝️",
+    taglineVi: "Gameshow luân phiên, Background biến hóa & Các ô số phận Chiếc nón kỳ diệu",
+    summaryVi: "Gameshow phiêu lưu truyền hình với cơ chế thi đấu lần lượt từng đội. Mỗi lượt là một bối cảnh sân khấu mới với các mini-game đa dạng (Cánh cửa thần bí, Rương kho báu, Thẻ bài cổ xưa, Cửa sổ radar). Đội chọn ô, vượt qua câu hỏi thử thách để lật mở nội dung phía sau với tác động điểm số cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi, Trộm điểm, Thêm lượt) như Chiếc nón kỳ diệu!",
+    mechanicsVi: [
+      "Thi đấu luân phiên theo lượt (Turn-based): Các đội lần lượt bước lên sân khấu chính theo thứ tự công bằng.",
+      "Background & Trò chơi biến hóa liên tục: Mỗi lượt đổi mới bối cảnh (Lâu đài, Đảo hải tặc, Rừng ma thuật, Cyber) và kiểu bàn cờ (Cánh cửa, Hòm báu, Thẻ bài, Radar).",
+      "Chọn ô & Giải câu hỏi: Đội chọn 1 ô thử thách, vượt qua câu hỏi để lật mở bí mật phía sau.",
+      "Hiệu ứng Chiếc nón kỳ diệu: Các ô phía sau có tác động cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm, Thêm lượt, Thẻ bổ trợ hiếm).",
+      "Chuông cướp 5s khi đội chính trả lời SAI: Nếu đội chính sai, các đội khác có 5s bấm chuông cướp quyền trả lời để giật trọn ô bí mật!",
+    ],
+    scoringVi: [
+      "Điểm câu hỏi gốc: Dễ 10đ | Trung bình 20đ | Khó 30đ.",
+      "Tác động ô Chiếc nón kỳ diệu: Điểm thưởng khủng (+50đ, +100đ), Nhân đôi (x2), Chia đôi (/2), Trộm điểm (+20đ từ đội dẫn đầu), Mất điểm, Thêm lượt.",
+      "Đội cướp đúng: Nhận trọn điểm câu hỏi + toàn bộ phần thưởng ô bí mật.",
+      "Đội cướp sai: Trừ 50% điểm câu hỏi.",
+    ],
+    tipsVi: [
+      "Cố gắng trả lời đúng câu hỏi thử thách của ô mình đã chọn để nắm bắt cơ hội lật mở kho báu khổng lồ!",
+      "Luôn tập trung theo dõi màn hình chính để sẵn sàng bấm chuông cướp ô khi đội bạn trả lời sai!",
     ],
   },
 };
@@ -551,6 +576,8 @@ export interface GameConfig {
   wagerBailoutLimit?: number;
   wagerMultiplierCap?: number;
   wagerRoundsPerTeam?: number;
+  // Mystery Quest config
+  mysteryQuestTurnsPerTeam?: number;
   // Match question limit
   matchMaxQuestions?: number;
   diceRaceMaxQuestions?: number;
@@ -805,6 +832,82 @@ export interface WagerState {
   totalRounds?: number;
 }
 
+// ─── Mystery Quest Mode ──────────────────────────────────────────────────────
+
+export type MysteryTheme = "CASTLE" | "PIRATE" | "FOREST" | "CYBER" | "TEMPLE";
+
+export type MysteryMiniGameType = "DOORS" | "CHESTS" | "TAROT_CARDS" | "RADAR_WINDOWS";
+
+export type MysteryTileEffectType =
+  | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
+  | "MULTIPLY_X2"  // Nhân đôi tổng điểm hiện tại
+  | "DIVIDE_HALF"  // Chia đôi điểm hiện tại (như Chiếc nón kỳ diệu)
+  | "STEAL_POINTS" // Cướp 20-30đ từ đội cao điểm nhất
+  | "LOSE_POINTS"  // Mất 20-30đ
+  | "EXTRA_TURN"   // Nhận thêm 1 lượt chọn ô câu tiếp theo
+  | "RARE_POWERUP" // Tặng 1 thẻ bài bổ trợ hiếm (Khiên / Đổi câu / 50-50)
+  | "SAFE_SHIELD"; // Tặng Khiên bảo vệ
+
+export type MysteryTileType =
+  | "REWARD"
+  | "BOMB_MINOR" // Tiểu bom: Mất toàn bộ điểm tích lũy trong câu này
+  | "BOMB_MAJOR" // Đại bom: Mất điểm câu này + trừ 20đ tổng điểm cả trận
+  | "BOMB_DOOM"; // Bom hủy diệt: Mất điểm câu này + chia đôi tổng điểm cả trận
+
+export interface MysteryTile {
+  id: number;
+  label: string; // e.g. "Cửa #1", "Rương #1", "Thẻ #1"
+  icon: string;
+  isOpened: boolean;
+  type: MysteryTileType;
+  storyTitle: string;
+  storyDescription: string;
+  effectType: MysteryTileEffectType;
+  deltaPoints: number; // e.g. 10, 20, 50, etc.
+  cardReward?: CardType;
+}
+
+export interface MysteryQuestState {
+  currentTurnTeamId: string;
+  currentTurnTeamName: string;
+  currentTurnTeamColor: string;
+  currentTurnIndex: number; // 0, 1, 2...
+  totalTurns: number; // teams.length * turnsPerTeam
+  turnsPerTeam: number;
+  currentRound: number; // 1, 2, ...
+  theme: MysteryTheme;
+  miniGameType: MysteryMiniGameType;
+  themeNameVi: string;
+  themeBgGradient: string;
+  tiles: MysteryTile[];
+  phase: "QUESTION_ACTIVE" | "STEAL_PHASE" | "PUSH_YOUR_LUCK" | "TURN_SUMMARY";
+  stealBuzzedTeamId?: string;
+  stealBuzzedTeamName?: string;
+  stealEndsAt?: number;
+  stealCountdown?: number;
+  // Push-your-luck pot
+  potPoints: number; // Điểm tích lũy trong lượt này
+  potMultiplier: number; // Hệ số nhân
+  cardsFlippedCount: number;
+  lastFlippedTile?: MysteryTile;
+  bombExploded?: {
+    type: "MINOR" | "MAJOR" | "DOOM";
+    title: string;
+    description: string;
+    penaltyText: string;
+  };
+  turnFinishedReason?: "CASH_OUT" | "BOMB_HIT" | "QUESTION_FAILED" | "ALL_CLEARED";
+  storyResult?: {
+    teamId: string;
+    teamName: string;
+    teamColor: string;
+    rewardText: string;
+    scoreDelta: number;
+    oldScore: number;
+    newScore: number;
+  };
+}
+
 export interface RoomState {
   id: string;
   code: string;
@@ -822,6 +925,7 @@ export interface RoomState {
   gridCaroState?: GridCaroState;
   diceRaceState?: DiceRaceState;
   wagerState?: WagerState;
+  mysteryQuestState?: MysteryQuestState;
 }
 
 export interface ActiveBoost {
@@ -1081,6 +1185,12 @@ export interface ServerToClientEvents {
     type: string;
     explanation?: string;
   }) => void;
+  // Mystery Quest Events
+  "game:mystery:update": (state: MysteryQuestState) => void;
+  "game:mystery:card_flipped": (payload: { tile: MysteryTile; potPoints: number; potMultiplier: number; isBomb?: boolean; bombExploded?: MysteryQuestState["bombExploded"] }) => void;
+  "game:mystery:cashed_out": (payload: { teamId: string; teamName: string; totalGained: number; newScore: number }) => void;
+  "game:mystery:steal_open": (payload: { questionId: string; timeLimit: number }) => void;
+  "game:mystery:steal_buzzed": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -1143,6 +1253,13 @@ export interface ClientToServerEvents {
   "admin:teams:set_initial_scores": (payload: { defaultScore?: number; teamScores?: Record<string, number>; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:room:update_config": (payload: { key: string; value: any; code?: string }) => void;
+  // Mystery Quest Client Events
+  "game:mystery:flip_card": (payload: { tileId: number }) => void;
+  "game:mystery:cash_out": () => void;
+  "game:mystery:steal_buzz": () => void;
+  "admin:mystery:advance_turn": () => void;
+  "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
+  "admin:mystery:cash_out_manual": () => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

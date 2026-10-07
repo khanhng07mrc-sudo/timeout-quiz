@@ -31,6 +31,8 @@ export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
   WAGER: ["FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "SKIP"],
   // CLASSIC: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
+  // MYSTERY_QUEST: Hành trình phiêu lưu - Đầy đủ thẻ hỗ trợ & cơ hội
+  MYSTERY_QUEST: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
 };
 
 export function getDefaultAllowedPowerupsForMode(mode: GameMode): CardType[] {

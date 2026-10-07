@@ -57,6 +57,7 @@ const DEFAULT_SANDBOX_CONFIG = {
   buzzUnlockMode: "AUTO",
   buzzAutoDelay: 3,
   initialTeamScore: 0,
+  mysteryQuestTurnsPerTeam: 2,
 };
 
 const DEFAULT_TEAMS = [

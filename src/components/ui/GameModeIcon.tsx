@@ -309,6 +309,43 @@ export default function GameModeIcon({ mode, className = "w-8 h-8", size }: Prop
         </svg>
       );
 
+    case "MYSTERY_QUEST":
+      return (
+        <svg
+          viewBox="0 0 64 64"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={className}
+          style={sizeStyle}
+        >
+          <defs>
+            <linearGradient id="gmi_quest_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#7e22ce" />
+              <stop offset="50%" stopColor="#4c1d95" />
+              <stop offset="100%" stopColor="#b45309" />
+            </linearGradient>
+            <linearGradient id="gmi_quest_gold" x1="20" y1="16" x2="44" y2="48" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#fef08a" />
+              <stop offset="50%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+            <filter id="gmi_quest_sh" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#a855f7" floodOpacity="0.45" />
+            </filter>
+          </defs>
+          <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#gmi_quest_bg)" filter="url(#gmi_quest_sh)" />
+          <rect x="4" y="4" width="56" height="56" rx="16" stroke="#fef08a" strokeOpacity="0.3" strokeWidth="1.5" />
+          {/* Mystery Key & Chest */}
+          <circle cx="28" cy="26" r="9" stroke="url(#gmi_quest_gold)" strokeWidth="3.5" fill="#2e1065" />
+          <circle cx="28" cy="26" r="4.5" fill="url(#gmi_quest_gold)" />
+          <path d="M34 32L46 44M41 39L44 36M44 42L47 39" stroke="url(#gmi_quest_gold)" strokeWidth="3.5" strokeLinecap="round" />
+          {/* Sparkles */}
+          <path d="M14 18L15.5 21L18.5 22L15.5 23L14 26L12.5 23L9.5 22L12.5 21L14 18Z" fill="#fef08a" />
+          <path d="M48 14L49.5 17L52.5 18L49.5 19L48 22L46.5 19L43.5 18L46.5 17L48 14Z" fill="#fde047" />
+          <path d="M16 46L17 48L19 49L17 50L16 52L15 50L13 49L15 48L16 46Z" fill="#ffffff" />
+        </svg>
+      );
+
     default:
       return (
         <div className={`rounded-xl bg-purple-600/30 border border-purple-400 flex items-center justify-center font-bold text-white ${className}`}>

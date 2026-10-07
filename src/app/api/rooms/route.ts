@@ -50,6 +50,7 @@ const DEFAULT_CONFIG = {
   answerSubmissionMode: "ALLOW_CHANGE",
   autoTimerStart: false,
   initialTeamScore: 0,
+  mysteryQuestTurnsPerTeam: 2,
 };
 
 export async function POST(req: NextRequest) {

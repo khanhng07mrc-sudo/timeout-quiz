@@ -800,6 +800,333 @@ function handleDiceRaceLanding({
   };
 }
 
+// src/lib/game-engine/mystery-quest.ts
+var MYSTERY_THEMES = {
+  CASTLE: {
+    theme: "CASTLE",
+    nameVi: "L\xE2u \u0110\xE0i Ma Thu\u1EADt",
+    bgGradient: "from-indigo-950 via-purple-900 to-slate-950",
+    accentColor: "#a855f7",
+    emoji: "\u{1F3F0}",
+    taglineVi: "V\u01B0\u1EE3t qua th\u1EED th\xE1ch ph\xE9p thu\u1EADt, l\u1EADt b\xE0i v\xE0 n\xE9 b\u1EABy n\u1ED5 h\u1EAFc \xE1m"
+  },
+  PIRATE: {
+    theme: "PIRATE",
+    nameVi: "\u0110\u1EA3o H\u1EA3i T\u1EB7c & Kho B\xE1u V\xE0ng",
+    bgGradient: "from-amber-950 via-yellow-950 to-slate-950",
+    accentColor: "#f59e0b",
+    emoji: "\u{1F3F4}\u200D\u2620\uFE0F",
+    taglineVi: "S\u0103n l\xF9ng kho b\xE1u r\u1EF1c r\u1EE1, \u0111\u1EC1 ph\xF2ng bom thu\u1ED1c s\xFAng gi\u1EA5u k\xEDn"
+  },
+  FOREST: {
+    theme: "FOREST",
+    nameVi: "R\u1EEBng Ma Thu\u1EADt & Ti\xEAn T\u1ED9c",
+    bgGradient: "from-emerald-950 via-teal-950 to-slate-950",
+    accentColor: "#10b981",
+    emoji: "\u{1F332}",
+    taglineVi: "Thu th\u1EADp m\u1EADt ong v\xE0 qu\u1EA3 th\u1EA7n, coi ch\u1EEBng n\u1EA5m n\u1ED5 \u0111\u1ED9c d\u01B0\u1EE3c"
+  },
+  CYBER: {
+    theme: "CYBER",
+    nameVi: "Tr\u1EA1m V\u0169 Tr\u1EE5 T\u01B0\u01A1ng Lai",
+    bgGradient: "from-cyan-950 via-blue-950 to-slate-950",
+    accentColor: "#06b6d4",
+    emoji: "\u{1F680}",
+    taglineVi: "Khai th\xE1c l\xF5i n\u0103ng l\u01B0\u1EE3ng l\u01B0\u1EE3ng t\u1EED, n\xE9 tr\xE1nh virus m\xE3 \u0111\u1ED9c n\u1ED5 tung"
+  },
+  TEMPLE: {
+    theme: "TEMPLE",
+    nameVi: "\u0110\u1EC1n C\u1ED5 Huy\u1EC1n B\xED",
+    bgGradient: "from-amber-950 via-stone-900 to-black",
+    accentColor: "#eab308",
+    emoji: "\u{1F3DB}\uFE0F",
+    taglineVi: "Khai qu\u1EADt c\u1ED5 v\u1EADt kim c\u01B0\u01A1ng, c\u1EA9n th\u1EADn b\u1EABy \u0111\xE1 s\u1EADp ng\xE0n n\u0103m"
+  }
+};
+var THEME_KEYS = ["CASTLE", "PIRATE", "FOREST", "CYBER", "TEMPLE"];
+var MINI_GAME_TYPES = ["DOORS", "CHESTS", "TAROT_CARDS", "RADAR_WINDOWS"];
+var REWARD_TEMPLATES = {
+  CASTLE: [
+    { storyTitle: "\u{1F48E} \u0110\u1EA1i H\u1ED3ng \xC2n Ph\xE1p S\u01B0", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng qu\u1EF9 \u0111i\u1EC3m!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2B50 Ph\xE9p Nh\xE2n \u0110\xF4i Tinh T\xFA", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) to\xE0n b\u1ED9 \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F3AD} B\xE0n Tay \u0110\u1EA1o T\u1EB7c", storyDescription: "\xC1o t\xE0ng h\xECnh xu\u1EA5t k\xEDch: C\u01B0\u1EDBp th\xEAm 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn Th\xE1nh H\u1ED9 M\u1EC7nh", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c Khi\xEAn Th\xE1nh: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
+    { storyTitle: "\u{1F0CF} Cu\u1ED9n Gi\u1EA5y B\xED Truy\u1EC1n", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB 50/50!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "FIFTY_FIFTY" },
+    { storyTitle: "\u{1F4B0} Kho V\xE0ng Cung \u0110\xECnh", storyDescription: "M\u1EDF \u0111\xFAng c\u0103n h\u1EA7m ho\xE0ng gia: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2728 Vi\xEAn Pha L\xEA Ma Thu\u1EADt", storyDescription: "N\u0103ng l\u01B0\u1EE3ng d\u1ED3i d\xE0o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n C\u1ED5", storyDescription: "T\xECm th\u1EA5y v\u01B0\u01A1ng mi\u1EC7n b\u1EA3o v\u1EADt: +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" }
+  ],
+  PIRATE: [
+    { storyTitle: "\u{1F451} Kho B\xE1u C\u1EE7a R\xE2u \u0110en", storyDescription: "H\xF2m kim c\u01B0\u01A1ng kh\u1ED5ng l\u1ED3: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2693 Gi\xF3 Thu\u1EADn Bu\u1ED3m Xu\xF4i", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F5E1}\uFE0F \u0110\u1ED9t K\xEDch H\u1EA1m \u0110\u1ED9i", storyDescription: "C\u01B0\u1EDBp b\xF3c khoang thuy\u1EC1n: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F99C} Ch\xFA V\u1EB9t Th\xF4ng Th\xE1i", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB \u0110\u1ED5i C\xE2u (Skip)!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "SKIP" },
+    { storyTitle: "\u{1F37B} Ti\u1EC7c R\u01B0\u1EE3u Th\u1EE7y Th\u1EE7", storyDescription: "Li\xEAn hoan t\u01B0ng b\u1EEBng: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F9ED} La B\xE0n \u0110\u1ECBnh M\u1EC7nh", storyDescription: "T\xECm th\u1EA5y h\u01B0\u1EDBng gi\xF3 l\xE0nh: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1FA99} T\xFAi Ti\u1EC1n V\xE0ng C\u1ED5", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c t\xFAi v\xE0ng nguy\xEAn v\u1EB9n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F M\u1ED9c G\u1ED7 H\u1EA3i Qu\xE2n", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn ph\xF2ng th\u1EE7: +15\u0111 v\xE0 nh\u1EADn Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" }
+  ],
+  FOREST: [
+    { storyTitle: "\u{1F31F} \u0110\u1EA1i B\u1EA3o V\u1EADt R\u1EEBng Xanh", storyDescription: "N\u1EEF Ho\xE0ng Ti\xEAn ban t\u1EB7ng: Th\u01B0\u1EDFng ngay +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F338} Tr\xE1i C\xE2y Th\u1EA7n Ng\xE0n N\u0103m", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F98A} C\xE1o Tinh Ranh", storyDescription: "L\u1EBBn tr\u1ED9m t\xFAi ti\u1EC1n: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F33F} B\xF9a H\u1ED9 M\u1EC7nh C\u1EE7a T\u1ED9c Elf", storyDescription: "Khi\xEAn l\xE1 ch\u1EAFn t\u1EF1 nhi\xEAn: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
+    { storyTitle: "\u{1F3F9} Cung T\xEAn S\u1EA5m S\xE9t", storyDescription: "V\u0169 kh\xED huy\u1EC1n tho\u1EA1i: +15\u0111 v\xE0 Th\u1EBB x1.5 \u0111i\u1EC3m!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "SCORE_X2" },
+    { storyTitle: "\u{1F36F} M\u1EADt Ong R\u1EEBng Kh\u1ED5ng L\u1ED3", storyDescription: "Ng\u1ECDt ng\xE0o n\u0103ng l\u01B0\u1EE3ng: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F98B} Tinh Linh \xC1nh S\xE1ng", storyDescription: "\xC1nh s\xE1ng d\u1EABn l\u1ED1i: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F48E} Ng\u1ECDc L\u1EE5c B\u1EA3o R\u1EEBng Gi\xE0", storyDescription: "Vi\xEAn ng\u1ECDc ng\xE0n n\u0103m: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
+  ],
+  CYBER: [
+    { storyTitle: "\u26A1 L\xF5i N\u0103ng L\u01B0\u1EE3ng L\u01B0\u1EE3ng T\u1EED", storyDescription: "B\xF9ng n\u1ED5 si\xEAu n\u0103ng l\u01B0\u1EE3ng: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F680} \u0110\u1ED9ng C\u01A1 Si\xEAu Quang T\u1ED1c", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F6F0}\uFE0F \u0110\xF2n T\u1EA5n C\xF4ng Cyber Siphon", storyDescription: "Chuy\u1EC3n lu\u1ED3ng d\u1EEF li\u1EC7u: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn Plasma", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
+    { storyTitle: "\u{1F4BE} \u1ED4 \u0110\u0129a D\u1EEF Li\u1EC7u T\u1ED1i M\u1EADt", storyDescription: "T\xE0i li\u1EC7u m\u1EADt: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Th\u1EDDi Gian (+15s)!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "TIME_PLUS" },
+    { storyTitle: "\u{1F4E1} T\xEDn Hi\u1EC7u V\u1EC7 Tinh", storyDescription: "B\u1EAFt tr\u1ECDn lu\u1ED3ng s\xF3ng qu\xFD: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F50B} Pin Nhi\xEAn Li\u1EC7u V\u0129nh C\u1EEDu", storyDescription: "S\u1EA1c \u0111\u1EA7y pin t\xE0u: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F916} Si\xEAu Chip AI Th\u1EBF H\u1EC7 M\u1EDBi", storyDescription: "Thu\u1EADt to\xE1n x\u1EED l\xFD th\u1EA7n t\u1ED1c: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
+  ],
+  TEMPLE: [
+    { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n Pharaon", storyDescription: "Khai m\u1EDF kho b\xE1u l\u0103ng m\u1ED9: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2600\uFE0F \xC1nh S\xE1ng Th\u1EA7n M\u1EB7t Tr\u1EDDi", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F40D} R\u1EAFn \u0110\u1ED9c C\u01B0\u1EDBp C\u1ED5 V\u1EADt", storyDescription: "B\u1EABy ng\u1EA7m k\xEDch ho\u1EA1t: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F3FA} B\xECnh C\u1ED5 Ho\xE0ng Kim", storyDescription: "C\u1ED5 v\u1EADt nguy\xEAn v\u1EB9n: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4DC} B\u1EA3n \u0110\u1ED3 L\u1ED1i Tho\xE1t", storyDescription: "S\u01A1 \u0111\u1ED3 kim t\u1EF1 th\xE1p: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB C\u01B0\u1EE3c x2!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "DOUBLE" },
+    { storyTitle: "\u{1F48E} Vi\xEAn H\u1ED3ng Ng\u1ECDc Huy\u1EC1n Tho\u1EA1i", storyDescription: "Vi\xEAn \u0111\xE1 m\u1EAFt th\u1EA7n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn \u0110\u1ED3ng C\u1ED5", storyDescription: "Khi\xEAn chi\u1EBFn binh Ai C\u1EADp: +15\u0111 v\xE0 nh\u1EADn Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
+    { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
+  ]
+};
+function getTileLabelAndIcon(miniGameType, index) {
+  switch (miniGameType) {
+    case "DOORS":
+      return { label: `C\u1EEDa #${index + 1}`, icon: "\u{1F6AA}" };
+    case "CHESTS":
+      return { label: `R\u01B0\u01A1ng #${index + 1}`, icon: "\u{1FA99}" };
+    case "TAROT_CARDS":
+      return { label: `Th\u1EBB #${index + 1}`, icon: "\u{1F0CF}" };
+    case "RADAR_WINDOWS":
+      return { label: `Radar #${index + 1}`, icon: "\u{1F4E1}" };
+  }
+}
+function generateMysteryStageForTurn({
+  turnIndex,
+  currentTeam,
+  teams,
+  turnsPerTeam = 2,
+  prevTheme
+}) {
+  const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
+  const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
+  const themeMeta = MYSTERY_THEMES[theme];
+  const miniGameType = MINI_GAME_TYPES[Math.floor(Math.random() * MINI_GAME_TYPES.length)];
+  const totalTilesCount = miniGameType === "TAROT_CARDS" ? 10 : 8;
+  const currentRound = Math.floor(turnIndex / teams.length) + 1;
+  const tileTypes = ["BOMB_MINOR", "BOMB_MAJOR"];
+  if (currentRound >= 2 && Math.random() < 0.5) {
+    tileTypes.push("BOMB_DOOM");
+  }
+  while (tileTypes.length < totalTilesCount) {
+    tileTypes.push("REWARD");
+  }
+  const shuffledTypes = [...tileTypes].sort(() => Math.random() - 0.5);
+  const themeRewards = [...REWARD_TEMPLATES[theme]].sort(() => Math.random() - 0.5);
+  let rewardCursor = 0;
+  const tiles = [];
+  for (let i = 0; i < totalTilesCount; i++) {
+    const type = shuffledTypes[i];
+    const { label, icon } = getTileLabelAndIcon(miniGameType, i);
+    if (type === "BOMB_MINOR") {
+      tiles.push({
+        id: i + 1,
+        label,
+        icon,
+        isOpened: false,
+        type: "BOMB_MINOR",
+        storyTitle: "\u{1F4A3} TI\u1EC2U BOM N\u1ED4 TUNG!",
+        storyDescription: "D\u1EABm ph\u1EA3i k\xEDp n\u1ED5 mini: To\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y trong l\u01B0\u1EE3t n\xE0y tan bi\u1EBFn th\xE0nh m\xE2y kh\xF3i!",
+        effectType: "LOSE_POINTS",
+        deltaPoints: 0
+      });
+    } else if (type === "BOMB_MAJOR") {
+      tiles.push({
+        id: i + 1,
+        label,
+        icon,
+        isOpened: false,
+        type: "BOMB_MAJOR",
+        storyTitle: "\u{1F4A5} \u0110\u1EA0I BOM C\xD4NG PH\xC1!",
+        storyDescription: "Th\xF9ng thu\u1ED1c s\xFAng \u0111\u1EA1i b\xE1c ph\xE1t n\u1ED5 d\u1EEF d\u1ED9i: M\u1EA5t tr\u1EAFng \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y V\xC0 b\u1ECB ph\u1EA1t tr\u1EEB 20 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!",
+        effectType: "LOSE_POINTS",
+        deltaPoints: -20
+      });
+    } else if (type === "BOMB_DOOM") {
+      tiles.push({
+        id: i + 1,
+        label,
+        icon,
+        isOpened: false,
+        type: "BOMB_DOOM",
+        storyTitle: "\u{1F480} BOM H\u1EE6Y DI\u1EC6T CHI\u1EBEC N\xD3N K\u1EF2 DI\u1EC6U!",
+        storyDescription: "\u0110\xE1nh th\u1EE9c bom nguy\xEAn t\u1EED c\u1ED5 x\u01B0a: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y V\xC0 CHIA \u0110\xD4I (/2) t\u1ED5ng \u0111i\u1EC3m c\u1EE7a c\u1EA3 tr\u1EADn!",
+        effectType: "DIVIDE_HALF",
+        deltaPoints: 0
+      });
+    } else {
+      const rew = themeRewards[rewardCursor % themeRewards.length];
+      rewardCursor++;
+      tiles.push({
+        id: i + 1,
+        label,
+        icon,
+        isOpened: false,
+        type: "REWARD",
+        storyTitle: rew.storyTitle,
+        storyDescription: rew.storyDescription,
+        effectType: rew.effectType,
+        deltaPoints: rew.deltaPoints,
+        cardReward: rew.cardReward
+      });
+    }
+  }
+  const totalTurns = teams.length * turnsPerTeam;
+  return {
+    currentTurnTeamId: currentTeam.id,
+    currentTurnTeamName: currentTeam.name,
+    currentTurnTeamColor: currentTeam.color || "#ef4444",
+    currentTurnIndex: turnIndex,
+    totalTurns,
+    turnsPerTeam,
+    currentRound,
+    theme,
+    miniGameType,
+    themeNameVi: themeMeta.nameVi,
+    themeBgGradient: themeMeta.bgGradient,
+    tiles,
+    phase: "QUESTION_ACTIVE",
+    potPoints: 0,
+    potMultiplier: 1,
+    cardsFlippedCount: 0
+  };
+}
+function handleFlipCard({
+  state,
+  tileId,
+  team,
+  allTeams
+}) {
+  const tile = state.tiles.find((t) => t.id === tileId);
+  if (!tile || tile.isOpened) {
+    return { updatedState: state, isBomb: false, scorePenalty: 0 };
+  }
+  tile.isOpened = true;
+  state.lastFlippedTile = tile;
+  state.cardsFlippedCount++;
+  if (tile.type !== "REWARD") {
+    let penalty = 0;
+    let penaltyText = "";
+    if (tile.type === "BOMB_MINOR") {
+      penalty = 0;
+      penaltyText = "M\u1EA5t s\u1EA1ch to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y trong l\u01B0\u1EE3t n\xE0y (0\u0111 nh\u1EADn \u0111\u01B0\u1EE3c).";
+    } else if (tile.type === "BOMB_MAJOR") {
+      penalty = Math.min(team.score || 0, 20);
+      penaltyText = `M\u1EA5t \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y v\xE0 b\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`;
+    } else if (tile.type === "BOMB_DOOM") {
+      const halfScore = Math.floor((team.score || 0) / 2);
+      penalty = halfScore;
+      penaltyText = `M\u1EA5t \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y v\xE0 b\u1ECB CHIA \u0110\xD4I t\u1ED5ng \u0111i\u1EC3m (-${halfScore}\u0111).`;
+    }
+    state.potPoints = 0;
+    state.bombExploded = {
+      type: tile.type === "BOMB_MINOR" ? "MINOR" : tile.type === "BOMB_MAJOR" ? "MAJOR" : "DOOM",
+      title: tile.storyTitle,
+      description: tile.storyDescription,
+      penaltyText
+    };
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "BOMB_HIT";
+    const oldScore = team.score || 0;
+    const newScore = Math.max(0, oldScore - penalty);
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `\u{1F4A5} D\xEDnh bom! ${penaltyText}`,
+      scoreDelta: -penalty,
+      oldScore,
+      newScore
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: true,
+      scorePenalty: penalty
+    };
+  }
+  let rewardCard = tile.cardReward;
+  if (tile.effectType === "MULTIPLY_X2") {
+    state.potMultiplier *= 2;
+    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
+  } else if (tile.effectType === "STEAL_POINTS") {
+    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
+    if (otherTeams.length > 0) {
+      const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
+      const leader = sorted[0];
+      const stealAmt = Math.min(leader.score || 0, tile.deltaPoints || 20);
+      state.potPoints += (stealAmt > 0 ? stealAmt : 15) * state.potMultiplier;
+    } else {
+      state.potPoints += (tile.deltaPoints || 20) * state.potMultiplier;
+    }
+  } else {
+    state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
+  }
+  const remainingRewardTiles = state.tiles.filter((t) => !t.isOpened && t.type === "REWARD");
+  if (remainingRewardTiles.length === 0) {
+    state.potPoints += 50;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "ALL_CLEARED";
+    const oldScore = team.score || 0;
+    const newScore = oldScore + state.potPoints;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `\u{1F3C6} \u0110\u1EA0I TH\u1EAENG QU\xC9T S\u1EA0CH B\u1EA2N \u0110\u1ED2! Thu ho\u1EA1ch tr\u1ECDn v\u1EB9n +${state.potPoints} \u0111i\u1EC3m!`,
+      scoreDelta: state.potPoints,
+      oldScore,
+      newScore
+    };
+  }
+  return {
+    updatedState: { ...state },
+    isBomb: false,
+    scorePenalty: 0,
+    rewardCard
+  };
+}
+function handleCashOut({
+  state,
+  team
+}) {
+  const finalScoreDelta = state.potPoints;
+  const oldScore = team.score || 0;
+  const newScore = oldScore + finalScoreDelta;
+  state.phase = "TURN_SUMMARY";
+  state.turnFinishedReason = "CASH_OUT";
+  state.storyResult = {
+    teamId: team.id,
+    teamName: team.name,
+    teamColor: team.color || "#ef4444",
+    rewardText: `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    scoreDelta: finalScoreDelta,
+    oldScore,
+    newScore
+  };
+  return {
+    updatedState: { ...state },
+    finalScoreDelta
+  };
+}
+
 // src/lib/game-engine/powerups.ts
 var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   // BOUNCEBACK: Về đích Olympia -> SCORE_X2 (Ngôi sao an toàn), DOUBLE (Ngôi sao hy vọng), SHIELD (Khiên), FIFTY_FIFTY (50/50), SKIP (Đổi câu), TIME_PLUS.
@@ -819,7 +1146,9 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   // WAGER: Cược điểm -> FIFTY_FIFTY, SHIELD (Bảo hiểm cược mất 50%), TIME_PLUS, SKIP. CẤM STEAL và FREEZE.
   WAGER: ["FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "SKIP"],
   // CLASSIC: Toàn bộ 10 thẻ.
-  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
+  CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
+  // MYSTERY_QUEST: Hành trình phiêu lưu - Đầy đủ thẻ hỗ trợ & cơ hội
+  MYSTERY_QUEST: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
 };
 function getDefaultAllowedPowerupsForMode(mode) {
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
@@ -838,6 +1167,10 @@ var DEFAULT_SHARED_POWERUP_PROBABILITY = 0.1;
 function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
   const safeBankTotal = Math.max(1, bankTotal);
   const safeTeamsCount = Math.max(1, teamsCount);
+  if (mode === "MYSTERY_QUEST") {
+    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || 2;
+    return Math.min(safeBankTotal, safeTeamsCount * turnsPerTeam);
+  }
   if (mode === "WAGER") {
     const rounds = config?.wagerRoundsPerTeam || 2;
     return Math.min(safeBankTotal, safeTeamsCount * rounds);
@@ -1098,6 +1431,7 @@ var roomTournaments = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
 var roomWagers = /* @__PURE__ */ new Map();
+var roomMysteryQuests = /* @__PURE__ */ new Map();
 var roomUsedQuestions = /* @__PURE__ */ new Map();
 var roomWagerTimers = /* @__PURE__ */ new Map();
 var roomWagerAutoLaunchTimers = /* @__PURE__ */ new Map();
@@ -1145,6 +1479,7 @@ async function persistGameStateSnapshot(roomId) {
     if (roomGridCaros.has(roomId)) snapshot.gridCaroState = roomGridCaros.get(roomId);
     if (roomDiceRaces.has(roomId)) snapshot.diceRaceState = roomDiceRaces.get(roomId);
     if (roomWagers.has(roomId)) snapshot.wagerState = roomWagers.get(roomId);
+    if (roomMysteryQuests.has(roomId)) snapshot.mysteryQuestState = roomMysteryQuests.get(roomId);
     if (roomTournaments.has(roomId)) snapshot.tournamentState = roomTournaments.get(roomId);
     if (roomEliminationGhostStats.has(roomId)) {
       snapshot.ghostStats = Array.from(roomEliminationGhostStats.get(roomId).entries());
@@ -1169,6 +1504,9 @@ function restoreGameStateSnapshot(room) {
   }
   if (snapshot.wagerState && !roomWagers.has(room.id)) {
     roomWagers.set(room.id, snapshot.wagerState);
+  }
+  if (snapshot.mysteryQuestState && !roomMysteryQuests.has(room.id)) {
+    roomMysteryQuests.set(room.id, snapshot.mysteryQuestState);
   }
   if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
     roomTournaments.set(room.id, snapshot.tournamentState);
@@ -3736,6 +4074,15 @@ function registerSocketHandlers(io2) {
             teamWagers: {},
             teamBailouts
           });
+        } else if (room.mode === "MYSTERY_QUEST") {
+          const turnsPerTeam = config2?.mysteryQuestTurnsPerTeam || 2;
+          const questState = generateMysteryStageForTurn({
+            turnIndex: 0,
+            currentTeam: teams[0] || { id: "t1", name: "\u0110\u1ED9i 1", color: "#ef4444", score: 0 },
+            teams,
+            turnsPerTeam
+          });
+          roomMysteryQuests.set(room.id, questState);
         } else if (room.mode !== "DICE_RACE" && config2?.initialTeamScore && config2.initialTeamScore > 0) {
           const initScore = Math.max(0, config2.initialTeamScore);
           for (const team of teams) {
@@ -4450,6 +4797,157 @@ function registerSocketHandlers(io2) {
       if (diceState) {
         io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
       }
+    });
+    socket.on("game:mystery:flip_card", async ({ tileId }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EADt b\xE0i c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const { updatedState, isBomb, scorePenalty, rewardCard } = handleFlipCard({
+        state: questState,
+        tileId,
+        team,
+        allTeams
+      });
+      roomMysteryQuests.set(room.id, updatedState);
+      if (isBomb) {
+        if (scorePenalty > 0) {
+          await applyScoreDeltaToTeam(team.id, -scorePenalty);
+        }
+      } else {
+        if (rewardCard) {
+          await prisma.powerupCard.create({
+            data: {
+              type: rewardCard,
+              ownerType: "TEAM",
+              teamId: team.id,
+              roomId: room.id
+            }
+          });
+        }
+        if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+          await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
+        }
+      }
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      if (updatedState.lastFlippedTile) {
+        io2.to(`room:${room.code}`).emit("game:mystery:card_flipped", {
+          tile: updatedState.lastFlippedTile,
+          potPoints: updatedState.potPoints,
+          potMultiplier: updatedState.potMultiplier,
+          bombExploded: updatedState.bombExploded
+        });
+      }
+    });
+    socket.on("game:mystery:cash_out", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t b\u1EA3o to\xE0n \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      const { updatedState, finalScoreDelta } = handleCashOut({
+        state: questState,
+        team
+      });
+      if (finalScoreDelta > 0) {
+        await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+      }
+      roomMysteryQuests.set(room.id, updatedState);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:cashed_out", {
+        teamId: team.id,
+        teamName: team.name,
+        totalGained: finalScoreDelta,
+        newScore: (team.score || 0) + finalScoreDelta
+      });
+    });
+    socket.on("game:mystery:steal_buzz", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
+      if (questState.currentTurnTeamId === player.teamId) return;
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      questState.stealBuzzedTeamId = team.id;
+      questState.stealBuzzedTeamName = team.name;
+      questState.currentTurnTeamId = team.id;
+      questState.currentTurnTeamName = team.name;
+      questState.currentTurnTeamColor = team.color;
+      roomMysteryQuests.set(room.id, questState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
+      io2.to(`room:${room.code}`).emit("game:mystery:steal_buzzed", {
+        teamId: team.id,
+        teamName: team.name,
+        timeLimit: 15
+      });
+    });
+    socket.on("admin:mystery:advance_turn", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState) return;
+      const teams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        orderBy: { createdAt: "asc" }
+      });
+      if (teams.length === 0) return;
+      const nextTurnIndex = questState.currentTurnIndex + 1;
+      if (nextTurnIndex >= questState.totalTurns) {
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
+        const leaderboard = await buildLeaderboard(room.id);
+        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
+      }
+      const nextTeam = teams[nextTurnIndex % teams.length];
+      const nextStage = generateMysteryStageForTurn({
+        turnIndex: nextTurnIndex,
+        currentTeam: nextTeam,
+        teams,
+        turnsPerTeam: questState.turnsPerTeam,
+        prevTheme: questState.theme
+      });
+      roomMysteryQuests.set(room.id, nextStage);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
+      const updatedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", updatedState);
     });
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);
@@ -6833,6 +7331,39 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   };
   roomRevealPayloads.set(roomId, revealPayload);
   io2.to(`room:${roomCode}`).emit("game:answer:reveal", revealPayload);
+  if (room.mode === "MYSTERY_QUEST") {
+    const questState = roomMysteryQuests.get(room.id);
+    if (questState) {
+      const activeAns = answers.find((a) => a.teamId === questState.currentTurnTeamId);
+      const isCorrect = Boolean(activeAns?.isCorrect);
+      const basePts = q.points || 10;
+      if (isCorrect) {
+        questState.phase = "PUSH_YOUR_LUCK";
+        questState.potPoints = basePts;
+        questState.potMultiplier = 1;
+        roomMysteryQuests.set(room.id, questState);
+        io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
+      } else {
+        questState.phase = "STEAL_PHASE";
+        questState.stealEndsAt = Date.now() + 5e3;
+        roomMysteryQuests.set(room.id, questState);
+        io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
+        io2.to(`room:${roomCode}`).emit("game:mystery:steal_open", {
+          questionId: q.id,
+          timeLimit: 5
+        });
+        setTimeout(async () => {
+          const latestQuest = roomMysteryQuests.get(room.id);
+          if (latestQuest && latestQuest.phase === "STEAL_PHASE" && !latestQuest.stealBuzzedTeamId) {
+            latestQuest.phase = "TURN_SUMMARY";
+            latestQuest.turnFinishedReason = "QUESTION_FAILED";
+            roomMysteryQuests.set(room.id, latestQuest);
+            io2.to(`room:${roomCode}`).emit("game:mystery:update", latestQuest);
+          }
+        }, 5e3);
+      }
+    }
+  }
 }
 function stopQuestionTimer(roomId) {
   const key = `${roomId}:timer`;
@@ -6945,7 +7476,8 @@ async function buildRoomState(roomId) {
     tournamentState: roomTournaments.get(room.id),
     gridCaroState: roomGridCaros.get(room.id),
     diceRaceState: roomDiceRaces.get(room.id),
-    wagerState: roomWagers.get(room.id)
+    wagerState: roomWagers.get(room.id),
+    mysteryQuestState: roomMysteryQuests.get(room.id)
   };
 }
 function buildQuestionState(q, extra) {

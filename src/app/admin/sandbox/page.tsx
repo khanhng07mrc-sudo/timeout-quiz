@@ -16,11 +16,18 @@ import type {
   GamePreparePayload,
   GameIntermissionPayload,
   TournamentState,
+  MysteryQuestState,
 } from "@/types";
 import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import {
+  generateMysteryStageForTurn,
+  handleFlipCard as handleMysteryFlipCard,
+  handleCashOut as handleMysteryCashOut,
+} from "@/lib/game-engine/mystery-quest";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "@/lib/game-engine/powerups";
@@ -63,6 +70,7 @@ const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
   { mode: "GRID_CARO", name: "Lưới chọn ô & Caro", emoji: "🏁" },
   { mode: "DICE_RACE", name: "Đua cờ Xí ngầu", emoji: "🎲" },
   { mode: "WAGER", name: "Cược điểm Bí mật", emoji: "💰" },
+  { mode: "MYSTERY_QUEST", name: "Hành Trình Bí Ẩn", emoji: "🗝️" },
 ];
 
 export default function AdminSandboxPage() {
@@ -1033,6 +1041,16 @@ export default function AdminSandboxPage() {
       };
     }
 
+    let mysteryQuestState: any = undefined;
+    if (mode === "MYSTERY_QUEST") {
+      mysteryQuestState = generateMysteryStageForTurn({
+        turnIndex: 0,
+        currentTeam: teams[0],
+        teams,
+        turnsPerTeam: 2,
+      });
+    }
+
     const initialRoomState: RoomState = {
       id: "room_offline_local",
       code: offlineCode,
@@ -1068,6 +1086,7 @@ export default function AdminSandboxPage() {
       },
       gridCaroState,
       diceRaceState,
+      mysteryQuestState,
     };
 
     setRoomState(initialRoomState);
@@ -2134,6 +2153,111 @@ export default function AdminSandboxPage() {
           });
           return { ...prev, tournamentState: nextTour };
         });
+      } else if (action === "mystery_flip" || e.data?.type === "MYSTERY_FLIP") {
+        const tileId = Number(e.data?.tileId);
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, isBomb, scorePenalty } = handleMysteryFlipCard({
+          state: curMystery,
+          tileId,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (isBomb && scorePenalty > 0) {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
+          );
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(
+          isBomb
+            ? `💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`
+            : `💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`
+        );
+      } else if (action === "mystery_cash_out" || e.data?.type === "MYSTERY_CASH_OUT") {
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta } = handleMysteryCashOut({
+          state: curMystery,
+          team: activeTeam,
+        });
+
+        const updatedTeams = roomStateRef.current.teams.map((t) =>
+          t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+        );
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
+      } else if (action === "mystery_steal_buzz" || e.data?.type === "MYSTERY_STEAL_BUZZ") {
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        if (curMystery.phase !== "STEAL_PHASE" || curMystery.stealBuzzedTeamId) return;
+
+        const buzzedTeam = roomStateRef.current.teams.find((t) => t.id === targetTeamId);
+        if (!buzzedTeam || buzzedTeam.id === curMystery.currentTurnTeamId) return;
+
+        curMystery.stealBuzzedTeamId = buzzedTeam.id;
+        curMystery.stealBuzzedTeamName = buzzedTeam.name;
+        curMystery.phase = "PUSH_YOUR_LUCK";
+        curMystery.currentTurnTeamId = buzzedTeam.id;
+        curMystery.currentTurnTeamName = buzzedTeam.name;
+        curMystery.currentTurnTeamColor = buzzedTeam.color;
+        curMystery.potPoints = 15; // base steal pot points
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: curMystery,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: curMystery });
+        addLog(`🔔 [${buzzedTeam.name}] BẤM CHUÔNG CƯỚP ĐIỂM THÀNH CÔNG! Giành quyền lật thẻ!`);
+      } else if (action === "mystery_advance_turn" || e.data?.type === "MYSTERY_ADVANCE_TURN") {
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const teams = roomStateRef.current.teams;
+        const nextTurnIdx = curMystery.currentTurnIndex + 1;
+        const nextTeam = teams[nextTurnIdx % teams.length];
+
+        const nextStage = generateMysteryStageForTurn({
+          turnIndex: nextTurnIdx,
+          currentTeam: nextTeam,
+          teams,
+          turnsPerTeam: curMystery.turnsPerTeam,
+          prevTheme: curMystery.theme,
+        });
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: nextStage,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextStage });
+        addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
       }
     };
 
@@ -2329,6 +2453,8 @@ export default function AdminSandboxPage() {
       primaryTeamId:
         selectedMode === "BOUNCEBACK"
           ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id
+          : selectedMode === "MYSTERY_QUEST"
+          ? (roomState?.mysteryQuestState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
           : selectedMode === "GRID_CARO"
           ? (roomState?.gridCaroState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
           : selectedMode === "DICE_RACE"
@@ -2339,6 +2465,8 @@ export default function AdminSandboxPage() {
       primaryTeamName:
         selectedMode === "BOUNCEBACK"
           ? roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name
+          : selectedMode === "MYSTERY_QUEST"
+          ? (roomState?.mysteryQuestState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
           : selectedMode === "GRID_CARO"
           ? (roomState?.gridCaroState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
           : selectedMode === "DICE_RACE"
@@ -2358,7 +2486,16 @@ export default function AdminSandboxPage() {
       const nextDice = prev.diceRaceState
         ? { ...prev.diceRaceState, canRollDice: false }
         : undefined;
-      return { ...prev, status: "PLAYING", currentQuestionIndex: nextIdx, diceRaceState: nextDice };
+      const nextMystery = prev.mysteryQuestState
+        ? { ...prev.mysteryQuestState, phase: "QUESTION_ACTIVE" as const }
+        : undefined;
+      return {
+        ...prev,
+        status: "PLAYING",
+        currentQuestionIndex: nextIdx,
+        diceRaceState: nextDice,
+        mysteryQuestState: nextMystery,
+      };
     });
 
     if (selectedMode === "BOUNCEBACK") {
@@ -3217,11 +3354,52 @@ export default function AdminSandboxPage() {
           };
         }
 
-        const nextRoomState = { ...prev, teams: updatedTeams, diceRaceState: nextDice, wagerState: nextWager };
+        let nextMystery = prev.mysteryQuestState;
+        if (selectedMode === "MYSTERY_QUEST" && prev.mysteryQuestState) {
+          const curMystery = prev.mysteryQuestState;
+          const activeTeamId = curMystery.currentTurnTeamId;
+          const activeAns = answers.find((a) => a.teamId === activeTeamId);
+          const isCorrect = Boolean(activeAns?.isCorrect);
+
+          if (isCorrect) {
+            const basePoints = currentQuestion.question.points || 20;
+            nextMystery = {
+              ...curMystery,
+              phase: "PUSH_YOUR_LUCK",
+              potPoints: basePoints,
+              potMultiplier: 1,
+            };
+          } else {
+            nextMystery = {
+              ...curMystery,
+              phase: "STEAL_PHASE",
+              stealCountdown: 5,
+            };
+          }
+        }
+
+        const nextRoomState = {
+          ...prev,
+          teams: updatedTeams,
+          diceRaceState: nextDice,
+          wagerState: nextWager,
+          mysteryQuestState: nextMystery,
+        };
         roomStateRef.current = nextRoomState;
-        syncToIframes({ roomState: nextRoomState });
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextMystery });
         return nextRoomState;
       });
+
+      if (selectedMode === "MYSTERY_QUEST") {
+        const curMystery = roomState?.mysteryQuestState;
+        const curName = curMystery?.currentTurnTeamName || "Đội thi";
+        const curTeamAns = answers.find((a) => a.teamId === curMystery?.currentTurnTeamId);
+        if (curTeamAns?.isCorrect) {
+          addLog(`🎉 [${curName}] trả lời ĐÚNG! Nhận ${currentQuestion.question.points || 20}đ vào Hũ và mở khóa Thử thách Lật Thẻ!`);
+        } else {
+          addLog(`❌ [${curName}] trả lời CHƯA ĐÚNG! Mở chuông cướp điểm 5s cho các đội khác!`);
+        }
+      }
 
       if (selectedMode === "DICE_RACE") {
         const curName = roomState?.diceRaceState?.currentTurnTeamName || curTurnTeamId;
@@ -5949,6 +6127,62 @@ export default function AdminSandboxPage() {
                         ? `👑 Vô địch: ${roomState.tournamentState.championTeamName}`
                         : "➡️ Trận kế (1v1)"}
                     </button>
+                  </div>
+                )}
+
+                {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && (
+                  <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 flex-wrap">
+                    {roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = roomState.mysteryQuestState!;
+                            const unopened = cur.tiles.filter((t) => !t.isOpened);
+                            if (unopened.length > 0) {
+                              const randomTile = unopened[Math.floor(Math.random() * unopened.length)];
+                              window.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId: randomTile.id }, "*");
+                            }
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 text-white text-xs font-black shadow cursor-pointer animate-pulse"
+                        >
+                          ✨ Lật ngẫu nhiên 1 ô
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black shadow cursor-pointer"
+                        >
+                          💰 Dừng lại & Bảo toàn ({roomState.mysteryQuestState.potPoints}đ)
+                        </button>
+                      </>
+                    )}
+                    {roomState.mysteryQuestState.phase === "STEAL_PHASE" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const otherTeams = roomState.teams.filter((t) => t.id !== roomState.mysteryQuestState?.currentTurnTeamId);
+                          const randomOther = otherTeams[Math.floor(Math.random() * otherTeams.length)] || roomState.teams[0];
+                          window.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", targetTeamId: randomOther.id }, "*");
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow cursor-pointer animate-pulse"
+                      >
+                        🔔 Giả lập cướp chuông
+                      </button>
+                    )}
+                    {roomState.mysteryQuestState.phase === "TURN_SUMMARY" && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-black shadow cursor-pointer"
+                      >
+                        ➡️ Chuyển lượt tiếp theo
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

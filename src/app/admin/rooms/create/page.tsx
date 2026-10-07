@@ -19,6 +19,7 @@ const GAME_MODES = [
   { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Đường đua marathon 60-100 ô, gieo 2 xí ngầu 2-12 bước và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
+  { value: "MYSTERY_QUEST", label: "Hành Trình Bí Ẩn", desc: "Gameshow luân phiên, Background biến hóa & Lật bài né bom Chiếc nón kỳ diệu", emoji: "🗝️", badge: "Kịch tính", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
 ];
 
 const POWERUP_TYPES = [

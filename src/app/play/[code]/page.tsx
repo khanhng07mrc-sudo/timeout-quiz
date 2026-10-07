@@ -26,6 +26,7 @@ import TournamentBracket from "@/components/modes/TournamentBracket";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
+import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import StealPrepCountdown from "@/components/ui/StealPrepCountdown";
 import {
@@ -365,6 +366,9 @@ export default function PlayPage() {
         if (p.sharedPowerupLocked !== undefined) {
           setSharedPowerupLocked(Boolean(p.sharedPowerupLocked));
           setSharedPowerupLockedTeamName(p.sharedPowerupLockedTeamName);
+        }
+        if (p.mysteryQuestState !== undefined) {
+          setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
         }
       }
     };
@@ -803,6 +807,25 @@ export default function PlayPage() {
     });
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("game:mystery:update", (mysteryQuestState) => {
+      setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+    });
+    socket.on("game:mystery:card_flipped", (payload) => {
+      if (payload.isBomb || payload.bombExploded) {
+        if (soundEnabledRef.current) soundManager.playWrong();
+      } else {
+        if (soundEnabledRef.current) soundManager.playCorrect();
+      }
+    });
+    socket.on("game:mystery:cashed_out", () => {
+      if (soundEnabledRef.current) soundManager.playFanfare();
+    });
+    socket.on("game:mystery:steal_open", () => {
+      if (soundEnabledRef.current) soundManager.playBuzz();
+    });
+    socket.on("game:mystery:steal_buzzed", () => {
+      if (soundEnabledRef.current) soundManager.playBuzz();
     });
     socket.on("tournament:oracle:update", ({ oracleScores }) => {
       setRoomState((prev) => {
@@ -1501,6 +1524,35 @@ export default function PlayPage() {
                 />
               </div>
             )}
+
+            {/* MYSTERY_QUEST: Board for players */}
+            {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && (
+              <div className="w-full mt-2">
+                <MysteryQuestBoard
+                  mysteryState={roomState.mysteryQuestState}
+                  myTeamId={effectiveTeamId}
+                  teams={roomState.teams}
+                  onFlipCard={(tileId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:flip_card", { tileId });
+                  }}
+                  onCashOut={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:cash_out");
+                  }}
+                  onStealBuzz={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:steal_buzz");
+                  }}
+                />
+              </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-2">
@@ -1561,6 +1613,32 @@ export default function PlayPage() {
                     }
                     socketRef.current?.emit("admin:wager:set_bailout_limit" as any, { limit });
                   } : undefined}
+                />
+              </div>
+            ) : roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState ? (
+              <div className="w-full">
+                <MysteryQuestBoard
+                  mysteryState={roomState.mysteryQuestState}
+                  myTeamId={effectiveTeamId}
+                  teams={roomState.teams}
+                  onFlipCard={(tileId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:flip_card", { tileId });
+                  }}
+                  onCashOut={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:cash_out");
+                  }}
+                  onStealBuzz={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("game:mystery:steal_buzz");
+                  }}
                 />
               </div>
             ) : (

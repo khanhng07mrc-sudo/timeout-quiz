@@ -27,12 +27,14 @@ import {
   TeamRaceProgress,
   TeamWager,
   WagerState,
+  MysteryQuestState,
   GameIntermissionPayload,
   GameMode,
   TeamMode,
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
+import { generateMysteryStageForTurn, handleFlipCard, handleCashOut } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
@@ -136,6 +138,7 @@ const roomTournaments = new Map<string, TournamentState>();
 const roomGridCaros = new Map<string, GridCaroState>();
 const roomDiceRaces = new Map<string, DiceRaceState>();
 const roomWagers = new Map<string, WagerState>();
+const roomMysteryQuests = new Map<string, MysteryQuestState>();
 const roomUsedQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
 const roomWagerTimers = new Map<string, NodeJS.Timeout>(); // roomId -> wager timer
 const roomWagerAutoLaunchTimers = new Map<string, NodeJS.Timeout>(); // roomId -> auto launch timer after wager ends
@@ -207,6 +210,7 @@ async function persistGameStateSnapshot(roomId: string) {
     if (roomGridCaros.has(roomId)) snapshot.gridCaroState = roomGridCaros.get(roomId);
     if (roomDiceRaces.has(roomId)) snapshot.diceRaceState = roomDiceRaces.get(roomId);
     if (roomWagers.has(roomId)) snapshot.wagerState = roomWagers.get(roomId);
+    if (roomMysteryQuests.has(roomId)) snapshot.mysteryQuestState = roomMysteryQuests.get(roomId);
     if (roomTournaments.has(roomId)) snapshot.tournamentState = roomTournaments.get(roomId);
     if (roomEliminationGhostStats.has(roomId)) {
       snapshot.ghostStats = Array.from(roomEliminationGhostStats.get(roomId)!.entries());
@@ -233,6 +237,9 @@ function restoreGameStateSnapshot(room: any) {
   }
   if (snapshot.wagerState && !roomWagers.has(room.id)) {
     roomWagers.set(room.id, snapshot.wagerState);
+  }
+  if (snapshot.mysteryQuestState && !roomMysteryQuests.has(room.id)) {
+    roomMysteryQuests.set(room.id, snapshot.mysteryQuestState);
   }
   if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
     roomTournaments.set(room.id, snapshot.tournamentState);
@@ -3275,6 +3282,15 @@ export function registerSocketHandlers(io: IO) {
             teamWagers: {},
             teamBailouts,
           });
+        } else if (room.mode === "MYSTERY_QUEST") {
+          const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || 2;
+          const questState = generateMysteryStageForTurn({
+            turnIndex: 0,
+            currentTeam: teams[0] || { id: "t1", name: "Đội 1", color: "#ef4444", score: 0 },
+            teams,
+            turnsPerTeam,
+          });
+          roomMysteryQuests.set(room.id, questState);
         } else if (room.mode !== "DICE_RACE" && config?.initialTeamScore && config.initialTeamScore > 0) {
           const initScore = Math.max(0, config.initialTeamScore);
           for (const team of teams) {
@@ -4164,6 +4180,189 @@ export function registerSocketHandlers(io: IO) {
       if (diceState) {
         io.to(`room:${room.code}`).emit("game:dice:update", diceState);
       }
+    });
+
+    // ── Mystery Quest (Hành Trình Bí Ẩn) Events ──────────────────────────────
+    socket.on("game:mystery:flip_card", async ({ tileId }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt lật bài của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const { updatedState, isBomb, scorePenalty, rewardCard } = handleFlipCard({
+        state: questState,
+        tileId,
+        team,
+        allTeams,
+      });
+
+      roomMysteryQuests.set(room.id, updatedState);
+
+      if (isBomb) {
+        if (scorePenalty > 0) {
+          await applyScoreDeltaToTeam(team.id, -scorePenalty);
+        }
+      } else {
+        if (rewardCard) {
+          await prisma.powerupCard.create({
+            data: {
+              type: rewardCard as any,
+              ownerType: "TEAM",
+              teamId: team.id,
+              roomId: room.id,
+            },
+          });
+        }
+        if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+          await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
+        }
+      }
+
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      if (updatedState.lastFlippedTile) {
+        io.to(`room:${room.code}`).emit("game:mystery:card_flipped", {
+          tile: updatedState.lastFlippedTile,
+          potPoints: updatedState.potPoints,
+          potMultiplier: updatedState.potMultiplier,
+          bombExploded: updatedState.bombExploded,
+        });
+      }
+    });
+
+    socket.on("game:mystery:cash_out", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt bảo toàn điểm của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      const { updatedState, finalScoreDelta } = handleCashOut({
+        state: questState,
+        team,
+      });
+
+      if (finalScoreDelta > 0) {
+        await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+      }
+
+      roomMysteryQuests.set(room.id, updatedState);
+
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:cashed_out", {
+        teamId: team.id,
+        teamName: team.name,
+        totalGained: finalScoreDelta,
+        newScore: (team.score || 0) + finalScoreDelta,
+      });
+    });
+
+    socket.on("game:mystery:steal_buzz", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
+
+      if (questState.currentTurnTeamId === player.teamId) return;
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      questState.stealBuzzedTeamId = team.id;
+      questState.stealBuzzedTeamName = team.name;
+      questState.currentTurnTeamId = team.id;
+      questState.currentTurnTeamName = team.name;
+      questState.currentTurnTeamColor = team.color;
+      roomMysteryQuests.set(room.id, questState);
+
+      io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+      io.to(`room:${room.code}`).emit("game:mystery:steal_buzzed", {
+        teamId: team.id,
+        teamName: team.name,
+        timeLimit: 15,
+      });
+    });
+
+    socket.on("admin:mystery:advance_turn", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState) return;
+
+      const teams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        orderBy: { createdAt: "asc" },
+      });
+      if (teams.length === 0) return;
+
+      const nextTurnIndex = questState.currentTurnIndex + 1;
+      if (nextTurnIndex >= questState.totalTurns) {
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        return;
+      }
+
+      const nextTeam = teams[nextTurnIndex % teams.length];
+      const nextStage = generateMysteryStageForTurn({
+        turnIndex: nextTurnIndex,
+        currentTeam: nextTeam,
+        teams,
+        turnsPerTeam: questState.turnsPerTeam,
+        prevTheme: questState.theme,
+      });
+      roomMysteryQuests.set(room.id, nextStage);
+
+      io.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
+      const updatedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", updatedState);
     });
 
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────
@@ -7126,6 +7325,42 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
 
   roomRevealPayloads.set(roomId, revealPayload);
   io.to(`room:${roomCode}`).emit("game:answer:reveal", revealPayload);
+
+  if (room.mode === "MYSTERY_QUEST") {
+    const questState = roomMysteryQuests.get(room.id);
+    if (questState) {
+      const activeAns = answers.find((a) => a.teamId === questState.currentTurnTeamId);
+      const isCorrect = Boolean(activeAns?.isCorrect);
+      const basePts = q.points || 10;
+
+      if (isCorrect) {
+        questState.phase = "PUSH_YOUR_LUCK";
+        questState.potPoints = basePts;
+        questState.potMultiplier = 1;
+        roomMysteryQuests.set(room.id, questState);
+        io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
+      } else {
+        questState.phase = "STEAL_PHASE";
+        questState.stealEndsAt = Date.now() + 5000;
+        roomMysteryQuests.set(room.id, questState);
+        io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
+        io.to(`room:${roomCode}`).emit("game:mystery:steal_open", {
+          questionId: q.id,
+          timeLimit: 5,
+        });
+
+        setTimeout(async () => {
+          const latestQuest = roomMysteryQuests.get(room.id);
+          if (latestQuest && latestQuest.phase === "STEAL_PHASE" && !latestQuest.stealBuzzedTeamId) {
+            latestQuest.phase = "TURN_SUMMARY";
+            latestQuest.turnFinishedReason = "QUESTION_FAILED";
+            roomMysteryQuests.set(room.id, latestQuest);
+            io.to(`room:${roomCode}`).emit("game:mystery:update", latestQuest);
+          }
+        }, 5000);
+      }
+    }
+  }
 }
 
 function stopQuestionTimer(roomId: string) {
@@ -7250,6 +7485,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     gridCaroState: roomGridCaros.get(room.id),
     diceRaceState: roomDiceRaces.get(room.id),
     wagerState: roomWagers.get(room.id),
+    mysteryQuestState: roomMysteryQuests.get(room.id),
   };
 }
 

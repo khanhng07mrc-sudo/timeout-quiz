@@ -15,6 +15,10 @@ export function getTargetTotalQuestions(
   const safeBankTotal = Math.max(1, bankTotal);
   const safeTeamsCount = Math.max(1, teamsCount);
 
+  if (mode === "MYSTERY_QUEST") {
+    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || 2;
+    return Math.min(safeBankTotal, safeTeamsCount * turnsPerTeam);
+  }
   if (mode === "WAGER") {
     const rounds = config?.wagerRoundsPerTeam || 2;
     return Math.min(safeBankTotal, safeTeamsCount * rounds);

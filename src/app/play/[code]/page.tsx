@@ -209,7 +209,7 @@ export default function PlayPage() {
           setAnswered(hasAnswered);
 
           const teamPlayerId = isSandboxRef.current
-            ? `sb_${code}_t${teamIndex}`
+            ? `sb_${code}_t0`
             : playerIdRef.current;
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
@@ -218,7 +218,7 @@ export default function PlayPage() {
             if (isSandboxRef.current) {
               socketRef.current.emit("room:join", {
                 code,
-                playerName: teamName || `Bạn - Đội ${teamIndex + 1} (Tester)`,
+                playerName: "Bạn (Tester)",
                 playerId: teamPlayerId,
                 teamId,
               }, () => {});
@@ -228,7 +228,7 @@ export default function PlayPage() {
           }
           setRoomState((prev) => {
             if (!prev) return prev;
-            const pName = teamName || (teamIndex === 0 ? "Bạn (Tester)" : `Bạn - Đội ${teamIndex + 1} (Tester)`);
+            const pName = "Bạn (Tester)";
             const exists = prev.players.some((p) => p.id === teamPlayerId);
             let updatedPlayers: any[];
             if (exists) {
@@ -238,7 +238,7 @@ export default function PlayPage() {
             } else {
               updatedPlayers = [
                 ...prev.players,
-                { id: teamPlayerId, name: pName, score: 0, teamId, isHost: teamIndex === 0, isOnline: true },
+                { id: teamPlayerId, name: pName, score: 0, teamId, isHost: true, isOnline: true },
               ];
             }
             return { ...prev, players: updatedPlayers };
@@ -252,14 +252,14 @@ export default function PlayPage() {
           myTeamIdRef.current = teamId;
           setActiveTeamId(teamId);
           setSelectedTeamId(teamId);
-          if (isSandboxRef.current && typeof teamIndex === "number") {
-            const teamPlayerId = `sb_${code}_t${teamIndex}`;
+          if (isSandboxRef.current) {
+            const teamPlayerId = `sb_${code}_t0`;
             playerIdRef.current = teamPlayerId;
             setPlayerId(teamPlayerId);
             if (socketRef.current?.connected) {
               socketRef.current.emit("room:join", {
                 code,
-                playerName: `Bạn - Đội ${teamIndex + 1} (Tester)`,
+                playerName: "Bạn (Tester)",
                 playerId: teamPlayerId,
                 teamId,
               }, () => {});

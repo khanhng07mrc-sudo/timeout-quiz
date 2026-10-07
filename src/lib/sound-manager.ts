@@ -455,7 +455,13 @@ class SoundManager {
    * Immediately stops background music (or smoothly fades out if fadeDurationMs > 0 is explicitly specified).
    * @param fadeDurationMs Duration of fade out in milliseconds (defaults to 0 for instant cut)
    */
-  public stopMusic(fadeDurationMs: number = 0) {
+  public stopMusic(fadeDurationMs: number = 0, forceQuestionStop: boolean = false) {
+    // If a QUESTION countdown track is currently playing, preserve authentic Olympia resolution (gong/chime)
+    // to completion unless forceQuestionStop is explicitly requested (e.g. game ended or match reset)
+    if (this.currentMusicType === "QUESTION" && !forceQuestionStop && fadeDurationMs === 0) {
+      return;
+    }
+
     this.pendingMusicTrack = null;
     if (this.fadeInterval) {
       clearInterval(this.fadeInterval);

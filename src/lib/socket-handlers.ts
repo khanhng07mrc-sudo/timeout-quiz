@@ -7519,6 +7519,13 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
       const isCorrect = Boolean(activeAns?.isCorrect);
       const basePts = q.points || 10;
 
+      if (activeAns) {
+        await prisma.answer.update({
+          where: { id: activeAns.id },
+          data: { pointsAwarded: isCorrect ? basePts : 0 },
+        }).catch(() => {});
+      }
+
       if (isCorrect) {
         questState.phase = "PUSH_YOUR_LUCK";
         questState.potPoints = basePts;
@@ -7543,6 +7550,8 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       }
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${roomCode}`).emit("room:state", refreshedState);
     }
   }
 }
@@ -7574,8 +7583,22 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
 
   const config = room.config as any;
 
-  // Filter out any ghost host/admin dummy players
-  const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+  // Filter out any ghost host/admin dummy players and deduplicate sandbox tester clones
+  const rawValidPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+  const isSandboxRoom = room.name?.includes("[Sandbox]") || room.code?.startsWith("sb_") || Boolean(room.config && (room.config as any)?.isSandbox);
+
+  let validPlayers = rawValidPlayers;
+  if (isSandboxRoom) {
+    const hasPrimaryTester = rawValidPlayers.some((p) => p.id === `sb_${room.code}_t0` || p.name === "Bạn (Tester)");
+    validPlayers = rawValidPlayers.filter((p) => {
+      // If primary tester exists, remove redundant temporary tester clones
+      if (hasPrimaryTester && p.id !== `sb_${room.code}_t0` && (p.name.includes("(Tester)") || p.id.startsWith(`sb_${room.code}_t`))) {
+        return false;
+      }
+      return true;
+    });
+  }
+  validPlayers = validPlayers.filter((p, idx, arr) => arr.findIndex((x) => x.id === p.id) === idx);
 
   const teams: TeamState[] = room.teams.map((t) => {
     const teamPlayers = validPlayers.filter((p) => p.teamId === t.id);

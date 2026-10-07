@@ -265,8 +265,9 @@ export default function AdminSandboxPage() {
       pendingBotDiceTimerRef.current = null;
     }
 
-    // Spawn bot sockets for all teams
+    // Spawn bot sockets for bot-controlled teams only (teams 1, 2, 3). Team 0 is the Human Tester!
     teams.forEach((team, botIdx) => {
+      if (botIdx === 0) return;
       const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
         transports: ["websocket", "polling"],
         query: { sandbox: "1" },
@@ -859,6 +860,31 @@ export default function AdminSandboxPage() {
     sock.on("game:tournament:update", (tState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState: tState } : prev));
       addLog(`🏆 Cập nhật giải đấu 1v1 (Trận ${tState.currentMatchId})`);
+    });
+
+    sock.on("game:mystery:update", (mState: any) => {
+      setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: mState } : prev));
+    });
+
+    sock.on("game:mystery:cashed_out", (payload: any) => {
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const updatedTeams = prev.teams.map((t) => t.id === payload.teamId ? { ...t, score: payload.newScore } : t);
+        return { ...prev, teams: updatedTeams };
+      });
+      addLog(`💰 [${payload.teamName}] đã bảo toàn quỹ điểm: +${payload.totalGained}đ (Tổng: ${payload.newScore}đ)`);
+    });
+
+    sock.on("game:grid:update", (gridCaroState: any) => {
+      setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
+    });
+
+    sock.on("game:dice:update", (diceRaceState: any) => {
+      setRoomState((prev) => (prev ? { ...prev, diceRaceState } : prev));
+    });
+
+    sock.on("game:wager:update", (wagerState: any) => {
+      setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
     });
 
     sock.on("game:score:update", (scores) => {
@@ -5668,7 +5694,9 @@ export default function AdminSandboxPage() {
                         <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
                       </div>
                       <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0">
-                        {t.score}đ
+                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                          <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
+                        ) : null}
                       </span>
                     </button>
                   );
@@ -5687,7 +5715,9 @@ export default function AdminSandboxPage() {
                     {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {currentTeam?.score ?? 0}đ
+                    {currentTeam?.score ?? 0}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                      <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
+                    ) : null}
                   </span>
                 </div>
 
@@ -5789,7 +5819,7 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1`}
+                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamId=${stableTeams[0]?.id || ""}&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
                   allow="autoplay; camera; microphone"
                   onLoad={() => {
                     if (isOfflineSandbox) {
@@ -6285,7 +6315,9 @@ export default function AdminSandboxPage() {
                         )}
                       </button>
                       <span className="font-mono font-black text-cyan-300 text-xs shrink-0 mr-1">
-                        {t.score}đ
+                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                          <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
+                        ) : null}
                       </span>
                       <div className="flex items-center gap-1 shrink-0">
                         <button

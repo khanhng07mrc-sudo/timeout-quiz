@@ -7769,6 +7769,13 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
       const activeAns = answers.find((a) => a.teamId === questState.currentTurnTeamId);
       const isCorrect = Boolean(activeAns?.isCorrect);
       const basePts = q.points || 10;
+      if (activeAns) {
+        await prisma.answer.update({
+          where: { id: activeAns.id },
+          data: { pointsAwarded: isCorrect ? basePts : 0 }
+        }).catch(() => {
+        });
+      }
       if (isCorrect) {
         questState.phase = "PUSH_YOUR_LUCK";
         questState.potPoints = basePts;
@@ -7792,6 +7799,8 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
         roomMysteryQuests.set(room.id, questState);
         io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       }
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${roomCode}`).emit("room:state", refreshedState);
     }
   }
 }
@@ -7819,7 +7828,19 @@ async function buildRoomState(roomId) {
   });
   if (!room) throw new Error("Room not found");
   const config = room.config;
-  const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+  const rawValidPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
+  const isSandboxRoom = room.name?.includes("[Sandbox]") || room.code?.startsWith("sb_") || Boolean(room.config && room.config?.isSandbox);
+  let validPlayers = rawValidPlayers;
+  if (isSandboxRoom) {
+    const hasPrimaryTester = rawValidPlayers.some((p) => p.id === `sb_${room.code}_t0` || p.name === "B\u1EA1n (Tester)");
+    validPlayers = rawValidPlayers.filter((p) => {
+      if (hasPrimaryTester && p.id !== `sb_${room.code}_t0` && (p.name.includes("(Tester)") || p.id.startsWith(`sb_${room.code}_t`))) {
+        return false;
+      }
+      return true;
+    });
+  }
+  validPlayers = validPlayers.filter((p, idx, arr) => arr.findIndex((x) => x.id === p.id) === idx);
   const teams = room.teams.map((t) => {
     const teamPlayers = validPlayers.filter((p) => p.teamId === t.id);
     const ghostStat = roomEliminationGhostStats.get(room.id)?.get(t.id);

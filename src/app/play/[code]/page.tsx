@@ -1422,7 +1422,33 @@ export default function PlayPage() {
 
       {/* Main game area */}
       <div className="flex-1 flex flex-col gap-2 sm:gap-3">
-        {currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
+        {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
+          <div className="w-full animate-fade-in">
+            <MysteryQuestBoard
+              mysteryState={roomState.mysteryQuestState}
+              myTeamId={effectiveTeamId}
+              teams={roomState.teams}
+              onFlipCard={(tileId) => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
+                }
+                socketRef.current?.emit("game:mystery:flip_card", { tileId });
+              }}
+              onCashOut={() => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
+                }
+                socketRef.current?.emit("game:mystery:cash_out");
+              }}
+              onStealBuzz={() => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
+                }
+                socketRef.current?.emit("game:mystery:steal_buzz");
+              }}
+            />
+          </div>
+        ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
           <>
             {/* DICE_RACE: Mini-track on top while answering; Full Board after reveal so team can roll dice */}
             {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (
@@ -1521,35 +1547,6 @@ export default function PlayPage() {
                   myTeamId={effectiveTeamId}
                   isMyTurn={false}
                   canSelect={false}
-                />
-              </div>
-            )}
-
-            {/* MYSTERY_QUEST: Board for players */}
-            {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && (
-              <div className="w-full mt-2">
-                <MysteryQuestBoard
-                  mysteryState={roomState.mysteryQuestState}
-                  myTeamId={effectiveTeamId}
-                  teams={roomState.teams}
-                  onFlipCard={(tileId) => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
-                    }
-                    socketRef.current?.emit("game:mystery:flip_card", { tileId });
-                  }}
-                  onCashOut={() => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
-                    }
-                    socketRef.current?.emit("game:mystery:cash_out");
-                  }}
-                  onStealBuzz={() => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
-                    }
-                    socketRef.current?.emit("game:mystery:steal_buzz");
-                  }}
                 />
               </div>
             )}

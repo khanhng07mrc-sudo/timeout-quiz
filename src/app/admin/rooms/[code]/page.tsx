@@ -22,6 +22,7 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
+import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
@@ -524,6 +525,9 @@ export default function AdminRoomPage() {
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
+    socket.on("game:mystery:update", (mysteryQuestState) => {
+      setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+    });
     socket.on("game:ended", () => {
       if (soundEnabledRef.current) {
         soundManager.playFanfare();
@@ -625,6 +629,8 @@ export default function AdminRoomPage() {
       ? roomState.gridCaroState.currentTurnTeamId
       : (roomState?.mode === "DICE_RACE" && roomState.diceRaceState?.currentTurnTeamId)
       ? roomState.diceRaceState.currentTurnTeamId
+      : (roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.currentTurnTeamId)
+      ? roomState.mysteryQuestState.currentTurnTeamId
       : adminTargetTeamId || currentQuestion.primaryTeamId || buzzedTeam?.teamId || stealBuzzed?.teamId || roomState?.teams[0]?.id;
     
     if (effTeamId) {
@@ -1368,8 +1374,23 @@ export default function AdminRoomPage() {
             </div>
           )}
 
+          {/* MYSTERY_QUEST Mode Admin Panel */}
+          {roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (
+            <div className="space-y-3">
+              <MysteryQuestBoard
+                mysteryState={roomState.mysteryQuestState}
+                isAdmin={true}
+                teams={roomState.teams}
+                onFlipCard={(tileId) => emit("admin:mystery:flip_card", { tileId })}
+                onCashOut={() => emit("admin:mystery:cash_out")}
+                onStealBuzz={() => emit("admin:mystery:steal_buzz")}
+                onAdvanceTurn={() => emit("admin:mystery:advance_turn")}
+              />
+            </div>
+          )}
+
           {/* Question info */}
-          {currentQuestion && (
+          {currentQuestion && !(roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE") && (
             <div className="glass rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground font-semibold">

@@ -165,7 +165,7 @@ export default function GameQuestion({
     (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||
     (roomMode === "BOUNCEBACK" && Boolean(effStealTeam) && isStealTeam && !question.stealAnsweringActive && !revealPayload);
 
-  const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE"].includes(roomMode);
+  const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE", "MYSTERY_QUEST"].includes(roomMode);
 
   const canAnswerThisQuestion = () => {
     if (isSpectator && !(roomMode === "ELIMINATION" && isGhost)) return false;
@@ -208,6 +208,11 @@ export default function GameQuestion({
     // 6. TOURNAMENT:
     if (roomMode === "TOURNAMENT") {
       return isTournamentCompetitor;
+    }
+
+    // 7. MYSTERY_QUEST: Chỉ duy nhất đội đang làm lượt mới được trả lời!
+    if (roomMode === "MYSTERY_QUEST") {
+      return isPrimaryTeam;
     }
 
     return true;

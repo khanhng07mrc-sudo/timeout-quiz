@@ -1258,6 +1258,9 @@ export interface ClientToServerEvents {
   "game:mystery:flip_card": (payload: { tileId: number }) => void;
   "game:mystery:cash_out": () => void;
   "game:mystery:steal_buzz": () => void;
+  "admin:mystery:flip_card": (payload: { tileId: number }) => void;
+  "admin:mystery:cash_out": () => void;
+  "admin:mystery:steal_buzz": (payload?: { targetTeamId?: string }) => void;
   "admin:mystery:advance_turn": () => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;

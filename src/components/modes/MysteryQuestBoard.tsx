@@ -347,8 +347,12 @@ export default function MysteryQuestBoard({
       <div className="relative z-10 mt-2">
         <div
           className={`grid gap-3 sm:gap-4 ${
-            tiles.length > 8
-              ? "grid-cols-2 sm:grid-cols-5 md:grid-cols-5"
+            tiles.length === 9
+              ? "grid-cols-3 sm:grid-cols-3 md:grid-cols-3 max-w-2xl mx-auto"
+              : tiles.length === 16
+              ? "grid-cols-4 sm:grid-cols-4 md:grid-cols-4 max-w-4xl mx-auto"
+              : tiles.length > 8
+              ? "grid-cols-3 sm:grid-cols-5 md:grid-cols-5"
               : "grid-cols-2 sm:grid-cols-4 md:grid-cols-4"
           }`}
         >

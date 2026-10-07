@@ -1843,6 +1843,148 @@ export default function AdminSandboxPage() {
         handleSetBailoutLimit(e.data.limit);
         return;
       }
+      if (e.data?.type === "MYSTERY_FLIP" || e.data?.action === "mystery_flip") {
+        const tileId = Number(e.data?.tileId);
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId });
+          addLog(`✨ Admin lật thẻ #${tileId} trong Sandbox Online`);
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, isBomb, scorePenalty } = handleMysteryFlipCard({
+          state: curMystery,
+          tileId,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (isBomb && scorePenalty > 0) {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
+          );
+        } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: t.score + updatedState.potPoints } : t
+          );
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(
+          isBomb
+            ? `💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`
+            : `💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`
+        );
+        return;
+      }
+      if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:cash_out" as any);
+          addLog("💰 Admin bảo toàn quỹ điểm trong Sandbox Online");
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta } = handleMysteryCashOut({
+          state: curMystery,
+          team: activeTeam,
+        });
+
+        const updatedTeams = roomStateRef.current.teams.map((t) =>
+          t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+        );
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_STEAL_BUZZ" || e.data?.action === "mystery_steal_buzz") {
+        const targetTId = e.data?.targetTeamId || e.data?.teamId;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:steal_buzz" as any, { targetTeamId: targetTId });
+          addLog("🔔 Admin kích hoạt cướp chuông trong Sandbox Online");
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        if (curMystery.phase !== "STEAL_PHASE" || curMystery.stealBuzzedTeamId) return;
+
+        const buzzedTeam = roomStateRef.current.teams.find((t) => t.id === targetTId) || roomStateRef.current.teams[0];
+        if (!buzzedTeam || buzzedTeam.id === curMystery.currentTurnTeamId) return;
+
+        curMystery.stealBuzzedTeamId = buzzedTeam.id;
+        curMystery.stealBuzzedTeamName = buzzedTeam.name;
+        curMystery.phase = "PUSH_YOUR_LUCK";
+        curMystery.currentTurnTeamId = buzzedTeam.id;
+        curMystery.currentTurnTeamName = buzzedTeam.name;
+        curMystery.currentTurnTeamColor = buzzedTeam.color;
+        curMystery.potPoints = 15; // base steal pot points
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: curMystery,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: curMystery });
+        addLog(`🔔 [${buzzedTeam.name}] BẤM CHUÔNG CƯỚP ĐIỂM THÀNH CÔNG! Giành quyền lật thẻ!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_ADVANCE_TURN" || e.data?.action === "mystery_advance_turn") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:advance_turn" as any);
+          addLog("➡️ Admin chuyển lượt tiếp theo trong Sandbox Online");
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const teams = roomStateRef.current.teams;
+        const nextTurnIdx = curMystery.currentTurnIndex + 1;
+        const nextTeam = teams[nextTurnIdx % teams.length];
+
+        const nextStage = generateMysteryStageForTurn({
+          turnIndex: nextTurnIdx,
+          currentTeam: nextTeam,
+          teams,
+          turnsPerTeam: curMystery.turnsPerTeam,
+          prevTheme: curMystery.theme,
+        });
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: nextStage,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextStage });
+        addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
+
+        setTimeout(() => {
+          handleAdminNextRef.current?.();
+        }, 500);
+        return;
+      }
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
       const { action, answer, points, cellId, teamId } = e.data;
       const targetTeamId = teamId || stableTeams[activeTeamIndex]?.id || "t_red";
@@ -2161,111 +2303,6 @@ export default function AdminSandboxPage() {
           });
           return { ...prev, tournamentState: nextTour };
         });
-      } else if (action === "mystery_flip" || e.data?.type === "MYSTERY_FLIP") {
-        const tileId = Number(e.data?.tileId);
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = { ...roomStateRef.current.mysteryQuestState };
-        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
-        if (!activeTeam) return;
-
-        const { updatedState, isBomb, scorePenalty } = handleMysteryFlipCard({
-          state: curMystery,
-          tileId,
-          team: activeTeam,
-          allTeams: roomStateRef.current.teams,
-        });
-
-        let updatedTeams = [...roomStateRef.current.teams];
-        if (isBomb && scorePenalty > 0) {
-          updatedTeams = updatedTeams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
-          );
-        }
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          teams: updatedTeams,
-          mysteryQuestState: updatedState,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        addLog(
-          isBomb
-            ? `💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`
-            : `💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`
-        );
-      } else if (action === "mystery_cash_out" || e.data?.type === "MYSTERY_CASH_OUT") {
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = { ...roomStateRef.current.mysteryQuestState };
-        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
-        if (!activeTeam) return;
-
-        const { updatedState, finalScoreDelta } = handleMysteryCashOut({
-          state: curMystery,
-          team: activeTeam,
-        });
-
-        const updatedTeams = roomStateRef.current.teams.map((t) =>
-          t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
-        );
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          teams: updatedTeams,
-          mysteryQuestState: updatedState,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
-      } else if (action === "mystery_steal_buzz" || e.data?.type === "MYSTERY_STEAL_BUZZ") {
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = { ...roomStateRef.current.mysteryQuestState };
-        if (curMystery.phase !== "STEAL_PHASE" || curMystery.stealBuzzedTeamId) return;
-
-        const buzzedTeam = roomStateRef.current.teams.find((t) => t.id === targetTeamId);
-        if (!buzzedTeam || buzzedTeam.id === curMystery.currentTurnTeamId) return;
-
-        curMystery.stealBuzzedTeamId = buzzedTeam.id;
-        curMystery.stealBuzzedTeamName = buzzedTeam.name;
-        curMystery.phase = "PUSH_YOUR_LUCK";
-        curMystery.currentTurnTeamId = buzzedTeam.id;
-        curMystery.currentTurnTeamName = buzzedTeam.name;
-        curMystery.currentTurnTeamColor = buzzedTeam.color;
-        curMystery.potPoints = 15; // base steal pot points
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          mysteryQuestState: curMystery,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: curMystery });
-        addLog(`🔔 [${buzzedTeam.name}] BẤM CHUÔNG CƯỚP ĐIỂM THÀNH CÔNG! Giành quyền lật thẻ!`);
-      } else if (action === "mystery_advance_turn" || e.data?.type === "MYSTERY_ADVANCE_TURN") {
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = roomStateRef.current.mysteryQuestState;
-        const teams = roomStateRef.current.teams;
-        const nextTurnIdx = curMystery.currentTurnIndex + 1;
-        const nextTeam = teams[nextTurnIdx % teams.length];
-
-        const nextStage = generateMysteryStageForTurn({
-          turnIndex: nextTurnIdx,
-          currentTeam: nextTeam,
-          teams,
-          turnsPerTeam: curMystery.turnsPerTeam,
-          prevTheme: curMystery.theme,
-        });
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          mysteryQuestState: nextStage,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextStage });
-        addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
       }
     };
 
@@ -6159,65 +6196,33 @@ export default function AdminSandboxPage() {
                 )}
 
                 {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && (
-                  <div className="pt-2 border-t border-white/10 flex items-center gap-1.5 flex-wrap">
-                    {roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const cur = roomState.mysteryQuestState!;
-                            const unopened = cur.tiles.filter((t) => !t.isOpened);
-                            if (unopened.length > 0) {
-                              const randomTile = unopened[Math.floor(Math.random() * unopened.length)];
-                              window.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId: randomTile.id }, "*");
-                            }
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-400 text-white text-xs font-black shadow cursor-pointer animate-pulse"
-                        >
-                          ✨ Lật ngẫu nhiên 1 ô
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
-                          }}
-                          className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-black shadow cursor-pointer"
-                        >
-                          💰 Dừng lại & Bảo toàn ({roomState.mysteryQuestState.potPoints}đ)
-                        </button>
-                      </>
-                    )}
-                    {roomState.mysteryQuestState.phase === "STEAL_PHASE" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const otherTeams = roomState.teams.filter((t) => t.id !== roomState.mysteryQuestState?.currentTurnTeamId);
-                          const randomOther = otherTeams[Math.floor(Math.random() * otherTeams.length)] || roomState.teams[0];
-                          window.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", targetTeamId: randomOther.id }, "*");
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-black shadow cursor-pointer animate-pulse"
-                      >
-                        🔔 Giả lập cướp chuông
-                      </button>
-                    )}
-                    {roomState.mysteryQuestState.phase === "TURN_SUMMARY" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
-                        }}
-                        className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-400 text-white text-xs font-black shadow cursor-pointer"
-                      >
-                        ➡️ Chuyển lượt tiếp theo
-                      </button>
-                    )}
+                  <div className="pt-3 border-t border-white/10 space-y-3">
+                    <MysteryQuestBoard
+                      mysteryState={roomState.mysteryQuestState}
+                      isAdmin={true}
+                      teams={roomState.teams}
+                      onFlipCard={(tileId) => {
+                        window.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId }, "*");
+                      }}
+                      onCashOut={() => {
+                        window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
+                      }}
+                      onStealBuzz={() => {
+                        const otherTeams = roomState.teams.filter((t) => t.id !== roomState.mysteryQuestState?.currentTurnTeamId);
+                        const randomOther = otherTeams[0] || roomState.teams[0];
+                        window.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", targetTeamId: randomOther.id }, "*");
+                      }}
+                      onAdvanceTurn={() => {
+                        window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
+                      }}
+                    />
                   </div>
                 )}
               </div>
             </div>
 
             {/* 1b. MC Answer Key & Explanation Cheat Sheet (Mobile Host View) */}
-            {adminQuestionData && currentQuestion && (adminQuestionData.questionId === currentQuestion.question.id) && (
+            {adminQuestionData && currentQuestion && (adminQuestionData.questionId === currentQuestion.question.id) && !(roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.phase !== "QUESTION_ACTIVE") && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2 animate-slide-up shadow-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 font-bold text-amber-300">

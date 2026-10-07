@@ -165,7 +165,8 @@ export function generateMysteryStageForTurn({
   const themeMeta = MYSTERY_THEMES[theme];
 
   const miniGameType = MINI_GAME_TYPES[Math.floor(Math.random() * MINI_GAME_TYPES.length)];
-  const totalTilesCount = miniGameType === "TAROT_CARDS" ? 10 : 8;
+  const isLongGame = turnsPerTeam >= 3 || (teams.length * turnsPerTeam) >= 12;
+  const totalTilesCount = isLongGame ? 16 : 9;
 
   const currentRound = Math.floor(turnIndex / teams.length) + 1;
 
@@ -225,7 +226,7 @@ export function generateMysteryStageForTurn({
         icon,
         isOpened: false,
         type: "BOMB_DOOM",
-        storyTitle: "💀 BOM HỦY DIỆT CHIẾC NÓN KỲ DIỆU!",
+        storyTitle: "💀 BOM HỦY DIỆT Ô SỐ PHẬN!",
         storyDescription: "Đánh thức bom nguyên tử cổ xưa: Mất toàn bộ điểm câu này VÀ CHIA ĐÔI (/2) tổng điểm của cả trận!",
         effectType: "DIVIDE_HALF",
         deltaPoints: 0,

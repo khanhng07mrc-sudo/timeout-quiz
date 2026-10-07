@@ -1197,6 +1197,10 @@ export default function AdminSandboxPage() {
     const curQ = currentQuestionRef.current;
     const teams = roomStateRef.current?.teams || [];
 
+    // Chế độ trả lời qua MC: MC chọn đáp án và công bố đáp án hoàn toàn THỦ CÔNG, không tự động kết thúc!
+    const isMcMode = roomStateRef.current?.config?.answerMethod === "MC";
+    if (isMcMode) return;
+
     let neededTeamIds: string[] = [];
     if (selectedMode === "BOUNCEBACK") {
       if (curQ.stealBuzzedTeamId) {
@@ -1209,6 +1213,9 @@ export default function AdminSandboxPage() {
       if (curTurnId) neededTeamIds = [curTurnId];
     } else if (selectedMode === "DICE_RACE") {
       const curTurnId = roomStateRef.current?.diceRaceState?.currentTurnTeamId;
+      if (curTurnId) neededTeamIds = [curTurnId];
+    } else if (selectedMode === "MYSTERY_QUEST") {
+      const curTurnId = roomStateRef.current?.mysteryQuestState?.currentTurnTeamId;
       if (curTurnId) neededTeamIds = [curTurnId];
     } else if (selectedMode === "TOURNAMENT") {
       if (curQ.tournamentTeam1Id && curQ.tournamentTeam2Id) {
@@ -1237,10 +1244,10 @@ export default function AdminSandboxPage() {
       syncToIframes({
         timer: { remaining: 0, total: curQ.timeLimit || 30, endsAt: 0 },
       });
-      addLog(`⚡ Tất cả người chơi (${neededTeamIds.length}/${neededTeamIds.length}) đã chốt/nộp bài! Kết thúc câu hỏi sớm.`);
+      addLog(`⚡ Tất cả người chơi (${neededTeamIds.length}/${neededTeamIds.length}) đã chốt/nộp bài! Đang chuẩn bị công bố đáp án sau 2.5s...`);
       setTimeout(() => {
         handleAdminReveal();
-      }, 500);
+      }, 2500);
     }
   };
 
@@ -1611,7 +1618,7 @@ export default function AdminSandboxPage() {
         points: awarded,
       });
       offlineFinalizedActorsRef.current.add(teamId);
-      checkOfflineEarlyCompletion();
+      // MC nộp hộ là thủ công, không kích hoạt tự động công bố đáp án sớm
 
       addLog(`🎙️ MC chọn đáp án [${answerId}] cho Đội [${teamName}] (${isCorrect ? "Đúng" : "Sai"})`);
       return;
@@ -1624,7 +1631,7 @@ export default function AdminSandboxPage() {
       code,
     });
     addLog(`🎙️ MC nộp đáp án [${answerId}] cho Đội [${teamName}]`);
-  }, [isOfflineSandbox, code, addLog, checkOfflineEarlyCompletion]);
+  }, [isOfflineSandbox, code, addLog]);
 
   const handleToggleCards = useCallback((locked: boolean) => {
     setCardsLocked(locked);
@@ -3486,11 +3493,10 @@ export default function AdminSandboxPage() {
           const isCorrect = Boolean(activeAns?.isCorrect);
 
           if (isCorrect) {
-            const basePoints = currentQuestion.question.points || 20;
             nextMystery = {
               ...curMystery,
               phase: "PUSH_YOUR_LUCK",
-              potPoints: basePoints,
+              potPoints: 0,
               potMultiplier: 1,
             };
           } else {

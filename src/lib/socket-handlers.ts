@@ -1934,7 +1934,12 @@ export function registerSocketHandlers(io: IO) {
       const room = await getAdminRoom(socket, code);
       if (!room) return;
 
-      const qKey = `${room.id}:${questionId}`;
+      const activeQ = roomActiveQuestions.get(room.id);
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const effectiveQuestionId = questionId || activeQ?.question.id || (rawQuestions[room.currentQuestion] as any)?.id;
+      if (!effectiveQuestionId) return;
+
+      const qKey = `${room.id}:${effectiveQuestionId}`;
 
       let effTeamId = teamId;
       let effPlayerId = playerId;
@@ -1957,17 +1962,17 @@ export function registerSocketHandlers(io: IO) {
       } else if (room.mode === "GRID_CARO") {
         const gridState = roomGridCaros.get(room.id);
         if (gridState?.currentTurnTeamId) {
-          effTeamId = gridState.currentTurnTeamId;
+          effTeamId = effTeamId || gridState.currentTurnTeamId;
         }
       } else if (room.mode === "DICE_RACE") {
         const diceState = roomDiceRaces.get(room.id);
         if (diceState?.currentTurnTeamId) {
-          effTeamId = diceState.currentTurnTeamId;
+          effTeamId = effTeamId || diceState.currentTurnTeamId;
         }
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
         if (questState?.currentTurnTeamId) {
-          effTeamId = questState.currentTurnTeamId;
+          effTeamId = effTeamId || questState.currentTurnTeamId;
         }
       }
 
@@ -1978,7 +1983,7 @@ export function registerSocketHandlers(io: IO) {
       await processAnswerSubmission({
         io,
         roomId: room.id,
-        questionId,
+        questionId: effectiveQuestionId,
         playerId: effPlayerId,
         teamId: effTeamId,
         answer,
@@ -5260,11 +5265,20 @@ export function registerSocketHandlers(io: IO) {
 
       // Nếu tất cả người chơi/đội hợp lệ đã chốt đáp án VÀ không còn người chơi thật nào chưa chốt: Kết thúc vòng tính giờ sớm ngay!
       if (!hasPendingHumans && totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+        const isMcMode = (room.config as any)?.answerMethod === "MC";
+        if (isMcMode) {
+          // Trong chế độ Trả lời qua MC: MC công bố đáp án hoàn toàn THỦ CÔNG!
+          return;
+        }
+
+        stopQuestionTimer(room.id);
+        const activeQ = roomActiveQuestions.get(room.id);
+        io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+        io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
+
         if (room.mode === "BOUNCEBACK") {
-          stopQuestionTimer(room.id);
           const stealInfo = roomStealBuzzed.get(qKey);
           const primary = roomPrimaryTeams.get(qKey);
-          const activeQ = roomActiveQuestions.get(room.id);
           const question = await prisma.question.findUnique({ where: { id: questionId } });
 
           io.to(`room:${room.code}`).emit("game:early_completed", {
@@ -5272,8 +5286,6 @@ export function registerSocketHandlers(io: IO) {
             reason: "ALL_FINALIZED",
             message: "Đội thi đã chốt đáp án sớm!",
           });
-          io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
-          io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
 
           if (stealInfo && (actorId === stealInfo.teamId || actorId === stealInfo.playerId || player.id === stealInfo.playerId || effectiveTeamId === stealInfo.teamId)) {
             const existingAns = await prisma.answer.findFirst({
@@ -5348,9 +5360,11 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:early_completed", {
           questionId,
           reason: "ALL_FINALIZED",
-          message: "Tất cả người chơi đã chốt đáp án!",
+          message: "Tất cả các đội đã chốt đáp án! Đang kiểm tra kết quả...",
         });
-        await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+        setTimeout(async () => {
+          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+        }, 2500);
       }
     });
 
@@ -5479,6 +5493,10 @@ async function getActiveParticipantsForQuestion(room: any, questionId: string): 
   if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
     return diceState?.currentTurnTeamId ? [diceState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "MYSTERY_QUEST") {
+    const questState = roomMysteryQuests.get(room.id);
+    return questState?.currentTurnTeamId ? [questState.currentTurnTeamId] : [];
   }
   if (room.mode === "TOURNAMENT") {
     const tournament = roomTournaments.get(room.id);
@@ -6297,16 +6315,28 @@ async function processAnswerSubmission({
 
   // 5. Smart Auto-Complete: Kiểm tra nếu tất cả thí sinh/đội hợp lệ đã nộp bài đầy đủ
   if (!isAdminOverride) {
-    const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
-    const subSet = roomSubmittedActors.get(qKey) || new Set<string>();
-    const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
-    if (!hasPendingHumans && activeParticipants.length > 0 && activeParticipants.every((id) => subSet.has(id))) {
-      io.to(`room:${room.code}`).emit("game:early_completed", {
-        questionId,
-        reason: "ALL_SUBMITTED",
-        message: "Tất cả các đội đã hoàn thành nộp bài!",
-      });
-      await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+    const isMcMode = (room.config as any)?.answerMethod === "MC";
+    const subBehavior = (room.config as any)?.submissionBehavior || "ALLOW_CHANGE";
+
+    // Khi chọn chế độ MC trả lời: MC chọn đáp án và công bố đáp án hoàn toàn thủ công, không tự động kết thúc!
+    if (!isMcMode && subBehavior === "SINGLE_SUBMIT") {
+      const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+      const subSet = roomSubmittedActors.get(qKey) || new Set<string>();
+      const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
+      if (!hasPendingHumans && activeParticipants.length > 0 && activeParticipants.every((id) => subSet.has(id))) {
+        stopQuestionTimer(room.id);
+        const activeQ = roomActiveQuestions.get(room.id);
+        io.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+        io.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
+        io.to(`room:${room.code}`).emit("game:early_completed", {
+          questionId,
+          reason: "ALL_SUBMITTED",
+          message: "Tất cả các đội đã hoàn thành chọn đáp án! Đang chuẩn bị công bố đáp án...",
+        });
+        setTimeout(async () => {
+          await finalizeQuestionOnTimeUp(io, room.id, room.code, questionId);
+        }, 2500);
+      }
     }
   }
 }
@@ -7715,7 +7745,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
 
       if (isCorrect) {
         questState.phase = "PUSH_YOUR_LUCK";
-        questState.potPoints = basePts;
+        questState.potPoints = 0;
         questState.potMultiplier = 1;
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
@@ -8342,6 +8372,13 @@ async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   if (!room) return;
   const qKey = `${roomId}:${questionId}`;
+
+  const isMcMode = (room.config as any)?.answerMethod === "MC";
+  if (isMcMode) {
+    // Trong chế độ MC/Admin proxy: MC chọn đáp án và công bố đáp án hoàn toàn THỦ CÔNG!
+    // Hết giờ thì timer dừng và thông báo hết giờ, nhưng tuyệt đối không tự động reveal!
+    return;
+  }
 
   if (room.mode === "BOUNCEBACK") {
     const stealInfo = roomStealBuzzed.get(qKey);

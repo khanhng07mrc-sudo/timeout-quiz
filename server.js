@@ -3737,7 +3737,11 @@ function registerSocketHandlers(io2) {
     socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer, code }) => {
       const room = await getAdminRoom(socket, code);
       if (!room) return;
-      const qKey = `${room.id}:${questionId}`;
+      const activeQ = roomActiveQuestions.get(room.id);
+      const rawQuestions = room.quizBank?.questions ?? [];
+      const effectiveQuestionId = questionId || activeQ?.question.id || rawQuestions[room.currentQuestion]?.id;
+      if (!effectiveQuestionId) return;
+      const qKey = `${room.id}:${effectiveQuestionId}`;
       let effTeamId = teamId;
       let effPlayerId = playerId;
       if (room.mode === "BOUNCEBACK") {
@@ -3758,17 +3762,17 @@ function registerSocketHandlers(io2) {
       } else if (room.mode === "GRID_CARO") {
         const gridState = roomGridCaros.get(room.id);
         if (gridState?.currentTurnTeamId) {
-          effTeamId = gridState.currentTurnTeamId;
+          effTeamId = effTeamId || gridState.currentTurnTeamId;
         }
       } else if (room.mode === "DICE_RACE") {
         const diceState = roomDiceRaces.get(room.id);
         if (diceState?.currentTurnTeamId) {
-          effTeamId = diceState.currentTurnTeamId;
+          effTeamId = effTeamId || diceState.currentTurnTeamId;
         }
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
         if (questState?.currentTurnTeamId) {
-          effTeamId = questState.currentTurnTeamId;
+          effTeamId = effTeamId || questState.currentTurnTeamId;
         }
       }
       if ((room.name?.startsWith("[Sandbox]") || room.config?.isSandbox) && effTeamId) {
@@ -3777,7 +3781,7 @@ function registerSocketHandlers(io2) {
       await processAnswerSubmission({
         io: io2,
         roomId: room.id,
-        questionId,
+        questionId: effectiveQuestionId,
         playerId: effPlayerId,
         teamId: effTeamId,
         answer,
@@ -6508,19 +6512,23 @@ function registerSocketHandlers(io2) {
       });
       const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, finSet);
       if (!hasPendingHumans && totalParticipantsCount > 0 && finalizedCount >= totalParticipantsCount) {
+        const isMcMode = room.config?.answerMethod === "MC";
+        if (isMcMode) {
+          return;
+        }
+        stopQuestionTimer(room.id);
+        const activeQ = roomActiveQuestions.get(room.id);
+        io2.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+        io2.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
         if (room.mode === "BOUNCEBACK") {
-          stopQuestionTimer(room.id);
           const stealInfo = roomStealBuzzed.get(qKey);
           const primary = roomPrimaryTeams.get(qKey);
-          const activeQ = roomActiveQuestions.get(room.id);
           const question = await prisma.question.findUnique({ where: { id: questionId } });
           io2.to(`room:${room.code}`).emit("game:early_completed", {
             questionId,
             reason: "ALL_FINALIZED",
             message: "\u0110\u1ED9i thi \u0111\xE3 ch\u1ED1t \u0111\xE1p \xE1n s\u1EDBm!"
           });
-          io2.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
-          io2.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
           if (stealInfo && (actorId === stealInfo.teamId || actorId === stealInfo.playerId || player.id === stealInfo.playerId || effectiveTeamId === stealInfo.teamId)) {
             const existingAns = await prisma.answer.findFirst({
               where: {
@@ -6593,9 +6601,11 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:early_completed", {
           questionId,
           reason: "ALL_FINALIZED",
-          message: "T\u1EA5t c\u1EA3 ng\u01B0\u1EDDi ch\u01A1i \u0111\xE3 ch\u1ED1t \u0111\xE1p \xE1n!"
+          message: "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\xE3 ch\u1ED1t \u0111\xE1p \xE1n! \u0110ang ki\u1EC3m tra k\u1EBFt qu\u1EA3..."
         });
-        await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+        setTimeout(async () => {
+          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+        }, 2500);
       }
     });
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
@@ -6705,6 +6715,10 @@ async function getActiveParticipantsForQuestion(room, questionId) {
   if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
     return diceState?.currentTurnTeamId ? [diceState.currentTurnTeamId] : [];
+  }
+  if (room.mode === "MYSTERY_QUEST") {
+    const questState = roomMysteryQuests.get(room.id);
+    return questState?.currentTurnTeamId ? [questState.currentTurnTeamId] : [];
   }
   if (room.mode === "TOURNAMENT") {
     const tournament = roomTournaments.get(room.id);
@@ -7334,16 +7348,26 @@ async function processAnswerSubmission({
     subSet.add(actorKey);
   }
   if (!isAdminOverride) {
-    const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
-    const subSet = roomSubmittedActors.get(qKey) || /* @__PURE__ */ new Set();
-    const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
-    if (!hasPendingHumans && activeParticipants.length > 0 && activeParticipants.every((id) => subSet.has(id))) {
-      io2.to(`room:${room.code}`).emit("game:early_completed", {
-        questionId,
-        reason: "ALL_SUBMITTED",
-        message: "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\xE3 ho\xE0n th\xE0nh n\u1ED9p b\xE0i!"
-      });
-      await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+    const isMcMode = room.config?.answerMethod === "MC";
+    const subBehavior = room.config?.submissionBehavior || "ALLOW_CHANGE";
+    if (!isMcMode && subBehavior === "SINGLE_SUBMIT") {
+      const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
+      const subSet = roomSubmittedActors.get(qKey) || /* @__PURE__ */ new Set();
+      const hasPendingHumans = await hasUnfinalizedHumanParticipants(room, questionId, subSet);
+      if (!hasPendingHumans && activeParticipants.length > 0 && activeParticipants.every((id) => subSet.has(id))) {
+        stopQuestionTimer(room.id);
+        const activeQ2 = roomActiveQuestions.get(room.id);
+        io2.to(`room:${room.code}`).emit("game:timer", { remaining: 0, total: activeQ2?.timeLimit || 30, endsAt: Date.now(), serverTime: Date.now() });
+        io2.to(`room:${room.code}`).emit("game:timer:expired", { questionId });
+        io2.to(`room:${room.code}`).emit("game:early_completed", {
+          questionId,
+          reason: "ALL_SUBMITTED",
+          message: "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\xE3 ho\xE0n th\xE0nh ch\u1ECDn \u0111\xE1p \xE1n! \u0110ang chu\u1EA9n b\u1ECB c\xF4ng b\u1ED1 \u0111\xE1p \xE1n..."
+        });
+        setTimeout(async () => {
+          await finalizeQuestionOnTimeUp(io2, room.id, room.code, questionId);
+        }, 2500);
+      }
     }
   }
 }
@@ -8468,7 +8492,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
       }
       if (isCorrect) {
         questState.phase = "PUSH_YOUR_LUCK";
-        questState.potPoints = basePts;
+        questState.potPoints = 0;
         questState.potMultiplier = 1;
         roomMysteryQuests.set(room.id, questState);
         io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
@@ -8970,6 +8994,10 @@ async function finalizeQuestionOnTimeUp(io2, roomId, roomCode, questionId) {
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   if (!room) return;
   const qKey = `${roomId}:${questionId}`;
+  const isMcMode = room.config?.answerMethod === "MC";
+  if (isMcMode) {
+    return;
+  }
   if (room.mode === "BOUNCEBACK") {
     const stealInfo = roomStealBuzzed.get(qKey);
     const primary = roomPrimaryTeams.get(qKey);

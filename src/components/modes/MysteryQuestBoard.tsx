@@ -34,8 +34,7 @@ export default function MysteryQuestBoard({
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
-  const [autoAdvanceRemaining, setAutoAdvanceRemaining] = useState<number>(3);
-  const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
 
   if (!mysteryState) {
     return (
@@ -86,35 +85,8 @@ export default function MysteryQuestBoard({
   const canInteract = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK");
   const canCashOut = Boolean(canInteract && (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && potPoints > 0);
 
-  // Auto-advance countdown when phase === "TURN_SUMMARY"
-  useEffect(() => {
-    if (phase === "TURN_SUMMARY") {
-      setAutoAdvanceRemaining(3);
-      if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
+  // Việc chuyển lượt / chuyển câu hỏi diễn ra thủ công bởi Admin/MC, không tự động
 
-      autoAdvanceTimerRef.current = setInterval(() => {
-        setAutoAdvanceRemaining((prev) => {
-          if (prev <= 1) {
-            if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
-            if (isAdmin || isSandbox) {
-              onAdvanceTurn?.();
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (autoAdvanceTimerRef.current) {
-        clearInterval(autoAdvanceTimerRef.current);
-        autoAdvanceTimerRef.current = null;
-      }
-    }
-
-    return () => {
-      if (autoAdvanceTimerRef.current) clearInterval(autoAdvanceTimerRef.current);
-    };
-  }, [phase, isAdmin, isSandbox, onAdvanceTurn]);
 
   const handleTileClick = (tile: MysteryTile) => {
     if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id)) return;
@@ -492,19 +464,22 @@ export default function MysteryQuestBoard({
               </div>
             )}
 
-            {/* Countdown Auto-Advance Bar & Host Skip Button */}
-            <div className="p-3 rounded-2xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-xs text-slate-300 flex items-center gap-1.5 font-bold">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                Tự động chuyển câu hỏi tiếp theo sau:{" "}
-                <strong className="text-cyan-300 text-sm font-mono">{autoAdvanceRemaining}s</strong>
+            {/* Host Advance Bar & Status */}
+            <div className="p-3.5 rounded-2xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-slate-300 flex items-center gap-2 font-bold">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
+                {isAdmin || isSandbox ? (
+                  <span>Lượt thi đã kết thúc. Vui lòng bấm nút bên cạnh để chuyển sang lượt/câu hỏi tiếp theo.</span>
+                ) : (
+                  <span>Đang chờ Admin / Quản trò chuyển sang lượt hoặc câu hỏi tiếp theo...</span>
+                )}
               </span>
 
               {(isAdmin || isSandbox) && (
                 <button
                   type="button"
                   onClick={onAdvanceTurn}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
                 >
                   CHUYỂN SANG LƯỢT TIẾP THEO ➔
                 </button>

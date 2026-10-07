@@ -32,6 +32,8 @@ export default function MysteryQuestBoard({
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
+  const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
+  const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [autoAdvanceRemaining, setAutoAdvanceRemaining] = useState<number>(3);
   const autoAdvanceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -69,6 +71,11 @@ export default function MysteryQuestBoard({
     tarotState,
   } = mysteryState;
 
+  // Sync optimistic set with actual opened tiles from server
+  useEffect(() => {
+    setOptimisticOpenedIds(new Set(tiles.filter((t) => t.isOpened).map((t) => t.id)));
+  }, [tiles]);
+
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
     emoji: "🗝️",
@@ -77,7 +84,7 @@ export default function MysteryQuestBoard({
 
   const isMyTurn = Boolean(myTeamId && myTeamId === currentTurnTeamId);
   const canInteract = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK");
-  const canCashOut = Boolean(canInteract && miniGameType === "PUSH_YOUR_LUCK" && potPoints > 0);
+  const canCashOut = Boolean(canInteract && (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && potPoints > 0);
 
   // Auto-advance countdown when phase === "TURN_SUMMARY"
   useEffect(() => {
@@ -110,11 +117,18 @@ export default function MysteryQuestBoard({
   }, [phase, isAdmin, isSandbox, onAdvanceTurn]);
 
   const handleTileClick = (tile: MysteryTile) => {
-    if (!canInteract || tile.isOpened) return;
+    if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id)) return;
     if (memoryPairsState?.isMismatchResolving) return;
 
+    // Instant optimistic visual feedback (<16ms)
+    setOptimisticOpenedIds((prev) => new Set(prev).add(tile.id));
     setFlippingTileId(tile.id);
+    if (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") {
+      setIsDrawingAnimation(true);
+      setTimeout(() => setIsDrawingAnimation(false), 450);
+    }
     setTimeout(() => setFlippingTileId(null), 500);
+
     onFlipCard?.(tile.id);
   };
 
@@ -355,13 +369,37 @@ export default function MysteryQuestBoard({
                 </p>
               </div>
             ) : turnFinishedReason === "BOMB_HIT" && bombExploded ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-red-950/90 to-black/90 border-2 border-red-500 shadow-2xl space-y-2">
+              <div
+                className={`p-6 rounded-3xl bg-gradient-to-b border-2 shadow-2xl space-y-2 ${
+                  bombExploded.type === "GIFT"
+                    ? "from-amber-950/95 via-yellow-950/90 to-black/95 border-amber-400"
+                    : "from-red-950/90 to-black/90 border-red-500"
+                }`}
+              >
                 <div className="text-5xl animate-bounce">
-                  {bombExploded.type === "DOOM" ? "💀" : bombExploded.type === "MAJOR" ? "💥" : "💣"}
+                  {bombExploded.type === "GIFT"
+                    ? "🎁"
+                    : bombExploded.type === "DOOM"
+                    ? "💀"
+                    : bombExploded.type === "MAJOR"
+                    ? "💥"
+                    : "💣"}
                 </div>
-                <h3 className="text-2xl font-black text-red-400">{bombExploded.title}</h3>
+                <h3
+                  className={`text-2xl font-black ${
+                    bombExploded.type === "GIFT" ? "text-amber-300" : "text-red-400"
+                  }`}
+                >
+                  {bombExploded.title}
+                </h3>
                 <p className="text-xs text-white/80 max-w-lg mx-auto">{bombExploded.description}</p>
-                <div className="p-2.5 rounded-xl bg-red-900/40 border border-red-500/50 text-red-200 font-bold text-xs">
+                <div
+                  className={`p-2.5 rounded-xl border font-bold text-xs ${
+                    bombExploded.type === "GIFT"
+                      ? "bg-amber-900/40 border-amber-400/50 text-amber-200"
+                      : "bg-red-900/40 border-red-500/50 text-red-200"
+                  }`}
+                >
                   ⚠️ Hậu quả: {bombExploded.penaltyText}
                 </div>
               </div>
@@ -454,7 +492,8 @@ export default function MysteryQuestBoard({
               const isChosen = oneShotState?.chosenTileId === tile.id;
               const isBomb = tile.type !== "REWARD";
 
-              if (!tile.isOpened) {
+              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+              if (!isCardOpened) {
                 return (
                   <button
                     key={tile.id}
@@ -553,7 +592,8 @@ export default function MysteryQuestBoard({
               const isChosen = tarotState?.chosenCardId === tile.id;
               const isBomb = tile.type !== "REWARD";
 
-              if (!tile.isOpened) {
+              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+              if (!isCardOpened) {
                 return (
                   <button
                     key={tile.id}
@@ -651,7 +691,8 @@ export default function MysteryQuestBoard({
               const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
               const isBomb = tile.type !== "REWARD";
 
-              if (!tile.isOpened) {
+              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+              if (!isCardOpened) {
                 return (
                   <button
                     key={tile.id}
@@ -733,114 +774,247 @@ export default function MysteryQuestBoard({
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
-            4. VARIANT: PUSH_YOUR_LUCK (Classic 3x3 Grid, 1 Single Layer)
+            4. VARIANT: PUSH_YOUR_LUCK (Chồng Bài Xếp Lớp Vô Hạn Né Bom)
         ════════════════════════════════════════════════════════════════════ */}
-        {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && (
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-xl mx-auto py-2">
-            {tiles.map((tile) => {
-              const isBomb = tile.type !== "REWARD";
+        {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && (() => {
+          const unopenedTile = tiles.find((t) => !t.isOpened && !optimisticOpenedIds.has(t.id));
+          const openedTiles = tiles.filter((t) => t.isOpened || optimisticOpenedIds.has(t.id));
+          const latestCard = lastFlippedTile || (openedTiles.length > 0 ? openedTiles[openedTiles.length - 1] : undefined);
+          const nextCardNum = unopenedTile?.id ?? (cardsFlippedCount + 1);
 
-              if (!tile.isOpened) {
-                return (
-                  <button
-                    key={tile.id}
-                    type="button"
-                    onClick={() => handleTileClick(tile)}
-                    disabled={!canInteract}
-                    className={`relative aspect-[3/4] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
-                      canInteract
-                        ? "bg-gradient-to-b from-white/15 to-white/5 border-white/20 hover:border-amber-400 hover:scale-105 shadow-xl group active:scale-95"
-                        : "bg-black/40 border-white/10 opacity-75 cursor-default"
-                    }`}
+          return (
+            <div className="flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto py-2">
+              {/* ── 2 Main Card Areas: Deck & Latest Drawn Card ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 items-center justify-center w-full max-w-xl">
+                {/* ── LEFT: CHỒNG BÀI RÚT (STACKED DECK) ── */}
+                <div className="flex flex-col items-center">
+                  <div className="text-xs font-black uppercase tracking-wider text-amber-300 mb-2.5 flex items-center gap-1.5">
+                    <span>📚</span> CHỒNG BÀI RÚT (VÔ HẠN)
+                  </div>
+
+                  {/* 3D Stack container */}
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={() => {
+                      if (unopenedTile) {
+                        handleTileClick(unopenedTile);
+                      } else {
+                        handleTileClick({
+                          id: nextCardNum,
+                          label: `Lá #${nextCardNum}`,
+                          icon: "🃏",
+                          isOpened: false,
+                          type: "REWARD",
+                          storyTitle: "Rút bài bí ẩn",
+                          storyDescription: "",
+                          effectType: "BONUS_POINTS",
+                          deltaPoints: 20,
+                        });
+                      }
+                    }}
                   >
-                    <div className="w-full flex items-center justify-between">
-                      <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-[10px] font-black text-white flex items-center justify-center">
-                        #{tile.id}
-                      </span>
-                      {canInteract && (
-                        <span className="text-[9px] font-bold text-amber-300 opacity-0 group-hover:opacity-100 transition-opacity">
-                          LẬT ✨
+                    {/* Depth shadow layer 3 */}
+                    <div className="absolute inset-0 translate-x-3.5 translate-y-3.5 rounded-2xl bg-indigo-950/70 border border-white/10 shadow-lg pointer-events-none" />
+                    {/* Depth shadow layer 2 */}
+                    <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-2xl bg-purple-950/80 border border-white/15 shadow-xl pointer-events-none" />
+
+                    {/* Top card of the stack */}
+                    <div
+                      className={`relative w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 flex flex-col items-center justify-between border-2 transition-all duration-300 shadow-2xl ${
+                        canInteract
+                          ? "bg-gradient-to-b from-indigo-900 via-purple-950 to-slate-950 border-amber-400/80 hover:border-yellow-300 hover:-translate-y-2 hover:shadow-amber-500/40 active:scale-95 group-hover:scale-102"
+                          : "bg-black/60 border-white/10 opacity-70 cursor-default"
+                      } ${isDrawingAnimation ? "-translate-y-6 rotate-3 scale-105 ring-4 ring-amber-300" : ""}`}
+                    >
+                      <div className="w-full flex items-center justify-between text-xs font-mono font-bold text-amber-300">
+                        <span>#{nextCardNum}</span>
+                        <span className="text-[10px] uppercase font-bold text-white/70 px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
+                          Chồng bài
                         </span>
-                      )}
+                      </div>
+
+                      <div className="text-5xl sm:text-6xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
+                        🃏
+                      </div>
+
+                      <div className="w-full text-center">
+                        <span className="text-xs sm:text-sm font-black text-white block">
+                          Lá Bài #{nextCardNum}
+                        </span>
+                        {canInteract && (
+                          <span className="text-[10px] font-extrabold text-amber-300 uppercase tracking-widest mt-1 block animate-bounce">
+                            CLICK ĐỂ RÚT ✨
+                          </span>
+                        )}
+                      </div>
                     </div>
-
-                    <div className="text-3xl sm:text-4xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
-                      🚪
-                    </div>
-
-                    <div className="w-full text-center">
-                      <span className="text-xs font-black text-white/90 block">
-                        {tile.label}
-                      </span>
-                      <span className="text-[9px] uppercase tracking-wider text-white/50 block">
-                        Ẩn số
-                      </span>
-                    </div>
-                  </button>
-                );
-              }
-
-              // Revealed Tile
-              return (
-                <div
-                  key={tile.id}
-                  className={`relative aspect-[3/4] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
-                    isBomb
-                      ? tile.type === "BOMB_DOOM"
-                        ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200"
-                        : tile.type === "BOMB_MAJOR"
-                        ? "bg-gradient-to-b from-red-950 via-amber-950 to-black border-red-500 text-red-200"
-                        : "bg-gradient-to-b from-red-950 to-black border-red-400 text-red-200"
-                      : "bg-gradient-to-b from-amber-950/80 via-emerald-950/60 to-black border-amber-400 text-amber-200"
-                  }`}
-                >
-                  <div className="w-full flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold opacity-60">#{tile.id}</span>
-                    <span
-                      className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
-                        isBomb ? "bg-red-500/30 text-red-300" : "bg-emerald-500/30 text-emerald-300"
-                      }`}
-                    >
-                      {isBomb ? "BOM" : "THƯỞNG"}
-                    </span>
-                  </div>
-
-                  <div className="text-3xl my-auto text-center drop-shadow-md">
-                    {tile.type === "BOMB_MINOR" && "💣"}
-                    {tile.type === "BOMB_MAJOR" && "💥"}
-                    {tile.type === "BOMB_DOOM" && "💀"}
-                    {tile.type === "REWARD" && (tile.effectType === "MULTIPLY_X2" ? "⚡" : "💎")}
-                  </div>
-
-                  <div className="w-full text-center">
-                    <p className="text-[10px] font-black text-white leading-tight truncate">
-                      {tile.storyTitle}
-                    </p>
-                    <p
-                      className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${
-                        isBomb
-                          ? "text-red-400"
-                          : tile.effectType === "MULTIPLY_X2"
-                          ? "text-purple-300"
-                          : "text-amber-300"
-                      }`}
-                    >
-                      {isBomb
-                        ? tile.type === "BOMB_MAJOR"
-                          ? "-20đ Tổng"
-                          : tile.type === "BOMB_DOOM"
-                          ? "÷2 Tổng Điểm"
-                          : "Mất Quỹ"
-                        : tile.effectType === "MULTIPLY_X2"
-                        ? "X2 HŨ"
-                        : `+${tile.deltaPoints}đ`}
-                    </p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+
+                {/* ── RIGHT: LÁ BÀI VỪA RÚT (DRAWN CARD) ── */}
+                <div className="flex flex-col items-center">
+                  <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2.5 flex items-center gap-1.5">
+                    <span>✨</span> LÁ BÀI VỪA RÚT
+                  </div>
+
+                  {latestCard ? (
+                    <div
+                      className={`w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
+                        latestCard.type === "BOMB_DOOM"
+                          ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200 ring-4 ring-purple-500/40"
+                          : latestCard.type === "BOMB_GIFT"
+                          ? "bg-gradient-to-b from-amber-950 via-yellow-950 to-black border-amber-400 text-amber-200 ring-4 ring-amber-400/40"
+                          : latestCard.type === "BOMB_MINOR"
+                          ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200 ring-4 ring-red-500/40"
+                          : "bg-gradient-to-b from-amber-950/90 via-emerald-950/80 to-black border-emerald-400 text-emerald-200 ring-4 ring-emerald-400/30"
+                      }`}
+                    >
+                      <div className="w-full flex items-center justify-between text-xs">
+                        <span className="font-mono font-bold opacity-75">#{latestCard.id}</span>
+                        <span
+                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            latestCard.type === "BOMB_DOOM"
+                              ? "bg-purple-500/30 text-purple-300 border border-purple-400/50"
+                              : latestCard.type === "BOMB_GIFT"
+                              ? "bg-amber-500/30 text-amber-300 border border-amber-400/50"
+                              : latestCard.type === "BOMB_MINOR"
+                              ? "bg-red-500/30 text-red-300 border border-red-400/50"
+                              : "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
+                          }`}
+                        >
+                          {latestCard.type === "BOMB_DOOM"
+                            ? "CHÉM ĐÔI"
+                            : latestCard.type === "BOMB_GIFT"
+                            ? "TẶNG ĐIỂM"
+                            : latestCard.type === "BOMB_MINOR"
+                            ? "TIỂU BOM"
+                            : "THƯỞNG"}
+                        </span>
+                      </div>
+
+                      <div className="text-5xl sm:text-6xl my-auto text-center drop-shadow-xl">
+                        {latestCard.icon}
+                      </div>
+
+                      <div className="w-full text-center">
+                        <p className="text-xs sm:text-sm font-black text-white leading-tight truncate">
+                          {latestCard.storyTitle}
+                        </p>
+                        <p
+                          className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
+                            latestCard.type === "BOMB_DOOM"
+                              ? "text-purple-300"
+                              : latestCard.type === "BOMB_GIFT"
+                              ? "text-amber-300"
+                              : latestCard.type === "BOMB_MINOR"
+                              ? "text-red-400"
+                              : latestCard.effectType === "MULTIPLY_X2"
+                              ? "text-purple-300"
+                              : "text-amber-300"
+                          }`}
+                        >
+                          {latestCard.type === "BOMB_DOOM"
+                            ? "÷2 Tổng Điểm"
+                            : latestCard.type === "BOMB_GIFT"
+                            ? "Tặng 1/2 Điểm"
+                            : latestCard.type === "BOMB_MINOR"
+                            ? "Mất Quỹ (0đ)"
+                            : latestCard.effectType === "MULTIPLY_X2"
+                            ? "X2 HŨ ĐIỂM"
+                            : `+${latestCard.deltaPoints}đ`}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-center text-white/50 bg-black/20">
+                      <span className="text-4xl mb-2">📭</span>
+                      <span className="text-xs font-bold text-white/80">Chưa rút lá nào</span>
+                      <span className="text-[10px] text-white/40 mt-1">
+                        Rút lá đầu tiên từ chồng bài bên cạnh!
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* ── ACTION BUTTONS: RÚT TIẾP & CHỐT ĐIỂM ── */}
+              {canInteract && (
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (unopenedTile) {
+                        handleTileClick(unopenedTile);
+                      } else {
+                        handleTileClick({
+                          id: nextCardNum,
+                          label: `Lá #${nextCardNum}`,
+                          icon: "🃏",
+                          isOpened: false,
+                          type: "REWARD",
+                          storyTitle: "Rút bài bí ẩn",
+                          storyDescription: "",
+                          effectType: "BONUS_POINTS",
+                          deltaPoints: 20,
+                        });
+                      }
+                    }}
+                    className="px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm sm:text-base shadow-xl border-2 border-purple-400 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span>🃏</span>
+                    <span>RÚT 1 LÁ (LÁ #{nextCardNum})</span>
+                  </button>
+
+                  {canCashOut && (
+                    <button
+                      type="button"
+                      onClick={onCashOut}
+                      className="px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-sm sm:text-base shadow-xl border-2 border-emerald-300 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer animate-pulse"
+                    >
+                      <span>💰</span>
+                      <span>CHỐT ĐIỂM (+{potPoints}Đ)</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* ── DRAW HISTORY TRAIL ── */}
+              {openedTiles.length > 0 && (
+                <div className="w-full max-w-xl mx-auto p-3 rounded-2xl bg-black/40 border border-white/10 text-left">
+                  <span className="text-[11px] font-bold text-white/60 uppercase tracking-wider block mb-1.5">
+                    📜 LỊCH SỬ RÚT BÀI ({openedTiles.length} lá):
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {openedTiles.map((t, idx) => (
+                      <span
+                        key={t.id || idx}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
+                          t.type !== "REWARD"
+                            ? "bg-red-950/60 border-red-500/50 text-red-300"
+                            : "bg-emerald-950/60 border-emerald-500/50 text-emerald-300"
+                        }`}
+                      >
+                        <span>{t.icon}</span>
+                        <span>#{t.id}:</span>
+                        <span>
+                          {t.type !== "REWARD"
+                            ? t.type === "BOMB_DOOM"
+                              ? "÷2"
+                              : t.type === "BOMB_GIFT"
+                              ? "Tặng"
+                              : "Bom"
+                            : t.effectType === "MULTIPLY_X2"
+                            ? "x2"
+                            : `+${t.deltaPoints}đ`}
+                        </span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Footer Standings / Quick Score Bar ── */}

@@ -856,13 +856,15 @@ export type MysteryTileEffectType =
   | "LOSE_POINTS"  // Mất 20-30đ
   | "EXTRA_TURN"   // Nhận thêm 1 lượt chọn ô câu tiếp theo
   | "RARE_POWERUP" // Tặng 1 thẻ bài bổ trợ hiếm (Khiên / Đổi câu / 50-50)
-  | "SAFE_SHIELD"; // Tặng Khiên bảo vệ
+  | "SAFE_SHIELD"  // Tặng Khiên bảo vệ
+  | "GIFT_POINTS"; // Tặng toàn bộ điểm đang có cho một đội khác
 
 export type MysteryTileType =
   | "REWARD"
-  | "BOMB_MINOR" // Tiểu bom: Mất toàn bộ điểm tích lũy trong câu này
-  | "BOMB_MAJOR" // Đại bom: Mất điểm câu này + trừ 20đ tổng điểm cả trận
-  | "BOMB_DOOM"; // Bom hủy diệt: Mất điểm câu này + chia đôi tổng điểm cả trận
+  | "BOMB_MINOR" // Tiểu bom (50%): Mất toàn bộ điểm tích lũy trong câu này
+  | "BOMB_MAJOR" // Đại bom: Mất điểm câu này + trừ điểm
+  | "BOMB_DOOM"  // Bom chia đôi (35%): Mất điểm câu này + chia đôi (mất 1/2) tổng điểm đội đang có
+  | "BOMB_GIFT"; // Bom tặng điểm (15%): Không trừ điểm, nhưng phải tặng toàn bộ điểm đang có cho đội khác
 
 export interface MysteryTile {
   id: number;
@@ -903,10 +905,13 @@ export interface MysteryQuestState {
   cardsFlippedCount: number;
   lastFlippedTile?: MysteryTile;
   bombExploded?: {
-    type: "MINOR" | "MAJOR" | "DOOM";
+    type: "MINOR" | "MAJOR" | "DOOM" | "GIFT";
     title: string;
     description: string;
     penaltyText: string;
+    recipientTeamId?: string;
+    recipientTeamName?: string;
+    giftedPoints?: number;
   };
   turnFinishedReason?:
     | "CASH_OUT"
@@ -1223,7 +1228,14 @@ export interface ServerToClientEvents {
   }) => void;
   // Mystery Quest Events
   "game:mystery:update": (state: MysteryQuestState) => void;
-  "game:mystery:card_flipped": (payload: { tile: MysteryTile; potPoints: number; potMultiplier: number; isBomb?: boolean; bombExploded?: MysteryQuestState["bombExploded"] }) => void;
+  "game:mystery:card_flipped": (payload: {
+    tile: MysteryTile;
+    potPoints: number;
+    potMultiplier: number;
+    isBomb?: boolean;
+    bombExploded?: MysteryQuestState["bombExploded"];
+    audioTrigger?: "CORRECT" | "WRONG" | "NONE";
+  }) => void;
   "game:mystery:cashed_out": (payload: { teamId: string; teamName: string; totalGained: number; newScore: number }) => void;
   "game:mystery:steal_open": (payload: { questionId: string; timeLimit: number }) => void;
   "game:mystery:steal_buzzed": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;

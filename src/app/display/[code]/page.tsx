@@ -522,10 +522,10 @@ export default function DisplayPage() {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
     });
     socket.on("game:mystery:card_flipped", (payload) => {
-      if (payload.isBomb || payload.bombExploded) {
-        soundManager.playWrong();
-      } else {
+      if (payload.audioTrigger === "CORRECT") {
         soundManager.playCorrect();
+      } else if (payload.audioTrigger === "WRONG") {
+        soundManager.playWrong();
       }
     });
     socket.on("game:mystery:cashed_out", () => {

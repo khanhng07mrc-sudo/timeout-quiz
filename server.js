@@ -1065,76 +1065,71 @@ function generateTarotDestinyTiles() {
     deltaPoints: card.deltaPoints
   }));
 }
-function generatePushYourLuckTiles(theme, currentRound) {
-  const totalTilesCount = 9;
-  const tileTypes = ["BOMB_MINOR", "BOMB_MAJOR"];
-  if (currentRound >= 2 && Math.random() < 0.5) {
-    tileTypes.push("BOMB_DOOM");
-  }
-  while (tileTypes.length < totalTilesCount) {
-    tileTypes.push("REWARD");
-  }
-  const shuffledTypes = [...tileTypes].sort(() => Math.random() - 0.5);
-  const themeRewards = [...REWARD_TEMPLATES[theme]].sort(() => Math.random() - 0.5);
-  let rewardCursor = 0;
-  const tiles = [];
-  for (let i = 0; i < totalTilesCount; i++) {
-    const type = shuffledTypes[i];
-    const label = `\xD4 #${i + 1}`;
-    const icon = "\u{1F6AA}";
-    if (type === "BOMB_MINOR") {
-      tiles.push({
-        id: i + 1,
+function generateNextPushYourLuckCard({
+  theme,
+  drawIndex
+}) {
+  const bombChance = drawIndex === 1 ? 0.15 : drawIndex === 2 ? 0.2 : drawIndex === 3 ? 0.25 : 0.28;
+  const isBomb = Math.random() < bombChance;
+  const id = drawIndex;
+  const label = `L\xE1 #${drawIndex}`;
+  if (isBomb) {
+    const bombKindRand = Math.random();
+    if (bombKindRand < 0.5) {
+      return {
+        id,
         label,
         icon: "\u{1F4A3}",
         isOpened: false,
         type: "BOMB_MINOR",
         storyTitle: "\u{1F4A3} TI\u1EC2U BOM N\u1ED4 TUNG!",
-        storyDescription: "D\u1EABm ph\u1EA3i k\xEDp n\u1ED5 mini: To\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y trong l\u01B0\u1EE3t n\xE0y tan bi\u1EBFn th\xE0nh m\xE2y kh\xF3i!",
+        storyDescription: "D\u1EABm ph\u1EA3i k\xEDp n\u1ED5: M\u1EA5t to\xE0n b\u1ED9 s\u1ED1 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c)!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
-      });
-    } else if (type === "BOMB_MAJOR") {
-      tiles.push({
-        id: i + 1,
-        label,
-        icon: "\u{1F4A5}",
-        isOpened: false,
-        type: "BOMB_MAJOR",
-        storyTitle: "\u{1F4A5} \u0110\u1EA0I BOM C\xD4NG PH\xC1!",
-        storyDescription: "Th\xF9ng thu\u1ED1c s\xFAng \u0111\u1EA1i b\xE1c ph\xE1t n\u1ED5 d\u1EEF d\u1ED9i: M\u1EA5t tr\u1EAFng \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y V\xC0 b\u1ECB ph\u1EA1t tr\u1EEB 20 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!",
-        effectType: "LOSE_POINTS",
-        deltaPoints: -20
-      });
-    } else if (type === "BOMB_DOOM") {
-      tiles.push({
-        id: i + 1,
+      };
+    } else if (bombKindRand < 0.85) {
+      return {
+        id,
         label,
         icon: "\u{1F480}",
         isOpened: false,
         type: "BOMB_DOOM",
-        storyTitle: "\u{1F480} BOM H\u1EE6Y DI\u1EC6T \xD4 S\u1ED0 PH\u1EACN!",
-        storyDescription: "\u0110\xE1nh th\u1EE9c bom nguy\xEAn t\u1EED c\u1ED5 x\u01B0a: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y V\xC0 CHIA \u0110\xD4I (/2) t\u1ED5ng \u0111i\u1EC3m c\u1EE7a c\u1EA3 tr\u1EADn!",
+        storyTitle: "\u{1F480} \u0110\u1EA0I BOM CH\xC9M \u0110\xD4I T\u1ED4NG \u0110I\u1EC2M!",
+        storyDescription: "\u0110\xE1nh th\u1EE9c bom h\u1EE7y di\u1EC7t: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y V\xC0 B\u1ECA CHIA \u0110\xD4I (-50%) t\u1ED5ng \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3!",
         effectType: "DIVIDE_HALF",
         deltaPoints: 0
-      });
+      };
     } else {
-      const rew = themeRewards[rewardCursor % themeRewards.length];
-      rewardCursor++;
-      tiles.push({
-        id: i + 1,
+      return {
+        id,
         label,
-        icon,
+        icon: "\u{1F381}",
         isOpened: false,
-        type: "REWARD",
-        storyTitle: rew.storyTitle,
-        storyDescription: rew.storyDescription,
-        effectType: rew.effectType,
-        deltaPoints: rew.deltaPoints
-      });
+        type: "BOMB_GIFT",
+        storyTitle: "\u{1F381} BOM CHUY\u1EC2N GIAO N\u1EECA \u0110I\u1EC2M!",
+        storyDescription: "D\u1EABm ph\u1EA3i bom chuy\u1EC3n giao: B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3, v\xE0 b\u1EA1n ph\u1EA3i trao t\u1EB7ng s\u1ED1 \u0111i\u1EC3m \u0111\xF3 cho m\u1ED9t \u0111\u1ED9i kh\xE1c!",
+        effectType: "GIFT_POINTS",
+        deltaPoints: 0
+      };
     }
   }
-  return tiles;
+  const themeRewards = REWARD_TEMPLATES[theme] || REWARD_TEMPLATES.CASTLE;
+  const template = themeRewards[Math.floor(Math.random() * themeRewards.length)];
+  return {
+    id,
+    label,
+    icon: template.effectType === "MULTIPLY_X2" ? "\u{1F680}" : template.effectType === "STEAL_POINTS" ? "\u{1F3AD}" : "\u{1F48E}",
+    isOpened: false,
+    type: "REWARD",
+    storyTitle: template.storyTitle,
+    storyDescription: template.storyDescription,
+    effectType: template.effectType,
+    deltaPoints: template.deltaPoints
+  };
+}
+function generatePushYourLuckTiles(theme) {
+  const firstCard = generateNextPushYourLuckCard({ theme, drawIndex: 1 });
+  return [firstCard];
 }
 function normalizeMiniGameType(type) {
   if (!type) return "PUSH_YOUR_LUCK";
@@ -1188,7 +1183,7 @@ function generateMysteryStageForTurn({
       break;
     case "PUSH_YOUR_LUCK":
     default:
-      tiles = generatePushYourLuckTiles(theme, currentRound);
+      tiles = generatePushYourLuckTiles(theme);
       break;
   }
   return {
@@ -1469,9 +1464,16 @@ function handleFlipCard({
       };
     }
   }
-  const tile = state.tiles.find((t) => t.id === tileId);
-  if (!tile || tile.isOpened) {
-    return { updatedState: state, isBomb: false, scorePenalty: 0 };
+  let tile = state.tiles.find((t) => t.id === tileId && !t.isOpened);
+  if (!tile) {
+    tile = state.tiles.find((t) => !t.isOpened);
+  }
+  if (!tile) {
+    tile = generateNextPushYourLuckCard({
+      theme: state.theme,
+      drawIndex: state.cardsFlippedCount + 1
+    });
+    state.tiles.push(tile);
   }
   tile.isOpened = true;
   state.lastFlippedTile = tile;
@@ -1479,24 +1481,51 @@ function handleFlipCard({
   if (tile.type !== "REWARD") {
     let penalty = 0;
     let penaltyText = "";
+    let recipientTeamId = void 0;
+    let recipientTeamName = void 0;
+    let giftedPoints = 0;
     if (tile.type === "BOMB_MINOR") {
       penalty = 0;
-      penaltyText = "M\u1EA5t s\u1EA1ch to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y trong l\u01B0\u1EE3t n\xE0y (0\u0111 nh\u1EADn \u0111\u01B0\u1EE3c).";
-    } else if (tile.type === "BOMB_MAJOR") {
-      penalty = Math.min(team.score || 0, 20);
-      penaltyText = `M\u1EA5t \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y v\xE0 b\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`;
+      penaltyText = "M\u1EA5t s\u1EA1ch to\xE0n b\u1ED9 s\u1ED1 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn.";
+      state.bombExploded = {
+        type: "MINOR",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText
+      };
     } else if (tile.type === "BOMB_DOOM") {
-      const halfScore = Math.floor((team.score || 0) / 2);
-      penalty = halfScore;
-      penaltyText = `M\u1EA5t \u0111i\u1EC3m l\u01B0\u1EE3t n\xE0y v\xE0 b\u1ECB CHIA \u0110\xD4I t\u1ED5ng \u0111i\u1EC3m (-${halfScore}\u0111).`;
+      const currentScore = team.score || 0;
+      penalty = Math.floor(currentScore / 2);
+      penaltyText = `M\u1EA5t \u0111i\u1EC3m c\xE2u n\xE0y v\xE0 b\u1ECB CHIA \u0110\xD4I (-50%) t\u1ED5ng \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3 (-${penalty}\u0111).`;
+      state.bombExploded = {
+        type: "DOOM",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText
+      };
+    } else if (tile.type === "BOMB_GIFT") {
+      const currentScore = team.score || 0;
+      giftedPoints = Math.floor(currentScore / 2);
+      penalty = giftedPoints;
+      const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
+      if (otherTeams.length > 0) {
+        const sorted = [...otherTeams].sort((a, b) => (a.score || 0) - (b.score || 0));
+        const chosenRecipient = sorted[0];
+        recipientTeamId = chosenRecipient.id;
+        recipientTeamName = chosenRecipient.name;
+      }
+      penaltyText = recipientTeamName ? `B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 trao t\u1EB7ng s\u1ED1 \u0111i\u1EC3m \u0111\xF3 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 trao t\u1EB7ng cho \u0111\u1ED1i th\u1EE7!`;
+      state.bombExploded = {
+        type: "GIFT",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText,
+        recipientTeamId,
+        recipientTeamName,
+        giftedPoints
+      };
     }
     state.potPoints = 0;
-    state.bombExploded = {
-      type: tile.type === "BOMB_MINOR" ? "MINOR" : tile.type === "BOMB_MAJOR" ? "MAJOR" : "DOOM",
-      title: tile.storyTitle,
-      description: tile.storyDescription,
-      penaltyText
-    };
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "BOMB_HIT";
     const oldScore = team.score || 0;
@@ -1505,7 +1534,7 @@ function handleFlipCard({
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `\u{1F4A5} D\xEDnh bom! ${penaltyText}`,
+      rewardText: `\u{1F4A5} ${tile.storyTitle} ${penaltyText}`,
       scoreDelta: -penalty,
       oldScore,
       newScore
@@ -1514,7 +1543,9 @@ function handleFlipCard({
       updatedState: { ...state },
       isBomb: true,
       scorePenalty: penalty,
-      finalScoreDelta: -penalty
+      finalScoreDelta: -penalty,
+      recipientTeamId,
+      giftedPoints
     };
   }
   if (tile.effectType === "MULTIPLY_X2") {
@@ -1533,30 +1564,11 @@ function handleFlipCard({
   } else {
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
-  const remainingRewardTiles = state.tiles.filter((t) => !t.isOpened && t.type === "REWARD");
-  if (remainingRewardTiles.length === 0) {
-    const clearedDelta = state.potPoints + 50;
-    state.potPoints = 0;
-    state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "ALL_CLEARED";
-    const oldScore = team.score || 0;
-    const newScore = oldScore + clearedDelta;
-    state.storyResult = {
-      teamId: team.id,
-      teamName: team.name,
-      teamColor: team.color || "#ef4444",
-      rewardText: `\u{1F3C6} \u0110\u1EA0I TH\u1EAENG QU\xC9T S\u1EA0CH T\u1EA4T C\u1EA2 \xD4! Thu ho\u1EA1ch tr\u1ECDn v\u1EB9n +${clearedDelta} \u0111i\u1EC3m!`,
-      scoreDelta: clearedDelta,
-      oldScore,
-      newScore
-    };
-    return {
-      updatedState: { ...state },
-      isBomb: false,
-      scorePenalty: 0,
-      finalScoreDelta: clearedDelta
-    };
-  }
+  const nextTopCard = generateNextPushYourLuckCard({
+    theme: state.theme,
+    drawIndex: state.cardsFlippedCount + 1
+  });
+  state.tiles.push(nextTopCard);
   return {
     updatedState: { ...state },
     isBomb: false,
@@ -2276,7 +2288,7 @@ async function applyScoreDeltaToPlayer(playerId, delta) {
   });
   return { oldScore, newScore, effectiveDelta };
 }
-function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
+function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex, targetPoints) {
   if (!rawQuestions || rawQuestions.length === 0) return null;
   let usedSet = roomUsedQuestions.get(roomId);
   if (!usedSet) {
@@ -2290,13 +2302,35 @@ function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex) {
     const candidate = rawQuestions[preferredIndex];
     if (candidate && !usedSet.has(candidate.id)) {
       usedSet.add(candidate.id);
+      if (targetPoints) {
+        candidate.points = targetPoints;
+        candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+      }
       return { question: candidate, index: preferredIndex };
+    }
+  }
+  if (targetPoints) {
+    for (let i = 0; i < rawQuestions.length; i++) {
+      const candidate = rawQuestions[i];
+      if (!usedSet.has(candidate.id)) {
+        const normPts = normalizeToThreeLevels(candidate.points || 10);
+        if (normPts === targetPoints) {
+          usedSet.add(candidate.id);
+          candidate.points = targetPoints;
+          candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+          return { question: candidate, index: i };
+        }
+      }
     }
   }
   for (let i = 0; i < rawQuestions.length; i++) {
     const candidate = rawQuestions[i];
     if (!usedSet.has(candidate.id)) {
       usedSet.add(candidate.id);
+      if (targetPoints) {
+        candidate.points = targetPoints;
+        candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+      }
       return { question: candidate, index: i };
     }
   }
@@ -4347,6 +4381,14 @@ function registerSocketHandlers(io2) {
         } else {
           q.points = chosenPoints;
         }
+      } else if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
+      } else if (room.mode === "DICE_RACE") {
+        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
+        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
+        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
       } else {
         q.points = normalizeToThreeLevels(q.points || 10);
       }
@@ -4914,7 +4956,8 @@ function registerSocketHandlers(io2) {
         const launchWarmupToFirstQuestion = async () => {
           try {
             roomPrepareStates.delete(room.id);
-            const nextQ2 = getNextUniqueQuestion(room.id, questions, 0);
+            const firstRoundTargetPoints = room.mode === "MYSTERY_QUEST" || room.mode === "DICE_RACE" ? 10 : void 0;
+            const nextQ2 = getNextUniqueQuestion(room.id, questions, 0, firstRoundTargetPoints);
             if (nextQ2) {
               room.currentQuestion = nextQ2.index;
               room.status = "PLAYING";
@@ -4994,7 +5037,17 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
         return;
       }
-      const nextQ = getNextUniqueQuestion(room.id, questions);
+      let targetRoundPoints = void 0;
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
+      } else if (room.mode === "DICE_RACE") {
+        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
+        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
+        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
+      }
+      const nextQ = getNextUniqueQuestion(room.id, questions, void 0, targetRoundPoints);
       if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
@@ -5628,7 +5681,15 @@ function registerSocketHandlers(io2) {
     });
     const executeMysteryFlip = async (room, questState, team, tileId) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty, finalScoreDelta, shouldResetMismatchedCards } = handleFlipCard({
+      const {
+        updatedState,
+        isBomb,
+        scorePenalty,
+        finalScoreDelta,
+        shouldResetMismatchedCards,
+        recipientTeamId,
+        giftedPoints
+      } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -5636,7 +5697,14 @@ function registerSocketHandlers(io2) {
       });
       roomMysteryQuests.set(room.id, updatedState);
       if (isBomb) {
-        if (scorePenalty > 0) {
+        if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+          const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
+          const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
+            { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta }
+          ]);
+        } else if (scorePenalty > 0) {
           const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
           io2.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
@@ -5653,6 +5721,21 @@ function registerSocketHandlers(io2) {
           { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
         ]);
       }
+      const normType = normalizeMiniGameType(updatedState.miniGameType);
+      let audioTrigger = "NONE";
+      if (normType === "MEMORY_PAIRS") {
+        if (updatedState.memoryPairsState?.matchedPairKey) {
+          audioTrigger = isBomb ? "WRONG" : "CORRECT";
+        } else {
+          audioTrigger = "NONE";
+        }
+      } else if (normType === "ONE_SHOT_DOORS") {
+        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+      } else if (normType === "TAROT_DESTINY") {
+        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+      } else if (normType === "PUSH_YOUR_LUCK") {
+        audioTrigger = isBomb ? "WRONG" : "NONE";
+      }
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", refreshedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
@@ -5661,7 +5744,9 @@ function registerSocketHandlers(io2) {
           tile: updatedState.lastFlippedTile,
           potPoints: updatedState.potPoints,
           potMultiplier: updatedState.potMultiplier,
-          bombExploded: updatedState.bombExploded
+          isBomb,
+          bombExploded: updatedState.bombExploded,
+          audioTrigger
         });
       }
       if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
@@ -5731,7 +5816,9 @@ function registerSocketHandlers(io2) {
       const updatedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", updatedState);
       const questions = await getRoomQuestions(room.id);
-      const nextQ = getNextUniqueQuestion(room.id, questions);
+      const nextRound = Math.floor(nextTurnIndex / teams.length) + 1;
+      const targetPoints = nextRound === 1 ? 10 : nextRound === 2 ? 20 : 30;
+      const nextQ = getNextUniqueQuestion(room.id, questions, void 0, targetPoints);
       if (nextQ) {
         room.currentQuestion = nextQ.index;
         room.status = "PLAYING";

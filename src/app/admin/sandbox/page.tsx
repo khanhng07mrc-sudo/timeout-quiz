@@ -1882,7 +1882,14 @@ export default function AdminSandboxPage() {
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, isBomb, scorePenalty } = handleMysteryFlipCard({
+        const {
+          updatedState,
+          isBomb,
+          scorePenalty,
+          finalScoreDelta,
+          recipientTeamId,
+          giftedPoints,
+        } = handleMysteryFlipCard({
           state: curMystery,
           tileId,
           team: activeTeam,
@@ -1890,9 +1897,21 @@ export default function AdminSandboxPage() {
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (isBomb && scorePenalty > 0) {
+        if (isBomb) {
+          if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+            updatedTeams = updatedTeams.map((t) => {
+              if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score - giftedPoints) };
+              if (t.id === recipientTeamId) return { ...t, score: t.score + giftedPoints };
+              return t;
+            });
+          } else if (scorePenalty > 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
+            );
+          }
+        } else if (finalScoreDelta && finalScoreDelta > 0) {
           updatedTeams = updatedTeams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
+            t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
           );
         } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
           updatedTeams = updatedTeams.map((t) =>

@@ -349,84 +349,98 @@ function generateTarotDestinyTiles(): MysteryTile[] {
 }
 
 /**
- * Generates tiles for Variant 3: PUSH_YOUR_LUCK (Classic 9 or 12 tiles, single layer).
+ * Generates the next card in the endless draw stack for Variant 3: PUSH_YOUR_LUCK.
+ * Bomb types follow exact probabilities:
+ * 1. Bom xóa toàn bộ điểm đã đạt ở câu hiện tại: 50%
+ * 2. Bom làm mất một nửa số điểm đội đang có: 35%
+ * 3. Bom tặng toàn bộ điểm đang có cho đội khác: 15%
  */
-function generatePushYourLuckTiles(theme: MysteryTheme, currentRound: number): MysteryTile[] {
-  const totalTilesCount = 9; // 3x3 clean single layer
-  const tileTypes: MysteryTileType[] = ["BOMB_MINOR", "BOMB_MAJOR"];
-  if (currentRound >= 2 && Math.random() < 0.5) {
-    tileTypes.push("BOMB_DOOM");
-  }
+export function generateNextPushYourLuckCard({
+  theme,
+  drawIndex,
+}: {
+  theme: MysteryTheme;
+  drawIndex: number;
+}): MysteryTile {
+  // Overall bomb chance per draw:
+  // Draw 1: 15% (gives safety on initial draw while preserving thrill)
+  // Draw 2: 20%
+  // Draw 3: 25%
+  // Draw 4+: 28%
+  const bombChance = drawIndex === 1 ? 0.15 : drawIndex === 2 ? 0.20 : drawIndex === 3 ? 0.25 : 0.28;
+  const isBomb = Math.random() < bombChance;
 
-  while (tileTypes.length < totalTilesCount) {
-    tileTypes.push("REWARD");
-  }
+  const id = drawIndex;
+  const label = `Lá #${drawIndex}`;
 
-  const shuffledTypes = [...tileTypes].sort(() => Math.random() - 0.5);
-  const themeRewards = [...REWARD_TEMPLATES[theme]].sort(() => Math.random() - 0.5);
+  if (isBomb) {
+    const bombKindRand = Math.random();
 
-  let rewardCursor = 0;
-  const tiles: MysteryTile[] = [];
-
-  for (let i = 0; i < totalTilesCount; i++) {
-    const type = shuffledTypes[i];
-    const label = `Ô #${i + 1}`;
-    const icon = "🚪";
-
-    if (type === "BOMB_MINOR") {
-      tiles.push({
-        id: i + 1,
+    if (bombKindRand < 0.50) {
+      // LOẠI 1 (50%): Bom trừ toàn bộ điểm đã đạt ở câu hiện tại
+      return {
+        id,
         label,
         icon: "💣",
         isOpened: false,
         type: "BOMB_MINOR",
         storyTitle: "💣 TIỂU BOM NỔ TUNG!",
-        storyDescription: "Dẫm phải kíp nổ mini: Toàn bộ điểm tích lũy trong lượt này tan biến thành mây khói!",
+        storyDescription: "Dẫm phải kíp nổ: Mất toàn bộ số điểm tích lũy ở câu hiện tại (0 điểm nhận được)!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
-      });
-    } else if (type === "BOMB_MAJOR") {
-      tiles.push({
-        id: i + 1,
-        label,
-        icon: "💥",
-        isOpened: false,
-        type: "BOMB_MAJOR",
-        storyTitle: "💥 ĐẠI BOM CÔNG PHÁ!",
-        storyDescription: "Thùng thuốc súng đại bác phát nổ dữ dội: Mất trắng điểm lượt này VÀ bị phạt trừ 20 điểm từ tổng điểm!",
-        effectType: "LOSE_POINTS",
-        deltaPoints: -20,
-      });
-    } else if (type === "BOMB_DOOM") {
-      tiles.push({
-        id: i + 1,
+      };
+    } else if (bombKindRand < 0.85) {
+      // LOẠI 2 (35%): Bom làm mất một nửa số điểm đội đang có
+      return {
+        id,
         label,
         icon: "💀",
         isOpened: false,
         type: "BOMB_DOOM",
-        storyTitle: "💀 BOM HỦY DIỆT Ô SỐ PHẬN!",
-        storyDescription: "Đánh thức bom nguyên tử cổ xưa: Mất toàn bộ điểm câu này VÀ CHIA ĐÔI (/2) tổng điểm của cả trận!",
+        storyTitle: "💀 ĐẠI BOM CHÉM ĐÔI TỔNG ĐIỂM!",
+        storyDescription: "Đánh thức bom hủy diệt: Mất toàn bộ điểm câu này VÀ BỊ CHIA ĐÔI (-50%) tổng điểm đội đang có!",
         effectType: "DIVIDE_HALF",
         deltaPoints: 0,
-      });
+      };
     } else {
-      const rew = themeRewards[rewardCursor % themeRewards.length];
-      rewardCursor++;
-      tiles.push({
-        id: i + 1,
+      // LOẠI 3 (15%): Bom trừ nửa số điểm của đội, và bạn phải tặng số điểm đó cho một đội khác
+      return {
+        id,
         label,
-        icon,
+        icon: "🎁",
         isOpened: false,
-        type: "REWARD",
-        storyTitle: rew.storyTitle,
-        storyDescription: rew.storyDescription,
-        effectType: rew.effectType,
-        deltaPoints: rew.deltaPoints,
-      });
+        type: "BOMB_GIFT",
+        storyTitle: "🎁 BOM CHUYỂN GIAO NỬA ĐIỂM!",
+        storyDescription: "Dẫm phải bom chuyển giao: Bị trừ một nửa số điểm đội đang có, và bạn phải trao tặng số điểm đó cho một đội khác!",
+        effectType: "GIFT_POINTS",
+        deltaPoints: 0,
+      };
     }
   }
 
-  return tiles;
+  // Safe Reward Card from Theme
+  const themeRewards = REWARD_TEMPLATES[theme] || REWARD_TEMPLATES.CASTLE;
+  const template = themeRewards[Math.floor(Math.random() * themeRewards.length)];
+  return {
+    id,
+    label,
+    icon: template.effectType === "MULTIPLY_X2" ? "🚀" : template.effectType === "STEAL_POINTS" ? "🎭" : "💎",
+    isOpened: false,
+    type: "REWARD",
+    storyTitle: template.storyTitle,
+    storyDescription: template.storyDescription,
+    effectType: template.effectType,
+    deltaPoints: template.deltaPoints,
+  };
+}
+
+/**
+ * Generates initial tiles for Variant 3: PUSH_YOUR_LUCK (Endless Stacked Deck).
+ * Starts with Card #1 face-down on top of the deck!
+ */
+function generatePushYourLuckTiles(theme: MysteryTheme): MysteryTile[] {
+  const firstCard = generateNextPushYourLuckCard({ theme, drawIndex: 1 });
+  return [firstCard];
 }
 
 /**
@@ -505,7 +519,7 @@ export function generateMysteryStageForTurn({
 
     case "PUSH_YOUR_LUCK":
     default:
-      tiles = generatePushYourLuckTiles(theme, currentRound);
+      tiles = generatePushYourLuckTiles(theme);
       break;
   }
 
@@ -552,6 +566,8 @@ export function handleFlipCard({
   rewardCard?: CardType;
   finalScoreDelta?: number;
   shouldResetMismatchedCards?: boolean;
+  recipientTeamId?: string;
+  giftedPoints?: number;
 } {
   const normType = normalizeMiniGameType(state.miniGameType);
 
@@ -863,11 +879,18 @@ export function handleFlipCard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT 3: PUSH_YOUR_LUCK (Lật liều tích lũy né Bom, 1 lớp bài)
+  // VARIANT 3: PUSH_YOUR_LUCK (Lật liều tích lũy né Bom - Chồng bài vô hạn)
   // ═══════════════════════════════════════════════════════════════════════════
-  const tile = state.tiles.find((t) => t.id === tileId);
-  if (!tile || tile.isOpened) {
-    return { updatedState: state, isBomb: false, scorePenalty: 0 };
+  let tile = state.tiles.find((t) => t.id === tileId && !t.isOpened);
+  if (!tile) {
+    tile = state.tiles.find((t) => !t.isOpened);
+  }
+  if (!tile) {
+    tile = generateNextPushYourLuckCard({
+      theme: state.theme,
+      drawIndex: state.cardsFlippedCount + 1,
+    });
+    state.tiles.push(tile);
   }
 
   tile.isOpened = true;
@@ -875,28 +898,63 @@ export function handleFlipCard({
   state.cardsFlippedCount++;
 
   if (tile.type !== "REWARD") {
+    // ─── 3 LOẠI BOM THEO QUY TẮC CHÍNH XÁC CỦA NGƯỜI DÙNG: ───
     let penalty = 0;
     let penaltyText = "";
+    let recipientTeamId: string | undefined = undefined;
+    let recipientTeamName: string | undefined = undefined;
+    let giftedPoints = 0;
 
     if (tile.type === "BOMB_MINOR") {
+      // 1. Bom có khả năng trừ toàn bộ số điểm đã đạt ở câu hiện tại (50%)
       penalty = 0;
-      penaltyText = "Mất sạch toàn bộ điểm tích lũy trong lượt này (0đ nhận được).";
-    } else if (tile.type === "BOMB_MAJOR") {
-      penalty = Math.min(team.score || 0, 20);
-      penaltyText = `Mất điểm lượt này và bị phạt trừ ${penalty} điểm từ tổng điểm.`;
+      penaltyText = "Mất sạch toàn bộ số điểm tích lũy ở câu hiện tại (0 điểm nhận được). Tổng điểm giữ nguyên.";
+      state.bombExploded = {
+        type: "MINOR",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText,
+      };
     } else if (tile.type === "BOMB_DOOM") {
-      const halfScore = Math.floor((team.score || 0) / 2);
-      penalty = halfScore;
-      penaltyText = `Mất điểm lượt này và bị CHIA ĐÔI tổng điểm (-${halfScore}đ).`;
+      // 2. Bom làm mất một nửa số điểm đội đang có (35%)
+      const currentScore = team.score || 0;
+      penalty = Math.floor(currentScore / 2);
+      penaltyText = `Mất điểm câu này và bị CHIA ĐÔI (-50%) tổng điểm đội đang có (-${penalty}đ).`;
+      state.bombExploded = {
+        type: "DOOM",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText,
+      };
+    } else if (tile.type === "BOMB_GIFT") {
+      // 3. Bom trừ nửa số điểm của đội, và bạn phải tặng số điểm đó cho một đội khác (15%)
+      const currentScore = team.score || 0;
+      giftedPoints = Math.floor(currentScore / 2);
+      penalty = giftedPoints;
+      const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
+      if (otherTeams.length > 0) {
+        // Tặng cho đội có điểm thấp nhất (hoặc ngẫu nhiên)
+        const sorted = [...otherTeams].sort((a, b) => (a.score || 0) - (b.score || 0));
+        const chosenRecipient = sorted[0];
+        recipientTeamId = chosenRecipient.id;
+        recipientTeamName = chosenRecipient.name;
+      }
+      penaltyText = recipientTeamName
+        ? `Bị trừ một nửa số điểm (-${giftedPoints}đ) và trao tặng số điểm đó cho Đội ${recipientTeamName}!`
+        : `Bị trừ một nửa số điểm (-${giftedPoints}đ) và trao tặng cho đối thủ!`;
+
+      state.bombExploded = {
+        type: "GIFT",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText,
+        recipientTeamId,
+        recipientTeamName,
+        giftedPoints,
+      };
     }
 
     state.potPoints = 0;
-    state.bombExploded = {
-      type: tile.type === "BOMB_MINOR" ? "MINOR" : tile.type === "BOMB_MAJOR" ? "MAJOR" : "DOOM",
-      title: tile.storyTitle,
-      description: tile.storyDescription,
-      penaltyText,
-    };
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "BOMB_HIT";
 
@@ -907,7 +965,7 @@ export function handleFlipCard({
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `💥 Dính bom! ${penaltyText}`,
+      rewardText: `💥 ${tile.storyTitle} ${penaltyText}`,
       scoreDelta: -penalty,
       oldScore,
       newScore,
@@ -918,6 +976,8 @@ export function handleFlipCard({
       isBomb: true,
       scorePenalty: penalty,
       finalScoreDelta: -penalty,
+      recipientTeamId,
+      giftedPoints,
     };
   }
 
@@ -939,34 +999,12 @@ export function handleFlipCard({
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
 
-  // Check if all non-bomb reward cards cleared
-  const remainingRewardTiles = state.tiles.filter((t) => !t.isOpened && t.type === "REWARD");
-  if (remainingRewardTiles.length === 0) {
-    const clearedDelta = state.potPoints + 50;
-    state.potPoints = 0; // Cleared so badge doesn't linger!
-    state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "ALL_CLEARED";
-
-    const oldScore = team.score || 0;
-    const newScore = oldScore + clearedDelta;
-
-    state.storyResult = {
-      teamId: team.id,
-      teamName: team.name,
-      teamColor: team.color || "#ef4444",
-      rewardText: `🏆 ĐẠI THẮNG QUÉT SẠCH TẤT CẢ Ô! Thu hoạch trọn vẹn +${clearedDelta} điểm!`,
-      scoreDelta: clearedDelta,
-      oldScore,
-      newScore,
-    };
-
-    return {
-      updatedState: { ...state },
-      isBomb: false,
-      scorePenalty: 0,
-      finalScoreDelta: clearedDelta,
-    };
-  }
+  // Chồng bài vô hạn: Tự động sinh lá bài tiếp theo úp mặt trên đỉnh chồng bài sẵn sàng rút tiếp!
+  const nextTopCard = generateNextPushYourLuckCard({
+    theme: state.theme,
+    drawIndex: state.cardsFlippedCount + 1,
+  });
+  state.tiles.push(nextTopCard);
 
   return {
     updatedState: { ...state },

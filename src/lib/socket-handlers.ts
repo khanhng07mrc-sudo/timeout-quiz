@@ -35,7 +35,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { generateMysteryStageForTurn, handleFlipCard, handleCashOut } from "./game-engine/mystery-quest";
+import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -296,7 +296,8 @@ async function applyScoreDeltaToPlayer(
 function getNextUniqueQuestion(
   roomId: string,
   rawQuestions: any[],
-  preferredIndex?: number
+  preferredIndex?: number,
+  targetPoints?: number
 ): { question: any; index: number } | null {
   if (!rawQuestions || rawQuestions.length === 0) return null;
 
@@ -316,15 +317,39 @@ function getNextUniqueQuestion(
     const candidate = rawQuestions[preferredIndex];
     if (candidate && !usedSet.has(candidate.id)) {
       usedSet.add(candidate.id);
+      if (targetPoints) {
+        candidate.points = targetPoints;
+        candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+      }
       return { question: candidate, index: preferredIndex };
     }
   }
 
-  // 2. Tìm câu hỏi đầu tiên chưa được sử dụng theo thứ tự của bộ đề
+  // 2. Nếu có targetPoints (đồng nhất điểm theo vòng), ưu tiên tìm câu hỏi trong kho khớp mức điểm này trước!
+  if (targetPoints) {
+    for (let i = 0; i < rawQuestions.length; i++) {
+      const candidate = rawQuestions[i];
+      if (!usedSet.has(candidate.id)) {
+        const normPts = normalizeToThreeLevels(candidate.points || 10);
+        if (normPts === targetPoints) {
+          usedSet.add(candidate.id);
+          candidate.points = targetPoints;
+          candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+          return { question: candidate, index: i };
+        }
+      }
+    }
+  }
+
+  // 3. Tìm câu hỏi đầu tiên chưa được sử dụng theo thứ tự của bộ đề
   for (let i = 0; i < rawQuestions.length; i++) {
     const candidate = rawQuestions[i];
     if (!usedSet.has(candidate.id)) {
       usedSet.add(candidate.id);
+      if (targetPoints) {
+        candidate.points = targetPoints;
+        candidate.bloomLevel = getBloomLevelFromPoints(targetPoints);
+      }
       return { question: candidate, index: i };
     }
   }
@@ -2745,6 +2770,14 @@ export function registerSocketHandlers(io: IO) {
         } else {
           q.points = chosenPoints;
         }
+      } else if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
+      } else if (room.mode === "DICE_RACE") {
+        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
+        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
+        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
       } else {
         q.points = normalizeToThreeLevels(q.points || 10);
       }
@@ -3401,7 +3434,8 @@ export function registerSocketHandlers(io: IO) {
         const launchWarmupToFirstQuestion = async () => {
           try {
             roomPrepareStates.delete(room.id);
-            const nextQ = getNextUniqueQuestion(room.id, questions, 0);
+            const firstRoundTargetPoints = (room.mode === "MYSTERY_QUEST" || room.mode === "DICE_RACE") ? 10 : undefined;
+            const nextQ = getNextUniqueQuestion(room.id, questions, 0, firstRoundTargetPoints);
             if (nextQ) {
               room.currentQuestion = nextQ.index;
               room.status = "PLAYING";
@@ -3493,8 +3527,18 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      // Lấy câu hỏi độc nhất tiếp theo (đảm bảo 100% không trùng lặp ở tất cả các mode)
-      const nextQ = getNextUniqueQuestion(room.id, questions);
+      // Lấy câu hỏi độc nhất tiếp theo (đồng nhất điểm theo vòng ở các mode theo lượt)
+      let targetRoundPoints: number | undefined = undefined;
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
+      } else if (room.mode === "DICE_RACE") {
+        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
+        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
+        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
+      }
+      const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetRoundPoints);
       if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
@@ -4288,7 +4332,15 @@ export function registerSocketHandlers(io: IO) {
     // ── Mystery Quest (Hành Trình Bí Ẩn) Events ──────────────────────────────
     const executeMysteryFlip = async (room: any, questState: any, team: any, tileId: number) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty, finalScoreDelta, shouldResetMismatchedCards } = handleFlipCard({
+      const {
+        updatedState,
+        isBomb,
+        scorePenalty,
+        finalScoreDelta,
+        shouldResetMismatchedCards,
+        recipientTeamId,
+        giftedPoints,
+      } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -4298,7 +4350,16 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, updatedState);
 
       if (isBomb) {
-        if (scorePenalty > 0) {
+        if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+          // BOM 3: Trừ nửa số điểm của đội và chuyển tặng số điểm đó cho đội khác!
+          const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
+          const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
+            { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta },
+          ]);
+        } else if (scorePenalty > 0) {
+          // BOM 2: Bị trừ điểm (chia đôi)
           const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
           io.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
@@ -4316,6 +4377,27 @@ export function registerSocketHandlers(io: IO) {
         ]);
       }
 
+      // ── Audio Trigger determination ──
+      const normType = normalizeMiniGameType(updatedState.miniGameType);
+      let audioTrigger: "CORRECT" | "WRONG" | "NONE" = "NONE";
+
+      if (normType === "MEMORY_PAIRS") {
+        if (updatedState.memoryPairsState?.matchedPairKey) {
+          // Chỉ phát khi lật được cặp trùng nhau:
+          // Nếu cặp cộng điểm -> phát đúng, nếu cặp trừ điểm (bom) -> phát sai!
+          audioTrigger = isBomb ? "WRONG" : "CORRECT";
+        } else {
+          // Flip lẻ hoặc flip lệch 2 lá không khớp: TUYỆT ĐỐI KHÔNG CÓ NHẠC!
+          audioTrigger = "NONE";
+        }
+      } else if (normType === "ONE_SHOT_DOORS") {
+        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+      } else if (normType === "TAROT_DESTINY") {
+        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+      } else if (normType === "PUSH_YOUR_LUCK") {
+        audioTrigger = isBomb ? "WRONG" : "NONE";
+      }
+
       const refreshedState = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", refreshedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
@@ -4324,7 +4406,9 @@ export function registerSocketHandlers(io: IO) {
           tile: updatedState.lastFlippedTile,
           potPoints: updatedState.potPoints,
           potMultiplier: updatedState.potMultiplier,
+          isBomb,
           bombExploded: updatedState.bombExploded,
+          audioTrigger,
         });
       }
 
@@ -4404,9 +4488,11 @@ export function registerSocketHandlers(io: IO) {
       const updatedState = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", updatedState);
 
-      // Launch next unique question for this team immediately!
+      // Launch next unique question for this team immediately with round-uniform points!
       const questions = await getRoomQuestions(room.id);
-      const nextQ = getNextUniqueQuestion(room.id, questions);
+      const nextRound = Math.floor(nextTurnIndex / teams.length) + 1;
+      const targetPoints = nextRound === 1 ? 10 : nextRound === 2 ? 20 : 30;
+      const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetPoints);
       if (nextQ) {
         room.currentQuestion = nextQ.index;
         room.status = "PLAYING";

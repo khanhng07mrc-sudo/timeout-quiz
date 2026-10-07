@@ -69,7 +69,11 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
         <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase whitespace-nowrap">{myTeam ? "Điểm đội" : "Điểm"}</p>
         <p className="font-black text-sm sm:text-base text-cyan-400 font-mono whitespace-nowrap">
           {scoreVal.toLocaleString()}
-          {roomState.mode === "MYSTERY_QUEST" && Boolean(roomState.mysteryQuestState) && roomState.mysteryQuestState!.currentTurnTeamId === myTeam?.id && (roomState.mysteryQuestState!.potPoints || 0) > 0 && (
+          {roomState.mode === "MYSTERY_QUEST" &&
+            Boolean(roomState.mysteryQuestState) &&
+            roomState.mysteryQuestState!.currentTurnTeamId === myTeam?.id &&
+            roomState.mysteryQuestState!.phase !== "TURN_SUMMARY" &&
+            (roomState.mysteryQuestState!.potPoints || 0) > 0 && (
             <span className="text-yellow-400 font-extrabold text-xs ml-1">(+{roomState.mysteryQuestState!.potPoints})</span>
           )}
         </p>

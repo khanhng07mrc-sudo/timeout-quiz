@@ -837,7 +837,16 @@ export interface WagerState {
 
 export type MysteryTheme = "CASTLE" | "PIRATE" | "FOREST" | "CYBER" | "TEMPLE";
 
-export type MysteryMiniGameType = "DOORS" | "CHESTS" | "TAROT_CARDS" | "RADAR_WINDOWS";
+export type MysteryMiniGameType =
+  | "MEMORY_PAIRS"     // 1. Lật cặp trùng nhau (Memory Match)
+  | "ONE_SHOT_DOORS"    // 2. Chọn 1 trong số ít cửa (Single Pick)
+  | "PUSH_YOUR_LUCK"    // 3. Lật liều tích lũy né Bom (1 lớp bài kinh điển)
+  | "TAROT_DESTINY"     // 4. Rút Thẻ Bài Tarot Thần Số (5 lá bài vận mệnh)
+  // Legacy / Cosmetic aliases:
+  | "DOORS"
+  | "CHESTS"
+  | "TAROT_CARDS"
+  | "RADAR_WINDOWS";
 
 export type MysteryTileEffectType =
   | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
@@ -866,6 +875,8 @@ export interface MysteryTile {
   effectType: MysteryTileEffectType;
   deltaPoints: number; // e.g. 10, 20, 50, etc.
   cardReward?: CardType;
+  pairKey?: string; // Khóa ghép cặp cho MEMORY_PAIRS
+  tarotName?: string; // Tên lá bài cho TAROT_DESTINY
 }
 
 export interface MysteryQuestState {
@@ -886,7 +897,7 @@ export interface MysteryQuestState {
   stealBuzzedTeamName?: string;
   stealEndsAt?: number;
   stealCountdown?: number;
-  // Push-your-luck pot
+  // Push-your-luck pot & minigame state
   potPoints: number; // Điểm tích lũy trong lượt này
   potMultiplier: number; // Hệ số nhân
   cardsFlippedCount: number;
@@ -897,7 +908,15 @@ export interface MysteryQuestState {
     description: string;
     penaltyText: string;
   };
-  turnFinishedReason?: "CASH_OUT" | "BOMB_HIT" | "QUESTION_FAILED" | "ALL_CLEARED";
+  turnFinishedReason?:
+    | "CASH_OUT"
+    | "BOMB_HIT"
+    | "QUESTION_FAILED"
+    | "ALL_CLEARED"
+    | "PAIR_MATCHED"
+    | "DOOR_CHOSEN"
+    | "TAROT_DRAWN"
+    | "MAX_ATTEMPTS";
   storyResult?: {
     teamId: string;
     teamName: string;
@@ -906,6 +925,22 @@ export interface MysteryQuestState {
     scoreDelta: number;
     oldScore: number;
     newScore: number;
+  };
+  // Dữ liệu riêng cho từng biến thể:
+  memoryPairsState?: {
+    firstFlippedTileId?: number | null;
+    secondFlippedTileId?: number | null;
+    attemptsUsed: number;
+    maxAttempts: number;
+    matchedPairKey?: string | null;
+    isMismatchResolving?: boolean;
+  };
+  oneShotState?: {
+    chosenTileId?: number;
+    allRevealed?: boolean;
+  };
+  tarotState?: {
+    chosenCardId?: number;
   };
 }
 
@@ -1262,6 +1297,7 @@ export interface ClientToServerEvents {
   "admin:mystery:cash_out": (payload?: { code?: string }) => void;
   "admin:mystery:steal_buzz": (payload?: { targetTeamId?: string; code?: string }) => void;
   "admin:mystery:advance_turn": (payload?: { code?: string }) => void;
+  "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;
 }

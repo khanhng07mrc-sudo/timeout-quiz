@@ -28,6 +28,7 @@ import {
   TeamWager,
   WagerState,
   MysteryQuestState,
+  MysteryMiniGameType,
   GameIntermissionPayload,
   GameMode,
   TeamMode,
@@ -2720,6 +2721,16 @@ export function registerSocketHandlers(io: IO) {
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
           primaryTeamName = questState.currentTurnTeamName;
+          // Crucial fix: question launch resets phase to QUESTION_ACTIVE so question card displays cleanly
+          questState.phase = "QUESTION_ACTIVE";
+          questState.potPoints = 0;
+          questState.potMultiplier = 1;
+          questState.bombExploded = undefined;
+          questState.turnFinishedReason = undefined;
+          questState.storyResult = undefined;
+          questState.lastFlippedTile = undefined;
+          roomMysteryQuests.set(room.id, questState);
+          io.to(`room:${room.code}`).emit("game:mystery:update", questState);
         }
       }
 
@@ -4277,7 +4288,7 @@ export function registerSocketHandlers(io: IO) {
     // ── Mystery Quest (Hành Trình Bí Ẩn) Events ──────────────────────────────
     const executeMysteryFlip = async (room: any, questState: any, team: any, tileId: number) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty } = handleFlipCard({
+      const { updatedState, isBomb, scorePenalty, finalScoreDelta, shouldResetMismatchedCards } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -4293,13 +4304,16 @@ export function registerSocketHandlers(io: IO) {
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
           ]);
         }
-      } else {
-        if (updatedState.turnFinishedReason === "ALL_CLEARED") {
-          const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
-          io.to(`room:${room.code}`).emit("game:score:update", [
-            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-          ]);
-        }
+      } else if (finalScoreDelta && finalScoreDelta > 0) {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+        ]);
+      } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+        ]);
       }
 
       const refreshedState = await buildRoomState(room.id);
@@ -4312,6 +4326,25 @@ export function registerSocketHandlers(io: IO) {
           potMultiplier: updatedState.potMultiplier,
           bombExploded: updatedState.bombExploded,
         });
+      }
+
+      // Memory Pairs mismatch: auto flip back after 1.5s
+      if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
+        setTimeout(async () => {
+          const cur = roomMysteryQuests.get(room.id);
+          if (!cur || !cur.memoryPairsState) return;
+          const { firstFlippedTileId, secondFlippedTileId } = cur.memoryPairsState;
+          cur.tiles.forEach((t) => {
+            if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+              t.isOpened = false;
+            }
+          });
+          cur.memoryPairsState.firstFlippedTileId = null;
+          cur.memoryPairsState.secondFlippedTileId = null;
+          cur.memoryPairsState.isMismatchResolving = false;
+          roomMysteryQuests.set(room.id, cur);
+          io.to(`room:${room.code}`).emit("game:mystery:update", cur);
+        }, 1500);
       }
     };
 
@@ -4364,6 +4397,7 @@ export function registerSocketHandlers(io: IO) {
         turnsPerTeam: questState.turnsPerTeam,
         prevTheme: questState.theme,
       });
+      nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
 
       io.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
@@ -4536,6 +4570,34 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryAdvanceTurn(room, questState);
     });
 
+    socket.on("admin:mystery:set_minigame_type", async ({ miniGameType, code }: { miniGameType: MysteryMiniGameType; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState) return;
+
+      const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
+      const currentTeam = teams.find((t) => t.id === questState.currentTurnTeamId) || teams[0] || { id: "t1", name: "Đội 1" };
+
+      const newStage = generateMysteryStageForTurn({
+        turnIndex: questState.currentTurnIndex,
+        currentTeam,
+        teams,
+        turnsPerTeam: questState.turnsPerTeam,
+        prevTheme: questState.theme,
+        forcedMiniGameType: miniGameType,
+      });
+      // Retain active phase
+      newStage.phase = questState.phase;
+      newStage.potPoints = questState.potPoints;
+      roomMysteryQuests.set(room.id, newStage);
+
+      io.to(`room:${room.code}`).emit("game:mystery:update", newStage);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    });
+
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);
@@ -4584,6 +4646,29 @@ export function registerSocketHandlers(io: IO) {
         },
         data: { teamId },
       }).catch(() => {});
+
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+          const newTeam = teams.find((t) => t.id === teamId);
+          if (newTeam) {
+            questState.currentTurnTeamId = newTeam.id;
+            questState.currentTurnTeamName = newTeam.name;
+            questState.currentTurnTeamColor = newTeam.color || "#ef4444";
+            if (roomActiveQuestions.has(room.id) || room.status === "PLAYING") {
+              questState.phase = "QUESTION_ACTIVE";
+              questState.potPoints = 0;
+              questState.bombExploded = undefined;
+              questState.turnFinishedReason = undefined;
+            }
+            roomMysteryQuests.set(room.id, questState);
+            io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+            const refState = await buildRoomState(room.id);
+            io.to(`room:${room.code}`).emit("room:state", refState);
+          }
+        }
+      }
     });
 
     // ── Cài đặt điểm số ban đầu cho các đội khi bắt đầu thi ────────────────────

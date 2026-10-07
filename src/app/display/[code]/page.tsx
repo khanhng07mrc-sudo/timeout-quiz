@@ -1306,7 +1306,14 @@ export default function DisplayPage() {
         )}
 
         {/* Question (hidden if viewing full board tab in DICE_RACE or minigame phase in MYSTERY_QUEST) */}
-        {currentQuestion && displayModeTab !== "BOARD" && !(roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE") && (
+        {currentQuestion &&
+          displayModeTab !== "BOARD" &&
+          !(
+            roomState.mode === "MYSTERY_QUEST" &&
+            roomState.mysteryQuestState &&
+            (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))
+          ) && (
           <div className="flex-1 glass rounded-2xl p-3.5 sm:p-6 flex flex-col justify-between">
             {currentQuestion.bouncebackSelectPhase ? (
               <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
@@ -1767,7 +1774,11 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {(!currentQuestion || (roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE")) && (
+        {(!currentQuestion ||
+          (roomState.mode === "MYSTERY_QUEST" &&
+            roomState.mysteryQuestState &&
+            (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))))) && (
           <div className="flex-1 flex flex-col items-center justify-center p-2">
             {roomState.mode === "TOURNAMENT" && roomState.tournamentState ? (
               <div className="w-full">

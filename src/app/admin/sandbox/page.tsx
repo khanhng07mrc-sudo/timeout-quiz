@@ -870,7 +870,8 @@ export default function AdminSandboxPage() {
       setRoomState((prev) => {
         if (!prev) return prev;
         const updatedTeams = prev.teams.map((t) => t.id === payload.teamId ? { ...t, score: payload.newScore } : t);
-        return { ...prev, teams: updatedTeams };
+        const updatedMystery = prev.mysteryQuestState ? { ...prev.mysteryQuestState, potPoints: 0, phase: "TURN_SUMMARY" as const } : prev.mysteryQuestState;
+        return { ...prev, teams: updatedTeams, mysteryQuestState: updatedMystery };
       });
       addLog(`💰 [${payload.teamName}] đã bảo toàn quỹ điểm: +${payload.totalGained}đ (Tổng: ${payload.newScore}đ)`);
     });
@@ -1946,6 +1947,37 @@ export default function AdminSandboxPage() {
         return;
       }
       if (e.data?.type === "MYSTERY_STEAL_BUZZ" || e.data?.action === "mystery_steal_buzz") {
+        return;
+      }
+      if (e.data?.type === "MYSTERY_SET_MINIGAME" || e.data?.action === "mystery_set_minigame") {
+        const miniGameType = e.data?.miniGameType;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType, code });
+          addLog(`🎮 Admin đổi Minigame sang: ${miniGameType}`);
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const teams = roomStateRef.current.teams;
+        const currentTeam = teams.find((t) => t.id === curMystery.currentTurnTeamId) || teams[0];
+        const nextStage = generateMysteryStageForTurn({
+          turnIndex: curMystery.currentTurnIndex,
+          currentTeam,
+          teams,
+          turnsPerTeam: curMystery.turnsPerTeam,
+          prevTheme: curMystery.theme,
+          forcedMiniGameType: miniGameType,
+        });
+        nextStage.phase = curMystery.phase;
+        nextStage.potPoints = curMystery.potPoints;
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: nextStage,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextStage });
+        addLog(`🎮 Sandbox đổi Minigame sang: ${miniGameType}`);
         return;
       }
       if (e.data?.type === "MYSTERY_ADVANCE_TURN" || e.data?.action === "mystery_advance_turn") {
@@ -4283,6 +4315,24 @@ export default function AdminSandboxPage() {
         code,
       });
     }
+    if (roomStateRef.current?.mode === "MYSTERY_QUEST" && roomStateRef.current?.mysteryQuestState) {
+      setRoomState((prev) => {
+        if (!prev?.mysteryQuestState) return prev;
+        return {
+          ...prev,
+          mysteryQuestState: {
+            ...prev.mysteryQuestState,
+            currentTurnTeamId: targetTeam.id,
+            currentTurnTeamName: targetTeam.name,
+            currentTurnTeamColor: targetTeam.color || "#ef4444",
+            phase: currentQuestion ? "QUESTION_ACTIVE" : prev.mysteryQuestState.phase,
+            potPoints: 0,
+            bombExploded: undefined,
+            turnFinishedReason: undefined,
+          },
+        };
+      });
+    }
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
     const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(
@@ -5694,7 +5744,7 @@ export default function AdminSandboxPage() {
                         <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
                       </div>
                       <span className="font-mono font-bold text-cyan-300 text-[10px] shrink-0">
-                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}
                       </span>
@@ -5715,7 +5765,7 @@ export default function AdminSandboxPage() {
                     {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
                   <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {currentTeam?.score ?? 0}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                    {currentTeam?.score ?? 0}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                       <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                     ) : null}
                   </span>
@@ -6226,6 +6276,9 @@ export default function AdminSandboxPage() {
                       onAdvanceTurn={() => {
                         window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                       }}
+                      onSelectMiniGame={(miniGameType) => {
+                        window.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
+                      }}
                     />
                   </div>
                 )}
@@ -6315,7 +6368,7 @@ export default function AdminSandboxPage() {
                         )}
                       </button>
                       <span className="font-mono font-black text-cyan-300 text-xs shrink-0 mr-1">
-                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                        {t.score}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === t.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}
                       </span>

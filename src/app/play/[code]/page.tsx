@@ -1419,7 +1419,10 @@ export default function PlayPage() {
 
       {/* Main game area */}
       <div className="flex-1 flex flex-col gap-2 sm:gap-3">
-        {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
+        {roomState?.mode === "MYSTERY_QUEST" &&
+        roomState?.mysteryQuestState &&
+        (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+          (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && (!currentQuestion || Boolean(revealPayload)))) ? (
           <div className="w-full animate-fade-in">
             <MysteryQuestBoard
               mysteryState={roomState.mysteryQuestState}
@@ -1443,6 +1446,12 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                 }
                 socketRef.current?.emit("admin:mystery:advance_turn");
+              }}
+              onSelectMiniGame={(miniGameType) => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
+                }
+                socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
               }}
             />
           </div>
@@ -1634,6 +1643,12 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                     }
                     socketRef.current?.emit("admin:mystery:advance_turn");
+                  }}
+                  onSelectMiniGame={(miniGameType) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
+                    }
+                    socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
                   }}
                 />
               </div>

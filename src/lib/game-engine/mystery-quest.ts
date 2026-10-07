@@ -4,6 +4,7 @@ import {
   MysteryMiniGameType,
   MysteryTile,
   MysteryTileType,
+  MysteryTileEffectType,
   TeamState,
   CardType,
 } from "@/types";
@@ -61,7 +62,13 @@ export const MYSTERY_THEMES: Record<MysteryTheme, MysteryThemeDetail> = {
 };
 
 const THEME_KEYS: MysteryTheme[] = ["CASTLE", "PIRATE", "FOREST", "CYBER", "TEMPLE"];
-const MINI_GAME_TYPES: MysteryMiniGameType[] = ["DOORS", "CHESTS", "TAROT_CARDS", "RADAR_WINDOWS"];
+
+export const MYSTERY_MINIGAME_CYCLE: MysteryMiniGameType[] = [
+  "MEMORY_PAIRS",
+  "ONE_SHOT_DOORS",
+  "PUSH_YOUR_LUCK",
+  "TAROT_DESTINY",
+];
 
 interface RewardTemplate {
   storyTitle: string;
@@ -123,19 +130,6 @@ const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   ],
 };
 
-function getTileLabelAndIcon(miniGameType: MysteryMiniGameType, index: number): { label: string; icon: string } {
-  switch (miniGameType) {
-    case "DOORS":
-      return { label: `Cửa #${index + 1}`, icon: "🚪" };
-    case "CHESTS":
-      return { label: `Rương #${index + 1}`, icon: "🪙" };
-    case "TAROT_CARDS":
-      return { label: `Thẻ #${index + 1}`, icon: "🃏" };
-    case "RADAR_WINDOWS":
-      return { label: `Radar #${index + 1}`, icon: "📡" };
-  }
-}
-
 export interface MysteryTeamRef {
   id: string;
   name: string;
@@ -145,36 +139,220 @@ export interface MysteryTeamRef {
 }
 
 /**
- * Generates a full Mystery Quest turn state for the active team with Push-your-luck bombs.
+ * Generates tiles specifically for Variant 1: MEMORY_PAIRS (8 tiles = 4 pairs).
  */
-export function generateMysteryStageForTurn({
-  turnIndex,
-  currentTeam,
-  teams,
-  turnsPerTeam = 2,
-  prevTheme,
-}: {
-  turnIndex: number;
-  currentTeam: MysteryTeamRef;
-  teams: MysteryTeamRef[];
-  turnsPerTeam?: number;
-  prevTheme?: MysteryTheme;
-}): MysteryQuestState {
-  const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
-  const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
-  const themeMeta = MYSTERY_THEMES[theme];
+function generateMemoryPairsTiles(): MysteryTile[] {
+  interface PairDef {
+    pairKey: string;
+    icon: string;
+    type: MysteryTileType;
+    storyTitle: string;
+    storyDescription: string;
+    effectType: MysteryTileEffectType;
+    deltaPoints: number;
+  }
 
-  const miniGameType = MINI_GAME_TYPES[Math.floor(Math.random() * MINI_GAME_TYPES.length)];
-  const isLongGame = turnsPerTeam >= 3 || (teams.length * turnsPerTeam) >= 12;
-  const totalTilesCount = isLongGame ? 16 : 9;
+  const pairs: PairDef[] = [
+    {
+      pairKey: "PAIR_TREASURE",
+      icon: "💎",
+      type: "REWARD",
+      storyTitle: "💎 CẶP KHO BÁU HOÀNG KIM!",
+      storyDescription: "Tìm thấy cặp ngọc quý tương đồng: Nhận ngay +30 điểm thưởng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 30,
+    },
+    {
+      pairKey: "PAIR_STAR",
+      icon: "⭐",
+      type: "REWARD",
+      storyTitle: "⭐ CẶP TINH TÚ DIỆU KỲ!",
+      storyDescription: "Tìm thấy cặp sao may mắn: Nhận an toàn +20 điểm thưởng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 20,
+    },
+    {
+      pairKey: "PAIR_MULTIPLY",
+      icon: "🚀",
+      type: "REWARD",
+      storyTitle: "🚀 CẶP ĐỘNG CƠ NHÂN ĐÔI!",
+      storyDescription: "Kích hoạt năng lượng đột phá: Nhận nóng +40 điểm thưởng cực khủng!",
+      effectType: "MULTIPLY_X2",
+      deltaPoints: 40,
+    },
+    {
+      pairKey: "PAIR_BOMB",
+      icon: "💣",
+      type: "BOMB_MAJOR",
+      storyTitle: "💣 CẶP KÍP NỔ HẮC ÁM!",
+      storyDescription: "Ghép trúng cặp kíp nổ liên hoàn: Kích nổ bom hắc ám, bị phạt trừ 15 điểm!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -15,
+    },
+  ];
 
-  const currentRound = Math.floor(turnIndex / teams.length) + 1;
+  const tileItems: Omit<MysteryTile, "id" | "label">[] = [];
+  pairs.forEach((p) => {
+    // Add 2 copies for each pair
+    for (let c = 0; c < 2; c++) {
+      tileItems.push({
+        icon: p.icon,
+        isOpened: false,
+        type: p.type,
+        storyTitle: p.storyTitle,
+        storyDescription: p.storyDescription,
+        effectType: p.effectType,
+        deltaPoints: p.deltaPoints,
+        pairKey: p.pairKey,
+      });
+    }
+  });
 
-  // Plan tile types:
-  // - 1x BOMB_MINOR (Tiểu Bom 💣): Nổ mất quỹ câu này
-  // - 1x BOMB_MAJOR (Đại Bom 💥): Nổ mất quỹ câu này + phạt trừ 20đ tổng điểm
-  // - (Nếu Round >= 2): Có 50% cơ hội có 1x BOMB_DOOM (Bom Hủy Diệt 💀): Mất quỹ + chia đôi tổng điểm!
-  // - Các ô còn lại: REWARDS
+  // Shuffle items
+  const shuffled = tileItems.sort(() => Math.random() - 0.5);
+  return shuffled.map((item, idx) => ({
+    ...item,
+    id: idx + 1,
+    label: `Thẻ #${idx + 1}`,
+  }));
+}
+
+/**
+ * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (3 doors).
+ */
+function generateOneShotDoorsTiles(): MysteryTile[] {
+  interface DoorDef {
+    icon: string;
+    type: MysteryTileType;
+    storyTitle: string;
+    storyDescription: string;
+    effectType: MysteryTileEffectType;
+    deltaPoints: number;
+  }
+
+  const doors: DoorDef[] = [
+    {
+      icon: "👑",
+      type: "REWARD",
+      storyTitle: "👑 CỬA HOÀNG GIA ĐẠI THƯỞNG!",
+      storyDescription: "Mở đúng cánh cửa vinh quang: Nhận ngay +40 điểm thưởng siêu cấp!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 40,
+    },
+    {
+      icon: "🛡️",
+      type: "REWARD",
+      storyTitle: "🛡️ CỬA HỘ VỆ AN TOÀN!",
+      storyDescription: "Cánh cửa phòng tuyến an toàn: Nhận an toàn +20 điểm thưởng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 20,
+    },
+    {
+      icon: "💥",
+      type: "BOMB_MAJOR",
+      storyTitle: "💥 CỬA BẪY BOM CÔNG PHÁ!",
+      storyDescription: "Dính bẫy ngầm sau cánh cửa: Bom phát nổ, bị trừ 15 điểm từ tổng điểm!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -15,
+    },
+  ];
+
+  const shuffled = [...doors].sort(() => Math.random() - 0.5);
+  return shuffled.map((d, idx) => ({
+    id: idx + 1,
+    label: `Cửa #${idx + 1}`,
+    icon: d.icon,
+    isOpened: false,
+    type: d.type,
+    storyTitle: d.storyTitle,
+    storyDescription: d.storyDescription,
+    effectType: d.effectType,
+    deltaPoints: d.deltaPoints,
+  }));
+}
+
+/**
+ * Generates tiles specifically for Variant 4: TAROT_DESTINY (5 cards).
+ */
+function generateTarotDestinyTiles(): MysteryTile[] {
+  interface TarotDef {
+    tarotName: string;
+    icon: string;
+    type: MysteryTileType;
+    storyTitle: string;
+    storyDescription: string;
+    effectType: MysteryTileEffectType;
+    deltaPoints: number;
+  }
+
+  const tarotCards: TarotDef[] = [
+    {
+      tarotName: "Mặt Trời (The Sun)",
+      icon: "☀️",
+      type: "REWARD",
+      storyTitle: "☀️ QUẺ BÀI MẶT TRỜI QUANG MINH",
+      storyDescription: "Ánh dương thần thánh chiếu rọi: Đại hồng ân ban tặng +50 điểm thưởng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 50,
+    },
+    {
+      tarotName: "Hoàng Đế (The Emperor)",
+      icon: "👑",
+      type: "REWARD",
+      storyTitle: "👑 QUẺ BÀI HOÀNG ĐẾ VƯƠNG QUYỀN",
+      storyDescription: "Vương miện uy quyền tối thượng: Thưởng nóng +35 điểm danh dự!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 35,
+    },
+    {
+      tarotName: "Kẻ Khờ (The Fool)",
+      icon: "🃏",
+      type: "REWARD",
+      storyTitle: "🃏 QUẺ BÀI KẺ KHỜ PHI THƯỜNG",
+      storyDescription: "Vận may bất ngờ của kẻ khờ: Đột phá nhân đôi năng lượng (+40đ)!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 40,
+    },
+    {
+      tarotName: "Thần Chết (Death)",
+      icon: "💀",
+      type: "BOMB_MAJOR",
+      storyTitle: "💀 QUẺ BÀI THẦN CHẾT ĐOẠT MỆNH",
+      storyDescription: "Lưỡi hái định mệnh buông xuống: Bị phạt trừ 20 điểm từ tổng điểm!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -20,
+    },
+    {
+      tarotName: "Hiệp Sĩ Đạo Tặc (The Knight)",
+      icon: "🗡️",
+      type: "REWARD",
+      storyTitle: "🗡️ QUẺ BÀI HIỆP SĨ ĐỘT KÍCH",
+      storyDescription: "Thanh gươm công lý cướp phá: Cướp thêm 25 điểm vào quỹ tổng!",
+      effectType: "STEAL_POINTS",
+      deltaPoints: 25,
+    },
+  ];
+
+  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
+  return shuffled.map((card, idx) => ({
+    id: idx + 1,
+    label: `Lá #${idx + 1}`,
+    tarotName: card.tarotName,
+    icon: card.icon,
+    isOpened: false,
+    type: card.type,
+    storyTitle: card.storyTitle,
+    storyDescription: card.storyDescription,
+    effectType: card.effectType,
+    deltaPoints: card.deltaPoints,
+  }));
+}
+
+/**
+ * Generates tiles for Variant 3: PUSH_YOUR_LUCK (Classic 9 or 12 tiles, single layer).
+ */
+function generatePushYourLuckTiles(theme: MysteryTheme, currentRound: number): MysteryTile[] {
+  const totalTilesCount = 9; // 3x3 clean single layer
   const tileTypes: MysteryTileType[] = ["BOMB_MINOR", "BOMB_MAJOR"];
   if (currentRound >= 2 && Math.random() < 0.5) {
     tileTypes.push("BOMB_DOOM");
@@ -184,7 +362,6 @@ export function generateMysteryStageForTurn({
     tileTypes.push("REWARD");
   }
 
-  // Shuffle tile types across slots
   const shuffledTypes = [...tileTypes].sort(() => Math.random() - 0.5);
   const themeRewards = [...REWARD_TEMPLATES[theme]].sort(() => Math.random() - 0.5);
 
@@ -193,13 +370,14 @@ export function generateMysteryStageForTurn({
 
   for (let i = 0; i < totalTilesCount; i++) {
     const type = shuffledTypes[i];
-    const { label, icon } = getTileLabelAndIcon(miniGameType, i);
+    const label = `Ô #${i + 1}`;
+    const icon = "🚪";
 
     if (type === "BOMB_MINOR") {
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "💣",
         isOpened: false,
         type: "BOMB_MINOR",
         storyTitle: "💣 TIỂU BOM NỔ TUNG!",
@@ -211,7 +389,7 @@ export function generateMysteryStageForTurn({
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "💥",
         isOpened: false,
         type: "BOMB_MAJOR",
         storyTitle: "💥 ĐẠI BOM CÔNG PHÁ!",
@@ -223,7 +401,7 @@ export function generateMysteryStageForTurn({
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "💀",
         isOpened: false,
         type: "BOMB_DOOM",
         storyTitle: "💀 BOM HỦY DIỆT Ô SỐ PHẬN!",
@@ -248,7 +426,88 @@ export function generateMysteryStageForTurn({
     }
   }
 
+  return tiles;
+}
+
+/**
+ * Normalizes miniGameType to one of the 4 core variants.
+ */
+export function normalizeMiniGameType(type?: MysteryMiniGameType): MysteryMiniGameType {
+  if (!type) return "PUSH_YOUR_LUCK";
+  if (type === "DOORS" || type === "CHESTS") return "ONE_SHOT_DOORS";
+  if (type === "TAROT_CARDS") return "TAROT_DESTINY";
+  if (type === "RADAR_WINDOWS") return "PUSH_YOUR_LUCK";
+  return type;
+}
+
+/**
+ * Generates a full Mystery Quest turn state for the active team.
+ */
+export function generateMysteryStageForTurn({
+  turnIndex,
+  currentTeam,
+  teams,
+  turnsPerTeam = 2,
+  prevTheme,
+  forcedMiniGameType,
+}: {
+  turnIndex: number;
+  currentTeam: MysteryTeamRef;
+  teams: MysteryTeamRef[];
+  turnsPerTeam?: number;
+  prevTheme?: MysteryTheme;
+  forcedMiniGameType?: MysteryMiniGameType;
+}): MysteryQuestState {
+  const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
+  const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
+  const themeMeta = MYSTERY_THEMES[theme];
+
+  // Rotate through the 4 variants if not forced:
+  const miniGameType = forcedMiniGameType
+    ? normalizeMiniGameType(forcedMiniGameType)
+    : MYSTERY_MINIGAME_CYCLE[turnIndex % MYSTERY_MINIGAME_CYCLE.length];
+
+  const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
+
+  let tiles: MysteryTile[] = [];
+  let memoryPairsState: MysteryQuestState["memoryPairsState"] = undefined;
+  let oneShotState: MysteryQuestState["oneShotState"] = undefined;
+  let tarotState: MysteryQuestState["tarotState"] = undefined;
+
+  switch (miniGameType) {
+    case "MEMORY_PAIRS":
+      tiles = generateMemoryPairsTiles();
+      memoryPairsState = {
+        firstFlippedTileId: null,
+        secondFlippedTileId: null,
+        attemptsUsed: 0,
+        maxAttempts: 5,
+        matchedPairKey: null,
+        isMismatchResolving: false,
+      };
+      break;
+
+    case "ONE_SHOT_DOORS":
+      tiles = generateOneShotDoorsTiles();
+      oneShotState = {
+        chosenTileId: undefined,
+        allRevealed: false,
+      };
+      break;
+
+    case "TAROT_DESTINY":
+      tiles = generateTarotDestinyTiles();
+      tarotState = {
+        chosenCardId: undefined,
+      };
+      break;
+
+    case "PUSH_YOUR_LUCK":
+    default:
+      tiles = generatePushYourLuckTiles(theme, currentRound);
+      break;
+  }
 
   return {
     currentTurnTeamId: currentTeam.id,
@@ -267,11 +526,14 @@ export function generateMysteryStageForTurn({
     potPoints: 0,
     potMultiplier: 1,
     cardsFlippedCount: 0,
+    memoryPairsState,
+    oneShotState,
+    tarotState,
   };
 }
 
 /**
- * Handles flipping a single card in Push-Your-Luck mode.
+ * Handles flipping/choosing a tile across all 4 minigame variants.
  */
 export function handleFlipCard({
   state,
@@ -288,7 +550,321 @@ export function handleFlipCard({
   isBomb: boolean;
   scorePenalty: number;
   rewardCard?: CardType;
+  finalScoreDelta?: number;
+  shouldResetMismatchedCards?: boolean;
 } {
+  const normType = normalizeMiniGameType(state.miniGameType);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VARIANT 1: MEMORY_PAIRS (Lật cặp trùng nhau)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (normType === "MEMORY_PAIRS") {
+    const memState = state.memoryPairsState || {
+      firstFlippedTileId: null,
+      secondFlippedTileId: null,
+      attemptsUsed: 0,
+      maxAttempts: 5,
+      matchedPairKey: null,
+      isMismatchResolving: false,
+    };
+
+    if (memState.isMismatchResolving) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    const tile = state.tiles.find((t) => t.id === tileId);
+    if (!tile || tile.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // Step 1: Flip first card of the pair
+    if (!memState.firstFlippedTileId) {
+      tile.isOpened = true;
+      memState.firstFlippedTileId = tile.id;
+      state.memoryPairsState = { ...memState };
+      state.lastFlippedTile = tile;
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // Step 2: Flip second card of the pair
+    if (memState.firstFlippedTileId === tile.id) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    tile.isOpened = true;
+    memState.secondFlippedTileId = tile.id;
+    memState.attemptsUsed += 1;
+    state.lastFlippedTile = tile;
+
+    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+    const isMatch = firstTile && firstTile.pairKey === tile.pairKey;
+
+    if (isMatch && firstTile) {
+      // MATCH FOUND! Apply effect of the first matched pair and finish minigame immediately!
+      memState.matchedPairKey = firstTile.pairKey;
+      state.memoryPairsState = { ...memState };
+
+      const isBomb = firstTile.type !== "REWARD";
+      let penalty = 0;
+      let finalDelta = 0;
+
+      if (isBomb) {
+        penalty = 15;
+        state.bombExploded = {
+          type: "MAJOR",
+          title: firstTile.storyTitle,
+          description: firstTile.storyDescription,
+          penaltyText: "Dính cặp kíp nổ hắc ám! Bị trừ 15 điểm từ tổng điểm.",
+        };
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        finalDelta = -penalty;
+
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `💥 Dính cặp bom nổ! Bị phạt trừ 15 điểm!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
+        };
+      } else {
+        // Safe match
+        finalDelta = firstTile.deltaPoints || 30;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "PAIR_MATCHED";
+        state.potPoints = 0; // Cleared as it's directly awarded
+
+        const oldScore = team.score || 0;
+        const newScore = oldScore + finalDelta;
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+          scoreDelta: finalDelta,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state },
+          isBomb: false,
+          scorePenalty: 0,
+          finalScoreDelta: finalDelta,
+        };
+      }
+    } else {
+      // MISMATCH: Mark mismatch resolving
+      memState.isMismatchResolving = true;
+      state.memoryPairsState = { ...memState };
+
+      if (memState.attemptsUsed >= memState.maxAttempts) {
+        // Max attempts exhausted!
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "MAX_ATTEMPTS";
+        state.potPoints = 0;
+
+        const oldScore = team.score || 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `⚠️ Đã hết ${memState.maxAttempts} lượt lật mà chưa tìm thấy cặp trùng nhau. Lượt kết thúc với 0 điểm.`,
+          scoreDelta: 0,
+          oldScore,
+          newScore: oldScore,
+        };
+      }
+
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        shouldResetMismatchedCards: true,
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VARIANT 2: ONE_SHOT_DOORS (Chọn 1 trong 3 cánh cửa)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (normType === "ONE_SHOT_DOORS") {
+    const tile = state.tiles.find((t) => t.id === tileId);
+    if (!tile || tile.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // Reveal chosen door AND simultaneously open the remaining doors for drama!
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+
+    state.oneShotState = {
+      chosenTileId: tileId,
+      allRevealed: true,
+    };
+    state.lastFlippedTile = tile;
+
+    const isBomb = tile.type !== "REWARD";
+    let penalty = 0;
+    let finalDelta = 0;
+
+    if (isBomb) {
+      penalty = 15;
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText: "Cửa bẫy nổ! Bị trừ 15 điểm từ tổng điểm.",
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💥 Mở trúng Cửa Bẫy! ${tile.storyDescription}`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: -penalty,
+      };
+    } else {
+      finalDelta = tile.deltaPoints || 25;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "DOOR_CHOSEN";
+
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: finalDelta,
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VARIANT 4: TAROT_DESTINY (Rút 1 trong 5 lá bài Tarot thần số)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (normType === "TAROT_DESTINY") {
+    const tile = state.tiles.find((t) => t.id === tileId);
+    if (!tile || tile.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // Reveal drawn card and reveal the other 4 cards
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+
+    state.tarotState = { chosenCardId: tileId };
+    state.lastFlippedTile = tile;
+
+    const isBomb = tile.type !== "REWARD";
+    let penalty = 0;
+    let finalDelta = 0;
+
+    if (isBomb) {
+      penalty = 20;
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText: "Quẻ bài Thần Chết! Bị phạt trừ 20 điểm từ tổng điểm.",
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💀 Quẻ bài Thần Chết xuất hiện! Bị phạt trừ 20 điểm!`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: -penalty,
+      };
+    } else {
+      finalDelta = tile.deltaPoints || 35;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "TAROT_DRAWN";
+
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `🔮 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: finalDelta,
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VARIANT 3: PUSH_YOUR_LUCK (Lật liều tích lũy né Bom, 1 lớp bài)
+  // ═══════════════════════════════════════════════════════════════════════════
   const tile = state.tiles.find((t) => t.id === tileId);
   if (!tile || tile.isOpened) {
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -298,7 +874,6 @@ export function handleFlipCard({
   state.lastFlippedTile = tile;
   state.cardsFlippedCount++;
 
-  // ── Case 1: Bomb Hit! ──────────────────────────────────────────────────────
   if (tile.type !== "REWARD") {
     let penalty = 0;
     let penaltyText = "";
@@ -342,15 +917,15 @@ export function handleFlipCard({
       updatedState: { ...state },
       isBomb: true,
       scorePenalty: penalty,
+      finalScoreDelta: -penalty,
     };
   }
 
-  // ── Case 2: Reward Card ───────────────────────────────────────────────────
+  // Safe Reward Card
   if (tile.effectType === "MULTIPLY_X2") {
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
   } else if (tile.effectType === "STEAL_POINTS") {
-    // Steal from leader
     const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
     if (otherTeams.length > 0) {
       const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -364,25 +939,32 @@ export function handleFlipCard({
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
 
-  // Check if all non-bomb reward cards have been cleared (Jackpot Victory!)
+  // Check if all non-bomb reward cards cleared
   const remainingRewardTiles = state.tiles.filter((t) => !t.isOpened && t.type === "REWARD");
   if (remainingRewardTiles.length === 0) {
-    // Auto-cashout jackpot!
-    state.potPoints += 50; // +50 bonus for clearing all!
+    const clearedDelta = state.potPoints + 50;
+    state.potPoints = 0; // Cleared so badge doesn't linger!
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "ALL_CLEARED";
 
     const oldScore = team.score || 0;
-    const newScore = oldScore + state.potPoints;
+    const newScore = oldScore + clearedDelta;
 
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `🏆 ĐẠI THẮNG QUÉT SẠCH BẢN ĐỒ! Thu hoạch trọn vẹn +${state.potPoints} điểm!`,
-      scoreDelta: state.potPoints,
+      rewardText: `🏆 ĐẠI THẮNG QUÉT SẠCH TẤT CẢ Ô! Thu hoạch trọn vẹn +${clearedDelta} điểm!`,
+      scoreDelta: clearedDelta,
       oldScore,
       newScore,
+    };
+
+    return {
+      updatedState: { ...state },
+      isBomb: false,
+      scorePenalty: 0,
+      finalScoreDelta: clearedDelta,
     };
   }
 
@@ -394,7 +976,8 @@ export function handleFlipCard({
 }
 
 /**
- * Handles cashing out (Dừng lại & Bảo toàn điểm).
+ * Handles cashing out (Dừng lại & Bảo toàn điểm trong PUSH_YOUR_LUCK).
+ * Explicitly clears state.potPoints to 0 so no (+Xđ) remains on UI!
  */
 export function handleCashOut({
   state,
@@ -412,6 +995,7 @@ export function handleCashOut({
 
   state.phase = "TURN_SUMMARY";
   state.turnFinishedReason = "CASH_OUT";
+  state.potPoints = 0; // Reset to 0 immediately upon cashing out!
 
   state.storyResult = {
     teamId: team.id,

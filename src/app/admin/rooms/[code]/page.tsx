@@ -1397,12 +1397,19 @@ export default function AdminRoomPage() {
                 onFlipCard={(tileId) => emit("admin:mystery:flip_card", { tileId, code })}
                 onCashOut={() => emit("admin:mystery:cash_out", { code })}
                 onAdvanceTurn={() => emit("admin:mystery:advance_turn", { code })}
+                onSelectMiniGame={(miniGameType) => emit("admin:mystery:set_minigame_type" as any, { miniGameType, code })}
               />
             </div>
           )}
 
           {/* Question info */}
-          {currentQuestion && !(roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE") && (
+          {currentQuestion &&
+            !(
+              roomState?.mode === "MYSTERY_QUEST" &&
+              roomState.mysteryQuestState &&
+              (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+                (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))
+            ) && (
             <div className="glass rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground font-semibold">

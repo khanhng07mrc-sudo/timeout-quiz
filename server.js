@@ -844,7 +844,12 @@ var MYSTERY_THEMES = {
   }
 };
 var THEME_KEYS = ["CASTLE", "PIRATE", "FOREST", "CYBER", "TEMPLE"];
-var MINI_GAME_TYPES = ["DOORS", "CHESTS", "TAROT_CARDS", "RADAR_WINDOWS"];
+var MYSTERY_MINIGAME_CYCLE = [
+  "MEMORY_PAIRS",
+  "ONE_SHOT_DOORS",
+  "PUSH_YOUR_LUCK",
+  "TAROT_DESTINY"
+];
 var REWARD_TEMPLATES = {
   CASTLE: [
     { storyTitle: "\u{1F48E} \u0110\u1EA1i H\u1ED3ng \xC2n Ph\xE1p S\u01B0", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -897,32 +902,171 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ]
 };
-function getTileLabelAndIcon(miniGameType, index) {
-  switch (miniGameType) {
-    case "DOORS":
-      return { label: `C\u1EEDa #${index + 1}`, icon: "\u{1F6AA}" };
-    case "CHESTS":
-      return { label: `R\u01B0\u01A1ng #${index + 1}`, icon: "\u{1FA99}" };
-    case "TAROT_CARDS":
-      return { label: `Th\u1EBB #${index + 1}`, icon: "\u{1F0CF}" };
-    case "RADAR_WINDOWS":
-      return { label: `Radar #${index + 1}`, icon: "\u{1F4E1}" };
-  }
+function generateMemoryPairsTiles() {
+  const pairs = [
+    {
+      pairKey: "PAIR_TREASURE",
+      icon: "\u{1F48E}",
+      type: "REWARD",
+      storyTitle: "\u{1F48E} C\u1EB6P KHO B\xC1U HO\xC0NG KIM!",
+      storyDescription: "T\xECm th\u1EA5y c\u1EB7p ng\u1ECDc qu\xFD t\u01B0\u01A1ng \u0111\u1ED3ng: Nh\u1EADn ngay +30 \u0111i\u1EC3m th\u01B0\u1EDFng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 30
+    },
+    {
+      pairKey: "PAIR_STAR",
+      icon: "\u2B50",
+      type: "REWARD",
+      storyTitle: "\u2B50 C\u1EB6P TINH T\xDA DI\u1EC6U K\u1EF2!",
+      storyDescription: "T\xECm th\u1EA5y c\u1EB7p sao may m\u1EAFn: Nh\u1EADn an to\xE0n +20 \u0111i\u1EC3m th\u01B0\u1EDFng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 20
+    },
+    {
+      pairKey: "PAIR_MULTIPLY",
+      icon: "\u{1F680}",
+      type: "REWARD",
+      storyTitle: "\u{1F680} C\u1EB6P \u0110\u1ED8NG C\u01A0 NH\xC2N \u0110\xD4I!",
+      storyDescription: "K\xEDch ho\u1EA1t n\u0103ng l\u01B0\u1EE3ng \u0111\u1ED9t ph\xE1: Nh\u1EADn n\xF3ng +40 \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c kh\u1EE7ng!",
+      effectType: "MULTIPLY_X2",
+      deltaPoints: 40
+    },
+    {
+      pairKey: "PAIR_BOMB",
+      icon: "\u{1F4A3}",
+      type: "BOMB_MAJOR",
+      storyTitle: "\u{1F4A3} C\u1EB6P K\xCDP N\u1ED4 H\u1EAEC \xC1M!",
+      storyDescription: "Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 li\xEAn ho\xE0n: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m, b\u1ECB ph\u1EA1t tr\u1EEB 15 \u0111i\u1EC3m!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -15
+    }
+  ];
+  const tileItems = [];
+  pairs.forEach((p) => {
+    for (let c = 0; c < 2; c++) {
+      tileItems.push({
+        icon: p.icon,
+        isOpened: false,
+        type: p.type,
+        storyTitle: p.storyTitle,
+        storyDescription: p.storyDescription,
+        effectType: p.effectType,
+        deltaPoints: p.deltaPoints,
+        pairKey: p.pairKey
+      });
+    }
+  });
+  const shuffled = tileItems.sort(() => Math.random() - 0.5);
+  return shuffled.map((item, idx) => ({
+    ...item,
+    id: idx + 1,
+    label: `Th\u1EBB #${idx + 1}`
+  }));
 }
-function generateMysteryStageForTurn({
-  turnIndex,
-  currentTeam,
-  teams,
-  turnsPerTeam = 2,
-  prevTheme
-}) {
-  const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
-  const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
-  const themeMeta = MYSTERY_THEMES[theme];
-  const miniGameType = MINI_GAME_TYPES[Math.floor(Math.random() * MINI_GAME_TYPES.length)];
-  const isLongGame = turnsPerTeam >= 3 || teams.length * turnsPerTeam >= 12;
-  const totalTilesCount = isLongGame ? 16 : 9;
-  const currentRound = Math.floor(turnIndex / teams.length) + 1;
+function generateOneShotDoorsTiles() {
+  const doors = [
+    {
+      icon: "\u{1F451}",
+      type: "REWARD",
+      storyTitle: "\u{1F451} C\u1EECA HO\xC0NG GIA \u0110\u1EA0I TH\u01AF\u1EDENG!",
+      storyDescription: "M\u1EDF \u0111\xFAng c\xE1nh c\u1EEDa vinh quang: Nh\u1EADn ngay +40 \u0111i\u1EC3m th\u01B0\u1EDFng si\xEAu c\u1EA5p!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 40
+    },
+    {
+      icon: "\u{1F6E1}\uFE0F",
+      type: "REWARD",
+      storyTitle: "\u{1F6E1}\uFE0F C\u1EECA H\u1ED8 V\u1EC6 AN TO\xC0N!",
+      storyDescription: "C\xE1nh c\u1EEDa ph\xF2ng tuy\u1EBFn an to\xE0n: Nh\u1EADn an to\xE0n +20 \u0111i\u1EC3m th\u01B0\u1EDFng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 20
+    },
+    {
+      icon: "\u{1F4A5}",
+      type: "BOMB_MAJOR",
+      storyTitle: "\u{1F4A5} C\u1EECA B\u1EAAY BOM C\xD4NG PH\xC1!",
+      storyDescription: "D\xEDnh b\u1EABy ng\u1EA7m sau c\xE1nh c\u1EEDa: Bom ph\xE1t n\u1ED5, b\u1ECB tr\u1EEB 15 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -15
+    }
+  ];
+  const shuffled = [...doors].sort(() => Math.random() - 0.5);
+  return shuffled.map((d, idx) => ({
+    id: idx + 1,
+    label: `C\u1EEDa #${idx + 1}`,
+    icon: d.icon,
+    isOpened: false,
+    type: d.type,
+    storyTitle: d.storyTitle,
+    storyDescription: d.storyDescription,
+    effectType: d.effectType,
+    deltaPoints: d.deltaPoints
+  }));
+}
+function generateTarotDestinyTiles() {
+  const tarotCards = [
+    {
+      tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
+      icon: "\u2600\uFE0F",
+      type: "REWARD",
+      storyTitle: "\u2600\uFE0F QU\u1EBA B\xC0I M\u1EB6T TR\u1EDCI QUANG MINH",
+      storyDescription: "\xC1nh d\u01B0\u01A1ng th\u1EA7n th\xE1nh chi\u1EBFu r\u1ECDi: \u0110\u1EA1i h\u1ED3ng \xE2n ban t\u1EB7ng +50 \u0111i\u1EC3m th\u01B0\u1EDFng!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 50
+    },
+    {
+      tarotName: "Ho\xE0ng \u0110\u1EBF (The Emperor)",
+      icon: "\u{1F451}",
+      type: "REWARD",
+      storyTitle: "\u{1F451} QU\u1EBA B\xC0I HO\xC0NG \u0110\u1EBE V\u01AF\u01A0NG QUY\u1EC0N",
+      storyDescription: "V\u01B0\u01A1ng mi\u1EC7n uy quy\u1EC1n t\u1ED1i th\u01B0\u1EE3ng: Th\u01B0\u1EDFng n\xF3ng +35 \u0111i\u1EC3m danh d\u1EF1!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 35
+    },
+    {
+      tarotName: "K\u1EBB Kh\u1EDD (The Fool)",
+      icon: "\u{1F0CF}",
+      type: "REWARD",
+      storyTitle: "\u{1F0CF} QU\u1EBA B\xC0I K\u1EBA KH\u1EDC PHI TH\u01AF\u1EDCNG",
+      storyDescription: "V\u1EADn may b\u1EA5t ng\u1EDD c\u1EE7a k\u1EBB kh\u1EDD: \u0110\u1ED9t ph\xE1 nh\xE2n \u0111\xF4i n\u0103ng l\u01B0\u1EE3ng (+40\u0111)!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 40
+    },
+    {
+      tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
+      icon: "\u{1F480}",
+      type: "BOMB_MAJOR",
+      storyTitle: "\u{1F480} QU\u1EBA B\xC0I TH\u1EA6N CH\u1EBET \u0110O\u1EA0T M\u1EC6NH",
+      storyDescription: "L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh bu\xF4ng xu\u1ED1ng: B\u1ECB ph\u1EA1t tr\u1EEB 20 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -20
+    },
+    {
+      tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
+      icon: "\u{1F5E1}\uFE0F",
+      type: "REWARD",
+      storyTitle: "\u{1F5E1}\uFE0F QU\u1EBA B\xC0I HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
+      storyDescription: "Thanh g\u01B0\u01A1m c\xF4ng l\xFD c\u01B0\u1EDBp ph\xE1: C\u01B0\u1EDBp th\xEAm 25 \u0111i\u1EC3m v\xE0o qu\u1EF9 t\u1ED5ng!",
+      effectType: "STEAL_POINTS",
+      deltaPoints: 25
+    }
+  ];
+  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
+  return shuffled.map((card, idx) => ({
+    id: idx + 1,
+    label: `L\xE1 #${idx + 1}`,
+    tarotName: card.tarotName,
+    icon: card.icon,
+    isOpened: false,
+    type: card.type,
+    storyTitle: card.storyTitle,
+    storyDescription: card.storyDescription,
+    effectType: card.effectType,
+    deltaPoints: card.deltaPoints
+  }));
+}
+function generatePushYourLuckTiles(theme, currentRound) {
+  const totalTilesCount = 9;
   const tileTypes = ["BOMB_MINOR", "BOMB_MAJOR"];
   if (currentRound >= 2 && Math.random() < 0.5) {
     tileTypes.push("BOMB_DOOM");
@@ -936,12 +1080,13 @@ function generateMysteryStageForTurn({
   const tiles = [];
   for (let i = 0; i < totalTilesCount; i++) {
     const type = shuffledTypes[i];
-    const { label, icon } = getTileLabelAndIcon(miniGameType, i);
+    const label = `\xD4 #${i + 1}`;
+    const icon = "\u{1F6AA}";
     if (type === "BOMB_MINOR") {
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "\u{1F4A3}",
         isOpened: false,
         type: "BOMB_MINOR",
         storyTitle: "\u{1F4A3} TI\u1EC2U BOM N\u1ED4 TUNG!",
@@ -953,7 +1098,7 @@ function generateMysteryStageForTurn({
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "\u{1F4A5}",
         isOpened: false,
         type: "BOMB_MAJOR",
         storyTitle: "\u{1F4A5} \u0110\u1EA0I BOM C\xD4NG PH\xC1!",
@@ -965,7 +1110,7 @@ function generateMysteryStageForTurn({
       tiles.push({
         id: i + 1,
         label,
-        icon,
+        icon: "\u{1F480}",
         isOpened: false,
         type: "BOMB_DOOM",
         storyTitle: "\u{1F480} BOM H\u1EE6Y DI\u1EC6T \xD4 S\u1ED0 PH\u1EACN!",
@@ -989,7 +1134,63 @@ function generateMysteryStageForTurn({
       });
     }
   }
+  return tiles;
+}
+function normalizeMiniGameType(type) {
+  if (!type) return "PUSH_YOUR_LUCK";
+  if (type === "DOORS" || type === "CHESTS") return "ONE_SHOT_DOORS";
+  if (type === "TAROT_CARDS") return "TAROT_DESTINY";
+  if (type === "RADAR_WINDOWS") return "PUSH_YOUR_LUCK";
+  return type;
+}
+function generateMysteryStageForTurn({
+  turnIndex,
+  currentTeam,
+  teams,
+  turnsPerTeam = 2,
+  prevTheme,
+  forcedMiniGameType
+}) {
+  const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
+  const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
+  const themeMeta = MYSTERY_THEMES[theme];
+  const miniGameType = forcedMiniGameType ? normalizeMiniGameType(forcedMiniGameType) : MYSTERY_MINIGAME_CYCLE[turnIndex % MYSTERY_MINIGAME_CYCLE.length];
+  const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
+  let tiles = [];
+  let memoryPairsState = void 0;
+  let oneShotState = void 0;
+  let tarotState = void 0;
+  switch (miniGameType) {
+    case "MEMORY_PAIRS":
+      tiles = generateMemoryPairsTiles();
+      memoryPairsState = {
+        firstFlippedTileId: null,
+        secondFlippedTileId: null,
+        attemptsUsed: 0,
+        maxAttempts: 5,
+        matchedPairKey: null,
+        isMismatchResolving: false
+      };
+      break;
+    case "ONE_SHOT_DOORS":
+      tiles = generateOneShotDoorsTiles();
+      oneShotState = {
+        chosenTileId: void 0,
+        allRevealed: false
+      };
+      break;
+    case "TAROT_DESTINY":
+      tiles = generateTarotDestinyTiles();
+      tarotState = {
+        chosenCardId: void 0
+      };
+      break;
+    case "PUSH_YOUR_LUCK":
+    default:
+      tiles = generatePushYourLuckTiles(theme, currentRound);
+      break;
+  }
   return {
     currentTurnTeamId: currentTeam.id,
     currentTurnTeamName: currentTeam.name,
@@ -1006,7 +1207,10 @@ function generateMysteryStageForTurn({
     phase: "QUESTION_ACTIVE",
     potPoints: 0,
     potMultiplier: 1,
-    cardsFlippedCount: 0
+    cardsFlippedCount: 0,
+    memoryPairsState,
+    oneShotState,
+    tarotState
   };
 }
 function handleFlipCard({
@@ -1015,6 +1219,256 @@ function handleFlipCard({
   team,
   allTeams
 }) {
+  const normType = normalizeMiniGameType(state.miniGameType);
+  if (normType === "MEMORY_PAIRS") {
+    const memState = state.memoryPairsState || {
+      firstFlippedTileId: null,
+      secondFlippedTileId: null,
+      attemptsUsed: 0,
+      maxAttempts: 5,
+      matchedPairKey: null,
+      isMismatchResolving: false
+    };
+    if (memState.isMismatchResolving) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    const tile2 = state.tiles.find((t) => t.id === tileId);
+    if (!tile2 || tile2.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    if (!memState.firstFlippedTileId) {
+      tile2.isOpened = true;
+      memState.firstFlippedTileId = tile2.id;
+      state.memoryPairsState = { ...memState };
+      state.lastFlippedTile = tile2;
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    if (memState.firstFlippedTileId === tile2.id) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    tile2.isOpened = true;
+    memState.secondFlippedTileId = tile2.id;
+    memState.attemptsUsed += 1;
+    state.lastFlippedTile = tile2;
+    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+    const isMatch = firstTile && firstTile.pairKey === tile2.pairKey;
+    if (isMatch && firstTile) {
+      memState.matchedPairKey = firstTile.pairKey;
+      state.memoryPairsState = { ...memState };
+      const isBomb = firstTile.type !== "REWARD";
+      let penalty = 0;
+      let finalDelta = 0;
+      if (isBomb) {
+        penalty = 15;
+        state.bombExploded = {
+          type: "MAJOR",
+          title: firstTile.storyTitle,
+          description: firstTile.storyDescription,
+          penaltyText: "D\xEDnh c\u1EB7p k\xEDp n\u1ED5 h\u1EAFc \xE1m! B\u1ECB tr\u1EEB 15 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m."
+        };
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        finalDelta = -penalty;
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F4A5} D\xEDnh c\u1EB7p bom n\u1ED5! B\u1ECB ph\u1EA1t tr\u1EEB 15 \u0111i\u1EC3m!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
+        };
+      } else {
+        finalDelta = firstTile.deltaPoints || 30;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "PAIR_MATCHED";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = oldScore + finalDelta;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+          scoreDelta: finalDelta,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state },
+          isBomb: false,
+          scorePenalty: 0,
+          finalScoreDelta: finalDelta
+        };
+      }
+    } else {
+      memState.isMismatchResolving = true;
+      state.memoryPairsState = { ...memState };
+      if (memState.attemptsUsed >= memState.maxAttempts) {
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "MAX_ATTEMPTS";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u26A0\uFE0F \u0110\xE3 h\u1EBFt ${memState.maxAttempts} l\u01B0\u1EE3t l\u1EADt m\xE0 ch\u01B0a t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. L\u01B0\u1EE3t k\u1EBFt th\xFAc v\u1EDBi 0 \u0111i\u1EC3m.`,
+          scoreDelta: 0,
+          oldScore,
+          newScore: oldScore
+        };
+      }
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        shouldResetMismatchedCards: true
+      };
+    }
+  }
+  if (normType === "ONE_SHOT_DOORS") {
+    const tile2 = state.tiles.find((t) => t.id === tileId);
+    if (!tile2 || tile2.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+    state.oneShotState = {
+      chosenTileId: tileId,
+      allRevealed: true
+    };
+    state.lastFlippedTile = tile2;
+    const isBomb = tile2.type !== "REWARD";
+    let penalty = 0;
+    let finalDelta = 0;
+    if (isBomb) {
+      penalty = 15;
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile2.storyTitle,
+        description: tile2.storyDescription,
+        penaltyText: "C\u1EEDa b\u1EABy n\u1ED5! B\u1ECB tr\u1EEB 15 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m."
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F4A5} M\u1EDF tr\xFAng C\u1EEDa B\u1EABy! ${tile2.storyDescription}`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: -penalty
+      };
+    } else {
+      finalDelta = tile2.deltaPoints || 25;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "DOOR_CHOSEN";
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: finalDelta
+      };
+    }
+  }
+  if (normType === "TAROT_DESTINY") {
+    const tile2 = state.tiles.find((t) => t.id === tileId);
+    if (!tile2 || tile2.isOpened) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+    state.tarotState = { chosenCardId: tileId };
+    state.lastFlippedTile = tile2;
+    const isBomb = tile2.type !== "REWARD";
+    let penalty = 0;
+    let finalDelta = 0;
+    if (isBomb) {
+      penalty = 20;
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile2.storyTitle,
+        description: tile2.storyDescription,
+        penaltyText: "Qu\u1EBB b\xE0i Th\u1EA7n Ch\u1EBFt! B\u1ECB ph\u1EA1t tr\u1EEB 20 \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m."
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F480} Qu\u1EBB b\xE0i Th\u1EA7n Ch\u1EBFt xu\u1EA5t hi\u1EC7n! B\u1ECB ph\u1EA1t tr\u1EEB 20 \u0111i\u1EC3m!`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: -penalty
+      };
+    } else {
+      finalDelta = tile2.deltaPoints || 35;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "TAROT_DRAWN";
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: finalDelta
+      };
+    }
+  }
   const tile = state.tiles.find((t) => t.id === tileId);
   if (!tile || tile.isOpened) {
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -1059,7 +1513,8 @@ function handleFlipCard({
     return {
       updatedState: { ...state },
       isBomb: true,
-      scorePenalty: penalty
+      scorePenalty: penalty,
+      finalScoreDelta: -penalty
     };
   }
   if (tile.effectType === "MULTIPLY_X2") {
@@ -1080,19 +1535,26 @@ function handleFlipCard({
   }
   const remainingRewardTiles = state.tiles.filter((t) => !t.isOpened && t.type === "REWARD");
   if (remainingRewardTiles.length === 0) {
-    state.potPoints += 50;
+    const clearedDelta = state.potPoints + 50;
+    state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "ALL_CLEARED";
     const oldScore = team.score || 0;
-    const newScore = oldScore + state.potPoints;
+    const newScore = oldScore + clearedDelta;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `\u{1F3C6} \u0110\u1EA0I TH\u1EAENG QU\xC9T S\u1EA0CH B\u1EA2N \u0110\u1ED2! Thu ho\u1EA1ch tr\u1ECDn v\u1EB9n +${state.potPoints} \u0111i\u1EC3m!`,
-      scoreDelta: state.potPoints,
+      rewardText: `\u{1F3C6} \u0110\u1EA0I TH\u1EAENG QU\xC9T S\u1EA0CH T\u1EA4T C\u1EA2 \xD4! Thu ho\u1EA1ch tr\u1ECDn v\u1EB9n +${clearedDelta} \u0111i\u1EC3m!`,
+      scoreDelta: clearedDelta,
       oldScore,
       newScore
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: false,
+      scorePenalty: 0,
+      finalScoreDelta: clearedDelta
     };
   }
   return {
@@ -1110,6 +1572,7 @@ function handleCashOut({
   const newScore = oldScore + finalScoreDelta;
   state.phase = "TURN_SUMMARY";
   state.turnFinishedReason = "CASH_OUT";
+  state.potPoints = 0;
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
@@ -3864,6 +4327,15 @@ function registerSocketHandlers(io2) {
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
           primaryTeamName = questState.currentTurnTeamName;
+          questState.phase = "QUESTION_ACTIVE";
+          questState.potPoints = 0;
+          questState.potMultiplier = 1;
+          questState.bombExploded = void 0;
+          questState.turnFinishedReason = void 0;
+          questState.storyResult = void 0;
+          questState.lastFlippedTile = void 0;
+          roomMysteryQuests.set(room.id, questState);
+          io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
         }
       }
       const config = room.config;
@@ -5156,7 +5628,7 @@ function registerSocketHandlers(io2) {
     });
     const executeMysteryFlip = async (room, questState, team, tileId) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty } = handleFlipCard({
+      const { updatedState, isBomb, scorePenalty, finalScoreDelta, shouldResetMismatchedCards } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -5170,13 +5642,16 @@ function registerSocketHandlers(io2) {
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
           ]);
         }
-      } else {
-        if (updatedState.turnFinishedReason === "ALL_CLEARED") {
-          const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
-          io2.to(`room:${room.code}`).emit("game:score:update", [
-            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-          ]);
-        }
+      } else if (finalScoreDelta && finalScoreDelta > 0) {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+        ]);
+      } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+        ]);
       }
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", refreshedState);
@@ -5188,6 +5663,23 @@ function registerSocketHandlers(io2) {
           potMultiplier: updatedState.potMultiplier,
           bombExploded: updatedState.bombExploded
         });
+      }
+      if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
+        setTimeout(async () => {
+          const cur = roomMysteryQuests.get(room.id);
+          if (!cur || !cur.memoryPairsState) return;
+          const { firstFlippedTileId, secondFlippedTileId } = cur.memoryPairsState;
+          cur.tiles.forEach((t) => {
+            if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+              t.isOpened = false;
+            }
+          });
+          cur.memoryPairsState.firstFlippedTileId = null;
+          cur.memoryPairsState.secondFlippedTileId = null;
+          cur.memoryPairsState.isMismatchResolving = false;
+          roomMysteryQuests.set(room.id, cur);
+          io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
+        }, 1500);
       }
     };
     const executeMysteryCashOut = async (room, questState, team) => {
@@ -5233,6 +5725,7 @@ function registerSocketHandlers(io2) {
         turnsPerTeam: questState.turnsPerTeam,
         prevTheme: questState.theme
       });
+      nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
       io2.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
       const updatedState = await buildRoomState(room.id);
@@ -5366,6 +5859,28 @@ function registerSocketHandlers(io2) {
       if (!questState) return;
       await executeMysteryAdvanceTurn(room, questState);
     });
+    socket.on("admin:mystery:set_minigame_type", async ({ miniGameType, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState) return;
+      const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
+      const currentTeam = teams.find((t) => t.id === questState.currentTurnTeamId) || teams[0] || { id: "t1", name: "\u0110\u1ED9i 1" };
+      const newStage = generateMysteryStageForTurn({
+        turnIndex: questState.currentTurnIndex,
+        currentTeam,
+        teams,
+        turnsPerTeam: questState.turnsPerTeam,
+        prevTheme: questState.theme,
+        forcedMiniGameType: miniGameType
+      });
+      newStage.phase = questState.phase;
+      newStage.potPoints = questState.potPoints;
+      roomMysteryQuests.set(room.id, newStage);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", newStage);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+    });
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
@@ -5406,6 +5921,28 @@ function registerSocketHandlers(io2) {
         data: { teamId }
       }).catch(() => {
       });
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+          const newTeam = teams.find((t) => t.id === teamId);
+          if (newTeam) {
+            questState.currentTurnTeamId = newTeam.id;
+            questState.currentTurnTeamName = newTeam.name;
+            questState.currentTurnTeamColor = newTeam.color || "#ef4444";
+            if (roomActiveQuestions.has(room.id) || room.status === "PLAYING") {
+              questState.phase = "QUESTION_ACTIVE";
+              questState.potPoints = 0;
+              questState.bombExploded = void 0;
+              questState.turnFinishedReason = void 0;
+            }
+            roomMysteryQuests.set(room.id, questState);
+            io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
+            const refState = await buildRoomState(room.id);
+            io2.to(`room:${room.code}`).emit("room:state", refState);
+          }
+        }
+      }
     });
     socket.on("admin:teams:set_initial_scores", async ({ defaultScore, teamScores, code }, callback) => {
       try {

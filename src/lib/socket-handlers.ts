@@ -33,7 +33,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams } from "./game-engine/powerups";
+import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -2962,6 +2962,7 @@ export function registerSocketHandlers(io: IO) {
         const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
 
         const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+        const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
 
         // Count how many teams currently have an active unused shared card
         const teamsWithShared = new Set(
@@ -2983,7 +2984,12 @@ export function registerSocketHandlers(io: IO) {
 
         if (slotsForShared > 0 && sharedAllowed.length > 0 && candidatesForShared.length > 0) {
           const shuffledCandidates = [...candidatesForShared].sort(() => Math.random() - 0.5);
-          shuffledCandidates.slice(0, slotsForShared).forEach((t) => luckyTeams.add(t.id));
+          for (const cand of shuffledCandidates) {
+            if (luckyTeams.size >= slotsForShared) break;
+            if (Math.random() < sharedProbability) {
+              luckyTeams.add(cand.id);
+            }
+          }
         }
 
         let addedAny = false;
@@ -3041,8 +3047,17 @@ export function registerSocketHandlers(io: IO) {
         if (allowed.length === 0) return;
 
         const maxHand = config.maxHandSize || 3;
+        const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+        const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
+
+        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
         const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
         const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+
+        // Count how many teams currently have an active unused shared card
+        let currentSharedTeamCount = room.teams.filter((t) =>
+          !t.isEliminated && t.powerupCards.some((c) => !c.used && isSharedPowerup(c.type as CardType))
+        ).length;
 
         let addedAny = false;
 
@@ -3050,11 +3065,25 @@ export function registerSocketHandlers(io: IO) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
-            // Replenish from private power-ups pool to preserve shared card exclusivity
-            const randomType = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            // Check if team is eligible for a rare shared card drop
+            const hasShared = team.powerupCards.some((c) => !c.used && isSharedPowerup(c.type as CardType));
+            let cardTypeToGive: CardType;
+
+            if (
+              !hasShared &&
+              currentSharedTeamCount < sharedQuota &&
+              sharedAllowed.length > 0 &&
+              Math.random() < sharedProbability
+            ) {
+              cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+              currentSharedTeamCount++;
+            } else {
+              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            }
+
             await prisma.powerupCard.create({
               data: {
-                type: randomType as any,
+                type: cardTypeToGive as any,
                 ownerType: "TEAM",
                 teamId: team.id,
                 roomId: room.id,

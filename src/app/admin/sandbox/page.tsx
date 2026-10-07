@@ -23,7 +23,7 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
-import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
+import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
 import { getBroadTopic } from "@/lib/topics";
@@ -1050,6 +1050,8 @@ export default function AdminSandboxPage() {
         powerupOwnerType: "TEAM",
         powerupCountPerTeam: 2,
         powerupCountShared: 0,
+        sharedPowerupTeamQuota: 2,
+        sharedPowerupProbability: DEFAULT_SHARED_POWERUP_PROBABILITY,
         allowedPowerups: modeAllowedPowerups,
         timeBonusEnabled: true,
         penaltyForWrong: true,
@@ -2196,6 +2198,74 @@ export default function AdminSandboxPage() {
   };
 
   // ── Host Actions ──────────────────────────────────────────────────────────
+  const replenishOfflineTeamPowerups = () => {
+    setRoomState((prev) => {
+      if (!prev) return prev;
+      const config = prev.config || {};
+      if (config.powerupEnabled === false) return prev;
+
+      const currentModeAllowed =
+        (config.allowedPowerups as CardType[]) ||
+        getDefaultAllowedPowerupsForMode((prev.mode || "CLASSIC") as GameMode);
+      if (!currentModeAllowed || currentModeAllowed.length === 0) return prev;
+
+      const maxHand = config.maxHandSize || 3;
+      const sharedQuota = config.sharedPowerupTeamQuota ?? (prev.teams.length <= 3 ? 1 : 2);
+      const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
+
+      const sharedAllowed = currentModeAllowed.filter((t) => isSharedPowerup(t));
+      const privateAllowed = currentModeAllowed.filter((t) => !isSharedPowerup(t));
+      const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : currentModeAllowed;
+
+      let currentSharedTeamCount = prev.teams.filter((t) =>
+        !t.isEliminated && (t.cards || []).some((c: any) => !c.used && isSharedPowerup(c.type as CardType))
+      ).length;
+
+      let anyReplenished = false;
+      const updatedTeams = prev.teams.map((t) => {
+        if (t.isEliminated) return t;
+        const activeUnused = (t.cards || []).filter((c: any) => !c.used).length;
+        if (activeUnused >= maxHand) return t;
+
+        const hasShared = (t.cards || []).some((c: any) => !c.used && isSharedPowerup(c.type as CardType));
+        let cardTypeToGive: CardType;
+
+        if (
+          !hasShared &&
+          currentSharedTeamCount < sharedQuota &&
+          sharedAllowed.length > 0 &&
+          Math.random() < sharedProbability
+        ) {
+          cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+          currentSharedTeamCount++;
+        } else {
+          cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+        }
+
+        const newCard = {
+          id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          type: cardTypeToGive,
+          ownerType: "TEAM" as const,
+          teamId: t.id,
+          used: false,
+        };
+        anyReplenished = true;
+        return {
+          ...t,
+          cards: [...(t.cards || []), newCard],
+        };
+      });
+
+      if (!anyReplenished) return prev;
+
+      const nextState = { ...prev, teams: updatedTeams };
+      roomStateRef.current = nextState;
+      syncToIframes({ roomState: nextState });
+      addLog(`🎁 [Hồi thẻ hiệp]: Đã hồi +1 thẻ cho các đội còn dưới ${maxHand} thẻ!`);
+      return nextState;
+    });
+  };
+
   const launchOfflineQuestion = (nextIdx: number) => {
     if (offlineIntermissionTimerRef.current) {
       clearTimeout(offlineIntermissionTimerRef.current);
@@ -2208,6 +2278,11 @@ export default function AdminSandboxPage() {
     }
     offlineAnswersRef.current.clear();
     offlineSharedPowerupUsedThisQuestionRef.current = false;
+
+    // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
+    if (nextIdx > 0 && nextIdx % 3 === 0) {
+      replenishOfflineTeamPowerups();
+    }
 
     const questions = offlineQuestionsRef.current;
     offlineQIndexRef.current = nextIdx;

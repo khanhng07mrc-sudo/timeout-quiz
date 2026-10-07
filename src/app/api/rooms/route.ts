@@ -15,6 +15,8 @@ const DEFAULT_CONFIG = {
   powerupCountPerTeam: 2,
   powerupCountShared: 0,
   maxHandSize: 3,
+  sharedPowerupTeamQuota: 2,
+  sharedPowerupProbability: 0.10,
   allowedPowerups: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   timeBonusEnabled: true,
   penaltyForWrong: false,

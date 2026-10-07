@@ -832,6 +832,7 @@ var SHARED_POWERUP_TYPES = ["TIME_PLUS", "SKIP"];
 function isSharedPowerup(cardType) {
   return SHARED_POWERUP_TYPES.includes(cardType);
 }
+var DEFAULT_SHARED_POWERUP_PROBABILITY = 0.1;
 
 // src/lib/utils.ts
 function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
@@ -3466,6 +3467,7 @@ function registerSocketHandlers(io2) {
         const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
         const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
         const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+        const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
         const teamsWithShared = new Set(
           room.teams.filter((t) => t.powerupCards.some((c) => !c.used && isSharedPowerup(c.type))).map((t) => t.id)
         );
@@ -3478,7 +3480,12 @@ function registerSocketHandlers(io2) {
         const luckyTeams = /* @__PURE__ */ new Set();
         if (slotsForShared > 0 && sharedAllowed.length > 0 && candidatesForShared.length > 0) {
           const shuffledCandidates = [...candidatesForShared].sort(() => Math.random() - 0.5);
-          shuffledCandidates.slice(0, slotsForShared).forEach((t) => luckyTeams.add(t.id));
+          for (const cand of shuffledCandidates) {
+            if (luckyTeams.size >= slotsForShared) break;
+            if (Math.random() < sharedProbability) {
+              luckyTeams.add(cand.id);
+            }
+          }
         }
         let addedAny = false;
         for (const team of room.teams) {
@@ -3536,17 +3543,30 @@ function registerSocketHandlers(io2) {
         ];
         if (allowed.length === 0) return;
         const maxHand = config.maxHandSize || 3;
+        const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+        const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
+        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
         const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
         const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+        let currentSharedTeamCount = room.teams.filter(
+          (t) => !t.isEliminated && t.powerupCards.some((c) => !c.used && isSharedPowerup(c.type))
+        ).length;
         let addedAny = false;
         for (const team of room.teams) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
-            const randomType = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            const hasShared = team.powerupCards.some((c) => !c.used && isSharedPowerup(c.type));
+            let cardTypeToGive;
+            if (!hasShared && currentSharedTeamCount < sharedQuota && sharedAllowed.length > 0 && Math.random() < sharedProbability) {
+              cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+              currentSharedTeamCount++;
+            } else {
+              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            }
             await prisma.powerupCard.create({
               data: {
-                type: randomType,
+                type: cardTypeToGive,
                 ownerType: "TEAM",
                 teamId: team.id,
                 roomId: room.id

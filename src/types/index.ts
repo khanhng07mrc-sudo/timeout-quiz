@@ -513,7 +513,9 @@ export interface GameConfig {
   powerupOwnerType: "SHARED" | "TEAM";
   powerupCountPerTeam: number;
   powerupCountShared: number;
+  maxHandSize?: number;
   sharedPowerupTeamQuota?: number; // Quota for teams allowed to hold shared powerups (TIME_PLUS, SKIP)
+  sharedPowerupProbability?: number; // Low probability (0.0 to 1.0) of receiving a shared powerup (default: 0.10, i.e. 10%)
   allowedPowerups: CardType[];
   timeBonusEnabled: boolean;
   penaltyForWrong: boolean;

@@ -10,6 +10,8 @@ const DEFAULT_SANDBOX_CONFIG = {
   powerupCountPerTeam: 2,
   powerupCountShared: 0,
   maxHandSize: 3,
+  sharedPowerupTeamQuota: 2,
+  sharedPowerupProbability: 0.10,
   allowedPowerups: [
     "FIFTY_FIFTY",
     "DOUBLE",

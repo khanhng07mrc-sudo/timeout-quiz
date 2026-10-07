@@ -52,9 +52,12 @@ export function isPrivatePowerup(cardType: CardType): boolean {
   return !SHARED_POWERUP_TYPES.includes(cardType);
 }
 
+export const DEFAULT_SHARED_POWERUP_PROBABILITY = 0.10; // 10% low drop rate
+
 /**
  * Distributes power-up cards to teams according to the rules:
  * - Shared power-ups (TIME_PLUS, SKIP) are scarce: at most `sharedQuota` teams in the room get ONE shared card.
+ * - Each eligible candidate has a low drop probability (default: 10%), ensuring shared cards remain rare.
  * - Remaining slots for those teams, and ALL slots for other teams, are drawn strictly from private power-ups.
  * - Returns a Map of teamId -> CardType[]
  */
@@ -62,7 +65,8 @@ export function distributeCategorizedCardsToTeams(
   teamIds: string[],
   allowedTypes: CardType[],
   cardsPerTeam: number = 2,
-  sharedQuota?: number
+  sharedQuota?: number,
+  sharedProbability: number = DEFAULT_SHARED_POWERUP_PROBABILITY
 ): Map<string, CardType[]> {
   const result = new Map<string, CardType[]>();
   if (teamIds.length === 0 || allowedTypes.length === 0 || cardsPerTeam <= 0) {
@@ -75,11 +79,20 @@ export function distributeCategorizedCardsToTeams(
 
   // At most sharedQuota teams (default: 1 if <=3 teams, 2 if >=4 teams)
   const effectiveQuota = sharedQuota !== undefined ? sharedQuota : (teamIds.length <= 3 ? 1 : 2);
-  const numLuckyTeams = Math.min(teamIds.length, effectiveQuota);
+  const numLuckyCandidates = Math.min(teamIds.length, effectiveQuota);
 
-  // Randomly pick lucky teams without mutating original array
+  // Randomly pick candidate teams without mutating original array
   const shuffledTeams = [...teamIds].sort(() => Math.random() - 0.5);
-  const luckyTeamIds = new Set(shuffledTeams.slice(0, numLuckyTeams));
+  const candidateTeams = shuffledTeams.slice(0, numLuckyCandidates);
+
+  // Apply low drop probability to candidates (at most effectiveQuota, each rolls with low probability)
+  const luckyTeamIds = new Set<string>();
+  const effectiveProb = Math.max(0.01, Math.min(1.0, sharedProbability));
+  for (const candidateId of candidateTeams) {
+    if (Math.random() < effectiveProb) {
+      luckyTeamIds.add(candidateId);
+    }
+  }
 
   for (const teamId of teamIds) {
     const cards: CardType[] = [];

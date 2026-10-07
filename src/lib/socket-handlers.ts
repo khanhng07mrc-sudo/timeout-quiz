@@ -33,7 +33,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { isPowerupAllowedForMode } from "./game-engine/powerups";
+import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams } from "./game-engine/powerups";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -150,6 +150,7 @@ const roomBouncebackSelectedPoints = new Map<string, 10 | 20 | 30>(); // qKey ->
 const roomFinalizedActors = new Map<string, Set<string>>(); // qKey -> set of actors who finalized
 const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of actors who submitted at least once
 const roomTeamImmunity = new Map<string, number>(); // roomId:teamId -> immuneUntilQuestionIndex
+const roomSharedPowerupUsedInQuestion = new Map<string, boolean>(); // roomId -> whether a shared powerup (TIME_PLUS, SKIP) was used in current question
 
 // Classic Gold Rush Questions (Double Points)
 const roomGoldQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
@@ -2442,6 +2443,13 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      if (isSharedPowerup(card.type as CardType)) {
+        if (roomSharedPowerupUsedInQuestion.get(room.id)) {
+          socket.emit("error", "Một đội khác đã kích hoạt thẻ dùng chung trong câu hỏi này rồi! Mỗi câu chỉ được dùng tối đa 1 thẻ dùng chung.");
+          return;
+        }
+      }
+
       // Cơ chế chống 'Úp sọt' (Gang-up Protection): Miễn nhiễm 1 câu sau khi bị dính ATTACK, FREEZE hoặc PENALTY
       if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
         const immunityKey = `${room.id}:${targetTeamId}`;
@@ -2555,6 +2563,20 @@ export function registerSocketHandlers(io: IO) {
         effect: `${CARD_METADATA[card.type as CardType]?.nameVi || card.type} đã được kích hoạt cho toàn đội!`,
       });
 
+      if (isSharedPowerup(card.type as CardType)) {
+        roomSharedPowerupUsedInQuestion.set(room.id, true);
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (activeQ) {
+          activeQ.hasSharedPowerupUsed = true;
+        }
+        io.to(`room:${room.code}`).emit("game:powerup:shared_locked", {
+          cardType: card.type as CardType,
+          usedByTeamId: player.teamId,
+          usedByTeamName: player.team.name,
+          questionIndex: room.currentQuestion,
+        });
+      }
+
       const state = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", state);
     });
@@ -2622,6 +2644,7 @@ export function registerSocketHandlers(io: IO) {
       }
       roomQuestionProcessed.delete(qKey);
       roomQuestionScoresCache.delete(qKey);
+      roomSharedPowerupUsedInQuestion.delete(room.id);
 
       let primaryTeamId: string | undefined;
       let primaryTeamName: string | undefined;
@@ -2928,22 +2951,62 @@ export function registerSocketHandlers(io: IO) {
         const config = room.config as any;
         if (!config?.powerupEnabled) return;
 
-        const allowed = (config.allowedPowerups as string[]) || [
+        const allowed = (config.allowedPowerups as CardType[]) || [
           "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
         ];
         if (allowed.length === 0) return;
 
         const initialCount = config.powerupCountPerTeam || 2;
+        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
+        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+
+        const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+
+        // Count how many teams currently have an active unused shared card
+        const teamsWithShared = new Set(
+          room.teams
+            .filter((t) => t.powerupCards.some((c) => !c.used && isSharedPowerup(c.type as CardType)))
+            .map((t) => t.id)
+        );
+
+        // Teams that currently need cards
+        const teamsNeedingCards = room.teams.filter((t) => {
+          const activeUnused = t.powerupCards.filter((c) => !c.used).length;
+          return activeUnused < initialCount;
+        });
+
+        // How many more teams can receive a shared card?
+        const slotsForShared = Math.max(0, sharedQuota - teamsWithShared.size);
+        const candidatesForShared = teamsNeedingCards.filter((t) => !teamsWithShared.has(t.id));
+        const luckyTeams = new Set<string>();
+
+        if (slotsForShared > 0 && sharedAllowed.length > 0 && candidatesForShared.length > 0) {
+          const shuffledCandidates = [...candidatesForShared].sort(() => Math.random() - 0.5);
+          shuffledCandidates.slice(0, slotsForShared).forEach((t) => luckyTeams.add(t.id));
+        }
+
         let addedAny = false;
 
         for (const team of room.teams) {
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           const need = Math.max(0, initialCount - activeUnused);
+          if (need <= 0) continue;
+
+          let giveShared = luckyTeams.has(team.id) && sharedAllowed.length > 0;
+
           for (let i = 0; i < need; i++) {
-            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            let cardTypeToGive: CardType;
+            if (giveShared) {
+              cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+              giveShared = false; // Only 1 shared card per team!
+            } else {
+              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            }
+
             await prisma.powerupCard.create({
               data: {
-                type: randomType as any,
+                type: cardTypeToGive as any,
                 ownerType: "TEAM",
                 teamId: team.id,
                 roomId: room.id,
@@ -2972,19 +3035,23 @@ export function registerSocketHandlers(io: IO) {
         const config = room.config as any;
         if (!config?.powerupEnabled) return;
 
-        const allowed = (config.allowedPowerups as string[]) || [
+        const allowed = (config.allowedPowerups as CardType[]) || [
           "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
         ];
         if (allowed.length === 0) return;
 
         const maxHand = config.maxHandSize || 3;
+        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+
         let addedAny = false;
 
         for (const team of room.teams) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
-            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            // Replenish from private power-ups pool to preserve shared card exclusivity
+            const randomType = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
             await prisma.powerupCard.create({
               data: {
                 type: randomType as any,
@@ -7191,6 +7258,7 @@ function buildQuestionState(
     timerPending?: boolean;
     timerStarted?: boolean;
     answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
+    hasSharedPowerupUsed?: boolean;
   }
 ): QuestionState {
   const options = q.options as any[] | null;
@@ -7243,6 +7311,7 @@ function buildQuestionState(
     speedBonusPercent: extra?.speedBonusPercent,
     rarityBonusPercent: extra?.rarityBonusPercent,
     answerSubmissionMode: extra?.answerSubmissionMode,
+    hasSharedPowerupUsed: extra?.hasSharedPowerupUsed ?? false,
   };
 }
 

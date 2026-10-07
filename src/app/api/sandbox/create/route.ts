@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
 import { GameMode } from "@/types";
-import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
+import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -213,18 +213,22 @@ export async function POST(req: NextRequest) {
       createdPlayers.push(player);
     }
 
-    // Distribute 2 random powerup cards per team matched strictly to mode
+    // Distribute 2 categorized powerup cards per team matched strictly to mode (max 2 lucky teams hold a shared card)
     const allowedTypes = modeAllowedPowerups;
+    const teamIds = createdTeams.map((t) => t.id);
+    const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);
     for (const team of createdTeams) {
-      const deck = generateCardDeck(allowedTypes, 2);
-      await prisma.powerupCard.createMany({
-        data: deck.map((type) => ({
-          type: type as any,
-          ownerType: "TEAM",
-          roomId: room.id,
-          teamId: team.id,
-        })),
-      });
+      const cards = cardsMap.get(team.id) || [];
+      if (cards.length > 0) {
+        await prisma.powerupCard.createMany({
+          data: cards.map((type) => ({
+            type: type as any,
+            ownerType: "TEAM",
+            roomId: room.id,
+            teamId: team.id,
+          })),
+        });
+      }
     }
 
     return NextResponse.json({

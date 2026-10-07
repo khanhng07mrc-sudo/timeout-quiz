@@ -7,7 +7,7 @@ import {
   generateHostKey,
   sanitizeInput,
 } from "@/lib/security";
-import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
+import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 
 const DEFAULT_CONFIG = {
   powerupEnabled: true,
@@ -215,16 +215,25 @@ export async function POST(req: NextRequest) {
         });
       } else {
         const createdTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const teamIds = createdTeams.map((t) => t.id);
+        const cardsMap = distributeCategorizedCardsToTeams(
+          teamIds,
+          allowedTypes as any,
+          mergedConfig.powerupCountPerTeam || 2,
+          mergedConfig.sharedPowerupTeamQuota
+        );
         for (const team of createdTeams) {
-          const deck = generateCardDeck(allowedTypes, mergedConfig.powerupCountPerTeam);
-          await prisma.powerupCard.createMany({
-            data: deck.map((type) => ({
-              type: type as any,
-              ownerType: "TEAM",
-              teamId: team.id,
-              roomId: room.id,
-            })),
-          });
+          const cards = cardsMap.get(team.id) || [];
+          if (cards.length > 0) {
+            await prisma.powerupCard.createMany({
+              data: cards.map((type) => ({
+                type: type as any,
+                ownerType: "TEAM",
+                teamId: team.id,
+                roomId: room.id,
+              })),
+            });
+          }
         }
       }
     }

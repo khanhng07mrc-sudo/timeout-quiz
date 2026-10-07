@@ -82,6 +82,8 @@ export default function PlayPage() {
   const [activePlayerName, setActivePlayerName] = useState<string>("");
   const [stealPrepCountdown, setStealPrepCountdown] = useState<{ teamName: string; seconds: number } | null>(null);
   const [usedCardTypes, setUsedCardTypes] = useState<import("@/types").CardType[]>([]);
+  const [sharedPowerupLocked, setSharedPowerupLocked] = useState<boolean>(false);
+  const [sharedPowerupLockedTeamName, setSharedPowerupLockedTeamName] = useState<string | undefined>(undefined);
   const soundEnabledRef = useRef(false);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
@@ -306,6 +308,9 @@ export default function PlayPage() {
           if (isDifferentQ) {
             teamAnswersRef.current.clear();
             setAnswered(false);
+            setSharedPowerupLocked(Boolean(p.currentQuestion?.hasSharedPowerupUsed));
+            setSharedPowerupLockedTeamName(undefined);
+            setUsedCardTypes([]);
           }
         }
         if (p.revealPayload !== undefined) {
@@ -356,6 +361,10 @@ export default function PlayPage() {
             setErrorMessage(`✨ Đội ${p.revivalNotice.revivedTeamName} đã giành vé HỒI SINH với ${p.revivalNotice.revivedScore} điểm!`);
           }
           setTimeout(() => setErrorMessage(null), 5000);
+        }
+        if (p.sharedPowerupLocked !== undefined) {
+          setSharedPowerupLocked(Boolean(p.sharedPowerupLocked));
+          setSharedPowerupLockedTeamName(p.sharedPowerupLockedTeamName);
         }
       }
     };
@@ -543,6 +552,8 @@ export default function PlayPage() {
         setHiddenOptionIds([]);
         setIsStealPhase(Boolean(q.isStealPhase));
         setUsedCardTypes([]);
+        setSharedPowerupLocked(Boolean(q.hasSharedPowerupUsed));
+        setSharedPowerupLockedTeamName(undefined);
       }
       if (q.stealBuzzedTeamId) {
         setStealBuzzedTeam((prev) =>
@@ -768,6 +779,11 @@ export default function PlayPage() {
         soundManager.playPowerup();
       }
       setTimeout(() => setLastPowerup(null), 4000);
+    });
+
+    socket.on("game:powerup:shared_locked", (payload) => {
+      setSharedPowerupLocked(true);
+      setSharedPowerupLockedTeamName(payload.usedByTeamName);
     });
 
     socket.on("game:fifty_fifty:applied", (payload) => {
@@ -1575,6 +1591,8 @@ export default function PlayPage() {
               : undefined
           }
           activeCardTypes={usedCardTypes}
+          isSharedLocked={sharedPowerupLocked}
+          sharedLockedTeamName={sharedPowerupLockedTeamName}
         />
       )}
 

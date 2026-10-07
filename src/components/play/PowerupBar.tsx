@@ -11,6 +11,8 @@ interface Props {
   disabled?: boolean;
   disabledReason?: string;
   activeCardTypes?: CardType[];
+  isSharedLocked?: boolean;
+  sharedLockedTeamName?: string;
 }
 
 interface ActiveCardToConfirm {
@@ -19,7 +21,16 @@ interface ActiveCardToConfirm {
   source: "team" | "shared";
 }
 
-export default function PowerupBar({ roomState, playerId, onUse, disabled, disabledReason, activeCardTypes }: Props) {
+export default function PowerupBar({
+  roomState,
+  playerId,
+  onUse,
+  disabled,
+  disabledReason,
+  activeCardTypes,
+  isSharedLocked,
+  sharedLockedTeamName,
+}: Props) {
   const [confirmingCard, setConfirmingCard] = useState<ActiveCardToConfirm | null>(null);
   const [selectedTargetTeamId, setSelectedTargetTeamId] = useState<string | null>(null);
 
@@ -83,6 +94,17 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
         </div>
       )}
 
+      {isSharedLocked && (
+        <div className="mb-3 px-3 py-2 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
+          <span className="text-base">🔒</span>
+          <span>
+            {sharedLockedTeamName
+              ? `Đội ${sharedLockedTeamName} đã kích hoạt thẻ dùng chung câu này! Các thẻ dùng riêng vẫn hoạt động bình thường.`
+              : "Đã có đội kích hoạt thẻ dùng chung ở câu hỏi này! Các thẻ dùng riêng vẫn hoạt động bình thường."}
+          </span>
+        </div>
+      )}
+
       {/* Confirmation & Function Detail Modal */}
       {confirmingCard && activeMeta && (
         <div
@@ -102,13 +124,22 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
                 <PowerupIcon type={confirmingCard.type} className="w-12 h-12 drop-shadow" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h3 className="text-xl font-black text-foreground">{activeMeta.nameVi}</h3>
                   <span
                     className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider"
                     style={{ background: `${activeMeta.color}25`, color: activeMeta.color }}
                   >
                     {activeMeta.tag}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
+                      activeMeta.scope === "GLOBAL"
+                        ? "bg-purple-500/25 text-purple-300 border border-purple-500/40"
+                        : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                    }`}
+                  >
+                    {activeMeta.scope === "GLOBAL" ? "🌐 Thẻ Dùng Chung" : "👤 Thẻ Dùng Riêng"}
                   </span>
                 </div>
                 <p className="text-xs font-semibold text-purple-300">{activeMeta.summaryVi}</p>
@@ -129,6 +160,14 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
               </p>
               <p>{activeMeta.detailVi}</p>
             </div>
+
+            {/* Lockout Notice for Shared Cards */}
+            {activeMeta.scope === "GLOBAL" && isSharedLocked && (
+              <div className="p-3 rounded-xl bg-destructive/15 border border-destructive/40 text-destructive text-xs font-bold flex items-center gap-2">
+                <span>🔒</span>
+                <span>Thẻ dùng chung đã được một đội kích hoạt trong câu hỏi này! Thẻ này chỉ có thể sử dụng ở các câu hỏi tiếp theo.</span>
+              </div>
+            )}
 
             {/* Reward & Risk Mechanism */}
             {(activeMeta.correctEffectVi || activeMeta.wrongEffectVi) && (
@@ -198,10 +237,10 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
               <button
                 type="button"
                 onClick={handleConfirmUse}
-                disabled={activeMeta.requiresTarget && !selectedTargetTeamId}
+                disabled={Boolean((activeMeta.requiresTarget && !selectedTargetTeamId) || (activeMeta.scope === "GLOBAL" && isSharedLocked))}
                 className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-bold text-sm text-white shadow-lg shadow-purple-600/30 transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
               >
-                ⚡ Xác nhận dùng thẻ
+                {activeMeta.scope === "GLOBAL" && isSharedLocked ? "🔒 Đã khóa câu này" : "⚡ Xác nhận dùng thẻ"}
               </button>
             </div>
           </div>
@@ -212,15 +251,20 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {availableCards.map((card) => {
           const meta = CARD_METADATA[card.type];
+          const isGlobalCard = meta.scope === "GLOBAL";
+          const isSharedLockedCard = isGlobalCard && isSharedLocked;
+
           const isMutexDisabled =
             (card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")) ||
             ((card.type === "SCORE_X2" || card.type === "DOUBLE") && activeCardTypes?.some((t) => t === "SHIELD")) ||
             (roomState.mode === "BUZZ" && card.type === "FIFTY_FIFTY") ||
             (roomState.mode === "WAGER" && (card.type === "STEAL" || card.type === "FREEZE"));
 
-          const isCardDisabled = Boolean(disabled || isMutexDisabled);
+          const isCardDisabled = Boolean(disabled || isMutexDisabled || isSharedLockedCard);
           const badgeText =
-            card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")
+            isSharedLockedCard
+              ? "🔒 Đã có đội bật câu này!"
+              : card.type === "SHIELD" && activeCardTypes?.some((t) => t === "SCORE_X2" || t === "DOUBLE")
               ? "Cấm dùng cùng x2"
               : (card.type === "SCORE_X2" || card.type === "DOUBLE") && activeCardTypes?.some((t) => t === "SHIELD")
               ? "Cấm dùng cùng Khiên"
@@ -249,12 +293,23 @@ export default function PowerupBar({ roomState, playerId, onUse, disabled, disab
                   <div className="flex items-center gap-1.5">
                     <span className="font-bold text-sm text-foreground truncate">{meta.nameVi}</span>
                   </div>
-                  <span
-                    className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider"
-                    style={{ background: badgeText ? "#ef444425" : `${meta.color}25`, color: badgeText ? "#f87171" : meta.color }}
-                  >
-                    {badgeText || meta.tag}
-                  </span>
+                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                    <span
+                      className="inline-block px-1.5 py-0.2 rounded text-[10px] font-bold uppercase tracking-wider"
+                      style={{ background: badgeText ? "#ef444425" : `${meta.color}25`, color: badgeText ? "#f87171" : meta.color }}
+                    >
+                      {badgeText || meta.tag}
+                    </span>
+                    <span
+                      className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold tracking-wider ${
+                        isGlobalCard
+                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          : "bg-emerald-500/15 text-emerald-400 border border-emerald-500/25"
+                      }`}
+                    >
+                      {isGlobalCard ? "🌐 Dùng chung" : "👤 Riêng"}
+                    </span>
+                  </div>
                 </div>
               </div>
 

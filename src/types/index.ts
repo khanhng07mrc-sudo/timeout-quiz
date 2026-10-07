@@ -251,6 +251,7 @@ export interface CardDetail {
   requiresTarget: boolean;
   tag: string;
   color: string;
+  scope: "PRIVATE" | "GLOBAL";
 }
 
 export const CARD_METADATA: Record<CardType, CardDetail> = {
@@ -265,6 +266,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: false,
     tag: "Hỗ trợ",
     color: "#3b82f6",
+    scope: "PRIVATE",
   },
   DOUBLE: {
     emoji: "✖️2",
@@ -279,6 +281,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: false,
     tag: "Mạo hiểm",
     color: "#f59e0b",
+    scope: "PRIVATE",
   },
   SCORE_X2: {
     emoji: "⭐",
@@ -293,6 +296,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: false,
     tag: "An toàn",
     color: "#10b981",
+    scope: "PRIVATE",
   },
   FREEZE: {
     emoji: "❄️",
@@ -305,6 +309,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: true,
     tag: "Khống chế",
     color: "#60a5fa",
+    scope: "PRIVATE",
   },
   ATTACK: {
     emoji: "⚔️",
@@ -317,6 +322,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: true,
     tag: "Tấn công",
     color: "#ef4444",
+    scope: "PRIVATE",
   },
   SKIP: {
     emoji: "🔄",
@@ -327,8 +333,9 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     description: "Replace question",
     detailVi: "Bỏ qua câu hỏi hiện tại nếu câu quá hóc búa để chuyển sang một câu hỏi khác trong bộ đề mà không bị mất điểm.",
     requiresTarget: false,
-    tag: "Chiến thuật",
+    tag: "Dùng chung",
     color: "#8b5cf6",
+    scope: "GLOBAL",
   },
   TIME_PLUS: {
     emoji: "⏱️",
@@ -339,8 +346,9 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     description: "Add 15 seconds",
     detailVi: "Kéo dài thời gian suy nghĩ thêm 15 giây cho cả đội có thêm cơ hội thảo luận và đưa ra đáp án chính xác.",
     requiresTarget: false,
-    tag: "Thời gian",
+    tag: "Dùng chung",
     color: "#ec4899",
+    scope: "GLOBAL",
   },
   SHIELD: {
     emoji: "🛡️",
@@ -355,6 +363,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: false,
     tag: "Phòng thủ",
     color: "#06b6d4",
+    scope: "PRIVATE",
   },
   STEAL: {
     emoji: "💸",
@@ -367,6 +376,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: false,
     tag: "Cướp bóc",
     color: "#eab308",
+    scope: "PRIVATE",
   },
   PENALTY: {
     emoji: "💥",
@@ -379,6 +389,7 @@ export const CARD_METADATA: Record<CardType, CardDetail> = {
     requiresTarget: true,
     tag: "Phạt nặng",
     color: "#dc2626",
+    scope: "PRIVATE",
   },
 };
 
@@ -502,6 +513,7 @@ export interface GameConfig {
   powerupOwnerType: "SHARED" | "TEAM";
   powerupCountPerTeam: number;
   powerupCountShared: number;
+  sharedPowerupTeamQuota?: number; // Quota for teams allowed to hold shared powerups (TIME_PLUS, SKIP)
   allowedPowerups: CardType[];
   timeBonusEnabled: boolean;
   penaltyForWrong: boolean;
@@ -872,6 +884,7 @@ export interface QuestionState {
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
   finalizedActors?: string[];
   totalParticipantsCount?: number;
+  hasSharedPowerupUsed?: boolean; // Whether a shared powerup (TIME_PLUS, SKIP) was used in this question
 }
 
 // ─── Socket Events ────────────────────────────────────────────────────────────
@@ -1004,6 +1017,7 @@ export interface ServerToClientEvents {
   "game:answer:reveal": (payload: AnswerRevealPayload) => void;
   "game:score:update": (scores: ScoreUpdate[]) => void;
   "game:powerup:used": (payload: PowerupUsedPayload) => void;
+  "game:powerup:shared_locked": (payload: { cardType: CardType; usedByTeamId: string; usedByTeamName: string; questionIndex: number }) => void;
   "game:fifty_fifty:applied": (payload: { teamId: string; hiddenOptionIds: string[] }) => void;
   "game:ended": (payload: GameEndPayload) => void;
   "game:paused": () => void;

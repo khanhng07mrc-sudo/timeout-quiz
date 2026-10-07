@@ -23,7 +23,7 @@ import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
-import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
+import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
 import { getBroadTopic } from "@/lib/topics";
@@ -103,6 +103,7 @@ export default function AdminSandboxPage() {
   const offlineAnswersRef = useRef<Map<string, { answer: any; isCorrect: boolean; points: number; timeSpent?: number }>>(new Map());
   const offlineUsedQuestionIdsRef = useRef<Set<string>>(new Set());
   const offlineFinalizedActorsRef = useRef<Set<string>>(new Set());
+  const offlineSharedPowerupUsedThisQuestionRef = useRef<boolean>(false);
 
   // Active Team Switcher in Mobile Device Viewport
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
@@ -185,6 +186,7 @@ export default function AdminSandboxPage() {
   const offlineWarmupIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingOfflineLaunchRef = useRef<(() => void) | null>(null);
   const handleWagerLaunchQuestionRef = useRef<() => void>(() => {});
+  const handleAdminNextRef = useRef<() => void>(() => {});
 
   // Local ticker for match warmup countdown (5s)
   useEffect(() => {
@@ -672,6 +674,9 @@ export default function AdminSandboxPage() {
     sock.on("game:powerup:used", (payload: any) => {
       addLog(`🃏 Đội [${payload.usedByName || payload.teamName || "Thí sinh"}] đã kích hoạt thẻ [${payload.type || payload.cardType}]!`);
     });
+    sock.on("game:powerup:shared_locked", (payload: any) => {
+      addLog(`🔒 Thẻ dùng chung [${payload.cardType}] đã được kích hoạt bởi [${payload.usedByTeamName}]! Thẻ dùng chung của các đội khác bị khóa trong câu này.`);
+    });
     sock.on("game:buzz:unlocked", () => {
       setCurrentQuestion((prev) => prev ? { ...prev, buzzUnlocked: true } : prev);
       addLog("🔔 Chuông đã MỞ KHÓA cho tất cả các đội!");
@@ -966,23 +971,15 @@ export default function AdminSandboxPage() {
 
     const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
     const initialScore = mode === "DICE_RACE" ? 1 : 0;
+    const teamIds = ["t_red", "t_blue", "t_yellow", "t_purple"];
+    const offlineCardsMap = distributeCategorizedCardsToTeams(teamIds, modeAllowedPowerups as any, 2, 2);
+    offlineSharedPowerupUsedThisQuestionRef.current = false;
+
     const teams = [
-      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
-        { id: "c_r1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_red", used: false },
-        { id: "c_r2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_red", used: false },
-      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
-        { id: "c_b1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
-        { id: "c_b2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
-      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
-        { id: "c_y1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
-        { id: "c_y2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
-      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
-        { id: "c_p1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
-        { id: "c_p2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
-      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_red") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_r${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_red", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_blue") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_b${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_blue", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_yellow") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_y${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_yellow", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_purple") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_p${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_purple", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
     ];
 
     const players = [
@@ -1983,6 +1980,13 @@ export default function AdminSandboxPage() {
           return;
         }
 
+        if (isSharedPowerup(cardFound.type as CardType)) {
+          if (offlineSharedPowerupUsedThisQuestionRef.current) {
+            addLog(`⚠️ Đã có đội kích hoạt thẻ dùng chung ở câu hỏi này! Mỗi câu chỉ được dùng tối đa 1 thẻ dùng chung.`);
+            return;
+          }
+        }
+
         cardFound.used = true;
         const cType = cardFound.type;
 
@@ -2000,7 +2004,12 @@ export default function AdminSandboxPage() {
           setTimer({ remaining: offlineRemainingRef.current, total: newTotal, endsAt: newEndsAt });
           syncToIframes({ timer: { remaining: offlineRemainingRef.current, total: newTotal, endsAt: newEndsAt } });
           addLog(`🃏 [${cardTeam.name}] dùng [Cộng giờ]: Đã cộng thêm 15 giây!`);
-        } else if (cType === "DOUBLE_POINT") {
+        } else if (cType === "SKIP") {
+          addLog(`🃏 [${cardTeam.name}] dùng [Đổi câu hỏi]: Bỏ qua câu hỏi hiện tại để đổi câu mới!`);
+          setTimeout(() => {
+            handleAdminNextRef.current();
+          }, 800);
+        } else if (cType === "DOUBLE_POINT" || cType === "DOUBLE") {
           offlineTeamMultiplierRef.current.set(cardTeam.id, 2);
           addLog(`🃏 [${cardTeam.name}] dùng [Nhân đôi điểm]: Nhân 2 điểm nếu trả lời đúng!`);
         } else if (cType === "SHIELD") {
@@ -2012,7 +2021,7 @@ export default function AdminSandboxPage() {
             if (targetT) targetT.frozenRounds = 1;
           }
           addLog(`🃏 [${cardTeam.name}] dùng [Băng tuyết]: Đóng băng đối thủ!`);
-        } else if (cType === "STEAL_POINTS") {
+        } else if (cType === "STEAL_POINTS" || cType === "STEAL") {
           if (powerupTargetTeamId) {
             const targetT = teams.find((t) => t.id === powerupTargetTeamId);
             if (targetT) {
@@ -2032,6 +2041,14 @@ export default function AdminSandboxPage() {
               addLog(`🃏 [${cardTeam.name}] dùng [Hoán đổi]: Đổi điểm với [${targetT.name}]!`);
             }
           }
+        }
+
+        if (isSharedPowerup(cType as CardType)) {
+          offlineSharedPowerupUsedThisQuestionRef.current = true;
+          syncToIframes({
+            sharedPowerupLocked: true,
+            sharedPowerupLockedTeamName: cardTeam.name,
+          });
         }
 
         const powerupPayload = {
@@ -2190,6 +2207,7 @@ export default function AdminSandboxPage() {
       offlineTimerRef.current = null;
     }
     offlineAnswersRef.current.clear();
+    offlineSharedPowerupUsedThisQuestionRef.current = false;
 
     const questions = offlineQuestionsRef.current;
     offlineQIndexRef.current = nextIdx;
@@ -2225,6 +2243,7 @@ export default function AdminSandboxPage() {
       endsAt: (selectedMode === "BOUNCEBACK" || !autoTimer) ? undefined : endsAt,
       serverTime: Date.now(),
       activeBoosts: [],
+      hasSharedPowerupUsed: false,
       timerPending: selectedMode === "BOUNCEBACK" || !autoTimer,
       timerStarted: selectedMode !== "BOUNCEBACK" && autoTimer,
       buzzUnlocked: selectedMode === "BUZZ" ? false : true,
@@ -2276,7 +2295,12 @@ export default function AdminSandboxPage() {
         clearInterval(offlineTimerRef.current);
         offlineTimerRef.current = null;
       }
-      syncToIframes({ currentQuestion: qState, timer: null });
+      syncToIframes({
+        currentQuestion: qState,
+        timer: null,
+        sharedPowerupLocked: false,
+        sharedPowerupLockedTeamName: undefined,
+      });
       addLog(`🎯 Đội [${qState.primaryTeamName || "Chính"}] đang chọn gói điểm (10/20/30đ)...`);
     } else if (selectedMode === "WAGER") {
       const prevWagerTeamId = roomState?.wagerState?.lastWagerTeamId;
@@ -2472,6 +2496,8 @@ export default function AdminSandboxPage() {
           questionPrepare: null,
           currentQuestion: qState,
           timer: { remaining: timeLimit, total: timeLimit, endsAt },
+          sharedPowerupLocked: false,
+          sharedPowerupLockedTeamName: undefined,
         });
 
         // Mode BUZZ: Nếu cài đặt tự động đếm giờ, chờ 3s đọc đề rồi mới tự động mở chuông
@@ -2500,6 +2526,8 @@ export default function AdminSandboxPage() {
           questionPrepare: null,
           currentQuestion: qState,
           timer: null,
+          sharedPowerupLocked: false,
+          sharedPowerupLockedTeamName: undefined,
         });
         addLog(`📖 Câu hỏi #${nextIdx + 1} đã mở ngay (Timer dừng cho MC đọc đề). Nhấn [Mở chuông] hoặc [Bắt đầu tính giờ] để mở chuông ngay lập tức không chờ!`);
       }
@@ -2718,6 +2746,7 @@ export default function AdminSandboxPage() {
     adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");
   };
+  handleAdminNextRef.current = handleAdminNext;
 
   const handleConcludeMatch = () => {
     if (isOfflineSandbox) {

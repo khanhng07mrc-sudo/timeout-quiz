@@ -68,7 +68,8 @@ var CARD_METADATA = {
     detailVi: "H\u1EC7 th\u1ED1ng t\u1EF1 \u0111\u1ED9ng g\u1EA1ch b\u1ECF ng\u1EABu nhi\xEAn 2 ph\u01B0\u01A1ng \xE1n sai, gi\xFAp t\u0103ng x\xE1c su\u1EA5t ch\u1ECDn \u0111\xFAng l\xEAn 50%.",
     requiresTarget: false,
     tag: "H\u1ED7 tr\u1EE3",
-    color: "#3b82f6"
+    color: "#3b82f6",
+    scope: "PRIVATE"
   },
   DOUBLE: {
     emoji: "\u2716\uFE0F2",
@@ -82,7 +83,8 @@ var CARD_METADATA = {
     wrongEffectVi: "-50% s\u1ED1 \u0111i\u1EC3m c\xE2u h\u1ECFi (B\u1ECB ph\u1EA1t)",
     requiresTarget: false,
     tag: "M\u1EA1o hi\u1EC3m",
-    color: "#f59e0b"
+    color: "#f59e0b",
+    scope: "PRIVATE"
   },
   SCORE_X2: {
     emoji: "\u2B50",
@@ -96,7 +98,8 @@ var CARD_METADATA = {
     wrongEffectVi: "0 \u0111i\u1EC3m (Kh\xF4ng b\u1ECB ph\u1EA1t tr\u1EEB \u0111i\u1EC3m)",
     requiresTarget: false,
     tag: "An to\xE0n",
-    color: "#10b981"
+    color: "#10b981",
+    scope: "PRIVATE"
   },
   FREEZE: {
     emoji: "\u2744\uFE0F",
@@ -108,7 +111,8 @@ var CARD_METADATA = {
     detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7 b\u1ECB \u0111\xF3ng b\u0103ng trong c\xE2u n\xE0y, t\u01B0\u1EDBc quy\u1EC1n n\u1ED9p \u0111\xE1p \xE1n ho\u1EB7c quy\u1EC1n b\u1EA5m chu\xF4ng c\u1EE7a h\u1ECD.",
     requiresTarget: true,
     tag: "Kh\u1ED1ng ch\u1EBF",
-    color: "#60a5fa"
+    color: "#60a5fa",
+    scope: "PRIVATE"
   },
   ATTACK: {
     emoji: "\u2694\uFE0F",
@@ -120,7 +124,8 @@ var CARD_METADATA = {
     detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7 bu\u1ED9c ph\u1EA3i tr\u1EA3 l\u1EDDi c\xE2u h\u1ECFi n\xE0y. N\u1EBFu h\u1ECD tr\u1EA3 l\u1EDDi SAI, h\u1ECD s\u1EBD b\u1ECB tr\u1EEB \u0111i\u1EC3m ph\u1EA1t ngay l\u1EADp t\u1EE9c!",
     requiresTarget: true,
     tag: "T\u1EA5n c\xF4ng",
-    color: "#ef4444"
+    color: "#ef4444",
+    scope: "PRIVATE"
   },
   SKIP: {
     emoji: "\u{1F504}",
@@ -131,8 +136,9 @@ var CARD_METADATA = {
     description: "Replace question",
     detailVi: "B\u1ECF qua c\xE2u h\u1ECFi hi\u1EC7n t\u1EA1i n\u1EBFu c\xE2u qu\xE1 h\xF3c b\xFAa \u0111\u1EC3 chuy\u1EC3n sang m\u1ED9t c\xE2u h\u1ECFi kh\xE1c trong b\u1ED9 \u0111\u1EC1 m\xE0 kh\xF4ng b\u1ECB m\u1EA5t \u0111i\u1EC3m.",
     requiresTarget: false,
-    tag: "Chi\u1EBFn thu\u1EADt",
-    color: "#8b5cf6"
+    tag: "D\xF9ng chung",
+    color: "#8b5cf6",
+    scope: "GLOBAL"
   },
   TIME_PLUS: {
     emoji: "\u23F1\uFE0F",
@@ -143,8 +149,9 @@ var CARD_METADATA = {
     description: "Add 15 seconds",
     detailVi: "K\xE9o d\xE0i th\u1EDDi gian suy ngh\u0129 th\xEAm 15 gi\xE2y cho c\u1EA3 \u0111\u1ED9i c\xF3 th\xEAm c\u01A1 h\u1ED9i th\u1EA3o lu\u1EADn v\xE0 \u0111\u01B0a ra \u0111\xE1p \xE1n ch\xEDnh x\xE1c.",
     requiresTarget: false,
-    tag: "Th\u1EDDi gian",
-    color: "#ec4899"
+    tag: "D\xF9ng chung",
+    color: "#ec4899",
+    scope: "GLOBAL"
   },
   SHIELD: {
     emoji: "\u{1F6E1}\uFE0F",
@@ -158,7 +165,8 @@ var CARD_METADATA = {
     wrongEffectVi: "0 \u0111i\u1EC3m (Mi\u1EC5n tr\u1EEB ph\u1EA1t)",
     requiresTarget: false,
     tag: "Ph\xF2ng th\u1EE7",
-    color: "#06b6d4"
+    color: "#06b6d4",
+    scope: "PRIVATE"
   },
   STEAL: {
     emoji: "\u{1F4B8}",
@@ -170,7 +178,8 @@ var CARD_METADATA = {
     detailVi: "C\u01B0\u1EDBp m\u1ED9t l\u01B0\u1EE3ng \u0111i\u1EC3m t\u1EEB \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u b\u1EA3ng x\u1EBFp h\u1EA1ng \u0111\u1EC3 c\u1ED9ng tr\u1EF1c ti\u1EBFp v\xE0o t\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i b\u1EA1n.",
     requiresTarget: false,
     tag: "C\u01B0\u1EDBp b\xF3c",
-    color: "#eab308"
+    color: "#eab308",
+    scope: "PRIVATE"
   },
   PENALTY: {
     emoji: "\u{1F4A5}",
@@ -182,7 +191,8 @@ var CARD_METADATA = {
     detailVi: "Ch\u1EC9 \u0111\u1ECBnh 1 \u0111\u1ED9i \u0111\u1ED1i th\u1EE7. N\u1EBFu \u0111\u1ED9i \u0111\xF3 tr\u1EA3 l\u1EDDi SAI \u1EDF c\xE2u n\xE0y, h\u1ECD s\u1EBD b\u1ECB nh\xE2n \u0111\xF4i m\u1EE9c \u0111i\u1EC3m ph\u1EA1t (-100% \u0111i\u1EC3m c\xE2u h\u1ECFi)!",
     requiresTarget: true,
     tag: "Ph\u1EA1t n\u1EB7ng",
-    color: "#dc2626"
+    color: "#dc2626",
+    scope: "PRIVATE"
   }
 };
 function getBloomLevelFromPoints(points, explicitLevel) {
@@ -818,6 +828,10 @@ function isPowerupAllowedForMode(mode, cardType) {
   const allowed = getDefaultAllowedPowerupsForMode(mode);
   return allowed.includes(cardType);
 }
+var SHARED_POWERUP_TYPES = ["TIME_PLUS", "SKIP"];
+function isSharedPowerup(cardType) {
+  return SHARED_POWERUP_TYPES.includes(cardType);
+}
 
 // src/lib/utils.ts
 function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
@@ -1097,6 +1111,7 @@ var roomBouncebackSelectedPoints = /* @__PURE__ */ new Map();
 var roomFinalizedActors = /* @__PURE__ */ new Map();
 var roomSubmittedActors = /* @__PURE__ */ new Map();
 var roomTeamImmunity = /* @__PURE__ */ new Map();
+var roomSharedPowerupUsedInQuestion = /* @__PURE__ */ new Map();
 var roomGoldQuestions = /* @__PURE__ */ new Map();
 var roomEliminationGhostStats = /* @__PURE__ */ new Map();
 function selectGoldQuestions(questions) {
@@ -2994,6 +3009,12 @@ function registerSocketHandlers(io2) {
         socket.emit("error", `Th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
         return;
       }
+      if (isSharedPowerup(card.type)) {
+        if (roomSharedPowerupUsedInQuestion.get(room.id)) {
+          socket.emit("error", "M\u1ED9t \u0111\u1ED9i kh\xE1c \u0111\xE3 k\xEDch ho\u1EA1t th\u1EBB d\xF9ng chung trong c\xE2u h\u1ECFi n\xE0y r\u1ED3i! M\u1ED7i c\xE2u ch\u1EC9 \u0111\u01B0\u1EE3c d\xF9ng t\u1ED1i \u0111a 1 th\u1EBB d\xF9ng chung.");
+          return;
+        }
+      }
       if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
         const immunityKey = `${room.id}:${targetTeamId}`;
         const immuneUntilQ = roomTeamImmunity.get(immunityKey);
@@ -3096,6 +3117,19 @@ function registerSocketHandlers(io2) {
         targetTeamName: void 0,
         effect: `${CARD_METADATA[card.type]?.nameVi || card.type} \u0111\xE3 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t cho to\xE0n \u0111\u1ED9i!`
       });
+      if (isSharedPowerup(card.type)) {
+        roomSharedPowerupUsedInQuestion.set(room.id, true);
+        const activeQ = roomActiveQuestions.get(room.id);
+        if (activeQ) {
+          activeQ.hasSharedPowerupUsed = true;
+        }
+        io2.to(`room:${room.code}`).emit("game:powerup:shared_locked", {
+          cardType: card.type,
+          usedByTeamId: player.teamId,
+          usedByTeamName: player.team.name,
+          questionIndex: room.currentQuestion
+        });
+      }
       const state = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", state);
     });
@@ -3150,6 +3184,7 @@ function registerSocketHandlers(io2) {
       }
       roomQuestionProcessed.delete(qKey);
       roomQuestionScoresCache.delete(qKey);
+      roomSharedPowerupUsedInQuestion.delete(room.id);
       let primaryTeamId;
       let primaryTeamName;
       let tournamentMatchId;
@@ -3427,15 +3462,41 @@ function registerSocketHandlers(io2) {
         ];
         if (allowed.length === 0) return;
         const initialCount = config.powerupCountPerTeam || 2;
+        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
+        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+        const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
+        const teamsWithShared = new Set(
+          room.teams.filter((t) => t.powerupCards.some((c) => !c.used && isSharedPowerup(c.type))).map((t) => t.id)
+        );
+        const teamsNeedingCards = room.teams.filter((t) => {
+          const activeUnused = t.powerupCards.filter((c) => !c.used).length;
+          return activeUnused < initialCount;
+        });
+        const slotsForShared = Math.max(0, sharedQuota - teamsWithShared.size);
+        const candidatesForShared = teamsNeedingCards.filter((t) => !teamsWithShared.has(t.id));
+        const luckyTeams = /* @__PURE__ */ new Set();
+        if (slotsForShared > 0 && sharedAllowed.length > 0 && candidatesForShared.length > 0) {
+          const shuffledCandidates = [...candidatesForShared].sort(() => Math.random() - 0.5);
+          shuffledCandidates.slice(0, slotsForShared).forEach((t) => luckyTeams.add(t.id));
+        }
         let addedAny = false;
         for (const team of room.teams) {
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           const need = Math.max(0, initialCount - activeUnused);
+          if (need <= 0) continue;
+          let giveShared = luckyTeams.has(team.id) && sharedAllowed.length > 0;
           for (let i = 0; i < need; i++) {
-            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            let cardTypeToGive;
+            if (giveShared) {
+              cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+              giveShared = false;
+            } else {
+              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+            }
             await prisma.powerupCard.create({
               data: {
-                type: randomType,
+                type: cardTypeToGive,
                 ownerType: "TEAM",
                 teamId: team.id,
                 roomId: room.id
@@ -3475,12 +3536,14 @@ function registerSocketHandlers(io2) {
         ];
         if (allowed.length === 0) return;
         const maxHand = config.maxHandSize || 3;
+        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
         let addedAny = false;
         for (const team of room.teams) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
-            const randomType = allowed[Math.floor(Math.random() * allowed.length)];
+            const randomType = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
             await prisma.powerupCard.create({
               data: {
                 type: randomType,
@@ -6915,7 +6978,8 @@ function buildQuestionState(q, extra) {
     streakCount: extra?.streakCount,
     speedBonusPercent: extra?.speedBonusPercent,
     rarityBonusPercent: extra?.rarityBonusPercent,
-    answerSubmissionMode: extra?.answerSubmissionMode
+    answerSubmissionMode: extra?.answerSubmissionMode,
+    hasSharedPowerupUsed: extra?.hasSharedPowerupUsed ?? false
   };
 }
 async function resolveQuestionTeamScores(io2, roomId, questionId) {

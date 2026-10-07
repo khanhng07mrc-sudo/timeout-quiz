@@ -1215,7 +1215,14 @@ export default function DisplayPage() {
           <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50 shadow-xl">
             <PowerupIcon type={lastPowerup.type} className="w-12 h-12 shrink-0 drop-shadow" />
             <div>
-              <p className="font-bold text-lg">{lastPowerup.usedByName} dùng thẻ!</p>
+              <div className="flex items-center gap-2">
+                <p className="font-bold text-lg">{lastPowerup.usedByName} dùng thẻ!</p>
+                {CARD_METADATA[lastPowerup.type]?.scope === "GLOBAL" && (
+                  <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-purple-500/25 text-purple-300 border border-purple-500/40">
+                    🌐 Thẻ Dùng Chung
+                  </span>
+                )}
+              </div>
               <p className="text-muted-foreground">{lastPowerup.effect}</p>
             </div>
           </div>

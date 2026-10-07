@@ -42,6 +42,65 @@ export function isPowerupAllowedForMode(mode: GameMode, cardType: CardType): boo
   return allowed.includes(cardType);
 }
 
+export const SHARED_POWERUP_TYPES: CardType[] = ["TIME_PLUS", "SKIP"];
+
+export function isSharedPowerup(cardType: CardType): boolean {
+  return SHARED_POWERUP_TYPES.includes(cardType);
+}
+
+export function isPrivatePowerup(cardType: CardType): boolean {
+  return !SHARED_POWERUP_TYPES.includes(cardType);
+}
+
+/**
+ * Distributes power-up cards to teams according to the rules:
+ * - Shared power-ups (TIME_PLUS, SKIP) are scarce: at most `sharedQuota` teams in the room get ONE shared card.
+ * - Remaining slots for those teams, and ALL slots for other teams, are drawn strictly from private power-ups.
+ * - Returns a Map of teamId -> CardType[]
+ */
+export function distributeCategorizedCardsToTeams(
+  teamIds: string[],
+  allowedTypes: CardType[],
+  cardsPerTeam: number = 2,
+  sharedQuota?: number
+): Map<string, CardType[]> {
+  const result = new Map<string, CardType[]>();
+  if (teamIds.length === 0 || allowedTypes.length === 0 || cardsPerTeam <= 0) {
+    return result;
+  }
+
+  const sharedAllowed = allowedTypes.filter((t) => isSharedPowerup(t));
+  const privateAllowed = allowedTypes.filter((t) => !isSharedPowerup(t));
+  const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowedTypes;
+
+  // At most sharedQuota teams (default: 1 if <=3 teams, 2 if >=4 teams)
+  const effectiveQuota = sharedQuota !== undefined ? sharedQuota : (teamIds.length <= 3 ? 1 : 2);
+  const numLuckyTeams = Math.min(teamIds.length, effectiveQuota);
+
+  // Randomly pick lucky teams without mutating original array
+  const shuffledTeams = [...teamIds].sort(() => Math.random() - 0.5);
+  const luckyTeamIds = new Set(shuffledTeams.slice(0, numLuckyTeams));
+
+  for (const teamId of teamIds) {
+    const cards: CardType[] = [];
+    const isLucky = luckyTeamIds.has(teamId) && sharedAllowed.length > 0;
+
+    if (isLucky) {
+      const randomShared = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
+      cards.push(randomShared);
+    }
+
+    while (cards.length < cardsPerTeam) {
+      const randomPrivate = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+      cards.push(randomPrivate);
+    }
+
+    result.set(teamId, cards);
+  }
+
+  return result;
+}
+
 export interface PowerupEffect {
   type: CardType;
   description: string;

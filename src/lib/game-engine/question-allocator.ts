@@ -242,62 +242,90 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
 
-  // 4. Tính toán số lượng mục tiêu cho từng mức theo tỷ lệ Gameshow chuẩn:
-  // Dễ: ~35%, Khó: ~20%, Trung bình: phần còn lại (~45%)
-  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.35));
-  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.20));
+  // 4. Tính toán số lượng mục tiêu cho từng mức:
+  // Tăng tần suất câu 30đ lên ~33% để chặng thi đấu có tính phân loại và kịch tính cao:
+  // Dễ (10đ): ~30%
+  // Khó (30đ): ~33% (tần suất câu 30đ dồi dào theo yêu cầu)
+  // Trung bình (20đ): phần còn lại (~37%)
+  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.33));
+  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.30));
   let targetMed = effectiveTotal - targetEasy - targetHard;
 
-  if (targetMed < 0) {
-    targetMed = 0;
-    targetEasy = Math.max(1, effectiveTotal - targetHard);
+  if (targetMed < 1 && effectiveTotal >= 3) {
+    targetMed = 1;
+    targetHard = Math.max(1, effectiveTotal - targetEasy - targetMed);
   }
 
-  // 5. Chọn câu hỏi từ các pools với thuật toán bù trừ dự phòng (Smart Fallback Borrowing)
-  const selectedEasy: any[] = [];
-  const selectedMed: any[] = [];
+  // 5. Chọn câu hỏi từ các pools với thuật toán nâng cấp và bù trừ thông minh:
+  // - Ưu tiên rút các câu đã có sẵn độ khó tương ứng trong kho đề
+  // - Nếu kho đề thiếu câu 30đ (thường do ngân hàng câu hỏi ban đầu đặt điểm mặc định 10đ/20đ):
+  //   Hệ thống tự động nâng cấp (promote) các câu phù hợp lên mức 30đ (Khó) để đảm bảo đủ tần suất câu 30đ cho trận đấu!
   const selectedHard: any[] = [];
+  const selectedMed: any[] = [];
+  const selectedEasy: any[] = [];
   const pickedIds = new Set<string>();
 
-  // Rút từ pool Dễ
-  while (selectedEasy.length < targetEasy && shuffledEasy.length > 0) {
-    const q = shuffledEasy.pop()!;
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedEasy.push(q);
-    }
-  }
-
-  // Rút từ pool Trung bình
-  while (selectedMed.length < targetMed && shuffledMed.length > 0) {
-    const q = shuffledMed.pop()!;
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedMed.push(q);
-    }
-  }
-
-  // Rút từ pool Khó
+  // 5.1 Rút từ pool Khó trước
   while (selectedHard.length < targetHard && shuffledHard.length > 0) {
     const q = shuffledHard.pop()!;
     if (!pickedIds.has(q.id)) {
       pickedIds.add(q.id);
-      selectedHard.push(q);
+      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
     }
   }
 
-  // Bù trừ nếu bất kỳ bucket nào chưa đủ chỉ tiêu
-  const neededRemaining = effectiveTotal - (selectedEasy.length + selectedMed.length + selectedHard.length);
-  if (neededRemaining > 0) {
-    // Tập hợp tất cả các câu chưa được chọn trong kho đề
-    const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
-    for (let i = 0; i < neededRemaining && i < remainingCandidates.length; i++) {
-      const q = remainingCandidates[i];
+  // 5.2 Rút từ pool Dễ
+  while (selectedEasy.length < targetEasy && shuffledEasy.length > 0) {
+    const q = shuffledEasy.pop()!;
+    if (!pickedIds.has(q.id)) {
       pickedIds.add(q.id);
-      const diff = classifyQuestionDifficulty(q);
-      if (diff === "EASY") selectedEasy.push(q);
-      else if (diff === "HARD") selectedHard.push(q);
-      else selectedMed.push(q);
+      selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
+    }
+  }
+
+  // 5.3 Rút từ pool Trung bình
+  while (selectedMed.length < targetMed && shuffledMed.length > 0) {
+    const q = shuffledMed.pop()!;
+    if (!pickedIds.has(q.id)) {
+      pickedIds.add(q.id);
+      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
+    }
+  }
+
+  // 5.4 Nếu pool Khó còn thiếu chỉ tiêu (do kho đề ít câu 30đ):
+  // Rút từ các câu chưa chọn còn lại (ưu tiên từ medPool rồi easyPool) và nâng cấp lên 30đ!
+  const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
+  while (selectedHard.length < targetHard && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop()!;
+    pickedIds.add(q.id);
+    selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
+  }
+
+  // 5.5 Nếu pool Dễ còn thiếu chỉ tiêu:
+  while (selectedEasy.length < targetEasy && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop()!;
+    pickedIds.add(q.id);
+    selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
+  }
+
+  // 5.6 Nếu pool Trung bình còn thiếu chỉ tiêu:
+  while (selectedMed.length < targetMed && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop()!;
+    pickedIds.add(q.id);
+    selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
+  }
+
+  // 5.7 Bù nốt số lượng còn thiếu nếu tổng chưa đủ effectiveTotal
+  while (
+    selectedHard.length + selectedMed.length + selectedEasy.length < effectiveTotal &&
+    remainingCandidates.length > 0
+  ) {
+    const q = remainingCandidates.pop()!;
+    pickedIds.add(q.id);
+    if (selectedHard.length <= selectedMed.length) {
+      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
+    } else {
+      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
     }
   }
 
@@ -312,10 +340,9 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
     // Các câu hỏi trong cùng 1 vòng có độ khó tương đương để đảm bảo công bằng cho mọi đội!
     // Vòng 1: Toàn câu Dễ. Vòng giữa: Toàn câu Trung bình. Vòng cuối: Toàn câu Khó!
     const allSelected = [...selectedEasy, ...selectedMed, ...selectedHard];
-    // Sắp xếp theo thứ tự độ khó tăng dần
     allSelected.sort((a, b) => {
-      const diffScore = { EASY: 1, MEDIUM: 2, HARD: 3 };
-      return diffScore[classifyQuestionDifficulty(a)] - diffScore[classifyQuestionDifficulty(b)];
+      const diffScore: Record<string, number> = { EASY: 1, MEDIUM: 2, HARD: 3 };
+      return (diffScore[a.allocatedDiff || "EASY"] || 1) - (diffScore[b.allocatedDiff || "EASY"] || 1);
     });
 
     allocatedQuestions = allSelected;
@@ -328,22 +355,22 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   // Đảm bảo số lượng chính xác
   allocatedQuestions = allocatedQuestions.slice(0, effectiveTotal);
 
-  // Đánh lại số thứ tự (order) và chuẩn hóa điểm số theo chuẩn của Timeout Quiz
+  // Đánh lại số thứ tự (order) và gán điểm số chuẩn xác 10 / 20 / 30
   allocatedQuestions = allocatedQuestions.map((q, idx) => {
-    const diff = classifyQuestionDifficulty(q);
+    const diff = q.allocatedDiff || classifyQuestionDifficulty(q);
     const normalizedPoints = normalizePointsToLevel(diff);
     return {
       ...q,
       order: idx + 1,
-      points: q.points ? q.points : normalizedPoints,
-      bloomLevel: q.bloomLevel || (diff === "EASY" ? "REMEMBER" : diff === "MEDIUM" ? "APPLY" : "ANALYZE"),
+      points: normalizedPoints,
+      bloomLevel: diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER",
     };
   });
 
   // 7. Thống kê tỷ lệ phân bổ
-  const finalEasy = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "EASY").length;
-  const finalMed = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "MEDIUM").length;
-  const finalHard = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "HARD").length;
+  const finalEasy = allocatedQuestions.filter((q) => q.points <= 10).length;
+  const finalMed = allocatedQuestions.filter((q) => q.points === 20).length;
+  const finalHard = allocatedQuestions.filter((q) => q.points >= 30).length;
   const total = allocatedQuestions.length || 1;
 
   const breakdown: QuestionAllocationBreakdown = {

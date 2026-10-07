@@ -1920,7 +1920,7 @@ export default function AdminRoomPage() {
           </div>
 
           {/* Power-up controls */}
-          {roomState?.config.powerupEnabled && (
+          {roomState?.config.powerupEnabled && roomState.mode !== "MYSTERY_QUEST" && (
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium whitespace-nowrap">🃏 Thẻ hỗ trợ (Đã bật cho phòng)</p>

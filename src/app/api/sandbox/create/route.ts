@@ -158,6 +158,11 @@ export async function POST(req: NextRequest) {
       ...(body.config || {}),
     };
 
+    if (mode === "MYSTERY_QUEST") {
+      sandboxConfig.powerupEnabled = false;
+      sandboxConfig.allowedPowerups = [];
+    }
+
     if (body.matchMaxQuestions || body.config?.matchMaxQuestions) {
       const maxQ = Number(body.matchMaxQuestions || body.config?.matchMaxQuestions);
       if (maxQ > 0) {
@@ -233,21 +238,23 @@ export async function POST(req: NextRequest) {
       createdPlayers.push(player);
     }
 
-    // Distribute 2 categorized powerup cards per team matched strictly to mode (max 2 lucky teams hold a shared card)
-    const allowedTypes = modeAllowedPowerups;
-    const teamIds = createdTeams.map((t) => t.id);
-    const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);
-    for (const team of createdTeams) {
-      const cards = cardsMap.get(team.id) || [];
-      if (cards.length > 0) {
-        await prisma.powerupCard.createMany({
-          data: cards.map((type) => ({
-            type: type as any,
-            ownerType: "TEAM",
-            roomId: room.id,
-            teamId: team.id,
-          })),
-        });
+    // Distribute 2 categorized powerup cards per team matched strictly to mode (MYSTERY_QUEST has NO powerups)
+    if (mode !== "MYSTERY_QUEST") {
+      const allowedTypes = modeAllowedPowerups;
+      const teamIds = createdTeams.map((t) => t.id);
+      const cardsMap = distributeCategorizedCardsToTeams(teamIds, allowedTypes as any, 2, 2);
+      for (const team of createdTeams) {
+        const cards = cardsMap.get(team.id) || [];
+        if (cards.length > 0) {
+          await prisma.powerupCard.createMany({
+            data: cards.map((type) => ({
+              type: type as any,
+              ownerType: "TEAM",
+              roomId: room.id,
+              teamId: team.id,
+            })),
+          });
+        }
       }
     }
 

@@ -992,10 +992,10 @@ export default function AdminSandboxPage() {
     offlineSharedPowerupUsedThisQuestionRef.current = false;
 
     const teams = [
-      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_red") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_r${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_red", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_blue") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_b${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_blue", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_yellow") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_y${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_yellow", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: (offlineCardsMap.get("t_purple") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_p${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_purple", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_red") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_r${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_red", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_blue") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_b${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_blue", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_yellow") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_y${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_yellow", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
+      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_purple") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_p${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_purple", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
     ];
 
     const players = [
@@ -1072,13 +1072,13 @@ export default function AdminSandboxPage() {
       players,
       sharedCards: [],
       config: {
-        powerupEnabled: true,
+        powerupEnabled: mode === "MYSTERY_QUEST" ? false : true,
         powerupOwnerType: "TEAM",
-        powerupCountPerTeam: 2,
+        powerupCountPerTeam: mode === "MYSTERY_QUEST" ? 0 : 2,
         powerupCountShared: 0,
         sharedPowerupTeamQuota: 2,
         sharedPowerupProbability: DEFAULT_SHARED_POWERUP_PROBABILITY,
-        allowedPowerups: modeAllowedPowerups,
+        allowedPowerups: mode === "MYSTERY_QUEST" ? [] : modeAllowedPowerups,
         timeBonusEnabled: true,
         penaltyForWrong: true,
         penaltyPoints: 10,

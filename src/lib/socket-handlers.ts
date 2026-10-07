@@ -2392,6 +2392,11 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      if (room.mode === "MYSTERY_QUEST") {
+        socket.emit("error", "Chế độ Hành Trình Bí Ẩn không hỗ trợ thẻ bổ trợ (Power-up)!");
+        return;
+      }
+
       if (room.mode === "BOUNCEBACK" && qKey) {
         if (roomStealPhase.get(qKey) || roomStealBuzzed.has(qKey)) {
           socket.emit("error", "Toàn bộ thẻ hỗ trợ (power-up) bị vô hiệu hoá trong lượt cướp điểm!");
@@ -2963,7 +2968,7 @@ export function registerSocketHandlers(io: IO) {
         });
         if (!room) return;
         const config = room.config as any;
-        if (!config?.powerupEnabled) return;
+        if (room.mode === "MYSTERY_QUEST" || !config?.powerupEnabled) return;
 
         const allowed = (config.allowedPowerups as CardType[]) || [
           "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
@@ -3053,7 +3058,7 @@ export function registerSocketHandlers(io: IO) {
         });
         if (!room) return;
         const config = room.config as any;
-        if (!config?.powerupEnabled) return;
+        if (room.mode === "MYSTERY_QUEST" || !config?.powerupEnabled) return;
 
         const allowed = (config.allowedPowerups as CardType[]) || [
           "FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"
@@ -4247,7 +4252,7 @@ export function registerSocketHandlers(io: IO) {
       if (!team) return;
 
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty, rewardCard } = handleFlipCard({
+      const { updatedState, isBomb, scorePenalty } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -4261,16 +4266,6 @@ export function registerSocketHandlers(io: IO) {
           await applyScoreDeltaToTeam(team.id, -scorePenalty);
         }
       } else {
-        if (rewardCard) {
-          await prisma.powerupCard.create({
-            data: {
-              type: rewardCard as any,
-              ownerType: "TEAM",
-              teamId: team.id,
-              roomId: room.id,
-            },
-          });
-        }
         if (updatedState.turnFinishedReason === "ALL_CLEARED") {
           await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
         }
@@ -5039,6 +5034,10 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
+      if (room.mode === "MYSTERY_QUEST") {
+        socket.emit("error", "Chế độ Hành Trình Bí Ẩn không hỗ trợ thẻ bổ trợ (Power-up)!");
+        return;
+      }
       if (!isPowerupAllowedForMode(room.mode as any, cardType as any)) {
         socket.emit("error", `Thẻ ${cardType} không được phép sử dụng trong chế độ ${room.mode}!`);
         return;

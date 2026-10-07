@@ -20,7 +20,7 @@ const GAME_MODES = [
   { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Đường đua marathon 60-100 ô, gieo 2 xí ngầu 2-12 bước và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
-  { value: "MYSTERY_QUEST", label: "Hành Trình Bí Ẩn", desc: "Gameshow luân phiên, Background biến hóa & Lật bài né bom Chiếc nón kỳ diệu", emoji: "🗝️", badge: "Kịch tính", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "MYSTERY_QUEST", label: "Hành Trình Bí Ẩn", desc: "Gameshow luân phiên, Background biến hóa & Ô số phận (Không dùng Thẻ Bổ Trợ)", emoji: "🗝️", badge: "Kịch tính", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
 ];
 
 const POWERUP_TYPES = [
@@ -154,7 +154,13 @@ export default function CreateRoomPage() {
 
   const handleSelectMode = (newMode: string) => {
     setMode(newMode);
-    setAllowedPowerups(getDefaultAllowedPowerupsForMode(newMode as GameMode));
+    if (newMode === "MYSTERY_QUEST") {
+      setPowerupEnabled(false);
+      setAllowedPowerups([]);
+    } else {
+      setPowerupEnabled(true);
+      setAllowedPowerups(getDefaultAllowedPowerupsForMode(newMode as GameMode));
+    }
     if (newMode === "CLASSIC" || newMode === "ELIMINATION") {
       setAnswerMethod("DEVICE");
     }
@@ -222,11 +228,11 @@ export default function CreateRoomPage() {
           hostId: "demo-host-id", // In real app: from session
           teams: teamMode === "TEAM" ? teams : [],
           config: {
-            powerupEnabled,
+            powerupEnabled: mode === "MYSTERY_QUEST" ? false : powerupEnabled,
             powerupOwnerType,
-            powerupCountShared,
-            powerupCountPerTeam,
-            allowedPowerups: (() => {
+            powerupCountShared: mode === "MYSTERY_QUEST" ? 0 : powerupCountShared,
+            powerupCountPerTeam: mode === "MYSTERY_QUEST" ? 0 : powerupCountPerTeam,
+            allowedPowerups: mode === "MYSTERY_QUEST" ? [] : (() => {
               const currentModeAllowed = getDefaultAllowedPowerupsForMode(mode as GameMode);
               const filtered = allowedPowerups.filter((p) => currentModeAllowed.includes(p as CardType));
               return filtered.length > 0 ? filtered : currentModeAllowed;
@@ -417,9 +423,9 @@ export default function CreateRoomPage() {
               </div>
             </div>
 
-            {/* ─── 1. BỐ CỤC LƯỚI THẺ TRỰC QUAN (GRID) ─── */}
+            {/* ─── 1. BỐ CỤC LƯỚI THẺ TRỰC QUAN (GRID 3x3) ─── */}
             {modeLayout === "GRID" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 animate-slide-up">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-slide-up">
                 {GAME_MODES.map((m) => {
                   const isSelected = mode === m.value;
                   return (
@@ -427,7 +433,7 @@ export default function CreateRoomPage() {
                       key={m.value}
                       type="button"
                       onClick={() => handleSelectMode(m.value)}
-                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-95 group min-h-[140px] ${
+                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-95 group min-h-[140px] cursor-pointer ${
                         isSelected
                           ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-xl glow-purple"
                           : "border-border hover:border-purple-400 glass bg-card/60 hover:bg-card text-foreground"
@@ -464,7 +470,7 @@ export default function CreateRoomPage() {
                       key={m.value}
                       type="button"
                       onClick={() => handleSelectMode(m.value)}
-                      className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+                      className={`flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all cursor-pointer ${
                         isSelected
                           ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-md glow-purple"
                           : "border-border hover:border-purple-400 glass bg-card/50"
@@ -487,29 +493,55 @@ export default function CreateRoomPage() {
               </div>
             )}
 
-            {/* ─── 3. BỐ CỤC THẺ NHỎ TINH GỌN (COMPACT CHIPS) ─── */}
+            {/* ─── 3. BỐ CỤC THẺ NHỎ TINH GỌN (COMPACT CHIPS: 5 TRÊN, 4 DƯỚI) ─── */}
             {modeLayout === "COMPACT" && (
               <div className="space-y-3 animate-slide-up">
-                <div className="flex flex-wrap gap-2">
-                  {GAME_MODES.map((m) => {
-                    const isSelected = mode === m.value;
-                    return (
-                      <button
-                        key={m.value}
-                        type="button"
-                        onClick={() => handleSelectMode(m.value)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap shrink-0 ${
-                          isSelected
-                            ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"
-                            : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
-                        }`}
-                      >
-                        <GameModeIcon mode={m.value} className="w-5 h-5 shrink-0" />
-                        <span className="whitespace-nowrap">{m.label}</span>
-                        {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
-                      </button>
-                    );
-                  })}
+                <div className="space-y-2">
+                  {/* Dòng trên 5 chế độ */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {GAME_MODES.slice(0, 5).map((m) => {
+                      const isSelected = mode === m.value;
+                      return (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => handleSelectMode(m.value)}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"
+                              : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
+                          }`}
+                        >
+                          <GameModeIcon mode={m.value} className="w-5 h-5 shrink-0" />
+                          <span className="truncate">{m.label}</span>
+                          {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Dòng dưới 4 chế độ */}
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                    {GAME_MODES.slice(5).map((m) => {
+                      const isSelected = mode === m.value;
+                      return (
+                        <button
+                          key={m.value}
+                          type="button"
+                          onClick={() => handleSelectMode(m.value)}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs sm:text-sm font-bold transition-all active:scale-95 whitespace-nowrap cursor-pointer ${
+                            isSelected
+                              ? "bg-purple-600 border-purple-400 text-white shadow-lg glow-purple"
+                              : "bg-card/70 border-border hover:border-purple-400 text-foreground hover:bg-card"
+                          }`}
+                        >
+                          <GameModeIcon mode={m.value} className="w-5 h-5 shrink-0" />
+                          <span className="truncate">{m.label}</span>
+                          {isSelected && <span className="text-xs font-black text-purple-200">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Active Mode Summary Preview Box */}
@@ -550,7 +582,7 @@ export default function CreateRoomPage() {
                     </span>
                   </h3>
                   <p className="text-[11px] text-muted-foreground">
-                    Hệ thống tự động cân đối độ khó Bloom (Dễ 35% / Trung bình 45% / Khó 20%) và phân bổ số lượt phù hợp cho chế độ {GAME_MODES.find((m) => m.value === mode)?.label}.
+                    Hệ thống tự động cân đối độ khó Bloom (Dễ ~30% / Trung bình ~37% / Khó ~33%) và phân bổ số lượt phù hợp cho chế độ {GAME_MODES.find((m) => m.value === mode)?.label}.
                   </p>
                 </div>
               </div>
@@ -672,7 +704,7 @@ export default function CreateRoomPage() {
                       <span>📊</span> Dự kiến thi đấu: <strong className="text-indigo-300 font-mono text-sm">{totalQuestions} câu hỏi</strong>
                     </span>
                     <span className="text-[11px] text-muted-foreground">
-                      Chuẩn Bloom Gameshow (Dễ ~35% / TB ~45% / Khó ~20%)
+                      Chuẩn Bloom Gameshow (Dễ ~30% / TB ~37% / Khó ~33%)
                     </span>
                   </div>
 
@@ -775,7 +807,7 @@ export default function CreateRoomPage() {
 
                 <div className="p-3 rounded-lg bg-[#151728]/80 border border-amber-500/20 flex flex-col justify-center">
                   <div className="font-bold text-xs text-amber-300 flex items-center gap-1.5 mb-1">
-                    <span>🗝️</span> Ô số phận Chiếc nón kỳ diệu
+                    <span>🗝️</span> Ô số phận
                   </div>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
                     Sau khi giải đúng câu hỏi thử thách, đội được lật mở ô bí mật với tác động điểm cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm hoặc né Bom). Nếu đội chính sai, chuông cướp 5s sẽ mở ra cho các đội khác!
@@ -1517,18 +1549,41 @@ export default function CreateRoomPage() {
       {/* Step 3: Power-ups */}
       {step === 3 && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-bold">Kích hoạt thẻ hỗ trợ</h2>
-              <p className="text-sm text-muted-foreground">Power-up cards cho các đội</p>
+          {mode === "MYSTERY_QUEST" ? (
+            <div className="p-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 via-purple-950/20 to-slate-900/60 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-3xl shadow-lg">
+                🗝️
+              </div>
+              <div className="max-w-xl mx-auto space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold">
+                  <span>✨</span> Mode duy nhất không sử dụng Thẻ Hỗ Trợ
+                </div>
+                <h3 className="text-xl font-black text-white">Hành Trình Bí Ẩn: Không hỗ trợ Power-up</h3>
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Vì tính chất đặc thù gameshow sân khấu luân phiên từng đội, bối cảnh biến hóa liên tục và cơ chế kịch tính từ các <strong>Ô số phận</strong> (Thưởng/Phạt điểm cực lớn, Trộm điểm, Nhân đôi x2, Bom nổ), <strong>Hành Trình Bí Ẩn</strong> được thiết kế thuần túy không dùng Thẻ Bổ Trợ để đảm bảo nhịp độ và tính bất ngờ tự nhiên.
+                </p>
+              </div>
+              <div className="p-4 rounded-xl bg-black/40 border border-white/10 max-w-lg mx-auto text-left flex items-start gap-3">
+                <span className="text-xl shrink-0">ℹ️</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Tất cả các thẻ bài (Khiên, Băng, Cướp, 50/50, ...) đều được tự động vô hiệu hóa cho chế độ này. Bạn có thể nhấn <strong>&ldquo;Tiếp theo&rdquo;</strong> để sang bước cài đặt điểm số và hoàn tất tạo phòng.
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => setPowerupEnabled(!powerupEnabled)}
-              className={`w-12 h-6 rounded-full transition-colors ${ powerupEnabled ? "bg-purple-500" : "bg-muted" }`}
-            >
-              <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ powerupEnabled ? "translate-x-6" : "translate-x-0" }`} />
-            </button>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="font-bold">Kích hoạt thẻ hỗ trợ</h2>
+                  <p className="text-sm text-muted-foreground">Power-up cards cho các đội</p>
+                </div>
+                <button
+                  onClick={() => setPowerupEnabled(!powerupEnabled)}
+                  className={`w-12 h-6 rounded-full transition-colors ${ powerupEnabled ? "bg-purple-500" : "bg-muted" }`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white m-0.5 transition-transform ${ powerupEnabled ? "translate-x-6" : "translate-x-0" }`} />
+                </button>
+              </div>
 
           {powerupEnabled && (
             <>
@@ -1706,8 +1761,10 @@ export default function CreateRoomPage() {
               </div>
             </>
           )}
-        </div>
+        </>
       )}
+    </div>
+  )}
 
       {/* Step 4: Scoring */}
       {step === 4 && (

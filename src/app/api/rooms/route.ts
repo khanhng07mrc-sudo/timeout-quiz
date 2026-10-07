@@ -96,6 +96,10 @@ export async function POST(req: NextRequest) {
       const filtered = config.allowedPowerups.filter((c: any) => defaultModeAllowed.includes(c));
       mergedConfig.allowedPowerups = filtered.length > 0 ? filtered : defaultModeAllowed;
     }
+    if (targetMode === "MYSTERY_QUEST") {
+      mergedConfig.powerupEnabled = false;
+      mergedConfig.allowedPowerups = [];
+    }
 
     // Auto-synchronize derived configurations if matchMaxQuestions is provided
     if (config?.matchMaxQuestions && Number(config.matchMaxQuestions) > 0) {

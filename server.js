@@ -847,11 +847,11 @@ var THEME_KEYS = ["CASTLE", "PIRATE", "FOREST", "CYBER", "TEMPLE"];
 var MINI_GAME_TYPES = ["DOORS", "CHESTS", "TAROT_CARDS", "RADAR_WINDOWS"];
 var REWARD_TEMPLATES = {
   CASTLE: [
-    { storyTitle: "\u{1F48E} \u0110\u1EA1i H\u1ED3ng \xC2n Ph\xE1p S\u01B0", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng qu\u1EF9 \u0111i\u1EC3m!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F48E} \u0110\u1EA1i H\u1ED3ng \xC2n Ph\xE1p S\u01B0", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
     { storyTitle: "\u2B50 Ph\xE9p Nh\xE2n \u0110\xF4i Tinh T\xFA", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) to\xE0n b\u1ED9 \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F3AD} B\xE0n Tay \u0110\u1EA1o T\u1EB7c", storyDescription: "\xC1o t\xE0ng h\xECnh xu\u1EA5t k\xEDch: C\u01B0\u1EDBp th\xEAm 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn Th\xE1nh H\u1ED9 M\u1EC7nh", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c Khi\xEAn Th\xE1nh: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
-    { storyTitle: "\u{1F0CF} Cu\u1ED9n Gi\u1EA5y B\xED Truy\u1EC1n", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB 50/50!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "FIFTY_FIFTY" },
+    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn H\u1ED9 V\u1EC7 Ho\xE0ng Gia", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn c\u1ED5 ho\xE0ng gia: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F0CF} Cu\u1ED9n Gi\u1EA5y B\xED Truy\u1EC1n", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y th\xF4ng th\xE1i: Th\u01B0\u1EDFng n\xF3ng +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F4B0} Kho V\xE0ng Cung \u0110\xECnh", storyDescription: "M\u1EDF \u0111\xFAng c\u0103n h\u1EA7m ho\xE0ng gia: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u2728 Vi\xEAn Pha L\xEA Ma Thu\u1EADt", storyDescription: "N\u0103ng l\u01B0\u1EE3ng d\u1ED3i d\xE0o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n C\u1ED5", storyDescription: "T\xECm th\u1EA5y v\u01B0\u01A1ng mi\u1EC7n b\u1EA3o v\u1EADt: +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" }
@@ -860,18 +860,18 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u{1F451} Kho B\xE1u C\u1EE7a R\xE2u \u0110en", storyDescription: "H\xF2m kim c\u01B0\u01A1ng kh\u1ED5ng l\u1ED3: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
     { storyTitle: "\u2693 Gi\xF3 Thu\u1EADn Bu\u1ED3m Xu\xF4i", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F5E1}\uFE0F \u0110\u1ED9t K\xEDch H\u1EA1m \u0110\u1ED9i", storyDescription: "C\u01B0\u1EDBp b\xF3c khoang thuy\u1EC1n: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F99C} Ch\xFA V\u1EB9t Th\xF4ng Th\xE1i", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB \u0110\u1ED5i C\xE2u (Skip)!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "SKIP" },
+    { storyTitle: "\u{1F99C} Ch\xFA V\u1EB9t Th\xF4ng Th\xE1i", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt v\xE0o kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F37B} Ti\u1EC7c R\u01B0\u1EE3u Th\u1EE7y Th\u1EE7", storyDescription: "Li\xEAn hoan t\u01B0ng b\u1EEBng: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F9ED} La B\xE0n \u0110\u1ECBnh M\u1EC7nh", storyDescription: "T\xECm th\u1EA5y h\u01B0\u1EDBng gi\xF3 l\xE0nh: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1FA99} T\xFAi Ti\u1EC1n V\xE0ng C\u1ED5", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c t\xFAi v\xE0ng nguy\xEAn v\u1EB9n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F M\u1ED9c G\u1ED7 H\u1EA3i Qu\xE2n", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn ph\xF2ng th\u1EE7: +15\u0111 v\xE0 nh\u1EADn Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" }
+    { storyTitle: "\u{1F6E1}\uFE0F M\u1ED9c G\u1ED7 H\u1EA3i Qu\xE2n", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c m\u1ED9c g\u1ED7 qu\xFD b\xE1u: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ],
   FOREST: [
     { storyTitle: "\u{1F31F} \u0110\u1EA1i B\u1EA3o V\u1EADt R\u1EEBng Xanh", storyDescription: "N\u1EEF Ho\xE0ng Ti\xEAn ban t\u1EB7ng: Th\u01B0\u1EDFng ngay +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F338} Tr\xE1i C\xE2y Th\u1EA7n Ng\xE0n N\u0103m", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F98A} C\xE1o Tinh Ranh", storyDescription: "L\u1EBBn tr\u1ED9m t\xFAi ti\u1EC1n: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F33F} B\xF9a H\u1ED9 M\u1EC7nh C\u1EE7a T\u1ED9c Elf", storyDescription: "Khi\xEAn l\xE1 ch\u1EAFn t\u1EF1 nhi\xEAn: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
-    { storyTitle: "\u{1F3F9} Cung T\xEAn S\u1EA5m S\xE9t", storyDescription: "V\u0169 kh\xED huy\u1EC1n tho\u1EA1i: +15\u0111 v\xE0 Th\u1EBB x1.5 \u0111i\u1EC3m!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "SCORE_X2" },
+    { storyTitle: "\u{1F33F} B\xF9a H\u1ED9 M\u1EC7nh C\u1EE7a T\u1ED9c Elf", storyDescription: "B\xF9a ch\xFA r\u1EEBng xanh h\u1ED9 th\u1EC3: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F3F9} Cung T\xEAn S\u1EA5m S\xE9t", storyDescription: "B\u1EAFn tr\xFAng h\u1ED3ng t\xE2m kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F36F} M\u1EADt Ong R\u1EEBng Kh\u1ED5ng L\u1ED3", storyDescription: "Ng\u1ECDt ng\xE0o n\u0103ng l\u01B0\u1EE3ng: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F98B} Tinh Linh \xC1nh S\xE1ng", storyDescription: "\xC1nh s\xE1ng d\u1EABn l\u1ED1i: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F48E} Ng\u1ECDc L\u1EE5c B\u1EA3o R\u1EEBng Gi\xE0", storyDescription: "Vi\xEAn ng\u1ECDc ng\xE0n n\u0103m: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
@@ -880,8 +880,8 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u26A1 L\xF5i N\u0103ng L\u01B0\u1EE3ng L\u01B0\u1EE3ng T\u1EED", storyDescription: "B\xF9ng n\u1ED5 si\xEAu n\u0103ng l\u01B0\u1EE3ng: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F680} \u0110\u1ED9ng C\u01A1 Si\xEAu Quang T\u1ED1c", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F6F0}\uFE0F \u0110\xF2n T\u1EA5n C\xF4ng Cyber Siphon", storyDescription: "Chuy\u1EC3n lu\u1ED3ng d\u1EEF li\u1EC7u: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn Plasma", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
-    { storyTitle: "\u{1F4BE} \u1ED4 \u0110\u0129a D\u1EEF Li\u1EC7u T\u1ED1i M\u1EADt", storyDescription: "T\xE0i li\u1EC7u m\u1EADt: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB Th\u1EDDi Gian (+15s)!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "TIME_PLUS" },
+    { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn Plasma", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7 c\xF4ng ngh\u1EC7: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4BE} \u1ED4 \u0110\u0129a D\u1EEF Li\u1EC7u T\u1ED1i M\u1EADt", storyDescription: "Gi\u1EA3i m\xE3 d\u1EEF li\u1EC7u t\u1ED1i m\u1EADt: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F4E1} T\xEDn Hi\u1EC7u V\u1EC7 Tinh", storyDescription: "B\u1EAFt tr\u1ECDn lu\u1ED3ng s\xF3ng qu\xFD: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F50B} Pin Nhi\xEAn Li\u1EC7u V\u0129nh C\u1EEDu", storyDescription: "S\u1EA1c \u0111\u1EA7y pin t\xE0u: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F916} Si\xEAu Chip AI Th\u1EBF H\u1EC7 M\u1EDBi", storyDescription: "Thu\u1EADt to\xE1n x\u1EED l\xFD th\u1EA7n t\u1ED1c: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
@@ -891,9 +891,9 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u2600\uFE0F \xC1nh S\xE1ng Th\u1EA7n M\u1EB7t Tr\u1EDDi", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F40D} R\u1EAFn \u0110\u1ED9c C\u01B0\u1EDBp C\u1ED5 V\u1EADt", storyDescription: "B\u1EABy ng\u1EA7m k\xEDch ho\u1EA1t: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F3FA} B\xECnh C\u1ED5 Ho\xE0ng Kim", storyDescription: "C\u1ED5 v\u1EADt nguy\xEAn v\u1EB9n: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F4DC} B\u1EA3n \u0110\u1ED3 L\u1ED1i Tho\xE1t", storyDescription: "S\u01A1 \u0111\u1ED3 kim t\u1EF1 th\xE1p: +15\u0111 v\xE0 nh\u1EADn Th\u1EBB C\u01B0\u1EE3c x2!", deltaPoints: 15, effectType: "RARE_POWERUP", cardReward: "DOUBLE" },
+    { storyTitle: "\u{1F4DC} B\u1EA3n \u0110\u1ED3 L\u1ED1i Tho\xE1t", storyDescription: "S\u01A1 \u0111\u1ED3 m\u1EADt \u0111\u1EA1o kim t\u1EF1 th\xE1p: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F48E} Vi\xEAn H\u1ED3ng Ng\u1ECDc Huy\u1EC1n Tho\u1EA1i", storyDescription: "Vi\xEAn \u0111\xE1 m\u1EAFt th\u1EA7n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn \u0110\u1ED3ng C\u1ED5", storyDescription: "Khi\xEAn chi\u1EBFn binh Ai C\u1EADp: +15\u0111 v\xE0 nh\u1EADn Khi\xEAn!", deltaPoints: 15, effectType: "SAFE_SHIELD" },
+    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn \u0110\u1ED3ng C\u1ED5", storyDescription: "Khi\xEAn chi\u1EBFn binh Ai C\u1EADp: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ]
 };
@@ -984,8 +984,7 @@ function generateMysteryStageForTurn({
         storyTitle: rew.storyTitle,
         storyDescription: rew.storyDescription,
         effectType: rew.effectType,
-        deltaPoints: rew.deltaPoints,
-        cardReward: rew.cardReward
+        deltaPoints: rew.deltaPoints
       });
     }
   }
@@ -1062,7 +1061,6 @@ function handleFlipCard({
       scorePenalty: penalty
     };
   }
-  let rewardCard = tile.cardReward;
   if (tile.effectType === "MULTIPLY_X2") {
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
@@ -1099,8 +1097,7 @@ function handleFlipCard({
   return {
     updatedState: { ...state },
     isBomb: false,
-    scorePenalty: 0,
-    rewardCard
+    scorePenalty: 0
   };
 }
 function handleCashOut({
@@ -1147,13 +1144,15 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   WAGER: ["FIFTY_FIFTY", "SHIELD", "TIME_PLUS", "SKIP"],
   // CLASSIC: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
-  // MYSTERY_QUEST: Hành trình phiêu lưu - Đầy đủ thẻ hỗ trợ & cơ hội
-  MYSTERY_QUEST: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"]
+  // MYSTERY_QUEST: Hành trình phiêu lưu - Mode DUY NHẤT không hỗ trợ thẻ bổ trợ (Power-up) do đặc thù sân khấu luân phiên & Ô số phận
+  MYSTERY_QUEST: []
 };
 function getDefaultAllowedPowerupsForMode(mode) {
-  return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] || DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
+  if (mode === "MYSTERY_QUEST") return [];
+  return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] ?? DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
 }
 function isPowerupAllowedForMode(mode, cardType) {
+  if (mode === "MYSTERY_QUEST") return false;
   const allowed = getDefaultAllowedPowerupsForMode(mode);
   return allowed.includes(cardType);
 }
@@ -1305,48 +1304,61 @@ function allocateQuestionsForMatch(params) {
   const shuffledEasy = shuffle(easyPool);
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
-  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.35));
-  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.2));
+  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.33));
+  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.3));
   let targetMed = effectiveTotal - targetEasy - targetHard;
-  if (targetMed < 0) {
-    targetMed = 0;
-    targetEasy = Math.max(1, effectiveTotal - targetHard);
+  if (targetMed < 1 && effectiveTotal >= 3) {
+    targetMed = 1;
+    targetHard = Math.max(1, effectiveTotal - targetEasy - targetMed);
   }
-  const selectedEasy = [];
-  const selectedMed = [];
   const selectedHard = [];
+  const selectedMed = [];
+  const selectedEasy = [];
   const pickedIds = /* @__PURE__ */ new Set();
+  while (selectedHard.length < targetHard && shuffledHard.length > 0) {
+    const q = shuffledHard.pop();
+    if (!pickedIds.has(q.id)) {
+      pickedIds.add(q.id);
+      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
+    }
+  }
   while (selectedEasy.length < targetEasy && shuffledEasy.length > 0) {
     const q = shuffledEasy.pop();
     if (!pickedIds.has(q.id)) {
       pickedIds.add(q.id);
-      selectedEasy.push(q);
+      selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
     }
   }
   while (selectedMed.length < targetMed && shuffledMed.length > 0) {
     const q = shuffledMed.pop();
     if (!pickedIds.has(q.id)) {
       pickedIds.add(q.id);
-      selectedMed.push(q);
+      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
     }
   }
-  while (selectedHard.length < targetHard && shuffledHard.length > 0) {
-    const q = shuffledHard.pop();
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedHard.push(q);
-    }
+  const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
+  while (selectedHard.length < targetHard && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop();
+    pickedIds.add(q.id);
+    selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
   }
-  const neededRemaining = effectiveTotal - (selectedEasy.length + selectedMed.length + selectedHard.length);
-  if (neededRemaining > 0) {
-    const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
-    for (let i = 0; i < neededRemaining && i < remainingCandidates.length; i++) {
-      const q = remainingCandidates[i];
-      pickedIds.add(q.id);
-      const diff = classifyQuestionDifficulty(q);
-      if (diff === "EASY") selectedEasy.push(q);
-      else if (diff === "HARD") selectedHard.push(q);
-      else selectedMed.push(q);
+  while (selectedEasy.length < targetEasy && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop();
+    pickedIds.add(q.id);
+    selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
+  }
+  while (selectedMed.length < targetMed && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop();
+    pickedIds.add(q.id);
+    selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
+  }
+  while (selectedHard.length + selectedMed.length + selectedEasy.length < effectiveTotal && remainingCandidates.length > 0) {
+    const q = remainingCandidates.pop();
+    pickedIds.add(q.id);
+    if (selectedHard.length <= selectedMed.length) {
+      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
+    } else {
+      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
     }
   }
   let allocatedQuestions = [];
@@ -1355,7 +1367,7 @@ function allocateQuestionsForMatch(params) {
     const allSelected = [...selectedEasy, ...selectedMed, ...selectedHard];
     allSelected.sort((a, b) => {
       const diffScore = { EASY: 1, MEDIUM: 2, HARD: 3 };
-      return diffScore[classifyQuestionDifficulty(a)] - diffScore[classifyQuestionDifficulty(b)];
+      return (diffScore[a.allocatedDiff || "EASY"] || 1) - (diffScore[b.allocatedDiff || "EASY"] || 1);
     });
     allocatedQuestions = allSelected;
   } else {
@@ -1363,18 +1375,18 @@ function allocateQuestionsForMatch(params) {
   }
   allocatedQuestions = allocatedQuestions.slice(0, effectiveTotal);
   allocatedQuestions = allocatedQuestions.map((q, idx) => {
-    const diff = classifyQuestionDifficulty(q);
+    const diff = q.allocatedDiff || classifyQuestionDifficulty(q);
     const normalizedPoints = normalizePointsToLevel(diff);
     return {
       ...q,
       order: idx + 1,
-      points: q.points ? q.points : normalizedPoints,
-      bloomLevel: q.bloomLevel || (diff === "EASY" ? "REMEMBER" : diff === "MEDIUM" ? "APPLY" : "ANALYZE")
+      points: normalizedPoints,
+      bloomLevel: diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER"
     };
   });
-  const finalEasy = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "EASY").length;
-  const finalMed = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "MEDIUM").length;
-  const finalHard = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "HARD").length;
+  const finalEasy = allocatedQuestions.filter((q) => q.points <= 10).length;
+  const finalMed = allocatedQuestions.filter((q) => q.points === 20).length;
+  const finalHard = allocatedQuestions.filter((q) => q.points >= 30).length;
   const total = allocatedQuestions.length || 1;
   const breakdown = {
     easyCount: finalEasy,
@@ -3561,6 +3573,10 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "\u0110\xE3 v\xE0o 5 gi\xE2y \u0111\u1EBFm ng\u01B0\u1EE3c cu\u1ED1i c\xF9ng, th\u1EBB h\u1ED7 tr\u1EE3 \u0111\xE3 b\u1ECB kh\xF3a \u0111\u1EC3 \u0111\u1EA3m b\u1EA3o nh\u1ECBp \u0111\u1ED9 thi \u0111\u1EA5u!");
         return;
       }
+      if (room.mode === "MYSTERY_QUEST") {
+        socket.emit("error", "Ch\u1EBF \u0111\u1ED9 H\xE0nh Tr\xECnh B\xED \u1EA8n kh\xF4ng h\u1ED7 tr\u1EE3 th\u1EBB b\u1ED5 tr\u1EE3 (Power-up)!");
+        return;
+      }
       if (room.mode === "BOUNCEBACK" && qKey) {
         if (roomStealPhase.get(qKey) || roomStealBuzzed.has(qKey)) {
           socket.emit("error", "To\xE0n b\u1ED9 th\u1EBB h\u1ED7 tr\u1EE3 (power-up) b\u1ECB v\xF4 hi\u1EC7u ho\xE1 trong l\u01B0\u1EE3t c\u01B0\u1EDBp \u0111i\u1EC3m!");
@@ -4055,7 +4071,7 @@ function registerSocketHandlers(io2) {
         });
         if (!room) return;
         const config = room.config;
-        if (!config?.powerupEnabled) return;
+        if (room.mode === "MYSTERY_QUEST" || !config?.powerupEnabled) return;
         const allowed = config.allowedPowerups || [
           "FIFTY_FIFTY",
           "DOUBLE",
@@ -4135,7 +4151,7 @@ function registerSocketHandlers(io2) {
         });
         if (!room) return;
         const config = room.config;
-        if (!config?.powerupEnabled) return;
+        if (room.mode === "MYSTERY_QUEST" || !config?.powerupEnabled) return;
         const allowed = config.allowedPowerups || [
           "FIFTY_FIFTY",
           "DOUBLE",
@@ -5114,7 +5130,7 @@ function registerSocketHandlers(io2) {
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, isBomb, scorePenalty, rewardCard } = handleFlipCard({
+      const { updatedState, isBomb, scorePenalty } = handleFlipCard({
         state: questState,
         tileId,
         team,
@@ -5126,16 +5142,6 @@ function registerSocketHandlers(io2) {
           await applyScoreDeltaToTeam(team.id, -scorePenalty);
         }
       } else {
-        if (rewardCard) {
-          await prisma.powerupCard.create({
-            data: {
-              type: rewardCard,
-              ownerType: "TEAM",
-              teamId: team.id,
-              roomId: room.id
-            }
-          });
-        }
         if (updatedState.turnFinishedReason === "ALL_CLEARED") {
           await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
         }
@@ -5791,6 +5797,10 @@ function registerSocketHandlers(io2) {
     socket.on("admin:sandbox:grant:card", async ({ teamId, cardType }) => {
       const room = await getAdminRoom(socket);
       if (!room) return;
+      if (room.mode === "MYSTERY_QUEST") {
+        socket.emit("error", "Ch\u1EBF \u0111\u1ED9 H\xE0nh Tr\xECnh B\xED \u1EA8n kh\xF4ng h\u1ED7 tr\u1EE3 th\u1EBB b\u1ED5 tr\u1EE3 (Power-up)!");
+        return;
+      }
       if (!isPowerupAllowedForMode(room.mode, cardType)) {
         socket.emit("error", `Th\u1EBB ${cardType} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
         return;

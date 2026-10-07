@@ -239,18 +239,19 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     mode: "MYSTERY_QUEST",
     nameVi: "Hành Trình Bí Ẩn (Mystery Quest)",
     emoji: "🗝️",
-    taglineVi: "Gameshow luân phiên, Background biến hóa & Các ô số phận Chiếc nón kỳ diệu",
-    summaryVi: "Gameshow phiêu lưu truyền hình với cơ chế thi đấu lần lượt từng đội. Mỗi lượt là một bối cảnh sân khấu mới với các mini-game đa dạng (Cánh cửa thần bí, Rương kho báu, Thẻ bài cổ xưa, Cửa sổ radar). Đội chọn ô, vượt qua câu hỏi thử thách để lật mở nội dung phía sau với tác động điểm số cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi, Trộm điểm, Thêm lượt) như Chiếc nón kỳ diệu!",
+    taglineVi: "Gameshow luân phiên, Background biến hóa & Các Ô số phận bất ngờ (Không dùng Thẻ Bổ Trợ)",
+    summaryVi: "Gameshow phiêu lưu truyền hình với cơ chế thi đấu lần lượt từng đội. Mỗi lượt là một bối cảnh sân khấu mới với các mini-game đa dạng (Cánh cửa thần bí, Rương kho báu, Thẻ bài cổ xưa, Cửa sổ radar). Đội chọn ô, vượt qua câu hỏi thử thách để lật mở nội dung phía sau với tác động điểm số cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi, Trộm điểm, Thêm lượt) qua các Ô số phận! Do tính chất đặc thù tập trung vào diễn biến sân khấu và may rủi bất ngờ của Ô số phận, Hành Trình Bí Ẩn là mode duy nhất không hỗ trợ Thẻ Bổ Trợ (Power-up).",
     mechanicsVi: [
       "Thi đấu luân phiên theo lượt (Turn-based): Các đội lần lượt bước lên sân khấu chính theo thứ tự công bằng.",
       "Background & Trò chơi biến hóa liên tục: Mỗi lượt đổi mới bối cảnh (Lâu đài, Đảo hải tặc, Rừng ma thuật, Cyber) và kiểu bàn cờ (Cánh cửa, Hòm báu, Thẻ bài, Radar).",
       "Chọn ô & Giải câu hỏi: Đội chọn 1 ô thử thách, vượt qua câu hỏi để lật mở bí mật phía sau.",
-      "Hiệu ứng Chiếc nón kỳ diệu: Các ô phía sau có tác động cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm, Thêm lượt, Thẻ bổ trợ hiếm).",
+      "Hiệu ứng Ô số phận: Các ô phía sau có tác động cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm, Thêm lượt hoặc né Bom).",
+      "Đặc thù duy nhất - Không hỗ trợ Power-up: Chế độ duy nhất trong game không dùng Thẻ Bổ Trợ (Power-up), giữ trọn vẹn sự tinh gọn và kịch tính chân thật của gameshow.",
       "Chuông cướp 5s khi đội chính trả lời SAI: Nếu đội chính sai, các đội khác có 5s bấm chuông cướp quyền trả lời để giật trọn ô bí mật!",
     ],
     scoringVi: [
       "Điểm câu hỏi gốc: Dễ 10đ | Trung bình 20đ | Khó 30đ.",
-      "Tác động ô Chiếc nón kỳ diệu: Điểm thưởng khủng (+50đ, +100đ), Nhân đôi (x2), Chia đôi (/2), Trộm điểm (+20đ từ đội dẫn đầu), Mất điểm, Thêm lượt.",
+      "Tác động Ô số phận: Điểm thưởng khủng (+50đ, +100đ), Nhân đôi (x2), Chia đôi (/2), Trộm điểm (+20đ từ đội dẫn đầu), Mất điểm, Thêm lượt.",
       "Đội cướp đúng: Nhận trọn điểm câu hỏi + toàn bộ phần thưởng ô bí mật.",
       "Đội cướp sai: Trừ 50% điểm câu hỏi.",
     ],
@@ -841,7 +842,7 @@ export type MysteryMiniGameType = "DOORS" | "CHESTS" | "TAROT_CARDS" | "RADAR_WI
 export type MysteryTileEffectType =
   | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
   | "MULTIPLY_X2"  // Nhân đôi tổng điểm hiện tại
-  | "DIVIDE_HALF"  // Chia đôi điểm hiện tại (như Chiếc nón kỳ diệu)
+  | "DIVIDE_HALF"  // Chia đôi điểm hiện tại (Hiệu ứng Ô số phận)
   | "STEAL_POINTS" // Cướp 20-30đ từ đội cao điểm nhất
   | "LOSE_POINTS"  // Mất 20-30đ
   | "EXTRA_TURN"   // Nhận thêm 1 lượt chọn ô câu tiếp theo

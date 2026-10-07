@@ -1652,7 +1652,7 @@ export default function PlayPage() {
       </div>
 
       {/* Power-up bar */}
-      {roomState && (roomState.config.powerupEnabled || roomState.sharedCards.length > 0) && (
+      {roomState && roomState.mode !== "MYSTERY_QUEST" && (roomState.config.powerupEnabled || roomState.sharedCards.length > 0) && (
         <PowerupBar
           roomState={roomState}
           playerId={playerId}

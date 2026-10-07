@@ -231,7 +231,6 @@ export default function DisplayPage() {
         }
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
-          soundManager.playFanfare();
         }
         if (p.mysteryQuestState !== undefined) {
           setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
@@ -594,7 +593,6 @@ export default function DisplayPage() {
     });
     socket.on("game:ended", (payload) => {
       soundManager.stopMusic();
-      soundManager.playFanfare();
       setGameEnd(payload);
     });
     socket.on("game:paused", () => {

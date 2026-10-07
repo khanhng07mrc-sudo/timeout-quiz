@@ -336,7 +336,6 @@ export default function PlayPage() {
         if (p.intermission !== undefined) setIntermission(p.intermission);
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
-          if (soundEnabledRef.current) soundManager.playFanfare();
         }
         if (p.isStealOpen !== undefined) setIsStealPhase(p.isStealOpen);
         if (p.stealBuzzed !== undefined) setStealBuzzedTeam(p.stealBuzzed);
@@ -883,9 +882,6 @@ export default function PlayPage() {
     });
 
     socket.on("game:ended", (payload) => {
-      if (soundEnabledRef.current) {
-        soundManager.playFanfare();
-      }
       setGameEnd(payload);
     });
     socket.on("game:early_completed", () => {

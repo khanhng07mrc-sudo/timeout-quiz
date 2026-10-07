@@ -15,7 +15,7 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   buzz: { primary: "/sounds/olympia_buzz.mp3", fallbacks: ["/sounds/buzz.mp3", "/sounds/buzz.wav"] },
   correct: { primary: "/sounds/correct.mp3", fallbacks: ["/sounds/correct.wav"] },
   wrong: { primary: "/sounds/wrong.ogg", fallbacks: ["/sounds/wrong.mp3", "/sounds/wrong.wav"] },
-  fanfare: { primary: "/sounds/fanfare.mp3", fallbacks: ["/sounds/fanfare.wav"] },
+  fanfare: { primary: "", fallbacks: [] },
   powerup: { primary: "/sounds/powerup.mp3", fallbacks: ["/sounds/powerup.wav"] },
   timeout: { primary: "/sounds/timeout.mp3", fallbacks: ["/sounds/buzz.mp3"] },
 };
@@ -556,27 +556,15 @@ class SoundManager {
   }
 
   /**
-   * Nhạc tổng kết điểm trao giải Olympia (O9 - O24) - Chỉ phát khi kết thúc toàn bộ trận đấu
+   * Fanfare / Nhạc tổng kết điểm Olympia - Đã tắt hoàn toàn (fanfare.mp3 không được chạy)
    */
   public playFanfare() {
-    this.stopFanfare();
-    try {
-      const original = this.sfxMap.get("fanfare");
-      const audio = original ? (original.cloneNode(true) as HTMLAudioElement) : this.createAudioWithFallbacks(SFX_CONFIG.fanfare, false);
-      audio.volume = this.volume * 0.95;
-      this.currentFanfareAudio = audio;
-      audio.play().catch(() => {});
-    } catch {}
+    // Disabled: fanfare.mp3 không được chạy
+    return;
   }
 
   public stopFanfare() {
-    if (this.currentFanfareAudio) {
-      try {
-        this.currentFanfareAudio.pause();
-        this.currentFanfareAudio.currentTime = 0;
-      } catch {}
-      this.currentFanfareAudio = null;
-    }
+    // No-op
   }
 
   /**

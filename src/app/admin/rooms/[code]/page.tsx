@@ -529,9 +529,6 @@ export default function AdminRoomPage() {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
     });
     socket.on("game:ended", () => {
-      if (soundEnabledRef.current) {
-        soundManager.playFanfare();
-      }
       setGameEnded(true);
     });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));

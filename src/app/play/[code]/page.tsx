@@ -1430,16 +1430,18 @@ export default function PlayPage() {
               isSandbox={isSandbox}
               teams={roomState.teams}
               onFlipCard={(tileId) => {
-                if (typeof window !== "undefined" && window.self !== window.top) {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:flip_card", { tileId });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
                 }
-                socketRef.current?.emit("game:mystery:flip_card", { tileId });
               }}
               onCashOut={() => {
-                if (typeof window !== "undefined" && window.self !== window.top) {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:cash_out");
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
                 }
-                socketRef.current?.emit("game:mystery:cash_out");
               }}
               onAdvanceTurn={() => {
                 if (typeof window !== "undefined" && window.self !== window.top) {
@@ -1627,16 +1629,18 @@ export default function PlayPage() {
                   isSandbox={isSandbox}
                   teams={roomState.teams}
                   onFlipCard={(tileId) => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:flip_card", { tileId });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
                     }
-                    socketRef.current?.emit("game:mystery:flip_card", { tileId });
                   }}
                   onCashOut={() => {
-                    if (typeof window !== "undefined" && window.self !== window.top) {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:cash_out");
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
                     }
-                    socketRef.current?.emit("game:mystery:cash_out");
                   }}
                   onAdvanceTurn={() => {
                     if (typeof window !== "undefined" && window.self !== window.top) {

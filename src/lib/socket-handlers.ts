@@ -4335,7 +4335,16 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Mystery Quest (Hành Trình Bí Ẩn) Events ──────────────────────────────
+    const roomMysteryFlipCooldown = new Map<string, number>();
+
     const executeMysteryFlip = async (room: any, questState: any, team: any, tileId: number) => {
+      const now = Date.now();
+      const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
+      if (now - lastFlipTime < 450) {
+        return;
+      }
+      roomMysteryFlipCooldown.set(room.id, now);
+
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const {
         updatedState,
@@ -6316,7 +6325,7 @@ async function processAnswerSubmission({
   // 5. Smart Auto-Complete: Kiểm tra nếu tất cả thí sinh/đội hợp lệ đã nộp bài đầy đủ
   if (!isAdminOverride) {
     const isMcMode = (room.config as any)?.answerMethod === "MC";
-    const subBehavior = (room.config as any)?.submissionBehavior || "ALLOW_CHANGE";
+    const subBehavior = (room.config as any)?.answerSubmissionMode || (room.config as any)?.submissionBehavior || "ALLOW_CHANGE";
 
     // Khi chọn chế độ MC trả lời: MC chọn đáp án và công bố đáp án hoàn toàn thủ công, không tự động kết thúc!
     if (!isMcMode && subBehavior === "SINGLE_SUBMIT") {

@@ -5733,7 +5733,14 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
       }
     });
+    const roomMysteryFlipCooldown = /* @__PURE__ */ new Map();
     const executeMysteryFlip = async (room, questState, team, tileId) => {
+      const now = Date.now();
+      const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
+      if (now - lastFlipTime < 450) {
+        return;
+      }
+      roomMysteryFlipCooldown.set(room.id, now);
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const {
         updatedState,
@@ -7349,7 +7356,7 @@ async function processAnswerSubmission({
   }
   if (!isAdminOverride) {
     const isMcMode = room.config?.answerMethod === "MC";
-    const subBehavior = room.config?.submissionBehavior || "ALLOW_CHANGE";
+    const subBehavior = room.config?.answerSubmissionMode || room.config?.submissionBehavior || "ALLOW_CHANGE";
     if (!isMcMode && subBehavior === "SINGLE_SUBMIT") {
       const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
       const subSet = roomSubmittedActors.get(qKey) || /* @__PURE__ */ new Set();

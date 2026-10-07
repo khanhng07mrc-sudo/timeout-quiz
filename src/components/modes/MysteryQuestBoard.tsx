@@ -34,6 +34,7 @@ export default function MysteryQuestBoard({
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
+  const isFlippingRef = useRef<boolean>(false);
 
 
   if (!mysteryState) {
@@ -89,9 +90,10 @@ export default function MysteryQuestBoard({
 
 
   const handleTileClick = (tile: MysteryTile) => {
-    if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id)) return;
+    if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id) || isFlippingRef.current) return;
     if (memoryPairsState?.isMismatchResolving) return;
 
+    isFlippingRef.current = true;
     // Instant optimistic visual feedback (<16ms)
     setOptimisticOpenedIds((prev) => new Set(prev).add(tile.id));
     setFlippingTileId(tile.id);
@@ -99,7 +101,10 @@ export default function MysteryQuestBoard({
       setIsDrawingAnimation(true);
       setTimeout(() => setIsDrawingAnimation(false), 450);
     }
-    setTimeout(() => setFlippingTileId(null), 500);
+    setTimeout(() => {
+      setFlippingTileId(null);
+      isFlippingRef.current = false;
+    }, 550);
 
     onFlipCard?.(tile.id);
   };

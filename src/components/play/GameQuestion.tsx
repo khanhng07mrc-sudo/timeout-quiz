@@ -72,6 +72,16 @@ export default function GameQuestion({
 }: Props) {
   const q = question.question;
 
+  const subMode = question.answerSubmissionMode || (question as any).submissionBehavior || "ALLOW_CHANGE";
+  const effStealTeamForSingle = stealBuzzedTeam || (question.stealBuzzedTeamId ? {
+    teamId: question.stealBuzzedTeamId,
+    teamName: question.stealBuzzedTeamName || "",
+    playerId: "",
+    playerName: "",
+  } : null);
+  const isBouncebackSteal = roomMode === "BOUNCEBACK" && Boolean(effStealTeamForSingle);
+  const isSingleSubmit = isBouncebackSteal || subMode === "SINGLE_SUBMIT";
+
   const [selected, setSelected] = useState<string[]>(() => {
     if (!initialAnswer) return [];
     return Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
@@ -83,18 +93,20 @@ export default function GameQuestion({
     return typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "";
   });
   const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
-  const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer));
+  const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer && isSingleSubmit));
 
   const isSubmittingSingleRef = useRef(false);
 
   // Clean reset of input and selection states whenever question ID or active participant changes
   useEffect(() => {
-    isSubmittingSingleRef.current = Boolean(initialAnswer);
+    isSubmittingSingleRef.current = Boolean(initialAnswer && isSingleSubmit);
     if (initialAnswer) {
       setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
       setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
       setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
-      setIsFinalizedLocally(true);
+      if (isSingleSubmit) {
+        setIsFinalizedLocally(true);
+      }
     } else {
       setSelected([]);
       setEssayText("");
@@ -102,7 +114,7 @@ export default function GameQuestion({
       setIsFinalizedLocally(false);
     }
     setIsBuzzedLocally(false);
-  }, [q.id, myTeamId, playerId, initialAnswer]);
+  }, [q.id, myTeamId, playerId, initialAnswer, isSingleSubmit]);
 
   // Reset isBuzzedLocally when buzzer reopens (attempt 2, 3), or when buzz/steal state is cleared
   useEffect(() => {
@@ -157,9 +169,7 @@ export default function GameQuestion({
       ? (myActorId === question.tournamentTeam1Id || myActorId === question.tournamentTeam2Id)
       : true;
 
-  const isBouncebackSteal = roomMode === "BOUNCEBACK" && Boolean(effStealTeam);
-  const subMode = question.answerSubmissionMode || "ALLOW_CHANGE";
-  const isSingleSubmit = isBouncebackSteal || subMode === "SINGLE_SUBMIT";
+
 
   const isBuzzedWaitingPrep =
     (roomMode === "BUZZ" && isBuzzedTeam && !question.buzzAnsweringActive && !revealPayload) ||

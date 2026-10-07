@@ -1880,8 +1880,8 @@ export default function AdminSandboxPage() {
       if (e.data?.type === "MYSTERY_FLIP" || e.data?.action === "mystery_flip") {
         const tileId = Number(e.data?.tileId);
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId, code });
-          addLog(`✨ Admin lật thẻ #${tileId} trong Sandbox Online`);
+          // Thí sinh trong iframe ở Sandbox Online đã emit trực tiếp qua socket thí sinh.
+          // Tuyệt đối không emit thêm từ admin socket để tránh rút 2 lá 1 lúc!
           return;
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
@@ -1951,8 +1951,6 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:cash_out" as any, { code });
-          addLog("💰 Admin bảo toàn quỹ điểm trong Sandbox Online");
           return;
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
@@ -6301,10 +6299,18 @@ export default function AdminSandboxPage() {
                       isAdmin={true}
                       teams={roomState.teams}
                       onFlipCard={(tileId) => {
-                        window.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId }, "*");
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId }, "*");
+                        }
                       }}
                       onCashOut={() => {
-                        window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:cash_out" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
+                        }
                       }}
                       onAdvanceTurn={() => {
                         window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");

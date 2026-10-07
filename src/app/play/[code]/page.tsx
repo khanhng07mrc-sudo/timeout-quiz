@@ -1167,21 +1167,6 @@ export default function PlayPage() {
   const myTeam = roomState?.teams.find((t) => t.id === effectiveTeamId);
   const isSpectator = Boolean(myTeam?.isEliminated) || Boolean(mePlayer?.isSpectator);
 
-  if (roomState?.status === "LOBBY") {
-    return (
-      <>
-        {reconnectBanner}
-        <PlayerLobby
-          roomState={roomState}
-          playerId={playerId}
-          selectedTeamId={selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || null}
-          onSelectTeam={handleSelectTeam}
-          errorMessage={errorMessage}
-        />
-      </>
-    );
-  }
-
   // ── Match Warmup Countdown (5s) ──────────────────────────────────────────
   if (matchStarting) {
     if (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) {
@@ -1241,6 +1226,22 @@ export default function PlayPage() {
             {soundEnabled ? "🔊 Âm thanh: BẬT" : "🔇 Âm thanh: TẮT (Bấm để bật)"}
           </button>
         </div>
+      </>
+    );
+  }
+
+  // ── Lobby ──────────────────────────────────────────────────────────────────
+  if (!currentQuestion && roomState?.status === "LOBBY") {
+    return (
+      <>
+        {reconnectBanner}
+        <PlayerLobby
+          roomState={roomState}
+          playerId={playerId}
+          selectedTeamId={selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || null}
+          onSelectTeam={handleSelectTeam}
+          errorMessage={errorMessage}
+        />
       </>
     );
   }

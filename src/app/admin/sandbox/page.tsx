@@ -2990,6 +2990,10 @@ export default function AdminSandboxPage() {
       return;
     }
 
+    if (roomState?.status === "LOBBY") {
+      setMatchStarting({ seconds: 5 });
+      addLog("⚡ Admin: Bắt đầu trận đấu — Đang đếm ngược chuẩn bị 5s...");
+    }
     adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");
   };
@@ -4383,7 +4387,7 @@ export default function AdminSandboxPage() {
         </button>
       );
     }
-    if (roomState?.status === "LOBBY") {
+    if (!currentQuestion && roomState?.status === "LOBBY") {
       return (
         <button
           type="button"
@@ -4709,7 +4713,7 @@ export default function AdminSandboxPage() {
                         }`}
                       >
                         <span>
-                          {roomState?.status === "LOBBY"
+                          {!currentQuestion && roomState?.status === "LOBBY"
                             ? "🚀 Bắt đầu"
                             : roomState?.mode === "DICE_RACE" && !currentQuestion
                             ? "🎯 Hiện câu hỏi"
@@ -5921,7 +5925,7 @@ export default function AdminSandboxPage() {
                         className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                       >
                         <span>
-                          {roomState?.status === "LOBBY"
+                          {!currentQuestion && roomState?.status === "LOBBY"
                             ? "🚀 Bắt đầu trận đấu"
                             : roomState?.mode === "DICE_RACE" && !currentQuestion
                             ? "🎯 Hiện câu hỏi"

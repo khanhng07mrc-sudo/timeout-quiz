@@ -1446,9 +1446,10 @@ export function registerSocketHandlers(io: IO) {
 
         // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
+        const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (room.status === "PLAYING" && !isPreparing) {
+        } else if (effectiveRoomStatus === "PLAYING" && !isPreparing) {
           if (roomRevealPayloads.has(room.id)) {
             socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id)!);
           } else if (room.quizBank?.questions) {
@@ -1608,9 +1609,10 @@ export function registerSocketHandlers(io: IO) {
 
         // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
+        const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const activeQ = roomActiveQuestions.get(room.id);
           if (activeQ) {
             socket.emit("game:question", activeQ);
@@ -1777,9 +1779,10 @@ export function registerSocketHandlers(io: IO) {
 
         // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
         const isPreparing = roomPrepareStates.has(room.id);
+        const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (room.status === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const activeQ = roomActiveQuestions.get(room.id);
           if (activeQ) {
             socket.emit("game:question", activeQ);
@@ -3167,10 +3170,13 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (room.status === "LOBBY") {
+        // 1. Broadcast game:starting immediately (0ms latency so clients start countdown instantly)
+        io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
+
         room.currentQuestion = 0;
         room.status = "PLAYING";
         roomCache.set(room.id, room);
-        prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } }).catch(console.error);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: 0, status: "PLAYING" } }).catch(console.error);
 
         // Ensure 2 initial cards distributed per team
         ensureInitialTeamPowerups(room.id, io).catch(console.error);
@@ -3333,10 +3339,12 @@ export function registerSocketHandlers(io: IO) {
           });
         } else if (room.mode === "MYSTERY_QUEST") {
           const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || 2;
+          const fallbackTeam = { id: "t1", name: "Đội 1", color: "#ef4444", score: 0 };
+          const activeTeams = teams.length > 0 ? teams : [fallbackTeam];
           const questState = generateMysteryStageForTurn({
             turnIndex: 0,
-            currentTeam: teams[0] || { id: "t1", name: "Đội 1", color: "#ef4444", score: 0 },
-            teams,
+            currentTeam: activeTeams[0],
+            teams: activeTeams,
             turnsPerTeam,
           });
           roomMysteryQuests.set(room.id, questState);
@@ -3356,6 +3364,13 @@ export function registerSocketHandlers(io: IO) {
         const updatedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", updatedState);
 
+        if (room.mode === "MYSTERY_QUEST") {
+          const questState = roomMysteryQuests.get(room.id);
+          if (questState) {
+            io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+          }
+        }
+
         if (room.mode === "GRID_CARO") {
           // Board-based mode waits for turn player's cell selection
           startGridCaroPreview(io, room.id, room.code, config?.gridPreviewDuration || 5);
@@ -3372,16 +3387,37 @@ export function registerSocketHandlers(io: IO) {
           return;
         }
 
-        const launchWarmupToFirstQuestion = () => {
-          roomPrepareStates.delete(room.id);
-          const nextQ = getNextUniqueQuestion(room.id, questions, 0);
-          if (nextQ) {
-            room.currentQuestion = nextQ.index;
-            startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
+        const launchWarmupToFirstQuestion = async () => {
+          try {
+            roomPrepareStates.delete(room.id);
+            const nextQ = getNextUniqueQuestion(room.id, questions, 0);
+            if (nextQ) {
+              room.currentQuestion = nextQ.index;
+              room.status = "PLAYING";
+              roomCache.set(room.id, room);
+              await prisma.room.update({
+                where: { id: room.id },
+                data: { currentQuestion: nextQ.index, status: "PLAYING" },
+              }).catch(console.error);
+
+              await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
+
+              const refreshedState = await buildRoomState(room.id);
+              io.to(`room:${room.code}`).emit("room:state", refreshedState);
+
+              if (room.mode === "MYSTERY_QUEST") {
+                const questState = roomMysteryQuests.get(room.id);
+                if (questState) {
+                  io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+                }
+              }
+            } else {
+              console.warn(`[launchWarmupToFirstQuestion] No next question available in room ${room.code}`);
+            }
+          } catch (err) {
+            console.error("[launchWarmupToFirstQuestion] Error:", err);
           }
         };
-
-        io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
 
         const timer = setTimeout(() => {
           launchWarmupToFirstQuestion();
@@ -7616,14 +7652,18 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     used: c.used,
   }));
 
+  const cachedRoom = roomCache.get(roomId);
+  const effectiveStatus = (cachedRoom?.status ?? room.status) as any;
+  const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
+
   return {
     id: room.id,
     code: room.code,
     name: room.name,
     mode: room.mode as any,
     teamMode: room.teamMode as any,
-    status: room.status as any,
-    currentQuestionIndex: room.currentQuestion,
+    status: effectiveStatus,
+    currentQuestionIndex: effectiveCurrentQuestion,
     totalQuestions: getTargetTotalQuestions(
       room.mode as any,
       config,

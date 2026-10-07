@@ -49,6 +49,10 @@ export default function DisplayPage() {
   const [stealBuzzed, setStealBuzzed] = useState<{ teamName: string; playerName: string } | null>(null);
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const matchStartingRef = useRef(false);
+  useEffect(() => {
+    matchStartingRef.current = Boolean(matchStarting);
+  }, [matchStarting]);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [displayModeTab, setDisplayModeTab] = useState<"QUESTION" | "BOARD">("QUESTION");
@@ -252,13 +256,16 @@ export default function DisplayPage() {
     socket.on("room:state", (state) => {
       setRoomState(state);
       if (state.status === "LOBBY") {
-        soundManager.playLobbyMusic();
-      } else if (state.status === "FINISHED" || state.status === "PAUSED") {
+        if (!matchStartingRef.current) {
+          soundManager.playLobbyMusic();
+        }
+      } else if (state.status === "FINISHED" || state.status === "PAUSED" || state.status === "PLAYING") {
         soundManager.stopMusic(0);
       }
     });
 
     socket.on("game:starting", (p) => {
+      matchStartingRef.current = true;
       setMatchStarting({ seconds: p.seconds });
       setQuestionPrepare(null);
       setIntermission(null);
@@ -648,7 +655,7 @@ export default function DisplayPage() {
     setAudioUnlocked(true);
     setSoundMuted(false);
     if (!matchStarting && !questionPrepare) {
-      if (roomState?.status === "LOBBY") {
+      if (!currentQuestion && roomState?.status === "LOBBY") {
         soundManager.playLobbyMusic();
       } else if (
         currentQuestion &&
@@ -994,7 +1001,7 @@ export default function DisplayPage() {
   }
 
   // ── Lobby ──────────────────────────────────────────────────────────────────
-  if (!roomState || roomState.status === "LOBBY") {
+  if (!currentQuestion && (!roomState || roomState.status === "LOBBY")) {
     const isTeamMode = roomState?.teamMode === "TEAM";
     return (
       <div className="min-h-screen flex flex-col p-4 sm:p-6 max-w-6xl mx-auto w-full relative" onClick={handleUnlockAudio}>
@@ -1131,6 +1138,8 @@ export default function DisplayPage() {
   }
 
   // ── Active Game ────────────────────────────────────────────────────────────
+  if (!roomState) return null;
+
   const sortedTeams = [...(roomState.teamMode === "TEAM" ? roomState.teams : roomState.players)]
     .sort((a: any, b: any) => b.score - a.score)
     .slice(0, 10);

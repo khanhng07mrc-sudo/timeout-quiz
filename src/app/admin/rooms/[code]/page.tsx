@@ -71,6 +71,10 @@ export default function AdminRoomPage() {
   const [showMcCheatSheet, setShowMcCheatSheet] = useState(true);
 
   const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const matchStartingRef = useRef(false);
+  useEffect(() => {
+    matchStartingRef.current = Boolean(matchStarting);
+  }, [matchStarting]);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -278,14 +282,17 @@ export default function AdminRoomPage() {
       setRoomState(state);
       if (soundEnabledRef.current) {
         if (state.status === "LOBBY") {
-          soundManager.playLobbyMusic();
-        } else if (state.status === "FINISHED" || state.status === "PAUSED") {
+          if (!matchStartingRef.current) {
+            soundManager.playLobbyMusic();
+          }
+        } else if (state.status === "FINISHED" || state.status === "PAUSED" || state.status === "PLAYING") {
           soundManager.stopMusic(0);
         }
       }
     });
 
     socket.on("game:starting", (p) => {
+      matchStartingRef.current = true;
       setMatchStarting({ seconds: p.seconds });
       setQuestionPrepare(null);
       setIntermission(null);
@@ -558,6 +565,15 @@ export default function AdminRoomPage() {
       }
     }
     (socketRef.current?.emit as any)(event, ...args);
+  };
+
+  const handleAdminNextClick = () => {
+    if (roomState?.status === "LOBBY") {
+      matchStartingRef.current = true;
+      setMatchStarting({ seconds: 5 });
+      soundManager.stopMusic(0);
+    }
+    emit("admin:next", { code });
   };
 
   const handleToggleCards = (locked: boolean) => {
@@ -854,7 +870,7 @@ export default function AdminRoomPage() {
       )}
 
       {/* Lobby Quiz Bank selector */}
-      {roomState?.status === "LOBBY" && (
+      {!matchStarting && !currentQuestion && roomState?.status === "LOBBY" && (
         <div className="space-y-3">
           <div className="glass rounded-2xl p-5 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
@@ -1749,7 +1765,7 @@ export default function AdminRoomPage() {
 
             {roomState?.mode === "GRID_CARO" && roomState?.status !== "LOBBY" ? null : (
               <button
-                onClick={() => emit("admin:next", { code })}
+                onClick={handleAdminNextClick}
                 disabled={gameEnded}
                 className={`py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap ${
                   intermission
@@ -2239,7 +2255,7 @@ export default function AdminRoomPage() {
       {/* Mobile Floating Action Bar for Host/Admin */}
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-[#0f0f1a]/95 backdrop-blur-md border-t border-border flex items-center gap-2 z-40 lg:hidden shadow-2xl">
         <button
-          onClick={() => emit("admin:next")}
+          onClick={handleAdminNextClick}
           disabled={gameEnded}
           className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold text-xs sm:text-sm text-white shadow active:scale-95 disabled:opacity-50 truncate inline-flex items-center justify-center gap-1.5"
         >

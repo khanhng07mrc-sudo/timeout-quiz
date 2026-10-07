@@ -362,8 +362,8 @@ export default function GameQuestion({
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs font-semibold bg-black/30 p-2.5 rounded-lg border border-purple-500/30">
-            <span>🎯 Chặng này: <strong>{ghostStats?.ghostCurrentRoundCorrect || 0}/{ghostStats?.eliminationInterval || 3} câu đúng</strong> (Cần {ghostStats?.eliminationInterval || 3}/{ghostStats?.eliminationInterval || 3} để ưu tiên hồi sinh)</span>
-            <span>🔥 Tích luỹ: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong> ({ghostStats?.ghostStreak || 0} câu liên tiếp)</span>
+            <span>🎯 Chặng này: <strong>{ghostStats?.ghostCurrentRoundCorrect || 0}/{Math.max(1, ghostStats?.eliminationInterval || 3)} câu đúng</strong> (Cần {Math.max(1, ghostStats?.eliminationInterval || 3)}/{Math.max(1, ghostStats?.eliminationInterval || 3)} để ưu tiên hồi sinh)</span>
+            <span>🔥 Tích luỹ toàn trận: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong> ({ghostStats?.ghostStreak || 0} câu liên tiếp)</span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
                 <span>✨</span> ĐẠT CHUẨN 100% (Ưu tiên hồi sinh cao nhất!)

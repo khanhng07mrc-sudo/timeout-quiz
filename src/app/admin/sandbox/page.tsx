@@ -28,6 +28,11 @@ import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
 import { getBroadTopic } from "@/lib/topics";
 import { getBloomLevelFromPoints } from "@/types";
+import {
+  syncClockWithServer,
+  calculateAuthoritativeTimer,
+  calibrateClockFromPacket,
+} from "@/lib/clock-sync";
 
 function checkOfflineCanAnyTeamBet(
   teams: TeamState[],
@@ -77,6 +82,7 @@ export default function AdminSandboxPage() {
     type?: string;
     explanation?: string;
   } | null>(null);
+  const [showMcCheatSheet, setShowMcCheatSheet] = useState(true);
   const adminQuestionDataRef = useRef<{
     questionId: string;
     options: any[];
@@ -84,6 +90,7 @@ export default function AdminSandboxPage() {
     type?: string;
     explanation?: string;
   } | null>(null);
+  const offlineTeamMultiplierRef = useRef<Map<string, number>>(new Map());
 
   // Offline Sandbox Simulator State & Iframe Refs
   const [isOfflineSandbox, setIsOfflineSandbox] = useState(false);
@@ -299,7 +306,14 @@ export default function AdminSandboxPage() {
             : (rawOpts.find((o: any) => o.id !== correctOpt.id) || rawOpts[rawOpts.length - 1]);
           const isBotCorrect = Math.random() < 0.70;
           const chosenOpt = isBotCorrect ? correctOpt : wrongOpt;
+          const botPlayerId = `bot_${roomCode}_t${botIdx + 1}`;
           sock.emit("game:answer:submit", {
+            questionId: qData.id,
+            answer: chosenOpt.id,
+            teamId: team.id,
+            playerId: botPlayerId,
+          });
+          sock.emit("game:answer:finalize", {
             questionId: qData.id,
             answer: chosenOpt.id,
             teamId: team.id,
@@ -353,7 +367,7 @@ export default function AdminSandboxPage() {
         }
       });
 
-      // Handle Bounceback open steal buzz
+      // Handle Bounceback open steal buzz & answer
       sock.on("game:bounceback:open_steal", () => {
         if (!botAutoEnabled) return;
         if (team.id === activeTeamIdRef.current) return;
@@ -367,7 +381,37 @@ export default function AdminSandboxPage() {
         }
       });
 
-      // Handle Buzz mode auto buzz when unlocked
+      sock.on("game:bounceback:steal_answering", (payload) => {
+        if (!botAutoEnabled) return;
+        if (team.id === activeTeamIdRef.current) return;
+        if (payload.teamId === team.id) {
+          const delay = 1200 + Math.random() * 1500;
+          setTimeout(() => {
+            if (team.id === activeTeamIdRef.current) return;
+            const curQ = currentQuestionRef.current;
+            if (!curQ) return;
+            const rawOpts = (adminQuestionDataRef.current?.questionId === curQ.question.id
+              ? adminQuestionDataRef.current.options
+              : null) || (curQ.question.options as any[]) || [];
+            if (rawOpts.length === 0) return;
+            const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
+            const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
+            const wrongOpt = wrongOpts.length > 0 ? wrongOpts[0] : correctOpt;
+            const isBotCorrect = Math.random() < 0.70;
+            const chosenOpt = isBotCorrect ? correctOpt : wrongOpt;
+            const botPlayerId = `bot_${roomCode}_t${botIdx + 1}`;
+            sock.emit("game:answer:submit", {
+              questionId: curQ.question.id,
+              answer: chosenOpt.id,
+              teamId: team.id,
+              playerId: botPlayerId,
+            });
+            addLog(`Bot [${team.name}] trả lời cướp điểm: ${chosenOpt.text || chosenOpt.id}`);
+          }, delay);
+        }
+      });
+
+      // Handle Buzz mode auto buzz when unlocked & answer
       sock.on("game:buzz:unlocked", () => {
         if (!botAutoEnabled) return;
         if (team.id === activeTeamIdRef.current) return;
@@ -377,6 +421,36 @@ export default function AdminSandboxPage() {
             if (team.id === activeTeamIdRef.current) return;
             sock.emit("game:buzz");
             addLog(`Bot [${team.name}] bấm chuông BUZZ!`);
+          }, delay);
+        }
+      });
+
+      sock.on("game:buzz:answering", (payload) => {
+        if (!botAutoEnabled) return;
+        if (team.id === activeTeamIdRef.current) return;
+        if (payload.teamId === team.id) {
+          const delay = 1200 + Math.random() * 1500;
+          setTimeout(() => {
+            if (team.id === activeTeamIdRef.current) return;
+            const curQ = currentQuestionRef.current;
+            if (!curQ) return;
+            const rawOpts = (adminQuestionDataRef.current?.questionId === curQ.question.id
+              ? adminQuestionDataRef.current.options
+              : null) || (curQ.question.options as any[]) || [];
+            if (rawOpts.length === 0) return;
+            const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
+            const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
+            const wrongOpt = wrongOpts.length > 0 ? wrongOpts[0] : correctOpt;
+            const isBotCorrect = Math.random() < 0.75;
+            const chosenOpt = isBotCorrect ? correctOpt : wrongOpt;
+            const botPlayerId = `bot_${roomCode}_t${botIdx + 1}`;
+            sock.emit("game:answer:submit", {
+              questionId: curQ.question.id,
+              answer: chosenOpt.id,
+              teamId: team.id,
+              playerId: botPlayerId,
+            });
+            addLog(`Bot [${team.name}] trả lời chuông: ${chosenOpt.text || chosenOpt.id}`);
           }, delay);
         }
       });
@@ -450,6 +524,7 @@ export default function AdminSandboxPage() {
     adminSocketRef.current = sock;
 
     sock.on("connect", () => {
+      syncClockWithServer(sock);
       sock.emit("admin:join", { code: roomCode, hostKey: storedHostKey } as any, (res: any) => {
         if (res?.success && res.roomState) {
           setRoomState(res.roomState);
@@ -460,6 +535,7 @@ export default function AdminSandboxPage() {
           saveSandboxSession(roomCode, false);
           addLog(`Admin Socket đã gắn vào phòng: ${roomCode}`);
           initBotSockets(roomCode, res.roomState.teams);
+          sock.emit("admin:question:get_data", { code: roomCode });
         } else {
           addLog(`⚠️ Không thể gắn vào phòng ${roomCode}: ${res?.error || "Lỗi tham gia"}`);
           if (res?.error && typeof res.error === "string" && res.error.includes("không tồn tại")) {
@@ -472,9 +548,11 @@ export default function AdminSandboxPage() {
     });
 
     sock.io.on("reconnect", () => {
+      syncClockWithServer(sock);
       sock.emit("admin:join", { code: roomCode, hostKey: storedHostKey } as any, (res: any) => {
         if (res?.success && res.roomState) {
           setRoomState(res.roomState);
+          sock.emit("admin:question:get_data", { code: roomCode });
         }
       });
     });
@@ -485,7 +563,8 @@ export default function AdminSandboxPage() {
       adminQuestionDataRef.current = data;
     });
     sock.on("game:question", (q) => {
-      sock.emit("admin:question:get_data");
+      if (q.serverTime) calibrateClockFromPacket(q.serverTime);
+      sock.emit("admin:question:get_data", { code: roomCode });
       setCurrentQuestion(q);
       setRevealPayload(null);
       const curTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id;
@@ -507,6 +586,8 @@ export default function AdminSandboxPage() {
       addLog(`Câu hỏi mới: "${q.question.content.slice(0, 30)}..."`);
     });
     sock.on("game:timer:started", (payload) => {
+      if (payload?.serverTime) calibrateClockFromPacket(payload.serverTime);
+      const tLimit = payload?.timeLimit ?? 30;
       setCurrentQuestion((prev) =>
         prev
           ? {
@@ -515,16 +596,82 @@ export default function AdminSandboxPage() {
               timerStarted: true,
               startedAt: Date.now(),
               endsAt: payload?.endsAt,
-              timeLimit: payload?.timeLimit ?? prev.timeLimit,
+              timeLimit: tLimit,
             }
           : prev
       );
       if (payload?.endsAt) {
-        setTimer({ remaining: payload?.timeLimit ?? 30, total: payload?.timeLimit ?? 30, endsAt: payload.endsAt });
+        const auth = calculateAuthoritativeTimer(payload.endsAt, tLimit, tLimit);
+        setTimer({ remaining: auth.remaining, total: tLimit, endsAt: payload.endsAt });
       }
-      addLog(`⏱️ Bắt đầu tính giờ: ${payload?.timeLimit ?? 30}s`);
+      addLog(`⏱️ Bắt đầu tính giờ: ${tLimit}s`);
     });
-    sock.on("game:timer", (t) => setTimer(t));
+    sock.on("game:timer", (t) => {
+      if (t.serverTime) calibrateClockFromPacket(t.serverTime);
+      setTimer((prev) => {
+        const effectiveEndsAt = t.endsAt || prev?.endsAt;
+        if (effectiveEndsAt) {
+          const auth = calculateAuthoritativeTimer(effectiveEndsAt, t.total, t.remaining);
+          return { remaining: auth.remaining, total: t.total, endsAt: effectiveEndsAt };
+        }
+        return { remaining: t.remaining, total: t.total, endsAt: t.endsAt };
+      });
+    });
+    sock.on("game:timer:expired", () => {
+      setTimer((prev) => (prev ? { ...prev, remaining: 0 } : { remaining: 0, total: 30 }));
+      addLog("⏰ Hết thời gian câu hỏi!");
+    });
+    sock.on("game:buzz", (p) => {
+      setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: p.teamId, buzzedTeamName: p.teamName, buzzedBy: p.playerName } : prev);
+      addLog(`🔔 Đội ${p.teamName || p.playerName} đã bấm chuông!`);
+    });
+    sock.on("game:buzz:wrong_attempt", (p) => {
+      setCurrentQuestion((prev) => prev ? {
+        ...prev,
+        buzzDisqualifiedTeamIds: p?.disqualifiedTeamIds ?? prev.buzzDisqualifiedTeamIds,
+        buzzMaxAttempts: p?.maxAttempts ?? prev.buzzMaxAttempts,
+        buzzedTeamId: undefined,
+        buzzedTeamName: undefined,
+        buzzedBy: undefined,
+        buzzAnsweringActive: false,
+      } : prev);
+      addLog(`❌ Đội ${p.teamName} trả lời sai chuông lượt ${p.attemptNumber}/${p.maxAttempts}`);
+    });
+    sock.on("game:buzz:closed", () => {
+      setCurrentQuestion((prev) => prev ? { ...prev, buzzUnlocked: false, buzzWindowActive: false } : prev);
+      addLog("🔒 Chuông đã đóng!");
+    });
+    sock.on("game:bounceback:open_steal", () => {
+      setCurrentQuestion((prev) => prev ? { ...prev, isStealPhase: true, stealBuzzedTeamId: undefined, stealBuzzedTeamName: undefined } : prev);
+      addLog("🔔 Cửa sổ cướp điểm 5s đã mở cho các đội!");
+    });
+    sock.on("game:bounceback:steal_buzzed", (p) => {
+      setCurrentQuestion((prev) => prev ? { ...prev, isStealPhase: false, stealBuzzedTeamId: p.teamId, stealBuzzedTeamName: p.teamName } : prev);
+      addLog(`🔔 Đội [${p.teamName}] đã bấm chuông cướp lượt!`);
+    });
+    sock.on("game:intermission", (p) => {
+      setIntermission(p);
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      addLog(`📊 Bảng xếp hạng giữa hiệp (Chặng câu #${p ? p.nextQuestionIndex : ""})`);
+    });
+    sock.on("elimination:revival", (payload) => {
+      addLog(`✨ [Hồi sinh] Đội ${payload.revivedTeamName} đã được HỒI SINH ngoạn mục với ${payload.revivedScore}đ!`);
+    });
+    sock.on("game:paused", () => {
+      setRoomState((s) => s ? { ...s, status: "PAUSED" } : s);
+      addLog("⏸️ Trận đấu tạm dừng");
+    });
+    sock.on("game:resumed", () => {
+      setRoomState((s) => s ? { ...s, status: "PLAYING" } : s);
+      addLog("▶️ Trận đấu tiếp tục");
+    });
+    sock.on("game:powerup:used", (payload: any) => {
+      addLog(`🃏 Đội [${payload.usedByName || payload.teamName || "Thí sinh"}] đã kích hoạt thẻ [${payload.type || payload.cardType}]!`);
+    });
     sock.on("game:buzz:unlocked", () => {
       setCurrentQuestion((prev) => prev ? { ...prev, buzzUnlocked: true } : prev);
       addLog("🔔 Chuông đã MỞ KHÓA cho tất cả các đội!");
@@ -823,19 +970,19 @@ export default function AdminSandboxPage() {
       { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_r1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_red", used: false },
         { id: "c_r2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_red", used: false },
-      ], playerCount: 1 },
+      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
       { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_b1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
         { id: "c_b2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_blue", used: false },
-      ], playerCount: 1 },
+      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
       { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_y1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
         { id: "c_y2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_yellow", used: false },
-      ], playerCount: 1 },
+      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
       { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: [
         { id: "c_p1", type: modeAllowedPowerups[0] || "FIFTY_FIFTY", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
         { id: "c_p2", type: modeAllowedPowerups[1] || "TIME_PLUS", ownerType: "TEAM" as const, teamId: "t_purple", used: false },
-      ], playerCount: 1 },
+      ], playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
     ];
 
     const players = [
@@ -913,6 +1060,10 @@ export default function AdminSandboxPage() {
         maxTeams: 4,
         buzzMode: mode === "BUZZ",
         eliminationRounds: 1,
+        eliminationIntervalQuestions: 3,
+        eliminationTeamsPerStage: 1,
+        eliminationRevivalCount: 1,
+        eliminationDeepScoring: true,
         answerSubmissionMode: "ALLOW_CHANGE",
         autoTimerStart: false,
       },
@@ -1034,6 +1185,9 @@ export default function AdminSandboxPage() {
         timer: { remaining: 0, total: curQ.timeLimit || 30, endsAt: 0 },
       });
       addLog(`⚡ Tất cả người chơi (${neededTeamIds.length}/${neededTeamIds.length}) đã chốt/nộp bài! Kết thúc câu hỏi sớm.`);
+      setTimeout(() => {
+        handleAdminReveal();
+      }, 500);
     }
   };
 
@@ -1799,6 +1953,104 @@ export default function AdminSandboxPage() {
         setTimeout(() => {
           handleAdminReveal();
         }, 500);
+      } else if (action === "powerup_use") {
+        const { cardId, targetTeamId: powerupTargetTeamId } = e.data;
+        const curRem = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? 30);
+        if (curRem <= 5 && !revealPayload) {
+          addLog(`⚠️ Không thể sử dụng thẻ hỗ trợ trong 5 giây cuối của câu hỏi!`);
+          return;
+        }
+        if (selectedMode === "BOUNCEBACK" && (currentQuestion?.isStealPhase || currentQuestion?.stealBuzzedTeamId)) {
+          addLog(`⚠️ Toàn bộ thẻ hỗ trợ bị vô hiệu hóa trong lượt cướp điểm!`);
+          return;
+        }
+
+        const teams = roomStateRef.current?.teams || [];
+        let cardFound: any = null;
+        let cardTeam: any = null;
+
+        for (const t of teams) {
+          const c = (t.cards || []).find((card) => card.id === cardId && !card.used);
+          if (c) {
+            cardFound = c;
+            cardTeam = t;
+            break;
+          }
+        }
+
+        if (!cardFound) {
+          addLog(`⚠️ Thẻ không tồn tại hoặc đã được sử dụng!`);
+          return;
+        }
+
+        cardFound.used = true;
+        const cType = cardFound.type;
+
+        if (cType === "FIFTY_FIFTY") {
+          const qData = currentQuestion?.question;
+          const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
+          const wrongOpts = (rawQ?.options || []).filter((o: any) => !o.isCorrect);
+          const toHide = wrongOpts.slice(0, 2).map((o: any) => o.id);
+          syncToIframes({ hiddenOptionIds: toHide });
+          addLog(`🃏 [${cardTeam.name}] dùng [50:50]: Đã loại bỏ 2 phương án sai!`);
+        } else if (cType === "TIME_PLUS") {
+          offlineRemainingRef.current = (offlineRemainingRef.current || 30) + 15;
+          const newTotal = (currentQuestion?.timeLimit || 30) + 15;
+          const newEndsAt = Date.now() + offlineRemainingRef.current * 1000;
+          setTimer({ remaining: offlineRemainingRef.current, total: newTotal, endsAt: newEndsAt });
+          syncToIframes({ timer: { remaining: offlineRemainingRef.current, total: newTotal, endsAt: newEndsAt } });
+          addLog(`🃏 [${cardTeam.name}] dùng [Cộng giờ]: Đã cộng thêm 15 giây!`);
+        } else if (cType === "DOUBLE_POINT") {
+          offlineTeamMultiplierRef.current.set(cardTeam.id, 2);
+          addLog(`🃏 [${cardTeam.name}] dùng [Nhân đôi điểm]: Nhân 2 điểm nếu trả lời đúng!`);
+        } else if (cType === "SHIELD") {
+          cardTeam.shieldCount = (cardTeam.shieldCount || 0) + 1;
+          addLog(`🃏 [${cardTeam.name}] dùng [Khiên bảo vệ]: Được miễn trừ trừ điểm!`);
+        } else if (cType === "FREEZE") {
+          if (powerupTargetTeamId) {
+            const targetT = teams.find((t) => t.id === powerupTargetTeamId);
+            if (targetT) targetT.frozenRounds = 1;
+          }
+          addLog(`🃏 [${cardTeam.name}] dùng [Băng tuyết]: Đóng băng đối thủ!`);
+        } else if (cType === "STEAL_POINTS") {
+          if (powerupTargetTeamId) {
+            const targetT = teams.find((t) => t.id === powerupTargetTeamId);
+            if (targetT) {
+              const stealAmt = Math.min(targetT.score, 30);
+              targetT.score -= stealAmt;
+              cardTeam.score += stealAmt;
+              addLog(`🃏 [${cardTeam.name}] dùng [Cướp điểm]: Cướp ${stealAmt}đ từ [${targetT.name}]!`);
+            }
+          }
+        } else if (cType === "SWAP_SCORES") {
+          if (powerupTargetTeamId) {
+            const targetT = teams.find((t) => t.id === powerupTargetTeamId);
+            if (targetT) {
+              const tmp = targetT.score;
+              targetT.score = cardTeam.score;
+              cardTeam.score = tmp;
+              addLog(`🃏 [${cardTeam.name}] dùng [Hoán đổi]: Đổi điểm với [${targetT.name}]!`);
+            }
+          }
+        }
+
+        const powerupPayload = {
+          cardId,
+          cardType: cType,
+          playerId: e.data.playerId || "",
+          playerName: cardTeam.name,
+          teamId: cardTeam.id,
+          teamName: cardTeam.name,
+          targetTeamId: powerupTargetTeamId,
+          targetTeamName: teams.find((t) => t.id === powerupTargetTeamId)?.name,
+          usedAt: Date.now(),
+        };
+
+        setRoomState((prev) => (prev ? { ...prev, teams: [...teams] } : prev));
+        syncToIframes({
+          lastPowerup: powerupPayload,
+          roomState: { ...(roomStateRef.current || {}), teams: [...teams] },
+        });
       } else if (action === "grid_select") {
         addLog(`🏁 [${targetTeamName}] đã chọn ô #${cellId}`);
       } else if (action === "dice_roll") {
@@ -2253,6 +2505,12 @@ export default function AdminSandboxPage() {
       }
     }
 
+    if (botAutoEnabled && selectedMode !== "BOUNCEBACK" && selectedMode !== "WAGER") {
+      setTimeout(() => {
+        handleTriggerAllBotsAnswer();
+      }, 2200);
+    }
+
     addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
   };
 
@@ -2636,6 +2894,20 @@ export default function AdminSandboxPage() {
           basePts = pts;
         }
 
+        const teamMult = offlineTeamMultiplierRef.current.get(t.id) || 1;
+        if (teamMult > 1 && isCorrect) {
+          pts *= teamMult;
+          basePts *= teamMult;
+          speedPts *= teamMult;
+          rarityPts *= teamMult;
+        }
+        offlineTeamMultiplierRef.current.delete(t.id);
+
+        if (t.shieldCount && t.shieldCount > 0 && pts < 0) {
+          pts = 0;
+          t.shieldCount -= 1;
+        }
+
         answers.push({
           teamId: t.id,
           name: t.name,
@@ -2695,10 +2967,131 @@ export default function AdminSandboxPage() {
 
       setRoomState((prev) => {
         if (!prev) return prev;
-        const updatedTeams = prev.teams.map((t) => {
+        let updatedTeams = prev.teams.map((t) => {
           const delta = scoreDeltas.find((d) => d.teamId === t.id)?.delta || 0;
-          return { ...t, score: t.score + delta };
+          const ans = answers.find((a) => a.teamId === t.id);
+          const hasAnswered = Boolean(ans && ans.answer && ans.answer.length > 0 && ans.answer[0]);
+          const isCorrect = Boolean(ans?.isCorrect);
+
+          let newGhostStreak = t.ghostStreak || 0;
+          let newGhostTotalCorrect = t.ghostTotalCorrect || 0;
+          let newGhostTotalAnswered = t.ghostTotalAnswered || 0;
+          let newGhostCurrentRoundCorrect = t.ghostCurrentRoundCorrect || 0;
+
+          if (selectedMode === "ELIMINATION" && t.isEliminated) {
+            if (hasAnswered) {
+              newGhostTotalAnswered += 1;
+              if (isCorrect) {
+                newGhostTotalCorrect += 1;
+                newGhostCurrentRoundCorrect += 1;
+                newGhostStreak += 1;
+              } else {
+                newGhostStreak = 0;
+              }
+            }
+          }
+
+          return {
+            ...t,
+            score: t.score + delta,
+            isGhost: selectedMode === "ELIMINATION" && t.isEliminated,
+            ghostStreak: newGhostStreak,
+            ghostTotalCorrect: newGhostTotalCorrect,
+            ghostTotalAnswered: newGhostTotalAnswered,
+            ghostCurrentRoundCorrect: newGhostCurrentRoundCorrect,
+            eliminationInterval: prev.config?.eliminationIntervalQuestions || 3,
+          };
         });
+
+        // Offline ELIMINATION stage boundary processing
+        if (selectedMode === "ELIMINATION") {
+          const interval = Math.max(1, prev.config?.eliminationIntervalQuestions || 3);
+          const currentQNum = offlineQIndexRef.current + 1;
+
+          if (currentQNum % interval === 0) {
+            const currentStageNumber = Math.floor(currentQNum / interval);
+
+            // 1. Evaluate round performance for each ghost team (100% correct -> ghostRoundAllCorrect)
+            updatedTeams = updatedTeams.map((t) => {
+              if (t.isEliminated) {
+                const perfect = (t.ghostCurrentRoundCorrect || 0) >= interval;
+                return {
+                  ...t,
+                  ghostRoundAllCorrect: t.ghostRoundAllCorrect || perfect,
+                  ghostCurrentRoundCorrect: 0,
+                };
+              }
+              return t;
+            });
+
+            // 2. Eliminate lowest active team
+            const activeTeams = updatedTeams.filter((t) => !t.isEliminated);
+            if (activeTeams.length > 1) {
+              activeTeams.sort((a, b) => {
+                if (a.score !== b.score) return a.score - b.score;
+                return 0;
+              });
+              const toEliminate = activeTeams[0];
+              updatedTeams = updatedTeams.map((t) => {
+                if (t.id === toEliminate.id) {
+                  return {
+                    ...t,
+                    isEliminated: true,
+                    isGhost: true,
+                    eliminatedAtStage: currentStageNumber,
+                    firstGhostStage: currentStageNumber + 1,
+                  };
+                }
+                return t;
+              });
+              addLog(`💀 [Vòng sinh tồn #${currentStageNumber}] Đội [${toEliminate.name}] có điểm thấp nhất và bị loại thành Bóng ma!`);
+            }
+
+            // 3. Ghost Revival Check at Penultimate Stage
+            const totalQuestions = offlineQuestionsRef.current.length || 12;
+            const totalStages = Math.floor(totalQuestions / interval);
+            if (totalStages >= 4 && currentStageNumber === totalStages - 1) {
+              const eliminatedCandidates = updatedTeams.filter((t) => t.isEliminated);
+              if (eliminatedCandidates.length > 0) {
+                eliminatedCandidates.sort((a, b) => {
+                  const isPerfA = Boolean(a.ghostRoundAllCorrect);
+                  const isPerfB = Boolean(b.ghostRoundAllCorrect);
+                  if (isPerfA !== isPerfB) return isPerfA ? -1 : 1;
+                  const accA = (a.ghostTotalAnswered || 0) > 0 ? (a.ghostTotalCorrect || 0) / a.ghostTotalAnswered! : 0;
+                  const accB = (b.ghostTotalAnswered || 0) > 0 ? (b.ghostTotalCorrect || 0) / b.ghostTotalAnswered! : 0;
+                  if (accA !== accB) return accB - accA;
+                  return (b.ghostTotalCorrect || 0) - (a.ghostTotalCorrect || 0);
+                });
+
+                const candidateToRevive = eliminatedCandidates[0];
+                const surviving = updatedTeams.filter((t) => !t.isEliminated);
+                const minSurvivingScore = surviving.length > 0 ? Math.min(...surviving.map((t) => t.score)) : 0;
+
+                updatedTeams = updatedTeams.map((t) => {
+                  if (t.id === candidateToRevive.id) {
+                    return {
+                      ...t,
+                      isEliminated: false,
+                      isGhost: false,
+                      score: minSurvivingScore,
+                      ghostRoundAllCorrect: false,
+                    };
+                  }
+                  return t;
+                });
+
+                const revivalPayload = {
+                  round: currentStageNumber,
+                  revivedTeamName: candidateToRevive.name,
+                  revivedScore: minSurvivingScore,
+                  eliminatedAtStage: candidateToRevive.eliminatedAtStage,
+                };
+                addLog(`✨ [HỒI SINH] Đội [${candidateToRevive.name}] đã HỒI SINH ngoạn mục với ${minSurvivingScore}đ!`);
+                syncToIframes({ revivalNotice: revivalPayload });
+              }
+            }
+          }
+        }
 
         let nextWager = prev.wagerState;
         if (nextWager) {
@@ -2715,13 +3108,15 @@ export default function AdminSandboxPage() {
           nextDice = {
             ...prev.diceRaceState,
             canRollDice: isCurTeamCorrect,
-            // If team was WRONG, advance turn to next team for the next question:
             currentTurnTeamId: isCurTeamCorrect ? prev.diceRaceState.currentTurnTeamId : nextTeamId,
             currentTurnTeamName: isCurTeamCorrect ? prev.diceRaceState.currentTurnTeamName : nextTeamName,
           };
         }
 
-        return { ...prev, teams: updatedTeams, diceRaceState: nextDice, wagerState: nextWager };
+        const nextRoomState = { ...prev, teams: updatedTeams, diceRaceState: nextDice, wagerState: nextWager };
+        roomStateRef.current = nextRoomState;
+        syncToIframes({ roomState: nextRoomState });
+        return nextRoomState;
       });
 
       if (selectedMode === "DICE_RACE") {
@@ -3559,6 +3954,23 @@ export default function AdminSandboxPage() {
       return;
     }
     if (isOfflineSandbox) {
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const newCard = {
+          id: `card_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          type: grantCardType,
+          ownerType: "TEAM" as const,
+          teamId: grantTargetTeamId,
+          used: false,
+        };
+        const updatedTeams = prev.teams.map((t) =>
+          t.id === grantTargetTeamId ? { ...t, cards: [...t.cards, newCard] } : t
+        );
+        const nextState = { ...prev, teams: updatedTeams };
+        roomStateRef.current = nextState;
+        syncToIframes({ roomState: nextState });
+        return nextState;
+      });
       addLog(`Đã cấp thẻ [${grantCardType}] cho Đội ID: ${grantTargetTeamId}`);
       setShowCardModal(false);
       return;
@@ -4018,6 +4430,65 @@ export default function AdminSandboxPage() {
                     <span>🎙️</span>
                     <span>MC nộp hộ</span>
                   </button>
+                )}
+
+                {/* 4d. MC Cheat Sheet Quick Toggle */}
+                {currentQuestion && adminQuestionData && adminQuestionData.questionId === currentQuestion.question.id && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowMcCheatSheet((prev) => !prev)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer shadow-sm"
+                      title="Xem nhanh phao đáp án và lời giải MC"
+                    >
+                      <span>🔑</span>
+                      <span>Phao đáp án</span>
+                    </button>
+                    {showMcCheatSheet && (
+                      <div className="absolute top-full mt-1.5 right-0 w-80 p-3 rounded-2xl bg-[#151728]/95 border border-amber-500/40 shadow-2xl backdrop-blur-md z-50 text-xs space-y-2 animate-fade-in text-white text-left">
+                        <div className="flex items-center justify-between border-b border-amber-500/20 pb-1.5">
+                          <div className="flex items-center gap-1.5 font-black text-amber-300">
+                            <span>🔑</span>
+                            <span>Phao đáp án & Lời giải MC</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowMcCheatSheet(false)}
+                            className="text-slate-400 hover:text-white text-xs px-1 cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="space-y-1.5">
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
+                            <span className="font-bold text-emerald-300">
+                              {(() => {
+                                if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
+                                  const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
+                                  if (correctOpts.length > 0) return correctOpts.map((o: any) => o.text).join(", ");
+                                }
+                                if (adminQuestionData.answer) {
+                                  return Array.isArray(adminQuestionData.answer)
+                                    ? adminQuestionData.answer.join(", ")
+                                    : String(adminQuestionData.answer);
+                                }
+                                return "Chưa có đáp án cấu hình";
+                              })()}
+                            </span>
+                          </div>
+                          {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                            <div className="flex items-start gap-1.5">
+                              <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
+                              <span className="text-amber-100/90 leading-relaxed text-[11px]">
+                                {adminQuestionData.explanation || currentQuestion.question.hint}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* 5. Early Stop */}
@@ -5379,6 +5850,54 @@ export default function AdminSandboxPage() {
               </div>
             </div>
 
+            {/* 1b. MC Answer Key & Explanation Cheat Sheet (Mobile Host View) */}
+            {adminQuestionData && currentQuestion && (adminQuestionData.questionId === currentQuestion.question.id) && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-2 animate-slide-up shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                    <span>🔑</span>
+                    <span>Phao đáp án & Lời giải MC</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMcCheatSheet((prev) => !prev)}
+                    className="text-[11px] text-amber-400 hover:text-amber-200 underline font-medium cursor-pointer"
+                  >
+                    {showMcCheatSheet ? "Thu gọn ▲" : "Xem chi tiết ▼"}
+                  </button>
+                </div>
+                {showMcCheatSheet && (
+                  <div className="pt-2 border-t border-amber-500/20 space-y-1.5">
+                    <div className="flex items-start gap-1.5">
+                      <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
+                      <span className="font-bold text-emerald-300">
+                        {(() => {
+                          if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
+                            const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
+                            if (correctOpts.length > 0) return correctOpts.map((o: any) => o.text).join(", ");
+                          }
+                          if (adminQuestionData.answer) {
+                            return Array.isArray(adminQuestionData.answer)
+                              ? adminQuestionData.answer.join(", ")
+                              : String(adminQuestionData.answer);
+                          }
+                          return "Chưa có đáp án cấu hình";
+                        })()}
+                      </span>
+                    </div>
+                    {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                      <div className="flex items-start gap-1.5">
+                        <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
+                        <span className="text-amber-100/90 leading-relaxed text-[11px]">
+                          {adminQuestionData.explanation || currentQuestion.question.hint}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* 2. Teams & Scoring Card */}
             <div className="p-3 rounded-xl bg-[#151728]/80 border border-white/10 space-y-2.5 shadow-lg">
               <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
@@ -5844,6 +6363,43 @@ export default function AdminSandboxPage() {
               </p>
             </div>
 
+            {/* Phao đáp án & Lời giải MC */}
+            {adminQuestionData && currentQuestion && (adminQuestionData.questionId === currentQuestion.question.id) && (
+              <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1.5 animate-slide-up">
+                <div className="flex items-center gap-1.5 font-bold text-amber-300">
+                  <span>🔑</span>
+                  <span>Phao đáp án & Lời giải MC</span>
+                </div>
+                <div className="pt-1.5 border-t border-amber-500/20 space-y-1">
+                  <div className="flex items-start gap-1.5">
+                    <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
+                    <span className="font-bold text-emerald-300">
+                      {(() => {
+                        if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
+                          const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
+                          if (correctOpts.length > 0) return correctOpts.map((o: any) => o.text).join(", ");
+                        }
+                        if (adminQuestionData.answer) {
+                          return Array.isArray(adminQuestionData.answer)
+                            ? adminQuestionData.answer.join(", ")
+                            : String(adminQuestionData.answer);
+                        }
+                        return "Chưa có đáp án cấu hình";
+                      })()}
+                    </span>
+                  </div>
+                  {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                    <div className="flex items-start gap-1.5">
+                      <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
+                      <span className="text-amber-100/90 leading-relaxed text-[11px]">
+                        {adminQuestionData.explanation || currentQuestion.question.hint}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Target Team Selection */}
             <div>
               <label className="block text-[11px] font-bold text-slate-400 mb-1.5">
@@ -5893,23 +6449,44 @@ export default function AdminSandboxPage() {
                     const activeTeamId = directAnswerTargetTeamId || currentTeam?.id || roomState?.teams[0]?.id || "";
                     const isSelected = teamSelectedAnswers[activeTeamId] === opt.id;
                     const labels = ["A", "B", "C", "D", "E", "F"];
+                    const isCheatCorrect = Boolean(
+                      adminQuestionData?.questionId === currentQuestion.question.id && (
+                        adminQuestionData?.options?.some((o: any) => o.id === opt.id && o.isCorrect) ||
+                        adminQuestionData?.answer === opt.id ||
+                        (Array.isArray(adminQuestionData?.answer) && adminQuestionData.answer.includes(opt.id))
+                      )
+                    );
+
+                    let btnStyle = "glass border-white/15 hover:border-purple-400 hover:bg-white/5 text-white";
+                    if (isSelected) {
+                      btnStyle = "bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-1 ring-emerald-400 shadow-md";
+                    } else if (isCheatCorrect) {
+                      btnStyle = "border-amber-500/50 bg-amber-500/10 text-amber-200 hover:border-amber-400";
+                    }
 
                     return (
                       <button
                         key={opt.id}
                         type="button"
                         onClick={() => handleAdminSubmitDirectAnswer(activeTeamId, opt.id)}
-                        className={`p-3 rounded-2xl border text-left transition flex items-center gap-2.5 cursor-pointer active:scale-95 ${
-                          isSelected
-                            ? "bg-emerald-500/20 border-emerald-400 text-emerald-300 ring-1 ring-emerald-400 shadow-md"
-                            : "glass border-white/15 hover:border-purple-400 hover:bg-white/5 text-white"
-                        }`}
+                        className={`p-3 rounded-2xl border text-left transition flex items-center gap-2.5 cursor-pointer active:scale-95 ${btnStyle}`}
                       >
-                        <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center font-black text-xs shrink-0 text-cyan-300">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                          isSelected
+                            ? "bg-emerald-500 text-black"
+                            : isCheatCorrect
+                            ? "bg-amber-400 text-black font-black"
+                            : "bg-white/10 text-cyan-300"
+                        }`}>
                           {labels[i] || i + 1}
                         </span>
                         <span className="text-xs font-medium flex-1 truncate">{opt.text}</span>
-                        {isSelected && <span className="text-emerald-400 text-xs font-bold">✓ Đã nộp</span>}
+                        {isSelected && <span className="text-emerald-400 text-xs font-bold shrink-0">✓ Đã nộp</span>}
+                        {isCheatCorrect && !isSelected && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-400 text-black text-[10px] font-black uppercase tracking-wider shrink-0">
+                            🔑 Chuẩn
+                          </span>
+                        )}
                       </button>
                     );
                   })}

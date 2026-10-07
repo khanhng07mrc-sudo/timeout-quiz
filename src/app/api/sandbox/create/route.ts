@@ -192,16 +192,17 @@ export async function POST(req: NextRequest) {
 
     // Create Players for the teams (Player 1 is Human Tester, Players 2-4 are Bots)
     const playerConfigs = [
-      { name: "Bạn (Tester)", teamIndex: 0 },
-      { name: "Bot Lam 🤖", teamIndex: 1 },
-      { name: "Bot Vàng 🤖", teamIndex: 2 },
-      { name: "Bot Lục 🤖", teamIndex: 3 },
+      { id: `sb_${code}_t0`, name: "Bạn (Tester)", teamIndex: 0 },
+      { id: `bot_${code}_t2`, name: "Đội Lam 🤖", teamIndex: 1 },
+      { id: `bot_${code}_t3`, name: "Đội Vàng 🤖", teamIndex: 2 },
+      { id: `bot_${code}_t4`, name: "Đội Lục 🤖", teamIndex: 3 },
     ];
 
     const createdPlayers = [];
     for (const p of playerConfigs) {
       const player = await prisma.player.create({
         data: {
+          id: p.id,
           name: p.name,
           roomId: room.id,
           teamId: createdTeams[p.teamIndex].id,

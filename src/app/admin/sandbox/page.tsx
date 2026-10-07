@@ -1889,6 +1889,7 @@ export default function AdminSandboxPage() {
           finalScoreDelta,
           recipientTeamId,
           giftedPoints,
+          darkBombRecipients,
         } = handleMysteryFlipCard({
           state: curMystery,
           tileId,
@@ -1898,7 +1899,14 @@ export default function AdminSandboxPage() {
 
         let updatedTeams = [...roomStateRef.current.teams];
         if (isBomb) {
-          if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+          if (darkBombRecipients && darkBombRecipients.length > 0) {
+            const recipientMap = new Map(darkBombRecipients.map((r) => [r.teamId, r.points]));
+            updatedTeams = updatedTeams.map((t) => {
+              if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score - scorePenalty) };
+              if (recipientMap.has(t.id)) return { ...t, score: t.score + (recipientMap.get(t.id) || 0) };
+              return t;
+            });
+          } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
             updatedTeams = updatedTeams.map((t) => {
               if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score - giftedPoints) };
               if (t.id === recipientTeamId) return { ...t, score: t.score + giftedPoints };

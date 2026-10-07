@@ -1079,11 +1079,11 @@ function generateNextPushYourLuckCard({
       return {
         id,
         label,
-        icon: "\u{1F4A3}",
+        icon: "\u{1F4A8}",
         isOpened: false,
-        type: "BOMB_MINOR",
-        storyTitle: "\u{1F4A3} TI\u1EC2U BOM N\u1ED4 TUNG!",
-        storyDescription: "D\u1EABm ph\u1EA3i k\xEDp n\u1ED5: M\u1EA5t to\xE0n b\u1ED9 s\u1ED1 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c)!",
+        type: "BOMB_SMOKE",
+        storyTitle: "\u{1F4A8} BOM KH\xD3I N\u1ED4 TUNG!",
+        storyDescription: "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
       };
@@ -1091,12 +1091,12 @@ function generateNextPushYourLuckCard({
       return {
         id,
         label,
-        icon: "\u{1F480}",
+        icon: "\u{1F311}",
         isOpened: false,
-        type: "BOMB_DOOM",
-        storyTitle: "\u{1F480} \u0110\u1EA0I BOM CH\xC9M \u0110\xD4I T\u1ED4NG \u0110I\u1EC2M!",
-        storyDescription: "\u0110\xE1nh th\u1EE9c bom h\u1EE7y di\u1EC7t: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y V\xC0 B\u1ECA CHIA \u0110\xD4I (-50%) t\u1ED5ng \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3!",
-        effectType: "DIVIDE_HALF",
+        type: "BOMB_DARK",
+        storyTitle: "\u{1F311} BOM H\u1EAEC \xC1M PH\xC1T N\u1ED4!",
+        storyDescription: "N\u0103ng l\u01B0\u1EE3ng b\xF3ng t\u1ED1i b\xF9ng ph\xE1t! \u0110i\u1EC3m s\u1ED1 c\u1EE7a b\u1EA1n b\u1ECB r\xFAt c\u1EA1n v\xE0 ph\xE2n chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
+        effectType: "LOSE_POINTS",
         deltaPoints: 0
       };
     } else {
@@ -1105,9 +1105,9 @@ function generateNextPushYourLuckCard({
         label,
         icon: "\u{1F381}",
         isOpened: false,
-        type: "BOMB_GIFT",
-        storyTitle: "\u{1F381} BOM CHUY\u1EC2N GIAO N\u1EECA \u0110I\u1EC2M!",
-        storyDescription: "D\u1EABm ph\u1EA3i bom chuy\u1EC3n giao: B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3, v\xE0 b\u1EA1n ph\u1EA3i trao t\u1EB7ng s\u1ED1 \u0111i\u1EC3m \u0111\xF3 cho m\u1ED9t \u0111\u1ED9i kh\xE1c!",
+        type: "BOMB_CHARITY",
+        storyTitle: "\u{1F381} BOM T\u1EEA THI\u1EC6N HI\u1EBEN T\u1EBE!",
+        storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB 50% s\u1ED1 \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
         effectType: "GIFT_POINTS",
         deltaPoints: 0
       };
@@ -1484,42 +1484,91 @@ function handleFlipCard({
     let recipientTeamId = void 0;
     let recipientTeamName = void 0;
     let giftedPoints = 0;
-    if (tile.type === "BOMB_MINOR") {
+    let darkBombRecipients = void 0;
+    const currentScore = team.score || 0;
+    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
+    const X = allTeams.length;
+    if (tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR") {
       penalty = 0;
-      penaltyText = "M\u1EA5t s\u1EA1ch to\xE0n b\u1ED9 s\u1ED1 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn.";
+      penaltyText = "M\u1EA5t s\u1EA1ch \u0111i\u1EC3m c\u1EE7a c\xE2u n\xE0y. T\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i kh\xF4ng \u0111\u1ED5i.";
       state.bombExploded = {
-        type: "MINOR",
-        title: tile.storyTitle,
-        description: tile.storyDescription,
-        penaltyText
-      };
-    } else if (tile.type === "BOMB_DOOM") {
-      const currentScore = team.score || 0;
-      penalty = Math.floor(currentScore / 2);
-      penaltyText = `M\u1EA5t \u0111i\u1EC3m c\xE2u n\xE0y v\xE0 b\u1ECB CHIA \u0110\xD4I (-50%) t\u1ED5ng \u0111i\u1EC3m \u0111\u1ED9i \u0111ang c\xF3 (-${penalty}\u0111).`;
-      state.bombExploded = {
-        type: "DOOM",
-        title: tile.storyTitle,
-        description: tile.storyDescription,
-        penaltyText
-      };
-    } else if (tile.type === "BOMB_GIFT") {
-      const currentScore = team.score || 0;
-      giftedPoints = Math.floor(currentScore / 2);
-      penalty = giftedPoints;
-      const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-      if (otherTeams.length > 0) {
-        const sorted = [...otherTeams].sort((a, b) => (a.score || 0) - (b.score || 0));
-        const chosenRecipient = sorted[0];
-        recipientTeamId = chosenRecipient.id;
-        recipientTeamName = chosenRecipient.name;
-      }
-      penaltyText = recipientTeamName ? `B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 trao t\u1EB7ng s\u1ED1 \u0111i\u1EC3m \u0111\xF3 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB tr\u1EEB m\u1ED9t n\u1EEDa s\u1ED1 \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 trao t\u1EB7ng cho \u0111\u1ED1i th\u1EE7!`;
-      state.bombExploded = {
-        type: "GIFT",
-        title: tile.storyTitle,
+        type: "SMOKE",
+        title: "Bom Kh\xF3i \u{1F4A8}",
         description: tile.storyDescription,
         penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: 0
+      };
+    } else if (tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM") {
+      darkBombRecipients = [];
+      if (otherTeams.length === 0) {
+        penalty = currentScore < 5 ? currentScore : 5;
+        penaltyText = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`;
+      } else if (currentScore < 5 * X) {
+        const sortedOthers = [...otherTeams].sort((a, b) => {
+          const diff = (a.score || 0) - (b.score || 0);
+          if (diff !== 0) return diff;
+          return Math.random() - 0.5;
+        });
+        const numTeamsToReceive = Math.floor(currentScore / 5);
+        for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
+          darkBombRecipients.push({
+            teamId: sortedOthers[i].id,
+            teamName: sortedOthers[i].name,
+            points: 5
+          });
+        }
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5\u0111)`).join(", ");
+        penaltyText = recNames ? `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m! \u0110\xE3 ph\xE2n ph\xE1t cho \u0111\u1ED9i th\u1EA5p \u0111i\u1EC3m: ${recNames}` : `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m!`;
+      } else {
+        const maxM = Math.floor(currentScore / (5 * otherTeams.length));
+        const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
+        const pointsPerOtherTeam = 5 * m;
+        penalty = pointsPerOtherTeam * otherTeams.length;
+        for (const other of otherTeams) {
+          darkBombRecipients.push({
+            teamId: other.id,
+            teamName: other.name,
+            points: pointsPerOtherTeam
+          });
+        }
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}\u0111)`).join(", ");
+        penaltyText = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m! Chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i c\xF2n l\u1EA1i: ${recNames}`;
+      }
+      state.bombExploded = {
+        type: "DARK",
+        title: "Bom H\u1EAFc \xC1m \u{1F311}",
+        description: tile.storyDescription,
+        penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: penalty,
+        recipients: darkBombRecipients
+      };
+    } else {
+      if (currentScore > 0) {
+        giftedPoints = Math.min(currentScore, Math.ceil(currentScore * 0.5 / 5) * 5);
+      } else {
+        giftedPoints = 0;
+      }
+      penalty = giftedPoints;
+      if (otherTeams.length > 0) {
+        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
+        const topTeams = otherTeams.filter((t) => (t.score || 0) === maxScore);
+        const chosen = topTeams[Math.floor(Math.random() * topTeams.length)];
+        recipientTeamId = chosen.id;
+        recipientTeamName = chosen.name;
+      }
+      penaltyText = recipientTeamName ? `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111)!`;
+      state.bombExploded = {
+        type: "CHARITY",
+        title: "Bom T\u1EEB Thi\u1EC7n \u{1F381}",
+        description: tile.storyDescription,
+        penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: penalty,
         recipientTeamId,
         recipientTeamName,
         giftedPoints
@@ -1528,7 +1577,7 @@ function handleFlipCard({
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "BOMB_HIT";
-    const oldScore = team.score || 0;
+    const oldScore = currentScore;
     const newScore = Math.max(0, oldScore - penalty);
     state.storyResult = {
       teamId: team.id,
@@ -1545,7 +1594,8 @@ function handleFlipCard({
       scorePenalty: penalty,
       finalScoreDelta: -penalty,
       recipientTeamId,
-      giftedPoints
+      giftedPoints,
+      darkBombRecipients
     };
   }
   if (tile.effectType === "MULTIPLY_X2") {
@@ -5688,7 +5738,8 @@ function registerSocketHandlers(io2) {
         finalScoreDelta,
         shouldResetMismatchedCards,
         recipientTeamId,
-        giftedPoints
+        giftedPoints,
+        darkBombRecipients
       } = handleFlipCard({
         state: questState,
         tileId,
@@ -5697,7 +5748,22 @@ function registerSocketHandlers(io2) {
       });
       roomMysteryQuests.set(room.id, updatedState);
       if (isBomb) {
-        if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+        if (darkBombRecipients && darkBombRecipients.length > 0) {
+          const updates = [];
+          if (scorePenalty > 0) {
+            const donorDelta = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+            updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+          }
+          for (const rec of darkBombRecipients) {
+            if (rec.points > 0) {
+              const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+              updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+            }
+          }
+          if (updates.length > 0) {
+            io2.to(`room:${room.code}`).emit("game:score:update", updates);
+          }
+        } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
           const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
           const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
           io2.to(`room:${room.code}`).emit("game:score:update", [

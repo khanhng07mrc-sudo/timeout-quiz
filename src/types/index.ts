@@ -861,10 +861,14 @@ export type MysteryTileEffectType =
 
 export type MysteryTileType =
   | "REWARD"
-  | "BOMB_MINOR" // Tiểu bom (50%): Mất toàn bộ điểm tích lũy trong câu này
-  | "BOMB_MAJOR" // Đại bom: Mất điểm câu này + trừ điểm
-  | "BOMB_DOOM"  // Bom chia đôi (35%): Mất điểm câu này + chia đôi (mất 1/2) tổng điểm đội đang có
-  | "BOMB_GIFT"; // Bom tặng điểm (15%): Không trừ điểm, nhưng phải tặng toàn bộ điểm đang có cho đội khác
+  | "BOMB_SMOKE"   // 1. Bom Khói (50%): Mất sạch điểm của câu này
+  | "BOMB_DARK"    // 2. Bom Hắc Ám (35%): Mất điểm chia đều cho các đội còn lại
+  | "BOMB_CHARITY" // 3. Bom Từ Thiện (15%): Mất 50% điểm tặng cho đội cao nhất
+  // Backward-compatible aliases:
+  | "BOMB_MINOR"
+  | "BOMB_MAJOR"
+  | "BOMB_DOOM"
+  | "BOMB_GIFT";
 
 export interface MysteryTile {
   id: number;
@@ -905,13 +909,21 @@ export interface MysteryQuestState {
   cardsFlippedCount: number;
   lastFlippedTile?: MysteryTile;
   bombExploded?: {
-    type: "MINOR" | "MAJOR" | "DOOM" | "GIFT";
+    type: "SMOKE" | "DARK" | "CHARITY" | "MINOR" | "MAJOR" | "DOOM" | "GIFT";
     title: string;
     description: string;
     penaltyText: string;
+    donorTeamId?: string;
+    donorTeamName?: string;
+    deductedPoints?: number;
     recipientTeamId?: string;
     recipientTeamName?: string;
     giftedPoints?: number;
+    recipients?: Array<{
+      teamId: string;
+      teamName: string;
+      points: number;
+    }>;
   };
   turnFinishedReason?:
     | "CASH_OUT"

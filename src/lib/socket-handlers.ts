@@ -4340,6 +4340,7 @@ export function registerSocketHandlers(io: IO) {
         shouldResetMismatchedCards,
         recipientTeamId,
         giftedPoints,
+        darkBombRecipients,
       } = handleFlipCard({
         state: questState,
         tileId,
@@ -4350,8 +4351,24 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, updatedState);
 
       if (isBomb) {
-        if (recipientTeamId && giftedPoints && giftedPoints > 0) {
-          // BOM 3: Trừ nửa số điểm của đội và chuyển tặng số điểm đó cho đội khác!
+        if (darkBombRecipients && darkBombRecipients.length > 0) {
+          // BOM HẮC ÁM: Trừ điểm đội chính và chia đều cho các đội đối thủ
+          const updates: Array<{ teamId: string; score: number; delta: number }> = [];
+          if (scorePenalty > 0) {
+            const donorDelta = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+            updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+          }
+          for (const rec of darkBombRecipients) {
+            if (rec.points > 0) {
+              const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+              updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+            }
+          }
+          if (updates.length > 0) {
+            io.to(`room:${room.code}`).emit("game:score:update", updates);
+          }
+        } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+          // BOM TỪ THIỆN: Trừ 50% điểm của đội chính và chuyển tặng cho đội đối thủ cao điểm nhất (không phải đội trả lời chính)
           const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
           const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
           io.to(`room:${room.code}`).emit("game:score:update", [
@@ -4359,7 +4376,6 @@ export function registerSocketHandlers(io: IO) {
             { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta },
           ]);
         } else if (scorePenalty > 0) {
-          // BOM 2: Bị trừ điểm (chia đôi)
           const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
           io.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },

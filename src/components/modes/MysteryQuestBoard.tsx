@@ -370,24 +370,28 @@ export default function MysteryQuestBoard({
               </div>
             ) : turnFinishedReason === "BOMB_HIT" && bombExploded ? (
               <div
-                className={`p-6 rounded-3xl bg-gradient-to-b border-2 shadow-2xl space-y-2 ${
-                  bombExploded.type === "GIFT"
+                className={`p-6 rounded-3xl bg-gradient-to-b border-2 shadow-2xl space-y-3 ${
+                  bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                     ? "from-amber-950/95 via-yellow-950/90 to-black/95 border-amber-400"
-                    : "from-red-950/90 to-black/90 border-red-500"
+                    : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
+                    ? "from-purple-950/95 via-zinc-950/90 to-black/95 border-purple-500"
+                    : "from-slate-900/95 via-gray-950/90 to-black/95 border-slate-400"
                 }`}
               >
                 <div className="text-5xl animate-bounce">
-                  {bombExploded.type === "GIFT"
+                  {bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                     ? "🎁"
-                    : bombExploded.type === "DOOM"
-                    ? "💀"
-                    : bombExploded.type === "MAJOR"
-                    ? "💥"
-                    : "💣"}
+                    : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
+                    ? "🌑"
+                    : "💨"}
                 </div>
                 <h3
                   className={`text-2xl font-black ${
-                    bombExploded.type === "GIFT" ? "text-amber-300" : "text-red-400"
+                    bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
+                      ? "text-amber-300"
+                      : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
+                      ? "text-purple-300"
+                      : "text-slate-200"
                   }`}
                 >
                   {bombExploded.title}
@@ -395,13 +399,42 @@ export default function MysteryQuestBoard({
                 <p className="text-xs text-white/80 max-w-lg mx-auto">{bombExploded.description}</p>
                 <div
                   className={`p-2.5 rounded-xl border font-bold text-xs ${
-                    bombExploded.type === "GIFT"
+                    bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                       ? "bg-amber-900/40 border-amber-400/50 text-amber-200"
-                      : "bg-red-900/40 border-red-500/50 text-red-200"
+                      : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
+                      ? "bg-purple-900/40 border-purple-500/50 text-purple-200"
+                      : "bg-slate-800/50 border-slate-500/50 text-slate-200"
                   }`}
                 >
                   ⚠️ Hậu quả: {bombExploded.penaltyText}
                 </div>
+
+                {/* Danh sách các đội nhận điểm thưởng từ Bom Hắc Ám hoặc Bom Từ Thiện */}
+                {bombExploded.recipients && bombExploded.recipients.length > 0 && (
+                  <div className="pt-1 flex flex-wrap items-center justify-center gap-2">
+                    <span className="text-[11px] font-bold text-purple-300/80 uppercase">Đội nhận điểm:</span>
+                    {bombExploded.recipients.map((rec, idx) => (
+                      <span
+                        key={rec.teamId || idx}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-xs font-black shadow-sm"
+                      >
+                        <span>🎁</span>
+                        <span>{rec.teamName}</span>
+                        <span className="text-emerald-300 font-mono">+{rec.points}đ</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {bombExploded.recipientTeamName && (bombExploded.type === "CHARITY" || bombExploded.type === "GIFT") && (
+                  <div className="pt-1 flex items-center justify-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-black shadow-sm">
+                      <span>🏆</span>
+                      <span>{bombExploded.recipientTeamName} (Đội cao điểm nhất)</span>
+                      <span className="text-emerald-300 font-mono">+{bombExploded.giftedPoints || bombExploded.deductedPoints}đ</span>
+                    </span>
+                  </div>
+                )}
               </div>
             ) : turnFinishedReason === "ALL_CLEARED" ? (
               <div className="p-6 rounded-3xl bg-gradient-to-b from-amber-950/90 to-black/90 border-2 border-amber-400 shadow-2xl space-y-2">
@@ -860,12 +893,12 @@ export default function MysteryQuestBoard({
                   {latestCard ? (
                     <div
                       className={`w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
-                        latestCard.type === "BOMB_DOOM"
+                        latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                           ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200 ring-4 ring-purple-500/40"
-                          : latestCard.type === "BOMB_GIFT"
+                          : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
                           ? "bg-gradient-to-b from-amber-950 via-yellow-950 to-black border-amber-400 text-amber-200 ring-4 ring-amber-400/40"
-                          : latestCard.type === "BOMB_MINOR"
-                          ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200 ring-4 ring-red-500/40"
+                          : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
+                          ? "bg-gradient-to-b from-slate-900 via-stone-950 to-black border-slate-500 text-slate-200 ring-4 ring-slate-500/40"
                           : "bg-gradient-to-b from-amber-950/90 via-emerald-950/80 to-black border-emerald-400 text-emerald-200 ring-4 ring-emerald-400/30"
                       }`}
                     >
@@ -873,21 +906,21 @@ export default function MysteryQuestBoard({
                         <span className="font-mono font-bold opacity-75">#{latestCard.id}</span>
                         <span
                           className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            latestCard.type === "BOMB_DOOM"
+                            latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "bg-purple-500/30 text-purple-300 border border-purple-400/50"
-                              : latestCard.type === "BOMB_GIFT"
+                              : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
                               ? "bg-amber-500/30 text-amber-300 border border-amber-400/50"
-                              : latestCard.type === "BOMB_MINOR"
-                              ? "bg-red-500/30 text-red-300 border border-red-400/50"
+                              : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
+                              ? "bg-slate-500/30 text-slate-300 border border-slate-400/50"
                               : "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
                           }`}
                         >
-                          {latestCard.type === "BOMB_DOOM"
-                            ? "CHÉM ĐÔI"
-                            : latestCard.type === "BOMB_GIFT"
-                            ? "TẶNG ĐIỂM"
-                            : latestCard.type === "BOMB_MINOR"
-                            ? "TIỂU BOM"
+                          {latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
+                            ? "BOM HẮC ÁM"
+                            : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
+                            ? "BOM TỪ THIỆN"
+                            : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
+                            ? "BOM KHÓI"
                             : "THƯỞNG"}
                         </span>
                       </div>
@@ -902,23 +935,23 @@ export default function MysteryQuestBoard({
                         </p>
                         <p
                           className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
-                            latestCard.type === "BOMB_DOOM"
+                            latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "text-purple-300"
-                              : latestCard.type === "BOMB_GIFT"
+                              : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
                               ? "text-amber-300"
-                              : latestCard.type === "BOMB_MINOR"
-                              ? "text-red-400"
+                              : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
+                              ? "text-slate-300"
                               : latestCard.effectType === "MULTIPLY_X2"
                               ? "text-purple-300"
                               : "text-amber-300"
                           }`}
                         >
-                          {latestCard.type === "BOMB_DOOM"
-                            ? "÷2 Tổng Điểm"
-                            : latestCard.type === "BOMB_GIFT"
-                            ? "Tặng 1/2 Điểm"
-                            : latestCard.type === "BOMB_MINOR"
-                            ? "Mất Quỹ (0đ)"
+                          {latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
+                            ? "Trừ Điểm Chia Đều"
+                            : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
+                            ? "Tặng 50% Cho #1"
+                            : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
+                            ? "Mất Hũ (0đ)"
                             : latestCard.effectType === "MULTIPLY_X2"
                             ? "X2 HŨ ĐIỂM"
                             : `+${latestCard.deltaPoints}đ`}
@@ -998,11 +1031,11 @@ export default function MysteryQuestBoard({
                         <span>#{t.id}:</span>
                         <span>
                           {t.type !== "REWARD"
-                            ? t.type === "BOMB_DOOM"
-                              ? "÷2"
-                              : t.type === "BOMB_GIFT"
-                              ? "Tặng"
-                              : "Bom"
+                            ? t.type === "BOMB_DARK" || t.type === "BOMB_DOOM"
+                              ? "Hắc Ám"
+                              : t.type === "BOMB_CHARITY" || t.type === "BOMB_GIFT"
+                              ? "Từ Thiện"
+                              : "Bom Khói"
                             : t.effectType === "MULTIPLY_X2"
                             ? "x2"
                             : `+${t.deltaPoints}đ`}

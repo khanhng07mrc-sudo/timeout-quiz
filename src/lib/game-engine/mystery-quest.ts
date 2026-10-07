@@ -377,41 +377,41 @@ export function generateNextPushYourLuckCard({
     const bombKindRand = Math.random();
 
     if (bombKindRand < 0.50) {
-      // LOẠI 1 (50%): Bom trừ toàn bộ điểm đã đạt ở câu hiện tại
+      // LOẠI 1 (50%): Bom Khói - Mất sạch điểm của câu này
       return {
         id,
         label,
-        icon: "💣",
+        icon: "💨",
         isOpened: false,
-        type: "BOMB_MINOR",
-        storyTitle: "💣 TIỂU BOM NỔ TUNG!",
-        storyDescription: "Dẫm phải kíp nổ: Mất toàn bộ số điểm tích lũy ở câu hiện tại (0 điểm nhận được)!",
+        type: "BOMB_SMOKE",
+        storyTitle: "💨 BOM KHÓI NỔ TUNG!",
+        storyDescription: "Khói mù bao phủ! Mất toàn bộ điểm tích lũy ở câu hiện tại (0 điểm nhận được). Tổng điểm giữ nguyên!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
       };
     } else if (bombKindRand < 0.85) {
-      // LOẠI 2 (35%): Bom làm mất một nửa số điểm đội đang có
+      // LOẠI 2 (35%): Bom Hắc Ám - Mất một số điểm chia đều cho các đội còn lại
       return {
         id,
         label,
-        icon: "💀",
+        icon: "🌑",
         isOpened: false,
-        type: "BOMB_DOOM",
-        storyTitle: "💀 ĐẠI BOM CHÉM ĐÔI TỔNG ĐIỂM!",
-        storyDescription: "Đánh thức bom hủy diệt: Mất toàn bộ điểm câu này VÀ BỊ CHIA ĐÔI (-50%) tổng điểm đội đang có!",
-        effectType: "DIVIDE_HALF",
+        type: "BOMB_DARK",
+        storyTitle: "🌑 BOM HẮC ÁM PHÁT NỔ!",
+        storyDescription: "Năng lượng bóng tối bùng phát! Điểm số của bạn bị rút cạn và phân chia đều cho các đội đối thủ!",
+        effectType: "LOSE_POINTS",
         deltaPoints: 0,
       };
     } else {
-      // LOẠI 3 (15%): Bom trừ nửa số điểm của đội, và bạn phải tặng số điểm đó cho một đội khác
+      // LOẠI 3 (15%): Bom Từ Thiện - Mất 50% số điểm, và phải tặng nó cho đội có điểm cao nhất
       return {
         id,
         label,
         icon: "🎁",
         isOpened: false,
-        type: "BOMB_GIFT",
-        storyTitle: "🎁 BOM CHUYỂN GIAO NỬA ĐIỂM!",
-        storyDescription: "Dẫm phải bom chuyển giao: Bị trừ một nửa số điểm đội đang có, và bạn phải trao tặng số điểm đó cho một đội khác!",
+        type: "BOMB_CHARITY",
+        storyTitle: "🎁 BOM TỪ THIỆN HIẾN TẾ!",
+        storyDescription: "Lòng tốt bất đắc dĩ! Bị trừ 50% số điểm của đội và chuyển tặng toàn bộ cho đội đang dẫn đầu!",
         effectType: "GIFT_POINTS",
         deltaPoints: 0,
       };
@@ -568,6 +568,11 @@ export function handleFlipCard({
   shouldResetMismatchedCards?: boolean;
   recipientTeamId?: string;
   giftedPoints?: number;
+  darkBombRecipients?: Array<{
+    teamId: string;
+    teamName: string;
+    points: number;
+  }>;
 } {
   const normType = normalizeMiniGameType(state.miniGameType);
 
@@ -898,56 +903,115 @@ export function handleFlipCard({
   state.cardsFlippedCount++;
 
   if (tile.type !== "REWARD") {
-    // ─── 3 LOẠI BOM THEO QUY TẮC CHÍNH XÁC CỦA NGƯỜI DÙNG: ───
+    // ─── 3 LOẠI BOM CHUẨN ĐỘC BẢN THEO YÊU CẦU: ───
     let penalty = 0;
     let penaltyText = "";
     let recipientTeamId: string | undefined = undefined;
     let recipientTeamName: string | undefined = undefined;
     let giftedPoints = 0;
+    let darkBombRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined = undefined;
 
-    if (tile.type === "BOMB_MINOR") {
-      // 1. Bom có khả năng trừ toàn bộ số điểm đã đạt ở câu hiện tại (50%)
+    const currentScore = team.score || 0;
+    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
+    const X = allTeams.length;
+
+    if (tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR") {
+      // 1. Bom Khói (50%): Mất sạch điểm của câu này (tổng điểm không đổi)
       penalty = 0;
-      penaltyText = "Mất sạch toàn bộ số điểm tích lũy ở câu hiện tại (0 điểm nhận được). Tổng điểm giữ nguyên.";
+      penaltyText = "Mất sạch điểm của câu này. Tổng điểm của đội không đổi.";
       state.bombExploded = {
-        type: "MINOR",
-        title: tile.storyTitle,
+        type: "SMOKE",
+        title: "Bom Khói 💨",
         description: tile.storyDescription,
         penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: 0,
       };
-    } else if (tile.type === "BOMB_DOOM") {
-      // 2. Bom làm mất một nửa số điểm đội đang có (35%)
-      const currentScore = team.score || 0;
-      penalty = Math.floor(currentScore / 2);
-      penaltyText = `Mất điểm câu này và bị CHIA ĐÔI (-50%) tổng điểm đội đang có (-${penalty}đ).`;
-      state.bombExploded = {
-        type: "DOOM",
-        title: tile.storyTitle,
-        description: tile.storyDescription,
-        penaltyText,
-      };
-    } else if (tile.type === "BOMB_GIFT") {
-      // 3. Bom trừ nửa số điểm của đội, và bạn phải tặng số điểm đó cho một đội khác (15%)
-      const currentScore = team.score || 0;
-      giftedPoints = Math.floor(currentScore / 2);
-      penalty = giftedPoints;
-      const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-      if (otherTeams.length > 0) {
-        // Tặng cho đội có điểm thấp nhất (hoặc ngẫu nhiên)
-        const sorted = [...otherTeams].sort((a, b) => (a.score || 0) - (b.score || 0));
-        const chosenRecipient = sorted[0];
-        recipientTeamId = chosenRecipient.id;
-        recipientTeamName = chosenRecipient.name;
+    } else if (tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM") {
+      // 2. Bom Hắc Ám (35%): Mất một số điểm ngẫu nhiên, chia đều số này cho các đội còn lại
+      darkBombRecipients = [];
+
+      if (otherTeams.length === 0) {
+        // Solo mode / Sandbox 1 đội
+        penalty = currentScore < 5 ? currentScore : 5;
+        penaltyText = `Bị trừ ${penalty} điểm từ tổng điểm.`;
+      } else if (currentScore < 5 * X) {
+        // Điểm hiện có nhỏ hơn 5 * X: Trừ toàn bộ điểm, chia cho những đội điểm thấp nhất mỗi đội 5đ
+        const sortedOthers = [...otherTeams].sort((a, b) => {
+          const diff = (a.score || 0) - (b.score || 0);
+          if (diff !== 0) return diff;
+          return Math.random() - 0.5;
+        });
+        const numTeamsToReceive = Math.floor(currentScore / 5);
+        for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
+          darkBombRecipients.push({
+            teamId: sortedOthers[i].id,
+            teamName: sortedOthers[i].name,
+            points: 5,
+          });
+        }
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5đ)`).join(", ");
+        penaltyText = recNames
+          ? `Bị trừ toàn bộ ${penalty} điểm! Đã phân phát cho đội thấp điểm: ${recNames}`
+          : `Bị trừ toàn bộ ${penalty} điểm!`;
+      } else {
+        // Điểm >= 5 * X: Mất số điểm ngẫu nhiên chia hết cho (X - 1), mỗi đội còn lại nhận điểm như nhau (bội số 5)
+        const maxM = Math.floor(currentScore / (5 * otherTeams.length));
+        const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
+        const pointsPerOtherTeam = 5 * m;
+        penalty = pointsPerOtherTeam * otherTeams.length;
+
+        for (const other of otherTeams) {
+          darkBombRecipients.push({
+            teamId: other.id,
+            teamName: other.name,
+            points: pointsPerOtherTeam,
+          });
+        }
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}đ)`).join(", ");
+        penaltyText = `Bị trừ ${penalty} điểm! Chia đều cho các đội còn lại: ${recNames}`;
       }
-      penaltyText = recipientTeamName
-        ? `Bị trừ một nửa số điểm (-${giftedPoints}đ) và trao tặng số điểm đó cho Đội ${recipientTeamName}!`
-        : `Bị trừ một nửa số điểm (-${giftedPoints}đ) và trao tặng cho đối thủ!`;
 
       state.bombExploded = {
-        type: "GIFT",
-        title: tile.storyTitle,
+        type: "DARK",
+        title: "Bom Hắc Ám 🌑",
         description: tile.storyDescription,
         penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: penalty,
+        recipients: darkBombRecipients,
+      };
+    } else {
+      // 3. Bom Từ Thiện (15%): Mất 50% số điểm (làm tròn lên bội số của 5), tặng cho đội có điểm cao nhất
+      if (currentScore > 0) {
+        giftedPoints = Math.min(currentScore, Math.ceil((currentScore * 0.5) / 5) * 5);
+      } else {
+        giftedPoints = 0;
+      }
+      penalty = giftedPoints;
+
+      if (otherTeams.length > 0) {
+        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
+        const topTeams = otherTeams.filter((t) => (t.score || 0) === maxScore);
+        const chosen = topTeams[Math.floor(Math.random() * topTeams.length)];
+        recipientTeamId = chosen.id;
+        recipientTeamName = chosen.name;
+      }
+
+      penaltyText = recipientTeamName
+        ? `Bị trừ 50% điểm (-${giftedPoints}đ) và chuyển tặng toàn bộ cho Đội ${recipientTeamName}!`
+        : `Bị trừ 50% điểm (-${giftedPoints}đ)!`;
+
+      state.bombExploded = {
+        type: "CHARITY",
+        title: "Bom Từ Thiện 🎁",
+        description: tile.storyDescription,
+        penaltyText,
+        donorTeamId: team.id,
+        donorTeamName: team.name,
+        deductedPoints: penalty,
         recipientTeamId,
         recipientTeamName,
         giftedPoints,
@@ -958,7 +1022,7 @@ export function handleFlipCard({
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "BOMB_HIT";
 
-    const oldScore = team.score || 0;
+    const oldScore = currentScore;
     const newScore = Math.max(0, oldScore - penalty);
 
     state.storyResult = {
@@ -978,6 +1042,7 @@ export function handleFlipCard({
       finalScoreDelta: -penalty,
       recipientTeamId,
       giftedPoints,
+      darkBombRecipients,
     };
   }
 

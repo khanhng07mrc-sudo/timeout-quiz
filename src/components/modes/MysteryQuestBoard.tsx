@@ -8,6 +8,7 @@ interface Props {
   mysteryState?: MysteryQuestState;
   isDisplay?: boolean;
   isAdmin?: boolean;
+  isSandbox?: boolean;
   myTeamId?: string;
   onFlipCard?: (tileId: number) => void;
   onCashOut?: () => void;
@@ -20,6 +21,7 @@ export default function MysteryQuestBoard({
   mysteryState,
   isDisplay = false,
   isAdmin = false,
+  isSandbox = false,
   myTeamId,
   onFlipCard,
   onCashOut,
@@ -70,13 +72,10 @@ export default function MysteryQuestBoard({
 
   const isMyTurn = Boolean(myTeamId && myTeamId === currentTurnTeamId);
   const canFlip = Boolean(
-    (isMyTurn || isAdmin) && phase === "PUSH_YOUR_LUCK"
+    (isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK"
   );
   const canCashOut = Boolean(
-    (isMyTurn || isAdmin) && phase === "PUSH_YOUR_LUCK" && potPoints > 0
-  );
-  const canSteal = Boolean(
-    phase === "STEAL_PHASE" && myTeamId && myTeamId !== currentTurnTeamId
+    (isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK" && potPoints > 0
   );
 
   const handleTileClick = (tile: MysteryTile) => {
@@ -192,40 +191,6 @@ export default function MysteryQuestBoard({
           </div>
         )}
 
-        {/* Phase: STEAL_PHASE */}
-        {phase === "STEAL_PHASE" && (
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-red-950/80 via-amber-950/80 to-red-950/80 border-2 border-red-500 text-center animate-bounce-in shadow-2xl">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-600 text-white text-xs font-black uppercase tracking-widest animate-pulse mb-3">
-              <span>🔔</span> CHUÔNG CƯỚP LƯỢT ĐANG MỞ! {stealCountdown !== undefined && `(${stealCountdown}s)`}
-            </div>
-            <h3 className="text-xl sm:text-2xl font-black text-white">
-              {stealBuzzedTeamName ? (
-                <span>
-                  Đội <span className="text-amber-400 font-black">{stealBuzzedTeamName}</span> ĐÃ CƯỚP THÀNH CÔNG!
-                </span>
-              ) : (
-                <span>CƠ HỘI CƯỚP ĐIỂM CHO CÁC ĐỘI CÒN LẠI!</span>
-              )}
-            </h3>
-            <p className="text-xs sm:text-sm text-amber-200/90 mt-1">
-              {stealBuzzedTeamName
-                ? "Chuẩn bị bước vào phần lật bài của đội cướp..."
-                : "Đội thi chính đã mất quyền! Đội nào nhanh tay bấm chuông sẽ giành lấy cơ hội lật bài!"}
-            </p>
-
-            {canSteal && !stealBuzzedTeamName && (
-              <div className="mt-4">
-                <button
-                  onClick={onStealBuzz}
-                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-orange-500 to-red-600 text-white font-black text-base shadow-2xl hover:scale-105 active:scale-95 transition-all animate-pulse border-2 border-yellow-300"
-                >
-                  🔔 BẤM CHUÔNG CƯỚP LƯỢT NGAY!
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Phase: PUSH_YOUR_LUCK */}
         {phase === "PUSH_YOUR_LUCK" && (
           <div className="flex flex-col items-center justify-center text-center space-y-4">
@@ -281,7 +246,20 @@ export default function MysteryQuestBoard({
         {/* Phase: TURN_SUMMARY */}
         {phase === "TURN_SUMMARY" && (
           <div className="w-full max-w-2xl mx-auto text-center animate-slide-up">
-            {turnFinishedReason === "BOMB_HIT" && bombExploded ? (
+            {turnFinishedReason === "QUESTION_FAILED" ? (
+              <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-rose-500/80 shadow-2xl space-y-3">
+                <div className="text-5xl sm:text-6xl animate-bounce">❌</div>
+                <h3 className="text-2xl sm:text-3xl font-black text-rose-400">
+                  TRẢ LỜI CHƯA CHÍNH XÁC!
+                </h3>
+                <p className="text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+                  Đội <strong className="text-white">{currentTurnTeamName}</strong> chưa trả lời đúng câu hỏi thử thách. Lượt thi đấu kết thúc với 0 điểm tích lũy.
+                </p>
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-200 font-bold text-sm">
+                  ⚠️ Kết quả: 0 điểm cho lượt thi này.
+                </div>
+              </div>
+            ) : turnFinishedReason === "BOMB_HIT" && bombExploded ? (
               <div className="p-6 rounded-3xl bg-gradient-to-b from-red-950/90 to-black/90 border-2 border-red-500 shadow-2xl space-y-3">
                 <div className="text-5xl sm:text-6xl animate-bounce">
                   {bombExploded.type === "DOOM" ? "💀" : bombExploded.type === "MAJOR" ? "💥" : "💣"}
@@ -329,11 +307,11 @@ export default function MysteryQuestBoard({
               </div>
             )}
 
-            {isAdmin && (
+            {(isAdmin || isSandbox) && (
               <div className="mt-5">
                 <button
                   onClick={onAdvanceTurn}
-                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-base shadow-xl border border-white/20 hover:scale-105 active:scale-95 transition-all"
+                  className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-base shadow-xl border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer"
                 >
                   CHUYỂN SANG LƯỢT TIẾP THEO ➔
                 </button>

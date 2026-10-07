@@ -819,7 +819,7 @@ export default function PlayPage() {
       }
     });
     socket.on("game:mystery:cashed_out", () => {
-      if (soundEnabledRef.current) soundManager.playFanfare();
+      if (soundEnabledRef.current) soundManager.playCorrect();
     });
     socket.on("game:mystery:steal_open", () => {
       if (soundEnabledRef.current) soundManager.playBuzz();
@@ -840,7 +840,7 @@ export default function PlayPage() {
       });
     });
     socket.on("elimination:revival", (payload) => {
-      if (soundEnabledRef.current) soundManager.playFanfare();
+      if (soundEnabledRef.current) soundManager.playCorrect();
       const isMyTeamRevived = payload.revivedTeamId === effectiveTeamId || Boolean(payload.revivedTeams?.some((t) => t.id === effectiveTeamId));
       const stageStr = payload.eliminatedAtStage ? ` (kiên cường từ Chặng ${payload.eliminatedAtStage})` : "";
       if (isMyTeamRevived) {
@@ -1427,6 +1427,7 @@ export default function PlayPage() {
             <MysteryQuestBoard
               mysteryState={roomState.mysteryQuestState}
               myTeamId={effectiveTeamId}
+              isSandbox={isSandbox}
               teams={roomState.teams}
               onFlipCard={(tileId) => {
                 if (typeof window !== "undefined" && window.self !== window.top) {
@@ -1440,11 +1441,11 @@ export default function PlayPage() {
                 }
                 socketRef.current?.emit("game:mystery:cash_out");
               }}
-              onStealBuzz={() => {
+              onAdvanceTurn={() => {
                 if (typeof window !== "undefined" && window.self !== window.top) {
-                  window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
+                  window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                 }
-                socketRef.current?.emit("game:mystery:steal_buzz");
+                socketRef.current?.emit("admin:mystery:advance_turn");
               }}
             />
           </div>
@@ -1617,6 +1618,7 @@ export default function PlayPage() {
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}
                   myTeamId={effectiveTeamId}
+                  isSandbox={isSandbox}
                   teams={roomState.teams}
                   onFlipCard={(tileId) => {
                     if (typeof window !== "undefined" && window.self !== window.top) {
@@ -1630,11 +1632,11 @@ export default function PlayPage() {
                     }
                     socketRef.current?.emit("game:mystery:cash_out");
                   }}
-                  onStealBuzz={() => {
+                  onAdvanceTurn={() => {
                     if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", teamId: effectiveTeamId }, "*");
+                      window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                     }
-                    socketRef.current?.emit("game:mystery:steal_buzz");
+                    socketRef.current?.emit("admin:mystery:advance_turn");
                   }}
                 />
               </div>

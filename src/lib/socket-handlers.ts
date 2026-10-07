@@ -4372,8 +4372,8 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryFlip(room, questState, team, tileId);
     });
 
-    socket.on("admin:mystery:flip_card", async ({ tileId }: { tileId: number }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:mystery:flip_card", async (payload: { tileId: number; code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
@@ -4382,7 +4382,7 @@ export function registerSocketHandlers(io: IO) {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
 
-      await executeMysteryFlip(room, questState, team, tileId);
+      await executeMysteryFlip(room, questState, team, payload.tileId);
     });
 
     socket.on("game:mystery:cash_out", async () => {
@@ -4411,8 +4411,8 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryCashOut(room, questState, team);
     });
 
-    socket.on("admin:mystery:cash_out", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:mystery:cash_out", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
@@ -4490,8 +4490,8 @@ export function registerSocketHandlers(io: IO) {
       });
     });
 
-    socket.on("admin:mystery:advance_turn", async () => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:mystery:advance_turn", async (payload?: { code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
@@ -7490,24 +7490,22 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       } else {
-        questState.phase = "STEAL_PHASE";
-        questState.stealEndsAt = Date.now() + 5000;
+        // Mode Hành Trình Bí Ẩn: Lượt thi độc quyền từng đội, trả lời sai kết thúc lượt ngay với 0đ, không có cướp chuông
+        questState.phase = "TURN_SUMMARY";
+        questState.turnFinishedReason = "QUESTION_FAILED";
+        questState.potPoints = 0;
+        questState.potMultiplier = 1;
+        questState.storyResult = {
+          teamId: questState.currentTurnTeamId,
+          teamName: questState.currentTurnTeamName,
+          teamColor: questState.currentTurnTeamColor,
+          rewardText: "Trả lời chưa chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
+          scoreDelta: 0,
+          oldScore: 0,
+          newScore: 0,
+        };
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
-        io.to(`room:${roomCode}`).emit("game:mystery:steal_open", {
-          questionId: q.id,
-          timeLimit: 5,
-        });
-
-        setTimeout(async () => {
-          const latestQuest = roomMysteryQuests.get(room.id);
-          if (latestQuest && latestQuest.phase === "STEAL_PHASE" && !latestQuest.stealBuzzedTeamId) {
-            latestQuest.phase = "TURN_SUMMARY";
-            latestQuest.turnFinishedReason = "QUESTION_FAILED";
-            roomMysteryQuests.set(room.id, latestQuest);
-            io.to(`room:${roomCode}`).emit("game:mystery:update", latestQuest);
-          }
-        }, 5000);
       }
     }
   }

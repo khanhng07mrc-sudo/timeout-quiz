@@ -226,7 +226,7 @@ export default function DisplayPage() {
         }
         if (p.revivalNotice !== undefined) {
           setRevivalNotice(p.revivalNotice);
-          soundManager.playFanfare();
+          soundManager.playCorrect();
           setTimeout(() => setRevivalNotice(null), 7000);
         }
         if (p.gameEnd !== undefined) {
@@ -286,10 +286,11 @@ export default function DisplayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
-      soundManager.playLobbyMusic();
+      soundManager.stopMusic(300);
     });
 
     socket.on("game:question", (q) => {
+      soundManager.stopMusic(0);
       setMatchStarting(null);
       setQuestionPrepare(null);
       setIntermission(null);
@@ -522,7 +523,7 @@ export default function DisplayPage() {
       }
     });
     socket.on("game:mystery:cashed_out", () => {
-      soundManager.playFanfare();
+      soundManager.playCorrect();
     });
     socket.on("game:mystery:steal_open", () => {
       soundManager.playBuzz();
@@ -550,7 +551,7 @@ export default function DisplayPage() {
     });
     socket.on("elimination:revival", (payload) => {
       setRevivalNotice(payload);
-      soundManager.playFanfare();
+      soundManager.playCorrect();
       setTimeout(() => {
         setRevivalNotice(null);
       }, 7000);

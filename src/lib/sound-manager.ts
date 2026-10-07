@@ -56,6 +56,7 @@ class SoundManager {
   // Preloaded audio elements
   private sfxMap: Map<string, HTMLAudioElement> = new Map();
   private bgmMap: Map<string, HTMLAudioElement> = new Map();
+  private currentFanfareAudio: HTMLAudioElement | null = null;
   private initialized: boolean = false;
 
   constructor() {
@@ -467,6 +468,7 @@ class SoundManager {
 
     this.currentPlayingQuestionId = null;
     this.currentMusicKey = null;
+    this.stopFanfare();
 
     if (fadeDurationMs <= 0) {
       this.currentMusicAudio = null;
@@ -554,10 +556,27 @@ class SoundManager {
   }
 
   /**
-   * Nhạc tổng kết điểm trao giải Olympia (O9 - O24)
+   * Nhạc tổng kết điểm trao giải Olympia (O9 - O24) - Chỉ phát khi kết thúc toàn bộ trận đấu
    */
   public playFanfare() {
-    this.playSFX("fanfare", 0.95);
+    this.stopFanfare();
+    try {
+      const original = this.sfxMap.get("fanfare");
+      const audio = original ? (original.cloneNode(true) as HTMLAudioElement) : this.createAudioWithFallbacks(SFX_CONFIG.fanfare, false);
+      audio.volume = this.volume * 0.95;
+      this.currentFanfareAudio = audio;
+      audio.play().catch(() => {});
+    } catch {}
+  }
+
+  public stopFanfare() {
+    if (this.currentFanfareAudio) {
+      try {
+        this.currentFanfareAudio.pause();
+        this.currentFanfareAudio.currentTime = 0;
+      } catch {}
+      this.currentFanfareAudio = null;
+    }
   }
 
   /**

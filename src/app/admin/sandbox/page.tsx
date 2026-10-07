@@ -1846,7 +1846,7 @@ export default function AdminSandboxPage() {
       if (e.data?.type === "MYSTERY_FLIP" || e.data?.action === "mystery_flip") {
         const tileId = Number(e.data?.tileId);
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId });
+          adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId, code });
           addLog(`✨ Admin lật thẻ #${tileId} trong Sandbox Online`);
           return;
         }
@@ -1890,7 +1890,7 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:cash_out" as any);
+          adminSocketRef.current?.emit("admin:mystery:cash_out" as any, { code });
           addLog("💰 Admin bảo toàn quỹ điểm trong Sandbox Online");
           return;
         }
@@ -1920,40 +1920,11 @@ export default function AdminSandboxPage() {
         return;
       }
       if (e.data?.type === "MYSTERY_STEAL_BUZZ" || e.data?.action === "mystery_steal_buzz") {
-        const targetTId = e.data?.targetTeamId || e.data?.teamId;
-        if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:steal_buzz" as any, { targetTeamId: targetTId });
-          addLog("🔔 Admin kích hoạt cướp chuông trong Sandbox Online");
-          return;
-        }
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = { ...roomStateRef.current.mysteryQuestState };
-        if (curMystery.phase !== "STEAL_PHASE" || curMystery.stealBuzzedTeamId) return;
-
-        const buzzedTeam = roomStateRef.current.teams.find((t) => t.id === targetTId) || roomStateRef.current.teams[0];
-        if (!buzzedTeam || buzzedTeam.id === curMystery.currentTurnTeamId) return;
-
-        curMystery.stealBuzzedTeamId = buzzedTeam.id;
-        curMystery.stealBuzzedTeamName = buzzedTeam.name;
-        curMystery.phase = "PUSH_YOUR_LUCK";
-        curMystery.currentTurnTeamId = buzzedTeam.id;
-        curMystery.currentTurnTeamName = buzzedTeam.name;
-        curMystery.currentTurnTeamColor = buzzedTeam.color;
-        curMystery.potPoints = 15; // base steal pot points
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          mysteryQuestState: curMystery,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: curMystery });
-        addLog(`🔔 [${buzzedTeam.name}] BẤM CHUÔNG CƯỚP ĐIỂM THÀNH CÔNG! Giành quyền lật thẻ!`);
         return;
       }
       if (e.data?.type === "MYSTERY_ADVANCE_TURN" || e.data?.action === "mystery_advance_turn") {
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:advance_turn" as any);
+          adminSocketRef.current?.emit("admin:mystery:advance_turn" as any, { code });
           addLog("➡️ Admin chuyển lượt tiếp theo trong Sandbox Online");
           return;
         }
@@ -3436,8 +3407,19 @@ export default function AdminSandboxPage() {
           } else {
             nextMystery = {
               ...curMystery,
-              phase: "STEAL_PHASE",
-              stealCountdown: 5,
+              phase: "TURN_SUMMARY",
+              turnFinishedReason: "QUESTION_FAILED",
+              potPoints: 0,
+              potMultiplier: 1,
+              storyResult: {
+                teamId: curMystery.currentTurnTeamId,
+                teamName: curMystery.currentTurnTeamName,
+                teamColor: curMystery.currentTurnTeamColor,
+                rewardText: "Trả lời chưa chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
+                scoreDelta: 0,
+                oldScore: 0,
+                newScore: 0,
+              },
             };
           }
         }
@@ -3461,7 +3443,7 @@ export default function AdminSandboxPage() {
         if (curTeamAns?.isCorrect) {
           addLog(`🎉 [${curName}] trả lời ĐÚNG! Nhận ${currentQuestion.question.points || 20}đ vào Hũ và mở khóa Thử thách Lật Thẻ!`);
         } else {
-          addLog(`❌ [${curName}] trả lời CHƯA ĐÚNG! Mở chuông cướp điểm 5s cho các đội khác!`);
+          addLog(`❌ [${curName}] trả lời CHƯA ĐÚNG! Lượt thi kết thúc với 0 điểm.`);
         }
       }
 
@@ -6206,11 +6188,6 @@ export default function AdminSandboxPage() {
                       }}
                       onCashOut={() => {
                         window.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out" }, "*");
-                      }}
-                      onStealBuzz={() => {
-                        const otherTeams = roomState.teams.filter((t) => t.id !== roomState.mysteryQuestState?.currentTurnTeamId);
-                        const randomOther = otherTeams[0] || roomState.teams[0];
-                        window.postMessage({ type: "MYSTERY_STEAL_BUZZ", action: "mystery_steal_buzz", targetTeamId: randomOther.id }, "*");
                       }}
                       onAdvanceTurn={() => {
                         window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");

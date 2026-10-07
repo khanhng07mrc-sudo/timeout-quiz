@@ -1381,10 +1381,9 @@ export default function AdminRoomPage() {
                 mysteryState={roomState.mysteryQuestState}
                 isAdmin={true}
                 teams={roomState.teams}
-                onFlipCard={(tileId) => emit("admin:mystery:flip_card", { tileId })}
-                onCashOut={() => emit("admin:mystery:cash_out")}
-                onStealBuzz={() => emit("admin:mystery:steal_buzz")}
-                onAdvanceTurn={() => emit("admin:mystery:advance_turn")}
+                onFlipCard={(tileId) => emit("admin:mystery:flip_card", { tileId, code })}
+                onCashOut={() => emit("admin:mystery:cash_out", { code })}
+                onAdvanceTurn={() => emit("admin:mystery:advance_turn", { code })}
               />
             </div>
           )}

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
 import { GameMode } from "@/types";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
+import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -154,7 +155,23 @@ export async function POST(req: NextRequest) {
     const sandboxConfig = {
       ...DEFAULT_SANDBOX_CONFIG,
       allowedPowerups: modeAllowedPowerups,
+      ...(body.config || {}),
     };
+
+    if (body.matchMaxQuestions || body.config?.matchMaxQuestions) {
+      const maxQ = Number(body.matchMaxQuestions || body.config?.matchMaxQuestions);
+      if (maxQ > 0) {
+        const derived = calculateModeDerivedConfig(mode, maxQ, 4);
+        if (derived.mysteryQuestTurnsPerTeam) sandboxConfig.mysteryQuestTurnsPerTeam = derived.mysteryQuestTurnsPerTeam;
+        if (derived.wagerRoundsPerTeam) sandboxConfig.wagerRoundsPerTeam = derived.wagerRoundsPerTeam;
+        if (derived.bouncebackCycles) sandboxConfig.bouncebackCycles = derived.bouncebackCycles;
+        if (derived.eliminationIntervalQuestions) sandboxConfig.eliminationIntervalQuestions = derived.eliminationIntervalQuestions;
+        if (derived.tournamentQuestionsPerMatch) sandboxConfig.tournamentQuestionsPerMatch = derived.tournamentQuestionsPerMatch;
+        if (derived.gridMaxQuestions) sandboxConfig.gridMaxQuestions = derived.gridMaxQuestions;
+        if (derived.diceRaceMaxQuestions) sandboxConfig.diceRaceMaxQuestions = derived.diceRaceMaxQuestions;
+        sandboxConfig.matchMaxQuestions = derived.matchMaxQuestions;
+      }
+    }
 
     const room = await prisma.room.create({
       data: {

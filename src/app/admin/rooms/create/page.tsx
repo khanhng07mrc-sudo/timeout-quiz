@@ -9,6 +9,7 @@ import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
+import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Đại chúng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
@@ -114,6 +115,11 @@ export default function CreateRoomPage() {
   // Buzz config
   const [buzzUnlockMode, setBuzzUnlockMode] = useState<"AUTO" | "MANUAL">("AUTO");
   const [buzzAutoDelay, setBuzzAutoDelay] = useState(3);
+  // Mystery Quest config
+  const [mysteryQuestTurnsPerTeam, setMysteryQuestTurnsPerTeam] = useState(2);
+  // Match Question Allocation
+  const [isCustomQuestionCount, setIsCustomQuestionCount] = useState(false);
+  const [matchMaxQuestions, setMatchMaxQuestions] = useState(12);
 
   // Layout switcher states
   const [modeLayout, setModeLayout] = useState<"GRID" | "LIST" | "COMPACT">("GRID");
@@ -263,6 +269,9 @@ export default function CreateRoomPage() {
             answerSubmissionMode,
             autoTimerStart,
             initialTeamScore: Math.max(0, Number(initialTeamScore) || 0),
+            // Match Question Allocation
+            matchMaxQuestions: isCustomQuestionCount ? Math.max(1, Number(matchMaxQuestions) || 12) : 0,
+            mysteryQuestTurnsPerTeam: mode === "MYSTERY_QUEST" ? mysteryQuestTurnsPerTeam : 2,
           },
         }),
       });
@@ -525,6 +534,256 @@ export default function CreateRoomPage() {
               </div>
             )}
           </div>
+
+          {/* Universal Match Question Count & Smart Allocation */}
+          <div className="p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-br from-indigo-950/40 via-purple-950/20 to-slate-900/60 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-indigo-500/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 font-black text-lg shrink-0">
+                  🎯
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-indigo-200 flex items-center gap-2">
+                    Cài đặt số lượng câu hỏi cho cuộc chơi
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      Tự động phân bổ
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Hệ thống tự động cân đối độ khó Bloom (Dễ 35% / Trung bình 45% / Khó 20%) và phân bổ số lượt phù hợp cho chế độ {GAME_MODES.find((m) => m.value === mode)?.label}.
+                  </p>
+                </div>
+              </div>
+
+              {/* Mode Toggle: All vs Custom */}
+              <div className="flex items-center p-0.5 rounded-xl bg-card/80 border border-border gap-0.5 text-xs shadow-inner shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomQuestionCount(false)}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    !isCustomQuestionCount
+                      ? "bg-indigo-600 text-white shadow"
+                      : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  <span>📚</span>
+                  <span>Toàn bộ đề ({bankQuestions.length || 0} câu)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomQuestionCount(true);
+                    if (!matchMaxQuestions || matchMaxQuestions <= 0) {
+                      setMatchMaxQuestions(Math.min(12, bankQuestions.length || 12));
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    isCustomQuestionCount
+                      ? "bg-indigo-600 text-white shadow"
+                      : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  <span>🎯</span>
+                  <span>Tùy chỉnh số câu</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Custom Question Selection Controls */}
+            {isCustomQuestionCount && (
+              <div className="space-y-3 pt-1">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-xs font-semibold text-slate-300">Chọn nhanh:</span>
+                    {[5, 10, 12, 15, 20, 25, 30].map((preset) => {
+                      const isDisabled = bankQuestions.length > 0 && preset > bankQuestions.length;
+                      const isSelected = matchMaxQuestions === preset;
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          disabled={isDisabled}
+                          onClick={() => setMatchMaxQuestions(preset)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                            isSelected
+                              ? "bg-indigo-500/30 border-indigo-400 text-indigo-200 shadow-sm"
+                              : isDisabled
+                              ? "opacity-30 cursor-not-allowed border-white/5 text-slate-500"
+                              : "glass border-white/10 text-slate-300 hover:text-white hover:border-white/20"
+                          }`}
+                        >
+                          {preset} câu
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-slate-300 whitespace-nowrap">
+                      Nhập số câu:
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={bankQuestions.length > 0 ? bankQuestions.length : 100}
+                      value={matchMaxQuestions}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 1;
+                        const maxVal = bankQuestions.length > 0 ? bankQuestions.length : 100;
+                        setMatchMaxQuestions(Math.min(maxVal, Math.max(1, val)));
+                      }}
+                      className="w-20 px-2.5 py-1.5 rounded-lg bg-input border border-border text-sm font-bold text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                    <span className="text-xs text-muted-foreground">câu</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Real-time Allocation Breakdown Preview */}
+            {(() => {
+              const allocationTarget = isCustomQuestionCount ? matchMaxQuestions : 0;
+              const samplePool = bankQuestions.length > 0
+                ? bankQuestions
+                : Array.from({ length: 24 }, (_, i) => ({
+                    id: `mock-${i}`,
+                    points: i % 3 === 0 ? 10 : i % 3 === 1 ? 20 : 30,
+                    bloomLevel: i % 3 === 0 ? "REMEMBER" : i % 3 === 1 ? "APPLY" : "ANALYZE",
+                  }));
+
+              const allocResult = allocateQuestionsForMatch({
+                questions: samplePool,
+                targetCount: allocationTarget,
+                mode: mode as GameMode,
+                teamsCount: teams.length,
+                options: {
+                  eliminationStages: 3,
+                  bouncebackQuestionsPerTurn,
+                  tournamentQuestionsPerMatch,
+                },
+              });
+
+              const { breakdown, modeDetails, totalQuestions } = allocResult;
+
+              return (
+                <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-200 flex items-center gap-1.5">
+                      <span>📊</span> Dự kiến thi đấu: <strong className="text-indigo-300 font-mono text-sm">{totalQuestions} câu hỏi</strong>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Chuẩn Bloom Gameshow (Dễ ~35% / TB ~45% / Khó ~20%)
+                    </span>
+                  </div>
+
+                  {/* Visual ratio bar */}
+                  <div className="w-full h-3 rounded-full bg-slate-800 overflow-hidden flex border border-white/10">
+                    <div
+                      style={{ width: `${breakdown.easyPercent}%` }}
+                      className="bg-emerald-500 transition-all duration-300"
+                      title={`Dễ: ${breakdown.easyCount} câu (${breakdown.easyPercent}%)`}
+                    />
+                    <div
+                      style={{ width: `${breakdown.mediumPercent}%` }}
+                      className="bg-amber-500 transition-all duration-300"
+                      title={`Trung bình: ${breakdown.mediumCount} câu (${breakdown.mediumPercent}%)`}
+                    />
+                    <div
+                      style={{ width: `${breakdown.hardPercent}%` }}
+                      className="bg-purple-500 transition-all duration-300"
+                      title={`Khó: ${breakdown.hardCount} câu (${breakdown.hardPercent}%)`}
+                    />
+                  </div>
+
+                  {/* 3 Difficulty Stats Pills */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                      <div className="font-bold text-emerald-300 flex items-center justify-center gap-1">
+                        <span>🟢</span> Dễ (10đ)
+                      </div>
+                      <div className="text-[11px] text-emerald-200 font-mono mt-0.5">
+                        {breakdown.easyCount} câu ({breakdown.easyPercent}%)
+                      </div>
+                      <div className="text-[9px] text-emerald-400/80">Khởi động</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <div className="font-bold text-amber-300 flex items-center justify-center gap-1">
+                        <span>🟡</span> TB (20đ)
+                      </div>
+                      <div className="text-[11px] text-amber-200 font-mono mt-0.5">
+                        {breakdown.mediumCount} câu ({breakdown.mediumPercent}%)
+                      </div>
+                      <div className="text-[9px] text-amber-400/80">Tăng tốc</div>
+                    </div>
+                    <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30">
+                      <div className="font-bold text-purple-300 flex items-center justify-center gap-1">
+                        <span>🟣</span> Khó (30đ)
+                      </div>
+                      <div className="text-[11px] text-purple-200 font-mono mt-0.5">
+                        {breakdown.hardCount} câu ({breakdown.hardPercent}%)
+                      </div>
+                      <div className="text-[9px] text-purple-400/80">Về đích</div>
+                    </div>
+                  </div>
+
+                  {/* Mode Rule Allocation Notice */}
+                  <div className="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-xs text-indigo-200 flex items-start gap-2">
+                    <span className="text-sm shrink-0">💡</span>
+                    <p className="text-[11px] leading-relaxed">
+                      {modeDetails.descriptionVi}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          {mode === "MYSTERY_QUEST" && (
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <GameModeIcon mode="MYSTERY_QUEST" className="w-6 h-6 shrink-0" />
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình Hành Trình Bí Ẩn (Mystery Quest)</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1 text-slate-300">
+                    Số lượt thi đấu mỗi đội (Vòng chơi):
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={mysteryQuestTurnsPerTeam}
+                      onChange={(e) => {
+                        const turns = Math.max(1, parseInt(e.target.value) || 1);
+                        setMysteryQuestTurnsPerTeam(turns);
+                        if (isCustomQuestionCount) {
+                          setMatchMaxQuestions(turns * teams.length);
+                        }
+                      }}
+                      className="w-24 px-3 py-2 rounded-lg bg-input border border-border text-sm font-bold text-white text-center"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      lượt/đội (Tổng: {teams.length * mysteryQuestTurnsPerTeam} câu)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Các đội lần lượt lên sân khấu chính, mỗi lượt là một bối cảnh (Lâu đài, Đảo hải tặc, Rừng ma thuật, Cyber) và trò chơi mới.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-[#151728]/80 border border-amber-500/20 flex flex-col justify-center">
+                  <div className="font-bold text-xs text-amber-300 flex items-center gap-1.5 mb-1">
+                    <span>🗝️</span> Ô số phận Chiếc nón kỳ diệu
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Sau khi giải đúng câu hỏi thử thách, đội được lật mở ô bí mật với tác động điểm cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm hoặc né Bom). Nếu đội chính sai, chuông cướp 5s sẽ mở ra cho các đội khác!
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {mode === "BUZZ" && (
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">

@@ -36,6 +36,7 @@ import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, nor
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
 import { generateMysteryStageForTurn, handleFlipCard, handleCashOut } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
+import { allocateQuestionsForMatch } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -2313,7 +2314,13 @@ export function registerSocketHandlers(io: IO) {
       });
 
       // 2. Sau khi chọn điểm xong: MỚI ĐẾM 3s chuẩn bị!
-      const totalQuestionsCount = room.quizBank?.questions?.length || 1;
+      const teamsCount = (await prisma.team.count({ where: { roomId: room.id } })) || 4;
+      const totalQuestionsCount = getTargetTotalQuestions(
+        room.mode,
+        room.config as any,
+        teamsCount,
+        room.quizBank?.questions?.length || 1
+      );
       const preparePayload: GamePreparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
@@ -3156,6 +3163,32 @@ export function registerSocketHandlers(io: IO) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         const config = room.config as any;
 
+        // Auto allocate questions based on matchMaxQuestions and mode
+        const targetQCount = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : undefined;
+        const allocation = allocateQuestionsForMatch({
+          questions,
+          targetCount: targetQCount,
+          mode: room.mode as GameMode,
+          teamsCount: teams.length,
+          options: {
+            eliminationStages: config?.eliminationRounds,
+            bouncebackQuestionsPerTurn: config?.bouncebackQuestionsPerTurn,
+            tournamentQuestionsPerMatch: config?.tournamentQuestionsPerMatch,
+          },
+        });
+
+        questions = allocation.allocatedQuestions;
+        roomQuestionsCache.set(room.id, questions);
+        if (room.quizBank) {
+          room.quizBank.questions = questions;
+        }
+
+        if (allocation.derivedConfig) {
+          Object.assign(config, allocation.derivedConfig);
+          room.config = config;
+          prisma.room.update({ where: { id: room.id }, data: { config } }).catch(console.error);
+        }
+
         if (room.mode === "CLASSIC") {
           const goldSet = selectGoldQuestions(questions);
           roomGoldQuestions.set(room.id, goldSet);
@@ -3338,10 +3371,17 @@ export function registerSocketHandlers(io: IO) {
           launchWarmupToFirstQuestion();
         }, 5000);
 
+        const targetStartingQuestions = getTargetTotalQuestions(
+          room.mode,
+          config,
+          teams.length,
+          questions.length
+        );
+
         roomPrepareStates.set(room.id, {
           type: "STARTING",
           questionIndex: 0,
-          totalQuestions: questions.length,
+          totalQuestions: targetStartingQuestions,
           targetTimestamp: Date.now() + 5000,
           timer,
           skipCallback: launchWarmupToFirstQuestion,
@@ -7476,7 +7516,12 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     teamMode: room.teamMode as any,
     status: room.status as any,
     currentQuestionIndex: room.currentQuestion,
-    totalQuestions: room.quizBank?.questions.length ?? 0,
+    totalQuestions: getTargetTotalQuestions(
+      room.mode as any,
+      config,
+      teams.length,
+      (roomQuestionsCache.get(roomId) || room.quizBank?.questions)?.length || 0
+    ),
     teams,
     players,
     sharedCards,

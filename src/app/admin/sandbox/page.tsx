@@ -28,6 +28,7 @@ import {
   handleFlipCard as handleMysteryFlipCard,
   handleCashOut as handleMysteryCashOut,
 } from "@/lib/game-engine/mystery-quest";
+import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-engine/dice-race";
 import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "@/lib/game-engine/powerups";
@@ -968,11 +969,18 @@ export default function AdminSandboxPage() {
     }
 
     const bank = (bankId && offlineStorage.getLocalBankById(bankId)) || DEFAULT_OFFLINE_BANK;
-    const questions = (bank.questions || []).map((q: any) => ({
+    const rawQuestions = (bank.questions || []).map((q: any) => ({
       ...q,
       points: normalizeToThreeLevels(q.points || 10),
     }));
-    offlineQuestionsRef.current = questions;
+    const maxQ = roomState?.config?.matchMaxQuestions && roomState.config.matchMaxQuestions > 0 ? roomState.config.matchMaxQuestions : undefined;
+    const allocResult = allocateQuestionsForMatch({
+      questions: rawQuestions,
+      targetCount: maxQ,
+      mode,
+      teamsCount: 4,
+    });
+    offlineQuestionsRef.current = allocResult.allocatedQuestions;
     offlineQIndexRef.current = -1;
     offlineAnswersRef.current.clear();
     offlineUsedQuestionIdsRef.current.clear();
@@ -1059,7 +1067,7 @@ export default function AdminSandboxPage() {
       teamMode: "TEAM",
       status: "LOBBY",
       currentQuestionIndex: 0,
-      totalQuestions: questions.length,
+      totalQuestions: allocResult.allocatedQuestions.length,
       teams,
       players,
       sharedCards: [],
@@ -2769,9 +2777,28 @@ export default function AdminSandboxPage() {
           maxBetCap: newMaxBetCap,
         };
       }
+      let derivedConfig: any = {};
+      if (key === "matchMaxQuestions") {
+        const maxQ = Number(value) || 0;
+        derivedConfig = calculateModeDerivedConfig(prev.mode, maxQ, prev.teams.length);
+        if (isOfflineSandbox) {
+          const bank = (selectedBankId && offlineStorage.getLocalBankById(selectedBankId)) || DEFAULT_OFFLINE_BANK;
+          const rawQ = (bank.questions || []).map((q: any) => ({
+            ...q,
+            points: normalizeToThreeLevels(q.points || 10),
+          }));
+          const alloc = allocateQuestionsForMatch({
+            questions: rawQ,
+            targetCount: maxQ > 0 ? maxQ : undefined,
+            mode: prev.mode,
+            teamsCount: prev.teams.length,
+          });
+          offlineQuestionsRef.current = alloc.allocatedQuestions;
+        }
+      }
       return {
         ...prev,
-        config: { ...prev.config, [key]: value },
+        config: { ...prev.config, ...derivedConfig, [key]: value },
         wagerState: nextWager,
       };
     });
@@ -5338,28 +5365,29 @@ export default function AdminSandboxPage() {
                         </div>
                       )}
 
-                      {/* Simultaneous Modes Max Questions */}
-                      {["CLASSIC", "BUZZ", "ELIMINATION"].includes(roomState.mode) && (
-                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                      {/* Universal Match Max Questions (Tất cả các mode) */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-slate-300">Tổng số câu hỏi</span>
-                          <div className="flex items-center gap-1 flex-wrap justify-end">
-                            {[5, 10, 15, 20, 0].map((qCount) => (
-                              <button
-                                key={qCount}
-                                type="button"
-                                onClick={() => updateConfig("matchMaxQuestions", qCount)}
-                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                  (roomState.config.matchMaxQuestions ?? 0) === qCount
-                                    ? "bg-purple-500/30 border-purple-400 text-purple-300"
-                                    : "glass border-white/10 text-slate-400 hover:text-white"
-                                }`}
-                              >
-                                {qCount === 0 ? "Hết đề" : `${qCount}c`}
-                              </button>
-                            ))}
-                          </div>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Tất cả mode</span>
                         </div>
-                      )}
+                        <div className="flex items-center gap-1 flex-wrap justify-end">
+                          {[5, 10, 12, 15, 20, 25, 0].map((qCount) => (
+                            <button
+                              key={qCount}
+                              type="button"
+                              onClick={() => updateConfig("matchMaxQuestions", qCount)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                (roomState.config.matchMaxQuestions ?? 0) === qCount
+                                  ? "bg-purple-500/30 border-purple-400 text-purple-300"
+                                  : "glass border-white/10 text-slate-400 hover:text-white"
+                              }`}
+                            >
+                              {qCount === 0 ? "Hết đề" : `${qCount}c`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
                       {/* Initial Team Score */}
                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">

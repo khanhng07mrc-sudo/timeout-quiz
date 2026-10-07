@@ -1163,24 +1163,282 @@ function isSharedPowerup(cardType) {
 }
 var DEFAULT_SHARED_POWERUP_PROBABILITY = 0.1;
 
+// src/lib/game-engine/question-allocator.ts
+function classifyQuestionDifficulty(q) {
+  if (q.bloomLevel === "ANALYZE" || q.points && q.points >= 30) return "HARD";
+  if (q.bloomLevel === "APPLY" || q.points && q.points > 10 && q.points <= 20) return "MEDIUM";
+  return "EASY";
+}
+function normalizePointsToLevel(diff) {
+  if (diff === "HARD") return 30;
+  if (diff === "MEDIUM") return 20;
+  return 10;
+}
+function shuffle(arr) {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) {
+  const safeTeams = Math.max(1, teamsCount);
+  const qCount = Math.max(1, targetCount);
+  switch (mode) {
+    case "MYSTERY_QUEST": {
+      const turnsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
+      const adjustedTotal = turnsPerTeam * safeTeams;
+      return {
+        matchMaxQuestions: adjustedTotal,
+        mysteryQuestTurnsPerTeam: turnsPerTeam,
+        roundsOrCycles: turnsPerTeam,
+        questionsPerUnit: 1,
+        descriptionVi: `T\u1EF1 \u0111\u1ED9ng ph\xE2n b\u1ED5 ${turnsPerTeam} v\xF2ng thi \u0111\u1EA5u (${turnsPerTeam} l\u01B0\u1EE3t cho m\u1ED7i \u0111\u1ED9i \xD7 ${safeTeams} \u0111\u1ED9i = ${adjustedTotal} c\xE2u). C\xE1c \u0111\u1ED9i ch\u01A1i l\u1EA7n l\u01B0\u1EE3t v\u01B0\u1EE3t th\u1EED th\xE1ch v\xE0 l\u1EADt \xF4 s\u1ED1 ph\u1EADn!`
+      };
+    }
+    case "WAGER": {
+      const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
+      const adjustedTotal = roundsPerTeam * safeTeams;
+      return {
+        matchMaxQuestions: adjustedTotal,
+        wagerRoundsPerTeam: roundsPerTeam,
+        roundsOrCycles: roundsPerTeam,
+        questionsPerUnit: 1,
+        descriptionVi: `T\u1EF1 \u0111\u1ED9ng chia th\xE0nh ${roundsPerTeam} v\xF2ng c\u01B0\u1EE3c \u0111i\u1EC3m b\xED m\u1EADt (${roundsPerTeam} l\u01B0\u1EE3t c\u01B0\u1EE3c/\u0111\u1ED9i \xD7 ${safeTeams} \u0111\u1ED9i = ${adjustedTotal} c\xE2u h\u1ECFi c\xE2n n\xE3o).`
+      };
+    }
+    case "BOUNCEBACK": {
+      const qPerTurn = options?.bouncebackQuestionsPerTurn || 1;
+      const cycles = Math.max(1, Math.floor(qCount / (safeTeams * qPerTurn)));
+      const adjustedTotal = cycles * safeTeams * qPerTurn;
+      return {
+        matchMaxQuestions: adjustedTotal,
+        bouncebackCycles: cycles,
+        bouncebackQuestionsPerTurn: qPerTurn,
+        roundsOrCycles: cycles,
+        questionsPerUnit: qPerTurn,
+        descriptionVi: `T\u1EF1 \u0111\u1ED9ng chia th\xE0nh ${cycles} chu k\u1EF3 V\u1EC1 \u0111\xEDch (${safeTeams} \u0111\u1ED9i \xD7 ${qPerTurn} c\xE2u/l\u01B0\u1EE3t \xD7 ${cycles} chu k\u1EF3 = ${adjustedTotal} c\xE2u). M\u1EDF chu\xF4ng 5s khi \u0111\u1ED9i ch\xEDnh sai.`
+      };
+    }
+    case "ELIMINATION": {
+      const stages = options?.eliminationStages || 3;
+      const interval = Math.max(2, Math.floor(qCount / stages));
+      return {
+        matchMaxQuestions: qCount,
+        eliminationIntervalQuestions: interval,
+        stagesCount: stages,
+        descriptionVi: `T\u1EF1 \u0111\u1ED9ng chia th\xE0nh ${stages} ch\u1EB7ng sinh t\u1ED3n. C\u1EE9 sau ${interval} c\xE2u h\u1ECFi, \u0111\u1ED9i x\u1EBFp ch\xF3t s\u1EBD b\u1ECB lo\u1EA1i th\xE0nh \u0110\u1ED9i B\xF3ng Ma tranh v\xE9 H\u1ED3i Sinh.`
+      };
+    }
+    case "GRID_CARO": {
+      const rows = qCount >= 25 ? 5 : qCount >= 16 ? 4 : 3;
+      const cols = rows;
+      const totalCells = rows * cols;
+      const roundsPerTeam = Math.max(1, Math.floor(qCount / safeTeams));
+      return {
+        matchMaxQuestions: qCount,
+        gridMaxQuestions: qCount,
+        gridRoundsPerTeam: roundsPerTeam,
+        suggestedGrid: { rows, cols, totalCells },
+        descriptionVi: `G\u1EE3i \xFD b\xE0n c\u1EDD ma tr\u1EADn ${rows}\xD7${cols} (${totalCells} \xF4 s\u1ED1) g\u1EAFn c\u1EE9ng 10\u0111/20\u0111/30\u0111, t\u01B0\u01A1ng \u1EE9ng kho\u1EA3ng ${roundsPerTeam} l\u01B0\u1EE3t ch\u1ECDn/\u0111\u1ED9i.`
+      };
+    }
+    case "TOURNAMENT": {
+      const questionsPerMatch = options?.tournamentQuestionsPerMatch || Math.max(2, Math.min(5, Math.floor(qCount / 3)));
+      return {
+        matchMaxQuestions: qCount,
+        tournamentQuestionsPerMatch: questionsPerMatch,
+        descriptionVi: `T\u1EF1 \u0111\u1ED9ng ph\xE2n b\u1ED5 ${questionsPerMatch} c\xE2u h\u1ECFi cho m\u1ED7i c\u1EB7p \u0111\u1ED1i \u0111\u1EA7u 1v1 tr\xEAn nh\xE1nh \u0111\u1EA5u T\u1EE9 k\u1EBFt - B\xE1n k\u1EBFt - Chung k\u1EBFt.`
+      };
+    }
+    case "DICE_RACE": {
+      return {
+        matchMaxQuestions: qCount,
+        diceRaceMaxQuestions: qCount,
+        descriptionVi: `Gi\u1EDBi h\u1EA1n t\u1ED1i \u0111a ${qCount} c\xE2u h\u1ECFi cho cu\u1ED9c \u0111ua marathon (\u0111\u1ED9i c\xE1n \u0111\xEDch tr\u01B0\u1EDBc ho\u1EB7c ti\u1EBFn xa nh\u1EA5t s\u1EBD chi\u1EBFn th\u1EAFng).`
+      };
+    }
+    case "CLASSIC": {
+      const goldCount = Math.max(1, Math.round(qCount * 0.2));
+      return {
+        matchMaxQuestions: qCount,
+        goldQuestionsCount: goldCount,
+        descriptionVi: `Thi \u0111\u1EA5u ${qCount} c\xE2u h\u1ECFi t\xEDnh \u0111i\u1EC3m chu\u1EA9n Kahoot (g\u1ED3m ${goldCount} C\xE2u h\u1ECFi V\xE0ng x2 \u0111i\u1EC3m \u1EDF ch\u1EB7ng v\u1EC1 \u0111\xEDch ph\xE2n lo\u1EA1i).`
+      };
+    }
+    case "BUZZ": {
+      return {
+        matchMaxQuestions: qCount,
+        descriptionVi: `Thi \u0111\u1EA5u chu\xF4ng b\u1EA5m qua ${qCount} c\xE2u h\u1ECFi v\u1EDBi 3 m\u1EE9c \u0111i\u1EC3m 10/20/30 ph\xE2n b\u1ED5 chu\u1EA9n x\xE1c, \u0111\xFAng nh\u1EADn \u0111i\u1EC3m, sai b\u1ECB tr\u1EEB 50%.`
+      };
+    }
+    default: {
+      return {
+        matchMaxQuestions: qCount,
+        descriptionVi: `Thi \u0111\u1EA5u qua ${qCount} c\xE2u h\u1ECFi \u0111\u01B0\u1EE3c ph\xE2n b\u1ED5 t\u1ED1i \u01B0u theo thang \u0111o Bloom.`
+      };
+    }
+  }
+}
+function allocateQuestionsForMatch(params) {
+  const { questions, mode, targetCount, teamsCount = 4, options } = params;
+  const bankTotal = questions.length;
+  const safeTeams = Math.max(1, teamsCount);
+  let desiredCount;
+  if (targetCount && targetCount > 0) {
+    desiredCount = Math.min(bankTotal, targetCount);
+  } else {
+    desiredCount = bankTotal;
+  }
+  const derived = calculateModeDerivedConfig(mode, desiredCount, safeTeams, options);
+  const effectiveTotal = Math.min(bankTotal, derived.matchMaxQuestions || desiredCount);
+  const easyPool = [];
+  const medPool = [];
+  const hardPool = [];
+  for (const q of questions) {
+    const diff = classifyQuestionDifficulty(q);
+    if (diff === "EASY") easyPool.push(q);
+    else if (diff === "MEDIUM") medPool.push(q);
+    else hardPool.push(q);
+  }
+  const shuffledEasy = shuffle(easyPool);
+  const shuffledMed = shuffle(medPool);
+  const shuffledHard = shuffle(hardPool);
+  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.35));
+  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.2));
+  let targetMed = effectiveTotal - targetEasy - targetHard;
+  if (targetMed < 0) {
+    targetMed = 0;
+    targetEasy = Math.max(1, effectiveTotal - targetHard);
+  }
+  const selectedEasy = [];
+  const selectedMed = [];
+  const selectedHard = [];
+  const pickedIds = /* @__PURE__ */ new Set();
+  while (selectedEasy.length < targetEasy && shuffledEasy.length > 0) {
+    const q = shuffledEasy.pop();
+    if (!pickedIds.has(q.id)) {
+      pickedIds.add(q.id);
+      selectedEasy.push(q);
+    }
+  }
+  while (selectedMed.length < targetMed && shuffledMed.length > 0) {
+    const q = shuffledMed.pop();
+    if (!pickedIds.has(q.id)) {
+      pickedIds.add(q.id);
+      selectedMed.push(q);
+    }
+  }
+  while (selectedHard.length < targetHard && shuffledHard.length > 0) {
+    const q = shuffledHard.pop();
+    if (!pickedIds.has(q.id)) {
+      pickedIds.add(q.id);
+      selectedHard.push(q);
+    }
+  }
+  const neededRemaining = effectiveTotal - (selectedEasy.length + selectedMed.length + selectedHard.length);
+  if (neededRemaining > 0) {
+    const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
+    for (let i = 0; i < neededRemaining && i < remainingCandidates.length; i++) {
+      const q = remainingCandidates[i];
+      pickedIds.add(q.id);
+      const diff = classifyQuestionDifficulty(q);
+      if (diff === "EASY") selectedEasy.push(q);
+      else if (diff === "HARD") selectedHard.push(q);
+      else selectedMed.push(q);
+    }
+  }
+  let allocatedQuestions = [];
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER";
+  if (isTurnBasedMode && safeTeams > 1) {
+    const allSelected = [...selectedEasy, ...selectedMed, ...selectedHard];
+    allSelected.sort((a, b) => {
+      const diffScore = { EASY: 1, MEDIUM: 2, HARD: 3 };
+      return diffScore[classifyQuestionDifficulty(a)] - diffScore[classifyQuestionDifficulty(b)];
+    });
+    allocatedQuestions = allSelected;
+  } else {
+    allocatedQuestions = [...selectedEasy, ...selectedMed, ...selectedHard];
+  }
+  allocatedQuestions = allocatedQuestions.slice(0, effectiveTotal);
+  allocatedQuestions = allocatedQuestions.map((q, idx) => {
+    const diff = classifyQuestionDifficulty(q);
+    const normalizedPoints = normalizePointsToLevel(diff);
+    return {
+      ...q,
+      order: idx + 1,
+      points: q.points ? q.points : normalizedPoints,
+      bloomLevel: q.bloomLevel || (diff === "EASY" ? "REMEMBER" : diff === "MEDIUM" ? "APPLY" : "ANALYZE")
+    };
+  });
+  const finalEasy = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "EASY").length;
+  const finalMed = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "MEDIUM").length;
+  const finalHard = allocatedQuestions.filter((q) => classifyQuestionDifficulty(q) === "HARD").length;
+  const total = allocatedQuestions.length || 1;
+  const breakdown = {
+    easyCount: finalEasy,
+    mediumCount: finalMed,
+    hardCount: finalHard,
+    easyPercent: Math.round(finalEasy / total * 100),
+    mediumPercent: Math.round(finalMed / total * 100),
+    hardPercent: Math.round(finalHard / total * 100)
+  };
+  const modeDetails = {
+    mode,
+    totalQuestions: allocatedQuestions.length,
+    teamsCount: safeTeams,
+    descriptionVi: derived.descriptionVi,
+    roundsOrCycles: derived.roundsOrCycles,
+    questionsPerUnit: derived.questionsPerUnit,
+    stagesCount: derived.stagesCount,
+    goldQuestionsCount: derived.goldQuestionsCount,
+    suggestedGrid: derived.suggestedGrid
+  };
+  return {
+    allocatedQuestions,
+    totalQuestions: allocatedQuestions.length,
+    breakdown,
+    modeDetails,
+    targetCount: desiredCount,
+    bankTotal,
+    derivedConfig: {
+      matchMaxQuestions: allocatedQuestions.length,
+      mysteryQuestTurnsPerTeam: derived.mysteryQuestTurnsPerTeam,
+      wagerRoundsPerTeam: derived.wagerRoundsPerTeam,
+      bouncebackCycles: derived.bouncebackCycles,
+      bouncebackQuestionsPerTurn: derived.bouncebackQuestionsPerTurn,
+      eliminationIntervalQuestions: derived.eliminationIntervalQuestions,
+      tournamentQuestionsPerMatch: derived.tournamentQuestionsPerMatch,
+      gridMaxQuestions: derived.gridMaxQuestions,
+      diceRaceMaxQuestions: derived.diceRaceMaxQuestions
+    }
+  };
+}
+
 // src/lib/utils.ts
 function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
   const safeBankTotal = Math.max(1, bankTotal);
   const safeTeamsCount = Math.max(1, teamsCount);
+  const maxQ = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : void 0;
   if (mode === "MYSTERY_QUEST") {
-    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || 2;
-    return Math.min(safeBankTotal, safeTeamsCount * turnsPerTeam);
+    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const modeLimit = safeTeamsCount * turnsPerTeam;
+    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
   }
   if (mode === "WAGER") {
-    const rounds = config?.wagerRoundsPerTeam || 2;
-    return Math.min(safeBankTotal, safeTeamsCount * rounds);
+    const rounds = config?.wagerRoundsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const modeLimit = safeTeamsCount * rounds;
+    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
   }
   if (mode === "BOUNCEBACK") {
-    const cycles = config?.bouncebackCycles || 1;
-    const qPerTurn = config?.bouncebackQuestionsPerTurn || 3;
-    return Math.min(safeBankTotal, safeTeamsCount * cycles * qPerTurn);
+    const qPerTurn = config?.bouncebackQuestionsPerTurn || 1;
+    const cycles = config?.bouncebackCycles || (maxQ ? Math.max(1, Math.floor(maxQ / (safeTeamsCount * qPerTurn))) : 1);
+    const modeLimit = safeTeamsCount * cycles * qPerTurn;
+    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
   }
   if (mode === "GRID_CARO") {
+    if (maxQ) return Math.min(safeBankTotal, maxQ);
     const rounds = config?.gridRoundsPerTeam;
     if (rounds && rounds > 0) {
       return Math.min(safeBankTotal, safeTeamsCount * rounds);
@@ -1191,13 +1449,18 @@ function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
     return safeBankTotal;
   }
   if (mode === "DICE_RACE") {
+    if (maxQ) return Math.min(safeBankTotal, maxQ);
     if (config?.diceRaceMaxQuestions && config.diceRaceMaxQuestions > 0) {
       return Math.min(safeBankTotal, config.diceRaceMaxQuestions);
     }
     return safeBankTotal;
   }
-  if (config?.matchMaxQuestions && config.matchMaxQuestions > 0) {
-    return Math.min(safeBankTotal, config.matchMaxQuestions);
+  if (mode === "TOURNAMENT") {
+    if (maxQ) return Math.min(safeBankTotal, maxQ);
+    return safeBankTotal;
+  }
+  if (maxQ) {
+    return Math.min(safeBankTotal, maxQ);
   }
   return safeBankTotal;
 }
@@ -3232,7 +3495,13 @@ function registerSocketHandlers(io2) {
         points: validPoints,
         timeLimit
       });
-      const totalQuestionsCount = room.quizBank?.questions?.length || 1;
+      const teamsCount = await prisma.team.count({ where: { roomId: room.id } }) || 4;
+      const totalQuestionsCount = getTargetTotalQuestions(
+        room.mode,
+        room.config,
+        teamsCount,
+        room.quizBank?.questions?.length || 1
+      );
       const preparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
@@ -3957,6 +4226,28 @@ function registerSocketHandlers(io2) {
         ensureInitialTeamPowerups(room.id, io2).catch(console.error);
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         const config2 = room.config;
+        const targetQCount = config2?.matchMaxQuestions && config2.matchMaxQuestions > 0 ? config2.matchMaxQuestions : void 0;
+        const allocation = allocateQuestionsForMatch({
+          questions,
+          targetCount: targetQCount,
+          mode: room.mode,
+          teamsCount: teams.length,
+          options: {
+            eliminationStages: config2?.eliminationRounds,
+            bouncebackQuestionsPerTurn: config2?.bouncebackQuestionsPerTurn,
+            tournamentQuestionsPerMatch: config2?.tournamentQuestionsPerMatch
+          }
+        });
+        questions = allocation.allocatedQuestions;
+        roomQuestionsCache.set(room.id, questions);
+        if (room.quizBank) {
+          room.quizBank.questions = questions;
+        }
+        if (allocation.derivedConfig) {
+          Object.assign(config2, allocation.derivedConfig);
+          room.config = config2;
+          prisma.room.update({ where: { id: room.id }, data: { config: config2 } }).catch(console.error);
+        }
         if (room.mode === "CLASSIC") {
           const goldSet = selectGoldQuestions(questions);
           roomGoldQuestions.set(room.id, goldSet);
@@ -4120,10 +4411,16 @@ function registerSocketHandlers(io2) {
         const timer = setTimeout(() => {
           launchWarmupToFirstQuestion();
         }, 5e3);
+        const targetStartingQuestions = getTargetTotalQuestions(
+          room.mode,
+          config2,
+          teams.length,
+          questions.length
+        );
         roomPrepareStates.set(room.id, {
           type: "STARTING",
           questionIndex: 0,
-          totalQuestions: questions.length,
+          totalQuestions: targetStartingQuestions,
           targetTimestamp: Date.now() + 5e3,
           timer,
           skipCallback: launchWarmupToFirstQuestion
@@ -7468,7 +7765,12 @@ async function buildRoomState(roomId) {
     teamMode: room.teamMode,
     status: room.status,
     currentQuestionIndex: room.currentQuestion,
-    totalQuestions: room.quizBank?.questions.length ?? 0,
+    totalQuestions: getTargetTotalQuestions(
+      room.mode,
+      config,
+      teams.length,
+      (roomQuestionsCache.get(roomId) || room.quizBank?.questions)?.length || 0
+    ),
     teams,
     players,
     sharedCards,

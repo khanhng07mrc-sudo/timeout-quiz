@@ -8,6 +8,7 @@ import {
   sanitizeInput,
 } from "@/lib/security";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
+import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 
 const DEFAULT_CONFIG = {
   powerupEnabled: true,
@@ -51,6 +52,7 @@ const DEFAULT_CONFIG = {
   autoTimerStart: false,
   initialTeamScore: 0,
   mysteryQuestTurnsPerTeam: 2,
+  matchMaxQuestions: 0,
 };
 
 export async function POST(req: NextRequest) {
@@ -93,6 +95,21 @@ export async function POST(req: NextRequest) {
     if (config?.allowedPowerups && Array.isArray(config.allowedPowerups)) {
       const filtered = config.allowedPowerups.filter((c: any) => defaultModeAllowed.includes(c));
       mergedConfig.allowedPowerups = filtered.length > 0 ? filtered : defaultModeAllowed;
+    }
+
+    // Auto-synchronize derived configurations if matchMaxQuestions is provided
+    if (config?.matchMaxQuestions && Number(config.matchMaxQuestions) > 0) {
+      const numTeams = Array.isArray(teams) && teams.length > 0 ? teams.length : 4;
+      const maxQ = Number(config.matchMaxQuestions);
+      const derived = calculateModeDerivedConfig(targetMode, maxQ, numTeams);
+      if (derived.mysteryQuestTurnsPerTeam) mergedConfig.mysteryQuestTurnsPerTeam = derived.mysteryQuestTurnsPerTeam;
+      if (derived.wagerRoundsPerTeam) mergedConfig.wagerRoundsPerTeam = derived.wagerRoundsPerTeam;
+      if (derived.bouncebackCycles) mergedConfig.bouncebackCycles = derived.bouncebackCycles;
+      if (derived.eliminationIntervalQuestions) mergedConfig.eliminationIntervalQuestions = derived.eliminationIntervalQuestions;
+      if (derived.tournamentQuestionsPerMatch) mergedConfig.tournamentQuestionsPerMatch = derived.tournamentQuestionsPerMatch;
+      if (derived.gridMaxQuestions) mergedConfig.gridMaxQuestions = derived.gridMaxQuestions;
+      if (derived.diceRaceMaxQuestions) mergedConfig.diceRaceMaxQuestions = derived.diceRaceMaxQuestions;
+      mergedConfig.matchMaxQuestions = derived.matchMaxQuestions;
     }
 
     // ── Strict Validation for GRID_CARO ──────────────────────────────────────────

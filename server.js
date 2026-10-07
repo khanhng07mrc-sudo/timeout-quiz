@@ -8408,12 +8408,35 @@ async function cleanupStaleRooms(options = {}) {
 }
 
 // server.ts
+async function ensureDatabaseSchema() {
+  try {
+    const modes = [
+      "CLASSIC",
+      "BUZZ",
+      "BOUNCEBACK",
+      "ELIMINATION",
+      "TOURNAMENT",
+      "GRID_CARO",
+      "DICE_RACE",
+      "WAGER",
+      "MYSTERY_QUEST"
+    ];
+    for (const m of modes) {
+      await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {
+      });
+    }
+    console.log("[DB] GameMode enum verified/synchronized with database.");
+  } catch (err) {
+    console.warn("[DB] Note on enum sync:", err);
+  }
+}
 var dev = process.env.NODE_ENV !== "production";
 var hostname = process.env.HOSTNAME || "0.0.0.0";
 var port = parseInt(process.env.PORT ?? "3000", 10);
 var app = (0, import_next.default)({ dev, hostname, port });
 var handle = app.getRequestHandler();
-app.prepare().then(() => {
+app.prepare().then(async () => {
+  await ensureDatabaseSchema();
   const httpServer = (0, import_http.createServer)(async (req, res) => {
     try {
       const parsedUrl = (0, import_url.parse)(req.url, true);

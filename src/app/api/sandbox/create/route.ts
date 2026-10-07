@@ -178,19 +178,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const room = await prisma.room.create({
-      data: {
-        code,
-        name: `[Sandbox] ${mode} - 4 Đội Test`,
-        hostId: host.id,
-        quizBankId: quizBank?.id || null,
-        mode,
-        teamMode: "TEAM",
-        status: "LOBBY",
-        config: sandboxConfig,
-        inviteUrl,
-      },
-    });
+    let room;
+    try {
+      room = await prisma.room.create({
+        data: {
+          code,
+          name: `[Sandbox] ${mode} - 4 Đội Test`,
+          hostId: host.id,
+          quizBankId: quizBank?.id || null,
+          mode,
+          teamMode: "TEAM",
+          status: "LOBBY",
+          config: sandboxConfig,
+          inviteUrl,
+        },
+      });
+    } catch (createErr: any) {
+      if (String(createErr).includes("GameMode") || String(createErr).includes("22P02")) {
+        await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${mode}'`).catch(() => {});
+        room = await prisma.room.create({
+          data: {
+            code,
+            name: `[Sandbox] ${mode} - 4 Đội Test`,
+            hostId: host.id,
+            quizBankId: quizBank?.id || null,
+            mode,
+            teamMode: "TEAM",
+            status: "LOBBY",
+            config: sandboxConfig,
+            inviteUrl,
+          },
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     // Create 4 standard teams
     const createdTeams = [];

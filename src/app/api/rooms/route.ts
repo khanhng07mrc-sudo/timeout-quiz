@@ -196,20 +196,44 @@ export async function POST(req: NextRequest) {
     const inviteUrl = generateInviteUrl(code);
     const hostKey = generateHostKey();
 
-    const room = await prisma.room.create({
-      data: {
-        code,
-        name: sanitizeInput(name, 100),
-        hostId: effectiveHostId,
-        hostKey,
-        quizBankId: quizBankId || null,
-        mode: mode ?? "CLASSIC",
-        teamMode: teamMode ?? "INDIVIDUAL",
-        status: "LOBBY",
-        config: mergedConfig,
-        inviteUrl,
-      },
-    });
+    let room;
+    try {
+      room = await prisma.room.create({
+        data: {
+          code,
+          name: sanitizeInput(name, 100),
+          hostId: effectiveHostId,
+          hostKey,
+          quizBankId: quizBankId || null,
+          mode: mode ?? "CLASSIC",
+          teamMode: teamMode ?? "INDIVIDUAL",
+          status: "LOBBY",
+          config: mergedConfig,
+          inviteUrl,
+        },
+      });
+    } catch (createErr: any) {
+      if (String(createErr).includes("GameMode") || String(createErr).includes("22P02")) {
+        const fallbackMode = mode ?? "CLASSIC";
+        await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${fallbackMode}'`).catch(() => {});
+        room = await prisma.room.create({
+          data: {
+            code,
+            name: sanitizeInput(name, 100),
+            hostId: effectiveHostId,
+            hostKey,
+            quizBankId: quizBankId || null,
+            mode: fallbackMode,
+            teamMode: teamMode ?? "INDIVIDUAL",
+            status: "LOBBY",
+            config: mergedConfig,
+            inviteUrl,
+          },
+        });
+      } else {
+        throw createErr;
+      }
+    }
 
     // Create teams if provided
     if (teams && Array.isArray(teams)) {

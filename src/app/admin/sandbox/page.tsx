@@ -5636,7 +5636,7 @@ export default function AdminSandboxPage() {
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-1 text-left">
               <div className="flex-1">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ (8 Mode)</label>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ ({AVAILABLE_MODES.length} Mode)</label>
                 <select
                   value={selectedMode}
                   onChange={(e) => setSelectedMode(e.target.value as GameMode)}

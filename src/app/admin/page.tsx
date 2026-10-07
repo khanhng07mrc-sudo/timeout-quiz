@@ -33,7 +33,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed mb-6">
-              Môi trường test độc lập không cần nhiều thiết bị: 1-click kích hoạt 8 mode chơi với 3 virtual Bot tự động tương tác & điều khiển đa màn hình trên 1 trình duyệt.
+              Môi trường test độc lập không cần nhiều thiết bị: 1-click kích hoạt 9 mode chơi với 3 virtual Bot tự động tương tác & điều khiển đa màn hình trên 1 trình duyệt.
             </p>
           </div>
           <span className="text-sm font-bold text-fuchsia-400 group-hover:text-fuchsia-300 flex items-center gap-1.5 pt-4 border-t border-[#232747]">

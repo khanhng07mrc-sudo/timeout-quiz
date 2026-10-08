@@ -747,7 +747,7 @@ export default function AdminRoomPage() {
   const answerSummaryText = effectiveAwaiting?.answerText || (Array.isArray(effectiveAwaiting?.answer) ? effectiveAwaiting.answer.join(", ") : effectiveAwaiting?.answer) || "(Chưa có đáp án)";
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-8">
+    <div className="space-y-6 pb-24 lg:pb-8 animate-loaded-reveal">
       {/* Back to rooms list */}
       <Link
         href="/admin/rooms"

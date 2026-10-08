@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
+import DualTabTransition from "@/components/ui/DualTabTransition";
 
 interface RoomItem {
   id: string;
@@ -297,7 +298,7 @@ export default function AdminRoomsListPage() {
 
       {/* Sandbox Category Notice */}
       {activeTab === "SANDBOX" && (
-        <div className="glass rounded-2xl p-4 border border-cyan-500/30 bg-cyan-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-cyan-200">
+        <div className="glass rounded-2xl p-4 border border-cyan-500/30 bg-cyan-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-cyan-200 animate-tab-enter">
           <div className="flex items-start gap-2.5">
             <span className="text-2xl shrink-0">🧪</span>
             <div>
@@ -418,10 +419,15 @@ export default function AdminRoomsListPage() {
         </div>
       )}
 
-      <div key={activeTab} className="animate-pull-from-left space-y-4">
+      <DualTabTransition tabKey={activeTab} className="space-y-4">
         {loading ? (
-          <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
-      ) : displayedRooms.length === 0 ? (
+          <div className="py-16 text-center text-muted-foreground flex flex-col items-center justify-center gap-3">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Đang tải danh sách phòng...</span>
+          </div>
+        ) : (
+          <div className="animate-loaded-reveal space-y-4">
+            {displayedRooms.length === 0 ? (
         activeTab === "OFFICIAL" ? (
           <div className="glass rounded-2xl p-12 text-center border border-amber-500/20">
             <div className="flex justify-center mb-3 text-4xl">🏆</div>
@@ -683,7 +689,9 @@ export default function AdminRoomsListPage() {
           })}
         </div>
       )}
-      </div>
+          </div>
+        )}
+      </DualTabTransition>
     </div>
   );
 }

@@ -150,18 +150,19 @@ export default function DisplayIndexPage() {
           </div>
 
           {loadingRooms ? (
-            <div className="quiz-card p-8 text-center text-slate-400 text-sm">
-              Đang tải danh sách phòng...
+            <div className="quiz-card p-8 text-center text-slate-400 text-sm flex flex-col items-center justify-center gap-3">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span>Đang tải danh sách phòng...</span>
             </div>
           ) : recentRooms.length === 0 ? (
-            <div className="quiz-card p-6 text-center text-slate-500 text-sm">
+            <div className="quiz-card p-6 text-center text-slate-500 text-sm animate-loaded-reveal">
               Chưa có phòng thi nào đang mở.{" "}
               <Link href="/admin/rooms/create" className="text-purple-400 font-bold hover:underline">
                 Tạo phòng mới ngay
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-loaded-reveal">
               {recentRooms.map((room) => {
                 const isPlaying = room.status === "PLAYING";
                 const isLobby = room.status === "LOBBY";

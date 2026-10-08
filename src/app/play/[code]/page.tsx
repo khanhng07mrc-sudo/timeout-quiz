@@ -1391,7 +1391,7 @@ export default function PlayPage() {
   return (
     <>
       {reconnectBanner}
-      <div className={`flex flex-col mx-auto w-full ${isSandbox ? "h-full min-h-0 p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-full overflow-y-auto" : "min-h-screen p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl"}`}>
+      <div className={`flex flex-col mx-auto w-full animate-loaded-reveal ${isSandbox ? "h-full min-h-0 p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-full overflow-y-auto" : "min-h-screen p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl"}`}>
       {/* Header with score and sound toggle */}
       <div className="flex items-center gap-1.5 sm:gap-2">
         <div className="flex-1 min-w-0">

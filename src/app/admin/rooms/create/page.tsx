@@ -7,6 +7,7 @@ import PowerupIcon from "@/components/ui/PowerupIcon";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
+import DualTabTransition from "@/components/ui/DualTabTransition";
 import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
@@ -296,7 +297,7 @@ export default function CreateRoomPage() {
   };
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl animate-loaded-reveal">
       <div className="mb-8">
         <h1 className="text-3xl font-black">Tạo phòng mới</h1>
         <div className="flex gap-2 mt-4">
@@ -309,8 +310,10 @@ export default function CreateRoomPage() {
         </p>
       </div>
 
-      {/* Step 1: Basic settings */}
-      {step === 1 && (
+      {/* Step Container with Dual Transition */}
+      <DualTabTransition tabKey={step}>
+        {/* Step 1: Basic settings */}
+        {step === 1 && (
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-2">Tên phòng *</label>
@@ -1969,6 +1972,7 @@ export default function CreateRoomPage() {
           </div>
         </div>
       )}
+      </DualTabTransition>
 
       {error && (
         <div className="mt-4 text-destructive text-sm text-center bg-destructive/10 rounded-lg p-3">{error}</div>

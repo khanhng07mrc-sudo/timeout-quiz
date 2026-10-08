@@ -21,7 +21,7 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
   const isTeamMode = roomState.teamMode === "TEAM";
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 max-w-4xl mx-auto w-full">
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 max-w-4xl mx-auto w-full animate-loaded-reveal">
       {/* Error notification */}
       {errorMessage && (
         <div className="w-full mb-4 p-3.5 rounded-xl bg-red-600/90 text-white font-bold text-center animate-bounce-in shadow-lg border border-red-400">

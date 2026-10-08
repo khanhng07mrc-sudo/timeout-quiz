@@ -1171,7 +1171,7 @@ export default function DisplayPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2.5 sm:gap-3 p-2 sm:p-3 relative" onClick={handleUnlockAudio}>
+    <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2.5 sm:gap-3 p-2 sm:p-3 relative animate-loaded-reveal" onClick={handleUnlockAudio}>
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}

@@ -759,7 +759,7 @@ export default function QuizBankPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-loaded-reveal">
         {/* Left Col: List of Banks */}
         <div className="glass rounded-2xl p-4 flex flex-col gap-3">
           <h2 className="font-bold text-lg px-2 flex items-center gap-2 whitespace-nowrap">
@@ -767,11 +767,14 @@ export default function QuizBankPage() {
             <span className="whitespace-nowrap">Danh sách bộ câu hỏi</span>
           </h2>
           {loading ? (
-            <p className="text-muted-foreground p-3">Đang tải...</p>
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-3">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs">Đang tải bộ câu hỏi...</span>
+            </div>
           ) : banks.length === 0 ? (
-            <p className="text-muted-foreground p-3">Chưa có bộ câu hỏi nào</p>
+            <p className="text-muted-foreground p-3 animate-loaded-reveal">Chưa có bộ câu hỏi nào</p>
           ) : (
-            <div className="space-y-2 overflow-y-auto max-h-[70vh]">
+            <div className="space-y-2 overflow-y-auto max-h-[70vh] animate-loaded-reveal">
               {banks.map((b) => (
                 <div
                   key={b.id}
@@ -894,15 +897,18 @@ export default function QuizBankPage() {
               </div>
 
               {loadingQuestions ? (
-                <div className="py-12 text-center text-muted-foreground">Đang tải câu hỏi...</div>
+                <div className="py-12 text-center text-muted-foreground flex flex-col items-center justify-center gap-2">
+                  <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs">Đang tải câu hỏi...</span>
+                </div>
               ) : questions.length === 0 ? (
-                <div className="py-12 text-center">
+                <div className="py-12 text-center animate-loaded-reveal">
                   <p className="text-3xl mb-2">📝</p>
                   <p className="text-muted-foreground font-medium">Chưa có câu hỏi nào trong bộ này</p>
                   <p className="text-xs text-muted-foreground mt-1">Bấm nút "Thêm câu hỏi" hoặc dùng tính năng "Import" file để bắt đầu</p>
                 </div>
               ) : (
-                <div className="space-y-3 overflow-y-auto max-h-[65vh]">
+                <div className="space-y-3 overflow-y-auto max-h-[65vh] animate-loaded-reveal">
                   {questions.map((q, i) => (
                     <div key={q.id || i} className="p-4 rounded-xl border border-border bg-card/40 space-y-2 relative group">
                       <div className="flex items-center justify-between">

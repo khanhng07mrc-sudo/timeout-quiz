@@ -6432,7 +6432,7 @@ export default function AdminSandboxPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2 overflow-hidden animate-loaded-reveal">
           {/* ══════════════════════════════════════════════════════════════════
               LEFT COLUMN (7 cols ~58%): Large Display + Host Master Controls
              ══════════════════════════════════════════════════════════════════ */}
@@ -6681,7 +6681,7 @@ export default function AdminSandboxPage() {
               MOBILE HOST CONTROL PANEL (Only visible on mobile when mobileTab === 'HOST')
              ══════════════════════════════════════════════════════════════════ */}
           <div
-            className={`lg:hidden flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] ${
+            className={`lg:hidden flex-col min-h-0 h-full gap-2.5 overflow-y-auto p-2 glass rounded-2xl border border-white/10 bg-[#0c0d18] animate-tab-enter ${
               mobileTab === "HOST" ? "flex" : "hidden"
             }`}
           >

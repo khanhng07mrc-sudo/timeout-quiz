@@ -470,6 +470,83 @@ select, option, optgroup {
   animation: tabFadeSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* ═════════════════════════════════════════════════════════════════════════
+   POST-LOADING FADE & ZOOM REVEAL (Xuất hiện mượt mà sau khi tải xong)
+   ═════════════════════════════════════════════════════════════════════════ */
+@keyframes loadedReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.animate-loaded-reveal {
+  animation: loadedReveal 0.36s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
+@keyframes loadedZoom {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-loaded-zoom {
+  animation: loadedZoom 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   DUAL TAB TRANSITION: ẨN CŨ - HIỆN MỚI
+   ═════════════════════════════════════════════════════════════════════════ */
+@keyframes tabExitOld {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.97) translateY(-6px);
+    filter: blur(2px);
+  }
+}
+
+@keyframes tabEnterNew {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.animate-tab-exit {
+  animation: tabExitOld 0.16s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  pointer-events: none;
+  will-change: transform, opacity, filter;
+}
+
+.animate-tab-enter {
+  animation: tabEnterNew 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity, filter;
+}
+
 /* Standardized interactive button/link transitions */
 button,
 a,

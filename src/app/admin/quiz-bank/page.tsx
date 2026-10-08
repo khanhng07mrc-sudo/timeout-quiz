@@ -822,7 +822,7 @@ export default function QuizBankPage() {
         </div>
 
         {/* Right Col: Questions inside selected bank */}
-        <div className="md:col-span-2 glass rounded-2xl p-6 flex flex-col gap-4">
+        <div key={selectedBank?.id || "empty"} className="md:col-span-2 glass rounded-2xl p-6 flex flex-col gap-4 animate-pull-from-left">
           {selectedBank ? (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">

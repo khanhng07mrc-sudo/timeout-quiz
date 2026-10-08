@@ -184,8 +184,6 @@ export default function AdminSandboxPage() {
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
   const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
-  const [entryAnimMode, setEntryAnimMode] = useState<"PULL_LEFT" | "ZOOM_ORIGIN">("PULL_LEFT");
-  const [replayKey, setReplayKey] = useState<number>(0);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
@@ -5958,13 +5956,8 @@ export default function AdminSandboxPage() {
 
       {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
       {!code ? (
-        <div
-          key={replayKey}
-          className={`flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6 ${
-            entryAnimMode === "PULL_LEFT" ? "animate-pull-from-left" : "animate-zoom-from-origin"
-          }`}
-        >
-          {/* ── Top Hero Banner & Animation Mode Switcher ── */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6 animate-pull-from-left">
+          {/* ── Top Hero Banner ── */}
           <div className="text-center space-y-3 max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-sm">
               <span className="text-base">🧪</span>
@@ -5976,55 +5969,6 @@ export default function AdminSandboxPage() {
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải với 4 đội thi. Hãy chọn 1 chế độ bên dưới để bắt đầu kiểm thử ngay lập tức.
             </p>
-
-            {/* Interactive Animation Control Switcher */}
-            <div className="pt-1 flex items-center justify-center gap-2 flex-wrap">
-              <span className="text-[11px] font-bold text-slate-400">✨ Kiểu hiệu ứng:</span>
-              <div className="inline-flex p-1 rounded-xl bg-black/40 border border-white/10 gap-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEntryAnimMode("PULL_LEFT");
-                    setReplayKey((k) => k + 1);
-                  }}
-                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    entryAnimMode === "PULL_LEFT"
-                      ? "bg-cyan-600 text-white shadow glow-neon-cyan"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                  title="Hiệu ứng kéo toàn bộ nội dung từ cụm tab bên trái ra"
-                >
-                  <span>👈</span>
-                  <span>Kéo từ tab trái</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEntryAnimMode("ZOOM_ORIGIN");
-                    setReplayKey((k) => k + 1);
-                  }}
-                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    entryAnimMode === "ZOOM_ORIGIN"
-                      ? "bg-purple-600 text-white shadow glow-neon-purple"
-                      : "text-slate-400 hover:text-white"
-                  }`}
-                  title="Hiệu ứng phóng to zoom từ nút/tâm ra toàn cảnh"
-                >
-                  <span>🚀</span>
-                  <span>Zoom toàn cảnh</span>
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setReplayKey((k) => k + 1)}
-                className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-cyan-300 font-bold text-xs border border-cyan-500/30 flex items-center gap-1 cursor-pointer transition active:scale-95"
-                title="Kích hoạt chạy lại hiệu ứng chuyển động ngay bây giờ"
-              >
-                <span>🔄</span>
-                <span>Chạy lại hiệu ứng</span>
-              </button>
-            </div>
           </div>
 
           {/* ── Floating Control & Config Bar ── */}
@@ -6212,7 +6156,7 @@ export default function AdminSandboxPage() {
             {(() => {
               const currentMeta = AVAILABLE_MODES.find((m) => m.mode === selectedMode) || AVAILABLE_MODES[0];
               return (
-                <div className="mt-6 glass rounded-3xl p-5 sm:p-6 border-2 border-white/20 bg-[#121424]/95 shadow-2xl animate-zoom-in-center relative overflow-hidden">
+                <div key={selectedMode} className="mt-6 glass rounded-3xl p-5 sm:p-6 border-2 border-white/20 bg-[#121424]/95 shadow-2xl animate-zoom-in-center relative overflow-hidden">
                   <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentMeta.gradient}`} />
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
                     <div className="flex items-start gap-4">

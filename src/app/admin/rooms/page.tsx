@@ -336,7 +336,7 @@ export default function AdminRoomsListPage() {
           onClick={() => !cleaningUp && setShowCleanupModal(false)}
         >
           <div
-            className="w-full max-w-lg glass rounded-3xl border border-white/20 p-6 flex flex-col gap-5 shadow-2xl bg-[#121324]/95 text-white"
+            className="w-full max-w-lg glass rounded-3xl border border-white/20 p-6 flex flex-col gap-5 shadow-2xl bg-[#121324]/95 text-white animate-zoom-in-center"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
@@ -418,8 +418,9 @@ export default function AdminRoomsListPage() {
         </div>
       )}
 
-      {loading ? (
-        <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
+      <div key={activeTab} className="animate-pull-from-left space-y-4">
+        {loading ? (
+          <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
       ) : displayedRooms.length === 0 ? (
         activeTab === "OFFICIAL" ? (
           <div className="glass rounded-2xl p-12 text-center border border-amber-500/20">
@@ -682,6 +683,7 @@ export default function AdminRoomsListPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

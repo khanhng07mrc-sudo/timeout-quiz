@@ -184,6 +184,8 @@ export default function AdminSandboxPage() {
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
   const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
+  const [entryAnimMode, setEntryAnimMode] = useState<"PULL_LEFT" | "ZOOM_ORIGIN">("PULL_LEFT");
+  const [replayKey, setReplayKey] = useState<number>(0);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
@@ -4728,14 +4730,18 @@ export default function AdminSandboxPage() {
     >
       {/* ── Cinematic Morph & Zoom-Expand Transition Overlay ── */}
       {isLaunchingAnim && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fade-in overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-cyan-950/30 to-black pointer-events-none" />
-          <div className="relative z-10 text-center flex flex-col items-center gap-4 max-w-md mx-auto animate-zoom-in-center">
-            <div className={`w-28 h-28 rounded-3xl bg-gradient-to-tr ${launchingMeta?.gradient || "from-purple-600 to-cyan-500"} flex items-center justify-center text-5xl shadow-2xl animate-morph-pulse ring-4 ring-white/20`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-fade-in overflow-hidden">
+          {/* Shockwave Rings */}
+          <div className="absolute w-72 h-72 rounded-full border-2 border-cyan-400/60 animate-shockwave pointer-events-none" />
+          <div className="absolute w-96 h-96 rounded-full border-2 border-purple-500/40 animate-shockwave pointer-events-none" style={{ animationDelay: "350ms" }} />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/50 via-cyan-950/40 to-black pointer-events-none" />
+
+          <div className="relative z-10 text-center flex flex-col items-center gap-4 max-w-md mx-auto animate-warp-expand">
+            <div className={`w-32 h-32 rounded-3xl bg-gradient-to-tr ${launchingMeta?.gradient || "from-purple-600 to-cyan-500"} flex items-center justify-center text-6xl shadow-2xl animate-morph-pulse ring-4 ring-white/30`}>
               {launchingMeta?.emoji || "🧪"}
             </div>
             <div className="space-y-2">
-              <span className="text-[11px] px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold tracking-wider uppercase animate-pulse">
+              <span className="text-xs px-3.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-black tracking-wider uppercase animate-pulse">
                 ⚡ INITIALIZING SANDBOX ENGINE
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white">
@@ -4745,8 +4751,8 @@ export default function AdminSandboxPage() {
                 Đang kết nối môi trường thử nghiệm độc lập trên máy · Tự động tách đôi màn hình Màn chiếu và Thiết bị thí sinh!
               </p>
             </div>
-            <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 mt-2">
-              <div className="h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full animate-shimmer" style={{ width: "100%" }} />
+            <div className="w-72 h-2.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 mt-2 relative">
+              <div className="h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full animate-shimmer-sweep" style={{ width: "100%" }} />
             </div>
           </div>
         </div>
@@ -5952,9 +5958,14 @@ export default function AdminSandboxPage() {
 
       {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
       {!code ? (
-        <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6">
-          {/* ── Top Hero Banner ── */}
-          <div className="text-center space-y-2.5 max-w-3xl mx-auto">
+        <div
+          key={replayKey}
+          className={`flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6 ${
+            entryAnimMode === "PULL_LEFT" ? "animate-pull-from-left" : "animate-zoom-from-origin"
+          }`}
+        >
+          {/* ── Top Hero Banner & Animation Mode Switcher ── */}
+          <div className="text-center space-y-3 max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-sm">
               <span className="text-base">🧪</span>
               <span>Sandbox Studio · Môi trường thử nghiệm độc lập trên máy của bạn</span>
@@ -5965,6 +5976,55 @@ export default function AdminSandboxPage() {
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải với 4 đội thi. Hãy chọn 1 chế độ bên dưới để bắt đầu kiểm thử ngay lập tức.
             </p>
+
+            {/* Interactive Animation Control Switcher */}
+            <div className="pt-1 flex items-center justify-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-400">✨ Kiểu hiệu ứng:</span>
+              <div className="inline-flex p-1 rounded-xl bg-black/40 border border-white/10 gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryAnimMode("PULL_LEFT");
+                    setReplayKey((k) => k + 1);
+                  }}
+                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    entryAnimMode === "PULL_LEFT"
+                      ? "bg-cyan-600 text-white shadow glow-neon-cyan"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Hiệu ứng kéo toàn bộ nội dung từ cụm tab bên trái ra"
+                >
+                  <span>👈</span>
+                  <span>Kéo từ tab trái</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEntryAnimMode("ZOOM_ORIGIN");
+                    setReplayKey((k) => k + 1);
+                  }}
+                  className={`px-3 py-1 rounded-lg font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    entryAnimMode === "ZOOM_ORIGIN"
+                      ? "bg-purple-600 text-white shadow glow-neon-purple"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Hiệu ứng phóng to zoom từ nút/tâm ra toàn cảnh"
+                >
+                  <span>🚀</span>
+                  <span>Zoom toàn cảnh</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setReplayKey((k) => k + 1)}
+                className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-cyan-300 font-bold text-xs border border-cyan-500/30 flex items-center gap-1 cursor-pointer transition active:scale-95"
+                title="Kích hoạt chạy lại hiệu ứng chuyển động ngay bây giờ"
+              >
+                <span>🔄</span>
+                <span>Chạy lại hiệu ứng</span>
+              </button>
+            </div>
           </div>
 
           {/* ── Floating Control & Config Bar ── */}
@@ -6032,7 +6092,7 @@ export default function AdminSandboxPage() {
           </div>
 
           {/* ── Visual Mode Cards Grid (9 Modes) ── */}
-          <div className="max-w-5xl mx-auto pb-8">
+          <div className="max-w-5xl mx-auto pb-4">
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách chế độ:</span>
@@ -6041,26 +6101,27 @@ export default function AdminSandboxPage() {
                 </span>
               </div>
               <span className="text-xs text-slate-400 hidden sm:inline">
-                💡 Nhấp vào thẻ để chọn · Nhấp đúp để khởi chạy ngay
+                💡 Nhấp vào thẻ để chọn & xem chi tiết · Nhấp đúp để khởi chạy ngay
               </span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4.5">
-              {AVAILABLE_MODES.map((m) => {
+              {AVAILABLE_MODES.map((m, mIdx) => {
                 const isSelected = selectedMode === m.mode;
                 return (
                   <div
                     key={m.mode}
                     onClick={() => setSelectedMode(m.mode)}
                     onDoubleClick={() => handleLaunchSandbox(m.mode)}
-                    className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between ${
+                    style={{
+                      animationDelay: `${mIdx * 45}ms`,
+                      boxShadow: isSelected ? `0 0 35px -5px ${m.accentColor}66` : undefined,
+                    }}
+                    className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between animate-card-stagger ${
                       isSelected
-                        ? `bg-[#16182e] border-2 border-white/60 ${m.glowClass} scale-[1.02] shadow-2xl`
+                        ? `bg-[#16182e] border-2 border-white/70 ${m.glowClass} scale-[1.02] shadow-2xl`
                         : "glass border-white/10 hover:border-white/30 hover:bg-white/5 hover:scale-[1.01]"
                     }`}
-                    style={{
-                      boxShadow: isSelected ? `0 0 30px -5px ${m.accentColor}55` : undefined,
-                    }}
                   >
                     {/* Top decorative gradient bar when selected */}
                     {isSelected && (
@@ -6073,7 +6134,9 @@ export default function AdminSandboxPage() {
                       {/* Header: Emoji box + Category badge */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div
-                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/10`}
+                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/10 ${
+                            isSelected ? "animate-bounce" : ""
+                          }`}
                         >
                           {m.emoji}
                         </div>
@@ -6130,9 +6193,9 @@ export default function AdminSandboxPage() {
                           setSelectedMode(m.mode);
                           handleLaunchSandbox(m.mode);
                         }}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
                           isSelected
-                            ? "bg-purple-600 hover:bg-purple-500 text-white shadow"
+                            ? "bg-purple-600 hover:bg-purple-500 text-white shadow glow-neon-purple"
                             : "glass text-slate-400 hover:text-white hover:bg-white/10"
                         }`}
                       >
@@ -6144,6 +6207,61 @@ export default function AdminSandboxPage() {
                 );
               })}
             </div>
+
+            {/* ── Interactive Mode Showcase & Quick Action Drawer ── */}
+            {(() => {
+              const currentMeta = AVAILABLE_MODES.find((m) => m.mode === selectedMode) || AVAILABLE_MODES[0];
+              return (
+                <div className="mt-6 glass rounded-3xl p-5 sm:p-6 border-2 border-white/20 bg-[#121424]/95 shadow-2xl animate-zoom-in-center relative overflow-hidden">
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentMeta.gradient}`} />
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr ${currentMeta.gradient} flex items-center justify-center text-3xl shadow-xl shrink-0 ring-4 ring-white/10`}>
+                        {currentMeta.emoji}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-lg sm:text-xl font-black text-white">{currentMeta.name}</h3>
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold uppercase">
+                            {currentMeta.badge}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+                          {currentMeta.tagline}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap pt-1">
+                          {currentMeta.perks.map((p, pI) => (
+                            <span key={pI} className="text-[11px] px-2.5 py-0.5 rounded-lg bg-white/10 text-white font-medium border border-white/10">
+                              ✓ {p}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 self-end lg:self-center flex-wrap">
+                      <button
+                        type="button"
+                        disabled={creating}
+                        onClick={() => handleLaunchSandbox(currentMeta.mode)}
+                        className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white font-black text-xs sm:text-sm shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer glow-neon-purple whitespace-nowrap"
+                      >
+                        <span>⚡</span>
+                        <span>Khởi chạy Online ({currentMeta.mode})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLaunchOffline}
+                        className="px-5 py-3 rounded-2xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center gap-1.5 cursor-pointer glow-neon-amber whitespace-nowrap"
+                      >
+                        <span>🔌</span>
+                        <span>Chạy Offline (0ms)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       ) : (

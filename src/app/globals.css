@@ -246,3 +246,106 @@ select, option, optgroup {
 .glow-neon-rose {
   box-shadow: 0 0 20px -2px rgba(244, 63, 94, 0.5), 0 0 8px rgba(244, 63, 94, 0.3);
 }
+
+@keyframes pullFromLeft {
+  0% {
+    opacity: 0;
+    transform: translate3d(-100px, 0, 0) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+    transform: translate3d(8px, 0, 0) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-pull-from-left {
+  animation: pullFromLeft 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes zoomFromOrigin {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+    filter: blur(6px);
+  }
+  70% {
+    transform: scale(1.03);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0px);
+  }
+}
+
+.animate-zoom-from-origin {
+  animation: zoomFromOrigin 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cardStagger {
+  0% {
+    opacity: 0;
+    transform: translate3d(-30px, 20px, 0) scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.animate-card-stagger {
+  animation: cardStagger 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes warpExpand {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    filter: brightness(1.6) blur(10px);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.15);
+    filter: brightness(1.2) blur(0px);
+  }
+  75% {
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-warp-expand {
+  animation: warpExpand 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes shockwave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.animate-shockwave {
+  animation: shockwave 1.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+}
+
+@keyframes shimmerSweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-shimmer-sweep {
+  animation: shimmerSweep 2.4s infinite ease-in-out;
+}

@@ -1038,6 +1038,7 @@ export default function AdminSandboxPage() {
       matchStarting: matchStarting,
       questionPrepare: questionPrepare,
       intermission: intermissionRef.current,
+      mysteryQuestState: roomStateRef.current?.mysteryQuestState,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
@@ -1045,10 +1046,8 @@ export default function AdminSandboxPage() {
   }, [matchStarting, questionPrepare]);
 
   useEffect(() => {
-    if (isOfflineSandbox) {
-      syncToIframes();
-    }
-  }, [isOfflineSandbox, roomState, currentQuestion, revealPayload, syncToIframes]);
+    syncToIframes();
+  }, [roomState, currentQuestion, revealPayload, syncToIframes]);
 
   // Immediately recalibrate timers and resync iframes when switching back to this tab
   useEffect(() => {
@@ -6534,9 +6533,7 @@ export default function AdminSandboxPage() {
                   className="w-full h-full border-0"
                   allow="autoplay; camera; microphone"
                   onLoad={() => {
-                    if (isOfflineSandbox) {
-                      syncToIframes();
-                    }
+                    syncToIframes();
                   }}
                 />
               </div>

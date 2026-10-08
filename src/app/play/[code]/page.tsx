@@ -1511,7 +1511,7 @@ export default function PlayPage() {
                     Boolean(roomState.diceRaceState.canRollDice)
                   }
                   onRollDice={handleRollDice}
-                  mode={revealPayload ? "full" : "mini"}
+                  mode="mini"
                 />
               </div>
             )}

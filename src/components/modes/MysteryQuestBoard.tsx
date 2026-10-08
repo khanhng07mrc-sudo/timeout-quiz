@@ -262,77 +262,76 @@ export default function MysteryQuestBoard({
 
         {/* Phase: DECISION_CHOICE (Team chooses between Safe Base Points or Gamble Minigame) */}
         {phase === "DECISION_CHOICE" && (
-          <div className="w-full max-w-4xl mx-auto space-y-4 animate-slide-up">
-            <div className="p-4 rounded-2xl bg-black/60 border border-amber-500/40 text-center backdrop-blur-md shadow-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider mb-2">
+          <div className="w-full max-w-4xl mx-auto space-y-2 sm:space-y-3 animate-slide-up">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-black/60 border border-amber-500/40 text-center backdrop-blur-md shadow-xl">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1">
                 <span>⭐</span> TRẢ LỜI CHÍNH XÁC! LỰA CHỌN QUYẾT ĐỊNH
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white">
+              <h3 className="text-base sm:text-lg font-black text-white">
                 Chúc mừng Đội <span style={{ color: currentTurnTeamColor }}>{currentTurnTeamName}</span>!
               </h3>
-              <p className="text-xs sm:text-sm text-white/80 mt-1 max-w-xl mx-auto">
+              <p className="text-[11px] sm:text-xs text-white/80 mt-0.5 max-w-xl mx-auto line-clamp-2">
                 Bạn muốn nhận chắc chắn số điểm gốc của câu hỏi hay đem số điểm này vào quỹ để mạo hiểm cùng Minigame?
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {/* Option A: Nhận điểm an toàn */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-emerald-950/80 via-black/80 to-emerald-950/80 border-2 border-emerald-400/60 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-emerald-300 transition-all">
-                <div className="space-y-3">
-                  <div className="text-4xl">🛡️</div>
-                  <h4 className="text-base sm:text-lg font-black text-emerald-300 uppercase tracking-wide">
-                    Phương Án 1: Nhận Điểm An Toàn
+              <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-emerald-950/80 via-black/80 to-emerald-950/80 border-2 border-emerald-400/60 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-emerald-300 transition-all">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <div className="text-2xl sm:text-3xl">🛡️</div>
+                  <h4 className="text-xs sm:text-sm font-black text-emerald-300 uppercase tracking-wide">
+                    Phương Án 1: Nhận An Toàn
                   </h4>
-                  <div className="py-2">
-                    <span className="text-4xl sm:text-5xl font-black font-mono text-emerald-400">
+                  <div className="py-0.5">
+                    <span className="text-2xl sm:text-4xl font-black font-mono text-emerald-400">
                       +{baseQuestionPoints || 10}
                     </span>
-                    <span className="text-emerald-300 font-bold ml-1 text-sm sm:text-base">điểm</span>
+                    <span className="text-emerald-300 font-bold ml-1 text-xs sm:text-sm">điểm</span>
                   </div>
-                  <p className="text-xs text-white/70 leading-relaxed">
-                    Nhận trọn vẹn điểm số câu hỏi trực tiếp vào bảng điểm. Kết thúc lượt thi với tỉ lệ an toàn 100%, không gặp bất kỳ rủi ro bom nổ nào.
+                  <p className="text-[10px] sm:text-xs text-white/70 leading-snug line-clamp-2">
+                    Nhận trọn vẹn điểm số câu hỏi trực tiếp vào bảng điểm. Tỉ lệ an toàn 100%, không lo bom nổ.
                   </p>
                 </div>
 
-                <div className="pt-5">
+                <div className="pt-2 sm:pt-3">
                   {canInteractDecision ? (
                     <button
                       type="button"
                       onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
-                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                      className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
                     >
-                      🛡️ Chốt Nhận +{baseQuestionPoints || 10}đ An Toàn
+                      🛡️ Chốt +{baseQuestionPoints || 10}đ An Toàn
                     </button>
                   ) : (
-                    <div className="py-2.5 px-4 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-400 italic">
-                      Đang đợi Đội {currentTurnTeamName} quyết định...
+                    <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
+                      Đang đợi Đội {currentTurnTeamName}...
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Option B: Chơi Minigame */}
-              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-purple-950/80 via-black/80 to-amber-950/80 border-2 border-amber-400/60 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-amber-300 transition-all">
-                <div className="space-y-3">
-                  <div className="text-4xl">🎲</div>
-                  <h4 className="text-base sm:text-lg font-black text-amber-300 uppercase tracking-wide">
-                    Phương Án 2: Vào Chơi Minigame
+              <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-purple-950/80 via-black/80 to-amber-950/80 border-2 border-amber-400/60 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-amber-300 transition-all">
+                <div className="space-y-1 sm:space-y-1.5">
+                  <div className="text-2xl sm:text-3xl">🎲</div>
+                  <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+                    Phương Án 2: Vào Minigame
                   </h4>
-                  <div className="text-xs sm:text-sm font-bold text-indigo-300 flex items-center justify-center gap-1.5">
+                  <div className="text-[10px] sm:text-xs font-bold text-indigo-300 flex items-center justify-center gap-1 truncate">
                     <span>Thử thách:</span>
-                    <strong className="text-amber-200">{variantInfo.title}</strong>
+                    <strong className="text-amber-200 truncate">{variantInfo.title}</strong>
                   </div>
 
                   {/* Starting Pot */}
-                  <div className="py-1">
-                    <span className="text-[11px] text-slate-300 uppercase tracking-wider block">Quỹ Điểm Khởi Điểm:</span>
-                    <span className="text-3xl sm:text-4xl font-black font-mono text-amber-400">
+                  <div className="py-0.5">
+                    <span className="text-2xl sm:text-4xl font-black font-mono text-amber-400">
                       {(() => {
                         const perkType = typeof promoPerk === "string" ? promoPerk : promoPerk?.type;
                         return `+${(baseQuestionPoints || 10) + (perkType === "EXTRA_POT_PROMO" ? 5 : 0)}`;
                       })()}
                     </span>
-                    <span className="text-amber-300 font-bold ml-1 text-xs">điểm</span>
+                    <span className="text-amber-300 font-bold ml-1 text-xs sm:text-sm">điểm</span>
                   </div>
 
                   {/* Promo Perk Badge */}
@@ -340,55 +339,42 @@ export default function MysteryQuestBoard({
                     const perkType = typeof promoPerk === "string" ? promoPerk : promoPerk?.type;
                     if (!perkType) return null;
                     return (
-                      <div className="p-2.5 rounded-xl bg-purple-900/40 border border-purple-400/40 text-xs text-purple-200 font-bold flex items-center justify-center gap-1.5">
+                      <div className="py-1 px-1.5 rounded-lg bg-purple-900/40 border border-purple-400/40 text-[10px] text-purple-200 font-bold flex items-center justify-center gap-1 truncate">
                         {perkType === "SHIELD_PROMO" && (
                           <>
                             <span>🛡️</span>
-                            <span>Ưu đãi: Tặng 01 Khiên Thần (Chặn 1 quả Bom)!</span>
+                            <span className="truncate">Tặng 01 Khiên Chặn Bom!</span>
                           </>
                         )}
                         {perkType === "EXTRA_POT_PROMO" && (
                           <>
                             <span>🎁</span>
-                            <span>Ưu đãi: Khởi đầu với Quỹ Thưởng +5đ bổ sung!</span>
+                            <span className="truncate">Quỹ thưởng +5đ ban đầu!</span>
                           </>
                         )}
                         {perkType === "DOUBLE_PROMO" && (
                           <>
                             <span>⚡</span>
-                            <span>Ưu đãi: Tăng cơ hội xuất hiện Thẻ X2 Điểm Quỹ!</span>
+                            <span className="truncate">Tăng tỉ lệ x2 điểm quỹ!</span>
                           </>
                         )}
                       </div>
                     );
                   })()}
-
-                  {/* Risk/Reward tier breakdown */}
-                  <div className="text-[11px] text-white/70 bg-black/40 p-2 rounded-lg border border-white/5 space-y-0.5">
-                    {(baseQuestionPoints || 10) <= 10 && (
-                      <div>⚠️ Câu 10đ: Rủi ro bom ~35% | Thưởng nhỏ +5đ, +10đ, +20đ, có Bẫy Hố Sâu</div>
-                    )}
-                    {(baseQuestionPoints || 10) === 20 && (
-                      <div>⚖️ Câu 20đ: Rủi ro bom ~25% | Thưởng cân bằng +10đ, +20đ, +30đ, x2</div>
-                    )}
-                    {(baseQuestionPoints || 10) >= 30 && (
-                      <div>🔥 Câu 30đ: Rủi ro bom ~20% | Thưởng lớn +15đ, +20đ, +30đ, +50đ, x2</div>
-                    )}
-                  </div>
                 </div>
 
-                <div className="pt-5">
+                <div className="pt-2 sm:pt-3">
                   {canInteractDecision ? (
                     <button
                       type="button"
                       onClick={() => onChooseAction?.("PLAY_MINIGAME")}
-                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-orange-900/50 border border-amber-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                      className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-orange-900/50 border border-amber-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
                     >
-                      🎲 Mạo Hiểm Vào Chơi Minigame
+                      🎲 Vào Chơi Minigame
                     </button>
                   ) : (
-                    <div className="py-2.5 px-4 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-400 italic">
-                      Đang đợi Đội {currentTurnTeamName} quyết định...
+                    <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
+                      Đang đợi Đội {currentTurnTeamName}...
                     </div>
                   )}
                 </div>
@@ -397,22 +383,22 @@ export default function MysteryQuestBoard({
 
             {/* Admin / Sandbox override prompt */}
             {(isAdmin || isSandbox) && (
-              <div className="p-3 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-300">
-                <span className="font-bold flex items-center gap-1.5">
-                  <span>👑</span> Quyền Admin / MC Sandbox:
+              <div className="p-2 rounded-xl bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                <span className="font-bold flex items-center gap-1 truncate">
+                  <span>👑</span> Quyền Admin / MC:
                 </span>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
-                    className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer transition text-xs"
+                    className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer transition text-[11px]"
                   >
                     MC chọn Nhận An Toàn (+{baseQuestionPoints || 10}đ)
                   </button>
                   <button
                     type="button"
                     onClick={() => onChooseAction?.("PLAY_MINIGAME")}
-                    className="px-3 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-bold cursor-pointer transition text-xs"
+                    className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-bold cursor-pointer transition text-[11px]"
                   >
                     MC chọn Chơi Minigame
                   </button>
@@ -427,9 +413,9 @@ export default function MysteryQuestBoard({
           <div className="flex flex-col items-center justify-center text-center space-y-3">
             {/* VARIANT 1: MEMORY PAIRS HUD */}
             {miniGameType === "MEMORY_PAIRS" && (
-              <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
                 <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-black text-indigo-300 uppercase tracking-wider">
+                  <span className="font-black text-indigo-300 uppercase tracking-wider text-[11px]">
                     🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (10 THẺ)
                   </span>
                   <div className="flex items-center gap-2">
@@ -442,12 +428,12 @@ export default function MysteryQuestBoard({
                     >
                       {memoryPairsState?.round === 2 ? "🔥 VÒNG 2 SINH TỬ" : "✨ VÒNG 1"}
                     </span>
-                    <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
+                    <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
                       Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 3}
                     </span>
                   </div>
                 </div>
-                <p className="text-xs text-white/80">
+                <p className="text-[11px] text-white/80 leading-snug">
                   {memoryPairsState?.round === 2
                     ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 3 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
                     : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 3 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
@@ -457,22 +443,22 @@ export default function MysteryQuestBoard({
 
             {/* MEMORY PAIRS SECOND CHANCE MODAL */}
             {miniGameType === "MEMORY_PAIRS" && memoryPairsState?.promptSecondChance && (
-              <div className="w-full max-w-xl mx-auto p-5 rounded-3xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-3 z-30">
-                <div className="text-4xl animate-pulse">🔀</div>
-                <h4 className="text-base sm:text-lg font-black text-amber-300 uppercase tracking-wider">
+              <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-2 z-30">
+                <div className="text-3xl animate-pulse">🔀</div>
+                <h4 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wider">
                   HẾT 3 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
                 </h4>
-                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
                   Bạn chưa ghép được cặp nào trong Vòng 1. Không bị mất điểm!
                   <br />
                   Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 3 lượt tiếp theo</strong> (nhưng nếu trượt cả 3 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong>!
                 </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={() => (onPairsDecision ? onPairsDecision("CASH_OUT") : onCashOut?.())}
                     disabled={!canInteract}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs sm:text-sm border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
                     💰 DỪNG LẠI & NHẬN +{baseQuestionPoints || 10}Đ CÂU HỎI
                   </button>
@@ -480,7 +466,7 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => onPairsDecision?.("PLAY_ROUND_2")}
                     disabled={!canInteract}
-                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
                     🔥 CHƠI TIẾP VÒNG 2 (3 LƯỢT TIẾP THEO)
                   </button>
@@ -490,11 +476,11 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 2: ONE SHOT DOORS HUD */}
             {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-              <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl">
-                <div className="text-xs font-black text-amber-300 uppercase tracking-wider mb-1">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl">
+                <div className="text-xs font-black text-amber-300 uppercase tracking-wider mb-0.5">
                   🚪 CHỌN 1 TRONG 3 CÁNH CỬA HOÀNG GIA
                 </div>
-                <p className="text-xs text-white/80">
+                <p className="text-[11px] text-white/80 leading-snug">
                   Chỉ được chọn DUY NHẤT 1 cửa! Gồm 1 Đại Thưởng (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), 1 An Toàn (+{baseQuestionPoints || 10}đ) và 1 Bẫy Bom (-{baseQuestionPoints || 10}đ)!
                 </p>
               </div>
@@ -502,64 +488,50 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 4: TAROT DESTINY HUD */}
             {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-              <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl">
-                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-1">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl">
+                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5">
                   🔮 RÚT 1 LÁ BÀI TAROT THẦN SỐ VẬN MỆNH
                 </div>
-                <p className="text-xs text-white/80">
-                  Rút duy nhất 1 lá bài định mệnh để giải mã quẻ bài thần bí: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
+                <p className="text-[11px] text-white/80 leading-snug">
+                  Rút duy nhất 1 lá bài định mệnh để giải mã quẻ bài: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
                 </p>
               </div>
             )}
 
             {/* VARIANT 3: PUSH YOUR LUCK HUD (The Classic Pot) */}
             {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && (
-              <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-black/60 border-2 border-amber-400/50 backdrop-blur-md shadow-2xl relative overflow-hidden">
-                <div className="flex items-center justify-between gap-4 mb-1">
-                  <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-amber-300">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border-2 border-amber-400/50 backdrop-blur-md shadow-2xl relative overflow-hidden">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-300">
                     <span>💰</span> HŨ ĐIỂM TÍCH LŨY HIỆN TẠI
                   </div>
                   {potMultiplier > 1 && (
-                    <div className="px-2.5 py-0.5 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-xs uppercase tracking-widest border border-white/20 animate-pulse">
+                    <div className="px-2 py-0.2 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black text-[10px] uppercase tracking-widest border border-white/20 animate-pulse">
                       ⚡ X{potMultiplier}
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-baseline justify-center gap-2 py-1">
-                  <span className="text-4xl sm:text-5xl font-black bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 bg-clip-text text-transparent drop-shadow-md font-mono">
+                <div className="flex items-baseline justify-center gap-1.5 py-0.5">
+                  <span className="text-2xl sm:text-3xl font-black bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 bg-clip-text text-transparent drop-shadow-md font-mono">
                     +{potPoints.toLocaleString()}
                   </span>
-                  <span className="text-base font-black text-amber-300">điểm</span>
+                  <span className="text-xs font-black text-amber-300">điểm</span>
                 </div>
 
                 {mysteryState?.stolenPointsPot && mysteryState.stolenPointsPot > 0 ? (
-                  <div className="flex justify-center mt-0.5">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[11px] font-black animate-pulse shadow-sm">
+                  <div className="flex justify-center">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.2 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[10px] font-black animate-pulse shadow-sm">
                       <span>🗡️</span>
                       <span>Gồm +{mysteryState.stolenPointsPot}đ cướp từ đối thủ dẫn đầu!</span>
                     </span>
                   </div>
                 ) : null}
 
-                <div className="flex items-center justify-between text-[11px] text-white/70 pt-2 border-t border-white/10 mt-1">
+                <div className="flex items-center justify-between text-[10px] text-white/70 pt-1 border-t border-white/10 mt-0.5">
                   <span>Đã lật: <strong className="text-white">{cardsFlippedCount}</strong> ô</span>
                   <span>Còn lại: <strong className="text-white">{tiles.filter((t) => !t.isOpened).length}</strong> ô bí ẩn</span>
                 </div>
-              </div>
-            )}
-
-            {/* Decision Controls: Cash Out for Push-Your-Luck */}
-            {canCashOut && (
-              <div className="flex items-center justify-center pt-1 animate-bounce-in">
-                <button
-                  type="button"
-                  onClick={onCashOut}
-                  className="px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-sm sm:text-base shadow-2xl shadow-emerald-900/50 border-2 border-emerald-300 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
-                >
-                  <span>💰</span>
-                  <span>DỪNG LẠI & BẢO TOÀN +{potPoints} ĐIỂM</span>
-                </button>
               </div>
             )}
           </div>
@@ -567,18 +539,18 @@ export default function MysteryQuestBoard({
 
         {/* Phase: TURN_SUMMARY */}
         {phase === "TURN_SUMMARY" && (
-          <div className="w-full max-w-2xl mx-auto text-center animate-slide-up space-y-3">
+          <div className="w-full max-w-xl mx-auto text-center animate-slide-up space-y-2">
             {turnFinishedReason === "QUESTION_FAILED" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-rose-500/80 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">❌</div>
-                <h3 className="text-2xl font-black text-rose-400">TRẢ LỜI CHƯA CHÍNH XÁC!</h3>
-                <p className="text-xs text-slate-300 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-rose-500/80 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">❌</div>
+                <h3 className="text-lg sm:text-xl font-black text-rose-400">TRẢ LỜI CHƯA CHÍNH XÁC!</h3>
+                <p className="text-xs text-slate-300 max-w-md mx-auto">
                   Đội <strong className="text-white">{currentTurnTeamName}</strong> chưa trả lời đúng câu hỏi. Lượt thi kết thúc với 0 điểm tích lũy.
                 </p>
               </div>
             ) : turnFinishedReason === "BOMB_HIT" && bombExploded ? (
               <div
-                className={`p-6 rounded-3xl bg-gradient-to-b border-2 shadow-2xl space-y-3 ${
+                className={`p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b border-2 shadow-2xl space-y-2 ${
                   bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                     ? "from-amber-950/95 via-yellow-950/90 to-black/95 border-amber-400"
                     : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
@@ -586,7 +558,7 @@ export default function MysteryQuestBoard({
                     : "from-slate-900/95 via-gray-950/90 to-black/95 border-slate-400"
                 }`}
               >
-                <div className="text-5xl animate-bounce">
+                <div className="text-3xl sm:text-4xl animate-bounce">
                   {bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                     ? "🎁"
                     : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
@@ -594,7 +566,7 @@ export default function MysteryQuestBoard({
                     : "💨"}
                 </div>
                 <h3
-                  className={`text-2xl font-black ${
+                  className={`text-lg sm:text-xl font-black ${
                     bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                       ? "text-amber-300"
                       : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
@@ -604,9 +576,9 @@ export default function MysteryQuestBoard({
                 >
                   {bombExploded.title}
                 </h3>
-                <p className="text-xs text-white/80 max-w-lg mx-auto">{bombExploded.description}</p>
+                <p className="text-xs text-white/80 max-w-md mx-auto">{bombExploded.description}</p>
                 <div
-                  className={`p-2.5 rounded-xl border font-bold text-xs ${
+                  className={`p-2 rounded-xl border font-bold text-[11px] ${
                     bombExploded.type === "CHARITY" || bombExploded.type === "GIFT"
                       ? "bg-amber-900/40 border-amber-400/50 text-amber-200"
                       : bombExploded.type === "DARK" || bombExploded.type === "DOOM"
@@ -619,12 +591,12 @@ export default function MysteryQuestBoard({
 
                 {/* Danh sách các đội nhận điểm thưởng từ Bom Hắc Ám hoặc Bom Từ Thiện */}
                 {bombExploded.recipients && bombExploded.recipients.length > 0 && (
-                  <div className="pt-1 flex flex-wrap items-center justify-center gap-2">
-                    <span className="text-[11px] font-bold text-purple-300/80 uppercase">Đội nhận điểm:</span>
+                  <div className="pt-0.5 flex flex-wrap items-center justify-center gap-1.5">
+                    <span className="text-[10px] font-bold text-purple-300/80 uppercase">Đội nhận điểm:</span>
                     {bombExploded.recipients.map((rec, idx) => (
                       <span
                         key={rec.teamId || idx}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-xs font-black shadow-sm"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-200 text-[11px] font-black shadow-sm"
                       >
                         <span>🎁</span>
                         <span>{rec.teamName}</span>
@@ -635,8 +607,8 @@ export default function MysteryQuestBoard({
                 )}
 
                 {bombExploded.recipientTeamName && (bombExploded.type === "CHARITY" || bombExploded.type === "GIFT") && (
-                  <div className="pt-1 flex items-center justify-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-200 text-xs font-black shadow-sm">
+                  <div className="pt-0.5 flex items-center justify-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-200 text-[11px] font-black shadow-sm">
                       <span>🏆</span>
                       <span>{bombExploded.recipientTeamName} (Đội cao điểm nhất)</span>
                       <span className="text-emerald-300 font-mono">+{bombExploded.giftedPoints || bombExploded.deductedPoints}đ</span>
@@ -645,67 +617,67 @@ export default function MysteryQuestBoard({
                 )}
               </div>
             ) : turnFinishedReason === "ALL_CLEARED" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-amber-950/90 to-black/90 border-2 border-amber-400 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">🏆</div>
-                <h3 className="text-2xl font-black text-amber-300">ĐẠI THẮNG QUÉT SẠCH TẤT CẢ Ô!</h3>
-                <p className="text-xs text-amber-100 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/90 to-black/90 border-2 border-amber-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">🏆</div>
+                <h3 className="text-lg sm:text-xl font-black text-amber-300">ĐẠI THẮNG QUÉT SẠCH TẤT CẢ Ô!</h3>
+                <p className="text-xs text-amber-100 max-w-md mx-auto">
                   Tuyệt đỉnh! Đội {currentTurnTeamName} đã lật hết toàn bộ phần thưởng mà không dính bom!
                 </p>
-                <div className="p-2.5 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 font-black text-sm">
+                <div className="p-2 rounded-xl bg-amber-500/20 border border-amber-400/50 text-amber-300 font-black text-xs">
                   {storyResult?.rewardText || "Cộng thưởng an toàn trọn vẹn!"}
                 </div>
               </div>
             ) : turnFinishedReason === "PAIR_MATCHED" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-indigo-950/90 to-black/90 border-2 border-indigo-400 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">🎉</div>
-                <h3 className="text-2xl font-black text-indigo-300">GHÉP CẶP THÀNH CÔNG!</h3>
-                <p className="text-xs text-indigo-100 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/90 to-black/90 border-2 border-indigo-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">🎉</div>
+                <h3 className="text-lg sm:text-xl font-black text-indigo-300">GHÉP CẶP THÀNH CÔNG!</h3>
+                <p className="text-xs text-indigo-100 max-w-md mx-auto">
                   {storyResult?.rewardText || "Đã ghép chính xác cặp thẻ đầu tiên!"}
                 </p>
               </div>
             ) : turnFinishedReason === "DOOR_CHOSEN" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-amber-950/90 to-black/90 border-2 border-amber-400 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">🚪</div>
-                <h3 className="text-2xl font-black text-amber-300">CÁNH CỬA ĐÃ MỞ!</h3>
-                <p className="text-xs text-amber-100 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/90 to-black/90 border-2 border-amber-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">🚪</div>
+                <h3 className="text-lg sm:text-xl font-black text-amber-300">CÁNH CỬA ĐÃ MỞ!</h3>
+                <p className="text-xs text-amber-100 max-w-md mx-auto">
                   {storyResult?.rewardText || "Nhận thưởng thành công từ cánh cửa đã chọn!"}
                 </p>
               </div>
             ) : turnFinishedReason === "TAROT_DRAWN" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-purple-950/90 to-black/90 border-2 border-purple-400 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">🔮</div>
-                <h3 className="text-2xl font-black text-purple-300">QUẺ BÀI ĐỊNH MỆNH ĐÃ KHAI MỞ!</h3>
-                <p className="text-xs text-purple-100 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-purple-950/90 to-black/90 border-2 border-purple-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">🔮</div>
+                <h3 className="text-lg sm:text-xl font-black text-purple-300">QUẺ BÀI ĐỊNH MỆNH ĐÃ KHAI MỞ!</h3>
+                <p className="text-xs text-purple-100 max-w-md mx-auto">
                   {storyResult?.rewardText || "Đã rút bài Tarot vận mệnh thành công!"}
                 </p>
               </div>
             ) : turnFinishedReason === "MAX_ATTEMPTS" ? (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900/90 to-black/90 border-2 border-amber-500 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">⏳</div>
-                <h3 className="text-2xl font-black text-amber-400">HẾT LƯỢT LẬT THỬ!</h3>
-                <p className="text-xs text-white/80 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-slate-900/90 to-black/90 border-2 border-amber-500 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">⏳</div>
+                <h3 className="text-lg sm:text-xl font-black text-amber-400">HẾT LƯỢT LẬT THỬ!</h3>
+                <p className="text-xs text-white/80 max-w-md mx-auto">
                   Đã sử dụng hết số lượt lật bài mà chưa mở được cặp trùng nhau. Lượt kết thúc với 0 điểm.
                 </p>
               </div>
             ) : (
-              <div className="p-6 rounded-3xl bg-gradient-to-b from-emerald-950/90 to-black/90 border-2 border-emerald-400 shadow-2xl space-y-2">
-                <div className="text-5xl animate-bounce">💰</div>
-                <h3 className="text-2xl font-black text-emerald-300">BẢO TOÀN ĐIỂM THÀNH CÔNG!</h3>
-                <p className="text-xs text-emerald-100 max-w-lg mx-auto">
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-emerald-950/90 to-black/90 border-2 border-emerald-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">💰</div>
+                <h3 className="text-lg sm:text-xl font-black text-emerald-300">BẢO TOÀN ĐIỂM THÀNH CÔNG!</h3>
+                <p className="text-xs text-emerald-100 max-w-md mx-auto">
                   Lựa chọn sáng suốt! Đội {currentTurnTeamName} đã bảo toàn an toàn quỹ điểm về tài khoản!
                 </p>
-                <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black text-base font-mono">
+                <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black text-sm font-mono">
                   {storyResult?.rewardText || "Bảo toàn thành công!"}
                 </div>
               </div>
             )}
 
             {/* Host Advance Bar & Status */}
-            <div className="p-3.5 rounded-2xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2.5">
               <span className="text-xs text-slate-300 flex items-center gap-2 font-bold">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
                 {isAdmin || isSandbox ? (
-                  <span>Lượt thi đã kết thúc. Vui lòng bấm nút bên cạnh để chuyển sang lượt/câu hỏi tiếp theo.</span>
+                  <span>Lượt thi đã kết thúc. Vui lòng bấm nút bên cạnh để chuyển sang lượt tiếp theo.</span>
                 ) : (
                   <span>Đang chờ Admin / Quản trò chuyển sang lượt hoặc câu hỏi tiếp theo...</span>
                 )}
@@ -715,7 +687,7 @@ export default function MysteryQuestBoard({
                 <button
                   type="button"
                   onClick={onAdvanceTurn}
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg border border-white/20 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
                 >
                   CHUYỂN SANG LƯỢT TIẾP THEO ➔
                 </button>
@@ -732,7 +704,7 @@ export default function MysteryQuestBoard({
             1. VARIANT: ONE_SHOT_DOORS (3 Giant Doors)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-3xl mx-auto py-1">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3.5 max-w-2xl mx-auto py-1">
             {tiles.map((tile) => {
               const isChosen = oneShotState?.chosenTileId === tile.id;
               const isBomb = tile.type !== "REWARD";
@@ -746,33 +718,33 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract}
-                    className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[35vh] rounded-2xl p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
+                    className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
                       canInteract
                         ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-103 shadow-2xl hover:shadow-amber-500/50 group"
                         : "bg-black/50 border-white/20 opacity-80 cursor-default"
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className="w-6 h-6 rounded-full bg-black/60 border border-white/30 text-[11px] font-black text-white flex items-center justify-center">
+                      <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/60 border border-white/30 text-[10px] sm:text-[11px] font-black text-white flex items-center justify-center">
                         #{tile.id}
                       </span>
                       {canInteract && (
-                        <span className="text-[9px] font-black text-yellow-300 animate-pulse">
+                        <span className="text-[8px] sm:text-[9px] font-black text-yellow-300 animate-pulse">
                           CHỌN CỬA ✨
                         </span>
                       )}
                     </div>
 
                     {/* Giant Door Graphic */}
-                    <div className="text-4xl sm:text-6xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
+                    <div className="text-3xl sm:text-5xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
                       🚪
                     </div>
 
-                    <div className="w-full text-center pb-1">
+                    <div className="w-full text-center pb-0.5">
                       <span className="text-xs sm:text-sm font-black text-white block">
                         {tile.label}
                       </span>
-                      <span className="text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
+                      <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
                         Cánh Cửa Bí Ẩn
                       </span>
                     </div>
@@ -784,7 +756,7 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[35vh] rounded-2xl p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
+                  className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
                     isChosen ? "ring-4 ring-yellow-400 scale-103 z-10" : "opacity-80"
                   } ${
                     isBomb
@@ -843,7 +815,7 @@ export default function MysteryQuestBoard({
             2. VARIANT: TAROT_DESTINY (5 Mystical Vertical Floating Cards)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 max-w-4xl mx-auto py-3">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 max-w-3xl mx-auto py-1">
             {tiles.map((tile) => {
               const isChosen = tarotState?.chosenCardId === tile.id;
               const isBomb = tile.type !== "REWARD";
@@ -857,9 +829,9 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract}
-                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[36vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
+                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
                       canInteract
-                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1.5 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
+                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
                         : "border-white/10 opacity-80 cursor-default"
                     }`}
                   >
@@ -869,20 +841,20 @@ export default function MysteryQuestBoard({
                     </div>
 
                     {/* Card Back Overlays */}
-                    <div className="w-full flex items-center justify-between z-10 px-1 pt-0.5">
-                      <span className="w-5 h-5 rounded-full bg-black/80 border border-amber-400/80 text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
+                    <div className="w-full flex items-center justify-between z-10 px-0.5 pt-0.5">
+                      <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
                         #{tile.id}
                       </span>
                       {canInteract && (
-                        <span className="text-[9px] font-black text-amber-300 px-1.5 py-0.5 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
-                          RÚT LÁ ✨
+                        <span className="text-[8px] sm:text-[9px] font-black text-amber-300 px-1 py-0.2 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
+                          RÚT ✨
                         </span>
                       )}
                     </div>
 
-                    <div className="z-10 w-full text-center pb-1">
-                      <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
-                        TAROT VẬN MỆNH
+                    <div className="z-10 w-full text-center pb-0.5">
+                      <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
+                        TAROT
                       </span>
                     </div>
                   </button>
@@ -893,42 +865,42 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[36vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
-                    isChosen ? "ring-4 ring-yellow-400 scale-103 z-20" : "opacity-90"
+                  className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
+                    isChosen ? "ring-2 sm:ring-4 ring-yellow-400 scale-103 z-20" : "opacity-90"
                   } bg-gradient-to-b ${meta.bgGradient} ${meta.borderColor}`}
                   style={{
                     boxShadow: isChosen
-                      ? `0 0 30px ${meta.glowColor}, 0 0 10px rgba(250, 204, 21, 0.6)`
-                      : `0 8px 20px ${meta.glowColor}`,
+                      ? `0 0 25px ${meta.glowColor}, 0 0 8px rgba(250, 204, 21, 0.6)`
+                      : `0 4px 15px ${meta.glowColor}`,
                   }}
                 >
                   {/* Card Header: Roman Numeral & English Name in 1 clean line */}
                   <div className="w-full flex items-center justify-between border-b border-white/15 pb-0.5">
-                    <span className="text-[10px] font-mono font-bold opacity-75 text-amber-200/80">
+                    <span className="text-[9px] font-mono font-bold opacity-75 text-amber-200/80">
                       #{tile.id}
                     </span>
-                    <div className="flex items-center gap-1">
-                      <span className="font-serif font-black text-xs text-amber-300 tracking-wider">
+                    <div className="flex items-center gap-0.5 sm:gap-1">
+                      <span className="font-serif font-black text-[10px] sm:text-xs text-amber-300 tracking-wider">
                         {meta.roman}
                       </span>
-                      <span className="text-[9px] font-bold text-white/90 tracking-wide uppercase">
+                      <span className="text-[8px] sm:text-[9px] font-bold text-white/90 tracking-wide uppercase truncate max-w-[50px] sm:max-w-none">
                         · {meta.nameEn}
                       </span>
                     </div>
                   </div>
 
                   {/* Card Center: Rich Tarot Artwork SVG */}
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 my-auto relative flex items-center justify-center p-0.5 drop-shadow-2xl">
+                  <div className="w-10 h-10 sm:w-14 sm:h-14 my-auto relative flex items-center justify-center p-0.5 drop-shadow-2xl">
                     <TarotCardEmblem cardKey={meta.key} />
                   </div>
 
                   {/* Card Footer: Vietnamese Title & Single-line Score Pill */}
                   <div className="w-full text-center space-y-0.5">
-                    <p className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
+                    <p className="text-[10px] sm:text-xs font-black text-white tracking-wide truncate">
                       {meta.nameVi}
                     </p>
                     <div
-                      className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-black font-mono shadow-md whitespace-nowrap ${
+                      className={`inline-flex items-center justify-center px-1.5 py-0.2 rounded-full text-[9px] sm:text-[11px] font-black font-mono shadow-md whitespace-nowrap ${
                         isBomb
                           ? "bg-rose-500/30 border border-rose-400/80 text-rose-200"
                           : meta.key === "THE_KNIGHT"
@@ -937,10 +909,10 @@ export default function MysteryQuestBoard({
                       }`}
                     >
                       {isBomb
-                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Thần Chết`
+                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                         : meta.key === "THE_KNIGHT"
                         ? `Cướp ${tile.deltaPoints}đ`
-                        : `+${tile.deltaPoints}đ Thưởng`}
+                        : `+${tile.deltaPoints}đ`}
                     </div>
                   </div>
                 </div>
@@ -953,7 +925,7 @@ export default function MysteryQuestBoard({
             3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
         ════════════════════════════════════════════════════════════════════ */}
         {miniGameType === "MEMORY_PAIRS" && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3.5 max-w-3xl mx-auto py-2">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1">
             {tiles.map((tile) => {
               const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
               const isBomb = tile.type !== "REWARD";
@@ -966,24 +938,24 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract || memoryPairsState?.isMismatchResolving}
-                    className={`relative aspect-[4/3] sm:aspect-[3/4] max-h-[24vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
+                    className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
                       canInteract && !memoryPairsState?.isMismatchResolving
-                        ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-103 shadow-xl group"
+                        ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-102 shadow-xl group"
                         : "bg-black/40 border-white/10 opacity-75 cursor-default"
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-[10px] font-black text-white flex items-center justify-center font-mono">
+                      <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
                         #{tile.id}
                       </span>
                     </div>
 
-                    <div className="text-2xl sm:text-3xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
+                    <div className="text-xl sm:text-2xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
                       🃏
                     </div>
 
                     <div className="w-full text-center">
-                      <span className="text-[11px] sm:text-xs font-black text-white block">
+                      <span className="text-[9px] sm:text-[10px] font-black text-white block truncate">
                         {tile.label}
                       </span>
                     </div>
@@ -996,8 +968,8 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[4/3] sm:aspect-[3/4] max-h-[24vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
-                    isMatched ? "ring-4 ring-yellow-400 scale-103 z-10" : ""
+                  className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
+                    isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
                   } ${
                     isBomb
                       ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
@@ -1007,7 +979,7 @@ export default function MysteryQuestBoard({
                   }`}
                 >
                   <div className="w-full flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold opacity-70">#{tile.id}</span>
+                    <span className="text-[9px] font-mono font-bold opacity-70">#{tile.id}</span>
                     <span
                       className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
                         isMatched
@@ -1021,25 +993,25 @@ export default function MysteryQuestBoard({
                           : "bg-emerald-500/30 text-emerald-300"
                       }`}
                     >
-                      {isMatched ? (isSteal ? "CƯỚP ĐIỂM! 🗡️" : "TRÙNG KHỚP! ⭐") : isBomb ? "BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
+                      {isMatched ? (isSteal ? "CƯỚP! 🗡️" : "CẶP! ⭐") : isBomb ? "BOM" : isSteal ? "CƯỚP 🗡️" : "THƯỞNG"}
                     </span>
                   </div>
 
-                  <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl">
+                  <div className="text-lg sm:text-xl my-auto text-center drop-shadow-xl">
                     {tile.icon}
                   </div>
 
                   <div className="w-full text-center">
-                    <p className="text-[10px] font-black text-white leading-tight truncate">
+                    <p className="text-[9px] sm:text-[10px] font-black text-white leading-tight truncate">
                       {tile.storyTitle}
                     </p>
                     <p
-                      className={`text-[11px] sm:text-xs font-black font-mono mt-0.5 ${
+                      className={`text-[9px] sm:text-[10px] font-black font-mono mt-0.2 ${
                         isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
                       }`}
                     >
                       {isBomb
-                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng`
+                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                         : isSteal
                         ? `Cướp +${tile.deltaPoints}đ`
                         : `+${tile.deltaPoints}đ`}
@@ -1061,13 +1033,13 @@ export default function MysteryQuestBoard({
           const nextCardNum = unopenedTile?.id ?? (cardsFlippedCount + 1);
 
           return (
-            <div className="flex flex-col items-center justify-center space-y-6 max-w-3xl mx-auto py-2">
+            <div className="flex flex-col items-center justify-center space-y-2.5 sm:space-y-3 max-w-lg mx-auto py-1">
               {/* ── 2 Main Card Areas: Deck & Latest Drawn Card ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 items-center justify-center w-full max-w-xl">
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-4 items-center justify-center w-full max-w-md">
                 {/* ── LEFT: CHỒNG BÀI RÚT (STACKED DECK) ── */}
                 <div className="flex flex-col items-center">
-                  <div className="text-xs font-black uppercase tracking-wider text-amber-300 mb-2.5 flex items-center gap-1.5">
-                    <span>📚</span> CHỒNG BÀI RÚT (VÔ HẠN)
+                  <div className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300 mb-1 flex items-center gap-1">
+                    <span>📚</span> BÀI RÚT (VÔ HẠN)
                   </div>
 
                   {/* 3D Stack container */}
@@ -1092,36 +1064,36 @@ export default function MysteryQuestBoard({
                     }}
                   >
                     {/* Depth shadow layer 3 */}
-                    <div className="absolute inset-0 translate-x-3.5 translate-y-3.5 rounded-2xl bg-indigo-950/70 border border-white/10 shadow-lg pointer-events-none" />
+                    <div className="absolute inset-0 translate-x-2 translate-y-2 rounded-xl bg-indigo-950/70 border border-white/10 shadow-lg pointer-events-none" />
                     {/* Depth shadow layer 2 */}
-                    <div className="absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-2xl bg-purple-950/80 border border-white/15 shadow-xl pointer-events-none" />
+                    <div className="absolute inset-0 translate-x-1 translate-y-1 rounded-xl bg-purple-950/80 border border-white/15 shadow-xl pointer-events-none" />
 
                     {/* Top card of the stack */}
                     <div
-                      className={`relative w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 flex flex-col items-center justify-between border-2 transition-all duration-300 shadow-2xl ${
+                      className={`relative w-28 sm:w-36 aspect-[3/4] max-h-[19vh] sm:max-h-[23vh] rounded-xl sm:rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 shadow-2xl ${
                         canInteract
-                          ? "bg-gradient-to-b from-indigo-900 via-purple-950 to-slate-950 border-amber-400/80 hover:border-yellow-300 hover:-translate-y-1.5 hover:shadow-amber-500/40 active:scale-95 group-hover:scale-102"
+                          ? "bg-gradient-to-b from-indigo-900 via-purple-950 to-slate-950 border-amber-400/80 hover:border-yellow-300 hover:-translate-y-1 hover:shadow-amber-500/40 active:scale-95 group-hover:scale-102"
                           : "bg-black/60 border-white/10 opacity-70 cursor-default"
-                      } ${isDrawingAnimation ? "-translate-y-6 rotate-3 scale-105 ring-4 ring-amber-300" : ""}`}
+                      } ${isDrawingAnimation ? "-translate-y-4 rotate-2 scale-105 ring-4 ring-amber-300" : ""}`}
                     >
-                      <div className="w-full flex items-center justify-between text-xs font-mono font-bold text-amber-300">
+                      <div className="w-full flex items-center justify-between text-[10px] font-mono font-bold text-amber-300">
                         <span>#{nextCardNum}</span>
-                        <span className="text-[9px] uppercase font-bold text-white/70 px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
+                        <span className="text-[8px] uppercase font-bold text-white/70 px-1 py-0.2 rounded bg-black/40 border border-white/10">
                           Chồng bài
                         </span>
                       </div>
 
-                      <div className="text-4xl sm:text-5xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
+                      <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
                         🃏
                       </div>
 
                       <div className="w-full text-center">
-                        <span className="text-xs sm:text-sm font-black text-white block">
-                          Lá Bài #{nextCardNum}
+                        <span className="text-[11px] sm:text-xs font-black text-white block">
+                          Lá #{nextCardNum}
                         </span>
                         {canInteract && (
-                          <span className="text-[9px] font-extrabold text-amber-300 uppercase tracking-widest mt-1 block animate-bounce">
-                            CLICK ĐỂ RÚT ✨
+                          <span className="text-[8px] font-extrabold text-amber-300 uppercase tracking-widest mt-0.5 block animate-bounce">
+                            CLICK RÚT ✨
                           </span>
                         )}
                       </div>
@@ -1131,28 +1103,28 @@ export default function MysteryQuestBoard({
 
                 {/* ── RIGHT: LÁ BÀI VỪA RÚT (DRAWN CARD) ── */}
                 <div className="flex flex-col items-center">
-                  <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2 flex items-center gap-1.5">
-                    <span>✨</span> LÁ BÀI VỪA RÚT
+                  <div className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-emerald-300 mb-1 flex items-center gap-1">
+                    <span>✨</span> LÁ VỪA RÚT
                   </div>
 
                   {latestCard ? (
                     <div
-                      className={`w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
+                      className={`w-28 sm:w-36 aspect-[3/4] max-h-[19vh] sm:max-h-[23vh] rounded-xl sm:rounded-2xl p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
                         latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
-                          ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200 ring-4 ring-purple-500/40"
+                          ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200 ring-2 ring-purple-500/40"
                           : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
-                          ? "bg-gradient-to-b from-amber-950 via-yellow-950 to-black border-amber-400 text-amber-200 ring-4 ring-amber-400/40"
+                          ? "bg-gradient-to-b from-amber-950 via-yellow-950 to-black border-amber-400 text-amber-200 ring-2 ring-amber-400/40"
                           : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
-                          ? "bg-gradient-to-b from-slate-900 via-stone-950 to-black border-slate-500 text-slate-200 ring-4 ring-slate-500/40"
+                          ? "bg-gradient-to-b from-slate-900 via-stone-950 to-black border-slate-500 text-slate-200 ring-2 ring-slate-500/40"
                           : latestCard.effectType === "STEAL_POINTS"
-                          ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200 ring-4 ring-rose-500/40"
-                          : "bg-gradient-to-b from-amber-950/90 via-emerald-950/80 to-black border-emerald-400 text-emerald-200 ring-4 ring-emerald-400/30"
+                          ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200 ring-2 ring-rose-500/40"
+                          : "bg-gradient-to-b from-amber-950/90 via-emerald-950/80 to-black border-emerald-400 text-emerald-200 ring-2 ring-emerald-400/30"
                       }`}
                     >
-                      <div className="w-full flex items-center justify-between text-xs">
+                      <div className="w-full flex items-center justify-between text-[10px]">
                         <span className="font-mono font-bold opacity-75">#{latestCard.id}</span>
                         <span
-                          className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          className={`text-[7px] font-black uppercase px-1.5 py-0.2 rounded-full ${
                             latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "bg-purple-500/30 text-purple-300 border border-purple-400/50"
                               : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
@@ -1171,21 +1143,21 @@ export default function MysteryQuestBoard({
                             : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
                             ? "BOM KHÓI"
                             : latestCard.effectType === "STEAL_POINTS"
-                            ? "CƯỚP ĐIỂM 🗡️"
+                            ? "CƯỚP 🗡️"
                             : "THƯỞNG"}
                         </span>
                       </div>
 
-                      <div className="text-4xl sm:text-5xl my-auto text-center drop-shadow-xl">
+                      <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl">
                         {latestCard.icon}
                       </div>
 
                       <div className="w-full text-center">
-                        <p className="text-xs sm:text-sm font-black text-white leading-tight truncate">
+                        <p className="text-[10px] sm:text-xs font-black text-white leading-tight truncate">
                           {latestCard.storyTitle}
                         </p>
                         <p
-                          className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${
+                          className={`text-[10px] sm:text-xs font-black font-mono mt-0.2 ${
                             latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "text-purple-300"
                               : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
@@ -1214,11 +1186,11 @@ export default function MysteryQuestBoard({
                       </div>
                     </div>
                   ) : (
-                    <div className="w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-center text-white/50 bg-black/20">
-                      <span className="text-3xl mb-1.5">📭</span>
-                      <span className="text-xs font-bold text-white/80">Chưa rút lá nào</span>
-                      <span className="text-[10px] text-white/40 mt-0.5">
-                        Rút lá đầu tiên từ chồng bài bên cạnh!
+                    <div className="w-28 sm:w-36 aspect-[3/4] max-h-[19vh] sm:max-h-[23vh] rounded-xl sm:rounded-2xl p-2 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-center text-white/50 bg-black/20">
+                      <span className="text-2xl mb-1">📭</span>
+                      <span className="text-[11px] font-bold text-white/80">Chưa rút lá nào</span>
+                      <span className="text-[9px] text-white/40 mt-0.5">
+                        Rút lá đầu tiên!
                       </span>
                     </div>
                   )}
@@ -1227,7 +1199,7 @@ export default function MysteryQuestBoard({
 
               {/* ── ACTION BUTTONS: RÚT TIẾP & CHỐT ĐIỂM ── */}
               {canInteract && (
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-0.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -1247,10 +1219,10 @@ export default function MysteryQuestBoard({
                         });
                       }
                     }}
-                    className="px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm sm:text-base shadow-xl border-2 border-purple-400 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                    className="px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-xl border border-purple-400 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span>🃏</span>
-                    <span>RÚT 1 LÁ (LÁ #{nextCardNum})</span>
+                    <span>RÚT 1 LÁ (#{nextCardNum})</span>
                   </button>
 
                   {canCashOut && (
@@ -1262,14 +1234,14 @@ export default function MysteryQuestBoard({
                         setIsCashingOut(true);
                         onCashOut?.();
                       }}
-                      className={`px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-sm sm:text-base shadow-xl border-2 border-emerald-300 transition-all flex items-center gap-2 ${
+                      className={`px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-xs sm:text-sm shadow-xl border border-emerald-300 transition-all flex items-center gap-1.5 ${
                         isCashingOut
                           ? "opacity-60 cursor-not-allowed scale-95"
                           : "hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
                       }`}
                     >
                       <span>{isCashingOut ? "⏳" : "💰"}</span>
-                      <span>{isCashingOut ? "ĐANG CHỐT ĐIỂM..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
+                      <span>{isCashingOut ? "ĐANG CHỐT..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
                     </button>
                   )}
                 </div>
@@ -1277,15 +1249,15 @@ export default function MysteryQuestBoard({
 
               {/* ── DRAW HISTORY TRAIL ── */}
               {openedTiles.length > 0 && (
-                <div className="w-full max-w-xl mx-auto p-3 rounded-2xl bg-black/40 border border-white/10 text-left">
-                  <span className="text-[11px] font-bold text-white/60 uppercase tracking-wider block mb-1.5">
-                    📜 LỊCH SỬ RÚT BÀI ({openedTiles.length} lá):
+                <div className="w-full max-w-md mx-auto p-2 rounded-xl bg-black/40 border border-white/10 text-left max-h-16 overflow-y-auto">
+                  <span className="text-[10px] font-bold text-white/60 uppercase tracking-wider block mb-1">
+                    📜 LỊCH SỬ ({openedTiles.length} lá):
                   </span>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1">
                     {openedTiles.map((t, idx) => (
                       <span
                         key={t.id || idx}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
                           t.type !== "REWARD"
                             ? "bg-red-950/60 border-red-500/50 text-red-300"
                             : "bg-emerald-950/60 border-emerald-500/50 text-emerald-300"
@@ -1299,7 +1271,7 @@ export default function MysteryQuestBoard({
                               ? "Hắc Ám"
                               : t.type === "BOMB_CHARITY" || t.type === "BOMB_GIFT"
                               ? "Từ Thiện"
-                              : "Bom Khói"
+                              : "Khói"
                             : t.effectType === "MULTIPLY_X2"
                             ? "x2"
                             : `+${t.deltaPoints}đ`}
@@ -1317,7 +1289,7 @@ export default function MysteryQuestBoard({
 
       {/* ── Footer Standings / Quick Score Bar ── */}
       {teams && teams.length > 0 && (
-        <div className="relative z-10 mt-5 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="relative z-10 mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
           <span className="text-white/60 font-semibold uppercase tracking-wider text-[11px]">
             BẢNG ĐIỂM TRẬN ĐẤU:
           </span>

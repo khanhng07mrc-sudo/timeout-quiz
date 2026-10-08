@@ -1170,8 +1170,19 @@ export default function DisplayPage() {
     : "REMEMBER";
   const bloomMeta = BLOOM_METADATA[bloom];
 
+  const isMysteryNonQuestion = Boolean(
+    roomState?.mode === "MYSTERY_QUEST" &&
+    roomState.mysteryQuestState &&
+    roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
+  );
+  const showQuestion = Boolean(
+    currentQuestion &&
+    displayModeTab !== "BOARD" &&
+    !isMysteryNonQuestion
+  );
+
   return (
-    <div className="h-screen max-h-[100dvh] overflow-hidden flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2 p-2 relative animate-loaded-reveal select-none" onClick={handleUnlockAudio}>
+    <div className="h-screen max-h-[100dvh] overflow-hidden flex flex-col min-[500px]:grid min-[500px]:grid-cols-[1fr_190px] sm:grid-cols-[1fr_220px] md:grid-cols-[1fr_250px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2 p-2 relative animate-loaded-reveal select-none" onClick={handleUnlockAudio}>
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}
@@ -1307,26 +1318,20 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* DICE_RACE: Full Board view if tab selected, or Mini-Track HUD if Question view */}
-        {currentQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
+        {/* DICE_RACE: Mini-Track HUD if Question view */}
+        {showQuestion && roomState.mode === "DICE_RACE" && roomState.diceRaceState && (
           <div className="w-full shrink-0 animate-slide-up">
             <DiceRaceTrack
               diceState={roomState.diceRaceState}
               isDisplay={true}
-              mode={displayModeTab === "BOARD" ? "full" : "mini"}
-              onToggleView={() => setDisplayModeTab((prev) => prev === "BOARD" ? "QUESTION" : "BOARD")}
+              mode="mini"
+              onToggleView={() => setDisplayModeTab("BOARD")}
             />
           </div>
         )}
 
-        {/* Question (hidden if viewing full board tab in DICE_RACE or non-question phase in MYSTERY_QUEST) */}
-        {currentQuestion &&
-          displayModeTab !== "BOARD" &&
-          !(
-            roomState.mode === "MYSTERY_QUEST" &&
-            roomState.mysteryQuestState &&
-            roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
-          ) && (
+        {/* Question vs Board / Fallback view */}
+        {currentQuestion && showQuestion ? (
           <div className="flex-1 min-h-0 glass rounded-2xl p-3 sm:p-4 flex flex-col justify-between overflow-y-auto lg:overflow-hidden">
             {currentQuestion.bouncebackSelectPhase ? (
               <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
@@ -1345,32 +1350,32 @@ export default function DisplayPage() {
                 </div>
 
                 {/* 3 Point Pack Cards Display */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 w-full max-w-4xl pt-2">
-                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-blue-500/40 bg-blue-950/40 flex flex-col items-center justify-center space-y-2 shadow-xl hover:border-blue-400 transition">
-                    <span className="text-5xl sm:text-6xl font-mono font-black text-blue-400">10</span>
-                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
-                    <span className="text-xs sm:text-sm font-semibold text-blue-200/90 bg-blue-500/20 px-3 py-1 rounded-full border border-blue-400/30">
-                      ⏱️ 15 giây suy nghĩ
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 w-full max-w-3xl pt-1">
+                  <div className="glass rounded-2xl p-3 sm:p-5 border-2 border-blue-500/40 bg-blue-950/40 flex flex-col items-center justify-center space-y-1.5 shadow-xl hover:border-blue-400 transition">
+                    <span className="text-4xl sm:text-5xl font-mono font-black text-blue-400">10</span>
+                    <span className="text-sm sm:text-lg font-black text-white">ĐIỂM</span>
+                    <span className="text-[10px] sm:text-xs font-semibold text-blue-200/90 bg-blue-500/20 px-2.5 py-0.5 rounded-full border border-blue-400/30">
+                      ⏱️ 15s
                     </span>
-                    <span className="text-xs text-slate-400 pt-1">Độ khó cơ bản</span>
+                    <span className="text-[10px] text-slate-400">Độ khó cơ bản</span>
                   </div>
 
-                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-indigo-500/50 bg-indigo-950/50 flex flex-col items-center justify-center space-y-2 shadow-2xl hover:border-indigo-400 transition ring-2 ring-indigo-500/30">
-                    <span className="text-5xl sm:text-6xl font-mono font-black text-indigo-300">20</span>
-                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
-                    <span className="text-xs sm:text-sm font-semibold text-indigo-200/90 bg-indigo-500/20 px-3 py-1 rounded-full border border-indigo-400/30">
-                      ⏱️ 20 giây suy nghĩ
+                  <div className="glass rounded-2xl p-3 sm:p-5 border-2 border-indigo-500/50 bg-indigo-950/50 flex flex-col items-center justify-center space-y-1.5 shadow-2xl hover:border-indigo-400 transition ring-2 ring-indigo-500/30">
+                    <span className="text-4xl sm:text-5xl font-mono font-black text-indigo-300">20</span>
+                    <span className="text-sm sm:text-lg font-black text-white">ĐIỂM</span>
+                    <span className="text-[10px] sm:text-xs font-semibold text-indigo-200/90 bg-indigo-500/20 px-2.5 py-0.5 rounded-full border border-indigo-400/30">
+                      ⏱️ 20s
                     </span>
-                    <span className="text-xs text-slate-400 pt-1">Độ khó trung bình</span>
+                    <span className="text-[10px] text-slate-400">Độ khó trung bình</span>
                   </div>
 
-                  <div className="glass rounded-2xl p-6 sm:p-8 border-2 border-purple-500/50 bg-purple-950/40 flex flex-col items-center justify-center space-y-2 shadow-xl hover:border-purple-400 transition">
-                    <span className="text-5xl sm:text-6xl font-mono font-black text-purple-400">30</span>
-                    <span className="text-xl sm:text-2xl font-black text-white">ĐIỂM</span>
-                    <span className="text-xs sm:text-sm font-semibold text-purple-200/90 bg-purple-500/20 px-3 py-1 rounded-full border border-purple-400/30">
-                      ⏱️ 30 giây suy nghĩ
+                  <div className="glass rounded-2xl p-3 sm:p-5 border-2 border-purple-500/50 bg-purple-950/40 flex flex-col items-center justify-center space-y-1.5 shadow-xl hover:border-purple-400 transition">
+                    <span className="text-4xl sm:text-5xl font-mono font-black text-purple-400">30</span>
+                    <span className="text-sm sm:text-lg font-black text-white">ĐIỂM</span>
+                    <span className="text-[10px] sm:text-xs font-semibold text-purple-200/90 bg-purple-500/20 px-2.5 py-0.5 rounded-full border border-purple-400/30">
+                      ⏱️ 30s
                     </span>
-                    <span className="text-xs text-slate-400 pt-1">Độ khó nâng cao</span>
+                    <span className="text-[10px] text-slate-400">Độ khó nâng cao</span>
                   </div>
                 </div>
 
@@ -1447,13 +1452,15 @@ export default function DisplayPage() {
                         </span>
                       )}
 
-                      {/* Mode tab switch for DICE_RACE */}
-                      {roomState.mode === "DICE_RACE" && (
-                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-amber-500/40 shrink-0 ml-auto shadow">
+                      {/* Mode tab switch for board modes */}
+                      {(roomState.mode === "DICE_RACE" || roomState.mode === "GRID_CARO" || roomState.mode === "TOURNAMENT") && (
+                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/20 shrink-0 ml-auto shadow">
                           <button
                             type="button"
                             onClick={() => setDisplayModeTab("QUESTION")}
-                            className="px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer bg-purple-600 text-white shadow"
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                              displayModeTab === "QUESTION" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
+                            }`}
                           >
                             <span>📖</span>
                             <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
@@ -1461,10 +1468,12 @@ export default function DisplayPage() {
                           <button
                             type="button"
                             onClick={() => setDisplayModeTab("BOARD")}
-                            className="px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white hover:bg-white/10"
+                            className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                              displayModeTab === "BOARD" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white hover:bg-white/10"
+                            }`}
                           >
                             <span>🗺️</span>
-                            <span>Bàn cờ</span>
+                            <span>{roomState.mode === "TOURNAMENT" ? "Nhánh đấu" : roomState.mode === "GRID_CARO" ? "Bảng Caro" : "Bàn cờ"}</span>
                           </button>
                         </div>
                       )}
@@ -1777,24 +1786,22 @@ export default function DisplayPage() {
               </div>
             )}
           </div>
-        )}
+        ) : (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-2 overflow-hidden w-full">
+            {/* If user switched to Board view while question is active, show Return button */}
+            {currentQuestion && displayModeTab === "BOARD" && (
+              <div className="w-full flex justify-end pb-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setDisplayModeTab("QUESTION")}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-lg border border-white/20 hover:scale-105 active:scale-95 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>📖</span>
+                  <span>Quay lại xem Câu hỏi</span>
+                </button>
+              </div>
+            )}
 
-        {/* Board tracking widgets when question is active */}
-
-        {currentQuestion && roomState.mode === "GRID_CARO" && roomState.gridCaroState && (
-          <div className="w-full animate-slide-up">
-            <GridCaroBoard gridState={roomState.gridCaroState} isDisplay={true} />
-          </div>
-        )}
-
-        {(
-          (roomState.mode === "MYSTERY_QUEST" &&
-            roomState.mysteryQuestState &&
-            roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE") ||
-          (!currentQuestion && roomState.mode !== "MYSTERY_QUEST") ||
-          (!currentQuestion && roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE")
-        ) && (
-          <div className="flex-1 flex flex-col items-center justify-center p-2">
             {roomState.mode === "TOURNAMENT" && roomState.tournamentState ? (
               <div className="w-full">
                 <TournamentBracket tournamentState={roomState.tournamentState} isDisplay={true} />
@@ -1828,7 +1835,7 @@ export default function DisplayPage() {
                   }}
                 />
               </div>
-            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState ? (
               <div className="w-full max-w-5xl">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}
@@ -1852,7 +1859,7 @@ export default function DisplayPage() {
       </div>
 
       {/* Leaderboard sidebar */}
-      <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full">
+      <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full shrink-0 max-[499px]:h-auto max-[499px]:max-h-36">
         <div className="flex items-center justify-between pb-1 border-b border-white/10 shrink-0">
           <h3 className="text-sm font-bold inline-flex items-center gap-1.5 text-white">
             <SystemIcon name="trophy" className="w-4 h-4 text-amber-400 shrink-0" />

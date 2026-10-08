@@ -1803,12 +1803,15 @@ export function registerSocketHandlers(io: IO) {
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
 
-        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
+        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question, reveal, and timer
         const isPreparing = roomPrepareStates.has(room.id);
         const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
+        } else if (effectiveRoomStatus === "PLAYING" && !isPreparing) {
+          if (roomRevealPayloads.has(room.id)) {
+            socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id)!);
+          }
           const activeQ = roomActiveQuestions.get(room.id);
           if (activeQ) {
             socket.emit("game:question", activeQ);
@@ -1818,7 +1821,10 @@ export function registerSocketHandlers(io: IO) {
               socket.emit("game:timer", { remaining, total: activeQ.timeLimit, endsAt, serverTime: Date.now() });
             }
           } else {
-            const currentQ = room.quizBank.questions[room.currentQuestion];
+            const currentQuestions = (room.quizBank?.questions && room.quizBank.questions.length > 0)
+              ? room.quizBank.questions
+              : await getRoomQuestions(room.id);
+            const currentQ = currentQuestions[room.currentQuestion];
             if (currentQ) {
               const qKey = `${room.id}:${currentQ.id}`;
               const primary = roomPrimaryTeams.get(qKey);
@@ -1856,6 +1862,23 @@ export function registerSocketHandlers(io: IO) {
               }
             }
           }
+        }
+
+        // Mode-specific state recovery for Display
+        if (roomMysteryQuests.has(room.id)) {
+          socket.emit("game:mystery:update", roomMysteryQuests.get(room.id)!);
+        }
+        if (roomDiceRaces.has(room.id)) {
+          socket.emit("game:dice:update", roomDiceRaces.get(room.id)!);
+        }
+        if (roomGridCaros.has(room.id)) {
+          socket.emit("game:grid:update", roomGridCaros.get(room.id)!);
+        }
+        if (roomWagers.has(room.id)) {
+          socket.emit("game:wager:update", roomWagers.get(room.id)!);
+        }
+        if (roomTournaments.has(room.id)) {
+          socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
         }
 
         if (roomPrepareStates.has(room.id)) {

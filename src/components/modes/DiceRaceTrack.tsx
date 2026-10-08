@@ -422,6 +422,17 @@ export default function DiceRaceTrack({
           </div>
 
           <div className="flex items-center gap-2">
+            {canRoll && onRollDice && (
+              <button
+                type="button"
+                onClick={onRollDice}
+                className="text-xs px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black transition flex items-center gap-1 cursor-pointer animate-pulse shadow-md whitespace-nowrap"
+              >
+                <span>🎲</span>
+                <span>Gieo Xí Ngầu!</span>
+              </button>
+            )}
+
             {lastDiceRoll && (
               <span className="text-xs font-mono font-black text-amber-300 px-2 py-0.5 rounded bg-black/50 border border-amber-400/40">
                 Xúc xắc: {lastDiceRoll} nút

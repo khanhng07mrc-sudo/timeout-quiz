@@ -936,6 +936,35 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ]
 };
+function calculateCappedSteal({
+  activeTeamId,
+  allTeams,
+  targetPoints = 25,
+  maxCap = 25
+}) {
+  const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
+  if (otherTeams.length === 0) {
+    return { stolenPoints: Math.min(targetPoints, maxCap) };
+  }
+  const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const victim = sorted[0];
+  const victimScore = victim.score || 0;
+  if (victimScore <= 0) {
+    return {
+      victimTeamId: victim.id,
+      victimTeamName: victim.name,
+      stolenPoints: 0
+    };
+  }
+  const halfScore = Math.floor(victimScore * 0.5);
+  const allowed = Math.min(targetPoints, maxCap, halfScore);
+  const finalSteal = Math.max(1, allowed);
+  return {
+    victimTeamId: victim.id,
+    victimTeamName: victim.name,
+    stolenPoints: finalSteal
+  };
+}
 function shuffleMemoryPairsTiles(tiles) {
   const shuffled = [...tiles].map((t) => ({ ...t, isOpened: false })).sort(() => Math.random() - 0.5);
   return shuffled.map((item, idx) => ({
@@ -949,7 +978,7 @@ function generateMemoryPairsTiles(basePoints = 20) {
   const pBonusTop = basePoints * 2;
   const pBonusHigh = Math.round(basePoints * 1.5);
   const pBonusMed = basePoints;
-  const pBonusSafe = Math.max(5, Math.round(basePoints * 0.5));
+  const pSteal = Math.min(25, Math.max(15, basePoints));
   const pPenalty = basePoints;
   const pairs = [
     {
@@ -960,6 +989,15 @@ function generateMemoryPairsTiles(basePoints = 20) {
       storyDescription: `K\xEDch ho\u1EA1t n\u0103ng l\u01B0\u1EE3ng \u0111\u1ED9t ph\xE1: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c kh\u1EE7ng!`,
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop
+    },
+    {
+      pairKey: "PAIR_STEAL",
+      icon: "\u{1F5E1}\uFE0F",
+      type: "REWARD",
+      storyTitle: "\u{1F5E1}\uFE0F C\u1EB6P H\u1EA2I T\u1EB6C \u0110O\u1EA0T B\u1EA2O!",
+      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p h\u1EA3i t\u1EB7c: C\u01B0\u1EDBp \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i d\u1EABn \u0111\u1EA7u (t\u1ED1i \u0111a ${pSteal}\u0111, tr\u1EA7n 50% \u0111i\u1EC3m \u0111\u1ED1i th\u1EE7)!`,
+      effectType: "STEAL_POINTS",
+      deltaPoints: pSteal
     },
     {
       pairKey: "PAIR_TREASURE",
@@ -978,15 +1016,6 @@ function generateMemoryPairsTiles(basePoints = 20) {
       storyDescription: `T\xECm th\u1EA5y c\u1EB7p sao may m\u1EAFn: Nh\u1EADn an to\xE0n +${pBonusMed} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusMed
-    },
-    {
-      pairKey: "PAIR_LUCKY",
-      icon: "\u{1F340}",
-      type: "REWARD",
-      storyTitle: "\u{1F340} C\u1EB6P C\u1ECE MAY M\u1EAEN!",
-      storyDescription: `Ph\u01B0\u1EDBc l\xE0nh h\u1ED9 m\u1EC7nh: Nh\u1EADn th\xEAm an to\xE0n +${pBonusSafe} \u0111i\u1EC3m!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pBonusSafe
     },
     {
       pairKey: "PAIR_BOMB",
@@ -1022,7 +1051,7 @@ function generateMemoryPairsTiles(basePoints = 20) {
 }
 function generateOneShotDoorsTiles(basePoints = 20) {
   const pHigh = basePoints * 2;
-  const pMed = basePoints;
+  const pSteal = Math.min(25, Math.max(15, basePoints));
   const pPenalty = basePoints;
   const doors = [
     {
@@ -1034,12 +1063,12 @@ function generateOneShotDoorsTiles(basePoints = 20) {
       deltaPoints: pHigh
     },
     {
-      icon: "\u{1F6E1}\uFE0F",
+      icon: "\u{1F5E1}\uFE0F",
       type: "REWARD",
-      storyTitle: "\u{1F6E1}\uFE0F C\u1EECA H\u1ED8 V\u1EC6 AN TO\xC0N!",
-      storyDescription: `C\xE1nh c\u1EEDa ph\xF2ng tuy\u1EBFn an to\xE0n: Nh\u1EADn an to\xE0n +${pMed} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pMed
+      storyTitle: "\u{1F5E1}\uFE0F C\u1EECA \u0110O\u1EA0T B\u1EA2O H\u1EA2I T\u1EB6C!",
+      storyDescription: `K\xEDch ho\u1EA1t c\u01B0\u1EDBp b\xF3c \u0111o\u1EA1t b\u1EA3o: C\u01B0\u1EDBp \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i d\u1EABn \u0111\u1EA7u (t\u1ED1i \u0111a ${pSteal}\u0111, tr\u1EA7n 50% \u0111i\u1EC3m \u0111\u1ED1i th\u1EE7)!`,
+      effectType: "STEAL_POINTS",
+      deltaPoints: pSteal
     },
     {
       icon: "\u{1F4A5}",
@@ -1450,17 +1479,38 @@ function handleFlipCard({
           finalScoreDelta: -penalty
         };
       } else {
-        finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+        let victimTeamId;
+        let victimTeamName;
+        let stolenPoints;
+        if (firstTile.effectType === "STEAL_POINTS") {
+          const stealRes = calculateCappedSteal({
+            activeTeamId: team.id,
+            allTeams,
+            targetPoints: firstTile.deltaPoints || 25,
+            maxCap: 25
+          });
+          if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+            victimTeamId = stealRes.victimTeamId;
+            victimTeamName = stealRes.victimTeamName;
+            stolenPoints = stealRes.stolenPoints;
+            finalDelta = stolenPoints;
+          } else {
+            finalDelta = Math.min(firstTile.deltaPoints || 15, 15);
+          }
+        } else {
+          finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+        }
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
+        const rewardText = victimTeamName && stolenPoints ? `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+          rewardText,
           scoreDelta: finalDelta,
           oldScore,
           newScore
@@ -1469,7 +1519,10 @@ function handleFlipCard({
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: finalDelta
+          finalScoreDelta: finalDelta,
+          victimTeamId,
+          victimTeamName,
+          stolenPoints
         };
       }
     } else {
@@ -1615,17 +1668,38 @@ function handleFlipCard({
         finalScoreDelta: -penalty
       };
     } else {
-      finalDelta = tile2.deltaPoints || 25;
+      let victimTeamId;
+      let victimTeamName;
+      let stolenPoints;
+      if (tile2.effectType === "STEAL_POINTS") {
+        const stealRes = calculateCappedSteal({
+          activeTeamId: team.id,
+          allTeams,
+          targetPoints: tile2.deltaPoints || 25,
+          maxCap: 25
+        });
+        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+          victimTeamId = stealRes.victimTeamId;
+          victimTeamName = stealRes.victimTeamName;
+          stolenPoints = stealRes.stolenPoints;
+          finalDelta = stolenPoints;
+        } else {
+          finalDelta = Math.min(tile2.deltaPoints || 15, 15);
+        }
+      } else {
+        finalDelta = tile2.deltaPoints || 25;
+      }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
+      const rewardText = victimTeamName && stolenPoints ? `\u{1F6AA} ${tile2.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+        rewardText,
         scoreDelta: finalDelta,
         oldScore,
         newScore
@@ -1634,7 +1708,10 @@ function handleFlipCard({
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: finalDelta
+        finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints
       };
     }
   }
@@ -1701,17 +1778,38 @@ function handleFlipCard({
         finalScoreDelta: -penalty
       };
     } else {
-      finalDelta = tile2.deltaPoints || 35;
+      let victimTeamId;
+      let victimTeamName;
+      let stolenPoints;
+      if (tile2.effectType === "STEAL_POINTS") {
+        const stealRes = calculateCappedSteal({
+          activeTeamId: team.id,
+          allTeams,
+          targetPoints: tile2.deltaPoints || 25,
+          maxCap: 25
+        });
+        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+          victimTeamId = stealRes.victimTeamId;
+          victimTeamName = stealRes.victimTeamName;
+          stolenPoints = stealRes.stolenPoints;
+          finalDelta = stolenPoints;
+        } else {
+          finalDelta = Math.min(tile2.deltaPoints || 15, 15);
+        }
+      } else {
+        finalDelta = tile2.deltaPoints || 35;
+      }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "TAROT_DRAWN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
+      const rewardText = victimTeamName && stolenPoints ? `\u{1F52E} ${tile2.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`,
+        rewardText,
         scoreDelta: finalDelta,
         oldScore,
         newScore
@@ -1720,7 +1818,10 @@ function handleFlipCard({
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: finalDelta
+        finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints
       };
     }
   }
@@ -1941,15 +2042,15 @@ function handleFlipCard({
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
   } else if (tile.effectType === "STEAL_POINTS") {
-    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-    if (otherTeams.length > 0) {
-      const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
-      const leader = sorted[0];
-      const stealAmt = Math.min(leader.score || 0, tile.deltaPoints || 20);
-      state.potPoints += (stealAmt > 0 ? stealAmt : 15) * state.potMultiplier;
-    } else {
-      state.potPoints += (tile.deltaPoints || 20) * state.potMultiplier;
-    }
+    const stealCalc = calculateCappedSteal({
+      activeTeamId: team.id,
+      allTeams,
+      targetPoints: tile.deltaPoints || 20,
+      maxCap: 25
+    });
+    const stealAmt = stealCalc.stolenPoints > 0 ? stealCalc.stolenPoints : 15;
+    state.potPoints += stealAmt * state.potMultiplier;
+    state.stolenPointsPot = (state.stolenPointsPot || 0) + stealAmt * state.potMultiplier;
   } else {
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
@@ -1969,26 +2070,48 @@ function handleFlipCard({
 }
 function handleCashOut({
   state,
-  team
+  team,
+  allTeams = []
 }) {
   const finalScoreDelta = state.potPoints;
   const oldScore = team.score || 0;
   const newScore = oldScore + finalScoreDelta;
+  let victimTeamId;
+  let victimTeamName;
+  let stolenPoints;
+  if (state.stolenPointsPot && state.stolenPointsPot > 0 && allTeams.length > 0) {
+    const stealCalc = calculateCappedSteal({
+      activeTeamId: team.id,
+      allTeams,
+      targetPoints: state.stolenPointsPot,
+      maxCap: 25
+    });
+    if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+      victimTeamId = stealCalc.victimTeamId;
+      victimTeamName = stealCalc.victimTeamName;
+      stolenPoints = stealCalc.stolenPoints;
+    }
+  }
   state.phase = "TURN_SUMMARY";
   state.turnFinishedReason = "CASH_OUT";
   state.potPoints = 0;
+  state.stolenPointsPot = 0;
+  const rewardText = victimTeamName && stolenPoints ? `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (\u0111\xE3 c\u01B0\u1EDBp ${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName} c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
     teamColor: team.color || "#ef4444",
-    rewardText: `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    rewardText,
     scoreDelta: finalScoreDelta,
     oldScore,
     newScore
   };
   return {
     updatedState: { ...state },
-    finalScoreDelta
+    finalScoreDelta,
+    victimTeamId,
+    victimTeamName,
+    stolenPoints
   };
 }
 function handleMemoryPairsSecondChanceDecision({
@@ -6371,7 +6494,9 @@ function registerSocketHandlers(io2) {
         shouldResetMismatchedCards,
         recipientTeamId,
         giftedPoints,
-        darkBombRecipients
+        darkBombRecipients,
+        victimTeamId,
+        stolenPoints
       } = handleFlipCard({
         state: questState,
         tileId,
@@ -6379,7 +6504,14 @@ function registerSocketHandlers(io2) {
         allTeams
       });
       roomMysteryQuests.set(room.id, updatedState);
-      if (isBomb) {
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+          { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
+        ]);
+      } else if (isBomb) {
         if (darkBombRecipients && darkBombRecipients.length > 0) {
           const updates = [];
           if (scorePenalty > 0) {
@@ -6473,19 +6605,16 @@ function registerSocketHandlers(io2) {
       }
     };
     const executeMysteryCashOut = async (room, questState, team) => {
-      const { updatedState, finalScoreDelta } = handleCashOut({
-        state: questState,
-        team
+      const allTeams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        select: { id: true, name: true, color: true, score: true, isEliminated: true }
       });
-      if (finalScoreDelta > 0) {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-        ]);
-      }
+      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleCashOut({
+        state: questState,
+        team,
+        allTeams
+      });
       roomMysteryQuests.set(room.id, updatedState);
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:cashed_out", {
         teamId: team.id,
@@ -6493,6 +6622,37 @@ function registerSocketHandlers(io2) {
         totalGained: finalScoreDelta,
         newScore: (team.score || 0) + finalScoreDelta
       });
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(victimTeamId, -stolenPoints),
+          applyScoreDeltaToTeam(team.id, finalScoreDelta)
+        ]).then(async ([victimDelta, stealerDelta]) => {
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+            { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] steal delta error:", err);
+        });
+      } else if (finalScoreDelta > 0) {
+        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] score delta error:", err);
+        });
+      } else {
+        buildRoomState(room.id).then((refreshedState) => {
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] buildRoomState error:", err);
+        });
+      }
     };
     const executeMysteryPairsDecision = async (room, questState, team, choice) => {
       const { updatedState, finalScoreDelta } = handleMemoryPairsSecondChanceDecision({
@@ -6500,16 +6660,25 @@ function registerSocketHandlers(io2) {
         team,
         choice
       });
-      if (finalScoreDelta > 0) {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-        ]);
-      }
       roomMysteryQuests.set(room.id, updatedState);
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      if (finalScoreDelta > 0) {
+        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryPairsDecision] score delta error:", err);
+        });
+      } else {
+        buildRoomState(room.id).then((refreshedState) => {
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryPairsDecision] buildRoomState error:", err);
+        });
+      }
     };
     async function executeMysteryAdvanceTurn(room, questState) {
       stopQuestionTimer(room.id);

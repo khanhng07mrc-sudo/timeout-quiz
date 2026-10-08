@@ -15,6 +15,7 @@ interface Props {
   onStealBuzz?: () => void;
   onAdvanceTurn?: () => void;
   onSelectMiniGame?: (miniGameType: MysteryMiniGameType) => void;
+  onChooseAction?: (action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
 
@@ -29,13 +30,13 @@ export default function MysteryQuestBoard({
   onStealBuzz,
   onAdvanceTurn,
   onSelectMiniGame,
+  onChooseAction,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
-
 
   if (!mysteryState) {
     return (
@@ -59,6 +60,10 @@ export default function MysteryQuestBoard({
     themeBgGradient,
     tiles,
     phase,
+    baseQuestionPoints,
+    promoPerk,
+    hasShield,
+    decisionMade,
     potPoints,
     potMultiplier,
     cardsFlippedCount,
@@ -84,6 +89,7 @@ export default function MysteryQuestBoard({
 
   const isMyTurn = Boolean(myTeamId && myTeamId === currentTurnTeamId);
   const canInteract = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK");
+  const canInteractDecision = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "DECISION_CHOICE");
   const canCashOut = Boolean(canInteract && (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && potPoints > 0);
 
   // Việc chuyển lượt / chuyển câu hỏi diễn ra thủ công bởi Admin/MC, không tự động
@@ -243,6 +249,168 @@ export default function MysteryQuestBoard({
               Trả lời đúng sẽ mở khóa thử thách Minigame{" "}
               <strong className="text-amber-300">{variantInfo.title}</strong>!
             </p>
+          </div>
+        )}
+
+        {/* Phase: DECISION_CHOICE (Team chooses between Safe Base Points or Gamble Minigame) */}
+        {phase === "DECISION_CHOICE" && (
+          <div className="w-full max-w-4xl mx-auto space-y-4 animate-slide-up">
+            <div className="p-4 rounded-2xl bg-black/60 border border-amber-500/40 text-center backdrop-blur-md shadow-xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-black uppercase tracking-wider mb-2">
+                <span>⭐</span> TRẢ LỜI CHÍNH XÁC! LỰA CHỌN QUYẾT ĐỊNH
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-white">
+                Chúc mừng Đội <span style={{ color: currentTurnTeamColor }}>{currentTurnTeamName}</span>!
+              </h3>
+              <p className="text-xs sm:text-sm text-white/80 mt-1 max-w-xl mx-auto">
+                Bạn muốn nhận chắc chắn số điểm gốc của câu hỏi hay đem số điểm này vào quỹ để mạo hiểm cùng Minigame?
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Option A: Nhận điểm an toàn */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-emerald-950/80 via-black/80 to-emerald-950/80 border-2 border-emerald-400/60 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-emerald-300 transition-all">
+                <div className="space-y-3">
+                  <div className="text-4xl">🛡️</div>
+                  <h4 className="text-base sm:text-lg font-black text-emerald-300 uppercase tracking-wide">
+                    Phương Án 1: Nhận Điểm An Toàn
+                  </h4>
+                  <div className="py-2">
+                    <span className="text-4xl sm:text-5xl font-black font-mono text-emerald-400">
+                      +{baseQuestionPoints || 10}
+                    </span>
+                    <span className="text-emerald-300 font-bold ml-1 text-sm sm:text-base">điểm</span>
+                  </div>
+                  <p className="text-xs text-white/70 leading-relaxed">
+                    Nhận trọn vẹn điểm số câu hỏi trực tiếp vào bảng điểm. Kết thúc lượt thi với tỉ lệ an toàn 100%, không gặp bất kỳ rủi ro bom nổ nào.
+                  </p>
+                </div>
+
+                <div className="pt-5">
+                  {canInteractDecision ? (
+                    <button
+                      type="button"
+                      onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                    >
+                      🛡️ Chốt Nhận +{baseQuestionPoints || 10}đ An Toàn
+                    </button>
+                  ) : (
+                    <div className="py-2.5 px-4 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-400 italic">
+                      Đang đợi Đội {currentTurnTeamName} quyết định...
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Option B: Chơi Minigame */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-purple-950/80 via-black/80 to-amber-950/80 border-2 border-amber-400/60 shadow-2xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-amber-300 transition-all">
+                <div className="space-y-3">
+                  <div className="text-4xl">🎲</div>
+                  <h4 className="text-base sm:text-lg font-black text-amber-300 uppercase tracking-wide">
+                    Phương Án 2: Vào Chơi Minigame
+                  </h4>
+                  <div className="text-xs sm:text-sm font-bold text-indigo-300 flex items-center justify-center gap-1.5">
+                    <span>Thử thách:</span>
+                    <strong className="text-amber-200">{variantInfo.title}</strong>
+                  </div>
+
+                  {/* Starting Pot */}
+                  <div className="py-1">
+                    <span className="text-[11px] text-slate-300 uppercase tracking-wider block">Quỹ Điểm Khởi Điểm:</span>
+                    <span className="text-3xl sm:text-4xl font-black font-mono text-amber-400">
+                      {(() => {
+                        const perkType = typeof promoPerk === "string" ? promoPerk : promoPerk?.type;
+                        return `+${(baseQuestionPoints || 10) + (perkType === "EXTRA_POT_PROMO" ? 5 : 0)}`;
+                      })()}
+                    </span>
+                    <span className="text-amber-300 font-bold ml-1 text-xs">điểm</span>
+                  </div>
+
+                  {/* Promo Perk Badge */}
+                  {(() => {
+                    const perkType = typeof promoPerk === "string" ? promoPerk : promoPerk?.type;
+                    if (!perkType) return null;
+                    return (
+                      <div className="p-2.5 rounded-xl bg-purple-900/40 border border-purple-400/40 text-xs text-purple-200 font-bold flex items-center justify-center gap-1.5">
+                        {perkType === "SHIELD_PROMO" && (
+                          <>
+                            <span>🛡️</span>
+                            <span>Ưu đãi: Tặng 01 Khiên Thần (Chặn 1 quả Bom)!</span>
+                          </>
+                        )}
+                        {perkType === "EXTRA_POT_PROMO" && (
+                          <>
+                            <span>🎁</span>
+                            <span>Ưu đãi: Khởi đầu với Quỹ Thưởng +5đ bổ sung!</span>
+                          </>
+                        )}
+                        {perkType === "DOUBLE_PROMO" && (
+                          <>
+                            <span>⚡</span>
+                            <span>Ưu đãi: Tăng cơ hội xuất hiện Thẻ X2 Điểm Quỹ!</span>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Risk/Reward tier breakdown */}
+                  <div className="text-[11px] text-white/70 bg-black/40 p-2 rounded-lg border border-white/5 space-y-0.5">
+                    {(baseQuestionPoints || 10) <= 10 && (
+                      <div>⚠️ Câu 10đ: Rủi ro bom ~35% | Thưởng nhỏ +5đ, +10đ, +20đ, có Bẫy Hố Sâu</div>
+                    )}
+                    {(baseQuestionPoints || 10) === 20 && (
+                      <div>⚖️ Câu 20đ: Rủi ro bom ~25% | Thưởng cân bằng +10đ, +20đ, +30đ, x2</div>
+                    )}
+                    {(baseQuestionPoints || 10) >= 30 && (
+                      <div>🔥 Câu 30đ: Rủi ro bom ~20% | Thưởng lớn +15đ, +20đ, +30đ, +50đ, x2</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-5">
+                  {canInteractDecision ? (
+                    <button
+                      type="button"
+                      onClick={() => onChooseAction?.("PLAY_MINIGAME")}
+                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-pink-600 hover:from-amber-400 hover:to-pink-500 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-orange-900/50 border border-amber-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                    >
+                      🎲 Mạo Hiểm Vào Chơi Minigame
+                    </button>
+                  ) : (
+                    <div className="py-2.5 px-4 rounded-xl bg-black/40 border border-white/10 text-xs text-slate-400 italic">
+                      Đang đợi Đội {currentTurnTeamName} quyết định...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Admin / Sandbox override prompt */}
+            {(isAdmin || isSandbox) && (
+              <div className="p-3 rounded-xl bg-black/60 border border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-300">
+                <span className="font-bold flex items-center gap-1.5">
+                  <span>👑</span> Quyền Admin / MC Sandbox:
+                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
+                    className="px-3 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer transition text-xs"
+                  >
+                    MC chọn Nhận An Toàn (+{baseQuestionPoints || 10}đ)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChooseAction?.("PLAY_MINIGAME")}
+                    className="px-3 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-bold cursor-pointer transition text-xs"
+                  >
+                    MC chọn Chơi Minigame
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -495,7 +663,8 @@ export default function MysteryQuestBoard({
       </div>
 
       {/* ── Minigame Specific Interactive Grids ── */}
-      <div className="relative z-10 mt-2">
+      {(phase === "PUSH_YOUR_LUCK" || phase === "TURN_SUMMARY") && (
+        <div className="relative z-10 mt-2">
         {/* ════════════════════════════════════════════════════════════════════
             1. VARIANT: ONE_SHOT_DOORS (3 Giant Doors)
         ════════════════════════════════════════════════════════════════════ */}
@@ -1028,7 +1197,8 @@ export default function MysteryQuestBoard({
             </div>
           );
         })()}
-      </div>
+        </div>
+      )}
 
       {/* ── Footer Standings / Quick Score Bar ── */}
       {teams && teams.length > 0 && (

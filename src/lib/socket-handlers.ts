@@ -37,7 +37,7 @@ import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, nor
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
 import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
-import { allocateQuestionsForMatch } from "./game-engine/question-allocator";
+import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
@@ -4511,6 +4511,8 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      const nextRound = Math.floor(nextTurnIndex / teams.length) + 1;
+      const targetPoints = nextRound === 1 ? 10 : nextRound === 2 ? 20 : 30;
       const nextTeam = teams[nextTurnIndex % teams.length];
       const nextStage = generateMysteryStageForTurn({
         turnIndex: nextTurnIndex,
@@ -4518,6 +4520,8 @@ export function registerSocketHandlers(io: IO) {
         teams,
         turnsPerTeam: questState.turnsPerTeam,
         prevTheme: questState.theme,
+        prevMiniGameType: questState.miniGameType,
+        baseQuestionPoints: targetPoints,
       });
       nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
@@ -4528,8 +4532,6 @@ export function registerSocketHandlers(io: IO) {
 
       // Launch next unique question for this team immediately with round-uniform points!
       const questions = await getRoomQuestions(room.id);
-      const nextRound = Math.floor(nextTurnIndex / teams.length) + 1;
-      const targetPoints = nextRound === 1 ? 10 : nextRound === 2 ? 20 : 30;
       const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetPoints);
       if (nextQ) {
         room.currentQuestion = nextQ.index;
@@ -4539,6 +4541,86 @@ export function registerSocketHandlers(io: IO) {
         await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
       }
     };
+
+    const executeMysteryChooseAction = async (
+      room: any,
+      questState: any,
+      action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME"
+    ) => {
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      const basePts = questState.baseQuestionPoints || 10;
+
+      if (action === "TAKE_BASE_POINTS") {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, basePts);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+        ]);
+
+        questState.phase = "TURN_SUMMARY";
+        questState.turnFinishedReason = "TOOK_BASE_POINTS";
+        questState.decisionMade = "TAKE_BASE_POINTS";
+        questState.potPoints = 0;
+        questState.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `🛡️ Đội đã chọn bảo toàn điểm số an toàn! Nhận trọn vẹn +${basePts} điểm từ câu hỏi!`,
+          scoreDelta: basePts,
+          oldScore: team.score || 0,
+          newScore: (team.score || 0) + basePts,
+        };
+      } else {
+        questState.decisionMade = "PLAY_MINIGAME";
+        let initialPot = basePts;
+        if (questState.promoPerk === "EXTRA_POT_PROMO") {
+          initialPot += 5;
+        }
+        questState.potPoints = initialPot;
+        questState.potMultiplier = 1;
+        questState.hasShield = questState.promoPerk === "SHIELD_PROMO";
+        questState.phase = "PUSH_YOUR_LUCK";
+      }
+
+      roomMysteryQuests.set(room.id, questState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+
+    socket.on("game:mystery:choose_action", async ({ action }: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME" }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "DECISION_CHOICE") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt lựa chọn của đội bạn!");
+        return;
+      }
+
+      await executeMysteryChooseAction(room, questState, action);
+    });
+
+    socket.on("admin:mystery:choose_action", async ({ action, code }: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME"; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "DECISION_CHOICE") return;
+
+      await executeMysteryChooseAction(room, questState, action);
+    });
 
     socket.on("game:mystery:flip_card", async ({ tileId }) => {
       const playerId = playerSockets.get(socket.id);
@@ -5117,6 +5199,11 @@ export function registerSocketHandlers(io: IO) {
       if (!room) return;
       const config = (room.config as any) || {};
       config[key] = value;
+      if (key === "matchMaxQuestions") {
+        const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const derived = calculateModeDerivedConfig(room.mode as any, Number(value) || 0, teams.length || 4);
+        Object.assign(config, derived);
+      }
       await prisma.room.update({
         where: { id: room.id },
         data: { config },
@@ -6224,8 +6311,13 @@ async function processAnswerSubmission({
   }
 
   // 2. Broadcast live answer notification to Admin Host dashboard and room
-  const playerObj = playerId ? await prisma.player.findUnique({ where: { id: playerId } }).catch(() => null) : null;
-  const teamObj = effectiveTeamId ? await prisma.team.findUnique({ where: { id: effectiveTeamId } }).catch(() => null) : null;
+  const cachedRoom = roomCache.get(room.id);
+  const playerObj = playerId
+    ? (cachedRoom?.players?.find((p: any) => p.id === playerId) || (await prisma.player.findUnique({ where: { id: playerId } }).catch(() => null)))
+    : null;
+  const teamObj = effectiveTeamId
+    ? (cachedRoom?.teams?.find((t: any) => t.id === effectiveTeamId) || (await prisma.team.findUnique({ where: { id: effectiveTeamId } }).catch(() => null)))
+    : null;
 
   const answerReceivedPayload = {
     teamId: effectiveTeamId,
@@ -7761,8 +7853,9 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
       }
 
       if (isCorrect) {
-        questState.phase = "PUSH_YOUR_LUCK";
-        questState.potPoints = 0;
+        questState.phase = "DECISION_CHOICE";
+        questState.baseQuestionPoints = basePts;
+        questState.potPoints = basePts;
         questState.potMultiplier = 1;
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);

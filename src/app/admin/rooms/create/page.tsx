@@ -622,55 +622,74 @@ export default function CreateRoomPage() {
             </div>
 
             {/* Custom Question Selection Controls */}
-            {isCustomQuestionCount && (
-              <div className="space-y-3 pt-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-xs font-semibold text-slate-300">Chọn nhanh:</span>
-                    {[5, 10, 12, 15, 20, 25, 30].map((preset) => {
-                      const isDisabled = bankQuestions.length > 0 && preset > bankQuestions.length;
-                      const isSelected = matchMaxQuestions === preset;
-                      return (
-                        <button
-                          key={preset}
-                          type="button"
-                          disabled={isDisabled}
-                          onClick={() => setMatchMaxQuestions(preset)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                            isSelected
-                              ? "bg-indigo-500/30 border-indigo-400 text-indigo-200 shadow-sm"
-                              : isDisabled
-                              ? "opacity-30 cursor-not-allowed border-white/5 text-slate-500"
-                              : "glass border-white/10 text-slate-300 hover:text-white hover:border-white/20"
-                          }`}
-                        >
-                          {preset} câu
-                        </button>
-                      );
-                    })}
+            {isCustomQuestionCount && (() => {
+              const isTeamMultipleMode = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK"].includes(mode);
+              const numTeams = Math.max(1, teams.length || 4);
+              const presetList = isTeamMultipleMode
+                ? [numTeams * 1, numTeams * 2, numTeams * 3, numTeams * 4, numTeams * 5]
+                : [5, 10, 12, 15, 20, 25, 30];
+
+              return (
+                <div className="space-y-3 pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-semibold text-slate-300">Chọn nhanh:</span>
+                      {presetList.map((preset) => {
+                        const isDisabled = bankQuestions.length > 0 && preset > bankQuestions.length;
+                        const isSelected = matchMaxQuestions === preset;
+                        const label = isTeamMultipleMode ? `${preset}c (${preset / numTeams}v)` : `${preset} câu`;
+                        return (
+                          <button
+                            key={preset}
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => setMatchMaxQuestions(preset)}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                              isSelected
+                                ? "bg-indigo-500/30 border-indigo-400 text-indigo-200 shadow-sm"
+                                : isDisabled
+                                ? "opacity-30 cursor-not-allowed border-white/5 text-slate-500"
+                                : "glass border-white/10 text-slate-300 hover:text-white hover:border-white/20"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-slate-300 whitespace-nowrap">
+                        Nhập số câu:
+                      </label>
+                      <input
+                        type="number"
+                        min={isTeamMultipleMode ? numTeams : 1}
+                        step={isTeamMultipleMode ? numTeams : 1}
+                        max={bankQuestions.length > 0 ? bankQuestions.length : 100}
+                        value={matchMaxQuestions}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 1;
+                          const maxVal = bankQuestions.length > 0 ? bankQuestions.length : 100;
+                          setMatchMaxQuestions(Math.min(maxVal, Math.max(1, val)));
+                        }}
+                        className="w-20 px-2.5 py-1.5 rounded-lg bg-input border border-border text-sm font-bold text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
+                      <span className="text-xs text-muted-foreground">câu</span>
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-slate-300 whitespace-nowrap">
-                      Nhập số câu:
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={bankQuestions.length > 0 ? bankQuestions.length : 100}
-                      value={matchMaxQuestions}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        const maxVal = bankQuestions.length > 0 ? bankQuestions.length : 100;
-                        setMatchMaxQuestions(Math.min(maxVal, Math.max(1, val)));
-                      }}
-                      className="w-20 px-2.5 py-1.5 rounded-lg bg-input border border-border text-sm font-bold text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                    />
-                    <span className="text-xs text-muted-foreground">câu</span>
-                  </div>
+                  {isTeamMultipleMode && (
+                    <div className="text-[11px] text-amber-300/90 flex items-center justify-between px-1">
+                      <span>⚠️ Chế độ này yêu cầu số câu là bội số của số đội ({numTeams} đội)</span>
+                      <span className="font-mono text-cyan-300 font-bold">
+                        {matchMaxQuestions > 0 ? `${Math.floor(matchMaxQuestions / numTeams)} lượt/đội (${matchMaxQuestions} câu)` : "Hết đề"}
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Real-time Allocation Breakdown Preview */}
             {(() => {

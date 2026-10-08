@@ -1394,6 +1394,7 @@ export default function AdminRoomPage() {
                 mysteryState={roomState.mysteryQuestState}
                 isAdmin={true}
                 teams={roomState.teams}
+                onChooseAction={(action) => emit("admin:mystery:choose_action", { action, code })}
                 onFlipCard={(tileId) => emit("admin:mystery:flip_card", { tileId, code })}
                 onCashOut={() => emit("admin:mystery:cash_out", { code })}
                 onAdvanceTurn={() => emit("admin:mystery:advance_turn", { code })}
@@ -1407,7 +1408,8 @@ export default function AdminRoomPage() {
             !(
               roomState?.mode === "MYSTERY_QUEST" &&
               roomState.mysteryQuestState &&
-              (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+              (roomState.mysteryQuestState.phase === "DECISION_CHOICE" ||
+                roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
                 (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))
             ) && (
             <div className="glass rounded-xl p-4 space-y-3">

@@ -1815,7 +1815,7 @@ export default function DisplayPage() {
                   }}
                 />
               </div>
-            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" || (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))) ? (
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (roomState.mysteryQuestState.phase === "DECISION_CHOICE" || roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" || (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))) ? (
               <div className="w-full max-w-5xl">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}

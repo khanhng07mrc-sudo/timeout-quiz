@@ -928,6 +928,14 @@ export default function PlayPage() {
         playerId: playerIdRef.current,
         clientAnsweredAt: getServerTime(),
       });
+      // In sandbox mode or inside iframe, notify parent MC immediately for 0ms latency update
+      if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: "SANDBOX_PLAYER_ANSWER_UPDATE",
+          teamId: targetTeamId,
+          answer,
+        }, "*");
+      }
     } else {
       window.parent?.postMessage({
         type: "OFFLINE_PLAYER_ACTION",
@@ -1420,7 +1428,8 @@ export default function PlayPage() {
       <div className="flex-1 flex flex-col gap-2 sm:gap-3">
         {roomState?.mode === "MYSTERY_QUEST" &&
         roomState?.mysteryQuestState &&
-        (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
+        (roomState.mysteryQuestState.phase === "DECISION_CHOICE" ||
+          roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
           (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && (!currentQuestion || Boolean(revealPayload)))) ? (
           <div className="w-full animate-fade-in">
             <MysteryQuestBoard
@@ -1428,6 +1437,13 @@ export default function PlayPage() {
               myTeamId={effectiveTeamId}
               isSandbox={isSandbox}
               teams={roomState.teams}
+              onChooseAction={(action) => {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:choose_action", { action });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", action, teamId: effectiveTeamId }, "*");
+                }
+              }}
               onFlipCard={(tileId) => {
                 if (socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:flip_card", { tileId });
@@ -1627,6 +1643,13 @@ export default function PlayPage() {
                   myTeamId={effectiveTeamId}
                   isSandbox={isSandbox}
                   teams={roomState.teams}
+                  onChooseAction={(action) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:choose_action", { action });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", action, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
                   onFlipCard={(tileId) => {
                     if (socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:flip_card", { tileId });

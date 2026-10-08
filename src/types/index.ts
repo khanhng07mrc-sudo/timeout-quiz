@@ -848,12 +848,19 @@ export type MysteryMiniGameType =
   | "TAROT_CARDS"
   | "RADAR_WINDOWS";
 
+export type MysteryPromoPerk =
+  | "SHIELD_PROMO"    // Tặng 1 Khiên hộ mệnh né bom miễn phí
+  | "EXTRA_POT_PROMO" // Hũ vốn ban đầu được khuyến mãi thêm +5đ
+  | "DOUBLE_PROMO";   // Thẻ x2 có xác suất xuất hiện sớm
+
 export type MysteryTileEffectType =
   | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
   | "MULTIPLY_X2"  // Nhân đôi tổng điểm hiện tại
   | "DIVIDE_HALF"  // Chia đôi điểm hiện tại (Hiệu ứng Ô số phận)
   | "STEAL_POINTS" // Cướp 20-30đ từ đội cao điểm nhất
   | "LOSE_POINTS"  // Mất 20-30đ
+  | "LOSE_POT_POINTS" // Bẫy trừ điểm trong Hũ (-5đ, -10đ) nhưng không nổ bom
+  | "FORCE_STOP"   // Buộc dừng: Khóa chốt điểm Hũ hiện tại và kết thúc lượt an toàn
   | "EXTRA_TURN"   // Nhận thêm 1 lượt chọn ô câu tiếp theo
   | "RARE_POWERUP" // Tặng 1 thẻ bài bổ trợ hiếm (Khiên / Đổi câu / 50-50)
   | "SAFE_SHIELD"  // Tặng Khiên bảo vệ
@@ -861,6 +868,7 @@ export type MysteryTileEffectType =
 
 export type MysteryTileType =
   | "REWARD"
+  | "TRAP"         // Thẻ bất lợi nhẹ (-5đ, -10đ Hũ hoặc Buộc dừng)
   | "BOMB_SMOKE"   // 1. Bom Khói (50%): Mất sạch điểm của câu này
   | "BOMB_DARK"    // 2. Bom Hắc Ám (35%): Mất điểm chia đều cho các đội còn lại
   | "BOMB_CHARITY" // 3. Bom Từ Thiện (15%): Mất 50% điểm tặng cho đội cao nhất
@@ -898,11 +906,22 @@ export interface MysteryQuestState {
   themeNameVi: string;
   themeBgGradient: string;
   tiles: MysteryTile[];
-  phase: "QUESTION_ACTIVE" | "STEAL_PHASE" | "PUSH_YOUR_LUCK" | "TURN_SUMMARY";
+  phase: "QUESTION_ACTIVE" | "DECISION_CHOICE" | "STEAL_PHASE" | "PUSH_YOUR_LUCK" | "TURN_SUMMARY";
   stealBuzzedTeamId?: string;
   stealBuzzedTeamName?: string;
   stealEndsAt?: number;
   stealCountdown?: number;
+  baseQuestionPoints?: number;
+  decisionMade?: "TAKE_BASE_POINTS" | "PLAY_MINIGAME";
+  promoPerk?:
+    | MysteryPromoPerk
+    | {
+        type: MysteryPromoPerk;
+        title: string;
+        description: string;
+        icon: string;
+      };
+  hasShield?: boolean;
   // Push-your-luck pot & minigame state
   potPoints: number; // Điểm tích lũy trong lượt này
   potMultiplier: number; // Hệ số nhân
@@ -926,8 +945,10 @@ export interface MysteryQuestState {
     }>;
   };
   turnFinishedReason?:
+    | "TOOK_BASE_POINTS"
     | "CASH_OUT"
     | "BOMB_HIT"
+    | "FORCE_STOP"
     | "QUESTION_FAILED"
     | "ALL_CLEARED"
     | "PAIR_MATCHED"
@@ -1314,6 +1335,8 @@ export interface ClientToServerEvents {
   "admin:team:update_score": (payload: { teamId: string; score: number; code?: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:room:update_config": (payload: { key: string; value: any; code?: string }) => void;
   // Mystery Quest Client Events
+  "game:mystery:choose_action": (payload: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME" }) => void;
+  "admin:mystery:choose_action": (payload: { action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME"; code?: string }) => void;
   "game:mystery:flip_card": (payload: { tileId: number }) => void;
   "game:mystery:cash_out": () => void;
   "game:mystery:steal_buzz": () => void;

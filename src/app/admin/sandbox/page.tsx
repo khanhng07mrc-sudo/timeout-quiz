@@ -27,6 +27,7 @@ import {
   generateMysteryStageForTurn,
   handleFlipCard as handleMysteryFlipCard,
   handleCashOut as handleMysteryCashOut,
+  generateMysteryPromoPerk,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -190,6 +191,13 @@ export default function AdminSandboxPage() {
   const [directAnswerTargetTeamId, setDirectAnswerTargetTeamId] = useState<string>("");
   const [teamSelectedAnswers, setTeamSelectedAnswers] = useState<Record<string, string>>({});
   const [initialTeamScoreInput, setInitialTeamScoreInput] = useState<number>(0);
+  const [customMaxQuestionsInput, setCustomMaxQuestionsInput] = useState<string>("");
+
+  useEffect(() => {
+    if (roomState?.config?.matchMaxQuestions !== undefined) {
+      setCustomMaxQuestionsInput(roomState.config.matchMaxQuestions === 0 ? "" : String(roomState.config.matchMaxQuestions));
+    }
+  }, [roomState?.config?.matchMaxQuestions]);
 
   const offlinePrepIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const offlineWarmupIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -875,18 +883,6 @@ export default function AdminSandboxPage() {
         return { ...prev, teams: updatedTeams, mysteryQuestState: updatedMystery };
       });
       addLog(`💰 [${payload.teamName}] đã bảo toàn quỹ điểm: +${payload.totalGained}đ (Tổng: ${payload.newScore}đ)`);
-    });
-
-    sock.on("game:grid:update", (gridCaroState: any) => {
-      setRoomState((prev) => (prev ? { ...prev, gridCaroState } : prev));
-    });
-
-    sock.on("game:dice:update", (diceRaceState: any) => {
-      setRoomState((prev) => (prev ? { ...prev, diceRaceState } : prev));
-    });
-
-    sock.on("game:wager:update", (wagerState: any) => {
-      setRoomState((prev) => (prev ? { ...prev, wagerState } : prev));
     });
 
     sock.on("game:score:update", (scores) => {
@@ -1979,6 +1975,75 @@ export default function AdminSandboxPage() {
         addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
         return;
       }
+      if (e.data?.type === "MYSTERY_CHOOSE_ACTION" || e.data?.action === "mystery_choose_action") {
+        const actionChoice = e.data?.actionChoice || e.data?.action || e.data?.choice;
+        const targetTeamId = e.data?.teamId || roomStateRef.current?.mysteryQuestState?.currentTurnTeamId;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:choose_action" as any, { action: actionChoice, teamId: targetTeamId, code });
+          addLog(`🎲 MC/Thí sinh chọn: ${actionChoice === "TAKE_BASE_POINTS" ? "Nhận điểm gốc" : "Thử thách Minigame"}`);
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === (targetTeamId || curMystery.currentTurnTeamId));
+        if (!activeTeam) return;
+
+        if (actionChoice === "TAKE_BASE_POINTS") {
+          const basePts = curMystery.baseQuestionPoints || curMystery.potPoints || 20;
+          const updatedTeams = roomStateRef.current.teams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: t.score + basePts } : t
+          );
+          const updatedState = {
+            ...curMystery,
+            phase: "TURN_SUMMARY" as const,
+            turnFinishedReason: "TOOK_BASE_POINTS" as const,
+            decisionMade: "TAKE_BASE_POINTS" as const,
+            potPoints: 0,
+            storyResult: {
+              teamId: activeTeam.id,
+              teamName: activeTeam.name,
+              teamColor: activeTeam.color,
+              rewardText: `Lựa chọn an toàn! Nhận trọn vẹn +${basePts} điểm câu hỏi.`,
+              scoreDelta: basePts,
+              oldScore: activeTeam.score,
+              newScore: activeTeam.score + basePts,
+            },
+          };
+          const nextRoomState: RoomState = {
+            ...roomStateRef.current,
+            teams: updatedTeams,
+            mysteryQuestState: updatedState,
+          };
+          roomStateRef.current = nextRoomState;
+          setRoomState(nextRoomState);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+          addLog(`🛡️ [${activeTeam.name}] CHỌN AN TOÀN: Nhận +${basePts} điểm câu hỏi!`);
+        } else {
+          // PLAY_MINIGAME
+          const updatedState = {
+            ...curMystery,
+            phase: "PUSH_YOUR_LUCK" as const,
+            decisionMade: "PLAY_MINIGAME" as const,
+          };
+          const nextRoomState: RoomState = {
+            ...roomStateRef.current,
+            mysteryQuestState: updatedState,
+          };
+          roomStateRef.current = nextRoomState;
+          setRoomState(nextRoomState);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+          addLog(`🎲 [${activeTeam.name}] CHỌN THỬ THÁCH MINIGAME: Quyết định chơi lớn!`);
+        }
+        return;
+      }
+      if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {
+        const { teamId, answer } = e.data;
+        if (teamId && answer) {
+          const singleAns = Array.isArray(answer) ? answer[0] : answer;
+          setTeamSelectedAnswers((prev) => ({ ...prev, [teamId]: singleAns }));
+        }
+        return;
+      }
       if (e.data?.type === "MYSTERY_STEAL_BUZZ" || e.data?.action === "mystery_steal_buzz") {
         return;
       }
@@ -2031,6 +2096,7 @@ export default function AdminSandboxPage() {
           teams,
           turnsPerTeam: curMystery.turnsPerTeam,
           prevTheme: curMystery.theme,
+          prevMiniGameType: curMystery.miniGameType,
         });
 
         const nextRoomState: RoomState = {
@@ -2080,6 +2146,8 @@ export default function AdminSandboxPage() {
           }
         }
         offlineAnswersRef.current.set(targetTeamId, { answer, isCorrect, points: awarded, timeSpent: timeSpentMs });
+        const singleAns = Array.isArray(answer) ? answer[0] : answer;
+        setTeamSelectedAnswers((prev) => ({ ...prev, [targetTeamId]: singleAns }));
 
         const isSingleSubmit = roomState?.config.answerSubmissionMode === "SINGLE_SUBMIT";
         const isStealInBounceback = selectedMode === "BOUNCEBACK" && currentQuestion.stealBuzzedTeamId === targetTeamId;
@@ -2897,9 +2965,12 @@ export default function AdminSandboxPage() {
           offlineQuestionsRef.current = alloc.allocatedQuestions;
         }
       }
+      const effectiveValue = (key === "matchMaxQuestions" && derivedConfig.matchMaxQuestions !== undefined)
+        ? derivedConfig.matchMaxQuestions
+        : value;
       return {
         ...prev,
-        config: { ...prev.config, ...derivedConfig, [key]: value },
+        config: { ...prev.config, ...derivedConfig, [key]: effectiveValue },
         wagerState: nextWager,
       };
     });
@@ -3502,11 +3573,18 @@ export default function AdminSandboxPage() {
           const isCorrect = Boolean(activeAns?.isCorrect);
 
           if (isCorrect) {
+            const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion?.question;
+            const basePts = rawQ?.points || 20;
+            const promo = generateMysteryPromoPerk(basePts);
             nextMystery = {
               ...curMystery,
-              phase: "PUSH_YOUR_LUCK",
-              potPoints: 0,
+              phase: "DECISION_CHOICE",
+              baseQuestionPoints: basePts,
+              potPoints: basePts,
               potMultiplier: 1,
+              promoPerk: promo,
+              hasShield: promo === "SHIELD_PROMO",
+              decisionMade: undefined,
             };
           } else {
             nextMystery = {
@@ -5303,7 +5381,7 @@ export default function AdminSandboxPage() {
                   </button>
                   {showSettingsDropdown && roomState && (
                     <div
-                      className="absolute right-0 top-full mt-1 z-40 w-64 rounded-2xl glass border border-white/20 bg-[#151728]/95 shadow-2xl p-3 flex flex-col gap-2 text-xs"
+                      className="absolute right-0 top-full mt-1 z-40 w-80 sm:w-96 max-h-[85vh] overflow-y-auto rounded-2xl glass border border-white/20 bg-[#151728]/98 shadow-2xl p-3 flex flex-col gap-2 text-xs"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-0.5">
@@ -5507,28 +5585,120 @@ export default function AdminSandboxPage() {
                       )}
 
                       {/* Universal Match Max Questions (Tất cả các mode) */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-slate-300">Tổng số câu hỏi</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Tất cả mode</span>
-                        </div>
-                        <div className="flex items-center gap-1 flex-wrap justify-end">
-                          {[5, 10, 12, 15, 20, 25, 0].map((qCount) => (
-                            <button
-                              key={qCount}
-                              type="button"
-                              onClick={() => updateConfig("matchMaxQuestions", qCount)}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
-                                (roomState.config.matchMaxQuestions ?? 0) === qCount
-                                  ? "bg-purple-500/30 border-purple-400 text-purple-300"
-                                  : "glass border-white/10 text-slate-400 hover:text-white"
-                              }`}
-                            >
-                              {qCount === 0 ? "Hết đề" : `${qCount}c`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      {(() => {
+                        const isTeamMultipleMode = ["MYSTERY_QUEST", "WAGER", "BOUNCEBACK"].includes(roomState.mode);
+                        const teamsCount = Math.max(1, roomState.teams.length || 4);
+                        const currentMaxQ = roomState.config.matchMaxQuestions ?? 0;
+                        const turnsPerTeam = currentMaxQ > 0 ? Math.floor(currentMaxQ / teamsCount) : 0;
+
+                        const presetList = isTeamMultipleMode
+                          ? [teamsCount * 1, teamsCount * 2, teamsCount * 3, teamsCount * 4, teamsCount * 5, 0]
+                          : [5, 10, 12, 15, 20, 25, 0];
+
+                        const handleSaveCustomMaxQuestions = (rawVal: number | string) => {
+                          const num = Number(rawVal);
+                          if (!rawVal || isNaN(num) || num <= 0) {
+                            updateConfig("matchMaxQuestions", 0);
+                            setCustomMaxQuestionsInput("");
+                            return;
+                          }
+                          if (isTeamMultipleMode) {
+                            const turns = Math.max(1, Math.round(num / teamsCount));
+                            const snapped = turns * teamsCount;
+                            updateConfig("matchMaxQuestions", snapped);
+                            setCustomMaxQuestionsInput(String(snapped));
+                            if (snapped !== num) {
+                              addLog(`⚙️ Đã làm tròn số câu thành ${snapped} (${turns} lượt/đội × ${teamsCount} đội) cho chế độ ${roomState.mode}`);
+                            }
+                          } else {
+                            updateConfig("matchMaxQuestions", num);
+                            setCustomMaxQuestionsInput(String(num));
+                          }
+                        };
+
+                        return (
+                          <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-slate-300 font-bold">Tổng số câu hỏi</span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full border ${
+                                  isTeamMultipleMode
+                                    ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                    : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                }`}>
+                                  {isTeamMultipleMode ? `Bội số ${teamsCount} đội` : "Tất cả mode"}
+                                </span>
+                              </div>
+
+                              {/* Numeric Input Field */}
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min={isTeamMultipleMode ? teamsCount : 1}
+                                  step={isTeamMultipleMode ? teamsCount : 1}
+                                  placeholder={isTeamMultipleMode ? `Bội ${teamsCount}` : "Số câu"}
+                                  value={customMaxQuestionsInput}
+                                  onChange={(e) => setCustomMaxQuestionsInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      handleSaveCustomMaxQuestions(customMaxQuestionsInput);
+                                    }
+                                  }}
+                                  className="w-16 px-1.5 py-0.5 rounded-lg glass border border-white/20 text-white text-[11px] bg-[#0f0f1a] focus:outline-none text-right font-mono"
+                                  title={isTeamMultipleMode ? `Nhập số câu (tự động làm tròn theo bội số ${teamsCount})` : "Nhập số câu hỏi tùy ý"}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveCustomMaxQuestions(customMaxQuestionsInput)}
+                                  className="px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition active:scale-95 cursor-pointer"
+                                  title="Lưu số câu hỏi"
+                                >
+                                  Lưu
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Preset Buttons */}
+                            <div className="flex items-center gap-1 flex-wrap justify-end">
+                              {presetList.map((qCount) => {
+                                const isCurrent = currentMaxQ === qCount;
+                                const label = qCount === 0
+                                  ? "Hết đề"
+                                  : isTeamMultipleMode
+                                  ? `${qCount}c (${qCount / teamsCount}v)`
+                                  : `${qCount}c`;
+                                return (
+                                  <button
+                                    key={qCount}
+                                    type="button"
+                                    onClick={() => {
+                                      updateConfig("matchMaxQuestions", qCount);
+                                      setCustomMaxQuestionsInput(qCount === 0 ? "" : String(qCount));
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                      isCurrent
+                                        ? "bg-purple-500/30 border-purple-400 text-purple-300"
+                                        : "glass border-white/10 text-slate-400 hover:text-white"
+                                    }`}
+                                  >
+                                    {label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {/* Helper hint for modes requiring team multiples */}
+                            {isTeamMultipleMode && (
+                              <div className="text-[10px] text-amber-400/90 flex items-center justify-between">
+                                <span>⚠️ Bắt buộc là bội số của {teamsCount} đội</span>
+                                <span className="font-mono text-cyan-300 font-bold">
+                                  {currentMaxQ > 0 ? `${turnsPerTeam} lượt/đội (${currentMaxQ}c)` : "Toàn bộ bộ đề"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* Initial Team Score */}
                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
@@ -6309,6 +6479,13 @@ export default function AdminSandboxPage() {
                       mysteryState={roomState.mysteryQuestState}
                       isAdmin={true}
                       teams={roomState.teams}
+                      onChooseAction={(action) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:choose_action" as any, { action, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_CHOOSE_ACTION", actionChoice: action, action }, "*");
+                        }
+                      }}
                       onFlipCard={(tileId) => {
                         if (!isOfflineSandbox) {
                           adminSocketRef.current?.emit("admin:mystery:flip_card" as any, { tileId, code });

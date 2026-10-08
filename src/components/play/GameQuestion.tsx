@@ -288,7 +288,7 @@ export default function GameQuestion({
   };
 
   return (
-    <div className={`glass rounded-2xl p-2.5 sm:p-5 flex flex-col gap-2 sm:gap-3.5 animate-slide-up transition-all duration-500 ${
+    <div className={`glass rounded-2xl p-2.5 sm:p-4 flex flex-col gap-2 sm:gap-2.5 animate-slide-up transition-all duration-500 ${
       isBuzzedWaitingPrep
         ? "border-2 border-emerald-400/90 shadow-[0_0_35px_rgba(16,185,129,0.35)] ring-2 ring-emerald-400/30"
         : ""

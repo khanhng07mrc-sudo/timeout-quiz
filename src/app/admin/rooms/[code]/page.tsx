@@ -746,8 +746,10 @@ export default function AdminRoomPage() {
   const isAutoCorrectResult = effectiveAwaiting?.isAutoCorrect === true;
   const answerSummaryText = effectiveAwaiting?.answerText || (Array.isArray(effectiveAwaiting?.answer) ? effectiveAwaiting.answer.join(", ") : effectiveAwaiting?.answer) || "(Chưa có đáp án)";
 
+  const isPlayingOrPaused = roomState?.status === "PLAYING" || roomState?.status === "PAUSED";
+
   return (
-    <div className="space-y-6 pb-24 lg:pb-8 animate-loaded-reveal">
+    <div className={`animate-loaded-reveal ${isPlayingOrPaused ? "lg:h-screen lg:max-h-[100dvh] lg:overflow-hidden lg:flex lg:flex-col p-2 sm:p-3 gap-2" : "space-y-6 pb-24 lg:pb-8"}`}>
       {/* Back to rooms list */}
       <Link
         href="/admin/rooms"
@@ -985,9 +987,9 @@ export default function AdminRoomPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 ${isPlayingOrPaused ? "flex-1 min-h-0" : "gap-6"}`}>
         {/* Game controls */}
-        <div className="glass rounded-2xl p-6 space-y-4">
+        <div className={`glass rounded-2xl p-4 sm:p-5 space-y-3.5 ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col justify-between" : "p-6 space-y-4"}`}>
           <h2 className="font-bold text-lg">⚡ Điều khiển game</h2>
 
           {/* Match warmup countdown banner with Skip button */}
@@ -2083,7 +2085,7 @@ export default function AdminRoomPage() {
         </div>
 
         {/* Leaderboard */}
-        <div className="glass rounded-2xl p-6">
+        <div className={`glass rounded-2xl p-4 sm:p-5 ${isPlayingOrPaused ? "overflow-y-auto min-h-0 flex flex-col justify-between" : "p-6"}`}>
           <h2 className="font-bold text-lg mb-4 inline-flex items-center gap-2">
             <SystemIcon name="trophy" className="w-5 h-5 text-amber-400 shrink-0" />
             <span>Bảng xếp hạng</span>

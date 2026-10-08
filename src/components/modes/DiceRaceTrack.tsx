@@ -699,8 +699,8 @@ export default function DiceRaceTrack({
 
   return (
     <div
-      className={`relative rounded-3xl overflow-visible border-2 border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all flex flex-col justify-between ${
-        isDisplay ? "p-3 sm:p-5 px-3.5 sm:px-6 md:px-8" : "p-2.5 sm:p-4 px-3 sm:px-5 md:px-7"
+      className={`relative rounded-3xl overflow-visible border-2 border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.18)] transition-all flex flex-col justify-between max-h-[78vh] ${
+        isDisplay ? "p-2.5 sm:p-3.5 px-3 sm:px-5" : "p-2 sm:p-3 px-2.5 sm:px-4"
       }`}
       style={{
         background: "radial-gradient(ellipse at center, #11152e 0%, #090c1c 65%, #05060f 100%)",
@@ -900,7 +900,7 @@ export default function DiceRaceTrack({
       {/* ═════════════════════════════════════════════════════════════════════
           CONTINUOUS SERPENTINE RACETRACK CIRCUIT WITH Z-ROTATION
          ═════════════════════════════════════════════════════════════════════ */}
-      <div className="relative w-full aspect-[16/9.8] sm:aspect-[16/9.2] min-h-[440px] sm:min-h-[500px] md:min-h-[560px] rounded-3xl bg-[#080b1a]/95 border border-cyan-500/30 overflow-hidden shadow-2xl p-2 sm:p-4 my-1 flex-1 flex items-center justify-center">
+      <div className="relative w-full aspect-[16/9.8] sm:aspect-[16/9.2] max-h-[58vh] min-h-[300px] rounded-3xl bg-[#080b1a]/95 border border-cyan-500/30 overflow-hidden shadow-2xl p-2 sm:p-4 my-1 flex-1 flex items-center justify-center">
         {/* SVG Continuous Racetrack Bed Ribbon */}
         <svg
           viewBox="0 0 1000 600"

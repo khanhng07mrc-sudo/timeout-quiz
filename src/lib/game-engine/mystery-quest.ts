@@ -197,6 +197,57 @@ export interface MysteryTeamRef {
   isEliminated?: boolean;
 }
 
+export interface StealResult {
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints: number;
+}
+
+/**
+ * Calculates controlled steal points with limits:
+ * - Steals from top competitor (leader #1)
+ * - Capped at maxCap (25-30đ)
+ * - Safety capped at max 50% of victim's points so they never go negative
+ */
+export function calculateCappedSteal({
+  activeTeamId,
+  allTeams,
+  targetPoints = 25,
+  maxCap = 25,
+}: {
+  activeTeamId: string;
+  allTeams: MysteryTeamRef[];
+  targetPoints?: number;
+  maxCap?: number;
+}): StealResult {
+  const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
+  if (otherTeams.length === 0) {
+    return { stolenPoints: Math.min(targetPoints, maxCap) };
+  }
+  const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const victim = sorted[0];
+  const victimScore = victim.score || 0;
+
+  if (victimScore <= 0) {
+    return {
+      victimTeamId: victim.id,
+      victimTeamName: victim.name,
+      stolenPoints: 0,
+    };
+  }
+
+  // Cap: maximum 50% of victim's points and maximum maxCap (e.g. 25đ)
+  const halfScore = Math.floor(victimScore * 0.5);
+  const allowed = Math.min(targetPoints, maxCap, halfScore);
+  const finalSteal = Math.max(1, allowed);
+
+  return {
+    victimTeamId: victim.id,
+    victimTeamName: victim.name,
+    stolenPoints: finalSteal,
+  };
+}
+
 /**
  * Helper to shuffle memory pairs tiles face down and re-index.
  */
@@ -227,7 +278,7 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
   const pBonusTop = basePoints * 2; // Siêu Thưởng Nhân Đôi (+20đ / +40đ / +60đ)
   const pBonusHigh = Math.round(basePoints * 1.5); // Thưởng Lớn Kho Báu (+15đ / +30đ / +45đ)
   const pBonusMed = basePoints; // Thưởng Trung Bình Tinh Tú (+10đ / +20đ / +30đ)
-  const pBonusSafe = Math.max(5, Math.round(basePoints * 0.5)); // Thưởng An Toàn May Mắn (+5đ / +10đ / +15đ)
+  const pSteal = Math.min(25, Math.max(15, basePoints)); // Cặp Hải Tặc Đoạt Bảo (Cướp tối đa 25đ)
   const pPenalty = basePoints; // Cặp Kíp Nổ Hắc Ám (-10đ / -20đ / -30đ)
 
   const pairs: PairDef[] = [
@@ -239,6 +290,15 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
       storyDescription: `Kích hoạt năng lượng đột phá: Nhận nóng +${pBonusTop} điểm thưởng cực khủng!`,
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop,
+    },
+    {
+      pairKey: "PAIR_STEAL",
+      icon: "🗡️",
+      type: "REWARD",
+      storyTitle: "🗡️ CẶP HẢI TẶC ĐOẠT BẢO!",
+      storyDescription: `Ghép trúng cặp hải tặc: Cướp điểm từ Đội dẫn đầu (tối đa ${pSteal}đ, trần 50% điểm đối thủ)!`,
+      effectType: "STEAL_POINTS",
+      deltaPoints: pSteal,
     },
     {
       pairKey: "PAIR_TREASURE",
@@ -257,15 +317,6 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
       storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusMed,
-    },
-    {
-      pairKey: "PAIR_LUCKY",
-      icon: "🍀",
-      type: "REWARD",
-      storyTitle: "🍀 CẶP CỎ MAY MẮN!",
-      storyDescription: `Phước lành hộ mệnh: Nhận thêm an toàn +${pBonusSafe} điểm!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pBonusSafe,
     },
     {
       pairKey: "PAIR_BOMB",
@@ -318,7 +369,7 @@ export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[
   }
 
   const pHigh = basePoints * 2; // Cửa Hoàng Gia: 20đ với câu 10đ, 40đ với 20đ, 60đ với 30đ
-  const pMed = basePoints;     // Cửa An Toàn: 10đ với câu 10đ, 20đ với 20đ, 30đ với 30đ
+  const pSteal = Math.min(25, Math.max(15, basePoints)); // Cửa Đoạt Bảo: Cướp tối đa 25đ
   const pPenalty = basePoints; // Cửa Bẫy Bom: -10đ với câu 10đ, -20đ với 20đ, -30đ với 30đ
 
   const doors: DoorDef[] = [
@@ -331,12 +382,12 @@ export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[
       deltaPoints: pHigh,
     },
     {
-      icon: "🛡️",
+      icon: "🗡️",
       type: "REWARD",
-      storyTitle: "🛡️ CỬA HỘ VỆ AN TOÀN!",
-      storyDescription: `Cánh cửa phòng tuyến an toàn: Nhận an toàn +${pMed} điểm thưởng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pMed,
+      storyTitle: "🗡️ CỬA ĐOẠT BẢO HẢI TẶC!",
+      storyDescription: `Kích hoạt cướp bóc đoạt bảo: Cướp điểm từ Đội dẫn đầu (tối đa ${pSteal}đ, trần 50% điểm đối thủ)!`,
+      effectType: "STEAL_POINTS",
+      deltaPoints: pSteal,
     },
     {
       icon: "💥",
@@ -771,6 +822,9 @@ export function handleFlipCard({
     teamName: string;
     points: number;
   }>;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
 } {
   const normType = normalizeMiniGameType(state.miniGameType);
 
@@ -885,8 +939,30 @@ export function handleFlipCard({
           finalScoreDelta: -penalty,
         };
       } else {
-        // Safe match
-        finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+        // Safe match or Steal match
+        let victimTeamId: string | undefined;
+        let victimTeamName: string | undefined;
+        let stolenPoints: number | undefined;
+
+        if (firstTile.effectType === "STEAL_POINTS") {
+          const stealRes = calculateCappedSteal({
+            activeTeamId: team.id,
+            allTeams,
+            targetPoints: firstTile.deltaPoints || 25,
+            maxCap: 25,
+          });
+          if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+            victimTeamId = stealRes.victimTeamId;
+            victimTeamName = stealRes.victimTeamName;
+            stolenPoints = stealRes.stolenPoints;
+            finalDelta = stolenPoints;
+          } else {
+            finalDelta = Math.min(firstTile.deltaPoints || 15, 15);
+          }
+        } else {
+          finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+        }
+
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0; // Cleared as it's directly awarded
@@ -894,11 +970,15 @@ export function handleFlipCard({
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
 
+        const rewardText = victimTeamName && stolenPoints
+          ? `🎉 Ghép thành công ${firstTile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
+          : `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+          rewardText,
           scoreDelta: finalDelta,
           oldScore,
           newScore,
@@ -909,6 +989,9 @@ export function handleFlipCard({
           isBomb: false,
           scorePenalty: 0,
           finalScoreDelta: finalDelta,
+          victimTeamId,
+          victimTeamName,
+          stolenPoints,
         };
       }
     } else {
@@ -1080,7 +1163,29 @@ export function handleFlipCard({
         finalScoreDelta: -penalty,
       };
     } else {
-      finalDelta = tile.deltaPoints || 25;
+      let victimTeamId: string | undefined;
+      let victimTeamName: string | undefined;
+      let stolenPoints: number | undefined;
+
+      if (tile.effectType === "STEAL_POINTS") {
+        const stealRes = calculateCappedSteal({
+          activeTeamId: team.id,
+          allTeams,
+          targetPoints: tile.deltaPoints || 25,
+          maxCap: 25,
+        });
+        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+          victimTeamId = stealRes.victimTeamId;
+          victimTeamName = stealRes.victimTeamName;
+          stolenPoints = stealRes.stolenPoints;
+          finalDelta = stolenPoints;
+        } else {
+          finalDelta = Math.min(tile.deltaPoints || 15, 15);
+        }
+      } else {
+        finalDelta = tile.deltaPoints || 25;
+      }
+
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
@@ -1088,11 +1193,15 @@ export function handleFlipCard({
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
 
+      const rewardText = victimTeamName && stolenPoints
+        ? `🚪 ${tile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
+        : `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+        rewardText,
         scoreDelta: finalDelta,
         oldScore,
         newScore,
@@ -1103,6 +1212,9 @@ export function handleFlipCard({
         isBomb: false,
         scorePenalty: 0,
         finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints,
       };
     }
   }
@@ -1183,7 +1295,29 @@ export function handleFlipCard({
         finalScoreDelta: -penalty,
       };
     } else {
-      finalDelta = tile.deltaPoints || 35;
+      let victimTeamId: string | undefined;
+      let victimTeamName: string | undefined;
+      let stolenPoints: number | undefined;
+
+      if (tile.effectType === "STEAL_POINTS") {
+        const stealRes = calculateCappedSteal({
+          activeTeamId: team.id,
+          allTeams,
+          targetPoints: tile.deltaPoints || 25,
+          maxCap: 25,
+        });
+        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
+          victimTeamId = stealRes.victimTeamId;
+          victimTeamName = stealRes.victimTeamName;
+          stolenPoints = stealRes.stolenPoints;
+          finalDelta = stolenPoints;
+        } else {
+          finalDelta = Math.min(tile.deltaPoints || 15, 15);
+        }
+      } else {
+        finalDelta = tile.deltaPoints || 35;
+      }
+
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "TAROT_DRAWN";
@@ -1191,11 +1325,15 @@ export function handleFlipCard({
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
 
+      const rewardText = victimTeamName && stolenPoints
+        ? `🔮 ${tile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
+        : `🔮 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🔮 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`,
+        rewardText,
         scoreDelta: finalDelta,
         oldScore,
         newScore,
@@ -1206,6 +1344,9 @@ export function handleFlipCard({
         isBomb: false,
         scorePenalty: 0,
         finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints,
       };
     }
   }
@@ -1478,15 +1619,15 @@ export function handleFlipCard({
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
   } else if (tile.effectType === "STEAL_POINTS") {
-    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-    if (otherTeams.length > 0) {
-      const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
-      const leader = sorted[0];
-      const stealAmt = Math.min(leader.score || 0, tile.deltaPoints || 20);
-      state.potPoints += (stealAmt > 0 ? stealAmt : 15) * state.potMultiplier;
-    } else {
-      state.potPoints += (tile.deltaPoints || 20) * state.potMultiplier;
-    }
+    const stealCalc = calculateCappedSteal({
+      activeTeamId: team.id,
+      allTeams,
+      targetPoints: tile.deltaPoints || 20,
+      maxCap: 25,
+    });
+    const stealAmt = stealCalc.stolenPoints > 0 ? stealCalc.stolenPoints : 15;
+    state.potPoints += stealAmt * state.potMultiplier;
+    state.stolenPointsPot = (state.stolenPointsPot || 0) + stealAmt * state.potMultiplier;
   } else {
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
@@ -1515,26 +1656,54 @@ export function handleFlipCard({
 export function handleCashOut({
   state,
   team,
+  allTeams = [],
 }: {
   state: MysteryQuestState;
   team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
 }): {
   updatedState: MysteryQuestState;
   finalScoreDelta: number;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
 } {
   const finalScoreDelta = state.potPoints;
   const oldScore = team.score || 0;
   const newScore = oldScore + finalScoreDelta;
 
+  let victimTeamId: string | undefined;
+  let victimTeamName: string | undefined;
+  let stolenPoints: number | undefined;
+
+  if (state.stolenPointsPot && state.stolenPointsPot > 0 && allTeams.length > 0) {
+    const stealCalc = calculateCappedSteal({
+      activeTeamId: team.id,
+      allTeams,
+      targetPoints: state.stolenPointsPot,
+      maxCap: 25,
+    });
+    if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+      victimTeamId = stealCalc.victimTeamId;
+      victimTeamName = stealCalc.victimTeamName;
+      stolenPoints = stealCalc.stolenPoints;
+    }
+  }
+
   state.phase = "TURN_SUMMARY";
   state.turnFinishedReason = "CASH_OUT";
   state.potPoints = 0; // Reset to 0 immediately upon cashing out!
+  state.stolenPointsPot = 0;
+
+  const rewardText = victimTeamName && stolenPoints
+    ? `💰 Bảo toàn thành công! Nhận trọn vẹn +${finalScoreDelta} điểm (đã cướp ${stolenPoints}đ từ Đội ${victimTeamName} có giới hạn bảo vệ)!`
+    : `💰 Bảo toàn thành công! Nhận trọn vẹn +${finalScoreDelta} điểm thưởng!`;
 
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
     teamColor: team.color || "#ef4444",
-    rewardText: `💰 Bảo toàn thành công! Nhận trọn vẹn +${finalScoreDelta} điểm thưởng!`,
+    rewardText,
     scoreDelta: finalScoreDelta,
     oldScore,
     newScore,
@@ -1543,6 +1712,9 @@ export function handleCashOut({
   return {
     updatedState: { ...state },
     finalScoreDelta,
+    victimTeamId,
+    victimTeamName,
+    stolenPoints,
   };
 }
 

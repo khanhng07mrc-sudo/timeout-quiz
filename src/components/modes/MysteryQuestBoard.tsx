@@ -39,6 +39,7 @@ export default function MysteryQuestBoard({
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
+  const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
 
   if (!mysteryState) {
@@ -83,6 +84,10 @@ export default function MysteryQuestBoard({
   useEffect(() => {
     setOptimisticOpenedIds(new Set(tiles.filter((t) => t.isOpened).map((t) => t.id)));
   }, [tiles]);
+
+  useEffect(() => {
+    setIsCashingOut(false);
+  }, [phase, potPoints]);
 
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
@@ -140,7 +145,7 @@ export default function MysteryQuestBoard({
 
   return (
     <div
-      className={`w-full rounded-3xl p-4 sm:p-6 md:p-8 bg-gradient-to-b ${themeBgGradient} border-2 border-white/15 shadow-2xl relative overflow-hidden transition-all duration-700`}
+      className={`w-full rounded-2xl p-2.5 sm:p-4 bg-gradient-to-b ${themeBgGradient} border-2 border-white/15 shadow-2xl relative overflow-hidden transition-all duration-700`}
       style={{
         boxShadow: `0 20px 60px -15px ${themeMeta.accentColor}33`,
       }}
@@ -156,51 +161,51 @@ export default function MysteryQuestBoard({
       />
 
       {/* ── Top Header: Theme, Turn, Team, and Minigame Selector ── */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div className="flex items-center gap-3">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-white/10">
+        <div className="flex items-center gap-2.5">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg border border-white/20 shrink-0"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center text-xl sm:text-2xl shadow-lg border border-white/20 shrink-0"
             style={{ backgroundColor: `${themeMeta.accentColor}33` }}
           >
             {themeMeta.emoji}
           </div>
           <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs uppercase font-black tracking-widest px-2.5 py-0.5 rounded-full bg-white/10 text-white/90 border border-white/15">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.2 rounded-full bg-white/10 text-white/90 border border-white/15">
                 {themeNameVi}
               </span>
-              <span className="text-xs font-bold text-amber-300 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40">
+              <span className="text-[10px] font-bold text-amber-300 px-2 py-0.2 rounded-full bg-amber-500/20 border border-amber-400/40">
                 {variantInfo.title}
               </span>
             </div>
-            <p className="text-xs text-white/60 mt-0.5 line-clamp-1">{themeMeta.taglineVi}</p>
+            <p className="text-[11px] text-white/60 mt-0.5 line-clamp-1">{themeMeta.taglineVi}</p>
           </div>
         </div>
 
         {/* Turn & Active Team Badge */}
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs font-mono font-bold text-white/80">
+        <div className="flex items-center gap-2">
+          <div className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px] font-mono font-bold text-white/80">
             LƯỢT <span className="text-amber-400 font-black">{currentTurnIndex + 1}</span> / {totalTurns}
-            <span className="mx-2 opacity-40">|</span>
+            <span className="mx-1.5 opacity-40">|</span>
             VÒNG <span className="text-cyan-400 font-black">{currentRound}</span>
           </div>
 
           <div
-            className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-2xl border-2 shadow-xl backdrop-blur-md"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-xl border-2 shadow-xl backdrop-blur-md"
             style={{
               borderColor: currentTurnTeamColor,
               backgroundColor: `${currentTurnTeamColor}22`,
             }}
           >
             <div
-              className="w-3.5 h-3.5 rounded-full ring-2 ring-white/50 shrink-0 animate-pulse"
+              className="w-2.5 h-2.5 rounded-full ring-2 ring-white/50 shrink-0 animate-pulse"
               style={{ backgroundColor: currentTurnTeamColor }}
             />
             <div className="text-left">
-              <span className="text-[9px] uppercase font-black tracking-wider text-white/70 block leading-tight">
+              <span className="text-[8px] uppercase font-black tracking-wider text-white/70 block leading-tight">
                 ĐỘI THI ĐẤU
               </span>
-              <span className="text-xs sm:text-sm font-black text-white truncate max-w-[130px] block leading-tight">
+              <span className="text-xs font-black text-white truncate max-w-[120px] block leading-tight">
                 {currentTurnTeamName}
               </span>
             </div>
@@ -210,13 +215,13 @@ export default function MysteryQuestBoard({
 
       {/* ── Host / Sandbox Minigame Switcher Pills ── */}
       {(isAdmin || isSandbox) && (
-        <div className="relative z-10 pt-3 pb-1 flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-[11px] font-bold text-slate-400 mr-1">🎮 Đổi Minigame:</span>
+        <div className="relative z-10 pt-2 pb-1 flex flex-wrap items-center gap-1 text-[11px]">
+          <span className="text-[10px] font-bold text-slate-400 mr-1">🎮 Đổi Minigame:</span>
           {[
-            { key: "MEMORY_PAIRS", label: "🃏 Lật Cặp (Pairs)", icon: "🃏" },
-            { key: "ONE_SHOT_DOORS", label: "🚪 3 Cánh Cửa (Doors)", icon: "🚪" },
-            { key: "PUSH_YOUR_LUCK", label: "💣 Lật Liều (Push-Luck)", icon: "💣" },
-            { key: "TAROT_DESTINY", label: "🔮 Thẻ Tarot (Tarot)", icon: "🔮" },
+            { key: "MEMORY_PAIRS", label: "🃏 Lật Cặp", icon: "🃏" },
+            { key: "ONE_SHOT_DOORS", label: "🚪 3 Cửa", icon: "🚪" },
+            { key: "PUSH_YOUR_LUCK", label: "💣 Lật Liều", icon: "💣" },
+            { key: "TAROT_DESTINY", label: "🔮 Tarot", icon: "🔮" },
           ].map((v) => {
             const isActive = miniGameType === v.key;
             return (
@@ -224,7 +229,7 @@ export default function MysteryQuestBoard({
                 key={v.key}
                 type="button"
                 onClick={() => onSelectMiniGame?.(v.key as MysteryMiniGameType)}
-                className={`px-2.5 py-1 rounded-lg font-bold text-xs transition border cursor-pointer ${
+                className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition border cursor-pointer ${
                   isActive
                     ? "bg-purple-600 text-white border-purple-400 shadow-md ring-1 ring-purple-300"
                     : "bg-black/40 text-slate-300 border-white/10 hover:border-white/30 hover:bg-white/10"
@@ -238,7 +243,7 @@ export default function MysteryQuestBoard({
       )}
 
       {/* ── Phase HUD / Alerts ── */}
-      <div className="relative z-10 py-4">
+      <div className="relative z-10 py-2 sm:py-2.5">
         {/* Phase: QUESTION_ACTIVE */}
         {phase === "QUESTION_ACTIVE" && (
           <div className="p-4 rounded-2xl bg-black/40 border border-cyan-500/30 text-center animate-slide-up">
@@ -522,11 +527,20 @@ export default function MysteryQuestBoard({
                 </div>
 
                 <div className="flex items-baseline justify-center gap-2 py-1">
-                  <span className="text-5xl sm:text-6xl font-black bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 bg-clip-text text-transparent drop-shadow-md font-mono">
+                  <span className="text-4xl sm:text-5xl font-black bg-gradient-to-b from-yellow-200 via-amber-300 to-amber-500 bg-clip-text text-transparent drop-shadow-md font-mono">
                     +{potPoints.toLocaleString()}
                   </span>
-                  <span className="text-lg font-black text-amber-300">điểm</span>
+                  <span className="text-base font-black text-amber-300">điểm</span>
                 </div>
+
+                {mysteryState?.stolenPointsPot && mysteryState.stolenPointsPot > 0 ? (
+                  <div className="flex justify-center mt-0.5">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[11px] font-black animate-pulse shadow-sm">
+                      <span>🗡️</span>
+                      <span>Gồm +{mysteryState.stolenPointsPot}đ cướp từ đối thủ dẫn đầu!</span>
+                    </span>
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-between text-[11px] text-white/70 pt-2 border-t border-white/10 mt-1">
                   <span>Đã lật: <strong className="text-white">{cardsFlippedCount}</strong> ô</span>
@@ -718,10 +732,11 @@ export default function MysteryQuestBoard({
             1. VARIANT: ONE_SHOT_DOORS (3 Giant Doors)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-          <div className="grid grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto py-2">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-3xl mx-auto py-1">
             {tiles.map((tile) => {
               const isChosen = oneShotState?.chosenTileId === tile.id;
               const isBomb = tile.type !== "REWARD";
+              const isSteal = tile.effectType === "STEAL_POINTS";
 
               const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
               if (!isCardOpened) {
@@ -731,33 +746,33 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract}
-                    className={`relative aspect-[2/3] sm:aspect-[3/5] rounded-3xl p-3 flex flex-col items-center justify-between border-4 transition-all duration-300 cursor-pointer ${
+                    className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[35vh] rounded-2xl p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
                       canInteract
-                        ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-105 shadow-2xl hover:shadow-amber-500/50 group"
+                        ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-103 shadow-2xl hover:shadow-amber-500/50 group"
                         : "bg-black/50 border-white/20 opacity-80 cursor-default"
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className="w-7 h-7 rounded-full bg-black/60 border border-white/30 text-xs font-black text-white flex items-center justify-center">
+                      <span className="w-6 h-6 rounded-full bg-black/60 border border-white/30 text-[11px] font-black text-white flex items-center justify-center">
                         #{tile.id}
                       </span>
                       {canInteract && (
-                        <span className="text-[10px] font-black text-yellow-300 animate-pulse">
+                        <span className="text-[9px] font-black text-yellow-300 animate-pulse">
                           CHỌN CỬA ✨
                         </span>
                       )}
                     </div>
 
                     {/* Giant Door Graphic */}
-                    <div className="text-5xl sm:text-7xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
+                    <div className="text-4xl sm:text-6xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
                       🚪
                     </div>
 
-                    <div className="w-full text-center pb-2">
-                      <span className="text-sm sm:text-base font-black text-white block">
+                    <div className="w-full text-center pb-1">
+                      <span className="text-xs sm:text-sm font-black text-white block">
                         {tile.label}
                       </span>
-                      <span className="text-[10px] uppercase tracking-wider text-amber-300/80 font-bold block">
+                      <span className="text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
                         Cánh Cửa Bí Ẩn
                       </span>
                     </div>
@@ -769,43 +784,53 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[2/3] sm:aspect-[3/5] rounded-3xl p-3 flex flex-col items-center justify-between border-4 shadow-2xl animate-fade-in ${
-                    isChosen ? "ring-4 ring-yellow-400 scale-105 z-10" : "opacity-80"
+                  className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[35vh] rounded-2xl p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
+                    isChosen ? "ring-4 ring-yellow-400 scale-103 z-10" : "opacity-80"
                   } ${
                     isBomb
                       ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
+                      : isSteal
+                      ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
                       : "bg-gradient-to-b from-amber-950 via-emerald-950/80 to-black border-emerald-400 text-emerald-200"
                   }`}
                 >
                   <div className="w-full flex items-center justify-between">
                     <span className="text-xs font-mono font-bold opacity-75">#{tile.id}</span>
                     <span
-                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
                         isChosen
-                          ? "bg-yellow-400 text-black font-extrabold"
+                          ? isSteal
+                            ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"
+                            : "bg-yellow-400 text-black font-extrabold"
                           : isBomb
                           ? "bg-red-500/30 text-red-300"
+                          : isSteal
+                          ? "bg-rose-500/30 text-rose-300"
                           : "bg-emerald-500/30 text-emerald-300"
                       }`}
                     >
-                      {isChosen ? "ĐÃ CHỌN ⭐" : isBomb ? "BẪY BOM" : "THƯỞNG"}
+                      {isChosen ? (isSteal ? "CƯỚP ĐIỂM 🗡️" : "ĐÃ CHỌN ⭐") : isBomb ? "BẪY BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
                     </span>
                   </div>
 
-                  <div className="text-4xl sm:text-6xl my-auto text-center drop-shadow-xl">
+                  <div className="text-3xl sm:text-5xl my-auto text-center drop-shadow-xl">
                     {isBomb ? "💥" : tile.icon || "👑"}
                   </div>
 
-                  <div className="w-full text-center pb-2">
-                    <p className="text-xs sm:text-sm font-black text-white leading-tight">
+                  <div className="w-full text-center pb-1">
+                    <p className="text-xs sm:text-sm font-black text-white leading-tight truncate">
                       {tile.storyTitle}
                     </p>
                     <p
-                      className={`text-sm sm:text-lg font-black font-mono mt-1 ${
-                        isBomb ? "text-red-400" : "text-amber-300"
+                      className={`text-xs sm:text-base font-black font-mono mt-0.5 ${
+                        isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
                       }`}
                     >
-                      {isBomb ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng` : `+${tile.deltaPoints}đ`}
+                      {isBomb
+                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng`
+                        : isSteal
+                        ? `Cướp +${tile.deltaPoints}đ`
+                        : `+${tile.deltaPoints}đ`}
                     </p>
                   </div>
                 </div>
@@ -832,9 +857,9 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract}
-                    className={`relative aspect-[9/14] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
+                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[36vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
                       canInteract
-                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-2.5 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
+                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1.5 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
                         : "border-white/10 opacity-80 cursor-default"
                     }`}
                   >
@@ -845,7 +870,7 @@ export default function MysteryQuestBoard({
 
                     {/* Card Back Overlays */}
                     <div className="w-full flex items-center justify-between z-10 px-1 pt-0.5">
-                      <span className="w-6 h-6 rounded-full bg-black/80 border border-amber-400/80 text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
+                      <span className="w-5 h-5 rounded-full bg-black/80 border border-amber-400/80 text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
                         #{tile.id}
                       </span>
                       {canInteract && (
@@ -868,8 +893,8 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[9/14] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
-                    isChosen ? "ring-4 ring-yellow-400 scale-105 z-20" : "opacity-90"
+                  className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[36vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
+                    isChosen ? "ring-4 ring-yellow-400 scale-103 z-20" : "opacity-90"
                   } bg-gradient-to-b ${meta.bgGradient} ${meta.borderColor}`}
                   style={{
                     boxShadow: isChosen
@@ -878,7 +903,7 @@ export default function MysteryQuestBoard({
                   }}
                 >
                   {/* Card Header: Roman Numeral & English Name in 1 clean line */}
-                  <div className="w-full flex items-center justify-between border-b border-white/15 pb-1">
+                  <div className="w-full flex items-center justify-between border-b border-white/15 pb-0.5">
                     <span className="text-[10px] font-mono font-bold opacity-75 text-amber-200/80">
                       #{tile.id}
                     </span>
@@ -886,19 +911,19 @@ export default function MysteryQuestBoard({
                       <span className="font-serif font-black text-xs text-amber-300 tracking-wider">
                         {meta.roman}
                       </span>
-                      <span className="text-[10px] font-bold text-white/90 tracking-wide uppercase">
+                      <span className="text-[9px] font-bold text-white/90 tracking-wide uppercase">
                         · {meta.nameEn}
                       </span>
                     </div>
                   </div>
 
                   {/* Card Center: Rich Tarot Artwork SVG */}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 my-auto relative flex items-center justify-center p-1 drop-shadow-2xl">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 my-auto relative flex items-center justify-center p-0.5 drop-shadow-2xl">
                     <TarotCardEmblem cardKey={meta.key} />
                   </div>
 
                   {/* Card Footer: Vietnamese Title & Single-line Score Pill */}
-                  <div className="w-full text-center space-y-1">
+                  <div className="w-full text-center space-y-0.5">
                     <p className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
                       {meta.nameVi}
                     </p>
@@ -941,9 +966,9 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract || memoryPairsState?.isMismatchResolving}
-                    className={`relative aspect-[3/4] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
+                    className={`relative aspect-[4/3] sm:aspect-[3/4] max-h-[24vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
                       canInteract && !memoryPairsState?.isMismatchResolving
-                        ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-105 shadow-xl group"
+                        ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-103 shadow-xl group"
                         : "bg-black/40 border-white/10 opacity-75 cursor-default"
                     }`}
                   >
@@ -953,12 +978,12 @@ export default function MysteryQuestBoard({
                       </span>
                     </div>
 
-                    <div className="text-3xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
+                    <div className="text-2xl sm:text-3xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
                       🃏
                     </div>
 
                     <div className="w-full text-center">
-                      <span className="text-xs font-black text-white block">
+                      <span className="text-[11px] sm:text-xs font-black text-white block">
                         {tile.label}
                       </span>
                     </div>
@@ -967,14 +992,17 @@ export default function MysteryQuestBoard({
               }
 
               // Revealed Tile
+              const isSteal = tile.effectType === "STEAL_POINTS";
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[3/4] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
-                    isMatched ? "ring-4 ring-yellow-400 scale-105 z-10" : ""
+                  className={`relative aspect-[4/3] sm:aspect-[3/4] max-h-[24vh] rounded-2xl p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
+                    isMatched ? "ring-4 ring-yellow-400 scale-103 z-10" : ""
                   } ${
                     isBomb
                       ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
+                      : isSteal
+                      ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
                       : "bg-gradient-to-b from-indigo-950 via-purple-950 to-black border-emerald-400 text-emerald-200"
                   }`}
                 >
@@ -983,17 +1011,21 @@ export default function MysteryQuestBoard({
                     <span
                       className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
                         isMatched
-                          ? "bg-yellow-400 text-black font-extrabold"
+                          ? isSteal
+                            ? "bg-rose-500 text-white font-extrabold"
+                            : "bg-yellow-400 text-black font-extrabold"
                           : isBomb
                           ? "bg-red-500/30 text-red-300"
+                          : isSteal
+                          ? "bg-rose-500/30 text-rose-300"
                           : "bg-emerald-500/30 text-emerald-300"
                       }`}
                     >
-                      {isMatched ? "TRÙNG KHỚP! ⭐" : isBomb ? "BOM" : "THƯỞNG"}
+                      {isMatched ? (isSteal ? "CƯỚP ĐIỂM! 🗡️" : "TRÙNG KHỚP! ⭐") : isBomb ? "BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
                     </span>
                   </div>
 
-                  <div className="text-3xl my-auto text-center drop-shadow-xl">
+                  <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl">
                     {tile.icon}
                   </div>
 
@@ -1002,11 +1034,15 @@ export default function MysteryQuestBoard({
                       {tile.storyTitle}
                     </p>
                     <p
-                      className={`text-xs font-black font-mono mt-0.5 ${
-                        isBomb ? "text-red-400" : "text-amber-300"
+                      className={`text-[11px] sm:text-xs font-black font-mono mt-0.5 ${
+                        isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
                       }`}
                     >
-                      {isBomb ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng` : `+${tile.deltaPoints}đ`}
+                      {isBomb
+                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng`
+                        : isSteal
+                        ? `Cướp +${tile.deltaPoints}đ`
+                        : `+${tile.deltaPoints}đ`}
                     </p>
                   </div>
                 </div>
@@ -1062,20 +1098,20 @@ export default function MysteryQuestBoard({
 
                     {/* Top card of the stack */}
                     <div
-                      className={`relative w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 flex flex-col items-center justify-between border-2 transition-all duration-300 shadow-2xl ${
+                      className={`relative w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 flex flex-col items-center justify-between border-2 transition-all duration-300 shadow-2xl ${
                         canInteract
-                          ? "bg-gradient-to-b from-indigo-900 via-purple-950 to-slate-950 border-amber-400/80 hover:border-yellow-300 hover:-translate-y-2 hover:shadow-amber-500/40 active:scale-95 group-hover:scale-102"
+                          ? "bg-gradient-to-b from-indigo-900 via-purple-950 to-slate-950 border-amber-400/80 hover:border-yellow-300 hover:-translate-y-1.5 hover:shadow-amber-500/40 active:scale-95 group-hover:scale-102"
                           : "bg-black/60 border-white/10 opacity-70 cursor-default"
                       } ${isDrawingAnimation ? "-translate-y-6 rotate-3 scale-105 ring-4 ring-amber-300" : ""}`}
                     >
                       <div className="w-full flex items-center justify-between text-xs font-mono font-bold text-amber-300">
                         <span>#{nextCardNum}</span>
-                        <span className="text-[10px] uppercase font-bold text-white/70 px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
+                        <span className="text-[9px] uppercase font-bold text-white/70 px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
                           Chồng bài
                         </span>
                       </div>
 
-                      <div className="text-5xl sm:text-6xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
+                      <div className="text-4xl sm:text-5xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
                         🃏
                       </div>
 
@@ -1084,7 +1120,7 @@ export default function MysteryQuestBoard({
                           Lá Bài #{nextCardNum}
                         </span>
                         {canInteract && (
-                          <span className="text-[10px] font-extrabold text-amber-300 uppercase tracking-widest mt-1 block animate-bounce">
+                          <span className="text-[9px] font-extrabold text-amber-300 uppercase tracking-widest mt-1 block animate-bounce">
                             CLICK ĐỂ RÚT ✨
                           </span>
                         )}
@@ -1095,32 +1131,36 @@ export default function MysteryQuestBoard({
 
                 {/* ── RIGHT: LÁ BÀI VỪA RÚT (DRAWN CARD) ── */}
                 <div className="flex flex-col items-center">
-                  <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2.5 flex items-center gap-1.5">
+                  <div className="text-xs font-black uppercase tracking-wider text-emerald-300 mb-2 flex items-center gap-1.5">
                     <span>✨</span> LÁ BÀI VỪA RÚT
                   </div>
 
                   {latestCard ? (
                     <div
-                      className={`w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
+                      className={`w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in relative ${
                         latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                           ? "bg-gradient-to-b from-purple-950 via-black to-red-950 border-purple-500 text-purple-200 ring-4 ring-purple-500/40"
                           : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
                           ? "bg-gradient-to-b from-amber-950 via-yellow-950 to-black border-amber-400 text-amber-200 ring-4 ring-amber-400/40"
                           : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
                           ? "bg-gradient-to-b from-slate-900 via-stone-950 to-black border-slate-500 text-slate-200 ring-4 ring-slate-500/40"
+                          : latestCard.effectType === "STEAL_POINTS"
+                          ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200 ring-4 ring-rose-500/40"
                           : "bg-gradient-to-b from-amber-950/90 via-emerald-950/80 to-black border-emerald-400 text-emerald-200 ring-4 ring-emerald-400/30"
                       }`}
                     >
                       <div className="w-full flex items-center justify-between text-xs">
                         <span className="font-mono font-bold opacity-75">#{latestCard.id}</span>
                         <span
-                          className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
                             latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "bg-purple-500/30 text-purple-300 border border-purple-400/50"
                               : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
                               ? "bg-amber-500/30 text-amber-300 border border-amber-400/50"
                               : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
                               ? "bg-slate-500/30 text-slate-300 border border-slate-400/50"
+                              : latestCard.effectType === "STEAL_POINTS"
+                              ? "bg-rose-500/30 text-rose-300 border border-rose-400/50"
                               : "bg-emerald-500/30 text-emerald-300 border border-emerald-400/50"
                           }`}
                         >
@@ -1130,11 +1170,13 @@ export default function MysteryQuestBoard({
                             ? "BOM TỪ THIỆN"
                             : latestCard.type === "BOMB_SMOKE" || latestCard.type === "BOMB_MINOR"
                             ? "BOM KHÓI"
+                            : latestCard.effectType === "STEAL_POINTS"
+                            ? "CƯỚP ĐIỂM 🗡️"
                             : "THƯỞNG"}
                         </span>
                       </div>
 
-                      <div className="text-5xl sm:text-6xl my-auto text-center drop-shadow-xl">
+                      <div className="text-4xl sm:text-5xl my-auto text-center drop-shadow-xl">
                         {latestCard.icon}
                       </div>
 
@@ -1143,7 +1185,7 @@ export default function MysteryQuestBoard({
                           {latestCard.storyTitle}
                         </p>
                         <p
-                          className={`text-sm sm:text-base font-black font-mono mt-0.5 ${
+                          className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${
                             latestCard.type === "BOMB_DARK" || latestCard.type === "BOMB_DOOM"
                               ? "text-purple-300"
                               : latestCard.type === "BOMB_CHARITY" || latestCard.type === "BOMB_GIFT"
@@ -1152,6 +1194,8 @@ export default function MysteryQuestBoard({
                               ? "text-slate-300"
                               : latestCard.effectType === "MULTIPLY_X2"
                               ? "text-purple-300"
+                              : latestCard.effectType === "STEAL_POINTS"
+                              ? "text-rose-300"
                               : "text-amber-300"
                           }`}
                         >
@@ -1163,15 +1207,17 @@ export default function MysteryQuestBoard({
                             ? "Mất Hũ (0đ)"
                             : latestCard.effectType === "MULTIPLY_X2"
                             ? "X2 HŨ ĐIỂM"
+                            : latestCard.effectType === "STEAL_POINTS"
+                            ? `Cướp +${latestCard.deltaPoints}đ`
                             : `+${latestCard.deltaPoints}đ`}
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="w-48 sm:w-52 aspect-[3/4] rounded-2xl p-4 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-center text-white/50 bg-black/20">
-                      <span className="text-4xl mb-2">📭</span>
+                    <div className="w-40 sm:w-44 aspect-[3/4] max-h-[30vh] rounded-2xl p-3 border-2 border-dashed border-white/20 flex flex-col items-center justify-center text-center text-white/50 bg-black/20">
+                      <span className="text-3xl mb-1.5">📭</span>
                       <span className="text-xs font-bold text-white/80">Chưa rút lá nào</span>
-                      <span className="text-[10px] text-white/40 mt-1">
+                      <span className="text-[10px] text-white/40 mt-0.5">
                         Rút lá đầu tiên từ chồng bài bên cạnh!
                       </span>
                     </div>
@@ -1210,11 +1256,20 @@ export default function MysteryQuestBoard({
                   {canCashOut && (
                     <button
                       type="button"
-                      onClick={onCashOut}
-                      className="px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-sm sm:text-base shadow-xl border-2 border-emerald-300 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer animate-pulse"
+                      disabled={isCashingOut}
+                      onClick={() => {
+                        if (isCashingOut) return;
+                        setIsCashingOut(true);
+                        onCashOut?.();
+                      }}
+                      className={`px-6 sm:px-8 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-sm sm:text-base shadow-xl border-2 border-emerald-300 transition-all flex items-center gap-2 ${
+                        isCashingOut
+                          ? "opacity-60 cursor-not-allowed scale-95"
+                          : "hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
+                      }`}
                     >
-                      <span>💰</span>
-                      <span>CHỐT ĐIỂM (+{potPoints}Đ)</span>
+                      <span>{isCashingOut ? "⏳" : "💰"}</span>
+                      <span>{isCashingOut ? "ĐANG CHỐT ĐIỂM..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
                     </button>
                   )}
                 </div>

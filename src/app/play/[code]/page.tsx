@@ -1391,7 +1391,7 @@ export default function PlayPage() {
   return (
     <>
       {reconnectBanner}
-      <div className={`flex flex-col mx-auto w-full animate-loaded-reveal ${isSandbox ? "h-full min-h-0 p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-full overflow-y-auto" : "min-h-screen p-2.5 sm:p-4 gap-2.5 sm:gap-4 max-w-4xl"}`}>
+      <div className={`flex flex-col mx-auto w-full animate-loaded-reveal ${isSandbox ? "h-full min-h-0 p-1.5 sm:p-2 gap-1.5 sm:gap-2 max-w-full overflow-y-auto" : "h-screen max-h-[100dvh] overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3 max-w-4xl justify-between"}`}>
       {/* Header with score and sound toggle */}
       <div className="flex items-center gap-1.5 sm:gap-2">
         <div className="flex-1 min-w-0">
@@ -1406,7 +1406,7 @@ export default function PlayPage() {
           <button
             onClick={() => setShowRulesModal(true)}
             title="Xem thể lệ và luật chơi"
-            className="p-2.5 sm:p-3.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0 text-cyan-300"
+            className="p-2 sm:p-2.5 rounded-xl glass border border-white/20 hover:bg-white/10 transition text-sm sm:text-base shrink-0 text-cyan-300"
           >
             📖
           </button>
@@ -1414,7 +1414,7 @@ export default function PlayPage() {
         <button
           onClick={toggleSound}
           title={soundEnabled ? "Tắt âm thanh" : "Bật âm thanh"}
-          className={`${isSandbox ? "p-1.5 text-xs" : "p-2.5 sm:p-3.5 text-sm sm:text-base"} rounded-xl glass border border-white/20 hover:bg-white/10 transition shrink-0`}
+          className={`${isSandbox ? "p-1.5 text-xs" : "p-2 sm:p-2.5 text-sm sm:text-base"} rounded-xl glass border border-white/20 hover:bg-white/10 transition shrink-0`}
         >
           {soundEnabled ? "🔊" : "🔇"}
         </button>
@@ -1422,7 +1422,7 @@ export default function PlayPage() {
 
       {/* Powerup notification */}
       {lastPowerup && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-4 py-2.5 sm:px-6 sm:py-3 text-center animate-bounce-in flex items-center justify-center gap-2 border border-purple-500/40 shadow-xl w-[92vw] max-w-md">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 glass rounded-xl px-4 py-2 sm:px-6 sm:py-2.5 text-center animate-bounce-in flex items-center justify-center gap-2 border border-purple-500/40 shadow-xl w-[92vw] max-w-md">
           <PowerupIcon type={lastPowerup.type} className="w-6 h-6 sm:w-8 sm:h-8 shrink-0 drop-shadow" />
           <span className="font-bold text-xs sm:text-sm truncate">{lastPowerup.usedByName}</span>
           <span className="text-muted-foreground text-xs sm:text-sm"> dùng: </span>
@@ -1432,20 +1432,20 @@ export default function PlayPage() {
 
       {/* Error / Alert notification */}
       {errorMessage && (
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white rounded-xl px-4 py-2.5 sm:px-6 sm:py-3 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[92vw] max-w-md">
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white rounded-xl px-4 py-2 sm:px-6 sm:py-2.5 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[92vw] max-w-md">
           ⚠️ {errorMessage}
         </div>
       )}
 
       {/* Buzz notification */}
       {buzzedBy && (
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black rounded-xl px-4 py-2 sm:px-6 sm:py-3 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[90vw] max-w-sm">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-50 bg-yellow-500 text-black rounded-xl px-4 py-2 sm:px-6 sm:py-2.5 text-center font-bold text-xs sm:text-sm animate-bounce-in shadow-lg w-[90vw] max-w-sm">
           ⚡ {buzzedBy.playerName} đã bấm buzz!
         </div>
       )}
 
       {/* Main game area */}
-      <div className="flex-1 flex flex-col gap-2 sm:gap-3">
+      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-y-auto lg:overflow-hidden justify-between">
         {roomState?.mode === "MYSTERY_QUEST" &&
         roomState?.mysteryQuestState &&
         roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (

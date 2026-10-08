@@ -34,8 +34,8 @@ export default function TournamentBracket({
     .sort((a, b) => a - b);
 
   return (
-    <div className={`glass rounded-2xl ${isDisplay ? "p-6" : "p-4"} space-y-6`}>
-      <div className="flex items-center justify-between border-b border-border/50 pb-3">
+    <div className={`glass rounded-2xl ${isDisplay ? "p-3 sm:p-4 space-y-3" : "p-3 space-y-2.5"} max-h-[70vh] overflow-y-auto`}>
+      <div className="flex items-center justify-between border-b border-border/50 pb-2">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🏆</span>
           <div>

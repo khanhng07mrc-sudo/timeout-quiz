@@ -69,9 +69,9 @@ export default function GridCaroBoard({
   };
 
   return (
-    <div className={`glass rounded-2xl ${isDisplay ? "p-6" : "p-4"} space-y-4`}>
+    <div className={`glass rounded-2xl ${isDisplay ? "p-3 sm:p-4 space-y-2.5" : "p-2.5 sm:p-3 space-y-2"} max-h-[75vh] overflow-y-auto`}>
       {/* Header Info */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
         <div className="flex items-center gap-3">
           <span className="text-3xl">🎯</span>
           <div>

@@ -925,6 +925,7 @@ export interface MysteryQuestState {
   // Push-your-luck pot & minigame state
   potPoints: number; // Điểm tích lũy trong lượt này
   potMultiplier: number; // Hệ số nhân
+  stolenPointsPot?: number; // Điểm cướp được từ đối thủ tích lũy trong hũ
   cardsFlippedCount: number;
   lastFlippedTile?: MysteryTile;
   bombExploded?: {

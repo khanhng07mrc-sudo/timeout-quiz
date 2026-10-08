@@ -2188,6 +2188,9 @@ export default function AdminSandboxPage() {
           recipientTeamId,
           giftedPoints,
           darkBombRecipients,
+          victimTeamId,
+          victimTeamName,
+          stolenPoints,
           shouldResetMismatchedCards,
         } = handleMysteryFlipCard({
           state: curMystery,
@@ -2197,7 +2200,14 @@ export default function AdminSandboxPage() {
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (isBomb) {
+        if (victimTeamId && stolenPoints && stolenPoints > 0) {
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
+            if (t.id === activeTeam.id) return { ...t, score: t.score + (finalScoreDelta || stolenPoints) };
+            return t;
+          });
+          addLog(`🗡️ [${activeTeam.name}] cướp thành công ${stolenPoints}đ từ [${victimTeamName || "Đội dẫn đầu"}] (có giới hạn bảo vệ)!`);
+        } else if (isBomb) {
           if (darkBombRecipients && darkBombRecipients.length > 0) {
             const recipientMap = new Map(darkBombRecipients.map((r) => [r.teamId, r.points]));
             updatedTeams = updatedTeams.map((t) => {
@@ -2300,31 +2310,33 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
         if (!isOfflineSandbox) {
-          return;
+          adminSocketRef.current?.emit("admin:mystery:cash_out" as any, { code });
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
         const curMystery = { ...roomStateRef.current.mysteryQuestState };
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, finalScoreDelta } = handleMysteryCashOut({
+        const { updatedState, finalScoreDelta, victimTeamId, victimTeamName, stolenPoints } = handleMysteryCashOut({
           state: curMystery,
           team: activeTeam,
+          allTeams: roomStateRef.current.teams,
         });
 
-        const updatedTeams = roomStateRef.current.teams.map((t) =>
-          t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
-        );
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          teams: updatedTeams,
-          mysteryQuestState: updatedState,
-        };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (victimTeamId && stolenPoints && stolenPoints > 0) {
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
+            if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
+            return t;
+          });
+          addLog(`💰 [${activeTeam.name}] BẢO TOÀN ĐIỂM (+${finalScoreDelta}đ) & CƯỚP ${stolenPoints}đ từ [${victimTeamName || "Đội dẫn đầu"}] (có giới hạn)!`);
+        } else {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+          );
+          addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
+        }
         return;
       }
       if (e.data?.type === "MYSTERY_CHOOSE_ACTION" || e.data?.action === "mystery_choose_action") {

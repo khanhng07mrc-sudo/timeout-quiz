@@ -1171,7 +1171,7 @@ export default function DisplayPage() {
   const bloomMeta = BLOOM_METADATA[bloom];
 
   return (
-    <div className="min-h-screen flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2.5 sm:gap-3 p-2 sm:p-3 relative animate-loaded-reveal" onClick={handleUnlockAudio}>
+    <div className="h-screen max-h-[100dvh] overflow-hidden flex flex-col lg:grid lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2 p-2 relative animate-loaded-reveal select-none" onClick={handleUnlockAudio}>
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}
@@ -1259,7 +1259,7 @@ export default function DisplayPage() {
       ))}
 
       {/* Main content area */}
-      <div className="flex flex-col gap-3 sm:gap-4 min-w-0">
+      <div className="flex flex-col gap-2 min-w-0 min-h-0 flex-1 overflow-y-auto lg:overflow-hidden justify-between">
         {/* Powerup notification */}
         {lastPowerup && (
           <div className="glass rounded-xl p-4 flex items-center gap-3 animate-bounce-in border border-purple-500/50 shadow-xl">
@@ -1327,7 +1327,7 @@ export default function DisplayPage() {
             roomState.mysteryQuestState &&
             roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
           ) && (
-          <div className="flex-1 glass rounded-2xl p-3.5 sm:p-6 flex flex-col justify-between">
+          <div className="flex-1 min-h-0 glass rounded-2xl p-3 sm:p-4 flex flex-col justify-between overflow-y-auto lg:overflow-hidden">
             {currentQuestion.bouncebackSelectPhase ? (
               <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
                 <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 border border-indigo-400/50 text-indigo-300 font-black text-sm sm:text-base uppercase tracking-widest shadow-xl">
@@ -1852,7 +1852,7 @@ export default function DisplayPage() {
       </div>
 
       {/* Leaderboard sidebar */}
-      <div className="glass rounded-2xl p-2.5 sm:p-3 flex flex-col gap-1.5 min-h-0 overflow-hidden">
+      <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full">
         <div className="flex items-center justify-between pb-1 border-b border-white/10 shrink-0">
           <h3 className="text-sm font-bold inline-flex items-center gap-1.5 text-white">
             <SystemIcon name="trophy" className="w-4 h-4 text-amber-400 shrink-0" />

@@ -4627,6 +4627,8 @@ export function registerSocketHandlers(io: IO) {
         recipientTeamId,
         giftedPoints,
         darkBombRecipients,
+        victimTeamId,
+        stolenPoints,
       } = handleFlipCard({
         state: questState,
         tileId,
@@ -4636,7 +4638,15 @@ export function registerSocketHandlers(io: IO) {
 
       roomMysteryQuests.set(room.id, updatedState);
 
-      if (isBomb) {
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        // CƯỚP ĐIỂM CÓ GIỚI HẠN: Trừ điểm đội bị cướp và cộng điểm cho đội đang chơi
+        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+          { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta },
+        ]);
+      } else if (isBomb) {
         if (darkBombRecipients && darkBombRecipients.length > 0) {
           // BOM HẮC ÁM: Trừ điểm đội chính và chia đều cho các đội đối thủ
           const updates: Array<{ teamId: string; score: number; delta: number }> = [];
@@ -4743,22 +4753,19 @@ export function registerSocketHandlers(io: IO) {
     };
 
     const executeMysteryCashOut = async (room: any, questState: any, team: any) => {
-      const { updatedState, finalScoreDelta } = handleCashOut({
-        state: questState,
-        team,
+      const allTeams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        select: { id: true, name: true, color: true, score: true, isEliminated: true },
       });
 
-      if (finalScoreDelta > 0) {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-        io.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-        ]);
-      }
+      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleCashOut({
+        state: questState,
+        team,
+        allTeams,
+      });
 
+      // Save in-memory quest state and emit immediately for 0ms UI transition
       roomMysteryQuests.set(room.id, updatedState);
-
-      const refreshedState = await buildRoomState(room.id);
-      io.to(`room:${room.code}`).emit("room:state", refreshedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
       io.to(`room:${room.code}`).emit("game:mystery:cashed_out", {
         teamId: team.id,
@@ -4766,6 +4773,39 @@ export function registerSocketHandlers(io: IO) {
         totalGained: finalScoreDelta,
         newScore: (team.score || 0) + finalScoreDelta,
       });
+
+      // Background DB persistence and room state refresh
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(victimTeamId, -stolenPoints),
+          applyScoreDeltaToTeam(team.id, finalScoreDelta),
+        ]).then(async ([victimDelta, stealerDelta]) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+            { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] steal delta error:", err);
+        });
+      } else if (finalScoreDelta > 0) {
+        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] score delta error:", err);
+        });
+      } else {
+        buildRoomState(room.id).then((refreshedState) => {
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryCashOut] buildRoomState error:", err);
+        });
+      }
     };
 
     const executeMysteryPairsDecision = async (
@@ -4780,17 +4820,28 @@ export function registerSocketHandlers(io: IO) {
         choice,
       });
 
-      if (finalScoreDelta > 0) {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-        io.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-        ]);
-      }
-
+      // Save in-memory quest state and emit immediately for 0ms UI transition
       roomMysteryQuests.set(room.id, updatedState);
-      const refreshedState = await buildRoomState(room.id);
-      io.to(`room:${room.code}`).emit("room:state", refreshedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+
+      // Background DB persistence and room state refresh
+      if (finalScoreDelta > 0) {
+        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryPairsDecision] score delta error:", err);
+        });
+      } else {
+        buildRoomState(room.id).then((refreshedState) => {
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryPairsDecision] buildRoomState error:", err);
+        });
+      }
     };
 
     async function executeMysteryAdvanceTurn(room: any, questState: any) {

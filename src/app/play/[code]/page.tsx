@@ -367,6 +367,12 @@ export default function PlayPage() {
         }
         if (p.mysteryQuestState !== undefined) {
           setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
+          if (p.mysteryQuestState.phase !== "QUESTION_ACTIVE") {
+            setCurrentQuestion(null);
+            setRevealPayload(null);
+            setTimer(null);
+            setAnswered(false);
+          }
         }
       }
     };
@@ -808,6 +814,12 @@ export default function PlayPage() {
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+      if (mysteryQuestState.phase !== "QUESTION_ACTIVE") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setAnswered(false);
+      }
     });
     socket.on("game:mystery:card_flipped", (payload) => {
       if (payload.audioTrigger === "CORRECT") {
@@ -1428,9 +1440,7 @@ export default function PlayPage() {
       <div className="flex-1 flex flex-col gap-2 sm:gap-3">
         {roomState?.mode === "MYSTERY_QUEST" &&
         roomState?.mysteryQuestState &&
-        (roomState.mysteryQuestState.phase === "DECISION_CHOICE" ||
-          roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
-          (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && (!currentQuestion || Boolean(revealPayload)))) ? (
+        roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
           <div className="w-full animate-fade-in">
             <MysteryQuestBoard
               mysteryState={roomState.mysteryQuestState}

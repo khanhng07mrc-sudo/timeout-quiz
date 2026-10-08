@@ -3592,6 +3592,7 @@ export function registerSocketHandlers(io: IO) {
       // Chuyển qua màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
 
       const intermissionPayload: GameIntermissionPayload = {
         nextQuestionIndex: nextIndex,
@@ -3731,6 +3732,233 @@ export function registerSocketHandlers(io: IO) {
           { teamId: answer.teamId, score: tRes.newScore, delta: tRes.effectiveDelta },
         ]);
       }
+    });
+
+    // ── Admin: Answer Override Verdict (MC/Admin manual intervention for any question/mode) ──
+    socket.on("admin:answer:override_verdict", async ({
+      questionId,
+      teamId,
+      playerId,
+      answerId,
+      isCorrect,
+      code,
+    }: {
+      questionId: string;
+      teamId?: string;
+      playerId?: string;
+      answerId?: string;
+      isCorrect: boolean;
+      code?: string;
+    }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+
+      const qKey = `${room.id}:${questionId}`;
+      let answer = answerId ? await prisma.answer.findUnique({ where: { id: answerId } }) : null;
+      if (!answer && questionId) {
+        answer = await prisma.answer.findFirst({
+          where: {
+            roomId: room.id,
+            questionId,
+            ...(teamId ? { teamId } : playerId ? { playerId } : {}),
+          },
+          orderBy: { submittedAt: "desc" },
+        });
+      }
+
+      const question = await prisma.question.findUnique({ where: { id: questionId } });
+      const rawQ = question || (room.quizBank?.questions as any[])?.find((q: any) => q.id === questionId);
+      const basePts = rawQ?.points || 10;
+      const prevAwarded = answer?.pointsAwarded ?? 0;
+      let newAwarded = isCorrect ? basePts : 0;
+      const targetTid = teamId || answer?.teamId;
+      const targetPid = playerId || answer?.playerId;
+
+      if (!answer && (targetTid || targetPid)) {
+        answer = await prisma.answer.create({
+          data: {
+            roomId: room.id,
+            questionId,
+            teamId: targetTid || null,
+            playerId: targetPid || null,
+            answer: "MC_OVERRIDE",
+            isCorrect,
+            pointsAwarded: newAwarded,
+            timeSpent: 0,
+          },
+        }).catch(() => null);
+      }
+
+      // 1. MYSTERY_QUEST Mode: Unblock or revert decision phase
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState && questState.currentTurnTeamId === targetTid) {
+          if (isCorrect) {
+            newAwarded = basePts;
+            questState.phase = "DECISION_CHOICE";
+            questState.baseQuestionPoints = basePts;
+            questState.potPoints = basePts;
+            questState.potMultiplier = 1;
+            questState.turnFinishedReason = undefined;
+            questState.storyResult = undefined;
+            questState.decisionMade = undefined;
+          } else {
+            newAwarded = 0;
+            questState.phase = "TURN_SUMMARY";
+            questState.turnFinishedReason = "QUESTION_FAILED";
+            questState.potPoints = 0;
+            questState.decisionMade = undefined;
+            questState.storyResult = {
+              teamId: questState.currentTurnTeamId,
+              teamName: questState.currentTurnTeamName,
+              teamColor: questState.currentTurnTeamColor,
+              rewardText: "MC can thiệp chấm lại: Không chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
+              scoreDelta: 0,
+              oldScore: 0,
+              newScore: 0,
+            };
+          }
+          roomMysteryQuests.set(room.id, questState);
+          io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+        }
+      }
+
+      // 2. GRID_CARO Mode: Claim or unclaim grid cell and check streak
+      if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState) {
+          const cell = gridState.selectedCellId ? gridState.cells.find((c) => c.id === gridState.selectedCellId) : null;
+          if (cell && gridState.currentTurnTeamId === targetTid) {
+            if (isCorrect && targetTid) {
+              cell.isCompleted = true;
+              cell.claimedByTeamId = targetTid;
+              const tObj = await prisma.team.findUnique({ where: { id: targetTid } });
+              cell.claimedByTeamName = tObj?.name;
+              cell.claimedByTeamColor = tObj?.color;
+              let awardedPoints = cell.points;
+
+              if (gridState.caroEnabled && tObj) {
+                const winningStreak = checkGridCaroStreak(
+                  gridState.cells,
+                  gridState.rows,
+                  gridState.cols,
+                  targetTid,
+                  gridState.streakTargetK
+                );
+                if (winningStreak && winningStreak.length > 0 && !gridState.caroAchievedTeams.includes(tObj.name)) {
+                  const streakPtsSum = winningStreak.reduce((acc, c) => acc + c.points, 0);
+                  const avgPts = streakPtsSum / winningStreak.length;
+                  const dynamicBonus = Math.max(10, Math.round(avgPts / 5) * 5);
+                  gridState.caroAchievedTeams.push(tObj.name);
+                  awardedPoints += dynamicBonus;
+                  io.to(`room:${room.code}`).emit("game:grid:caro:celebrate", {
+                    teamId: targetTid,
+                    teamName: tObj.name,
+                    bonusPoints: dynamicBonus,
+                  });
+                }
+              }
+              newAwarded = awardedPoints;
+            } else {
+              cell.isCompleted = false;
+              cell.claimedByTeamId = undefined;
+              cell.claimedByTeamName = undefined;
+              cell.claimedByTeamColor = undefined;
+              newAwarded = 0;
+            }
+            roomGridCaros.set(room.id, gridState);
+            io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+          }
+        }
+      }
+
+      // 3. DICE_RACE Mode: Unlock or lock dice rolling
+      if (room.mode === "DICE_RACE") {
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState && diceState.currentTurnTeamId === targetTid) {
+          diceState.canRollDice = isCorrect;
+          diceState.dicePendingAnswer = false;
+          newAwarded = 0;
+          roomDiceRaces.set(room.id, diceState);
+          io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        }
+      }
+
+      // 4. WAGER Mode: Apply multiplier winnings or loss deduction
+      if (room.mode === "WAGER") {
+        const wagerState = roomWagers.get(room.id);
+        if (wagerState && targetTid) {
+          const wAmount = wagerState.teamWagers?.[targetTid]?.amount || 10;
+          const wagerMult = wagerState.wagerMultiplierCap || 2.5;
+          newAwarded = isCorrect ? Math.round(wAmount * wagerMult) : -wAmount;
+          io.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+        }
+      }
+
+      // 5. BOUNCEBACK Mode: If primary team marked correct, close steal
+      if (room.mode === "BOUNCEBACK") {
+        const primary = roomPrimaryTeams.get(qKey);
+        if (primary && primary.teamId === targetTid && isCorrect) {
+          roomStealBuzzed.delete(qKey);
+          roomStealPhase.delete(qKey);
+        }
+      }
+
+      // Persist Answer record
+      if (answer) {
+        await prisma.answer.update({
+          where: { id: answer.id },
+          data: { isCorrect, pointsAwarded: newAwarded },
+        }).catch(console.error);
+      }
+
+      // Apply net score difference
+      const netDelta = newAwarded - prevAwarded;
+      if (netDelta !== 0 && targetTid) {
+        const tRes = await applyScoreDeltaToTeam(targetTid, netDelta);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: targetTid, score: tRes.newScore, delta: tRes.effectiveDelta },
+        ]);
+      } else if (netDelta !== 0 && targetPid) {
+        const pRes = await applyScoreDeltaToPlayer(targetPid, netDelta);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { playerId: targetPid, score: pRes.newScore, delta: pRes.effectiveDelta },
+        ]);
+      }
+
+      // Update in-memory reveal payload and re-broadcast
+      let rev = roomRevealPayloads.get(room.id);
+      if (rev && rev.answers) {
+        const existingIdx = rev.answers.findIndex((a: any) =>
+          (targetTid && a.teamId === targetTid) ||
+          (targetPid && a.playerId === targetPid) ||
+          (answer?.id && a.id === answer.id)
+        );
+        if (existingIdx >= 0) {
+          rev.answers[existingIdx].isCorrect = isCorrect;
+          rev.answers[existingIdx].pointsAwarded = newAwarded;
+        } else {
+          const tObj = targetTid ? await prisma.team.findUnique({ where: { id: targetTid } }) : null;
+          rev.answers.push({
+            id: answer?.id,
+            teamId: targetTid || null,
+            teamName: tObj?.name || "Đội",
+            playerId: targetPid || null,
+            playerName: tObj?.name || "Thí sinh",
+            answer: answer?.answer || "(MC duyệt đúng)",
+            isCorrect,
+            pointsAwarded: newAwarded,
+            timeSpent: 0,
+          });
+        }
+        roomRevealPayloads.set(room.id, rev);
+        io.to(`room:${room.code}`).emit("game:answer:reveal", rev);
+      }
+
+      // Refresh snapshot and state
+      await persistGameStateSnapshot(room.id);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
     });
 
     socket.on("admin:shuffle:cards", async () => {
@@ -4334,7 +4562,9 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:dice:advance_to_board", async (payload?: { code?: string }) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "DICE_RACE") return;
+      stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
       io.to(`room:${room.code}`).emit("game:question:clear");
       const diceState = roomDiceRaces.get(room.id);
       if (diceState) {
@@ -4497,6 +4727,12 @@ export function registerSocketHandlers(io: IO) {
     };
 
     const executeMysteryAdvanceTurn = async (room: any, questState: any) => {
+      // Immediately clear previous question state across display and player devices (0ms latency)
+      stopQuestionTimer(room.id);
+      roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
+      io.to(`room:${room.code}`).emit("game:question:clear");
+
       const teams = await prisma.team.findMany({
         where: { roomId: room.id },
         orderBy: { createdAt: "asc" },
@@ -6787,7 +7023,9 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
   gridState.selectedCellAnimation = false;
   gridState.selectedCellInfo = undefined;
   gridState.questionReady = false;
+  stopQuestionTimer(roomId);
   roomActiveQuestions.delete(roomId);
+  roomRevealPayloads.delete(roomId);
 
   gridState.turnsCompleted = (gridState.turnsCompleted || 0) + 1;
   const numTeams = Math.max(1, room.teams.length);

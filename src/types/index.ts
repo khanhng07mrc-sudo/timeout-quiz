@@ -1301,6 +1301,7 @@ export interface ClientToServerEvents {
   "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[]; code?: string }) => void;
+  "admin:answer:override_verdict": (payload: { questionId: string; teamId?: string; playerId?: string; answerId?: string; isCorrect: boolean; code?: string }) => void;
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
   "admin:kick:player": (payload: { playerId: string }, callback?: (result: { success: boolean; error?: string }) => void) => void;
   "admin:clean:offline": (callback?: (result: { success: boolean; count?: number; error?: string }) => void) => void;

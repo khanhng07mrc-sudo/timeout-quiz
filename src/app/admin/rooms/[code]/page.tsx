@@ -534,6 +534,11 @@ export default function AdminRoomPage() {
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+      if (mysteryQuestState.phase !== "QUESTION_ACTIVE") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+      }
     });
     socket.on("game:ended", () => {
       setGameEnded(true);
@@ -579,6 +584,24 @@ export default function AdminRoomPage() {
   const handleToggleCards = (locked: boolean) => {
     setCardsLocked(locked);
     emit("admin:lock:cards", locked);
+  };
+
+  const handleAdminOverrideVerdict = (
+    teamId?: string,
+    isCorrect: boolean = true,
+    answerId?: string,
+    playerId?: string
+  ) => {
+    const qId = currentQuestion?.question?.id || adminQuestionData?.questionId;
+    if (!qId) return;
+    emit("admin:answer:override_verdict", {
+      questionId: qId,
+      teamId,
+      playerId,
+      answerId,
+      isCorrect,
+      code,
+    });
   };
 
   const handleUnlockHost = (e: React.FormEvent) => {
@@ -1408,9 +1431,7 @@ export default function AdminRoomPage() {
             !(
               roomState?.mode === "MYSTERY_QUEST" &&
               roomState.mysteryQuestState &&
-              (roomState.mysteryQuestState.phase === "DECISION_CHOICE" ||
-                roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
-                (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))
+              roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
             ) && (
             <div className="glass rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between text-xs">
@@ -1707,6 +1728,82 @@ export default function AdminRoomPage() {
                     💡 <strong className="text-emerald-300">Giải thích:</strong> {revealPayload.explanation || currentQuestion?.question.hint}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* MC Answer Review & Manual Verdict Overrides */}
+            {revealPayload && revealPayload.answers && revealPayload.answers.length > 0 && (
+              <div className="mt-3 p-3.5 rounded-2xl glass border border-white/15 bg-black/40 space-y-2.5 animate-slide-up">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                    <span>⚖️</span>
+                    <span>Phán quyết bài làm & Can thiệp MC (Verdict Override)</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 hidden sm:inline">
+                    Đảo phán quyết nếu hệ thống chấm sai chính tả/đồng nghĩa
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {revealPayload.answers.map((ans: any, aIdx: number) => {
+                    const isAnsCorrect = ans.isCorrect === true;
+                    const teamObj = roomState?.teams.find((t) => t.id === ans.teamId);
+                    const displayName = ans.name || ans.teamName || teamObj?.name || `Đội #${aIdx + 1}`;
+                    const teamColor = teamObj?.color || "#06b6d4";
+
+                    return (
+                      <div
+                        key={ans.id || ans.teamId || aIdx}
+                        className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition hover:border-white/20"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <div className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm ring-1 ring-white/20" style={{ background: teamColor }} />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-xs text-white truncate">{displayName}</span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide border ${
+                                  isAnsCorrect
+                                    ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                    : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                                }`}
+                              >
+                                {isAnsCorrect ? `✓ ĐÚNG (+${ans.pointsAwarded ?? 0}đ)` : "✗ SAI (0đ)"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-300 font-mono mt-0.5 truncate bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                              Đã chọn: <span className="text-cyan-300 font-bold">{Array.isArray(ans.answer) ? ans.answer.join(", ") : String(ans.answer || "(Trống)")}</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Two-way Override Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                          {!isAnsCorrect ? (
+                            <button
+                              type="button"
+                              onClick={() => handleAdminOverrideVerdict(ans.teamId, true, ans.id, ans.playerId)}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer glow-neon-emerald"
+                              title="Hệ thống chấm sai: MC can thiệp công nhận đáp án đúng, cộng điểm và mở khóa hành động tiếp theo của chế độ chơi"
+                            >
+                              <span>⚖️</span>
+                              <span>MC Duyệt Đúng</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleAdminOverrideVerdict(ans.teamId, false, ans.id, ans.playerId)}
+                              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                              title="Hệ thống chấm nhầm: MC can thiệp đảo phán quyết thành Sai và thu hồi điểm"
+                            >
+                              <span>❌</span>
+                              <span>MC Chấm Sai</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

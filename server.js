@@ -5405,6 +5405,7 @@ function registerSocketHandlers(io2) {
       }
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
       const intermissionPayload = {
         nextQuestionIndex: nextIndex,
         totalQuestions: targetQuestions,
@@ -5527,6 +5528,200 @@ function registerSocketHandlers(io2) {
           { teamId: answer.teamId, score: tRes.newScore, delta: tRes.effectiveDelta }
         ]);
       }
+    });
+    socket.on("admin:answer:override_verdict", async ({
+      questionId,
+      teamId,
+      playerId,
+      answerId,
+      isCorrect,
+      code
+    }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+      const qKey = `${room.id}:${questionId}`;
+      let answer = answerId ? await prisma.answer.findUnique({ where: { id: answerId } }) : null;
+      if (!answer && questionId) {
+        answer = await prisma.answer.findFirst({
+          where: {
+            roomId: room.id,
+            questionId,
+            ...teamId ? { teamId } : playerId ? { playerId } : {}
+          },
+          orderBy: { submittedAt: "desc" }
+        });
+      }
+      const question = await prisma.question.findUnique({ where: { id: questionId } });
+      const rawQ = question || room.quizBank?.questions?.find((q) => q.id === questionId);
+      const basePts = rawQ?.points || 10;
+      const prevAwarded = answer?.pointsAwarded ?? 0;
+      let newAwarded = isCorrect ? basePts : 0;
+      const targetTid = teamId || answer?.teamId;
+      const targetPid = playerId || answer?.playerId;
+      if (!answer && (targetTid || targetPid)) {
+        answer = await prisma.answer.create({
+          data: {
+            roomId: room.id,
+            questionId,
+            teamId: targetTid || null,
+            playerId: targetPid || null,
+            answer: "MC_OVERRIDE",
+            isCorrect,
+            pointsAwarded: newAwarded,
+            timeSpent: 0
+          }
+        }).catch(() => null);
+      }
+      if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState && questState.currentTurnTeamId === targetTid) {
+          if (isCorrect) {
+            newAwarded = basePts;
+            questState.phase = "DECISION_CHOICE";
+            questState.baseQuestionPoints = basePts;
+            questState.potPoints = basePts;
+            questState.potMultiplier = 1;
+            questState.turnFinishedReason = void 0;
+            questState.storyResult = void 0;
+            questState.decisionMade = void 0;
+          } else {
+            newAwarded = 0;
+            questState.phase = "TURN_SUMMARY";
+            questState.turnFinishedReason = "QUESTION_FAILED";
+            questState.potPoints = 0;
+            questState.decisionMade = void 0;
+            questState.storyResult = {
+              teamId: questState.currentTurnTeamId,
+              teamName: questState.currentTurnTeamName,
+              teamColor: questState.currentTurnTeamColor,
+              rewardText: "MC can thi\u1EC7p ch\u1EA5m l\u1EA1i: Kh\xF4ng ch\xEDnh x\xE1c. L\u01B0\u1EE3t thi k\u1EBFt th\xFAc v\u1EDBi 0 \u0111i\u1EC3m t\xEDch l\u0169y.",
+              scoreDelta: 0,
+              oldScore: 0,
+              newScore: 0
+            };
+          }
+          roomMysteryQuests.set(room.id, questState);
+          io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
+        }
+      }
+      if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState) {
+          const cell = gridState.selectedCellId ? gridState.cells.find((c) => c.id === gridState.selectedCellId) : null;
+          if (cell && gridState.currentTurnTeamId === targetTid) {
+            if (isCorrect && targetTid) {
+              cell.isCompleted = true;
+              cell.claimedByTeamId = targetTid;
+              const tObj = await prisma.team.findUnique({ where: { id: targetTid } });
+              cell.claimedByTeamName = tObj?.name;
+              cell.claimedByTeamColor = tObj?.color;
+              let awardedPoints = cell.points;
+              if (gridState.caroEnabled && tObj) {
+                const winningStreak = checkGridCaroStreak(
+                  gridState.cells,
+                  gridState.rows,
+                  gridState.cols,
+                  targetTid,
+                  gridState.streakTargetK
+                );
+                if (winningStreak && winningStreak.length > 0 && !gridState.caroAchievedTeams.includes(tObj.name)) {
+                  const streakPtsSum = winningStreak.reduce((acc, c) => acc + c.points, 0);
+                  const avgPts = streakPtsSum / winningStreak.length;
+                  const dynamicBonus = Math.max(10, Math.round(avgPts / 5) * 5);
+                  gridState.caroAchievedTeams.push(tObj.name);
+                  awardedPoints += dynamicBonus;
+                  io2.to(`room:${room.code}`).emit("game:grid:caro:celebrate", {
+                    teamId: targetTid,
+                    teamName: tObj.name,
+                    bonusPoints: dynamicBonus
+                  });
+                }
+              }
+              newAwarded = awardedPoints;
+            } else {
+              cell.isCompleted = false;
+              cell.claimedByTeamId = void 0;
+              cell.claimedByTeamName = void 0;
+              cell.claimedByTeamColor = void 0;
+              newAwarded = 0;
+            }
+            roomGridCaros.set(room.id, gridState);
+            io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
+          }
+        }
+      }
+      if (room.mode === "DICE_RACE") {
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState && diceState.currentTurnTeamId === targetTid) {
+          diceState.canRollDice = isCorrect;
+          diceState.dicePendingAnswer = false;
+          newAwarded = 0;
+          roomDiceRaces.set(room.id, diceState);
+          io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        }
+      }
+      if (room.mode === "WAGER") {
+        const wagerState = roomWagers.get(room.id);
+        if (wagerState && targetTid) {
+          const wAmount = wagerState.teamWagers?.[targetTid]?.amount || 10;
+          const wagerMult = wagerState.wagerMultiplierCap || 2.5;
+          newAwarded = isCorrect ? Math.round(wAmount * wagerMult) : -wAmount;
+          io2.to(`room:${room.code}`).emit("game:wager:update", wagerState);
+        }
+      }
+      if (room.mode === "BOUNCEBACK") {
+        const primary = roomPrimaryTeams.get(qKey);
+        if (primary && primary.teamId === targetTid && isCorrect) {
+          roomStealBuzzed.delete(qKey);
+          roomStealPhase.delete(qKey);
+        }
+      }
+      if (answer) {
+        await prisma.answer.update({
+          where: { id: answer.id },
+          data: { isCorrect, pointsAwarded: newAwarded }
+        }).catch(console.error);
+      }
+      const netDelta = newAwarded - prevAwarded;
+      if (netDelta !== 0 && targetTid) {
+        const tRes = await applyScoreDeltaToTeam(targetTid, netDelta);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: targetTid, score: tRes.newScore, delta: tRes.effectiveDelta }
+        ]);
+      } else if (netDelta !== 0 && targetPid) {
+        const pRes = await applyScoreDeltaToPlayer(targetPid, netDelta);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { playerId: targetPid, score: pRes.newScore, delta: pRes.effectiveDelta }
+        ]);
+      }
+      let rev = roomRevealPayloads.get(room.id);
+      if (rev && rev.answers) {
+        const existingIdx = rev.answers.findIndex(
+          (a) => targetTid && a.teamId === targetTid || targetPid && a.playerId === targetPid || answer?.id && a.id === answer.id
+        );
+        if (existingIdx >= 0) {
+          rev.answers[existingIdx].isCorrect = isCorrect;
+          rev.answers[existingIdx].pointsAwarded = newAwarded;
+        } else {
+          const tObj = targetTid ? await prisma.team.findUnique({ where: { id: targetTid } }) : null;
+          rev.answers.push({
+            id: answer?.id,
+            teamId: targetTid || null,
+            teamName: tObj?.name || "\u0110\u1ED9i",
+            playerId: targetPid || null,
+            playerName: tObj?.name || "Th\xED sinh",
+            answer: answer?.answer || "(MC duy\u1EC7t \u0111\xFAng)",
+            isCorrect,
+            pointsAwarded: newAwarded,
+            timeSpent: 0
+          });
+        }
+        roomRevealPayloads.set(room.id, rev);
+        io2.to(`room:${room.code}`).emit("game:answer:reveal", rev);
+      }
+      await persistGameStateSnapshot(room.id);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
     });
     socket.on("admin:shuffle:cards", async () => {
       const room = await getAdminRoom(socket);
@@ -6000,7 +6195,9 @@ function registerSocketHandlers(io2) {
     socket.on("admin:dice:advance_to_board", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "DICE_RACE") return;
+      stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
       io2.to(`room:${room.code}`).emit("game:question:clear");
       const diceState = roomDiceRaces.get(room.id);
       if (diceState) {
@@ -6141,6 +6338,10 @@ function registerSocketHandlers(io2) {
       });
     };
     const executeMysteryAdvanceTurn = async (room, questState) => {
+      stopQuestionTimer(room.id);
+      roomActiveQuestions.delete(room.id);
+      roomRevealPayloads.delete(room.id);
+      io2.to(`room:${room.code}`).emit("game:question:clear");
       const teams = await prisma.team.findMany({
         where: { roomId: room.id },
         orderBy: { createdAt: "asc" }
@@ -7990,7 +8191,9 @@ async function advanceGridToBoard(io2, roomId, roomCode) {
   gridState.selectedCellAnimation = false;
   gridState.selectedCellInfo = void 0;
   gridState.questionReady = false;
+  stopQuestionTimer(roomId);
   roomActiveQuestions.delete(roomId);
+  roomRevealPayloads.delete(roomId);
   gridState.turnsCompleted = (gridState.turnsCompleted || 0) + 1;
   const numTeams = Math.max(1, room.teams.length);
   gridState.currentRound = Math.min(gridState.maxRounds, Math.floor(gridState.turnsCompleted / numTeams) + 1);

@@ -237,6 +237,12 @@ export default function DisplayPage() {
         }
         if (p.mysteryQuestState !== undefined) {
           setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
+          if (p.mysteryQuestState.phase !== "QUESTION_ACTIVE") {
+            setCurrentQuestion(null);
+            setRevealPayload(null);
+            setTimer(null);
+            setDisplayModeTab("BOARD");
+          }
         }
       }
     };
@@ -519,6 +525,12 @@ export default function DisplayPage() {
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
+      if (mysteryQuestState.phase !== "QUESTION_ACTIVE") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setDisplayModeTab("BOARD");
+      }
     });
     socket.on("game:mystery:card_flipped", (payload) => {
       if (payload.audioTrigger === "CORRECT") {
@@ -1304,14 +1316,13 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* Question (hidden if viewing full board tab in DICE_RACE or minigame phase in MYSTERY_QUEST) */}
+        {/* Question (hidden if viewing full board tab in DICE_RACE or non-question phase in MYSTERY_QUEST) */}
         {currentQuestion &&
           displayModeTab !== "BOARD" &&
           !(
             roomState.mode === "MYSTERY_QUEST" &&
             roomState.mysteryQuestState &&
-            (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
-              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))
+            roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
           ) && (
           <div className="flex-1 glass rounded-2xl p-3.5 sm:p-6 flex flex-col justify-between">
             {currentQuestion.bouncebackSelectPhase ? (
@@ -1776,8 +1787,7 @@ export default function DisplayPage() {
         {(
           (roomState.mode === "MYSTERY_QUEST" &&
             roomState.mysteryQuestState &&
-            (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
-              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))) ||
+            roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE") ||
           (!currentQuestion && roomState.mode !== "MYSTERY_QUEST") ||
           (!currentQuestion && roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE")
         ) && (
@@ -1815,7 +1825,7 @@ export default function DisplayPage() {
                   }}
                 />
               </div>
-            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (roomState.mysteryQuestState.phase === "DECISION_CHOICE" || roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" || (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))) ? (
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
               <div className="w-full max-w-5xl">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}

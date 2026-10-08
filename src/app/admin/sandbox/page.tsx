@@ -1698,6 +1698,196 @@ export default function AdminSandboxPage() {
     addLog(`Admin: Chấm tự luận: ${points}đ (ID: ${answerId})`);
   }, [isOfflineSandbox, code, addLog, syncToIframes]);
 
+  const handleOverrideVerdict = useCallback(
+    (targetTeamId: string, isCorrect: boolean, answerId?: string, playerId?: string) => {
+      const qId = currentQuestionRef.current?.question?.id || adminQuestionDataRef.current?.questionId || "";
+      if (!qId) return;
+
+      const teamObj = roomStateRef.current?.teams.find((t) => t.id === targetTeamId);
+      const teamName = teamObj?.name || targetTeamId;
+
+      if (!isOfflineSandbox) {
+        // Online Room / Sandbox Online: Emit socket event to authoritative server
+        adminSocketRef.current?.emit("admin:answer:override_verdict" as any, {
+          questionId: qId,
+          teamId: targetTeamId,
+          playerId,
+          answerId,
+          isCorrect,
+          code,
+        });
+        addLog(
+          isCorrect
+            ? `⚖️ MC Can thiệp: DUYỆT ĐÚNG cho [${teamName}]! Hệ thống mở khóa hành động tiếp theo.`
+            : `❌ MC Can thiệp: CHẤM SAI / HỦY ĐIỂM cho [${teamName}].`
+        );
+        return;
+      }
+
+      // Offline Sandbox Mode: Process synchronously
+      const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestionRef.current?.question;
+      const basePts = rawQ?.points || 10;
+      let newAwarded = isCorrect ? basePts : 0;
+
+      // Update offline answers cache
+      const prevAns = offlineAnswersRef.current.get(targetTeamId);
+      const prevAwarded = prevAns?.points ?? 0;
+      offlineAnswersRef.current.set(targetTeamId, {
+        answer: prevAns?.answer || "MC_OVERRIDE",
+        isCorrect,
+        points: newAwarded,
+      });
+
+      // Update revealPayload
+      if (revealPayloadRef.current) {
+        const updatedAnswers = (revealPayloadRef.current.answers || []).map((a: any) => {
+          if (a.teamId === targetTeamId || (answerId && a.id === answerId)) {
+            return {
+              ...a,
+              isCorrect,
+              pointsAwarded: newAwarded,
+            };
+          }
+          return a;
+        });
+
+        if (!updatedAnswers.some((a: any) => a.teamId === targetTeamId)) {
+          updatedAnswers.push({
+            id: answerId || `ans_ov_${targetTeamId}`,
+            teamId: targetTeamId,
+            teamName,
+            answer: prevAns?.answer || "(MC duyệt đúng)",
+            isCorrect,
+            pointsAwarded: newAwarded,
+          });
+        }
+
+        const nextReveal = { ...revealPayloadRef.current, answers: updatedAnswers };
+        revealPayloadRef.current = nextReveal;
+        setRevealPayload(nextReveal);
+        syncToIframes({ revealPayload: nextReveal });
+      }
+
+      // Mode-specific progression in Offline Sandbox
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const curMode = selectedMode;
+
+        // Score delta calculation
+        const netDelta = newAwarded - prevAwarded;
+        const updatedTeams = prev.teams.map((t) =>
+          t.id === targetTeamId ? { ...t, score: Math.max(0, t.score + netDelta) } : t
+        );
+
+        let nextMystery = prev.mysteryQuestState;
+        if (curMode === "MYSTERY_QUEST" && prev.mysteryQuestState) {
+          const curMystery = prev.mysteryQuestState;
+          if (curMystery.currentTurnTeamId === targetTeamId) {
+            if (isCorrect) {
+              const promo = generateMysteryPromoPerk(basePts);
+              nextMystery = {
+                ...curMystery,
+                phase: "DECISION_CHOICE",
+                baseQuestionPoints: basePts,
+                potPoints: basePts,
+                potMultiplier: 1,
+                promoPerk: promo,
+                hasShield: promo === "SHIELD_PROMO",
+                decisionMade: undefined,
+                turnFinishedReason: undefined,
+                storyResult: undefined,
+              };
+            } else {
+              nextMystery = {
+                ...curMystery,
+                phase: "TURN_SUMMARY",
+                turnFinishedReason: "QUESTION_FAILED",
+                potPoints: 0,
+                decisionMade: undefined,
+                storyResult: {
+                  teamId: curMystery.currentTurnTeamId,
+                  teamName: curMystery.currentTurnTeamName,
+                  teamColor: curMystery.currentTurnTeamColor,
+                  rewardText: "MC can thiệp chấm lại: Không chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
+                  scoreDelta: 0,
+                  oldScore: 0,
+                  newScore: 0,
+                },
+              };
+            }
+          }
+        }
+
+        let nextDice = prev.diceRaceState;
+        if (curMode === "DICE_RACE" && prev.diceRaceState) {
+          if (prev.diceRaceState.currentTurnTeamId === targetTeamId) {
+            nextDice = {
+              ...prev.diceRaceState,
+              canRollDice: isCorrect,
+              dicePendingAnswer: false,
+            };
+          }
+        }
+
+        let nextGrid = prev.gridCaroState;
+        if (curMode === "GRID_CARO" && prev.gridCaroState) {
+          const cell = prev.gridCaroState.cells.find((c) => c.id === prev.gridCaroState?.selectedCellId);
+          if (cell && prev.gridCaroState.currentTurnTeamId === targetTeamId) {
+            const nextCells = prev.gridCaroState.cells.map((c) => {
+              if (c.id === cell.id) {
+                return {
+                  ...c,
+                  isCompleted: isCorrect,
+                  claimedByTeamId: isCorrect ? targetTeamId : undefined,
+                  claimedByTeamName: isCorrect ? teamName : undefined,
+                  claimedByTeamColor: isCorrect ? teamObj?.color : undefined,
+                };
+              }
+              return c;
+            });
+            nextGrid = {
+              ...prev.gridCaroState,
+              cells: nextCells,
+            };
+          }
+        }
+
+        let nextWager = prev.wagerState;
+        if (curMode === "WAGER" && prev.wagerState) {
+          nextWager = {
+            ...prev.wagerState,
+            phase: "REVEAL_PERIOD",
+          };
+        }
+
+        const nextRoomState: RoomState = {
+          ...prev,
+          teams: updatedTeams,
+          mysteryQuestState: nextMystery,
+          diceRaceState: nextDice,
+          gridCaroState: nextGrid,
+          wagerState: nextWager,
+        };
+        roomStateRef.current = nextRoomState;
+        syncToIframes({
+          roomState: nextRoomState,
+          mysteryQuestState: nextMystery,
+          diceRaceState: nextDice,
+          gridCaroState: nextGrid,
+          wagerState: nextWager,
+        });
+        return nextRoomState;
+      });
+
+      addLog(
+        isCorrect
+          ? `⚖️ [Offline Sandbox] MC Can thiệp: DUYỆT ĐÚNG cho [${teamName}]! Hệ thống mở khóa hành động tiếp theo.`
+          : `❌ [Offline Sandbox] MC Can thiệp: CHẤM SAI cho [${teamName}].`
+      );
+    },
+    [isOfflineSandbox, code, selectedMode, addLog, syncToIframes]
+  );
+
   const handleAdminSubmitDirectAnswer = useCallback((teamId: string, answerId: string) => {
     if (!currentQuestionRef.current) return;
     const targetTeam = roomStateRef.current?.teams.find((t) => t.id === teamId);
@@ -2207,12 +2397,19 @@ export default function AdminSandboxPage() {
         };
         roomStateRef.current = nextRoomState;
         setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextStage });
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        syncToIframes({
+          roomState: nextRoomState,
+          mysteryQuestState: nextStage,
+          currentQuestion: null,
+          revealPayload: null,
+          timer: null,
+        });
         addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
 
-        setTimeout(() => {
-          handleAdminNextRef.current?.();
-        }, 500);
+        handleAdminNextRef.current?.();
         return;
       }
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
@@ -3228,6 +3425,32 @@ export default function AdminSandboxPage() {
         offlineUsedQuestionIdsRef.current.add(qId);
         setIntermission(null);
         launchOfflineQuestion(nextIdx);
+        return;
+      }
+
+      // Chế độ bàn cờ/theo lượt (MYSTERY_QUEST, GRID_CARO, DICE_RACE): Chuyển lượt/về bàn cờ ngay lập tức 0ms, không treo đếm ngược 3s
+      if (selectedMode === "GRID_CARO") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
+        addLog("Admin: Quay về bảng ô Caro ngay lập tức (0s delay)");
+        return;
+      }
+      if (selectedMode === "DICE_RACE") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
+        addLog("Admin: Quay về bàn cờ Đường Đua ngay lập tức (0s delay)");
+        return;
+      }
+      if (selectedMode === "MYSTERY_QUEST") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
+        window.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
         return;
       }
 
@@ -6622,6 +6845,82 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
+                {/* MC Answer Review & Manual Verdict Overrides */}
+                {revealPayload && revealPayload.answers && revealPayload.answers.length > 0 && (
+                  <div className="mt-3 p-3 rounded-2xl glass border border-white/15 bg-black/40 space-y-2 animate-slide-up">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-300">
+                        <span>⚖️</span>
+                        <span>Phán quyết bài làm & Can thiệp MC</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        Đảo phán quyết Đúng/Sai
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {revealPayload.answers.map((ans: any, aIdx: number) => {
+                        const isAnsCorrect = ans.isCorrect === true;
+                        const teamObj = roomState?.teams.find((t) => t.id === ans.teamId);
+                        const displayName = ans.name || ans.teamName || teamObj?.name || `Đội #${aIdx + 1}`;
+                        const teamColor = teamObj?.color || "#06b6d4";
+
+                        return (
+                          <div
+                            key={ans.id || ans.teamId || aIdx}
+                            className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition hover:border-white/20"
+                          >
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <div className="w-3 h-3 rounded-full shrink-0 shadow-sm ring-1 ring-white/20" style={{ background: teamColor }} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs text-white truncate">{displayName}</span>
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wide border ${
+                                      isAnsCorrect
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                        : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                                    }`}
+                                  >
+                                    {isAnsCorrect ? `✓ ĐÚNG (+${ans.pointsAwarded ?? 0}đ)` : "✗ SAI (0đ)"}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-slate-300 font-mono mt-0.5 truncate bg-black/40 px-2 py-0.5 rounded border border-white/5">
+                                  Đã chọn: <span className="text-cyan-300 font-bold">{Array.isArray(ans.answer) ? ans.answer.join(", ") : String(ans.answer || "(Trống)")}</span>
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Two-way Override Actions */}
+                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                              {!isAnsCorrect ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOverrideVerdict(ans.teamId, true, ans.id, ans.playerId)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer glow-neon-emerald"
+                                  title="Hệ thống chấm sai: MC can thiệp công nhận đáp án đúng, cộng điểm và mở khóa hành động tiếp theo của chế độ chơi"
+                                >
+                                  <span>⚖️</span>
+                                  <span>MC Duyệt Đúng</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOverrideVerdict(ans.teamId, false, ans.id, ans.playerId)}
+                                  className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                                  title="Hệ thống chấm nhầm: MC can thiệp đảo phán quyết thành Sai và thu hồi điểm"
+                                >
+                                  <span>❌</span>
+                                  <span>MC Chấm Sai</span>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Mode Specific Controls */}
                 {roomState?.mode === "BUZZ" && currentQuestion && (
                   <div className="pt-2 border-t border-white/10 space-y-1.5">
@@ -7310,6 +7609,25 @@ export default function AdminSandboxPage() {
                             className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold"
                           >
                             0đ
+                          </button>
+                        </div>
+                        {/* Quick Two-way Verdict Overrides */}
+                        <div className="flex flex-col gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOverrideVerdict(ans.teamId, true, ans.id, ans.playerId)}
+                            className="px-2 py-0.5 rounded bg-emerald-600/80 hover:bg-emerald-500 text-white text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm transition active:scale-95"
+                            title="MC Duyệt Đúng: Chuyển thành Đúng, cộng điểm chuẩn và mở khóa hành động tiếp theo"
+                          >
+                            <span>⚖️ Đúng</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOverrideVerdict(ans.teamId, false, ans.id, ans.playerId)}
+                            className="px-2 py-0.5 rounded bg-rose-600/80 hover:bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center gap-1 shadow-sm transition active:scale-95"
+                            title="MC Chấm Sai: Chuyển thành Sai và thu hồi điểm"
+                          >
+                            <span>❌ Sai</span>
                           </button>
                         </div>
                       </div>

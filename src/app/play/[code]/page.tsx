@@ -317,6 +317,7 @@ export default function PlayPage() {
           setRevealPayload(p.revealPayload);
           setIsStealPhase(false);
           if (soundEnabledRef.current) {
+            soundManager.stopMusic(600, true);
             const myAns = p.revealPayload.answers?.find(
               (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
             );
@@ -327,7 +328,12 @@ export default function PlayPage() {
             }
           }
         }
-        if (p.timer !== undefined) setTimer(p.timer);
+        if (p.timer !== undefined) {
+          setTimer(p.timer);
+          if (p.timer?.remaining === 0 && soundEnabledRef.current) {
+            soundManager.stopMusic(600, true);
+          }
+        }
         if (p.buzzedBy !== undefined) setBuzzedBy(p.buzzedBy);
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
         if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
@@ -726,6 +732,7 @@ export default function PlayPage() {
       setRevealPayload(payload);
       setIsStealPhase(false);
       if (soundEnabledRef.current) {
+        soundManager.stopMusic(600, true);
         const myAns = payload.answers.find(
           (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
         );
@@ -898,7 +905,7 @@ export default function PlayPage() {
     socket.on("game:early_completed", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
-        soundManager.stopMusic();
+        soundManager.stopMusic(600, true);
       }
     });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
@@ -1270,7 +1277,8 @@ export default function PlayPage() {
     (roomState?.mode === "WAGER" && roomState?.wagerState) ||
     (roomState?.mode === "GRID_CARO" && roomState?.gridCaroState) ||
     (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) ||
-    (roomState?.mode === "TOURNAMENT" && roomState?.tournamentState)
+    (roomState?.mode === "TOURNAMENT" && roomState?.tournamentState) ||
+    (roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState)
   );
 
   if (!isInteractiveBoardPhase && (intermission || (!currentQuestion && roomState?.status === "PLAYING"))) {
@@ -1451,7 +1459,7 @@ export default function PlayPage() {
                 if (socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:choose_action", { action });
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
-                  window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", action, teamId: effectiveTeamId }, "*");
+                  window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", actionChoice: action, action, teamId: effectiveTeamId }, "*");
                 }
               }}
               onFlipCard={(tileId) => {

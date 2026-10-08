@@ -177,12 +177,7 @@ class SoundManager {
 
   // ── True Crossfading & Smooth Fade In/Out ──────────────────────────────────
 
-  private fadeOutAudio(audio: HTMLAudioElement, durationMs: number = 450) {
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
-    }
-
+  private fadeOutAudio(audio: HTMLAudioElement, durationMs: number = 600) {
     if (audio.paused || audio.volume <= 0 || durationMs <= 0) {
       try {
         audio.pause();
@@ -191,26 +186,24 @@ class SoundManager {
       return;
     }
 
-    const steps = 15;
+    const steps = 20;
     const stepInterval = Math.max(15, Math.floor(durationMs / steps));
     const startVol = audio.volume;
     const volStep = startVol / steps;
     let currentVol = startVol;
 
-    this.fadeInterval = setInterval(() => {
+    const interval = setInterval(() => {
       currentVol = Math.max(0, currentVol - volStep);
       try {
         audio.volume = currentVol;
       } catch {}
 
       if (currentVol <= 0) {
-        if (this.fadeInterval) {
-          clearInterval(this.fadeInterval);
-          this.fadeInterval = null;
-        }
+        clearInterval(interval);
         try {
           audio.pause();
           audio.currentTime = 0;
+          audio.volume = startVol; // Restore for next play
         } catch {}
       }
     }, stepInterval);
@@ -457,16 +450,12 @@ class SoundManager {
    */
   public stopMusic(fadeDurationMs: number = 0, forceQuestionStop: boolean = false) {
     // If a QUESTION countdown track is currently playing, preserve authentic Olympia resolution (gong/chime)
-    // to completion unless forceQuestionStop is explicitly requested (e.g. game ended or match reset)
-    if (this.currentMusicType === "QUESTION" && !forceQuestionStop && fadeDurationMs === 0) {
+    // to completion unless forceQuestionStop or explicit fadeDurationMs is requested
+    if (this.currentMusicType === "QUESTION" && !forceQuestionStop && fadeDurationMs <= 0) {
       return;
     }
 
     this.pendingMusicTrack = null;
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
-    }
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
@@ -488,20 +477,14 @@ class SoundManager {
       return;
     }
 
-    if (this.currentMusicAudio) {
-      const audio = this.currentMusicAudio;
-      this.currentMusicAudio = null;
-      this.currentMusicType = null;
-
-      if (!audio.paused) {
+    // Fade out any currently playing BGM tracks smoothly over fadeDurationMs (default 600ms)
+    this.currentMusicAudio = null;
+    this.currentMusicType = null;
+    this.bgmMap.forEach((audio) => {
+      if (!audio.paused && audio.volume > 0) {
         this.fadeOutAudio(audio, fadeDurationMs);
-      } else {
-        try {
-          audio.pause();
-          audio.currentTime = 0;
-        } catch {}
       }
-    }
+    });
   }
 
   // ── Instant Sound Effects (SFX) ───────────────────────────────────────────

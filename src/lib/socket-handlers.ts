@@ -3588,6 +3588,40 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      // Board / Turn modes bypass 3s intermission countdown completely
+      if (room.mode === "MYSTERY_QUEST") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          await executeMysteryAdvanceTurn(room, questState);
+        }
+        return;
+      }
+
+      if (room.mode === "GRID_CARO") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        await advanceGridToBoard(io, room.id, room.code);
+        return;
+      }
+
+      if (room.mode === "DICE_RACE") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState) {
+          io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        }
+        return;
+      }
+
       // Nếu đang trong câu hỏi hoặc vừa công bố đáp án xong:
       // Chuyển qua màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)
       stopQuestionTimer(room.id);
@@ -4726,7 +4760,7 @@ export function registerSocketHandlers(io: IO) {
       });
     };
 
-    const executeMysteryAdvanceTurn = async (room: any, questState: any) => {
+    async function executeMysteryAdvanceTurn(room: any, questState: any) {
       // Immediately clear previous question state across display and player devices (0ms latency)
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
@@ -4776,7 +4810,7 @@ export function registerSocketHandlers(io: IO) {
         await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextQ.index, status: "PLAYING" } }).catch(console.error);
         await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
       }
-    };
+    }
 
     const executeMysteryChooseAction = async (
       room: any,

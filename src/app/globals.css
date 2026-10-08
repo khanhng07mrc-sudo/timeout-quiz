@@ -388,11 +388,102 @@ select, option, optgroup {
   animation: shimmerSweep 2.4s infinite ease-in-out;
 }
 
-/* Universal Button Zoom & Spring Response when clicking buttons inside tabs */
+/* ═════════════════════════════════════════════════════════════════════════
+   GLOBAL SMOOTH MOTION SYSTEM (300-400ms, cubic-bezier(0.16, 1, 0.3, 1))
+   ═════════════════════════════════════════════════════════════════════════ */
+
+/* Smooth page/route entrance */
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition,
+.animate-page-enter {
+  animation: pageEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Micro-zoom fade-scale (98% -> 100%) */
+@keyframes fadeScaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-scale,
+.animate-smooth-in {
+  animation: fadeScaleIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* Modal and dialog entrances */
+@keyframes modalBackdropIn {
+  0% { opacity: 0; backdrop-filter: blur(0px); }
+  100% { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+@keyframes modalContentIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.modal-backdrop-smooth {
+  animation: modalBackdropIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.modal-content-smooth {
+  animation: modalContentIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* Tab & container slide-fade */
+@keyframes tabFadeSlide {
+  0% {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-tab-slide {
+  animation: tabFadeSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Standardized interactive button/link transitions */
+button,
+a,
+[role="button"] {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-duration: 200ms;
+}
+
+/* Universal Button Zoom & Spring Response when clicking */
 button:not(:disabled):active,
 [role="button"]:not([aria-disabled="true"]):active,
 .btn-gradient:active,
 .btn-glass:active {
-  transform: scale(0.95);
-  transition: transform 0.12s ease-out;
+  transform: scale(0.97);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
 }

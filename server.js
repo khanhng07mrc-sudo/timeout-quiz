@@ -5403,6 +5403,36 @@ function registerSocketHandlers(io2) {
         await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
         return;
       }
+      if (room.mode === "MYSTERY_QUEST") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          await executeMysteryAdvanceTurn(room, questState);
+        }
+        return;
+      }
+      if (room.mode === "GRID_CARO") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        await advanceGridToBoard(io2, room.id, room.code);
+        return;
+      }
+      if (room.mode === "DICE_RACE") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState) {
+          io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+        }
+        return;
+      }
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
       roomRevealPayloads.delete(room.id);
@@ -6337,7 +6367,7 @@ function registerSocketHandlers(io2) {
         newScore: (team.score || 0) + finalScoreDelta
       });
     };
-    const executeMysteryAdvanceTurn = async (room, questState) => {
+    async function executeMysteryAdvanceTurn(room, questState) {
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
       roomRevealPayloads.delete(room.id);
@@ -6380,7 +6410,7 @@ function registerSocketHandlers(io2) {
         await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextQ.index, status: "PLAYING" } }).catch(console.error);
         await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
       }
-    };
+    }
     const executeMysteryChooseAction = async (room, questState, action) => {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;

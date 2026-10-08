@@ -202,7 +202,7 @@ export default function DisplayPage() {
         }
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
-          // Preserve authentic Olympia countdown ending chime/gong without premature cutoff
+          soundManager.stopMusic(600, true);
           if (p.revealPayload?.answers?.some((a: any) => a.isCorrect)) {
             soundManager.playCorrect();
           } else {
@@ -211,6 +211,9 @@ export default function DisplayPage() {
         }
         if (p.timer !== undefined) {
           setTimer(p.timer);
+          if (p.timer?.remaining === 0) {
+            soundManager.stopMusic(600, true);
+          }
         }
         if (p.buzzed !== undefined) setBuzzed(p.buzzed);
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
@@ -465,7 +468,7 @@ export default function DisplayPage() {
       );
     });
     socket.on("game:early_completed", () => {
-      soundManager.stopMusic();
+      soundManager.stopMusic(600, true);
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
     });
     socket.on("game:elimination:round", (payload) => {
@@ -482,9 +485,9 @@ export default function DisplayPage() {
       setIsStealOpen(false);
     });
     socket.on("game:answer:reveal", (payload) => {
+      soundManager.stopMusic(600, true);
       setRevealPayload(payload);
       setIsStealOpen(false);
-      // Giữ trọn vẹn phần kết chiêng/chuông Olympia của nhạc đếm ngược, không ngắt sớm
       if (payload.answers?.some((a) => a.isCorrect)) {
         soundManager.playCorrect();
       } else {

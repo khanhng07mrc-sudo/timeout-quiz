@@ -91,6 +91,7 @@ export async function POST(req: NextRequest) {
       ...DEFAULT_CONFIG,
       allowedPowerups: defaultModeAllowed,
       ...config,
+      isSandbox: false,
     };
     if (config?.allowedPowerups && Array.isArray(config.allowedPowerups)) {
       const filtered = config.allowedPowerups.filter((c: any) => defaultModeAllowed.includes(c));
@@ -301,11 +302,12 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const hostId = searchParams.get("hostId");
+    const filter = (searchParams.get("filter") || searchParams.get("type") || "all").toLowerCase();
     const user = getCurrentUserFromRequest(req);
 
-    let whereClause: any = undefined;
+    let baseWhere: any = undefined;
     if (user && user.userId !== "master-admin") {
-      whereClause = {
+      baseWhere = {
         OR: [
           { hostId: user.userId },
           { hostId: "demo-host-id" },
@@ -313,7 +315,37 @@ export async function GET(req: NextRequest) {
         ],
       };
     } else if (hostId && hostId !== "demo-host-id") {
-      whereClause = { hostId };
+      baseWhere = { hostId };
+    }
+
+    const filterConditions: any[] = [];
+    if (filter === "official") {
+      filterConditions.push({
+        NOT: {
+          OR: [
+            { name: { startsWith: "[Sandbox]" } },
+            { code: { startsWith: "sb_" } },
+          ],
+        },
+      });
+    } else if (filter === "sandbox") {
+      filterConditions.push({
+        OR: [
+          { name: { startsWith: "[Sandbox]" } },
+          { code: { startsWith: "sb_" } },
+        ],
+      });
+    }
+
+    let whereClause: any = undefined;
+    if (baseWhere && filterConditions.length > 0) {
+      whereClause = {
+        AND: [baseWhere, ...filterConditions],
+      };
+    } else if (baseWhere) {
+      whereClause = baseWhere;
+    } else if (filterConditions.length > 0) {
+      whereClause = { AND: filterConditions };
     }
 
     const rooms = await prisma.room.findMany({

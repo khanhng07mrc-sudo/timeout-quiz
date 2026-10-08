@@ -11,8 +11,8 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
   { href: "/admin", icon: "dashboard", label: "Dashboard", desc: "Tổng quan" },
   { href: "/admin/quiz-bank", icon: "quiz_bank", label: "Bộ câu hỏi", desc: "Soạn & Nhập file" },
   { href: "/admin/rooms/create", icon: "create_room", label: "Tạo phòng thi", desc: "Thiết lập trận đấu" },
-  { href: "/admin/rooms", icon: "rooms", label: "Phòng đang có", desc: "Quản lý & Điều phối" },
-  { href: "/admin/sandbox", icon: "sandbox", label: "Sandbox Studio", desc: "Test solo 1 người" },
+  { href: "/admin/rooms", icon: "rooms", label: "Phòng đấu chính", desc: "Quản lý trận đấu" },
+  { href: "/admin/sandbox", icon: "sandbox", label: "Sandbox Studio", desc: "Test độc lập trên máy" },
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
 ];
 

@@ -4611,9 +4611,9 @@ export default function AdminSandboxPage() {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap">Sandbox</span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap hidden md:inline">
-                1 Người Điều Khiển
+              <span className="text-xs sm:text-sm font-black text-white whitespace-nowrap">Phòng Sandbox</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-bold whitespace-nowrap hidden md:inline" title="Môi trường thử nghiệm độc lập trên máy này, không hiển thị trong phòng đấu chính">
+                🧪 Thử Nghiệm Độc Lập Trên Máy
               </span>
               {isOfflineSandbox && (
                 <div className="flex items-center gap-1">
@@ -5808,10 +5808,14 @@ export default function AdminSandboxPage() {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-3xl mx-auto shadow-xl glow-purple">
               🧪
             </div>
-            <div className="space-y-1.5">
-              <h2 className="text-2xl font-black text-white">Studio Kiểm Thử Hợp Nhất</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
-                Màn chiếu hội trường Display bên trái · Thiết bị di động thí sinh bên phải với chuyển đổi 4 đội tức thì. Giao diện tự động co giãn vừa vặn màn hình.
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">Studio Kiểm Thử Hợp Nhất (Sandbox)</h2>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold mx-auto">
+                <span>🧪</span>
+                <span>Chỉ hoạt động độc lập trên máy của bạn · Không hiển thị trong phòng đấu chính</span>
+              </div>
+              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed pt-1">
+                Màn chiếu hội trường Display bên trái · Thiết bị di động thí sinh bên phải với chuyển đổi 4 đội tức thì. Thử nghiệm toàn bộ cơ chế trò chơi độc lập mà không ảnh hưởng giải đấu thật.
               </p>
             </div>
 

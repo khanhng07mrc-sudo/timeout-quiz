@@ -7,6 +7,7 @@ export interface CleanupOptions {
   playingMaxAgeHours?: number;  // default: 12 hours (phòng treo dở dang không tương tác quá 12h)
   emptyMaxAgeHours?: number;    // default: 2 hours (phòng 0 người chơi tạo quá 2h)
   forceAllFinished?: boolean;   // xóa tất cả phòng đã kết thúc không kể thời gian
+  forceAllSandbox?: boolean;    // xóa tất cả phòng test sandbox không kể thời gian
 }
 
 export interface CleanupResult {
@@ -147,6 +148,7 @@ export async function cleanupStaleRooms(options: CleanupOptions = {}): Promise<C
     playingMaxAgeHours = 12,
     emptyMaxAgeHours = 2,
     forceAllFinished = false,
+    forceAllSandbox = false,
   } = options;
 
   const now = new Date();
@@ -189,6 +191,13 @@ export async function cleanupStaleRooms(options: CleanupOptions = {}): Promise<C
 
   if (forceAllFinished) {
     orConditions.push({ status: "FINISHED" });
+  }
+
+  if (forceAllSandbox) {
+    orConditions.push(
+      { name: { startsWith: "[Sandbox]" } },
+      { code: { startsWith: "sb_" } }
+    );
   }
 
   const staleRooms = await prisma.room.findMany({

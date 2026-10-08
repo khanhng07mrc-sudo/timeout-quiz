@@ -156,6 +156,7 @@ export async function POST(req: NextRequest) {
       ...DEFAULT_SANDBOX_CONFIG,
       allowedPowerups: modeAllowedPowerups,
       ...(body.config || {}),
+      isSandbox: true,
     };
 
     if (mode === "MYSTERY_QUEST") {

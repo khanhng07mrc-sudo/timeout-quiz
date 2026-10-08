@@ -9549,7 +9549,8 @@ async function cleanupStaleRooms(options = {}) {
     lobbyMaxAgeHours = 6,
     playingMaxAgeHours = 12,
     emptyMaxAgeHours = 2,
-    forceAllFinished = false
+    forceAllFinished = false,
+    forceAllSandbox = false
   } = options;
   const now = /* @__PURE__ */ new Date();
   const finishedCutoff = new Date(now.getTime() - finishedMaxAgeHours * 60 * 60 * 1e3);
@@ -9589,6 +9590,12 @@ async function cleanupStaleRooms(options = {}) {
   ];
   if (forceAllFinished) {
     orConditions.push({ status: "FINISHED" });
+  }
+  if (forceAllSandbox) {
+    orConditions.push(
+      { name: { startsWith: "[Sandbox]" } },
+      { code: { startsWith: "sb_" } }
+    );
   }
   const staleRooms = await prisma.room.findMany({
     where: {

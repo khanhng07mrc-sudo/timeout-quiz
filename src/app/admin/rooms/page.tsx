@@ -12,6 +12,7 @@ interface RoomItem {
   mode: string;
   teamMode: string;
   status: string;
+  config?: any;
   createdAt: string;
   quizBank?: { title: string };
   _count?: { players: number; teams: number };
@@ -33,6 +34,23 @@ export default function AdminRoomsListPage() {
   } | null>(null);
   const [cleanupToast, setCleanupToast] = useState<string | null>(null);
 
+  // Tab filter: OFFICIAL (default) vs SANDBOX vs ALL
+  const [activeTab, setActiveTab] = useState<"OFFICIAL" | "SANDBOX" | "ALL">("OFFICIAL");
+
+  const isSandboxRoom = (room: RoomItem) =>
+    room.name?.startsWith("[Sandbox]") ||
+    Boolean(room.config?.isSandbox) ||
+    room.code?.startsWith("sb_");
+
+  const officialRooms = rooms.filter((r) => !isSandboxRoom(r));
+  const sandboxRooms = rooms.filter((r) => isSandboxRoom(r));
+  const displayedRooms =
+    activeTab === "OFFICIAL"
+      ? officialRooms
+      : activeTab === "SANDBOX"
+      ? sandboxRooms
+      : rooms;
+
   const fetchCleanupStats = async () => {
     try {
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
@@ -48,7 +66,7 @@ export default function AdminRoomsListPage() {
     }
   };
 
-  const handleRunCleanup = async (forceAllFinished: boolean = false) => {
+  const handleRunCleanup = async (forceAllFinished: boolean = false, forceAllSandbox: boolean = false) => {
     try {
       setCleaningUp(true);
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
@@ -57,12 +75,12 @@ export default function AdminRoomsListPage() {
       const res = await fetch("/api/rooms/cleanup", {
         method: "POST",
         headers,
-        body: JSON.stringify({ forceAllFinished }),
+        body: JSON.stringify({ forceAllFinished, forceAllSandbox }),
       });
       const data = await res.json();
       if (data.success) {
         setShowCleanupModal(false);
-        setCleanupToast(`Đã dọn dẹp ${data.deletedCount} phòng cũ thành công!`);
+        setCleanupToast(`Đã dọn dẹp ${data.deletedCount} phòng thành công!`);
         setTimeout(() => setCleanupToast(null), 5000);
         await fetchRooms();
       } else {
@@ -70,6 +88,33 @@ export default function AdminRoomsListPage() {
       }
     } catch {
       alert("Lỗi kết nối khi dọn dẹp phòng!");
+    } finally {
+      setCleaningUp(false);
+    }
+  };
+
+  const handleCleanupAllSandbox = async () => {
+    if (!confirm(`Xóa toàn bộ ${sandboxRooms.length} phòng Sandbox thử nghiệm trên hệ thống?`)) return;
+    try {
+      setCleaningUp(true);
+      const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const res = await fetch("/api/rooms/cleanup", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ forceAllSandbox: true }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCleanupToast(`Đã xóa ${data.deletedCount} phòng Sandbox thành công!`);
+        setTimeout(() => setCleanupToast(null), 5000);
+        await fetchRooms();
+      } else {
+        alert(data.error || "Lỗi dọn dẹp phòng Sandbox!");
+      }
+    } catch {
+      alert("Lỗi kết nối khi dọn dẹp phòng Sandbox!");
     } finally {
       setCleaningUp(false);
     }
@@ -140,7 +185,9 @@ export default function AdminRoomsListPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black whitespace-nowrap">Danh sách phòng đấu (Rooms)</h1>
-          <p className="text-muted-foreground text-xs sm:text-sm mt-1">Quản lý và điều phối các phòng đang mở hoặc đã diễn ra</p>
+          <p className="text-muted-foreground text-xs sm:text-sm mt-1">
+            Quản lý <strong className="text-amber-400">Phòng đấu chính</strong> của Ban tổ chức và phân tách với <strong className="text-cyan-400">Phòng Sandbox</strong> thử nghiệm độc lập.
+          </p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
           {/* Segmented layout switcher: Grid vs List */}
@@ -149,7 +196,7 @@ export default function AdminRoomsListPage() {
               type="button"
               onClick={() => handleSetRoomsLayout("GRID")}
               title="Bố cục Lưới thẻ (Cards)"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
                 roomsLayout === "GRID"
                   ? "bg-purple-600 text-white shadow-md glow-purple"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -162,7 +209,7 @@ export default function AdminRoomsListPage() {
               type="button"
               onClick={() => handleSetRoomsLayout("LIST")}
               title="Bố cục Danh sách dòng (Dense list)"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
                 roomsLayout === "LIST"
                   ? "bg-purple-600 text-white shadow-md glow-purple"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -189,13 +236,90 @@ export default function AdminRoomsListPage() {
 
           <Link
             href="/admin/rooms/create"
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md whitespace-nowrap"
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md whitespace-nowrap"
           >
             <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-            <span className="whitespace-nowrap">Tạo phòng mới</span>
+            <span className="whitespace-nowrap">Tạo phòng đấu chính</span>
           </Link>
         </div>
       </div>
+
+      {/* ── Segmented Category Tabs: Phòng đấu chính vs Phòng Sandbox vs Tất cả ── */}
+      <div className="flex items-center gap-2 border-b border-border/60 pb-3 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveTab("OFFICIAL")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer ${
+            activeTab === "OFFICIAL"
+              ? "bg-gradient-to-r from-amber-500/25 to-yellow-500/20 border border-amber-500/50 text-amber-300 shadow-lg glow-amber"
+              : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+          }`}
+        >
+          <span>🏆</span>
+          <span>Phòng đấu chính (Admin)</span>
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            {officialRooms.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("SANDBOX")}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer ${
+            activeTab === "SANDBOX"
+              ? "bg-gradient-to-r from-blue-500/25 to-cyan-500/20 border border-cyan-500/50 text-cyan-300 shadow-lg glow-cyan"
+              : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+          }`}
+        >
+          <span>🧪</span>
+          <span>Phòng Sandbox (Thử nghiệm)</span>
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            {sandboxRooms.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("ALL")}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition cursor-pointer ${
+            activeTab === "ALL"
+              ? "bg-purple-600/25 border border-purple-500/50 text-purple-300 shadow-md"
+              : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+          }`}
+        >
+          <span>📋</span>
+          <span>Tất cả</span>
+          <span className="px-2 py-0.5 rounded-full text-xs font-mono font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            {rooms.length}
+          </span>
+        </button>
+      </div>
+
+      {/* Sandbox Category Notice */}
+      {activeTab === "SANDBOX" && (
+        <div className="glass rounded-2xl p-4 border border-cyan-500/30 bg-cyan-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-cyan-200">
+          <div className="flex items-start gap-2.5">
+            <span className="text-2xl shrink-0">🧪</span>
+            <div>
+              <div className="font-bold text-sm text-cyan-100">Môi trường thử nghiệm Sandbox độc lập</div>
+              <p className="text-cyan-300/80 mt-0.5">
+                Các phòng Sandbox hoạt động độc lập để kiểm thử trực tiếp trên máy của bạn và không can thiệp vào các phòng đấu chính thức. Bạn có thể xóa bất cứ lúc nào để giải phóng hệ thống.
+              </p>
+            </div>
+          </div>
+          {sandboxRooms.length > 0 && (
+            <button
+              type="button"
+              onClick={handleCleanupAllSandbox}
+              disabled={cleaningUp}
+              className="px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/40 text-rose-300 font-bold text-xs shrink-0 flex items-center gap-1.5 transition active:scale-95 cursor-pointer disabled:opacity-50"
+            >
+              <span>🧹</span>
+              <span>Xóa tất cả Sandbox ({sandboxRooms.length})</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Toast Notification */}
       {cleanupToast && (
@@ -259,12 +383,12 @@ export default function AdminRoomsListPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-2.5 pt-2">
+            <div className="flex flex-col sm:flex-row gap-2.5 pt-2 flex-wrap">
               <button
                 type="button"
                 disabled={cleaningUp}
-                onClick={() => handleRunCleanup(false)}
-                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => handleRunCleanup(false, false)}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
               >
                 <span>🧹</span>
                 <span>{cleaningUp ? "Đang dọn dẹp..." : "Dọn dẹp phòng cũ & bỏ rơi"}</span>
@@ -272,8 +396,18 @@ export default function AdminRoomsListPage() {
               <button
                 type="button"
                 disabled={cleaningUp}
-                onClick={() => handleRunCleanup(true)}
-                className="py-3 px-4 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/50 text-rose-200 font-bold text-xs sm:text-sm shadow transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => handleRunCleanup(false, true)}
+                className="py-3 px-4 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/50 text-cyan-200 font-bold text-xs sm:text-sm shadow transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+                title="Xóa tất cả các phòng thử nghiệm Sandbox trên máy"
+              >
+                <span>🧪</span>
+                <span>Xóa hết Sandbox</span>
+              </button>
+              <button
+                type="button"
+                disabled={cleaningUp}
+                onClick={() => handleRunCleanup(true, false)}
+                className="py-3 px-4 rounded-xl bg-rose-600/30 hover:bg-rose-600/50 border border-rose-500/50 text-rose-200 font-bold text-xs sm:text-sm shadow transition active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 title="Xóa tất cả các phòng có trạng thái FINISHED không kể thời gian"
               >
                 <span>🗑️</span>
@@ -286,24 +420,57 @@ export default function AdminRoomsListPage() {
 
       {loading ? (
         <div className="py-16 text-center text-muted-foreground">Đang tải danh sách phòng...</div>
-      ) : rooms.length === 0 ? (
-        <div className="glass rounded-2xl p-12 text-center">
-          <div className="flex justify-center mb-3">
-            <SystemIcon name="rooms" className="w-14 h-14 text-purple-400" />
+      ) : displayedRooms.length === 0 ? (
+        activeTab === "OFFICIAL" ? (
+          <div className="glass rounded-2xl p-12 text-center border border-amber-500/20">
+            <div className="flex justify-center mb-3 text-4xl">🏆</div>
+            <h3 className="text-xl font-bold mb-2 text-amber-300">Chưa có phòng đấu chính nào</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">
+              Phòng đấu chính là các trận thi đấu chính thức được quản lý bởi Ban tổ chức. Bấm nút dưới để thiết lập và mở phòng thi đấu mới.
+            </p>
+            <Link
+              href="/admin/rooms/create"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 font-bold transition inline-flex items-center gap-2 shadow-lg text-white"
+            >
+              <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
+              Tạo phòng đấu chính ngay
+            </Link>
           </div>
-          <h3 className="text-xl font-bold mb-2">Chưa có phòng đấu nào</h3>
-          <p className="text-muted-foreground mb-6">Bạn chưa tạo phòng thi nào. Bấm nút dưới để tạo phòng đầu tiên.</p>
-          <Link
-            href="/admin/rooms/create"
-            className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition inline-flex items-center gap-2"
-          >
-            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-            Tạo phòng ngay
-          </Link>
-        </div>
+        ) : activeTab === "SANDBOX" ? (
+          <div className="glass rounded-2xl p-12 text-center border border-cyan-500/20">
+            <div className="flex justify-center mb-3 text-4xl">🧪</div>
+            <h3 className="text-xl font-bold mb-2 text-cyan-300">Không có phòng Sandbox nào</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto text-sm">
+              Phòng Sandbox là các phiên thử nghiệm độc lập trên máy của bạn (hoạt động độc lập, không làm ảnh hưởng đến phòng đấu chính).
+            </p>
+            <Link
+              href="/admin/sandbox"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 font-bold transition inline-flex items-center gap-2 shadow-lg text-white"
+            >
+              <span>🧪</span>
+              Mở Sandbox Studio để thử nghiệm
+            </Link>
+          </div>
+        ) : (
+          <div className="glass rounded-2xl p-12 text-center">
+            <div className="flex justify-center mb-3">
+              <SystemIcon name="rooms" className="w-14 h-14 text-purple-400" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Chưa có phòng đấu nào</h3>
+            <p className="text-muted-foreground mb-6">Bạn chưa tạo phòng thi nào. Bấm nút dưới để tạo phòng đầu tiên.</p>
+            <Link
+              href="/admin/rooms/create"
+              className="px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition inline-flex items-center gap-2"
+            >
+              <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
+              Tạo phòng ngay
+            </Link>
+          </div>
+        )
       ) : roomsLayout === "GRID" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up">
-          {rooms.map((room) => {
+          {displayedRooms.map((room) => {
+            const isSb = isSandboxRoom(room);
             const statusColor =
               room.status === "PLAYING"
                 ? "text-green-400 bg-green-500/10 border-green-500/30"
@@ -316,7 +483,11 @@ export default function AdminRoomsListPage() {
             return (
               <div
                 key={room.id}
-                className="glass rounded-2xl p-5 border border-border flex flex-col justify-between hover:border-purple-500/50 transition"
+                className={`glass rounded-2xl p-5 border flex flex-col justify-between transition ${
+                  isSb
+                    ? "border-cyan-500/30 hover:border-cyan-400/60 bg-cyan-950/10"
+                    : "border-amber-500/30 hover:border-amber-400/60 bg-amber-950/10 shadow-lg"
+                }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -324,9 +495,15 @@ export default function AdminRoomsListPage() {
                       <span className={`text-xs px-2.5 py-1 rounded-full border font-bold ${statusColor}`}>
                         {room.status === "FINISHED" ? "Đã kết thúc" : room.status}
                       </span>
-                      {room.name.startsWith("[Sandbox]") && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-                          Sandbox
+                      {isSb ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold flex items-center gap-1">
+                          <span>🧪</span>
+                          <span>Sandbox Test</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>Đấu chính</span>
                         </span>
                       )}
                       {Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (3600 * 1000)) >= 24 && (
@@ -366,7 +543,9 @@ export default function AdminRoomsListPage() {
                   <div className="flex gap-2">
                     <Link
                       href={`/admin/rooms/${room.code}`}
-                      className="flex-1 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition flex items-center justify-center gap-1.5"
+                      className={`flex-1 py-2 rounded-xl font-bold text-xs text-center transition flex items-center justify-center gap-1.5 text-white ${
+                        isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
+                      }`}
                     >
                       <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                     </Link>
@@ -389,7 +568,7 @@ export default function AdminRoomsListPage() {
                     <button
                       onClick={() => handleDeleteRoom(room)}
                       disabled={deletingId === room.code}
-                      className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 flex items-center justify-center"
+                      className="px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 flex items-center justify-center cursor-pointer"
                       title="Xóa phòng"
                     >
                       {deletingId === room.code ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 shrink-0 text-red-400" />}
@@ -402,7 +581,8 @@ export default function AdminRoomsListPage() {
         </div>
       ) : (
         <div className="space-y-2.5 animate-slide-up">
-          {rooms.map((room) => {
+          {displayedRooms.map((room) => {
+            const isSb = isSandboxRoom(room);
             const statusColor =
               room.status === "PLAYING"
                 ? "text-green-400 bg-green-500/10 border-green-500/30"
@@ -415,7 +595,11 @@ export default function AdminRoomsListPage() {
             return (
               <div
                 key={room.id}
-                className="glass rounded-xl p-4 border border-border flex flex-col md:flex-row md:items-center justify-between gap-3 hover:border-purple-500/50 transition"
+                className={`glass rounded-xl p-4 border flex flex-col md:flex-row md:items-center justify-between gap-3 transition ${
+                  isSb
+                    ? "border-cyan-500/30 hover:border-cyan-400/60 bg-cyan-950/10"
+                    : "border-amber-500/30 hover:border-amber-400/60 bg-amber-950/10"
+                }`}
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <span className="font-mono text-base font-black text-cyan-300 tracking-wider bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 shrink-0">
@@ -427,9 +611,15 @@ export default function AdminRoomsListPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusColor}`}>
                         {room.status === "FINISHED" ? "Đã kết thúc" : room.status}
                       </span>
-                      {room.name.startsWith("[Sandbox]") && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-                          Sandbox
+                      {isSb ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold flex items-center gap-1">
+                          <span>🧪</span>
+                          <span>Sandbox Test</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold flex items-center gap-1">
+                          <span>🏆</span>
+                          <span>Đấu chính</span>
                         </span>
                       )}
                       {Math.floor((Date.now() - new Date(room.createdAt).getTime()) / (3600 * 1000)) >= 24 && (
@@ -456,7 +646,9 @@ export default function AdminRoomsListPage() {
                 <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                   <Link
                     href={`/admin/rooms/${room.code}`}
-                    className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs text-center transition inline-flex items-center gap-1.5"
+                    className={`px-4 py-2 rounded-xl font-bold text-xs text-center transition inline-flex items-center gap-1.5 text-white ${
+                      isSb ? "bg-cyan-600 hover:bg-cyan-500" : "bg-purple-600 hover:bg-purple-500"
+                    }`}
                   >
                     <SystemIcon name="dashboard" className="w-3.5 h-3.5 shrink-0" /> Điều khiển
                   </Link>
@@ -479,7 +671,7 @@ export default function AdminRoomsListPage() {
                   <button
                     onClick={() => handleDeleteRoom(room)}
                     disabled={deletingId === room.code}
-                    className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 inline-flex items-center"
+                    className="p-2 rounded-xl bg-destructive/10 border border-destructive/30 hover:bg-destructive/20 text-destructive font-bold text-xs transition disabled:opacity-50 inline-flex items-center cursor-pointer"
                     title="Xóa phòng"
                   >
                     {deletingId === room.code ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 shrink-0 text-red-400" />}

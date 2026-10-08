@@ -1423,6 +1423,7 @@ export default function AdminRoomPage() {
                 onCashOut={() => emit("admin:mystery:cash_out", { code })}
                 onAdvanceTurn={() => emit("admin:mystery:advance_turn", { code })}
                 onSelectMiniGame={(miniGameType) => emit("admin:mystery:set_minigame_type" as any, { miniGameType, code })}
+                onPairsDecision={(choice) => emit("admin:mystery:pairs_decision", { choice, code })}
               />
             </div>
           )}

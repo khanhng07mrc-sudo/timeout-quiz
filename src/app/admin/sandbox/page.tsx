@@ -28,6 +28,8 @@ import {
   handleFlipCard as handleMysteryFlipCard,
   handleCashOut as handleMysteryCashOut,
   generateMysteryPromoPerk,
+  shuffleMemoryPairsTiles,
+  handleMemoryPairsSecondChanceDecision,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -2186,6 +2188,7 @@ export default function AdminSandboxPage() {
           recipientTeamId,
           giftedPoints,
           darkBombRecipients,
+          shouldResetMismatchedCards,
         } = handleMysteryFlipCard({
           state: curMystery,
           tileId,
@@ -2236,6 +2239,63 @@ export default function AdminSandboxPage() {
             ? `💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`
             : `💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`
         );
+
+        // Memory Pairs mismatch auto reset in offline sandbox
+        if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
+          setTimeout(() => {
+            if (!roomStateRef.current?.mysteryQuestState?.memoryPairsState) return;
+            const cur = { ...roomStateRef.current.mysteryQuestState };
+            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState!;
+            if (promptSecondChance) {
+              cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
+              cur.memoryPairsState!.firstFlippedTileId = null;
+              cur.memoryPairsState!.secondFlippedTileId = null;
+              cur.memoryPairsState!.isMismatchResolving = false;
+            } else {
+              cur.tiles = cur.tiles.map((t) =>
+                t.id === firstFlippedTileId || t.id === secondFlippedTileId ? { ...t, isOpened: false } : t
+              );
+              cur.memoryPairsState!.firstFlippedTileId = null;
+              cur.memoryPairsState!.secondFlippedTileId = null;
+              cur.memoryPairsState!.isMismatchResolving = false;
+            }
+            const updatedRState = { ...roomStateRef.current, mysteryQuestState: cur };
+            roomStateRef.current = updatedRState;
+            setRoomState(updatedRState);
+            syncToIframes({ roomState: updatedRState, mysteryQuestState: cur });
+          }, 1500);
+        }
+
+        return;
+      }
+      if (e.data?.type === "MYSTERY_PAIRS_DECISION" || e.data?.action === "mystery_pairs_decision") {
+        if (!isOfflineSandbox) return;
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta } = handleMemoryPairsSecondChanceDecision({
+          state: curMystery,
+          team: activeTeam,
+          choice: e.data.choice,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (finalScoreDelta > 0) {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+          );
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         return;
       }
       if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
@@ -7142,6 +7202,13 @@ export default function AdminSandboxPage() {
                       }}
                       onSelectMiniGame={(miniGameType) => {
                         window.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
+                      }}
+                      onPairsDecision={(choice) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:pairs_decision" as any, { choice, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice }, "*");
+                        }
                       }}
                     />
                   </div>

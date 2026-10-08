@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
 import { MYSTERY_THEMES } from "@/lib/game-engine/mystery-quest";
+import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 
 interface Props {
   mysteryState?: MysteryQuestState;
@@ -16,6 +17,7 @@ interface Props {
   onAdvanceTurn?: () => void;
   onSelectMiniGame?: (miniGameType: MysteryMiniGameType) => void;
   onChooseAction?: (action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME") => void;
+  onPairsDecision?: (choice: "CASH_OUT" | "PLAY_ROUND_2") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
 
@@ -31,6 +33,7 @@ export default function MysteryQuestBoard({
   onAdvanceTurn,
   onSelectMiniGame,
   onChooseAction,
+  onPairsDecision,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -422,15 +425,61 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-4 rounded-2xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-black text-indigo-300 uppercase tracking-wider">
-                    🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU
+                    🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (10 THẺ)
                   </span>
-                  <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
-                    Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 5}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                        memoryPairsState?.round === 2
+                          ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
+                          : "bg-indigo-500/30 text-indigo-200 border border-indigo-500/40"
+                      }`}
+                    >
+                      {memoryPairsState?.round === 2 ? "🔥 VÒNG 2 SINH TỬ" : "✨ VÒNG 1"}
+                    </span>
+                    <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
+                      Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 3}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-xs text-white/80">
-                  Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng nhau đầu tiên được mở sẽ quyết định phần thưởng hoặc hình phạt!
+                  {memoryPairsState?.round === 2
+                    ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 3 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
+                    : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 3 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
                 </p>
+              </div>
+            )}
+
+            {/* MEMORY PAIRS SECOND CHANCE MODAL */}
+            {miniGameType === "MEMORY_PAIRS" && memoryPairsState?.promptSecondChance && (
+              <div className="w-full max-w-xl mx-auto p-5 rounded-3xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-3 z-30">
+                <div className="text-4xl animate-pulse">🔀</div>
+                <h4 className="text-base sm:text-lg font-black text-amber-300 uppercase tracking-wider">
+                  HẾT 3 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
+                </h4>
+                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                  Bạn chưa ghép được cặp nào trong Vòng 1. Không bị mất điểm!
+                  <br />
+                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 3 lượt tiếp theo</strong> (nhưng nếu trượt cả 3 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong>!
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => (onPairsDecision ? onPairsDecision("CASH_OUT") : onCashOut?.())}
+                    disabled={!canInteract}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs sm:text-sm border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    💰 DỪNG LẠI & NHẬN +{baseQuestionPoints || 10}Đ CÂU HỎI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onPairsDecision?.("PLAY_ROUND_2")}
+                    disabled={!canInteract}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    🔥 CHƠI TIẾP VÒNG 2 (3 LƯỢT TIẾP THEO)
+                  </button>
+                </div>
               </div>
             )}
 
@@ -441,7 +490,7 @@ export default function MysteryQuestBoard({
                   🚪 CHỌN 1 TRONG 3 CÁNH CỬA HOÀNG GIA
                 </div>
                 <p className="text-xs text-white/80">
-                  Chỉ được chọn DUY NHẤT 1 cửa! Gồm 1 Siêu Thưởng (+40đ), 1 An Toàn (+20đ) và 1 Bẫy Bom (-15đ)!
+                  Chỉ được chọn DUY NHẤT 1 cửa! Gồm 1 Đại Thưởng (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), 1 An Toàn (+{baseQuestionPoints || 10}đ) và 1 Bẫy Bom (-{baseQuestionPoints || 10}đ)!
                 </p>
               </div>
             )}
@@ -453,7 +502,7 @@ export default function MysteryQuestBoard({
                   🔮 RÚT 1 LÁ BÀI TAROT THẦN SỐ VẬN MỆNH
                 </div>
                 <p className="text-xs text-white/80">
-                  Rút duy nhất 1 lá bài định mệnh trên tay để giải mã quẻ bài thần bí: Mặt Trời, Hoàng Đế, Kẻ Khờ, Thần Chết hay Hiệp Sĩ!
+                  Rút duy nhất 1 lá bài định mệnh để giải mã quẻ bài thần bí: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
                 </p>
               </div>
             )}
@@ -756,7 +805,7 @@ export default function MysteryQuestBoard({
                         isBomb ? "text-red-400" : "text-amber-300"
                       }`}
                     >
-                      {isBomb ? "-15đ Tổng" : `+${tile.deltaPoints}đ`}
+                      {isBomb ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng` : `+${tile.deltaPoints}đ`}
                     </p>
                   </div>
                 </div>
@@ -769,12 +818,13 @@ export default function MysteryQuestBoard({
             2. VARIANT: TAROT_DESTINY (5 Mystical Vertical Floating Cards)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 max-w-4xl mx-auto py-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 max-w-4xl mx-auto py-3">
             {tiles.map((tile) => {
               const isChosen = tarotState?.chosenCardId === tile.id;
               const isBomb = tile.type !== "REWARD";
-
               const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+              const meta = getTarotCardMeta(tile.tarotName, tile.storyTitle);
+
               if (!isCardOpened) {
                 return (
                   <button
@@ -782,33 +832,32 @@ export default function MysteryQuestBoard({
                     type="button"
                     onClick={() => handleTileClick(tile)}
                     disabled={!canInteract}
-                    className={`relative aspect-[2/3] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
+                    className={`relative aspect-[9/14] rounded-2xl p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
                       canInteract
-                        ? "bg-gradient-to-b from-indigo-900/90 via-purple-950/90 to-slate-950 border-purple-400/80 hover:border-yellow-300 hover:-translate-y-2 shadow-2xl hover:shadow-purple-500/50 group"
-                        : "bg-black/40 border-white/10 opacity-80 cursor-default"
+                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-2.5 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
+                        : "border-white/10 opacity-80 cursor-default"
                     }`}
                   >
-                    <div className="w-full flex items-center justify-between">
-                      <span className="w-6 h-6 rounded-full bg-black/60 border border-white/20 text-[11px] font-black text-white flex items-center justify-center">
+                    {/* Tarot Card Back SVG Artwork */}
+                    <div className="absolute inset-0 z-0">
+                      <TarotCardBackSvg />
+                    </div>
+
+                    {/* Card Back Overlays */}
+                    <div className="w-full flex items-center justify-between z-10 px-1 pt-0.5">
+                      <span className="w-6 h-6 rounded-full bg-black/80 border border-amber-400/80 text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
                         #{tile.id}
                       </span>
                       {canInteract && (
-                        <span className="text-[9px] font-black text-purple-300 animate-pulse">
+                        <span className="text-[9px] font-black text-amber-300 px-1.5 py-0.5 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
                           RÚT LÁ ✨
                         </span>
                       )}
                     </div>
 
-                    <div className="text-4xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-xl">
-                      🔮
-                    </div>
-
-                    <div className="w-full text-center">
-                      <span className="text-xs font-black text-white block">
-                        {tile.label}
-                      </span>
-                      <span className="text-[9px] uppercase tracking-wider text-purple-300/80 font-bold block">
-                        Tarot Thần Số
+                    <div className="z-10 w-full text-center pb-1">
+                      <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
+                        TAROT VẬN MỆNH
                       </span>
                     </div>
                   </button>
@@ -819,44 +868,55 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[2/3] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
-                    isChosen ? "ring-4 ring-yellow-400 scale-105 z-10" : "opacity-80"
-                  } ${
-                    isBomb
-                      ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
-                      : "bg-gradient-to-b from-indigo-950 via-purple-950 to-black border-purple-400 text-purple-200"
-                  }`}
+                  className={`relative aspect-[9/14] rounded-2xl p-2.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
+                    isChosen ? "ring-4 ring-yellow-400 scale-105 z-20" : "opacity-90"
+                  } bg-gradient-to-b ${meta.bgGradient} ${meta.borderColor}`}
+                  style={{
+                    boxShadow: isChosen
+                      ? `0 0 30px ${meta.glowColor}, 0 0 10px rgba(250, 204, 21, 0.6)`
+                      : `0 8px 20px ${meta.glowColor}`,
+                  }}
                 >
-                  <div className="w-full flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold opacity-70">#{tile.id}</span>
-                    <span
-                      className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-full ${
-                        isChosen
-                          ? "bg-yellow-400 text-black font-extrabold"
-                          : isBomb
-                          ? "bg-red-500/30 text-red-300"
-                          : "bg-purple-500/30 text-purple-300"
-                      }`}
-                    >
-                      {isChosen ? "BÀI RÚT ⭐" : isBomb ? "THẦN CHẾT" : "QUẺ LÀNH"}
+                  {/* Card Header: Roman Numeral & English Name in 1 clean line */}
+                  <div className="w-full flex items-center justify-between border-b border-white/15 pb-1">
+                    <span className="text-[10px] font-mono font-bold opacity-75 text-amber-200/80">
+                      #{tile.id}
                     </span>
+                    <div className="flex items-center gap-1">
+                      <span className="font-serif font-black text-xs text-amber-300 tracking-wider">
+                        {meta.roman}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/90 tracking-wide uppercase">
+                        · {meta.nameEn}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="text-3xl my-auto text-center drop-shadow-xl">
-                    {tile.icon}
+                  {/* Card Center: Rich Tarot Artwork SVG */}
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 my-auto relative flex items-center justify-center p-1 drop-shadow-2xl">
+                    <TarotCardEmblem cardKey={meta.key} />
                   </div>
 
-                  <div className="w-full text-center pb-1">
-                    <p className="text-[11px] font-black text-white leading-tight truncate">
-                      {tile.tarotName || tile.storyTitle}
+                  {/* Card Footer: Vietnamese Title & Single-line Score Pill */}
+                  <div className="w-full text-center space-y-1">
+                    <p className="text-xs sm:text-sm font-black text-white tracking-wide truncate">
+                      {meta.nameVi}
                     </p>
-                    <p
-                      className={`text-xs sm:text-sm font-black font-mono mt-0.5 ${
-                        isBomb ? "text-red-400" : "text-amber-300"
+                    <div
+                      className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-black font-mono shadow-md whitespace-nowrap ${
+                        isBomb
+                          ? "bg-rose-500/30 border border-rose-400/80 text-rose-200"
+                          : meta.key === "THE_KNIGHT"
+                          ? "bg-emerald-500/30 border border-emerald-400/80 text-emerald-200"
+                          : "bg-amber-500/30 border border-amber-300/80 text-amber-200"
                       }`}
                     >
-                      {isBomb ? "-20đ Tổng" : `+${tile.deltaPoints}đ`}
-                    </p>
+                      {isBomb
+                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Thần Chết`
+                        : meta.key === "THE_KNIGHT"
+                        ? `Cướp ${tile.deltaPoints}đ`
+                        : `+${tile.deltaPoints}đ Thưởng`}
+                    </div>
                   </div>
                 </div>
               );
@@ -865,10 +925,10 @@ export default function MysteryQuestBoard({
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
-            3. VARIANT: MEMORY_PAIRS (8 Cards / 4 Pairs)
+            3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
         ════════════════════════════════════════════════════════════════════ */}
         {miniGameType === "MEMORY_PAIRS" && (
-          <div className="grid grid-cols-4 gap-2.5 sm:gap-4 max-w-3xl mx-auto py-2">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3.5 max-w-3xl mx-auto py-2">
             {tiles.map((tile) => {
               const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
               const isBomb = tile.type !== "REWARD";
@@ -888,7 +948,7 @@ export default function MysteryQuestBoard({
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-[10px] font-black text-white flex items-center justify-center">
+                      <span className="w-5 h-5 rounded-full bg-black/60 border border-white/20 text-[10px] font-black text-white flex items-center justify-center font-mono">
                         #{tile.id}
                       </span>
                     </div>
@@ -946,7 +1006,7 @@ export default function MysteryQuestBoard({
                         isBomb ? "text-red-400" : "text-amber-300"
                       }`}
                     >
-                      {isBomb ? "-15đ Tổng" : `+${tile.deltaPoints}đ`}
+                      {isBomb ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng` : `+${tile.deltaPoints}đ`}
                     </p>
                   </div>
                 </div>

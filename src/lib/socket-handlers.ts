@@ -35,7 +35,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType } from "./game-engine/mystery-quest";
+import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -4719,15 +4719,23 @@ export function registerSocketHandlers(io: IO) {
         setTimeout(async () => {
           const cur = roomMysteryQuests.get(room.id);
           if (!cur || !cur.memoryPairsState) return;
-          const { firstFlippedTileId, secondFlippedTileId } = cur.memoryPairsState;
-          cur.tiles.forEach((t) => {
-            if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
-              t.isOpened = false;
-            }
-          });
-          cur.memoryPairsState.firstFlippedTileId = null;
-          cur.memoryPairsState.secondFlippedTileId = null;
-          cur.memoryPairsState.isMismatchResolving = false;
+          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState;
+          if (promptSecondChance) {
+            // Hết 3 lượt Vòng 1: tất cả các lá úp lại và xáo trộn vị trí!
+            cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
+            cur.memoryPairsState.firstFlippedTileId = null;
+            cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.isMismatchResolving = false;
+          } else {
+            cur.tiles.forEach((t) => {
+              if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+                t.isOpened = false;
+              }
+            });
+            cur.memoryPairsState.firstFlippedTileId = null;
+            cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.isMismatchResolving = false;
+          }
           roomMysteryQuests.set(room.id, cur);
           io.to(`room:${room.code}`).emit("game:mystery:update", cur);
         }, 1500);
@@ -4758,6 +4766,31 @@ export function registerSocketHandlers(io: IO) {
         totalGained: finalScoreDelta,
         newScore: (team.score || 0) + finalScoreDelta,
       });
+    };
+
+    const executeMysteryPairsDecision = async (
+      room: any,
+      questState: any,
+      team: any,
+      choice: "CASH_OUT" | "PLAY_ROUND_2"
+    ) => {
+      const { updatedState, finalScoreDelta } = handleMemoryPairsSecondChanceDecision({
+        state: questState,
+        team,
+        choice,
+      });
+
+      if (finalScoreDelta > 0) {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+        ]);
+      }
+
+      roomMysteryQuests.set(room.id, updatedState);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
     };
 
     async function executeMysteryAdvanceTurn(room: any, questState: any) {
@@ -4968,6 +5001,45 @@ export function registerSocketHandlers(io: IO) {
       if (!team) return;
 
       await executeMysteryCashOut(room, questState, team);
+    });
+
+    socket.on("game:mystery:pairs_decision", async ({ choice }: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.memoryPairsState?.promptSecondChance) return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      await executeMysteryPairsDecision(room, questState, team, choice);
+    });
+
+    socket.on("admin:mystery:pairs_decision", async ({ choice, code }: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.memoryPairsState?.promptSecondChance) return;
+
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      await executeMysteryPairsDecision(room, questState, team, choice);
     });
 
     socket.on("game:mystery:steal_buzz", async () => {

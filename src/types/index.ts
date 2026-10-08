@@ -972,6 +972,8 @@ export interface MysteryQuestState {
     maxAttempts: number;
     matchedPairKey?: string | null;
     isMismatchResolving?: boolean;
+    round?: 1 | 2;
+    promptSecondChance?: boolean;
   };
   oneShotState?: {
     chosenTileId?: number;
@@ -1346,6 +1348,8 @@ export interface ClientToServerEvents {
   "admin:mystery:steal_buzz": (payload?: { targetTeamId?: string; code?: string }) => void;
   "admin:mystery:advance_turn": (payload?: { code?: string }) => void;
   "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
+  "game:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => void;
+  "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;
 }

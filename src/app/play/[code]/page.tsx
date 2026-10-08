@@ -1488,6 +1488,13 @@ export default function PlayPage() {
                 }
                 socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
               }}
+              onPairsDecision={(choice) => {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:pairs_decision", { choice });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1693,6 +1700,13 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
                     }
                     socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
+                  }}
+                  onPairsDecision={(choice) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:pairs_decision", { choice });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
+                    }
                   }}
                 />
               </div>

@@ -936,12 +936,31 @@ var REWARD_TEMPLATES = {
     { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ]
 };
+function shuffleMemoryPairsTiles(tiles) {
+  const shuffled = [...tiles].map((t) => ({ ...t, isOpened: false })).sort(() => Math.random() - 0.5);
+  return shuffled.map((item, idx) => ({
+    ...item,
+    id: idx + 1,
+    label: `Th\u1EBB #${idx + 1}`,
+    isOpened: false
+  }));
+}
 function generateMemoryPairsTiles(basePoints = 20) {
-  const pBonusHigh = Math.max(15, Math.round(basePoints * 1.5 / 5) * 5);
-  const pBonusMed = Math.max(10, basePoints);
-  const pBonusTop = Math.max(20, basePoints * 2);
-  const pPenalty = Math.max(5, Math.round(basePoints * 0.75 / 5) * 5);
+  const pBonusTop = basePoints * 2;
+  const pBonusHigh = Math.round(basePoints * 1.5);
+  const pBonusMed = basePoints;
+  const pBonusSafe = Math.max(5, Math.round(basePoints * 0.5));
+  const pPenalty = basePoints;
   const pairs = [
+    {
+      pairKey: "PAIR_MULTIPLY",
+      icon: "\u{1F680}",
+      type: "REWARD",
+      storyTitle: "\u{1F680} C\u1EB6P \u0110\u1ED8NG C\u01A0 NH\xC2N \u0110\xD4I!",
+      storyDescription: `K\xEDch ho\u1EA1t n\u0103ng l\u01B0\u1EE3ng \u0111\u1ED9t ph\xE1: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c kh\u1EE7ng!`,
+      effectType: "MULTIPLY_X2",
+      deltaPoints: pBonusTop
+    },
     {
       pairKey: "PAIR_TREASURE",
       icon: "\u{1F48E}",
@@ -961,13 +980,13 @@ function generateMemoryPairsTiles(basePoints = 20) {
       deltaPoints: pBonusMed
     },
     {
-      pairKey: "PAIR_MULTIPLY",
-      icon: "\u{1F680}",
+      pairKey: "PAIR_LUCKY",
+      icon: "\u{1F340}",
       type: "REWARD",
-      storyTitle: "\u{1F680} C\u1EB6P \u0110\u1ED8NG C\u01A0 NH\xC2N \u0110\xD4I!",
-      storyDescription: `K\xEDch ho\u1EA1t n\u0103ng l\u01B0\u1EE3ng \u0111\u1ED9t ph\xE1: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c kh\u1EE7ng!`,
-      effectType: "MULTIPLY_X2",
-      deltaPoints: pBonusTop
+      storyTitle: "\u{1F340} C\u1EB6P C\u1ECE MAY M\u1EAEN!",
+      storyDescription: `Ph\u01B0\u1EDBc l\xE0nh h\u1ED9 m\u1EC7nh: Nh\u1EADn th\xEAm an to\xE0n +${pBonusSafe} \u0111i\u1EC3m!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pBonusSafe
     },
     {
       pairKey: "PAIR_BOMB",
@@ -1002,9 +1021,9 @@ function generateMemoryPairsTiles(basePoints = 20) {
   }));
 }
 function generateOneShotDoorsTiles(basePoints = 20) {
-  const pHigh = Math.max(15, Math.round(basePoints * 1.5 / 5) * 5);
-  const pMed = Math.max(10, basePoints);
-  const pPenalty = Math.max(5, Math.round(basePoints * 0.75 / 5) * 5);
+  const pHigh = basePoints * 2;
+  const pMed = basePoints;
+  const pPenalty = basePoints;
   const doors = [
     {
       icon: "\u{1F451}",
@@ -1045,17 +1064,17 @@ function generateOneShotDoorsTiles(basePoints = 20) {
   }));
 }
 function generateTarotDestinyTiles(basePoints = 20) {
-  const pSun = Math.max(20, basePoints * 2);
-  const pEmperor = Math.max(15, Math.round(basePoints * 1.5 / 5) * 5);
-  const pFool = Math.max(15, basePoints + 10);
-  const pKnight = Math.max(10, basePoints);
-  const pDeath = Math.max(5, basePoints);
+  const pSun = basePoints * 2;
+  const pEmperor = Math.round(basePoints * 1.5);
+  const pFool = basePoints + 10;
+  const pKnight = basePoints;
+  const pDeath = basePoints;
   const tarotCards = [
     {
       tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
       icon: "\u2600\uFE0F",
       type: "REWARD",
-      storyTitle: "\u2600\uFE0F QU\u1EBA B\xC0I M\u1EB6T TR\u1EDCI QUANG MINH",
+      storyTitle: "\u2600\uFE0F M\u1EB6T TR\u1EDCI QUANG MINH",
       storyDescription: `\xC1nh d\u01B0\u01A1ng th\u1EA7n th\xE1nh chi\u1EBFu r\u1ECDi: \u0110\u1EA1i h\u1ED3ng \xE2n ban t\u1EB7ng +${pSun} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pSun
@@ -1064,7 +1083,7 @@ function generateTarotDestinyTiles(basePoints = 20) {
       tarotName: "Ho\xE0ng \u0110\u1EBF (The Emperor)",
       icon: "\u{1F451}",
       type: "REWARD",
-      storyTitle: "\u{1F451} QU\u1EBA B\xC0I HO\xC0NG \u0110\u1EBE V\u01AF\u01A0NG QUY\u1EC0N",
+      storyTitle: "\u{1F451} HO\xC0NG \u0110\u1EBE V\u01AF\u01A0NG QUY\u1EC0N",
       storyDescription: `V\u01B0\u01A1ng mi\u1EC7n uy quy\u1EC1n t\u1ED1i th\u01B0\u1EE3ng: Th\u01B0\u1EDFng n\xF3ng +${pEmperor} \u0111i\u1EC3m danh d\u1EF1!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pEmperor
@@ -1073,8 +1092,8 @@ function generateTarotDestinyTiles(basePoints = 20) {
       tarotName: "K\u1EBB Kh\u1EDD (The Fool)",
       icon: "\u{1F0CF}",
       type: "REWARD",
-      storyTitle: "\u{1F0CF} QU\u1EBA B\xC0I K\u1EBA KH\u1EDC PHI TH\u01AF\u1EDCNG",
-      storyDescription: `V\u1EADn may b\u1EA5t ng\u1EDD c\u1EE7a k\u1EBB kh\u1EDD: \u0110\u1ED9t ph\xE1 nh\xE2n \u0111\xF4i n\u0103ng l\u01B0\u1EE3ng (+${pFool}\u0111)!`,
+      storyTitle: "\u{1F0CF} K\u1EBA KH\u1EDC PHI TH\u01AF\u1EDCNG",
+      storyDescription: `V\u1EADn may b\u1EA5t ng\u1EDD c\u1EE7a k\u1EBB kh\u1EDD: \u0110\u1ED9t ph\xE1 n\u0103ng l\u01B0\u1EE3ng (+${pFool}\u0111)!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pFool
     },
@@ -1082,7 +1101,7 @@ function generateTarotDestinyTiles(basePoints = 20) {
       tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
       icon: "\u{1F480}",
       type: "BOMB_MAJOR",
-      storyTitle: "\u{1F480} QU\u1EBA B\xC0I TH\u1EA6N CH\u1EBET \u0110O\u1EA0T M\u1EC6NH",
+      storyTitle: "\u{1F480} TH\u1EA6N CH\u1EBET \u0110O\u1EA0T M\u1EC6NH",
       storyDescription: `L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh bu\xF4ng xu\u1ED1ng: B\u1ECB ph\u1EA1t tr\u1EEB ${pDeath} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pDeath
@@ -1091,7 +1110,7 @@ function generateTarotDestinyTiles(basePoints = 20) {
       tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
       icon: "\u{1F5E1}\uFE0F",
       type: "REWARD",
-      storyTitle: "\u{1F5E1}\uFE0F QU\u1EBA B\xC0I HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
+      storyTitle: "\u{1F5E1}\uFE0F HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
       storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD c\u01B0\u1EDBp ph\xE1: C\u01B0\u1EDBp th\xEAm ${pKnight} \u0111i\u1EC3m v\xE0o qu\u1EF9 t\u1ED5ng!`,
       effectType: "STEAL_POINTS",
       deltaPoints: pKnight
@@ -1278,9 +1297,11 @@ function generateMysteryStageForTurn({
         firstFlippedTileId: null,
         secondFlippedTileId: null,
         attemptsUsed: 0,
-        maxAttempts: 5,
+        maxAttempts: 3,
         matchedPairKey: null,
-        isMismatchResolving: false
+        isMismatchResolving: false,
+        round: 1,
+        promptSecondChance: false
       };
       break;
     case "ONE_SHOT_DOORS":
@@ -1343,9 +1364,11 @@ function handleFlipCard({
       firstFlippedTileId: null,
       secondFlippedTileId: null,
       attemptsUsed: 0,
-      maxAttempts: 5,
+      maxAttempts: 3,
       matchedPairKey: null,
-      isMismatchResolving: false
+      isMismatchResolving: false,
+      round: 1,
+      promptSecondChance: false
     };
     if (memState.isMismatchResolving) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -1398,7 +1421,7 @@ function handleFlipCard({
             finalScoreDelta: 0
           };
         }
-        penalty = Math.abs(firstTile.deltaPoints || 15);
+        penalty = Math.abs(firstTile.deltaPoints || state.baseQuestionPoints || 10);
         state.bombExploded = {
           type: "MAJOR",
           title: firstTile.storyTitle,
@@ -1427,7 +1450,7 @@ function handleFlipCard({
           finalScoreDelta: -penalty
         };
       } else {
-        finalDelta = firstTile.deltaPoints || 30;
+        finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
@@ -1451,22 +1474,73 @@ function handleFlipCard({
       }
     } else {
       memState.isMismatchResolving = true;
-      state.memoryPairsState = { ...memState };
-      if (memState.attemptsUsed >= memState.maxAttempts) {
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "MAX_ATTEMPTS";
-        state.potPoints = 0;
-        const oldScore = team.score || 0;
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `\u26A0\uFE0F \u0110\xE3 h\u1EBFt ${memState.maxAttempts} l\u01B0\u1EE3t l\u1EADt m\xE0 ch\u01B0a t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. L\u01B0\u1EE3t k\u1EBFt th\xFAc v\u1EDBi 0 \u0111i\u1EC3m.`,
-          scoreDelta: 0,
-          oldScore,
-          newScore: oldScore
-        };
+      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+      const currentRound = memState.round || 1;
+      if (isRoundOver) {
+        if (currentRound === 1) {
+          memState.promptSecondChance = true;
+          state.memoryPairsState = { ...memState };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            shouldResetMismatchedCards: true
+          };
+        } else {
+          state.memoryPairsState = { ...memState };
+          const penalty = state.baseQuestionPoints || 10;
+          if (state.hasShield) {
+            state.hasShield = false;
+            state.phase = "TURN_SUMMARY";
+            state.turnFinishedReason = "PAIR_MATCHED";
+            state.potPoints = 0;
+            state.storyResult = {
+              teamId: team.id,
+              teamName: team.name,
+              teamColor: team.color || "#ef4444",
+              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n!`,
+              scoreDelta: 0,
+              oldScore: team.score || 0,
+              newScore: team.score || 0
+            };
+            return {
+              updatedState: { ...state },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: 0,
+              shouldResetMismatchedCards: true
+            };
+          }
+          state.bombExploded = {
+            type: "MAJOR",
+            title: "\u{1F4A3} K\xCDCH HO\u1EA0T BOM PH\u1EA0T DO TH\u1EA4T B\u1EA0I V\xD2NG 2!",
+            description: "\u0110\xE3 c\u1EA1n 3 l\u01B0\u1EE3t l\u1EADt V\xF2ng 2 m\xE0 v\u1EABn kh\xF4ng t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. K\xEDch n\u1ED5 bom tr\u1EEBng ph\u1EA1t!",
+            penaltyText: `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+          };
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
+          state.potPoints = 0;
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F4A5} Th\u1EA5t b\u1EA1i sau 3 l\u01B0\u1EE3t V\xF2ng 2! D\xEDnh bom tr\u1EEBng ph\u1EA1t, b\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+            scoreDelta: -penalty,
+            oldScore,
+            newScore
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: true,
+            scorePenalty: penalty,
+            finalScoreDelta: -penalty,
+            shouldResetMismatchedCards: true
+          };
+        }
       }
+      state.memoryPairsState = { ...memState };
       return {
         updatedState: { ...state },
         isBomb: false,
@@ -1916,6 +1990,52 @@ function handleCashOut({
     updatedState: { ...state },
     finalScoreDelta
   };
+}
+function handleMemoryPairsSecondChanceDecision({
+  state,
+  team,
+  choice
+}) {
+  const memState = state.memoryPairsState;
+  if (!memState || !memState.promptSecondChance) {
+    return { updatedState: state, finalScoreDelta: 0 };
+  }
+  if (choice === "CASH_OUT") {
+    const award = state.baseQuestionPoints || 10;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "PAIR_MATCHED";
+    state.potPoints = 0;
+    memState.promptSecondChance = false;
+    state.memoryPairsState = { ...memState };
+    const oldScore = team.score || 0;
+    const newScore = oldScore + award;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `\u{1F4B0} B\u1EA3o to\xE0n an to\xE0n! Nh\u1EADn tr\u1ECDn v\u1EB9n +${award} \u0111i\u1EC3m c\u1EE7a c\xE2u h\u1ECFi!`,
+      scoreDelta: award,
+      oldScore,
+      newScore
+    };
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: award
+    };
+  } else {
+    memState.round = 2;
+    memState.attemptsUsed = 0;
+    memState.promptSecondChance = false;
+    memState.firstFlippedTileId = null;
+    memState.secondFlippedTileId = null;
+    memState.isMismatchResolving = false;
+    state.tiles = shuffleMemoryPairsTiles(state.tiles);
+    state.memoryPairsState = { ...memState };
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: 0
+    };
+  }
 }
 
 // src/lib/game-engine/powerups.ts
@@ -6331,15 +6451,22 @@ function registerSocketHandlers(io2) {
         setTimeout(async () => {
           const cur = roomMysteryQuests.get(room.id);
           if (!cur || !cur.memoryPairsState) return;
-          const { firstFlippedTileId, secondFlippedTileId } = cur.memoryPairsState;
-          cur.tiles.forEach((t) => {
-            if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
-              t.isOpened = false;
-            }
-          });
-          cur.memoryPairsState.firstFlippedTileId = null;
-          cur.memoryPairsState.secondFlippedTileId = null;
-          cur.memoryPairsState.isMismatchResolving = false;
+          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState;
+          if (promptSecondChance) {
+            cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
+            cur.memoryPairsState.firstFlippedTileId = null;
+            cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.isMismatchResolving = false;
+          } else {
+            cur.tiles.forEach((t) => {
+              if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+                t.isOpened = false;
+              }
+            });
+            cur.memoryPairsState.firstFlippedTileId = null;
+            cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.isMismatchResolving = false;
+          }
           roomMysteryQuests.set(room.id, cur);
           io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
         }, 1500);
@@ -6366,6 +6493,23 @@ function registerSocketHandlers(io2) {
         totalGained: finalScoreDelta,
         newScore: (team.score || 0) + finalScoreDelta
       });
+    };
+    const executeMysteryPairsDecision = async (room, questState, team, choice) => {
+      const { updatedState, finalScoreDelta } = handleMemoryPairsSecondChanceDecision({
+        state: questState,
+        team,
+        choice
+      });
+      if (finalScoreDelta > 0) {
+        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+        ]);
+      }
+      roomMysteryQuests.set(room.id, updatedState);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
     };
     async function executeMysteryAdvanceTurn(room, questState) {
       stopQuestionTimer(room.id);
@@ -6531,6 +6675,35 @@ function registerSocketHandlers(io2) {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
       await executeMysteryCashOut(room, questState, team);
+    });
+    socket.on("game:mystery:pairs_decision", async ({ choice }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.memoryPairsState?.promptSecondChance) return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      await executeMysteryPairsDecision(room, questState, team, choice);
+    });
+    socket.on("admin:mystery:pairs_decision", async ({ choice, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.memoryPairsState?.promptSecondChance) return;
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+      await executeMysteryPairsDecision(room, questState, team, choice);
     });
     socket.on("game:mystery:steal_buzz", async () => {
       const playerId = playerSockets.get(socket.id);

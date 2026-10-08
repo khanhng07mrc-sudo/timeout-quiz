@@ -4819,6 +4819,12 @@ function registerSocketHandlers(io2) {
       }
       if (room.status === "LOBBY") {
         io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
+        roomPrepareStates.set(room.id, {
+          type: "STARTING",
+          questionIndex: 0,
+          totalQuestions: 0,
+          targetTimestamp: Date.now() + 5e3
+        });
         room.currentQuestion = 0;
         room.status = "PLAYING";
         roomCache.set(room.id, room);

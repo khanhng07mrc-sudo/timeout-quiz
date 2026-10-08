@@ -111,9 +111,8 @@ export default function PlayPage() {
     if (!matchStarting) return;
     const interval = setInterval(() => {
       setMatchStarting((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return null;
-        }
+        if (!prev) return null;
+        if (prev.seconds <= 0) return prev;
         const next = prev.seconds - 1;
         if (next >= 0 && soundEnabledRef.current) {
           soundManager.playCountdownTick(next);

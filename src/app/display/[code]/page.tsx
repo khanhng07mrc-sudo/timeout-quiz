@@ -100,9 +100,8 @@ export default function DisplayPage() {
     if (!matchStarting) return;
     const interval = setInterval(() => {
       setMatchStarting((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return null;
-        }
+        if (!prev) return null;
+        if (prev.seconds <= 0) return prev;
         const next = prev.seconds - 1;
         if (next >= 0) {
           soundManager.playCountdownTick(next);
@@ -1774,11 +1773,14 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {(!currentQuestion ||
+        {(
           (roomState.mode === "MYSTERY_QUEST" &&
             roomState.mysteryQuestState &&
             (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" ||
-              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))))) && (
+              (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload)))) ||
+          (!currentQuestion && roomState.mode !== "MYSTERY_QUEST") ||
+          (!currentQuestion && roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE")
+        ) && (
           <div className="flex-1 flex flex-col items-center justify-center p-2">
             {roomState.mode === "TOURNAMENT" && roomState.tournamentState ? (
               <div className="w-full">
@@ -1813,7 +1815,7 @@ export default function DisplayPage() {
                   }}
                 />
               </div>
-            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState ? (
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (roomState.mysteryQuestState.phase === "PUSH_YOUR_LUCK" || (roomState.mysteryQuestState.phase === "TURN_SUMMARY" && Boolean(revealPayload))) ? (
               <div className="w-full max-w-5xl">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}

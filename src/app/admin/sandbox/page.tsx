@@ -202,7 +202,8 @@ export default function AdminSandboxPage() {
     if (!matchStarting) return;
     const interval = setInterval(() => {
       setMatchStarting((prev) => {
-        if (!prev || prev.seconds <= 1) return null;
+        if (!prev) return null;
+        if (prev.seconds <= 0) return prev;
         return { seconds: prev.seconds - 1 };
       });
     }, 1000);
@@ -2810,6 +2811,7 @@ export default function AdminSandboxPage() {
         setTimer({ remaining: timeLimit, total: timeLimit, endsAt });
         offlineRemainingRef.current = timeLimit;
         syncToIframes({
+          matchStarting: null,
           intermission: null,
           questionPrepare: null,
           currentQuestion: qState,
@@ -2840,6 +2842,7 @@ export default function AdminSandboxPage() {
       } else {
         setTimer(null);
         syncToIframes({
+          matchStarting: null,
           intermission: null,
           questionPrepare: null,
           currentQuestion: qState,
@@ -2941,19 +2944,27 @@ export default function AdminSandboxPage() {
               tournamentState: tourState || prev.tournamentState,
             };
           });
-          syncToIframes({
-            matchStarting: null,
-            roomState: {
-              ...(roomState || {}),
-              status: "PLAYING",
-              tournamentState: tourState || roomState?.tournamentState,
-            },
-          });
 
           if (selectedMode === "DICE_RACE") {
+            syncToIframes({
+              matchStarting: null,
+              roomState: {
+                ...(roomState || {}),
+                status: "PLAYING",
+                tournamentState: tourState || roomState?.tournamentState,
+              },
+            });
             addLog("🏁 Cuộc đua cờ xí ngầu bắt đầu! Bàn cờ hiển thị toàn màn hình. Nhấn 'Hiện câu hỏi' khi sẵn sàng.");
             return;
           } else if (selectedMode === "GRID_CARO") {
+            syncToIframes({
+              matchStarting: null,
+              roomState: {
+                ...(roomState || {}),
+                status: "PLAYING",
+                tournamentState: tourState || roomState?.tournamentState,
+              },
+            });
             addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
             return;
           }

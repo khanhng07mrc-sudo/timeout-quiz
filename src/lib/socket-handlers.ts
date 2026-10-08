@@ -3222,6 +3222,14 @@ export function registerSocketHandlers(io: IO) {
         // 1. Broadcast game:starting immediately (0ms latency so clients start countdown instantly)
         io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
 
+        // Immediately register roomPrepareStates so any joining socket recognizes the warmup countdown
+        roomPrepareStates.set(room.id, {
+          type: "STARTING",
+          questionIndex: 0,
+          totalQuestions: 0,
+          targetTimestamp: Date.now() + 5000,
+        });
+
         room.currentQuestion = 0;
         room.status = "PLAYING";
         roomCache.set(room.id, room);

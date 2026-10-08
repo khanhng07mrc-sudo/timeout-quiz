@@ -63,16 +63,116 @@ function checkOfflineCanAnyTeamBet(
   });
 }
 
-const AVAILABLE_MODES: { mode: GameMode; name: string; emoji: string }[] = [
-  { mode: "CLASSIC", name: "Truyền thống", emoji: "⚡" },
-  { mode: "BUZZ", name: "Bấm chuông nhanh", emoji: "🛎️" },
-  { mode: "BOUNCEBACK", name: "Cướp điểm luân phiên (Về đích Olympia)", emoji: "🔄" },
-  { mode: "ELIMINATION", name: "Sinh tồn loại dần", emoji: "💀" },
-  { mode: "TOURNAMENT", name: "Đấu loại 1v1", emoji: "🏆" },
-  { mode: "GRID_CARO", name: "Lưới chọn ô & Caro", emoji: "🏁" },
-  { mode: "DICE_RACE", name: "Đua cờ Xí ngầu", emoji: "🎲" },
-  { mode: "WAGER", name: "Cược điểm Bí mật", emoji: "💰" },
-  { mode: "MYSTERY_QUEST", name: "Hành Trình Bí Ẩn", emoji: "🗝️" },
+const AVAILABLE_MODES: {
+  mode: GameMode;
+  name: string;
+  emoji: string;
+  tagline: string;
+  badge: string;
+  gradient: string;
+  accentColor: string;
+  glowClass: string;
+  perks: string[];
+}[] = [
+  {
+    mode: "GRID_CARO",
+    name: "Lưới chọn ô & Caro",
+    emoji: "🏁",
+    tagline: "Bàn cờ ma trận 4x4 · Nối chuỗi thắng K-in-a-row ăn điểm lớn",
+    badge: "Chiến thuật",
+    gradient: "from-cyan-600 via-blue-600 to-indigo-700",
+    accentColor: "#06b6d4",
+    glowClass: "glow-neon-cyan",
+    perks: ["Bàn cờ 4x4", "Chuỗi Caro 3 ô", "Thưởng chuỗi +30đ"],
+  },
+  {
+    mode: "MYSTERY_QUEST",
+    name: "Hành Trình Bí Ẩn",
+    emoji: "🗝️",
+    tagline: "Lật rương may rủi · Chọn nhận điểm gốc an toàn hay cược Minigame",
+    badge: "May rủi & Minigame",
+    gradient: "from-violet-600 via-purple-600 to-pink-600",
+    accentColor: "#a855f7",
+    glowClass: "glow-neon-purple",
+    perks: ["Rương bí ẩn", "3 Minigame cân não", "Khuyến mãi & Khiên"],
+  },
+  {
+    mode: "WAGER",
+    name: "Cược điểm Bí mật",
+    emoji: "💰",
+    tagline: "Tố điểm mù trước khi hiện câu · Gỡ gạc khẩn cấp khi phá sản",
+    badge: "Đấu trí",
+    gradient: "from-amber-500 via-yellow-600 to-orange-600",
+    accentColor: "#f59e0b",
+    glowClass: "glow-neon-amber",
+    perks: ["Cược điểm bí mật", "Hệ số nhân 2.5x", "Bảo hiểm phá sản"],
+  },
+  {
+    mode: "DICE_RACE",
+    name: "Đua cờ Xí ngầu",
+    emoji: "🎲",
+    tagline: "Tung xúc xắc 3D di chuyển · Ô thưởng, ô phạt & tranh đua về đích",
+    badge: "Board Game",
+    gradient: "from-orange-500 via-amber-600 to-yellow-600",
+    accentColor: "#f97316",
+    glowClass: "glow-neon-amber",
+    perks: ["Đường đua 30 ô", "Xúc xắc 3D", "Ô cạm bẫy may rủi"],
+  },
+  {
+    mode: "BOUNCEBACK",
+    name: "Cướp điểm luân phiên",
+    emoji: "🔄",
+    tagline: "Về đích Olympia · Chuyển quyền cướp điểm khi đội chính trả lời sai",
+    badge: "Olympia",
+    gradient: "from-emerald-600 via-teal-600 to-cyan-600",
+    accentColor: "#10b981",
+    glowClass: "glow-neon-emerald",
+    perks: ["Chọn gói điểm", "Sao hy vọng x2", "Cướp quyền luân phiên"],
+  },
+  {
+    mode: "BUZZ",
+    name: "Bấm chuông nhanh",
+    emoji: "🛎️",
+    tagline: "Giành quyền bấm chuông siêu tốc · Phạt trừ điểm nếu trả lời sai",
+    badge: "Tốc độ",
+    gradient: "from-rose-600 via-red-600 to-amber-600",
+    accentColor: "#ef4444",
+    glowClass: "glow-neon-rose",
+    perks: ["Cướp chuông 0ms", "Khóa nút tự động", "Phạt điểm sai"],
+  },
+  {
+    mode: "TOURNAMENT",
+    name: "Đấu loại 1v1",
+    emoji: "🏆",
+    tagline: "Chia cặp nhánh đấu tứ kết/bán kết · Khán giả thả tim emoji",
+    badge: "Đấu Cúp 1v1",
+    gradient: "from-indigo-600 via-purple-600 to-blue-700",
+    accentColor: "#6366f1",
+    glowClass: "glow-neon-purple",
+    perks: ["Nhánh đấu 1v1", "Khán giả cổ vũ", "Tranh cúp Vô địch"],
+  },
+  {
+    mode: "ELIMINATION",
+    name: "Sinh tồn loại dần",
+    emoji: "💀",
+    tagline: "Sinh tồn khốc liệt · Đội điểm thấp nhất sẽ bị loại dần",
+    badge: "Sinh tồn",
+    gradient: "from-purple-700 via-pink-700 to-rose-700",
+    accentColor: "#d946ef",
+    glowClass: "glow-neon-rose",
+    perks: ["Loại dần theo vòng", "Thẻ Hồi sinh", "Tính điểm sâu"],
+  },
+  {
+    mode: "CLASSIC",
+    name: "Truyền thống",
+    emoji: "⚡",
+    tagline: "Đấu bảng tính điểm tổng hợp · Hỗ trợ toàn bộ kho thẻ bổ trợ",
+    badge: "Cơ bản",
+    gradient: "from-blue-600 via-indigo-600 to-cyan-500",
+    accentColor: "#3b82f6",
+    glowClass: "glow-neon-cyan",
+    perks: ["Tính thời gian", "Bonus tốc độ", "Kho thẻ bài"],
+  },
 ];
 
 export default function AdminSandboxPage() {
@@ -82,6 +182,8 @@ export default function AdminSandboxPage() {
   const [selectedBankId, setSelectedBankId] = useState<string>("");
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
   const [creating, setCreating] = useState(false);
+  const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
+  const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
@@ -2440,12 +2542,30 @@ export default function AdminSandboxPage() {
     return () => window.removeEventListener("message", handlePlayerAction);
   }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
 
-  // ── 1-Click Launch ──────────────────────────────────────────────────────────
-  const handleLaunchSandbox = async () => {
-    setCreating(true);
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+  // ── 1-Click Launch with Zoom & Morph Transition ──────────────────────────
+  const handleLaunchOffline = useCallback(() => {
+    const meta = AVAILABLE_MODES.find((m) => m.mode === selectedMode) || AVAILABLE_MODES[0];
+    setLaunchingMeta(meta);
+    setIsLaunchingAnim(true);
+    setTimeout(() => {
       startOfflineSandbox(selectedMode, selectedBankId);
-      setCreating(false);
+      setTimeout(() => setIsLaunchingAnim(false), 450);
+    }, 650);
+  }, [selectedMode, selectedBankId, startOfflineSandbox]);
+
+  const handleLaunchSandbox = async (targetMode?: GameMode) => {
+    const modeToUse = targetMode || selectedMode;
+    const meta = AVAILABLE_MODES.find((m) => m.mode === modeToUse) || AVAILABLE_MODES[0];
+    setLaunchingMeta(meta);
+    setIsLaunchingAnim(true);
+    setCreating(true);
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setTimeout(() => {
+        startOfflineSandbox(modeToUse, selectedBankId);
+        setCreating(false);
+        setTimeout(() => setIsLaunchingAnim(false), 450);
+      }, 650);
       return;
     }
 
@@ -2454,7 +2574,7 @@ export default function AdminSandboxPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: selectedMode,
+          mode: modeToUse,
           quizBankId: selectedBankId,
         }),
       });
@@ -2465,20 +2585,23 @@ export default function AdminSandboxPage() {
         saveSandboxSession(data.code, false);
         connectAdminSocket(data.code);
         addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
+        setTimeout(() => setIsLaunchingAnim(false), 500);
       } else {
+        setIsLaunchingAnim(false);
         const errorMsg = data?.error || "Không thể tạo phòng Sandbox trên máy chủ";
         addLog(`❌ Không thể tạo phòng online: ${errorMsg}`);
         const wantOffline = window.confirm(`Không thể tạo phòng Sandbox Online trên máy chủ:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
         if (wantOffline) {
-          startOfflineSandbox(selectedMode, selectedBankId);
+          handleLaunchOffline();
         }
       }
     } catch (err: any) {
+      setIsLaunchingAnim(false);
       const errorMsg = err?.message || "Lỗi kết nối mạng";
       addLog(`❌ Lỗi kết nối mạng: ${errorMsg}`);
       const wantOffline = window.confirm(`Lỗi kết nối mạng khi tạo Sandbox Online:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
       if (wantOffline) {
-        startOfflineSandbox(selectedMode, selectedBankId);
+        handleLaunchOffline();
       }
     } finally {
       setCreating(false);
@@ -4600,9 +4723,35 @@ export default function AdminSandboxPage() {
 
   return (
     <div
-      className="h-full max-h-full flex flex-col min-h-0 gap-1.5 sm:gap-2 overflow-hidden"
+      className="h-full max-h-full flex flex-col min-h-0 gap-1.5 sm:gap-2 overflow-hidden relative"
       onClick={() => { if (showSettingsDropdown) setShowSettingsDropdown(false); if (showCheatDropdown) setShowCheatDropdown(false); }}
     >
+      {/* ── Cinematic Morph & Zoom-Expand Transition Overlay ── */}
+      {isLaunchingAnim && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-xl animate-fade-in overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-cyan-950/30 to-black pointer-events-none" />
+          <div className="relative z-10 text-center flex flex-col items-center gap-4 max-w-md mx-auto animate-zoom-in-center">
+            <div className={`w-28 h-28 rounded-3xl bg-gradient-to-tr ${launchingMeta?.gradient || "from-purple-600 to-cyan-500"} flex items-center justify-center text-5xl shadow-2xl animate-morph-pulse ring-4 ring-white/20`}>
+              {launchingMeta?.emoji || "🧪"}
+            </div>
+            <div className="space-y-2">
+              <span className="text-[11px] px-3 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold tracking-wider uppercase animate-pulse">
+                ⚡ INITIALIZING SANDBOX ENGINE
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white">
+                {launchingMeta?.name || selectedMode}
+              </h2>
+              <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
+                Đang kết nối môi trường thử nghiệm độc lập trên máy · Tự động tách đôi màn hình Màn chiếu và Thiết bị thí sinh!
+              </p>
+            </div>
+            <div className="w-64 h-2 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 mt-2">
+              <div className="h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full animate-shimmer" style={{ width: "100%" }} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
       <div className="glass rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 border border-white/10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424]">
         <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
@@ -4733,8 +4882,8 @@ export default function AdminSandboxPage() {
               <button
                 type="button"
                 disabled={creating}
-                onClick={handleLaunchSandbox}
-                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50 flex items-center gap-1 whitespace-nowrap"
+                onClick={() => handleLaunchSandbox()}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50 flex items-center gap-1 whitespace-nowrap cursor-pointer"
               >
                 <span>⚡</span>
                 <span>{creating ? "Đang tạo..." : "Chạy Sandbox"}</span>
@@ -4742,8 +4891,8 @@ export default function AdminSandboxPage() {
 
               <button
                 type="button"
-                onClick={() => startOfflineSandbox(selectedMode, selectedBankId)}
-                className="px-2.5 py-1.5 rounded-lg glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap"
+                onClick={handleLaunchOffline}
+                className="px-2.5 py-1.5 rounded-lg glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap cursor-pointer"
                 title="Chạy mô phỏng trực tiếp trên trình duyệt, không cần máy chủ mạng"
               >
                 <span>🔌</span>
@@ -5803,74 +5952,197 @@ export default function AdminSandboxPage() {
 
       {/* ── Studio Main Area (100% Fit Screen) ───────────────────────── */}
       {!code ? (
-        <div className="flex-1 overflow-y-auto flex items-center justify-center p-4">
-          <div className="glass rounded-3xl p-8 text-center border border-white/10 space-y-5 max-w-xl mx-auto shadow-2xl">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-cyan-500 flex items-center justify-center text-3xl mx-auto shadow-xl glow-purple">
-              🧪
+        <div className="flex-1 overflow-y-auto min-h-0 p-3 sm:p-5 lg:p-6 space-y-6">
+          {/* ── Top Hero Banner ── */}
+          <div className="text-center space-y-2.5 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-bold shadow-sm">
+              <span className="text-base">🧪</span>
+              <span>Sandbox Studio · Môi trường thử nghiệm độc lập trên máy của bạn</span>
             </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black text-white">Studio Kiểm Thử Hợp Nhất (Sandbox)</h2>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-semibold mx-auto">
-                <span>🧪</span>
-                <span>Chỉ hoạt động độc lập trên máy của bạn · Không hiển thị trong phòng đấu chính</span>
-              </div>
-              <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed pt-1">
-                Màn chiếu hội trường Display bên trái · Thiết bị di động thí sinh bên phải với chuyển đổi 4 đội tức thì. Thử nghiệm toàn bộ cơ chế trò chơi độc lập mà không ảnh hưởng giải đấu thật.
-              </p>
-            </div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
+              Chọn Chế Độ Trò Chơi Thử Nghiệm
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải với 4 đội thi. Hãy chọn 1 chế độ bên dưới để bắt đầu kiểm thử ngay lập tức.
+            </p>
+          </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto pt-1 text-left">
-              <div className="flex-1">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">🎮 Chế độ ({AVAILABLE_MODES.length} Mode)</label>
-                <select
-                  value={selectedMode}
-                  onChange={(e) => setSelectedMode(e.target.value as GameMode)}
-                  className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none"
-                >
-                  {AVAILABLE_MODES.map((m) => (
-                    <option key={m.mode} value={m.mode}>
-                      {m.emoji} {m.name} ({m.mode})
+          {/* ── Floating Control & Config Bar ── */}
+          <div className="glass rounded-2xl p-3 sm:p-4 border border-white/15 bg-[#121424]/90 backdrop-blur-xl max-w-5xl mx-auto shadow-2xl flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 sticky top-0 z-20">
+            {/* Left: Quiz Bank Picker */}
+            <div className="flex items-center gap-2.5 w-full md:w-auto">
+              <span className="text-xs font-bold text-slate-400 shrink-0 hidden sm:inline">📚 Bộ đề:</span>
+              <select
+                value={selectedBankId}
+                onChange={(e) => setSelectedBankId(e.target.value)}
+                className="flex-1 md:w-64 px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none focus:ring-2 focus:ring-purple-400 truncate cursor-pointer"
+              >
+                {quizBanks.length === 0 ? (
+                  <option value="">📚 Bộ đề mẫu Đa chế độ (25 câu)</option>
+                ) : (
+                  quizBanks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      📚 {b.title} ({b._count?.questions ?? 25} câu)
                     </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1">
-                <label className="block text-[11px] font-bold text-slate-400 mb-1">📚 Bộ câu hỏi</label>
-                <select
-                  value={selectedBankId}
-                  onChange={(e) => setSelectedBankId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none truncate"
-                >
-                  {quizBanks.length === 0 ? (
-                    <option value="">📚 Bộ đề mặc định (25 câu)</option>
-                  ) : (
-                    quizBanks.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        📚 {b.title} ({b._count?.questions ?? 25} câu)
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+                  ))
+                )}
+              </select>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+            {/* Center: Connect PIN form */}
+            <form onSubmit={handleConnectExisting} className="flex items-center gap-1.5 w-full md:w-auto justify-end">
+              <input
+                type="text"
+                placeholder="PIN 6 số"
+                value={inputCode}
+                onChange={(e) => setInputCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="w-24 px-3 py-2 rounded-xl glass border border-white/20 text-center font-mono font-bold text-xs text-white bg-[#151728] focus:outline-none focus:border-cyan-400"
+              />
+              <button
+                type="submit"
+                disabled={inputCode.length !== 6}
+                className="px-3 py-2 rounded-xl glass hover:bg-white/10 text-white font-bold text-xs border border-white/20 disabled:opacity-40 whitespace-nowrap cursor-pointer transition active:scale-95"
+              >
+                Gắn PIN
+              </button>
+            </form>
+
+            {/* Right: Master Launch Buttons */}
+            <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
               <button
                 type="button"
                 disabled={creating}
-                onClick={handleLaunchSandbox}
-                className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-bold text-xs shadow-xl transition hover:scale-105 active:scale-95 disabled:opacity-50 whitespace-nowrap"
+                onClick={() => handleLaunchSandbox()}
+                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-xl hover:shadow-cyan-500/25 transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer glow-neon-purple whitespace-nowrap"
               >
-                {creating ? "Đang chuẩn bị phòng..." : `⚡ Khởi chạy Sandbox: ${selectedMode}`}
+                <span>⚡</span>
+                <span>{creating ? "Đang chuẩn bị..." : `Khởi chạy Online: ${selectedMode}`}</span>
               </button>
+
               <button
                 type="button"
-                onClick={() => startOfflineSandbox(selectedMode, selectedBankId)}
-                className="px-5 py-2.5 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow-xl transition hover:scale-105 active:scale-95 whitespace-nowrap flex items-center justify-center gap-1.5"
+                onClick={handleLaunchOffline}
+                className="px-4 py-2.5 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap glow-neon-amber"
+                title="Chạy mô phỏng trực tiếp trên trình duyệt, không cần mạng hay máy chủ"
               >
                 <span>🔌</span>
-                <span>Chạy Offline (Không cần mạng)</span>
+                <span>Chạy Offline</span>
               </button>
+            </div>
+          </div>
+
+          {/* ── Visual Mode Cards Grid (9 Modes) ── */}
+          <div className="max-w-5xl mx-auto pb-8">
+            <div className="flex items-center justify-between mb-3 px-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Danh sách chế độ:</span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  9 Chế độ
+                </span>
+              </div>
+              <span className="text-xs text-slate-400 hidden sm:inline">
+                💡 Nhấp vào thẻ để chọn · Nhấp đúp để khởi chạy ngay
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4.5">
+              {AVAILABLE_MODES.map((m) => {
+                const isSelected = selectedMode === m.mode;
+                return (
+                  <div
+                    key={m.mode}
+                    onClick={() => setSelectedMode(m.mode)}
+                    onDoubleClick={() => handleLaunchSandbox(m.mode)}
+                    className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between ${
+                      isSelected
+                        ? `bg-[#16182e] border-2 border-white/60 ${m.glowClass} scale-[1.02] shadow-2xl`
+                        : "glass border-white/10 hover:border-white/30 hover:bg-white/5 hover:scale-[1.01]"
+                    }`}
+                    style={{
+                      boxShadow: isSelected ? `0 0 30px -5px ${m.accentColor}55` : undefined,
+                    }}
+                  >
+                    {/* Top decorative gradient bar when selected */}
+                    {isSelected && (
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${m.gradient}`}
+                      />
+                    )}
+
+                    <div>
+                      {/* Header: Emoji box + Category badge */}
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div
+                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/10`}
+                        >
+                          {m.emoji}
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/15 font-bold uppercase tracking-wider">
+                            {m.badge}
+                          </span>
+                          {isSelected && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1 animate-pulse">
+                              <span>✓</span>
+                              <span>ĐANG CHỌN</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Title & Mode code */}
+                      <div className="mb-1">
+                        <h3 className="text-base sm:text-lg font-black text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
+                          <span>{m.name}</span>
+                        </h3>
+                        <span className="font-mono text-[10px] text-slate-400 font-bold tracking-wider">
+                          [{m.mode}]
+                        </span>
+                      </div>
+
+                      {/* Tagline */}
+                      <p className="text-xs text-slate-300 leading-relaxed min-h-[36px] line-clamp-2 mb-3">
+                        {m.tagline}
+                      </p>
+
+                      {/* Feature Chips */}
+                      <div className="flex items-center gap-1.5 flex-wrap mb-4">
+                        {m.perks.map((p, pIdx) => (
+                          <span
+                            key={pIdx}
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-300 font-medium"
+                          >
+                            • {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Bottom Card Footer */}
+                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                      <span className={`text-[11px] font-bold ${isSelected ? "text-cyan-300" : "text-slate-500 group-hover:text-slate-300"}`}>
+                        {isSelected ? "⚡ Sẵn sàng khởi chạy" : "Nhấp để chọn chế độ"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMode(m.mode);
+                          handleLaunchSandbox(m.mode);
+                        }}
+                        className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                          isSelected
+                            ? "bg-purple-600 hover:bg-purple-500 text-white shadow"
+                            : "glass text-slate-400 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        <span>Chạy</span>
+                        <span>➔</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -5879,7 +6151,7 @@ export default function AdminSandboxPage() {
           {/* ══════════════════════════════════════════════════════════════════
               LEFT COLUMN (7 cols ~58%): Large Display + Host Master Controls
              ══════════════════════════════════════════════════════════════════ */}
-          <div className={`lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden ${
+          <div className={`lg:col-span-7 flex flex-col min-h-0 h-full gap-1.5 overflow-hidden animate-slide-in-left ${
             mobileTab === "DISPLAY" ? "flex" : "hidden lg:flex"
           }`}>
             {/* Display Iframe Viewport (Fills Remaining Height) */}
@@ -5935,7 +6207,7 @@ export default function AdminSandboxPage() {
           {/* ══════════════════════════════════════════════════════════════════
               RIGHT COLUMN (5 cols ~42%): Unified Mobile Device + Team Switcher
              ══════════════════════════════════════════════════════════════════ */}
-          <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden ${
+          <div className={`lg:col-span-5 flex flex-col min-h-0 h-full gap-1 overflow-hidden animate-slide-in-right ${
             mobileTab === "PLAYER" ? "flex" : "hidden lg:flex"
           }`}>
             {/* Team Switcher Tabs (Ultra-Compact Single Row) */}

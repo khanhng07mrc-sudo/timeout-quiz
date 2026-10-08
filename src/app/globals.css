@@ -154,3 +154,95 @@ select, option, optgroup {
 .glow-gold {
   animation: pulse-gold 2s infinite;
 }
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-40px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translate3d(40px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes zoomInCenter {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes morphPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 50px rgba(6, 182, 212, 0.8);
+  }
+}
+
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(1000%);
+  }
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-zoom-in-center {
+  animation: zoomInCenter 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-morph-pulse {
+  animation: morphPulse 1.5s infinite ease-in-out;
+}
+
+.glow-neon-purple {
+  box-shadow: 0 0 20px -2px rgba(168, 85, 247, 0.5), 0 0 8px rgba(168, 85, 247, 0.3);
+}
+
+.glow-neon-cyan {
+  box-shadow: 0 0 20px -2px rgba(6, 182, 212, 0.5), 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.glow-neon-amber {
+  box-shadow: 0 0 20px -2px rgba(245, 158, 11, 0.5), 0 0 8px rgba(245, 158, 11, 0.3);
+}
+
+.glow-neon-emerald {
+  box-shadow: 0 0 20px -2px rgba(16, 185, 129, 0.5), 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.glow-neon-rose {
+  box-shadow: 0 0 20px -2px rgba(244, 63, 94, 0.5), 0 0 8px rgba(244, 63, 94, 0.3);
+}

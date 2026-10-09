@@ -467,7 +467,7 @@ export default function AdminRoomPage() {
       setIsStealOpen(false);
       setAwaitingJudgment(null);
       if (soundEnabledRef.current) {
-        soundManager.stopMusic(600, true);
+        soundManager.stopQuestionMusic(600, true);
         if (p.answers?.some((a) => a.isCorrect)) {
           soundManager.playCorrect();
         } else {
@@ -504,7 +504,7 @@ export default function AdminRoomPage() {
       }));
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
-        soundManager.stopMusic(600, true);
+        soundManager.stopQuestionMusic(600, true);
       }
     });
     socket.on("game:answer:received", (payload: any) => {

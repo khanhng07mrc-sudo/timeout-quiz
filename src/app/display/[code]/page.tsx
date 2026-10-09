@@ -148,14 +148,19 @@ export default function DisplayPage() {
   // Immediately recalibrate timer when switching back to this tab (prevent sleeping tab lag)
   useEffect(() => {
     const onVisibility = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible" && timer?.endsAt) {
-        const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
-        setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        if (timer?.endsAt) {
+          const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
+          setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
+        }
+        if (roomState?.status === "LOBBY" && !soundMuted && !matchStartingRef.current) {
+          soundManager.playLobbyMusic();
+        }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [timer?.endsAt, timer?.total, timer?.remaining]);
+  }, [timer?.endsAt, timer?.total, timer?.remaining, roomState?.status, soundMuted]);
 
   useEffect(() => {
     // Default sound ON on Display
@@ -168,16 +173,18 @@ export default function DisplayPage() {
         if (p.roomState !== undefined) {
           setRoomState(p.roomState);
           if (p.roomState?.status === "LOBBY") {
-            soundManager.playLobbyMusic();
-          } else if (p.roomState?.status === "GAME_OVER") {
-            soundManager.stopMusic(0);
+            if (!matchStartingRef.current) {
+              soundManager.playLobbyMusic();
+            }
+          } else if (p.roomState?.status === "GAME_OVER" || p.roomState?.status === "FINISHED") {
+            soundManager.stopMusic(0, true);
           }
           if (p.roomState?.wagerState) {
             const ws = p.roomState.wagerState;
             if (ws.phase === "WAGER_PERIOD") {
               soundManager.playBiddingSuspense();
             } else if (ws.phase === "QUESTION_PERIOD" && !ws.questionReady) {
-              soundManager.stopMusic(0);
+              soundManager.stopQuestionMusic(0);
             }
           }
         }
@@ -198,7 +205,10 @@ export default function DisplayPage() {
             }
           } else {
             setDisplayModeTab("BOARD");
-            soundManager.stopMusic(0);
+            const isPlaying = (p.roomState?.status || roomState?.status) === "PLAYING";
+            if (isPlaying) {
+              soundManager.stopQuestionMusic(0);
+            }
           }
         }
         if (p.revealPayload !== undefined) {
@@ -207,7 +217,7 @@ export default function DisplayPage() {
             const payloadKey = p.revealPayload.questionId || (p.revealPayload.correctAnswer ? JSON.stringify(p.revealPayload.correctAnswer) : "revealed");
             if (lastRevealKeyRef.current !== payloadKey) {
               lastRevealKeyRef.current = payloadKey;
-              soundManager.stopMusic(600, true);
+              soundManager.stopQuestionMusic(600, true);
               if (p.revealPayload.answers?.some((a: any) => a.isCorrect)) {
                 soundManager.playCorrect();
               } else {
@@ -220,8 +230,9 @@ export default function DisplayPage() {
         }
         if (p.timer !== undefined) {
           setTimer(p.timer);
-          if (p.timer?.remaining === 0) {
-            soundManager.stopMusic(600, true);
+          const isPlaying = (p.roomState?.status || roomState?.status) === "PLAYING";
+          if (p.timer?.remaining === 0 && isPlaying) {
+            soundManager.stopQuestionMusic(600, true);
           }
         }
         if (p.buzzed !== undefined) setBuzzed(p.buzzed);
@@ -313,7 +324,7 @@ export default function DisplayPage() {
     });
 
     socket.on("game:question", (q) => {
-      soundManager.stopMusic(0);
+      soundManager.stopQuestionMusic(0);
       setMatchStarting(null);
       setQuestionPrepare(null);
       setIntermission(null);
@@ -350,7 +361,7 @@ export default function DisplayPage() {
       } else {
         setTimer(null);
         if (!q) {
-          soundManager.stopMusic();
+          soundManager.stopQuestionMusic();
         }
       }
     });
@@ -411,7 +422,7 @@ export default function DisplayPage() {
       const tLimit = p.timeLimit ?? 5;
       const endsAt = Date.now() + tLimit * 1000;
       setTimer({ remaining: tLimit, total: tLimit, endsAt });
-      soundManager.stopMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
+      soundManager.stopQuestionMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
     });
     socket.on("game:buzz:wrong_attempt", (p) => {
       soundManager.playWrong();
@@ -477,7 +488,7 @@ export default function DisplayPage() {
       );
     });
     socket.on("game:early_completed", () => {
-      soundManager.stopMusic(600, true);
+      soundManager.stopQuestionMusic(600, true);
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
     });
     socket.on("game:elimination:round", (payload) => {
@@ -500,7 +511,7 @@ export default function DisplayPage() {
         const payloadKey = payload.questionId || (payload.correctAnswer ? JSON.stringify(payload.correctAnswer) : "revealed");
         if (lastRevealKeyRef.current !== payloadKey) {
           lastRevealKeyRef.current = payloadKey;
-          soundManager.stopMusic(600, true);
+          soundManager.stopQuestionMusic(600, true);
           if (payload.answers?.some((a) => a.isCorrect)) {
             soundManager.playCorrect();
           } else {
@@ -519,7 +530,7 @@ export default function DisplayPage() {
       setStealBuzzed(null);
       setIsStealOpen(false);
       setDisplayModeTab("BOARD");
-      soundManager.stopMusic();
+      soundManager.stopQuestionMusic();
     });
     socket.on("game:wager:bailout_granted", () => {
       soundManager.playCorrect();
@@ -647,15 +658,6 @@ export default function DisplayPage() {
       if (isTimerRunning && roomState?.mode !== "BUZZ") {
         soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }
-    });
-    socket.on("game:question:clear", () => {
-      setCurrentQuestion(null);
-      setRevealPayload(null);
-      setTimer(null);
-      setBuzzed(null);
-      setIsStealOpen(false);
-      setStealBuzzed(null);
-      soundManager.stopMusic();
     });
     socket.on("game:score:update", (scores) => {
       setRoomState((prev) => {

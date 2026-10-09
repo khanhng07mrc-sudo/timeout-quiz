@@ -321,7 +321,7 @@ export default function PlayPage() {
             const payloadKey = p.revealPayload.questionId || (p.revealPayload.correctAnswer ? JSON.stringify(p.revealPayload.correctAnswer) : "revealed");
             if (lastRevealKeyRef.current !== payloadKey) {
               lastRevealKeyRef.current = payloadKey;
-              soundManager.stopMusic(600, true);
+              soundManager.stopQuestionMusic(600, true);
               const myAns = p.revealPayload.answers?.find(
                 (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
               );
@@ -338,7 +338,7 @@ export default function PlayPage() {
         if (p.timer !== undefined) {
           setTimer(p.timer);
           if (p.timer?.remaining === 0 && soundEnabledRef.current) {
-            soundManager.stopMusic(600, true);
+            soundManager.stopQuestionMusic(600, true);
           }
         }
         if (p.buzzedBy !== undefined) setBuzzedBy(p.buzzedBy);
@@ -742,7 +742,7 @@ export default function PlayPage() {
         const payloadKey = payload.questionId || (payload.correctAnswer ? JSON.stringify(payload.correctAnswer) : "revealed");
         if (lastRevealKeyRef.current !== payloadKey) {
           lastRevealKeyRef.current = payloadKey;
-          soundManager.stopMusic(600, true);
+          soundManager.stopQuestionMusic(600, true);
           const myAns = payload.answers.find(
             (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
           );
@@ -917,7 +917,7 @@ export default function PlayPage() {
     socket.on("game:early_completed", () => {
       setTimer((prev) => (prev ? { ...prev, remaining: 0, endsAt: undefined } : { remaining: 0, total: 30 }));
       if (soundEnabledRef.current) {
-        soundManager.stopMusic(600, true);
+        soundManager.stopQuestionMusic(600, true);
       }
     });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));

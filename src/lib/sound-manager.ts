@@ -21,7 +21,7 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
 };
 
 const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
-  lobby: { primary: "/sounds/lobby.ogg", fallbacks: ["/sounds/lobby.mp3", "/sounds/lobby.wav"] },
+  lobby: { primary: "/sounds/lobby.mp3", fallbacks: ["/sounds/lobby.ogg", "/sounds/lobby.wav"] },
   olympia_5s: { primary: "/sounds/olympia_5s.mp3", fallbacks: ["/sounds/olympia_5s_left.mp3"] },
   olympia_15s: { primary: "/sounds/olympia_15s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_20s: { primary: "/sounds/olympia_20s.ogg", fallbacks: ["/sounds/olympia_20s.mp3", "/sounds/question_suspense.mp3"] },
@@ -42,6 +42,7 @@ class SoundManager {
   private lastMusicStartTime: number = 0;
   private fadeInterval: NodeJS.Timeout | null = null;
   private questionMusicTimeout: NodeJS.Timeout | null = null;
+  private activeFadeMap: Map<HTMLAudioElement, NodeJS.Timeout> = new Map();
 
   // Pending audio track if blocked by browser autoplay policy
   private pendingMusicTrack: {
@@ -63,7 +64,19 @@ class SoundManager {
     if (typeof window !== "undefined") {
       this.initAudioAssets();
       this.setupGlobalUnlockListener();
+      this.setupVisibilityListener();
     }
+  }
+
+  private setupVisibilityListener() {
+    if (typeof document === "undefined") return;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        if (this.currentMusicType === "LOBBY" && this.currentMusicAudio && this.currentMusicAudio.paused && !this.isMuted) {
+          this.currentMusicAudio.play().catch(() => {});
+        }
+      }
+    });
   }
 
   private setupGlobalUnlockListener() {
@@ -96,6 +109,18 @@ class SoundManager {
     audio.preload = "auto";
     audio.loop = loop;
     audio.volume = this.volume;
+
+    if (loop) {
+      audio.addEventListener("ended", () => {
+        if (this.currentMusicAudio === audio && !this.isMuted) {
+          try {
+            audio.currentTime = 0;
+            audio.play().catch(() => {});
+          } catch {}
+        }
+      });
+    }
+
     return audio;
   }
 
@@ -114,7 +139,7 @@ class SoundManager {
     // Preload BGM
     (Object.keys(BGM_CONFIG) as BGMKey[]).forEach((key) => {
       try {
-        const loop = key === "lobby";
+        const loop = key === "lobby" || key === "question_suspense";
         const audio = this.createAudioWithFallbacks(BGM_CONFIG[key], loop);
         this.bgmMap.set(key, audio);
       } catch {}
@@ -178,6 +203,12 @@ class SoundManager {
   // ── True Crossfading & Smooth Fade In/Out ──────────────────────────────────
 
   private fadeOutAudio(audio: HTMLAudioElement, durationMs: number = 600) {
+    const prevTimer = this.activeFadeMap.get(audio);
+    if (prevTimer) {
+      clearInterval(prevTimer);
+      this.activeFadeMap.delete(audio);
+    }
+
     if (audio.paused || audio.volume <= 0 || durationMs <= 0) {
       try {
         audio.pause();
@@ -200,6 +231,7 @@ class SoundManager {
 
       if (currentVol <= 0) {
         clearInterval(interval);
+        this.activeFadeMap.delete(audio);
         try {
           audio.pause();
           audio.currentTime = 0;
@@ -207,6 +239,7 @@ class SoundManager {
         } catch {}
       }
     }, stepInterval);
+    this.activeFadeMap.set(audio, interval);
   }
 
   private fadeInAudio(
@@ -215,6 +248,12 @@ class SoundManager {
     durationMs: number = 400,
     onAutoplayBlocked?: () => void
   ) {
+    const prevTimer = this.activeFadeMap.get(audio);
+    if (prevTimer) {
+      clearInterval(prevTimer);
+      this.activeFadeMap.delete(audio);
+    }
+
     const steps = 15;
     const stepInterval = Math.max(15, Math.floor(durationMs / steps));
     const initialVol = 0.02;
@@ -232,8 +271,10 @@ class SoundManager {
         }
         if (currentVol >= targetVol) {
           clearInterval(interval);
+          this.activeFadeMap.delete(audio);
         }
       }, stepInterval);
+      this.activeFadeMap.set(audio, interval);
     }).catch(() => {
       // Autoplay policy fallback
       if (onAutoplayBlocked) {
@@ -280,8 +321,17 @@ class SoundManager {
             return;
           }
         }
-      } else if (type === "LOBBY" && this.currentMusicKey === audioKey && !nextAudio.paused) {
-        return;
+      } else if (type === "LOBBY" && this.currentMusicKey === audioKey) {
+        if (nextAudio && !nextAudio.paused) {
+          return;
+        }
+        if (nextAudio && nextAudio.paused) {
+          nextAudio.play().catch(() => {
+            this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };
+            this.setupGlobalUnlockListener();
+          });
+          return;
+        }
       }
     }
 
@@ -341,6 +391,7 @@ class SoundManager {
       this.currentMusicKey = audioKey;
       this.currentPlayingQuestionId = null;
       this.lastMusicStartTime = now;
+      nextAudio.loop = true;
 
       this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50), () => {
         this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };
@@ -426,7 +477,7 @@ class SoundManager {
     const safetyTimeoutMs = Math.max(40000, (remainingSeconds + 20) * 1000);
     this.questionMusicTimeout = setTimeout(() => {
       if (this.currentMusicType === "QUESTION") {
-        this.stopMusic(350);
+        this.stopQuestionMusic(350);
       }
     }, safetyTimeoutMs);
   }
@@ -442,6 +493,69 @@ class SoundManager {
       this.questionMusicTimeout = null;
     }
     this.playMusicTrack("QUESTION", "olympia_5s", 0.9, 0);
+  }
+
+  /**
+   * Stops question countdown audio tracks without affecting Lobby BGM.
+   */
+  public stopQuestionMusic(fadeDurationMs: number = 0, force: boolean = true) {
+    if (this.currentMusicType !== "QUESTION") return;
+    if (!force && fadeDurationMs <= 0) return;
+
+    if (this.questionMusicTimeout) {
+      clearTimeout(this.questionMusicTimeout);
+      this.questionMusicTimeout = null;
+    }
+    this.currentPlayingQuestionId = null;
+
+    const audio = this.currentMusicAudio;
+    this.currentMusicAudio = null;
+    this.currentMusicType = null;
+    this.currentMusicKey = null;
+
+    if (audio) {
+      const prevFade = this.activeFadeMap.get(audio);
+      if (prevFade) {
+        clearInterval(prevFade);
+        this.activeFadeMap.delete(audio);
+      }
+      if (fadeDurationMs <= 0) {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
+      } else {
+        this.fadeOutAudio(audio, fadeDurationMs);
+      }
+    }
+  }
+
+  /**
+   * Stops Lobby BGM only.
+   */
+  public stopLobbyMusic(fadeDurationMs: number = 0) {
+    if (this.currentMusicType !== "LOBBY") return;
+
+    const audio = this.currentMusicAudio;
+    this.currentMusicAudio = null;
+    this.currentMusicType = null;
+    this.currentMusicKey = null;
+
+    if (audio) {
+      const prevFade = this.activeFadeMap.get(audio);
+      if (prevFade) {
+        clearInterval(prevFade);
+        this.activeFadeMap.delete(audio);
+      }
+      if (fadeDurationMs <= 0) {
+        try {
+          audio.pause();
+          audio.currentTime = 0;
+        } catch {}
+      } else {
+        this.fadeOutAudio(audio, fadeDurationMs);
+      }
+    }
   }
 
   /**
@@ -465,9 +579,14 @@ class SoundManager {
     this.currentMusicKey = null;
     this.stopFanfare();
 
+    this.activeFadeMap.forEach((interval) => clearInterval(interval));
+    this.activeFadeMap.clear();
+
+    const curr = this.currentMusicAudio;
+    this.currentMusicAudio = null;
+    this.currentMusicType = null;
+
     if (fadeDurationMs <= 0) {
-      this.currentMusicAudio = null;
-      this.currentMusicType = null;
       this.bgmMap.forEach((audio) => {
         try {
           audio.pause();
@@ -478,13 +597,9 @@ class SoundManager {
     }
 
     // Fade out any currently playing BGM tracks smoothly over fadeDurationMs (default 600ms)
-    this.currentMusicAudio = null;
-    this.currentMusicType = null;
-    this.bgmMap.forEach((audio) => {
-      if (!audio.paused && audio.volume > 0) {
-        this.fadeOutAudio(audio, fadeDurationMs);
-      }
-    });
+    if (curr && !curr.paused && curr.volume > 0) {
+      this.fadeOutAudio(curr, fadeDurationMs);
+    }
   }
 
   // ── Instant Sound Effects (SFX) ───────────────────────────────────────────

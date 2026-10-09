@@ -1426,6 +1426,9 @@ function handleFlipCard({
     const memState = state.memoryPairsState || {
       firstFlippedTileId: null,
       secondFlippedTileId: null,
+      thirdFlippedTileId: null,
+      keptBombTileIds: [],
+      isBombRescueActive: false,
       attemptsUsed: 0,
       maxAttempts: 3,
       matchedPairKey: null,
@@ -1440,84 +1443,38 @@ function handleFlipCard({
     if (!tile2 || tile2.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
-    if (!memState.firstFlippedTileId) {
+    const isBombTile = (t) => Boolean(t && (t.type !== "REWARD" || t.pairKey === "PAIR_BOMB"));
+    const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+    const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
+    const isBombCard2 = isBombTile(tile2);
+    const previouslyKeptBombs = memState.keptBombTileIds || [];
+    const hasPriorKeptBomb = previouslyKeptBombs.length > 0;
+    if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
+      if (tile2.id === memState.firstFlippedTileId || tile2.id === memState.secondFlippedTileId) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
       tile2.isOpened = true;
-      memState.firstFlippedTileId = tile2.id;
-      state.memoryPairsState = { ...memState };
+      memState.thirdFlippedTileId = tile2.id;
+      memState.attemptsUsed += 1;
       state.lastFlippedTile = tile2;
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
-    if (memState.firstFlippedTileId === tile2.id) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
-    tile2.isOpened = true;
-    memState.secondFlippedTileId = tile2.id;
-    memState.attemptsUsed += 1;
-    state.lastFlippedTile = tile2;
-    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
-    const isMatch = firstTile && firstTile.pairKey === tile2.pairKey;
-    if (isMatch && firstTile) {
-      memState.matchedPairKey = firstTile.pairKey;
-      state.memoryPairsState = { ...memState };
-      const isBomb = firstTile.type !== "REWARD";
-      let penalty = 0;
-      let finalDelta = 0;
-      if (isBomb) {
-        if (state.hasShield) {
-          state.hasShield = false;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "PAIR_MATCHED";
-          state.potPoints = 0;
-          state.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m n\xE0o!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0
-          };
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            finalScoreDelta: 0
-          };
-        }
-        penalty = Math.abs(firstTile.deltaPoints || state.baseQuestionPoints || 10);
-        state.bombExploded = {
-          type: "MAJOR",
-          title: firstTile.storyTitle,
-          description: firstTile.storyDescription,
-          penaltyText: `D\xEDnh c\u1EB7p k\xEDp n\u1ED5 h\u1EAFc \xE1m! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
-        };
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "BOMB_HIT";
-        state.potPoints = 0;
-        finalDelta = -penalty;
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - penalty);
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F4A5} D\xEDnh c\u1EB7p bom n\u1ED5! B\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
-          scoreDelta: -penalty,
-          oldScore,
-          newScore
-        };
-        return {
-          updatedState: { ...state },
-          isBomb: true,
-          scorePenalty: penalty,
-          finalScoreDelta: -penalty
-        };
-      } else {
+      const card1 = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+      const card2 = state.tiles.find((t) => t.id === memState.secondFlippedTileId);
+      const card3 = tile2;
+      const cardsInTurn = [card1, card2, card3].filter(Boolean);
+      const nonBombCards = cardsInTurn.filter((c) => !isBombTile(c));
+      const bombCard = cardsInTurn.find((c) => isBombTile(c)) || tile2;
+      const isRescueSuccess = nonBombCards.length === 2 && nonBombCards[0].pairKey === nonBombCards[1].pairKey;
+      if (isRescueSuccess) {
+        const winCard = nonBombCards[0];
+        memState.matchedPairKey = winCard.pairKey;
+        memState.isBombRescueActive = false;
+        state.memoryPairsState = { ...memState };
+        let finalDelta = 0;
         let victimTeamId;
         let victimTeamName;
         let stolenPoints;
-        if (firstTile.effectType === "STEAL_POINTS") {
-          const stealAmount = firstTile.deltaPoints || 25;
+        if (winCard.effectType === "STEAL_POINTS") {
+          const stealAmount = winCard.deltaPoints || 25;
           const eligibleTeams = (allTeams || []).filter(
             (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
           );
@@ -1526,8 +1483,8 @@ function handleFlipCard({
             state.pendingSteal = {
               stolenPoints: stealAmount,
               eligibleTeamIds: eligibleTeams.map((t) => t.id),
-              tileTitle: firstTile.storyTitle,
-              tileIcon: firstTile.icon
+              tileTitle: winCard.storyTitle,
+              tileIcon: winCard.icon
             };
             return {
               updatedState: { ...state },
@@ -1536,17 +1493,18 @@ function handleFlipCard({
               finalScoreDelta: 0
             };
           } else {
-            finalDelta = stealAmount;
+            finalDelta = stealAmount + extraPotBonus2;
           }
         } else {
-          finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+          finalDelta = (winCard.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus2;
         }
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
-        const rewardText = victimTeamName && stolenPoints ? `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+        const baseReward = finalDelta - extraPotBonus2;
+        const rewardText = extraPotBonus2 > 0 ? `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
@@ -1565,8 +1523,134 @@ function handleFlipCard({
           victimTeamName,
           stolenPoints
         };
+      } else {
+        memState.isBombRescueActive = false;
+        state.memoryPairsState = { ...memState };
+        if (state.hasShield) {
+          state.hasShield = false;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "PAIR_MATCHED";
+          state.potPoints = 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xF4i \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m n\xE0o!`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
+        }
+        const penalty = Math.abs(bombCard.deltaPoints || state.baseQuestionPoints || 10);
+        state.bombExploded = {
+          type: "MAJOR",
+          title: "\u{1F4A3} K\xCDP N\u1ED4 \u0110\xD4I H\u1EAEC \xC1M PH\xC1T N\u1ED4!",
+          description: "\u0110\xE3 l\u1EADt ph\u1EA3i 2 l\xE1 bom v\xE0 2 l\xE1 b\xE0i b\u1ED5 sung kh\xF4ng tr\xF9ng nhau! B\u1ECB ph\u1EA1t tr\u1EEB \u0111i\u1EC3m!",
+          penaltyText: `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+        };
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F4A5} K\xEDp n\u1ED5 \u0111\xF4i ph\xE1t n\u1ED5! N\u1ED7 l\u1EF1c gh\xE9p c\u1EB7p gi\u1EA3i c\u1EE9u kh\xF4ng th\xE0nh c\xF4ng, b\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
+        };
       }
-    } else {
+    }
+    if (!memState.firstFlippedTileId) {
+      tile2.isOpened = true;
+      memState.firstFlippedTileId = tile2.id;
+      state.lastFlippedTile = tile2;
+      if (isBombCard2 && hasPriorKeptBomb) {
+        memState.isBombRescueActive = true;
+      }
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    if (memState.firstFlippedTileId === tile2.id) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    tile2.isOpened = true;
+    memState.secondFlippedTileId = tile2.id;
+    state.lastFlippedTile = tile2;
+    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+    if (memState.isBombRescueActive) {
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    if (isBombCard2 && hasPriorKeptBomb) {
+      memState.isBombRescueActive = true;
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+    const isBothBombs = isBombTile(firstTile) && isBombCard2;
+    if (isBothBombs) {
+      memState.attemptsUsed += 1;
+      memState.matchedPairKey = "PAIR_BOMB";
+      state.memoryPairsState = { ...memState };
+      if (state.hasShield) {
+        state.hasShield = false;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "PAIR_MATCHED";
+        state.potPoints = 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m n\xE0o!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0
+        };
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+      }
+      const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile2.storyTitle,
+        description: tile2.storyDescription,
+        penaltyText: `D\xEDnh c\u1EB7p k\xEDp n\u1ED5 h\u1EAFc \xE1m! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      state.potPoints = 0;
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F4A5} D\xEDnh c\u1EB7p bom n\u1ED5! B\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore
+      };
+      return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
+    }
+    const isOneBomb = isBombTile(firstTile) || isBombCard2;
+    if (isOneBomb) {
+      memState.attemptsUsed += 1;
+      const bombTile = isBombTile(firstTile) ? firstTile : tile2;
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, bombTile.id]));
       memState.isMismatchResolving = true;
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
       const currentRound = memState.round || 1;
@@ -1574,12 +1658,7 @@ function handleFlipCard({
         if (currentRound === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            shouldResetMismatchedCards: true
-          };
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
@@ -1597,13 +1676,7 @@ function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0
             };
-            return {
-              updatedState: { ...state },
-              isBomb: false,
-              scorePenalty: 0,
-              finalScoreDelta: 0,
-              shouldResetMismatchedCards: true
-            };
+            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1625,22 +1698,124 @@ function handleFlipCard({
             oldScore,
             newScore
           };
-          return {
-            updatedState: { ...state },
-            isBomb: true,
-            scorePenalty: penalty,
-            finalScoreDelta: -penalty,
-            shouldResetMismatchedCards: true
-          };
+          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
       state.memoryPairsState = { ...memState };
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+    }
+    memState.attemptsUsed += 1;
+    const isMatch = firstTile && firstTile.pairKey === tile2.pairKey;
+    if (isMatch && firstTile) {
+      memState.matchedPairKey = firstTile.pairKey;
+      state.memoryPairsState = { ...memState };
+      let victimTeamId;
+      let victimTeamName;
+      let stolenPoints;
+      let finalDelta = 0;
+      if (firstTile.effectType === "STEAL_POINTS") {
+        const stealAmount = firstTile.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: firstTile.storyTitle,
+            tileIcon: firstTile.icon
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
+        } else {
+          finalDelta = stealAmount + extraPotBonus2;
+        }
+      } else {
+        finalDelta = (firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus2;
+      }
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "PAIR_MATCHED";
+      state.potPoints = 0;
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+      const baseReward = finalDelta - extraPotBonus2;
+      const rewardText = extraPotBonus2 > 0 ? `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore
+      };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        shouldResetMismatchedCards: true
+        finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints
       };
+    } else {
+      memState.isMismatchResolving = true;
+      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+      const currentRound = memState.round || 1;
+      if (isRoundOver) {
+        if (currentRound === 1) {
+          memState.promptSecondChance = true;
+          state.memoryPairsState = { ...memState };
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+        } else {
+          state.memoryPairsState = { ...memState };
+          const penalty = state.baseQuestionPoints || 10;
+          if (state.hasShield) {
+            state.hasShield = false;
+            state.phase = "TURN_SUMMARY";
+            state.turnFinishedReason = "PAIR_MATCHED";
+            state.potPoints = 0;
+            state.storyResult = {
+              teamId: team.id,
+              teamName: team.name,
+              teamColor: team.color || "#ef4444",
+              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n!`,
+              scoreDelta: 0,
+              oldScore: team.score || 0,
+              newScore: team.score || 0
+            };
+            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+          }
+          state.bombExploded = {
+            type: "MAJOR",
+            title: "\u{1F4A3} K\xCDCH HO\u1EA0T BOM PH\u1EA0T DO TH\u1EA4T B\u1EA0I V\xD2NG 2!",
+            description: "\u0110\xE3 c\u1EA1n 3 l\u01B0\u1EE3t l\u1EADt V\xF2ng 2 m\xE0 v\u1EABn kh\xF4ng t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. K\xEDch n\u1ED5 bom tr\u1EEBng ph\u1EA1t!",
+            penaltyText: `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+          };
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
+          state.potPoints = 0;
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F4A5} Th\u1EA5t b\u1EA1i sau 3 l\u01B0\u1EE3t V\xF2ng 2! D\xEDnh bom tr\u1EEBng ph\u1EA1t, b\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+            scoreDelta: -penalty,
+            oldScore,
+            newScore
+          };
+          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+        }
+      }
+      state.memoryPairsState = { ...memState };
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
   }
   if (normType === "ONE_SHOT_DOORS") {
@@ -1712,6 +1887,8 @@ function handleFlipCard({
       let victimTeamId;
       let victimTeamName;
       let stolenPoints;
+      const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+      const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
       if (tile2.effectType === "STEAL_POINTS") {
         const stealAmount = tile2.deltaPoints || 25;
         const eligibleTeams = (allTeams || []).filter(
@@ -1732,17 +1909,18 @@ function handleFlipCard({
             finalScoreDelta: 0
           };
         } else {
-          finalDelta = stealAmount;
+          finalDelta = stealAmount + extraPotBonus2;
         }
       } else {
-        finalDelta = tile2.deltaPoints || 25;
+        finalDelta = (tile2.deltaPoints || 25) + extraPotBonus2;
       }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
-      const rewardText = victimTeamName && stolenPoints ? `\u{1F6AA} ${tile2.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      const baseReward = finalDelta - extraPotBonus2;
+      const rewardText = extraPotBonus2 > 0 ? `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F6AA} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
@@ -1829,6 +2007,8 @@ function handleFlipCard({
       let victimTeamId;
       let victimTeamName;
       let stolenPoints;
+      const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+      const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
       if (tile2.effectType === "STEAL_POINTS") {
         const stealAmount = tile2.deltaPoints || 25;
         const eligibleTeams = (allTeams || []).filter(
@@ -1849,17 +2029,18 @@ function handleFlipCard({
             finalScoreDelta: 0
           };
         } else {
-          finalDelta = stealAmount;
+          finalDelta = stealAmount + extraPotBonus2;
         }
       } else {
-        finalDelta = tile2.deltaPoints || 35;
+        finalDelta = (tile2.deltaPoints || 35) + extraPotBonus2;
       }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "TAROT_DRAWN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
-      const rewardText = victimTeamName && stolenPoints ? `\u{1F52E} ${tile2.storyTitle}! \u0110\xE3 c\u01B0\u1EDBp +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} (c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      const baseReward = finalDelta - extraPotBonus2;
+      const rewardText = extraPotBonus2 > 0 ? `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
@@ -2023,9 +2204,11 @@ function handleFlipCard({
       darkBombRecipients
     };
   }
+  const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+  const extraPotBonus = hasExtraPot ? 5 : 0;
   if (tile.effectType === "MULTIPLY_X2") {
     state.potMultiplier *= 2;
-    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
+    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : (20 + extraPotBonus) * state.potMultiplier;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || 20;
     const eligibleTeams = (allTeams || []).filter(
@@ -2046,10 +2229,10 @@ function handleFlipCard({
         finalScoreDelta: 0
       };
     } else {
-      state.potPoints = stealAmount * state.potMultiplier;
+      state.potPoints = (stealAmount + extraPotBonus) * state.potMultiplier;
     }
   } else {
-    state.potPoints = (tile.deltaPoints || 15) * state.potMultiplier;
+    state.potPoints = ((tile.deltaPoints || state.baseQuestionPoints || 10) + extraPotBonus) * state.potMultiplier;
   }
   const nextTopCard = generateNextPushYourLuckCard({
     theme: state.theme,
@@ -2163,6 +2346,9 @@ function handleMemoryPairsSecondChanceDecision({
     memState.promptSecondChance = false;
     memState.firstFlippedTileId = null;
     memState.secondFlippedTileId = null;
+    memState.thirdFlippedTileId = null;
+    memState.keptBombTileIds = [];
+    memState.isBombRescueActive = false;
     memState.isMismatchResolving = false;
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
     state.memoryPairsState = { ...memState };
@@ -2183,10 +2369,13 @@ function handleChooseStealTarget({
   const stolenPoints = pending?.stolenPoints || 20;
   const victimTeamId = targetTeam?.id;
   const victimTeamName = targetTeam?.name || "\u0110\u1ED1i th\u1EE7";
+  const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+  const extraPotBonus = hasExtraPot ? 5 : 0;
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
+    const totalPotFromSteal = (stolenPoints + extraPotBonus) * state.potMultiplier;
     state.phase = "PUSH_YOUR_LUCK";
     state.pendingSteal = void 0;
-    state.potPoints = stolenPoints * state.potMultiplier;
+    state.potPoints = totalPotFromSteal;
     state.stolenPointsPot = stolenPoints * state.potMultiplier;
     state.pendingStealVictimId = victimTeamId;
     state.pendingStealVictimName = victimTeamName;
@@ -2194,7 +2383,7 @@ function handleChooseStealTarget({
       teamId: state.currentTurnTeamId,
       teamName: state.currentTurnTeamName,
       teamColor: state.currentTurnTeamColor,
-      rewardText: `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${stolenPoints * state.potMultiplier} \u0111i\u1EC3m c\u01B0\u1EDBp v\xE0o qu\u1EF9 \u0111i\u1EC3m!`,
+      rewardText: extraPotBonus > 0 ? `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${stolenPoints}\u0111 c\u01B0\u1EDBp v\xE0 +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng v\xE0o qu\u1EF9 \u0111i\u1EC3m (T\u1ED5ng +${totalPotFromSteal}\u0111)!` : `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${totalPotFromSteal} \u0111i\u1EC3m c\u01B0\u1EDBp v\xE0o qu\u1EF9 \u0111i\u1EC3m!`,
       scoreDelta: 0,
       oldScore: activeTeam?.score || 0,
       newScore: activeTeam?.score || 0
@@ -2211,14 +2400,16 @@ function handleChooseStealTarget({
   state.turnFinishedReason = state.miniGameType === "TAROT_DESTINY" ? "TAROT_DRAWN" : state.miniGameType === "ONE_SHOT_DOORS" ? "DOOR_CHOSEN" : "PAIR_MATCHED";
   state.pendingSteal = void 0;
   state.potPoints = 0;
+  const finalScoreDelta = stolenPoints + extraPotBonus;
   const oldScore = activeTeam?.score || 0;
-  const newScore = oldScore + stolenPoints;
+  const newScore = oldScore + finalScoreDelta;
+  const rewardText = extraPotBonus > 0 ? `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} v\xE0 nh\u1EADn th\xEAm +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (+${finalScoreDelta} \u0111i\u1EC3m cho \u0110\u1ED9i ${state.currentTurnTeamName})!` : `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} sang \u0110\u1ED9i ${state.currentTurnTeamName}!`;
   state.storyResult = {
     teamId: state.currentTurnTeamId,
     teamName: state.currentTurnTeamName,
     teamColor: state.currentTurnTeamColor,
-    rewardText: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} sang \u0110\u1ED9i ${state.currentTurnTeamName}!`,
-    scoreDelta: stolenPoints,
+    rewardText,
+    scoreDelta: finalScoreDelta,
     oldScore,
     newScore
   };
@@ -2227,7 +2418,7 @@ function handleChooseStealTarget({
     victimTeamId,
     victimTeamName,
     stolenPoints,
-    finalScoreDelta: stolenPoints
+    finalScoreDelta
   };
 }
 
@@ -6681,20 +6872,26 @@ function registerSocketHandlers(io2) {
         setTimeout(async () => {
           const cur = roomMysteryQuests.get(room.id);
           if (!cur || !cur.memoryPairsState) return;
-          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState;
+          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState;
           if (promptSecondChance) {
             cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.thirdFlippedTileId = null;
+            cur.memoryPairsState.keptBombTileIds = [];
+            cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           } else {
+            const keptBombsSet = new Set(keptBombTileIds || []);
             cur.tiles.forEach((t) => {
-              if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+              if ((t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)) {
                 t.isOpened = false;
               }
             });
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.thirdFlippedTileId = null;
+            cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           }
           roomMysteryQuests.set(room.id, cur);
@@ -6847,12 +7044,12 @@ function registerSocketHandlers(io2) {
       } else {
         questState.decisionMade = "PLAY_MINIGAME";
         let initialPot = basePts;
-        if (questState.promoPerk === "EXTRA_POT_PROMO") {
+        if (getPerkType(questState.promoPerk) === "EXTRA_POT_PROMO") {
           initialPot += 5;
         }
         questState.potPoints = initialPot;
         questState.potMultiplier = 1;
-        questState.hasShield = questState.promoPerk === "SHIELD_PROMO";
+        questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
         questState.phase = "PUSH_YOUR_LUCK";
       }
       roomMysteryQuests.set(room.id, questState);

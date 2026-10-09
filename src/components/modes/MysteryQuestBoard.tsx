@@ -351,7 +351,7 @@ export default function MysteryQuestBoard({
                         {perkType === "EXTRA_POT_PROMO" && (
                           <>
                             <span>🎁</span>
-                            <span className="truncate">Quỹ thưởng +5đ ban đầu!</span>
+                            <span className="truncate">Quỹ thưởng +5đ!</span>
                           </>
                         )}
                         {perkType === "DOUBLE_PROMO" && (
@@ -430,25 +430,41 @@ export default function MysteryQuestBoard({
                     🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (10 THẺ)
                   </span>
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                        memoryPairsState?.round === 2
-                          ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
-                          : "bg-indigo-500/30 text-indigo-200 border border-indigo-500/40"
-                      }`}
-                    >
-                      {memoryPairsState?.round === 2 ? "🔥 VÒNG 2 SINH TỬ" : "✨ VÒNG 1"}
-                    </span>
+                    {memoryPairsState?.isBombRescueActive ? (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/30 text-amber-300 border border-amber-400 animate-pulse">
+                        ⚠️ LƯỢT GIẢI CỨU: 3 LÁ
+                      </span>
+                    ) : (
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                          memoryPairsState?.round === 2
+                            ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
+                            : "bg-indigo-500/30 text-indigo-200 border border-indigo-500/40"
+                        }`}
+                      >
+                        {memoryPairsState?.round === 2 ? "🔥 VÒNG 2 SINH TỬ" : "✨ VÒNG 1"}
+                      </span>
+                    )}
                     <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
                       Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 3}
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-white/80 leading-snug">
-                  {memoryPairsState?.round === 2
-                    ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 3 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
-                    : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 3 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
-                </p>
+                {memoryPairsState?.isBombRescueActive ? (
+                  <p className="text-[11px] text-amber-200 font-bold leading-snug animate-pulse">
+                    ⚠️ Bạn đã lật trúng lá bom thứ 2! Hệ thống mở khóa lượt lật 3 lá: Hãy lật thêm 1 lá để ghép cặp 2 lá còn lại. Nếu trùng nhau sẽ được cộng điểm, ngược lại sẽ bị trừ điểm!
+                  </p>
+                ) : (memoryPairsState?.keptBombTileIds && memoryPairsState.keptBombTileIds.length > 0) ? (
+                  <p className="text-[11px] text-rose-300 font-bold leading-snug">
+                    💣 Cảnh báo: Đã có 1 lá bom bị lộ (#{memoryPairsState.keptBombTileIds.join(", #")}) và giữ nguyên trên bàn! Tránh lật trúng lá bom thứ 2!
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-white/80 leading-snug">
+                    {memoryPairsState?.round === 2
+                      ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 3 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
+                      : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 3 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
+                  </p>
+                )}
               </div>
             )}
 

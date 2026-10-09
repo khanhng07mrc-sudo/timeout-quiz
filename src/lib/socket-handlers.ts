@@ -35,7 +35,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision, handleChooseStealTarget } from "./game-engine/mystery-quest";
+import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision, handleChooseStealTarget, getPerkType } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -4766,21 +4766,27 @@ export function registerSocketHandlers(io: IO) {
         setTimeout(async () => {
           const cur = roomMysteryQuests.get(room.id);
           if (!cur || !cur.memoryPairsState) return;
-          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState;
+          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState;
           if (promptSecondChance) {
             // Hết 3 lượt Vòng 1: tất cả các lá úp lại và xáo trộn vị trí!
             cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.thirdFlippedTileId = null;
+            cur.memoryPairsState.keptBombTileIds = [];
+            cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           } else {
+            const keptBombsSet = new Set(keptBombTileIds || []);
             cur.tiles.forEach((t) => {
-              if (t.id === firstFlippedTileId || t.id === secondFlippedTileId) {
+              if ((t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)) {
                 t.isOpened = false;
               }
             });
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;
+            cur.memoryPairsState.thirdFlippedTileId = null;
+            cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           }
           roomMysteryQuests.set(room.id, cur);
@@ -4965,12 +4971,12 @@ export function registerSocketHandlers(io: IO) {
       } else {
         questState.decisionMade = "PLAY_MINIGAME";
         let initialPot = basePts;
-        if (questState.promoPerk === "EXTRA_POT_PROMO") {
+        if (getPerkType(questState.promoPerk) === "EXTRA_POT_PROMO") {
           initialPot += 5;
         }
         questState.potPoints = initialPot;
         questState.potMultiplier = 1;
-        questState.hasShield = questState.promoPerk === "SHIELD_PROMO";
+        questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
         questState.phase = "PUSH_YOUR_LUCK";
       }
 

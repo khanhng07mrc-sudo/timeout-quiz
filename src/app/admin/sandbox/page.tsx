@@ -2282,18 +2282,26 @@ export default function AdminSandboxPage() {
           setTimeout(() => {
             if (!roomStateRef.current?.mysteryQuestState?.memoryPairsState) return;
             const cur = { ...roomStateRef.current.mysteryQuestState };
-            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance } = cur.memoryPairsState!;
+            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState!;
             if (promptSecondChance) {
               cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
               cur.memoryPairsState!.firstFlippedTileId = null;
               cur.memoryPairsState!.secondFlippedTileId = null;
+              cur.memoryPairsState!.thirdFlippedTileId = null;
+              cur.memoryPairsState!.keptBombTileIds = [];
+              cur.memoryPairsState!.isBombRescueActive = false;
               cur.memoryPairsState!.isMismatchResolving = false;
             } else {
+              const keptBombsSet = new Set(keptBombTileIds || []);
               cur.tiles = cur.tiles.map((t) =>
-                t.id === firstFlippedTileId || t.id === secondFlippedTileId ? { ...t, isOpened: false } : t
+                (t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)
+                  ? { ...t, isOpened: false }
+                  : t
               );
               cur.memoryPairsState!.firstFlippedTileId = null;
               cur.memoryPairsState!.secondFlippedTileId = null;
+              cur.memoryPairsState!.thirdFlippedTileId = null;
+              cur.memoryPairsState!.isBombRescueActive = false;
               cur.memoryPairsState!.isMismatchResolving = false;
             }
             const updatedRState = { ...roomStateRef.current, mysteryQuestState: cur };
@@ -2452,9 +2460,12 @@ export default function AdminSandboxPage() {
           addLog(`🛡️ [${activeTeam.name}] CHỌN AN TOÀN: Nhận +${basePts} điểm câu hỏi!`);
         } else {
           // PLAY_MINIGAME
+          const perkType = typeof curMystery.promoPerk === "string" ? curMystery.promoPerk : curMystery.promoPerk?.type;
+          const initialPot = (curMystery.baseQuestionPoints || 10) + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
           const updatedState = {
             ...curMystery,
-            potPoints: curMystery.potPoints || curMystery.baseQuestionPoints || 10,
+            potPoints: initialPot,
+            hasShield: perkType === "SHIELD_PROMO",
             phase: "PUSH_YOUR_LUCK" as const,
             decisionMade: "PLAY_MINIGAME" as const,
           };

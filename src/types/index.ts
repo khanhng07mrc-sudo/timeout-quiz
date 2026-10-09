@@ -850,7 +850,7 @@ export type MysteryMiniGameType =
 
 export type MysteryPromoPerk =
   | "SHIELD_PROMO"    // Tặng 1 Khiên hộ mệnh né bom miễn phí
-  | "EXTRA_POT_PROMO" // Hũ vốn ban đầu được khuyến mãi thêm +5đ
+  | "EXTRA_POT_PROMO" // Quỹ thưởng được khuyến mãi thêm +5đ
   | "DOUBLE_PROMO";   // Thẻ x2 có xác suất xuất hiện sớm
 
 export type MysteryTileEffectType =
@@ -977,6 +977,9 @@ export interface MysteryQuestState {
   memoryPairsState?: {
     firstFlippedTileId?: number | null;
     secondFlippedTileId?: number | null;
+    thirdFlippedTileId?: number | null;
+    keptBombTileIds?: number[];
+    isBombRescueActive?: boolean;
     attemptsUsed: number;
     maxAttempts: number;
     matchedPairKey?: string | null;

@@ -915,6 +915,9 @@ export function handleFlipCard({
     const memState = state.memoryPairsState || {
       firstFlippedTileId: null,
       secondFlippedTileId: null,
+      thirdFlippedTileId: null,
+      keptBombTileIds: [],
+      isBombRescueActive: false,
       attemptsUsed: 0,
       maxAttempts: 3,
       matchedPairKey: null,
@@ -932,100 +935,51 @@ export function handleFlipCard({
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    // Step 1: Flip first card of the pair
-    if (!memState.firstFlippedTileId) {
+    const isBombTile = (t: MysteryTile | undefined) => Boolean(t && (t.type !== "REWARD" || t.pairKey === "PAIR_BOMB"));
+    const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+    const extraPotBonus = hasExtraPot ? 5 : 0;
+    const isBombCard = isBombTile(tile);
+    const previouslyKeptBombs = memState.keptBombTileIds || [];
+    const hasPriorKeptBomb = previouslyKeptBombs.length > 0;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 3: Lật lá bài thứ 3 (trong lượt giải cứu bom)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
+      if (tile.id === memState.firstFlippedTileId || tile.id === memState.secondFlippedTileId) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+
       tile.isOpened = true;
-      memState.firstFlippedTileId = tile.id;
-      state.memoryPairsState = { ...memState };
+      memState.thirdFlippedTileId = tile.id;
+      memState.attemptsUsed += 1;
       state.lastFlippedTile = tile;
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
 
-    // Step 2: Flip second card of the pair
-    if (memState.firstFlippedTileId === tile.id) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
+      const card1 = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+      const card2 = state.tiles.find((t) => t.id === memState.secondFlippedTileId);
+      const card3 = tile;
 
-    tile.isOpened = true;
-    memState.secondFlippedTileId = tile.id;
-    memState.attemptsUsed += 1;
-    state.lastFlippedTile = tile;
+      const cardsInTurn = [card1, card2, card3].filter(Boolean) as MysteryTile[];
+      const nonBombCards = cardsInTurn.filter((c) => !isBombTile(c));
+      const bombCard = cardsInTurn.find((c) => isBombTile(c)) || tile;
 
-    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
-    const isMatch = firstTile && firstTile.pairKey === tile.pairKey;
+      // Đánh giá 2 lá thường còn lại:
+      // "nếu hai lá còn lại trùng nhau (và tất nhiên là cộng điểm), hệ thống sẽ lấy hai lá cộng để tính điểm, ngược lại nếu không trùng nhau sẽ bị trừ điểm"
+      const isRescueSuccess = nonBombCards.length === 2 && nonBombCards[0].pairKey === nonBombCards[1].pairKey;
 
-    if (isMatch && firstTile) {
-      // MATCH FOUND! Apply effect of the first matched pair and finish minigame immediately!
-      memState.matchedPairKey = firstTile.pairKey;
-      state.memoryPairsState = { ...memState };
+      if (isRescueSuccess) {
+        const winCard = nonBombCards[0];
+        memState.matchedPairKey = winCard.pairKey;
+        memState.isBombRescueActive = false;
+        state.memoryPairsState = { ...memState };
 
-      const isBomb = firstTile.type !== "REWARD";
-      let penalty = 0;
-      let finalDelta = 0;
-
-      if (isBomb) {
-        // Shield Protection Check:
-        if (state.hasShield) {
-          state.hasShield = false;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "PAIR_MATCHED";
-          state.potPoints = 0;
-          state.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đã bị vô hiệu hóa an toàn, không bị trừ điểm nào!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0,
-          };
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            finalScoreDelta: 0,
-          };
-        }
-
-        penalty = Math.abs(firstTile.deltaPoints || state.baseQuestionPoints || 10);
-        state.bombExploded = {
-          type: "MAJOR",
-          title: firstTile.storyTitle,
-          description: firstTile.storyDescription,
-          penaltyText: `Dính cặp kíp nổ hắc ám! Bị trừ ${penalty} điểm từ tổng điểm.`,
-        };
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "BOMB_HIT";
-        state.potPoints = 0;
-        finalDelta = -penalty;
-
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - penalty);
-
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `💥 Dính cặp bom nổ! Bị phạt trừ ${penalty} điểm!`,
-          scoreDelta: -penalty,
-          oldScore,
-          newScore,
-        };
-
-        return {
-          updatedState: { ...state },
-          isBomb: true,
-          scorePenalty: penalty,
-          finalScoreDelta: -penalty,
-        };
-      } else {
-        // Safe match or Steal match
+        let finalDelta = 0;
         let victimTeamId: string | undefined;
         let victimTeamName: string | undefined;
         let stolenPoints: number | undefined;
 
-        if (firstTile.effectType === "STEAL_POINTS") {
-          const stealAmount = firstTile.deltaPoints || 25;
+        if (winCard.effectType === "STEAL_POINTS") {
+          const stealAmount = winCard.deltaPoints || 25;
           const eligibleTeams = (allTeams || []).filter(
             (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
           );
@@ -1034,8 +988,8 @@ export function handleFlipCard({
             state.pendingSteal = {
               stolenPoints: stealAmount,
               eligibleTeamIds: eligibleTeams.map((t) => t.id),
-              tileTitle: firstTile.storyTitle,
-              tileIcon: firstTile.icon,
+              tileTitle: winCard.storyTitle,
+              tileIcon: winCard.icon,
             };
             return {
               updatedState: { ...state },
@@ -1044,22 +998,23 @@ export function handleFlipCard({
               finalScoreDelta: 0,
             };
           } else {
-            finalDelta = stealAmount;
+            finalDelta = stealAmount + extraPotBonus;
           }
         } else {
-          finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
+          finalDelta = (winCard.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus;
         }
 
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
-        state.potPoints = 0; // Cleared as it's directly awarded
+        state.potPoints = 0;
 
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
+        const baseReward = finalDelta - extraPotBonus;
 
-        const rewardText = victimTeamName && stolenPoints
-          ? `🎉 Ghép thành công ${firstTile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
-          : `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+        const rewardText = extraPotBonus > 0
+          ? `🎉 Thoát hiểm ngoạn mục! Lật phải 2 lá bom nhưng đã ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+          : `🎉 Thoát hiểm ngoạn mục! Lật phải 2 lá bom nhưng đã ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
 
         state.storyResult = {
           teamId: team.id,
@@ -1080,31 +1035,181 @@ export function handleFlipCard({
           victimTeamName,
           stolenPoints,
         };
+      } else {
+        // Giải cứu thất bại: "ngược lại nếu không trùng nhau sẽ bị trừ điểm"
+        memState.isBombRescueActive = false;
+        state.memoryPairsState = { ...memState };
+
+        if (state.hasShield) {
+          state.hasShield = false;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "PAIR_MATCHED";
+          state.potPoints = 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đôi đã bị vô hiệu hóa an toàn, không bị trừ điểm nào!`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0,
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
+        }
+
+        const penalty = Math.abs(bombCard.deltaPoints || state.baseQuestionPoints || 10);
+        state.bombExploded = {
+          type: "MAJOR",
+          title: "💣 KÍP NỔ ĐÔI HẮC ÁM PHÁT NỔ!",
+          description: "Đã lật phải 2 lá bom và 2 lá bài bổ sung không trùng nhau! Bị phạt trừ điểm!",
+          penaltyText: `Bị trừ ${penalty} điểm từ tổng điểm.`,
+        };
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `💥 Kíp nổ đôi phát nổ! Nỗ lực ghép cặp giải cứu không thành công, bị phạt trừ ${penalty} điểm!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
+        };
       }
-    } else {
-      // MISMATCH: Mark mismatch resolving
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 1: Lật lá bài thứ 1 của lượt
+    // ─────────────────────────────────────────────────────────────────────────
+    if (!memState.firstFlippedTileId) {
+      tile.isOpened = true;
+      memState.firstFlippedTileId = tile.id;
+      state.lastFlippedTile = tile;
+
+      // Nếu lá bom thứ 1 đã lộ từ lượt trước, mà lượt này mở trúng lá bom thứ 2 ngay từ lá đầu tiên:
+      if (isBombCard && hasPriorKeptBomb) {
+        memState.isBombRescueActive = true;
+      }
+
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // STEP 2: Lật lá bài thứ 2 của lượt
+    // ─────────────────────────────────────────────────────────────────────────
+    if (memState.firstFlippedTileId === tile.id) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    tile.isOpened = true;
+    memState.secondFlippedTileId = tile.id;
+    state.lastFlippedTile = tile;
+
+    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+
+    // TH 2.1: Đang trong lượt giải cứu (Card 1 là lá bom thứ 2, Card 2 là lá thường thứ nhất)
+    // -> Giữ nguyên, mở khóa chờ lật tiếp lá thứ 3 (Card 3)!
+    if (memState.isBombRescueActive) {
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // TH 2.2: Card 2 là lá bom thứ 2, trong khi lá bom thứ 1 đã lộ từ trước!
+    // -> Kích hoạt lượt giải cứu, mở khóa chờ lật tiếp lá thứ 3 (Card 3)!
+    if (isBombCard && hasPriorKeptBomb) {
+      memState.isBombRescueActive = true;
+      state.memoryPairsState = { ...memState };
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
+
+    // TH 2.3: Người chơi lật trúng CẢ 2 LÁ BOM trong CÙNG LƯỢT NÀY!
+    const isBothBombs = isBombTile(firstTile) && isBombCard;
+    if (isBothBombs) {
+      memState.attemptsUsed += 1;
+      memState.matchedPairKey = "PAIR_BOMB";
+      state.memoryPairsState = { ...memState };
+
+      if (state.hasShield) {
+        state.hasShield = false;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "PAIR_MATCHED";
+        state.potPoints = 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đã bị vô hiệu hóa an toàn, không bị trừ điểm nào!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0,
+        };
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+      }
+
+      const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
+      state.bombExploded = {
+        type: "MAJOR",
+        title: tile.storyTitle,
+        description: tile.storyDescription,
+        penaltyText: `Dính cặp kíp nổ hắc ám! Bị trừ ${penalty} điểm từ tổng điểm.`,
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      state.potPoints = 0;
+
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💥 Dính cặp bom nổ! Bị phạt trừ ${penalty} điểm!`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore,
+      };
+
+      return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
+    }
+
+    // TH 2.4: Một trong 2 lá là lá bom (lần đầu tiên lật trúng bom), lá còn lại là lá thường!
+    // "nếu bạn chỉ cần lật trúng 1 trong 2 lá bài trừ điểm, lá đó sau khi lật lên sẽ vẫn được giữ lại cho dù có không lật được 2 lá trừ điểm cùng lượt"
+    const isOneBomb = isBombTile(firstTile) || isBombCard;
+    if (isOneBomb) {
+      memState.attemptsUsed += 1;
+      const bombTile = isBombTile(firstTile) ? firstTile! : tile;
+      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, bombTile.id]));
       memState.isMismatchResolving = true;
+
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
       const currentRound = memState.round || 1;
 
       if (isRoundOver) {
         if (currentRound === 1) {
-          // Hết 3 lượt Vòng 1: KHÔNG BỊ TRỪ ĐIỂM!
-          // Các lá sẽ úp lại, xáo trộn vị trí và mở cơ hội quyết định: Nhận điểm câu hỏi hoặc chơi Vòng 2!
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            shouldResetMismatchedCards: true,
-          };
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
-          // Hết 3 lượt Vòng 2: DỪNG CHƠI VÀ NHẬN 1 BOM BẤT KỲ!
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
-
           if (state.hasShield) {
             state.hasShield = false;
             state.phase = "TURN_SUMMARY";
@@ -1119,15 +1224,8 @@ export function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0,
             };
-            return {
-              updatedState: { ...state },
-              isBomb: false,
-              scorePenalty: 0,
-              finalScoreDelta: 0,
-              shouldResetMismatchedCards: true,
-            };
+            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
-
           state.bombExploded = {
             type: "MAJOR",
             title: "💣 KÍCH HOẠT BOM PHẠT DO THẤT BẠI VÒNG 2!",
@@ -1137,10 +1235,8 @@ export function handleFlipCard({
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "BOMB_HIT";
           state.potPoints = 0;
-
           const oldScore = team.score || 0;
           const newScore = Math.max(0, oldScore - penalty);
-
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
@@ -1150,24 +1246,141 @@ export function handleFlipCard({
             oldScore,
             newScore,
           };
-
-          return {
-            updatedState: { ...state },
-            isBomb: true,
-            scorePenalty: penalty,
-            finalScoreDelta: -penalty,
-            shouldResetMismatchedCards: true,
-          };
+          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
 
       state.memoryPairsState = { ...memState };
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+    }
+
+    // TH 2.5: Cả 2 lá đều là lá thường (không dính bom)
+    memState.attemptsUsed += 1;
+    const isMatch = firstTile && firstTile.pairKey === tile.pairKey;
+
+    if (isMatch && firstTile) {
+      // MATCH FOUND!
+      memState.matchedPairKey = firstTile.pairKey;
+      state.memoryPairsState = { ...memState };
+
+      let victimTeamId: string | undefined;
+      let victimTeamName: string | undefined;
+      let stolenPoints: number | undefined;
+      let finalDelta = 0;
+
+      if (firstTile.effectType === "STEAL_POINTS") {
+        const stealAmount = firstTile.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: firstTile.storyTitle,
+            tileIcon: firstTile.icon,
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
+        } else {
+          finalDelta = stealAmount + extraPotBonus;
+        }
+      } else {
+        finalDelta = (firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus;
+      }
+
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "PAIR_MATCHED";
+      state.potPoints = 0;
+
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+      const baseReward = finalDelta - extraPotBonus;
+
+      const rewardText = extraPotBonus > 0
+        ? `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+        : `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore,
+      };
+
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        shouldResetMismatchedCards: true,
+        finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints,
       };
+    } else {
+      // Mismatch giữa 2 lá thường!
+      memState.isMismatchResolving = true;
+      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+      const currentRound = memState.round || 1;
+
+      if (isRoundOver) {
+        if (currentRound === 1) {
+          memState.promptSecondChance = true;
+          state.memoryPairsState = { ...memState };
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+        } else {
+          state.memoryPairsState = { ...memState };
+          const penalty = state.baseQuestionPoints || 10;
+          if (state.hasShield) {
+            state.hasShield = false;
+            state.phase = "TURN_SUMMARY";
+            state.turnFinishedReason = "PAIR_MATCHED";
+            state.potPoints = 0;
+            state.storyResult = {
+              teamId: team.id,
+              teamName: team.name,
+              teamColor: team.color || "#ef4444",
+              rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Vụ nổ trừng phạt vòng 2 đã bị chặn đứng an toàn!`,
+              scoreDelta: 0,
+              oldScore: team.score || 0,
+              newScore: team.score || 0,
+            };
+            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+          }
+          state.bombExploded = {
+            type: "MAJOR",
+            title: "💣 KÍCH HOẠT BOM PHẠT DO THẤT BẠI VÒNG 2!",
+            description: "Đã cạn 3 lượt lật Vòng 2 mà vẫn không tìm thấy cặp trùng nhau. Kích nổ bom trừng phạt!",
+            penaltyText: `Bị trừ ${penalty} điểm từ tổng điểm.`,
+          };
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
+          state.potPoints = 0;
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `💥 Thất bại sau 3 lượt Vòng 2! Dính bom trừng phạt, bị trừ ${penalty} điểm!`,
+            scoreDelta: -penalty,
+            oldScore,
+            newScore,
+          };
+          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+        }
+      }
+
+      state.memoryPairsState = { ...memState };
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
   }
 
@@ -1254,6 +1467,9 @@ export function handleFlipCard({
       let victimTeamName: string | undefined;
       let stolenPoints: number | undefined;
 
+      const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+      const extraPotBonus = hasExtraPot ? 5 : 0;
+
       if (tile.effectType === "STEAL_POINTS") {
         const stealAmount = tile.deltaPoints || 25;
         const eligibleTeams = (allTeams || []).filter(
@@ -1274,10 +1490,10 @@ export function handleFlipCard({
             finalScoreDelta: 0,
           };
         } else {
-          finalDelta = stealAmount;
+          finalDelta = stealAmount + extraPotBonus;
         }
       } else {
-        finalDelta = tile.deltaPoints || 25;
+        finalDelta = (tile.deltaPoints || 25) + extraPotBonus;
       }
 
       state.potPoints = 0;
@@ -1286,9 +1502,10 @@ export function handleFlipCard({
 
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
+      const baseReward = finalDelta - extraPotBonus;
 
-      const rewardText = victimTeamName && stolenPoints
-        ? `🚪 ${tile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
+      const rewardText = extraPotBonus > 0
+        ? `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
         : `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
 
       state.storyResult = {
@@ -1393,6 +1610,9 @@ export function handleFlipCard({
       let victimTeamName: string | undefined;
       let stolenPoints: number | undefined;
 
+      const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+      const extraPotBonus = hasExtraPot ? 5 : 0;
+
       if (tile.effectType === "STEAL_POINTS") {
         const stealAmount = tile.deltaPoints || 25;
         const eligibleTeams = (allTeams || []).filter(
@@ -1413,10 +1633,10 @@ export function handleFlipCard({
             finalScoreDelta: 0,
           };
         } else {
-          finalDelta = stealAmount;
+          finalDelta = stealAmount + extraPotBonus;
         }
       } else {
-        finalDelta = tile.deltaPoints || 35;
+        finalDelta = (tile.deltaPoints || 35) + extraPotBonus;
       }
 
       state.potPoints = 0;
@@ -1425,9 +1645,10 @@ export function handleFlipCard({
 
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
+      const baseReward = finalDelta - extraPotBonus;
 
-      const rewardText = victimTeamName && stolenPoints
-        ? `🔮 ${tile.storyTitle}! Đã cướp +${stolenPoints} điểm từ Đội ${victimTeamName} (có giới hạn bảo vệ)!`
+      const rewardText = extraPotBonus > 0
+        ? `🔮 ${tile.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
         : `🔮 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
 
       state.storyResult = {
@@ -1634,10 +1855,13 @@ export function handleFlipCard({
     };
   }
 
+  const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+  const extraPotBonus = hasExtraPot ? 5 : 0;
+
   // Safe Reward Card
   if (tile.effectType === "MULTIPLY_X2") {
     state.potMultiplier *= 2;
-    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
+    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : (20 + extraPotBonus) * state.potMultiplier;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || 20;
     const eligibleTeams = (allTeams || []).filter(
@@ -1659,11 +1883,11 @@ export function handleFlipCard({
       };
     } else {
       // Về nguyên tắc: chỉ tính phần thưởng ở thẻ rút cuối, không cộng dồn!
-      state.potPoints = stealAmount * state.potMultiplier;
+      state.potPoints = (stealAmount + extraPotBonus) * state.potMultiplier;
     }
   } else {
     // Về nguyên tắc: chỉ tính phần thưởng ở thẻ rút cuối, không cộng dồn!
-    state.potPoints = (tile.deltaPoints || 15) * state.potMultiplier;
+    state.potPoints = ((tile.deltaPoints || state.baseQuestionPoints || 10) + extraPotBonus) * state.potMultiplier;
   }
 
   // Chồng bài vô hạn: Tự động sinh lá bài tiếp theo úp mặt trên đỉnh chồng bài sẵn sàng rút tiếp!
@@ -1821,6 +2045,9 @@ export function handleMemoryPairsSecondChanceDecision({
     memState.promptSecondChance = false;
     memState.firstFlippedTileId = null;
     memState.secondFlippedTileId = null;
+    memState.thirdFlippedTileId = null;
+    memState.keptBombTileIds = [];
+    memState.isBombRescueActive = false;
     memState.isMismatchResolving = false;
     // Đảm bảo tất cả các thẻ úp lại và đã được xáo trộn
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
@@ -1858,12 +2085,15 @@ export function handleChooseStealTarget({
   const stolenPoints = pending?.stolenPoints || 20;
   const victimTeamId = targetTeam?.id;
   const victimTeamName = targetTeam?.name || "Đối thủ";
+  const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+  const extraPotBonus = hasExtraPot ? 5 : 0;
 
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
     // Trong Push-your-luck, cướp điểm nạp vào quỹ pot và tiếp tục chơi
+    const totalPotFromSteal = (stolenPoints + extraPotBonus) * state.potMultiplier;
     state.phase = "PUSH_YOUR_LUCK";
     state.pendingSteal = undefined;
-    state.potPoints = stolenPoints * state.potMultiplier;
+    state.potPoints = totalPotFromSteal;
     state.stolenPointsPot = stolenPoints * state.potMultiplier;
     state.pendingStealVictimId = victimTeamId;
     state.pendingStealVictimName = victimTeamName;
@@ -1872,7 +2102,9 @@ export function handleChooseStealTarget({
       teamId: state.currentTurnTeamId,
       teamName: state.currentTurnTeamName,
       teamColor: state.currentTurnTeamColor,
-      rewardText: `🗡️ Đã nhắm Đội ${victimTeamName}! Nạp +${stolenPoints * state.potMultiplier} điểm cướp vào quỹ điểm!`,
+      rewardText: extraPotBonus > 0
+        ? `🗡️ Đã nhắm Đội ${victimTeamName}! Nạp +${stolenPoints}đ cướp và +${extraPotBonus}đ từ Quỹ thưởng vào quỹ điểm (Tổng +${totalPotFromSteal}đ)!`
+        : `🗡️ Đã nhắm Đội ${victimTeamName}! Nạp +${totalPotFromSteal} điểm cướp vào quỹ điểm!`,
       scoreDelta: 0,
       oldScore: activeTeam?.score || 0,
       newScore: activeTeam?.score || 0,
@@ -1898,15 +2130,20 @@ export function handleChooseStealTarget({
   state.pendingSteal = undefined;
   state.potPoints = 0;
 
+  const finalScoreDelta = stolenPoints + extraPotBonus;
   const oldScore = activeTeam?.score || 0;
-  const newScore = oldScore + stolenPoints;
+  const newScore = oldScore + finalScoreDelta;
+
+  const rewardText = extraPotBonus > 0
+    ? `🗡️ Cướp thành công! Đã chuyển +${stolenPoints} điểm từ Đội ${victimTeamName} và nhận thêm +${extraPotBonus}đ từ Quỹ thưởng (+${finalScoreDelta} điểm cho Đội ${state.currentTurnTeamName})!`
+    : `🗡️ Cướp thành công! Đã chuyển +${stolenPoints} điểm từ Đội ${victimTeamName} sang Đội ${state.currentTurnTeamName}!`;
 
   state.storyResult = {
     teamId: state.currentTurnTeamId,
     teamName: state.currentTurnTeamName,
     teamColor: state.currentTurnTeamColor,
-    rewardText: `🗡️ Cướp thành công! Đã chuyển +${stolenPoints} điểm từ Đội ${victimTeamName} sang Đội ${state.currentTurnTeamName}!`,
-    scoreDelta: stolenPoints,
+    rewardText,
+    scoreDelta: finalScoreDelta,
     oldScore,
     newScore,
   };
@@ -1916,7 +2153,7 @@ export function handleChooseStealTarget({
     victimTeamId,
     victimTeamName,
     stolenPoints,
-    finalScoreDelta: stolenPoints,
+    finalScoreDelta,
   };
 }
 

@@ -403,6 +403,13 @@ export default function PlayPage() {
 
     if (code.startsWith("OFFLINE")) {
       setConnected(true);
+      return () => {
+        if (retryJoinTimerRef.current) {
+          clearTimeout(retryJoinTimerRef.current);
+          retryJoinTimerRef.current = null;
+        }
+        window.removeEventListener("message", handlePostMessage);
+      };
     }
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
@@ -1502,21 +1509,21 @@ export default function PlayPage() {
               isSandbox={isSandbox}
               teams={roomState.teams}
               onChooseAction={(action) => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:choose_action", { action });
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", actionChoice: action, action, teamId: effectiveTeamId }, "*");
                 }
               }}
               onFlipCard={(tileId) => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:flip_card", { tileId });
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
                 }
               }}
               onCashOut={() => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:cash_out");
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
@@ -1526,37 +1533,41 @@ export default function PlayPage() {
                 if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                 }
-                socketRef.current?.emit("admin:mystery:advance_turn");
+                if (!code.startsWith("OFFLINE")) {
+                  socketRef.current?.emit("admin:mystery:advance_turn");
+                }
               }}
               onSelectMiniGame={(miniGameType) => {
                 if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
                 }
-                socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
+                if (!code.startsWith("OFFLINE")) {
+                  socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
+                }
               }}
               onPairsDecision={(choice) => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:pairs_decision", { choice });
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
                 }
               }}
               onChooseStealTarget={(targetTeamId) => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:choose_steal_target", { targetTeamId });
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
                 }
               }}
               onDoorsDecision={(payload) => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:doors_decision", payload);
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_DOORS_DECISION", action: "mystery_doors_decision", ...payload, teamId: effectiveTeamId }, "*");
                 }
               }}
               onTarotRedraw={() => {
-                if (socketRef.current?.connected) {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:tarot_redraw");
                 } else if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");
@@ -1736,21 +1747,21 @@ export default function PlayPage() {
                   isSandbox={isSandbox}
                   teams={roomState.teams}
                   onChooseAction={(action) => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:choose_action", { action });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", action, teamId: effectiveTeamId }, "*");
+                      window.parent.postMessage({ type: "MYSTERY_CHOOSE_ACTION", actionChoice: action, action, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onFlipCard={(tileId) => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:flip_card", { tileId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_FLIP", action: "mystery_flip", tileId, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onCashOut={() => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:cash_out");
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_CASH_OUT", action: "mystery_cash_out", teamId: effectiveTeamId }, "*");
@@ -1760,37 +1771,41 @@ export default function PlayPage() {
                     if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_ADVANCE_TURN", action: "mystery_advance_turn" }, "*");
                     }
-                    socketRef.current?.emit("admin:mystery:advance_turn");
+                    if (!code.startsWith("OFFLINE")) {
+                      socketRef.current?.emit("admin:mystery:advance_turn");
+                    }
                   }}
                   onSelectMiniGame={(miniGameType) => {
                     if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_SET_MINIGAME", action: "mystery_set_minigame", miniGameType }, "*");
                     }
-                    socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
+                    if (!code.startsWith("OFFLINE")) {
+                      socketRef.current?.emit("admin:mystery:set_minigame_type" as any, { miniGameType });
+                    }
                   }}
                   onPairsDecision={(choice) => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:pairs_decision", { choice });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onChooseStealTarget={(targetTeamId) => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:choose_steal_target", { targetTeamId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onDoorsDecision={(payload) => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:doors_decision", payload);
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_DOORS_DECISION", action: "mystery_doors_decision", ...payload, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onTarotRedraw={() => {
-                    if (socketRef.current?.connected) {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:tarot_redraw");
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");

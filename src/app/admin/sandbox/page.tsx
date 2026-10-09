@@ -2273,26 +2273,31 @@ export default function AdminSandboxPage() {
         roomStateRef.current = nextRoomState;
         setRoomState(nextRoomState);
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        addLog(
-          isBomb
-            ? `💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`
-            : `💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`
-        );
+        if (updatedState.turnFinishedReason === "PAIR_MATCHED") {
+          addLog(`🎉 [${activeTeam.name}] GHÉP CẶP THÀNH CÔNG: ${updatedState.storyResult?.rewardText || ""} (+${finalScoreDelta || 0}đ)`);
+          soundManager.playCorrect();
+        } else if (isBomb) {
+          addLog(`💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`);
+          soundManager.playWrong();
+        } else {
+          addLog(`💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`);
+        }
 
         // Memory Pairs mismatch auto reset in offline sandbox
         if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
           setTimeout(() => {
             if (!roomStateRef.current?.mysteryQuestState?.memoryPairsState) return;
             const cur = { ...roomStateRef.current.mysteryQuestState };
-            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState!;
+            const curMem = { ...cur.memoryPairsState! };
+            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = curMem;
             if (promptSecondChance) {
               cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
-              cur.memoryPairsState!.firstFlippedTileId = null;
-              cur.memoryPairsState!.secondFlippedTileId = null;
-              cur.memoryPairsState!.thirdFlippedTileId = null;
-              cur.memoryPairsState!.keptBombTileIds = [];
-              cur.memoryPairsState!.isBombRescueActive = false;
-              cur.memoryPairsState!.isMismatchResolving = false;
+              curMem.firstFlippedTileId = null;
+              curMem.secondFlippedTileId = null;
+              curMem.thirdFlippedTileId = null;
+              curMem.keptBombTileIds = [];
+              curMem.isBombRescueActive = false;
+              curMem.isMismatchResolving = false;
             } else {
               const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
               cur.tiles = cur.tiles.map((t) => {
@@ -2302,12 +2307,13 @@ export default function AdminSandboxPage() {
                 }
                 return { ...t };
               });
-              cur.memoryPairsState!.firstFlippedTileId = null;
-              cur.memoryPairsState!.secondFlippedTileId = null;
-              cur.memoryPairsState!.thirdFlippedTileId = null;
-              cur.memoryPairsState!.isBombRescueActive = false;
-              cur.memoryPairsState!.isMismatchResolving = false;
+              curMem.firstFlippedTileId = null;
+              curMem.secondFlippedTileId = null;
+              curMem.thirdFlippedTileId = null;
+              curMem.isBombRescueActive = false;
+              curMem.isMismatchResolving = false;
             }
+            cur.memoryPairsState = curMem;
             const updatedRState = { ...roomStateRef.current, mysteryQuestState: cur };
             roomStateRef.current = updatedRState;
             setRoomState(updatedRState);

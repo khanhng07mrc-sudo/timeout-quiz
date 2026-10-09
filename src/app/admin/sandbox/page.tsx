@@ -982,7 +982,7 @@ export default function AdminSandboxPage() {
     });
 
     sock.on("game:starting", (p) => {
-      setMatchStarting({ seconds: p.seconds });
+      setMatchStarting({ seconds: p.seconds, endsAt: p.endsAt, total: p.total || p.seconds });
       setQuestionPrepare(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
@@ -1055,6 +1055,7 @@ export default function AdminSandboxPage() {
   intermissionRef.current = intermission;
 
   const syncToIframes = useCallback((overrides?: Record<string, any>) => {
+    if (!isOfflineSandbox) return;
     const payload = {
       roomState: roomStateRef.current,
       currentQuestion: currentQuestionRef.current,
@@ -1070,7 +1071,7 @@ export default function AdminSandboxPage() {
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
-  }, [matchStarting, questionPrepare]);
+  }, [isOfflineSandbox, matchStarting, questionPrepare]);
 
   useEffect(() => {
     syncToIframes();
@@ -3070,7 +3071,7 @@ export default function AdminSandboxPage() {
         points: q.points || 10,
         timeLimit,
         hint: q.hint,
-        order: nextIdx + 1,
+        order: (selectedMode === "MYSTERY_QUEST" && roomState?.mysteryQuestState ? roomState.mysteryQuestState.currentTurnIndex : nextIdx) + 1,
       },
       timeLimit,
       startedAt: Date.now(),
@@ -3127,7 +3128,7 @@ export default function AdminSandboxPage() {
       return {
         ...prev,
         status: "PLAYING",
-        currentQuestionIndex: nextIdx,
+        currentQuestionIndex: selectedMode === "MYSTERY_QUEST" && prev.mysteryQuestState ? prev.mysteryQuestState.currentTurnIndex : nextIdx,
         diceRaceState: nextDice,
         mysteryQuestState: nextMystery,
       };
@@ -3525,8 +3526,11 @@ export default function AdminSandboxPage() {
         offlineWarmupIntervalRef.current = setInterval(() => {
           const rem = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
           if (rem > 0) {
-            setMatchStarting((prev) => (prev?.seconds === rem ? prev : { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal }));
-            syncToIframes({ matchStarting: { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal } });
+            setMatchStarting((prev) => {
+              if (prev?.seconds === rem) return prev;
+              syncToIframes({ matchStarting: { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal } });
+              return { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal };
+            });
           } else {
             proceedAfterWarmup();
           }
@@ -3650,8 +3654,7 @@ export default function AdminSandboxPage() {
     }
 
     if (roomState?.status === "LOBBY") {
-      setMatchStarting({ seconds: 5 });
-      addLog("⚡ Admin: Bắt đầu trận đấu — Đang đếm ngược chuẩn bị 5s...");
+      addLog("⚡ Admin: Bắt đầu trận đấu — Đang khởi động 5s chuẩn bị...");
     }
     adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");

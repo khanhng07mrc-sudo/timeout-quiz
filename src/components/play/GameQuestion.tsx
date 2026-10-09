@@ -316,8 +316,8 @@ export default function GameQuestion({
           <ContinuousTimerRing
             endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
             total={timer.total}
-            radius={20}
-            strokeWidth={5}
+            radius={18}
+            strokeWidth={4}
             color={timerColor}
             remainingText={timerDisplayRemaining}
           />

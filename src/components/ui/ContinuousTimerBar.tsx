@@ -127,7 +127,13 @@ export function ContinuousTimerRing({
   }, [endsAt, total, circumference, isPaused]);
 
   return (
-    <svg className={`shrink-0 ${className}`} viewBox={`0 0 ${size} ${size}`}>
+    <svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      className={`shrink-0 ${className}`}
+      style={{ width: `${size}px`, height: `${size}px`, maxWidth: `${size}px`, maxHeight: `${size}px` }}
+    >
       <circle
         cx={center}
         cy={center}

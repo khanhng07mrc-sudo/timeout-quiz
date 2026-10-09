@@ -1268,13 +1268,13 @@ export default function PlayPage() {
               <ContinuousTimerRing
                 endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
                 total={matchStarting.total || 5}
-                radius={48}
-                strokeWidth={6}
+                radius={30}
+                strokeWidth={5}
                 color="#c084fc"
                 remainingText=""
               />
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-white text-5xl sm:text-6xl font-black drop-shadow-2xl font-mono">
+                <span className="text-white text-3xl sm:text-4xl font-black drop-shadow-2xl font-mono">
                   {matchStarting.seconds}
                 </span>
               </div>

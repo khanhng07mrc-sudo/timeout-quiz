@@ -2839,7 +2839,14 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
+        const mysteryState = roomMysteryQuests.get(room.id);
+        const questionOrder =
+          room.mode === "MYSTERY_QUEST" && mysteryState
+            ? mysteryState.currentTurnIndex + 1
+            : q.order;
+
         const questionState = buildQuestionState(q, {
+          order: questionOrder,
           primaryTeamId,
           primaryTeamName,
           bloomLevel,
@@ -3477,12 +3484,13 @@ export function registerSocketHandlers(io: IO) {
             const firstRoundTargetPoints = (room.mode === "MYSTERY_QUEST" || room.mode === "DICE_RACE") ? 10 : undefined;
             const nextQ = getNextUniqueQuestion(room.id, questions, 0, firstRoundTargetPoints);
             if (nextQ) {
-              room.currentQuestion = nextQ.index;
+              const currentQIndex = room.mode === "MYSTERY_QUEST" ? 0 : nextQ.index;
+              room.currentQuestion = currentQIndex;
               room.status = "PLAYING";
               roomCache.set(room.id, room);
               await prisma.room.update({
                 where: { id: room.id },
-                data: { currentQuestion: nextQ.index, status: "PLAYING" },
+                data: { currentQuestion: currentQIndex, status: "PLAYING" },
               }).catch(console.error);
 
               await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
@@ -4917,10 +4925,10 @@ export function registerSocketHandlers(io: IO) {
       const questions = await getRoomQuestions(room.id);
       const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetPoints);
       if (nextQ) {
-        room.currentQuestion = nextQ.index;
+        room.currentQuestion = nextTurnIndex;
         room.status = "PLAYING";
         roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextQ.index, status: "PLAYING" } }).catch(console.error);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextTurnIndex, status: "PLAYING" } }).catch(console.error);
         await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
       }
     }
@@ -8491,6 +8499,12 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
   const effectiveStatus = (cachedRoom?.status ?? room.status) as any;
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
 
+  const mysteryState = roomMysteryQuests.get(room.id);
+  const effectiveQuestionIndex =
+    room.mode === "MYSTERY_QUEST" && mysteryState
+      ? mysteryState.currentTurnIndex
+      : effectiveCurrentQuestion;
+
   return {
     id: room.id,
     code: room.code,
@@ -8498,7 +8512,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
     mode: room.mode as any,
     teamMode: room.teamMode as any,
     status: effectiveStatus,
-    currentQuestionIndex: effectiveCurrentQuestion,
+    currentQuestionIndex: effectiveQuestionIndex,
     totalQuestions: getTargetTotalQuestions(
       room.mode as any,
       config,
@@ -8520,6 +8534,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
 function buildQuestionState(
   q: any,
   extra?: {
+    order?: number;
     primaryTeamId?: string;
     primaryTeamName?: string;
     bloomLevel?: BloomLevel;
@@ -8566,7 +8581,7 @@ function buildQuestionState(
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,
       hint: q.hint,
-      order: q.order,
+      order: extra?.order ?? q.order,
       points: q.points,
       bloomLevel,
     },

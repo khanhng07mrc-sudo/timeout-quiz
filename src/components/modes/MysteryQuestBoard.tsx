@@ -1028,7 +1028,7 @@ export default function MysteryQuestBoard({
         {/* ════════════════════════════════════════════════════════════════════
             4. VARIANT: PUSH_YOUR_LUCK (Chồng Bài Xếp Lớp Vô Hạn Né Bom)
         ════════════════════════════════════════════════════════════════════ */}
-        {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && (() => {
+        {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && phase === "PUSH_YOUR_LUCK" && (() => {
           const unopenedTile = tiles.find((t) => !t.isOpened && !optimisticOpenedIds.has(t.id));
           const openedTiles = tiles.filter((t) => t.isOpened || optimisticOpenedIds.has(t.id));
           const latestCard = lastFlippedTile || (openedTiles.length > 0 ? openedTiles[openedTiles.length - 1] : undefined);

@@ -833,13 +833,13 @@ export default function DisplayPage() {
                 <ContinuousTimerRing
                   endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
                   total={matchStarting.total || 5}
-                  radius={72}
-                  strokeWidth={8}
+                  radius={36}
+                  strokeWidth={5}
                   color="#c084fc"
                   remainingText=""
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white text-7xl sm:text-8xl font-black drop-shadow-2xl font-mono">
+                  <span className="text-white text-4xl sm:text-5xl font-black drop-shadow-2xl font-mono">
                     {matchStarting.seconds}
                   </span>
                 </div>
@@ -1443,8 +1443,8 @@ export default function DisplayPage() {
                     <ContinuousTimerRing
                       endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
                       total={timer.total}
-                      radius={28}
-                      strokeWidth={6}
+                      radius={20}
+                      strokeWidth={4}
                       color={timerColor}
                       remainingText={timerDisplayRemaining}
                     />

@@ -1931,36 +1931,6 @@ function handleFlipCard({
   state.cardsFlippedCount++;
   const isBombCard = tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY" || tile.type === "BOMB_MINOR" || tile.type === "BOMB_MAJOR" || tile.type === "BOMB_DOOM";
   if (isBombCard) {
-    if (state.hasShield) {
-      state.hasShield = false;
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! Qu\u1EA3 bom ${tile.storyTitle} b\u1ECB v\xF4 hi\u1EC7u h\xF3a ho\xE0n to\xE0n! \u0110i\u1EC3m qu\u1EF9 ${state.potPoints}\u0111 \u0111\u01B0\u1EE3c gi\u1EEF nguy\xEAn v\xE0 b\u1EA1n ti\u1EBFp t\u1EE5c ch\u01A1i!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0
-      };
-      const nextTopCard2 = generateNextPushYourLuckCard({
-        theme: state.theme,
-        drawIndex: state.cardsFlippedCount + 1,
-        basePoints: state.baseQuestionPoints || 10,
-        teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
-        options: {
-          currentRound: state.currentRound,
-          teams: allTeams,
-          currentTeamId: team.id
-        }
-      });
-      state.tiles.push(nextTopCard2);
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0
-      };
-    }
     let penalty = 0;
     let penaltyText = "";
     let recipientTeamId = void 0;
@@ -2158,10 +2128,10 @@ function handleFlipCard({
         finalScoreDelta: 0
       };
     } else {
-      state.potPoints += stealAmount * state.potMultiplier;
+      state.potPoints = stealAmount * state.potMultiplier;
     }
   } else {
-    state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
+    state.potPoints = (tile.deltaPoints || 15) * state.potMultiplier;
   }
   const nextTopCard = generateNextPushYourLuckCard({
     theme: state.theme,
@@ -2298,8 +2268,8 @@ function handleChooseStealTarget({
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
     state.phase = "PUSH_YOUR_LUCK";
     state.pendingSteal = void 0;
-    state.potPoints += stolenPoints * state.potMultiplier;
-    state.stolenPointsPot = (state.stolenPointsPot || 0) + stolenPoints * state.potMultiplier;
+    state.potPoints = stolenPoints * state.potMultiplier;
+    state.stolenPointsPot = stolenPoints * state.potMultiplier;
     state.pendingStealVictimId = victimTeamId;
     state.pendingStealVictimName = victimTeamName;
     state.storyResult = {
@@ -5182,7 +5152,10 @@ function registerSocketHandlers(io2) {
             roomBuzzWindowTimers.delete(qKey);
           }
         }
+        const mysteryState = roomMysteryQuests.get(room.id);
+        const questionOrder = room.mode === "MYSTERY_QUEST" && mysteryState ? mysteryState.currentTurnIndex + 1 : q.order;
         const questionState = buildQuestionState(q, {
+          order: questionOrder,
           primaryTeamId,
           primaryTeamName,
           bloomLevel,
@@ -5735,12 +5708,13 @@ function registerSocketHandlers(io2) {
             const firstRoundTargetPoints = room.mode === "MYSTERY_QUEST" || room.mode === "DICE_RACE" ? 10 : void 0;
             const nextQ2 = getNextUniqueQuestion(room.id, questions, 0, firstRoundTargetPoints);
             if (nextQ2) {
-              room.currentQuestion = nextQ2.index;
+              const currentQIndex = room.mode === "MYSTERY_QUEST" ? 0 : nextQ2.index;
+              room.currentQuestion = currentQIndex;
               room.status = "PLAYING";
               roomCache.set(room.id, room);
               await prisma.room.update({
                 where: { id: room.id },
-                data: { currentQuestion: nextQ2.index, status: "PLAYING" }
+                data: { currentQuestion: currentQIndex, status: "PLAYING" }
               }).catch(console.error);
               await startQuestionPrepareAndLaunch(room, questions, nextQ2.index, nextQ2.question);
               const refreshedState = await buildRoomState(room.id);
@@ -6923,10 +6897,10 @@ function registerSocketHandlers(io2) {
       const questions = await getRoomQuestions(room.id);
       const nextQ = getNextUniqueQuestion(room.id, questions, void 0, targetPoints);
       if (nextQ) {
-        room.currentQuestion = nextQ.index;
+        room.currentQuestion = nextTurnIndex;
         room.status = "PLAYING";
         roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextQ.index, status: "PLAYING" } }).catch(console.error);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextTurnIndex, status: "PLAYING" } }).catch(console.error);
         await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
       }
     }
@@ -9810,6 +9784,8 @@ async function buildRoomState(roomId) {
   const cachedRoom = roomCache.get(roomId);
   const effectiveStatus = cachedRoom?.status ?? room.status;
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
+  const mysteryState = roomMysteryQuests.get(room.id);
+  const effectiveQuestionIndex = room.mode === "MYSTERY_QUEST" && mysteryState ? mysteryState.currentTurnIndex : effectiveCurrentQuestion;
   return {
     id: room.id,
     code: room.code,
@@ -9817,7 +9793,7 @@ async function buildRoomState(roomId) {
     mode: room.mode,
     teamMode: room.teamMode,
     status: effectiveStatus,
-    currentQuestionIndex: effectiveCurrentQuestion,
+    currentQuestionIndex: effectiveQuestionIndex,
     totalQuestions: getTargetTotalQuestions(
       room.mode,
       config,
@@ -9848,7 +9824,7 @@ function buildQuestionState(q, extra) {
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,
       hint: q.hint,
-      order: q.order,
+      order: extra?.order ?? q.order,
       points: q.points,
       bloomLevel
     },

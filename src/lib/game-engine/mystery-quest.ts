@@ -1519,40 +1519,7 @@ export function handleFlipCard({
     tile.type === "BOMB_DOOM";
 
   if (isBombCard) {
-    // Shield Protection Check:
-    if (state.hasShield) {
-      state.hasShield = false; // consume shield
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Quả bom ${tile.storyTitle} bị vô hiệu hóa hoàn toàn! Điểm quỹ ${state.potPoints}đ được giữ nguyên và bạn tiếp tục chơi!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0,
-      };
-
-      // Draw next card on top of stack
-      const nextTopCard = generateNextPushYourLuckCard({
-        theme: state.theme,
-        drawIndex: state.cardsFlippedCount + 1,
-        basePoints: state.baseQuestionPoints || 10,
-        teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
-        options: {
-          currentRound: state.currentRound,
-          teams: allTeams,
-          currentTeamId: team.id,
-        },
-      });
-      state.tiles.push(nextTopCard);
-
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-      };
-    }
+    // Dính bom: Mất quyền lật ngay lập tức và chịu tác động của loại bom dính phải
 
     // Standard Bomb Penalties:
     let penalty = 0;
@@ -1784,10 +1751,12 @@ export function handleFlipCard({
         finalScoreDelta: 0,
       };
     } else {
-      state.potPoints += stealAmount * state.potMultiplier;
+      // Về nguyên tắc: chỉ tính phần thưởng ở thẻ rút cuối, không cộng dồn!
+      state.potPoints = stealAmount * state.potMultiplier;
     }
   } else {
-    state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
+    // Về nguyên tắc: chỉ tính phần thưởng ở thẻ rút cuối, không cộng dồn!
+    state.potPoints = (tile.deltaPoints || 15) * state.potMultiplier;
   }
 
   // Chồng bài vô hạn: Tự động sinh lá bài tiếp theo úp mặt trên đỉnh chồng bài sẵn sàng rút tiếp!
@@ -1987,8 +1956,8 @@ export function handleChooseStealTarget({
     // Trong Push-your-luck, cướp điểm nạp vào quỹ pot và tiếp tục chơi
     state.phase = "PUSH_YOUR_LUCK";
     state.pendingSteal = undefined;
-    state.potPoints += stolenPoints * state.potMultiplier;
-    state.stolenPointsPot = (state.stolenPointsPot || 0) + stolenPoints * state.potMultiplier;
+    state.potPoints = stolenPoints * state.potMultiplier;
+    state.stolenPointsPot = stolenPoints * state.potMultiplier;
     state.pendingStealVictimId = victimTeamId;
     state.pendingStealVictimName = victimTeamName;
 

@@ -1381,6 +1381,10 @@ function generateMysteryStageForTurn({
       break;
     case "ONE_SHOT_DOORS":
       tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
+      if (promoPerk === "PEEK_PROMO") {
+        const bombDoor = tiles.find((t) => t.type !== "REWARD");
+        if (bombDoor) bombDoor.isPeeked = true;
+      }
       oneShotState = {
         chosenTileId: void 0,
         selectedDoorIds: [],
@@ -1868,95 +1872,126 @@ function handleFlipCard({
     if (osState.phase === "SELECTING" || !osState.phase) {
       const selected = osState.selectedDoorIds || [];
       if (selected.includes(tileId)) {
-        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+        osState.selectedDoorIds = selected.filter((id) => id !== tileId);
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
       selected.push(tileId);
       osState.selectedDoorIds = [...selected];
       if (selected.length < 2) {
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
-      const hasBomb = state.tiles.some(
-        (t) => selected.includes(t.id) && t.type !== "REWARD"
-      );
-      if (!hasBomb) {
-        osState.hasBombDetected = false;
-        osState.phase = "RESOLVED";
-        osState.allRevealed = true;
-        state.tiles.forEach((t) => {
-          t.isOpened = true;
-        });
-        const chosenTiles = state.tiles.filter((t) => selected.includes(t.id));
-        const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
-        const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
-        const multiplier = state.potMultiplier || 1;
-        const stealTile = chosenTiles.find((t) => t.effectType === "STEAL_POINTS");
-        const nonStealTiles = chosenTiles.filter((t) => t.effectType !== "STEAL_POINTS");
-        const nonStealTotal = nonStealTiles.reduce((sum, t) => sum + (t.deltaPoints || 0), 0);
-        if (stealTile) {
-          const stealAmount = stealTile.deltaPoints || 20;
-          const eligibleTeams = (allTeams || []).filter(
-            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-          );
-          if (eligibleTeams.length > 0) {
-            state.phase = "STEAL_TARGET_SELECT";
-            state.pendingSteal = {
-              stolenPoints: stealAmount,
-              eligibleTeamIds: eligibleTeams.map((t) => t.id),
-              tileTitle: stealTile.storyTitle,
-              tileIcon: stealTile.icon
-            };
-            const baseDelta = nonStealTotal * multiplier + extraPotBonus2;
-            return {
-              updatedState: { ...state },
-              isBomb: false,
-              scorePenalty: 0,
-              finalScoreDelta: baseDelta
-            };
-          }
+      osState.phase = "STAGE_2_PICK";
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+    }
+    if (osState.phase === "STAGE_2_PICK" || osState.phase === "SCANNED") {
+      const selected = osState.selectedDoorIds || [];
+      if (selected.includes(tileId)) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+      osState.chosenFinalDoorId = tileId;
+      osState.phase = "RESOLVED";
+      osState.allRevealed = true;
+      state.tiles.forEach((t) => {
+        t.isOpened = true;
+      });
+      const isBomb = tile2.type !== "REWARD";
+      if (isBomb) {
+        if (state.hasShield) {
+          state.hasShield = false;
+          state.potPoints = 0;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "DOOR_CHOSEN";
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY BOM! C\u1EEDa b\u1EABy n\u1ED5 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m!`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
         }
-        const rawTotal = chosenTiles.reduce((sum, t) => sum + (t.deltaPoints || 0), 0);
-        const finalDelta = rawTotal * multiplier + extraPotBonus2;
+        const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
         state.potPoints = 0;
+        state.bombExploded = {
+          type: "MAJOR",
+          title: tile2.storyTitle,
+          description: tile2.storyDescription,
+          penaltyText: `M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+        };
         state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "DOOR_CHOSEN";
-        const oldScore = team.score || 0;
-        const newScore = oldScore + finalDelta;
-        const rewardText = `\u{1F389} RADAR AN TO\xC0N TUY\u1EC6T \u0110\u1ED0I! C\u1EA3 2 c\xE1nh c\u1EEDa #${selected[0]} & #${selected[1]} \u0111\u1EC1u kh\xF4ng c\xF3 bom! Nh\u1EADn tr\u1ECDn v\u1EB9n ph\u1EA7n th\u01B0\u1EDFng c\u1EA3 2 c\u1EEDa: +${finalDelta} \u0111i\u1EC3m!`;
+        state.turnFinishedReason = "BOMB_HIT";
+        const oldScore2 = team.score || 0;
+        const newScore2 = Math.max(0, oldScore2 - penalty);
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText,
-          scoreDelta: finalDelta,
-          oldScore,
-          newScore
+          rewardText: `\u{1F4A5} M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom! Ph\xE1t n\u1ED5 v\xE0 b\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+          scoreDelta: -penalty,
+          oldScore: oldScore2,
+          newScore: newScore2
         };
         return {
           updatedState: { ...state },
-          isBomb: false,
-          scorePenalty: 0,
-          finalScoreDelta: finalDelta
-        };
-      } else {
-        osState.hasBombDetected = true;
-        osState.phase = "SCANNED";
-        return {
-          updatedState: { ...state },
-          isBomb: false,
-          scorePenalty: 0
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
         };
       }
-    }
-    if (osState.phase === "SCANNED") {
-      if (osState.selectedDoorIds && osState.selectedDoorIds.includes(tileId)) {
-        return handleOneShotDoorsDecision({
-          state,
-          team,
-          allTeams,
-          decision: "RISK_OPEN",
-          chosenDoorId: tileId
-        });
+      const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+      const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
+      const multiplier = state.potMultiplier || 1;
+      if (tile2.effectType === "STEAL_POINTS") {
+        const stealAmount = tile2.deltaPoints || 20;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: tile2.storyTitle,
+            tileIcon: tile2.icon
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: extraPotBonus2
+          };
+        }
       }
+      const baseReward = tile2.deltaPoints || 10;
+      const finalDelta = baseReward * multiplier + extraPotBonus2;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "DOOR_CHOSEN";
+      const oldScore = team.score || 0;
+      const newScore = oldScore + finalDelta;
+      const rewardText = extraPotBonus2 > 0 ? `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn +${baseReward * multiplier}\u0111 v\xE0 +${extraPotBonus2}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: finalDelta
+      };
     }
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
   }
@@ -7064,7 +7099,7 @@ function registerSocketHandlers(io2) {
           audioTrigger = "NONE";
         }
       } else if (normType === "ONE_SHOT_DOORS") {
-        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+        audioTrigger = updatedState.oneShotState?.phase === "RESOLVED" ? isBomb ? "WRONG" : "CORRECT" : "NONE";
       } else if (normType === "TAROT_DESTINY") {
         audioTrigger = isBomb ? "WRONG" : "CORRECT";
       } else if (normType === "PUSH_YOUR_LUCK") {
@@ -7431,7 +7466,7 @@ function registerSocketHandlers(io2) {
       const room = player.room;
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+      if (!questState || questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK") return;
       if (questState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
@@ -7444,7 +7479,7 @@ function registerSocketHandlers(io2) {
       const room = await getAdminRoom(socket, code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+      if (!questState || questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK") return;
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
       await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId);

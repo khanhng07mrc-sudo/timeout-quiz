@@ -4752,7 +4752,7 @@ export function registerSocketHandlers(io: IO) {
           audioTrigger = "NONE";
         }
       } else if (normType === "ONE_SHOT_DOORS") {
-        audioTrigger = isBomb ? "WRONG" : "CORRECT";
+        audioTrigger = updatedState.oneShotState?.phase === "RESOLVED" ? (isBomb ? "WRONG" : "CORRECT") : "NONE";
       } else if (normType === "TAROT_DESTINY") {
         audioTrigger = isBomb ? "WRONG" : "CORRECT";
       } else if (normType === "PUSH_YOUR_LUCK") {
@@ -5211,7 +5211,7 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+      if (!questState || (questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK")) return;
 
       if (questState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
@@ -5229,7 +5229,7 @@ export function registerSocketHandlers(io: IO) {
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+      if (!questState || (questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK")) return;
 
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;

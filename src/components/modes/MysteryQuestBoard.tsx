@@ -115,8 +115,11 @@ export default function MysteryQuestBoard({
     if (memoryPairsState?.isMismatchResolving) return;
 
     isFlippingRef.current = true;
-    // Instant optimistic visual feedback (<16ms)
-    setOptimisticOpenedIds((prev) => new Set(prev).add(tile.id));
+    // Instant optimistic visual feedback (<16ms) - Trong ONE_SHOT_DOORS Giai đoạn 1 thì chỉ chọn để ra riêng (vẫn úp, không lật)
+    const isOneShot = miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS";
+    if (!isOneShot || oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED") {
+      setOptimisticOpenedIds((prev) => new Set(prev).add(tile.id));
+    }
     setFlippingTileId(tile.id);
     if (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") {
       setIsDrawingAnimation(true);
@@ -125,7 +128,7 @@ export default function MysteryQuestBoard({
     setTimeout(() => {
       setFlippingTileId(null);
       isFlippingRef.current = false;
-    }, 550);
+    }, 450);
 
     onFlipCard?.(tile.id);
   };
@@ -137,7 +140,7 @@ export default function MysteryQuestBoard({
       case "ONE_SHOT_DOORS":
       case "DOORS":
       case "CHESTS":
-        return { title: "🚪 Chọn 1 Trong 3 Cửa", badge: "Single Pick" };
+        return { title: "🚪 4 Cánh Cửa Bí Mật (2 Giai Đoạn)", badge: "4 Secret Doors" };
       case "TAROT_DESTINY":
       case "TAROT_CARDS":
         return { title: "🔮 Rút Thẻ Bài Tarot Thần Số", badge: "Tarot of Destiny" };
@@ -529,19 +532,21 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl text-center space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-black text-amber-300 uppercase tracking-wider text-[11px]">
-                    🚪 4 CÁNH CỬA BÍ MẬT (RADAR SCAN)
+                    🚪 4 CÁNH CỬA BÍ MẬT (2 GIAI ĐOẠN)
                   </span>
                   <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[10px]">
-                    {oneShotState?.phase === "SCANNED" ? "🚨 CẢNH BÁO BÃI MÌN" : `Đã chọn: ${oneShotState?.selectedDoorIds?.length || 0}/2`}
+                    {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED"
+                      ? "✨ GIAI ĐOẠN 2: CHỌN CỬA ĐANG SÁNG"
+                      : `Giai đoạn 1: Để ra riêng (${oneShotState?.selectedDoorIds?.length || 0}/2 cửa)`}
                   </span>
                 </div>
-                {oneShotState?.phase === "SCANNED" ? (
-                  <p className="text-[11px] text-rose-300 font-bold leading-snug animate-pulse">
-                    🚨 CẢNH BÁO: Radar phát hiện có BẪY BOM trong 2 cửa đã chọn! Chọn Dừng Lại bảo toàn hoặc Liều mở 1 trong 2 cửa!
+                {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED" ? (
+                  <p className="text-[11px] text-yellow-300 font-bold leading-snug animate-pulse">
+                    ✨ GIAI ĐOẠN 2: 2 cánh cửa đã chọn đã được để ra riêng (vẫn úp). Hãy chọn 1 trong 2 cánh cửa còn lại ĐANG SÁNG để mở!
                   </p>
                 ) : (
                   <p className="text-[11px] text-white/85 leading-snug">
-                    Hãy chọn 2 cánh cửa để kích hoạt máy quét Radar! Nếu cả 2 an toàn, nhận trọn cả 2 cửa! Nếu dính bom, Radar sẽ cảnh báo bạn!
+                    Giai đoạn 1: Hãy chọn 2 cánh cửa để ĐỂ RA RIÊNG (vẫn úp xuống, chưa lật). Ở giai đoạn 2, bạn sẽ mở 1 trong 2 cánh cửa còn lại đang sáng!
                   </p>
                 )}
               </div>
@@ -800,7 +805,22 @@ export default function MysteryQuestBoard({
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
           <div className="max-w-3xl mx-auto py-1">
-            {/* Stage 2 Radar Alert Modal Banner */}
+            {/* Stage 2 Glowing Doors Instruction Banner */}
+            {oneShotState?.phase === "STAGE_2_PICK" && (
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-1 animate-bounce-in max-w-xl mx-auto">
+                <div className="text-2xl animate-pulse">✨</div>
+                <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
+                  GIAI ĐOẠN 2: HÃY CHỌN 1 TRONG 2 CÁNH CỬA ĐANG SÁNG!
+                </h4>
+                <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
+                  2 cánh cửa #{oneShotState.selectedDoorIds?.[0]} & #{oneShotState.selectedDoorIds?.[1]} đã được để ra riêng (vẫn úp).
+                  <br />
+                  Bây giờ bạn hãy chọn mở <strong className="text-yellow-300">1 trong 2 cánh cửa còn lại đang sáng</strong> bên dưới!
+                </p>
+              </div>
+            )}
+
+            {/* Stage 2 Radar Alert Modal Banner (Legacy fallback) */}
             {oneShotState?.phase === "SCANNED" && (
               <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-red-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
                 <div className="text-3xl animate-pulse">🚨</div>
@@ -831,43 +851,36 @@ export default function MysteryQuestBoard({
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               {tiles.map((tile) => {
                 const isSelected = Boolean(oneShotState?.selectedDoorIds?.includes(tile.id));
-                const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id || (isSelected && oneShotState?.phase === "RESOLVED" && !oneShotState.hasBombDetected);
+                const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
                 const isBomb = tile.type !== "REWARD";
                 const isSteal = tile.effectType === "STEAL_POINTS";
+                const isStage2 = oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED";
 
-                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+                const isCardOpened = tile.isOpened || (isStage2 && optimisticOpenedIds.has(tile.id));
                 if (!isCardOpened) {
                   return (
                     <button
                       key={tile.id}
                       type="button"
-                      onClick={() => {
-                        if (oneShotState?.phase === "SCANNED") {
-                          if (isSelected) {
-                            onDoorsDecision
-                              ? onDoorsDecision({ decision: "RISK_OPEN", chosenDoorId: tile.id })
-                              : handleTileClick(tile);
-                          }
-                        } else {
-                          handleTileClick(tile);
-                        }
-                      }}
+                      onClick={() => handleTileClick(tile)}
                       disabled={
                         !canInteract ||
-                        (oneShotState?.phase === "SCANNED" ? !isSelected : isSelected)
+                        (isStage2 && isSelected)
                       }
-                      className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
-                        isSelected
-                          ? oneShotState?.phase === "SCANNED"
-                            ? "bg-gradient-to-b from-rose-900/90 via-red-950/95 to-black border-rose-400 ring-4 ring-rose-500/60 shadow-2xl scale-103 animate-pulse"
-                            : "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/50 shadow-2xl scale-103"
-                          : canInteract && (!oneShotState?.phase || oneShotState.phase === "SELECTING")
-                          ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-103 shadow-2xl hover:shadow-amber-500/50 group"
+                      className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 ${
+                        isStage2
+                          ? isSelected
+                            ? "bg-stone-900/60 border-stone-600 opacity-40 grayscale-40 cursor-not-allowed scale-95"
+                            : "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/80 shadow-[0_0_30px_rgba(250,204,21,0.7)] scale-103 animate-pulse cursor-pointer hover:scale-105"
+                          : isSelected
+                          ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-yellow-300 ring-2 ring-yellow-400/60 shadow-xl scale-101 cursor-pointer"
+                          : canInteract
+                          ? "bg-gradient-to-b from-amber-800/70 via-stone-900/90 to-black border-amber-400/70 hover:border-yellow-300 hover:scale-103 shadow-xl hover:shadow-amber-500/50 cursor-pointer group"
                           : "bg-black/50 border-white/20 opacity-60 cursor-default"
                       }`}
                     >
                       <div className="w-full flex items-center justify-between">
-                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/60 border border-white/30 text-[10px] sm:text-[11px] font-black text-white flex items-center justify-center">
+                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/60 border border-white/30 text-[10px] sm:text-[11px] font-black text-white flex items-center justify-center font-mono">
                           #{tile.id}
                         </span>
                         {tile.isPeeked && (
@@ -875,23 +888,36 @@ export default function MysteryQuestBoard({
                             👁️ BẪY BOM
                           </span>
                         )}
-                        {!tile.isPeeked && isSelected && (
-                          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded ${
-                            oneShotState?.phase === "SCANNED" ? "bg-rose-500 text-white animate-pulse" : "bg-yellow-400 text-black font-extrabold"
-                          }`}>
-                            {oneShotState?.phase === "SCANNED" ? "MỞ CỬA? 🎲" : "ĐÃ CHỌN ✨"}
-                          </span>
-                        )}
-                        {!tile.isPeeked && !isSelected && canInteract && (!oneShotState?.phase || oneShotState.phase === "SELECTING") && (
-                          <span className="text-[8px] sm:text-[9px] font-black text-yellow-300 animate-pulse">
-                            CHỌN CỬA ✨
-                          </span>
+                        {!tile.isPeeked && (
+                          <>
+                            {isStage2 ? (
+                              isSelected ? (
+                                <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-stone-700 text-stone-300">
+                                  ĐÃ ĐỂ RA RIÊNG 📦
+                                </span>
+                              ) : (
+                                <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-yellow-400 text-black font-extrabold animate-pulse">
+                                  CHỌN MỞ ✨
+                                </span>
+                              )
+                            ) : isSelected ? (
+                              <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500 text-black font-extrabold">
+                                ĐỂ RA RIÊNG ({oneShotState?.selectedDoorIds?.indexOf(tile.id)! + 1}/2) 📦
+                              </span>
+                            ) : canInteract ? (
+                              <span className="text-[8px] sm:text-[9px] font-black text-yellow-300 animate-pulse">
+                                CHỌN RA RIÊNG ✨
+                              </span>
+                            ) : null}
+                          </>
                         )}
                       </div>
 
                       {/* Giant Door Graphic */}
-                      <div className="text-3xl sm:text-5xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
-                        🚪
+                      <div className={`text-3xl sm:text-5xl my-auto transition-transform duration-300 drop-shadow-2xl ${
+                        isStage2 && !isSelected ? "scale-110" : "group-hover:scale-110"
+                      }`}>
+                        {isStage2 && !isSelected ? "🚪✨" : "🚪"}
                       </div>
 
                       <div className="w-full text-center pb-0.5">
@@ -899,7 +925,13 @@ export default function MysteryQuestBoard({
                           {tile.label}
                         </span>
                         <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
-                          Cánh Cửa Bí Ẩn
+                          {isStage2
+                            ? isSelected
+                              ? "Đã để ra riêng"
+                              : "Đang sáng · Bấm mở!"
+                            : isSelected
+                            ? "Đã để ra riêng"
+                            : "Cánh Cửa Bí Ẩn"}
                         </span>
                       </div>
                     </button>
@@ -911,7 +943,7 @@ export default function MysteryQuestBoard({
                   <div
                     key={tile.id}
                     className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
-                      isChosenFinal ? "ring-4 ring-yellow-400 scale-103 z-10" : isSelected ? "ring-2 ring-white/50" : "opacity-80"
+                      isChosenFinal ? "ring-4 ring-yellow-400 scale-103 z-10" : isSelected ? "ring-2 ring-white/30 opacity-85" : "opacity-75"
                     } ${
                       isBomb
                         ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
@@ -927,7 +959,11 @@ export default function MysteryQuestBoard({
                           isChosenFinal
                             ? isSteal
                               ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"
-                              : "bg-yellow-400 text-black font-extrabold"
+                              : isBomb
+                              ? "bg-red-500 text-white font-extrabold ring-1 ring-white"
+                              : "bg-yellow-400 text-black font-extrabold ring-1 ring-white"
+                            : isSelected
+                            ? "bg-stone-700 text-stone-200"
                             : isBomb
                             ? "bg-red-500/30 text-red-300"
                             : isSteal
@@ -935,7 +971,19 @@ export default function MysteryQuestBoard({
                             : "bg-emerald-500/30 text-emerald-300"
                         }`}
                       >
-                        {isChosenFinal ? (isSteal ? "CƯỚP ĐIỂM 🗡️" : "ĐÃ MỞ ⭐") : isBomb ? "BẪY BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
+                        {isChosenFinal
+                          ? isSteal
+                            ? "CƯỚP ĐIỂM 🗡️"
+                            : isBomb
+                            ? "ĐÃ MỞ BOM 💥"
+                            : "ĐÃ MỞ ⭐"
+                          : isSelected
+                          ? "ĐỂ RA RIÊNG 📦"
+                          : isBomb
+                          ? "BẪY BOM 💥"
+                          : isSteal
+                          ? "CƯỚP ĐIỂM 🗡️"
+                          : "THƯỞNG ⭐"}
                       </span>
                     </div>
 

@@ -993,9 +993,9 @@ export interface MysteryQuestState {
   };
   oneShotState?: {
     chosenTileId?: number;
-    selectedDoorIds?: number[]; // 2 cửa đã chọn ở Giai đoạn 1
-    hasBombDetected?: boolean;  // Có bom trong 2 cửa đã chọn hay không
-    phase?: "SELECTING" | "SCANNED" | "RESOLVED";
+    selectedDoorIds?: number[]; // 2 cửa đã chọn ở Giai đoạn 1 (để ra riêng, vẫn úp mặt)
+    hasBombDetected?: boolean;  // Backward compat
+    phase?: "SELECTING" | "STAGE_2_PICK" | "SCANNED" | "RESOLVED";
     revealedSafeDoorIds?: number[];
     chosenFinalDoorId?: number;
     allRevealed?: boolean;

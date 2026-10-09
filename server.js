@@ -2687,6 +2687,25 @@ function handleTarotRedraw({
   state.tarotState.chosenCardId = void 0;
   return { updatedState: { ...state } };
 }
+function handleTarotConfirmKeep({
+  state,
+  team,
+  allTeams = []
+}) {
+  const chosenId = state.tarotState?.chosenCardId;
+  if (!chosenId) return { updatedState: state, finalScoreDelta: 0 };
+  if (state.tarotState) {
+    state.tarotState.canRedraw = false;
+  }
+  const tile = state.tiles.find((t) => t.id === chosenId);
+  if (tile) tile.isOpened = false;
+  return handleFlipCard({
+    state,
+    tileId: chosenId,
+    team,
+    allTeams
+  });
+}
 
 // src/lib/game-engine/powerups.ts
 var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
@@ -7289,6 +7308,33 @@ function registerSocketHandlers(io2) {
       roomMysteryQuests.set(room.id, updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
     };
+    const executeMysteryTarotKeep = async (room, questState, team) => {
+      const teams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        orderBy: { createdAt: "asc" }
+      });
+      const { updatedState, finalScoreDelta } = handleTarotConfirmKeep({
+        state: questState,
+        team,
+        allTeams: teams
+      });
+      roomMysteryQuests.set(room.id, updatedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      const delta = finalScoreDelta || 0;
+      if (delta !== 0) {
+        const newScore = Math.max(0, (team.score || 0) + delta);
+        await prisma.team.update({
+          where: { id: team.id },
+          data: { score: newScore }
+        });
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: newScore, delta }
+        ]);
+      }
+      buildRoomState(room.id).then((rState) => {
+        io2.to(`room:${room.code}`).emit("room:state", rState);
+      }).catch(console.error);
+    };
     async function executeMysteryAdvanceTurn(room, questState) {
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
@@ -7537,6 +7583,35 @@ function registerSocketHandlers(io2) {
       if (!questState || !questState.tarotState?.canRedraw) return;
       await executeMysteryTarotRedraw(room, questState);
     });
+    socket.on("game:mystery:tarot_keep", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.chosenCardId) return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      await executeMysteryTarotKeep(room, questState, team);
+    });
+    socket.on("admin:mystery:tarot_keep", async ({ code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.chosenCardId) return;
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+      await executeMysteryTarotKeep(room, questState, team);
+    });
     socket.on("game:mystery:steal_buzz", async () => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
@@ -7668,8 +7743,8 @@ function registerSocketHandlers(io2) {
       if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
       await executeMysteryChooseStealTarget(room, questState, payload.targetTeamId);
     });
-    socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore, code }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
       const team = await prisma.team.findUnique({ where: { id: teamId } });
       if (!team) return;
@@ -7689,6 +7764,8 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("game:score:update", [
         { teamId, score: newScore, delta: effectiveDelta }
       ]);
+      const updatedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", updatedState);
     });
     socket.on("admin:sandbox:set_active_team", async ({ teamId, teamIndex, code }) => {
       const room = await getAdminRoom(socket, code);

@@ -1333,7 +1333,7 @@ export interface ClientToServerEvents {
   "admin:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
   "admin:bounceback:judge": (payload: { isCorrect: boolean; code?: string }) => void;
   "game:bounceback:select_points": (payload: { points: 10 | 20 | 30 }) => void;
-  "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number }) => void;
+  "admin:sandbox:adjust_score": (payload: { teamId: string; delta?: number; setScore?: number; code?: string }) => void;
   "admin:submit:answer": (payload: { questionId: string; teamId?: string; playerId?: string; answer: string | string[]; code?: string }) => void;
   "admin:answer:override_verdict": (payload: { questionId: string; teamId?: string; playerId?: string; answerId?: string; isCorrect: boolean; code?: string }) => void;
   "admin:join": (code: string, callback?: (result: { success: boolean; roomState?: RoomState; error?: string }) => void) => void;
@@ -1386,6 +1386,8 @@ export interface ClientToServerEvents {
   "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => void;
   "game:mystery:tarot_redraw": () => void;
   "admin:mystery:tarot_redraw": (payload?: { code?: string }) => void;
+  "game:mystery:tarot_keep": () => void;
+  "admin:mystery:tarot_keep": (payload?: { code?: string }) => void;
   "game:mystery:choose_steal_target": (payload: { targetTeamId: string }) => void;
   "admin:mystery:choose_steal_target": (payload: { targetTeamId: string; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;

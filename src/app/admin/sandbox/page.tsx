@@ -34,6 +34,7 @@ import {
   handleMemoryPairsSecondChanceDecision,
   handleOneShotDoorsDecision as handleMysteryDoorsDecision,
   handleTarotRedraw as handleMysteryTarotRedraw,
+  handleTarotConfirmKeep as handleMysteryTarotConfirmKeep,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -2412,6 +2413,37 @@ export default function AdminSandboxPage() {
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         return;
       }
+      if (e.data?.type === "MYSTERY_TAROT_KEEP" || e.data?.action === "mystery_tarot_keep") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:tarot_keep" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta } = handleMysteryTarotConfirmKeep({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+        });
+
+        const delta = finalScoreDelta || 0;
+        const updatedTeams = roomStateRef.current.teams.map((t) =>
+          t.id === activeTeam.id ? { ...t, score: Math.max(0, (t.score || 0) + delta) } : t
+        );
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
       if (e.data?.type === "MYSTERY_CHOOSE_STEAL_TARGET" || e.data?.action === "mystery_choose_steal_target") {
         const targetTeamId = e.data?.targetTeamId;
         if (!isOfflineSandbox) {
@@ -4756,24 +4788,27 @@ export default function AdminSandboxPage() {
     addLog("Admin: Dừng xem độ khó");
   };
 
-  // Score adjust cheat
+  // Score adjust cheat / manual override
   const handleAdjustScore = (teamId: string, delta?: number, setScore?: number) => {
     if (isOfflineSandbox) {
       setRoomState((prev) => {
         if (!prev) return prev;
         const updatedTeams = prev.teams.map((t) => {
           if (t.id !== teamId) return t;
-          const newScore = setScore !== undefined ? setScore : t.score + (delta || 0);
+          const newScore = setScore !== undefined ? Math.max(0, setScore) : Math.max(0, t.score + (delta || 0));
           return { ...t, score: newScore };
         });
-        return { ...prev, teams: updatedTeams };
+        const next = { ...prev, teams: updatedTeams };
+        roomStateRef.current = next;
+        syncToIframes({ roomState: next });
+        return next;
       });
-      addLog(`Cheat điểm đội ${teamId}: delta=${delta ?? "N/A"}, setScore=${setScore ?? "N/A"}`);
+      addLog(`Chỉnh điểm đội ${teamId}: delta=${delta ?? "N/A"}, setScore=${setScore ?? "N/A"}`);
       return;
     }
 
-    adminSocketRef.current?.emit("admin:sandbox:adjust_score" as any, { teamId, delta, setScore });
-    addLog(`Cheat điểm đội ${teamId}: delta=${delta ?? "N/A"}, setScore=${setScore ?? "N/A"}`);
+    adminSocketRef.current?.emit("admin:sandbox:adjust_score" as any, { teamId, delta, setScore, code });
+    addLog(`Chỉnh điểm đội ${teamId}: delta=${delta ?? "N/A"}, setScore=${setScore ?? "N/A"}`);
   };
 
   // ── Bot / Active Team Manual Actions ────────────────────────────────────────
@@ -5543,10 +5578,35 @@ export default function AdminSandboxPage() {
                     className="px-2.5 py-1 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/50 text-emerald-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
                     title="Chấm điểm câu tự luận hoặc điều chỉnh điểm"
                   >
-                    <span>✏️</span>
+                    <span>🪄</span>
                     <span>Chấm điểm ({revealPayload.answers?.length ?? 0})</span>
                   </button>
                 )}
+
+                {/* 4b2. Manual Score Edit Button (Always available for Admin/MC) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const teamNames = stableTeams.map((t, i) => `${i + 1}. ${t.name} (${t.score}đ)`).join("\n");
+                    const pick = window.prompt(`Chọn số thứ tự đội muốn sửa điểm (1-${stableTeams.length}):\n${teamNames}`);
+                    if (pick !== null) {
+                      const idx = parseInt(pick, 10) - 1;
+                      if (idx >= 0 && idx < stableTeams.length) {
+                        const target = stableTeams[idx];
+                        const val = window.prompt(`Nhập điểm số mới cho ${target.name} (hiện tại: ${target.score}đ):`, String(target.score));
+                        if (val !== null) {
+                          const parsed = parseInt(val, 10);
+                          if (!isNaN(parsed)) handleAdjustScore(target.id, undefined, Math.max(0, parsed));
+                        }
+                      }
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 text-amber-300 text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer"
+                  title="Chỉnh sửa điểm số thủ công cho bất kỳ đội nào (Đề phòng lỗi)"
+                >
+                  <span>✏️</span>
+                  <span>Sửa điểm</span>
+                </button>
 
                 {/* 4c. MC Direct Answer Submission Trigger */}
                 {currentQuestion && !revealPayload && currentQuestion.question.options && (
@@ -6860,10 +6920,24 @@ export default function AdminSandboxPage() {
                       >
                         <button
                           type="button"
+                          onClick={() => { handleAdjustScore(currentTeam.id, 10); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono font-bold"
+                        >
+                          +10 điểm
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
                           className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono font-bold"
                         >
                           +20 điểm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { handleAdjustScore(currentTeam.id, -10); setShowCheatDropdown(false); }}
+                          className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono font-bold"
+                        >
+                          -10 điểm
                         </button>
                         <button
                           type="button"
@@ -6885,6 +6959,20 @@ export default function AdminSandboxPage() {
                           className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-left font-mono font-bold"
                         >
                           Set 50 điểm
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCheatDropdown(false);
+                            const val = window.prompt(`Nhập điểm số chính xác cho ${currentTeam.name}:`, String(currentTeam.score));
+                            if (val !== null) {
+                              const parsed = parseInt(val, 10);
+                              if (!isNaN(parsed)) handleAdjustScore(currentTeam.id, undefined, Math.max(0, parsed));
+                            }
+                          }}
+                          className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-left font-bold border border-amber-500/40"
+                        >
+                          ✏️ Nhập điểm...
                         </button>
                       </div>
                     )}
@@ -7425,6 +7513,14 @@ export default function AdminSandboxPage() {
                           window.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw" }, "*");
                         }
                       }}
+                      onTarotConfirmKeep={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:tarot_keep" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_KEEP", action: "mystery_tarot_keep" }, "*");
+                        }
+                      }}
+                      onAdjustScore={(teamId, delta, setScore) => handleAdjustScore(teamId, delta, setScore)}
                     />
                   </div>
                 )}
@@ -7518,20 +7614,53 @@ export default function AdminSandboxPage() {
                           <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
                         ) : null}
                       </span>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => handleAdjustScore(t.id, 10)}
+                          className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px]"
+                          title="Cộng 10 điểm"
+                        >
+                          +10
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleAdjustScore(t.id, 20)}
                           className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px]"
+                          title="Cộng 20 điểm"
                         >
                           +20
                         </button>
                         <button
                           type="button"
+                          onClick={() => handleAdjustScore(t.id, -10)}
+                          className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px]"
+                          title="Trừ 10 điểm"
+                        >
+                          -10
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleAdjustScore(t.id, -20)}
                           className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px]"
+                          title="Trừ 20 điểm"
                         >
                           -20
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newScoreStr = window.prompt(`Nhập điểm số chính xác cho ${t.name}:`, String(t.score));
+                            if (newScoreStr !== null) {
+                              const parsed = parseInt(newScoreStr, 10);
+                              if (!isNaN(parsed)) handleAdjustScore(t.id, undefined, Math.max(0, parsed));
+                            }
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-[10px] flex items-center gap-0.5 cursor-pointer"
+                          title="Nhập số điểm chính xác"
+                        >
+                          <span>✏️</span>
+                          <span>Đặt</span>
                         </button>
                       </div>
                     </div>

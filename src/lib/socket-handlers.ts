@@ -4964,6 +4964,42 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
     };
 
+    const executeMysteryTarotKeep = async (
+      room: any,
+      questState: any,
+      team: any
+    ) => {
+      const teams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        orderBy: { createdAt: "asc" },
+      });
+
+      const { updatedState, finalScoreDelta } = handleTarotConfirmKeep({
+        state: questState,
+        team,
+        allTeams: teams,
+      });
+
+      roomMysteryQuests.set(room.id, updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+
+      const delta = finalScoreDelta || 0;
+      if (delta !== 0) {
+        const newScore = Math.max(0, (team.score || 0) + delta);
+        await prisma.team.update({
+          where: { id: team.id },
+          data: { score: newScore },
+        });
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: team.id, score: newScore, delta },
+        ]);
+      }
+
+      buildRoomState(room.id).then((rState) => {
+        io.to(`room:${room.code}`).emit("room:state", rState);
+      }).catch(console.error);
+    };
+
     async function executeMysteryAdvanceTurn(room: any, questState: any) {
       // Immediately clear previous question state across display and player devices (0ms latency)
       stopQuestionTimer(room.id);
@@ -5285,6 +5321,45 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryTarotRedraw(room, questState);
     });
 
+    socket.on("game:mystery:tarot_keep", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.chosenCardId) return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      await executeMysteryTarotKeep(room, questState, team);
+    });
+
+    socket.on("admin:mystery:tarot_keep", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.chosenCardId) return;
+
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      await executeMysteryTarotKeep(room, questState, team);
+    });
+
     socket.on("game:mystery:steal_buzz", async () => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
@@ -5451,8 +5526,8 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────
-    socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore, code }: { teamId: string; delta?: number; setScore?: number; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
 
       const team = await prisma.team.findUnique({ where: { id: teamId } });
@@ -5477,6 +5552,9 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:score:update", [
         { teamId, score: newScore, delta: effectiveDelta },
       ]);
+
+      const updatedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", updatedState);
     });
 
     socket.on("admin:sandbox:set_active_team", async ({ teamId, teamIndex, code }: { teamId: string; teamIndex?: number; code?: string }) => {

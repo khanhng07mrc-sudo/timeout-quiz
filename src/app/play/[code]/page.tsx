@@ -1575,6 +1575,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");
                 }
               }}
+              onTarotConfirmKeep={() => {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:tarot_keep");
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_TAROT_KEEP", action: "mystery_tarot_keep", teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1811,6 +1818,13 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:tarot_redraw");
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onTarotConfirmKeep={() => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:tarot_keep");
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_KEEP", action: "mystery_tarot_keep", teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

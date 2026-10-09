@@ -21,6 +21,8 @@ interface Props {
   onChooseStealTarget?: (targetTeamId: string) => void;
   onDoorsDecision?: (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
   onTarotRedraw?: () => void;
+  onTarotConfirmKeep?: () => void;
+  onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
 
@@ -40,6 +42,8 @@ export default function MysteryQuestBoard({
   onChooseStealTarget,
   onDoorsDecision,
   onTarotRedraw,
+  onTarotConfirmKeep,
+  onAdjustScore,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -47,6 +51,7 @@ export default function MysteryQuestBoard({
   const [optimisticMatchedPairKey, setOptimisticMatchedPairKey] = useState<string | null>(null);
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
+  const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
 
@@ -510,6 +515,16 @@ export default function MysteryQuestBoard({
                       MC Bỏ qua lượt ➔
                     </button>
                   )}
+                  {onAdjustScore && (
+                    <button
+                      type="button"
+                      onClick={() => setShowScoreEditModal(true)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer transition text-[11px] flex items-center gap-1 shadow"
+                    >
+                      <span>✏️</span>
+                      <span>Sửa điểm</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -713,6 +728,16 @@ export default function MysteryQuestBoard({
                       className="px-2.5 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold cursor-pointer transition text-[11px]"
                     >
                       MC Chuyển lượt ➔
+                    </button>
+                  )}
+                  {onAdjustScore && (
+                    <button
+                      type="button"
+                      onClick={() => setShowScoreEditModal(true)}
+                      className="px-2.5 py-1 rounded-lg bg-amber-600/80 hover:bg-amber-500 text-white font-bold cursor-pointer transition text-[11px] flex items-center gap-1 shadow"
+                    >
+                      <span>✏️</span>
+                      <span>Sửa điểm</span>
                     </button>
                   )}
                 </div>
@@ -1097,8 +1122,7 @@ export default function MysteryQuestBoard({
                   <button
                     type="button"
                     onClick={() => {
-                      const curTile = tiles.find((t) => t.id === tarotState.chosenCardId);
-                      if (curTile) handleTileClick(curTile);
+                      onTarotConfirmKeep?.();
                     }}
                     disabled={!canInteract}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
@@ -1718,24 +1742,157 @@ export default function MysteryQuestBoard({
       {/* ── Footer Standings / Quick Score Bar ── */}
       {teams && teams.length > 0 && (
         <div className="relative z-10 mt-2 pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="text-white/60 font-semibold uppercase tracking-wider text-[11px]">
-            BẢNG ĐIỂM TRẬN ĐẤU:
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-white/60 font-semibold uppercase tracking-wider text-[11px]">
+              BẢNG ĐIỂM TRẬN ĐẤU:
+            </span>
+            {(isAdmin || isSandbox) && onAdjustScore && (
+              <button
+                type="button"
+                onClick={() => setShowScoreEditModal(true)}
+                className="px-2 py-0.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-[10px] font-bold cursor-pointer transition flex items-center gap-1"
+                title="Chỉnh sửa điểm thủ công cho các đội thi"
+              >
+                <span>✏️</span>
+                <span>Sửa điểm</span>
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             {teams.map((t) => (
               <div
                 key={t.id}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border ${
+                onClick={() => {
+                  if ((isAdmin || isSandbox) && onAdjustScore) {
+                    setShowScoreEditModal(true);
+                  }
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition ${
+                  (isAdmin || isSandbox) && onAdjustScore ? "cursor-pointer hover:border-amber-400/60" : ""
+                } ${
                   t.id === currentTurnTeamId
                     ? "bg-white/15 border-white/40 text-white font-bold"
                     : "bg-black/30 border-white/10 text-white/70"
                 }`}
+                title={(isAdmin || isSandbox) && onAdjustScore ? `Nhấp để sửa điểm cho ${t.name}` : undefined}
               >
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
                 <span>{t.name}:</span>
                 <span className="font-mono font-bold text-amber-300">{t.score.toLocaleString()}đ</span>
+                {(isAdmin || isSandbox) && onAdjustScore && (
+                  <span className="text-[9px] text-amber-400/80 ml-0.5">✏️</span>
+                )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Chỉnh Sửa Điểm Thủ Công (Admin / MC) ── */}
+      {showScoreEditModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#14162a] border border-amber-400/50 rounded-2xl p-5 shadow-2xl text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✏️</span>
+                <h3 className="font-black text-sm uppercase tracking-wider text-amber-300">
+                  Chỉnh sửa điểm thủ công (Admin / MC)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowScoreEditModal(false)}
+                className="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-white/70 leading-relaxed">
+              Tính năng can thiệp trực tiếp dành cho Host/MC để điều chỉnh hoặc khắc phục điểm số ngay lập tức khi phát sinh sự cố.
+            </p>
+
+            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+              {teams.map((t) => (
+                <div
+                  key={t.id}
+                  className="p-3 rounded-xl bg-black/40 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                    <div>
+                      <span className="font-bold text-xs">{t.name}</span>
+                      <span className="block font-mono font-black text-amber-300 text-sm">{t.score}đ</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => onAdjustScore?.(t.id, 10)}
+                      className="px-2 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-white font-mono font-bold text-xs cursor-pointer active:scale-95 transition"
+                    >
+                      +10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAdjustScore?.(t.id, 20)}
+                      className="px-2 py-1 rounded-lg bg-emerald-700/80 hover:bg-emerald-600 text-white font-mono font-bold text-xs cursor-pointer active:scale-95 transition"
+                    >
+                      +20
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAdjustScore?.(t.id, -10)}
+                      className="px-2 py-1 rounded-lg bg-rose-700/80 hover:bg-rose-600 text-white font-mono font-bold text-xs cursor-pointer active:scale-95 transition"
+                    >
+                      -10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onAdjustScore?.(t.id, -20)}
+                      className="px-2 py-1 rounded-lg bg-rose-700/80 hover:bg-rose-600 text-white font-mono font-bold text-xs cursor-pointer active:scale-95 transition"
+                    >
+                      -20
+                    </button>
+
+                    <div className="flex items-center gap-1 ml-1">
+                      <input
+                        type="number"
+                        min={0}
+                        step={5}
+                        defaultValue={t.score}
+                        id={`mystery-score-input-${t.id}`}
+                        className="w-16 px-1.5 py-1 rounded-lg bg-black/60 border border-amber-400/50 text-amber-200 text-xs font-mono font-bold text-center focus:outline-none focus:ring-1 focus:ring-amber-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const input = document.getElementById(`mystery-score-input-${t.id}`) as HTMLInputElement;
+                          if (input) {
+                            const val = parseInt(input.value, 10);
+                            if (!isNaN(val)) onAdjustScore?.(t.id, undefined, val);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs cursor-pointer shadow active:scale-95 transition"
+                      >
+                        Đặt
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowScoreEditModal(false)}
+                className="px-4 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs cursor-pointer"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}

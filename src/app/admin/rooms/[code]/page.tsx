@@ -1429,6 +1429,13 @@ export default function AdminRoomPage() {
                 onChooseStealTarget={(targetTeamId) => emit("admin:mystery:choose_steal_target", { targetTeamId, code })}
                 onDoorsDecision={(payload) => emit("admin:mystery:doors_decision", { ...payload, code })}
                 onTarotRedraw={() => emit("admin:mystery:tarot_redraw", { code })}
+                onTarotConfirmKeep={() => emit("admin:mystery:tarot_keep", { code })}
+                onAdjustScore={(teamId, delta, setScore) => {
+                  const currentTeam = roomState?.teams.find((t) => t.id === teamId);
+                  if (!currentTeam) return;
+                  const newScore = setScore !== undefined ? Math.max(0, setScore) : Math.max(0, currentTeam.score + (delta || 0));
+                  handleUpdateTeamScore(teamId, newScore);
+                }}
               />
             </div>
           )}
@@ -2063,6 +2070,32 @@ export default function AdminRoomPage() {
                 <span className="whitespace-nowrap">Tiếp tục</span>
               </button>
             ) : <div />}
+
+            {roomState?.teamMode === "TEAM" && (roomState.teams?.length ?? 0) > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const teamNames = roomState.teams.map((t, i) => `${i + 1}. ${t.name} (${t.score}đ)`).join("\n");
+                  const pick = window.prompt(`Chọn số thứ tự đội muốn sửa điểm (1-${roomState.teams.length}):\n${teamNames}`);
+                  if (pick !== null) {
+                    const idx = parseInt(pick, 10) - 1;
+                    if (idx >= 0 && idx < roomState.teams.length) {
+                      const target = roomState.teams[idx];
+                      const val = window.prompt(`Nhập điểm số mới cho ${target.name} (hiện tại: ${target.score}đ):`, String(target.score));
+                      if (val !== null) {
+                        const parsed = parseInt(val, 10);
+                        if (!isNaN(parsed)) handleUpdateTeamScore(target.id, Math.max(0, parsed));
+                      }
+                    }
+                  }
+                }}
+                className="py-2.5 rounded-xl border border-amber-500/50 hover:bg-amber-500/20 text-amber-300 font-bold text-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap transition cursor-pointer"
+                title="Chỉnh sửa điểm số thủ công cho bất kỳ đội nào (Đề phòng lỗi)"
+              >
+                <span>✏️</span>
+                <span className="whitespace-nowrap">Sửa điểm đội</span>
+              </button>
+            )}
           </div>
 
           {/* Power-up controls */}
@@ -2240,8 +2273,8 @@ export default function AdminRoomPage() {
                       </div>
                       <p className="font-bold text-sm truncate">{team.name}</p>
                     </div>
-                    {roomState?.status === "LOBBY" ? (
-                      <div className="flex items-center gap-1" title="Cài điểm số ban đầu cho đội này">
+                    <div className="flex items-center gap-1.5 flex-wrap" title="Chỉnh sửa điểm cho đội này (Admin/MC)">
+                      <div className="flex items-center gap-1">
                         <input
                           type="number"
                           min={0}
@@ -2269,9 +2302,25 @@ export default function AdminRoomPage() {
                         />
                         <span className="text-[10px] text-muted-foreground font-semibold">pts</span>
                       </div>
-                    ) : (
-                      <span className="text-xs font-black text-cyan-400">{team.score} pts</span>
-                    )}
+                      <div className="flex items-center gap-0.5">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score + 10))}
+                          className="px-1.5 py-0.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 font-mono font-bold text-[10px] cursor-pointer"
+                          title="Cộng 10 điểm"
+                        >
+                          +10
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateTeamScore(team.id, Math.max(0, team.score - 10))}
+                          className="px-1.5 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 font-mono font-bold text-[10px] cursor-pointer"
+                          title="Trừ 10 điểm"
+                        >
+                          -10
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="text-xs text-muted-foreground flex items-center justify-between border-t border-border/40 pt-2">

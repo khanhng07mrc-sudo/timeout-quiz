@@ -849,9 +849,12 @@ export type MysteryMiniGameType =
   | "RADAR_WINDOWS";
 
 export type MysteryPromoPerk =
-  | "SHIELD_PROMO"    // Tặng 1 Khiên hộ mệnh né bom miễn phí
-  | "EXTRA_POT_PROMO" // Quỹ thưởng được khuyến mãi thêm +5đ
-  | "DOUBLE_PROMO";   // Thẻ x2 có xác suất xuất hiện sớm
+  | "SHIELD_PROMO"        // 🛡️ Tặng 01 Khiên Chặn Bom!
+  | "EXTRA_POT_PROMO"     // 🎁 Quỹ thưởng +5đ!
+  | "DOUBLE_PROMO"        // ⚡ Nhân đôi điểm thưởng x2!
+  | "PEEK_PROMO"          // 👁️ Mắt Thần Soi Bài!
+  | "EXTRA_ATTEMPT_PROMO" // 🔄 Thêm lượt lật / Cơ hội thứ hai!
+  | "SAFETY_NET_PROMO";   // 🧲 Két Sắt Bảo Lưu (giữ 50% điểm quỹ nếu dính bom trong Lật Liều)
 
 export type MysteryTileEffectType =
   | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
@@ -891,6 +894,7 @@ export interface MysteryTile {
   cardReward?: CardType;
   pairKey?: string; // Khóa ghép cặp cho MEMORY_PAIRS
   tarotName?: string; // Tên lá bài cho TAROT_DESTINY
+  isPeeked?: boolean; // Được soi sáng hiển thị trước bởi Mắt Thần
 }
 
 export interface MysteryQuestState {
@@ -989,10 +993,22 @@ export interface MysteryQuestState {
   };
   oneShotState?: {
     chosenTileId?: number;
+    selectedDoorIds?: number[]; // 2 cửa đã chọn ở Giai đoạn 1
+    hasBombDetected?: boolean;  // Có bom trong 2 cửa đã chọn hay không
+    phase?: "SELECTING" | "SCANNED" | "RESOLVED";
+    revealedSafeDoorIds?: number[];
+    chosenFinalDoorId?: number;
     allRevealed?: boolean;
   };
   tarotState?: {
     chosenCardId?: number;
+    canRedraw?: boolean;
+    hasRedrawn?: boolean;
+  };
+  nextCardPeek?: {
+    icon: string;
+    storyTitle: string;
+    isBomb: boolean;
   };
 }
 
@@ -1366,6 +1382,10 @@ export interface ClientToServerEvents {
   "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
   "game:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => void;
   "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
+  "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
+  "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => void;
+  "game:mystery:tarot_redraw": () => void;
+  "admin:mystery:tarot_redraw": (payload?: { code?: string }) => void;
   "game:mystery:choose_steal_target": (payload: { targetTeamId: string }) => void;
   "admin:mystery:choose_steal_target": (payload: { targetTeamId: string; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;

@@ -107,21 +107,25 @@ export function getRandomMiniGame(prevMiniGame?: MysteryMiniGameType): MysteryMi
  * - 20đ: balanced
  * - 30đ: higher double pot chance for epic payoffs
  */
-export function generateMysteryPromoPerk(basePoints: number = 10): MysteryPromoPerk {
-  const rand = Math.random();
-  if (basePoints <= 10) {
-    if (rand < 0.45) return "SHIELD_PROMO";
-    if (rand < 0.80) return "EXTRA_POT_PROMO";
-    return "DOUBLE_PROMO";
-  } else if (basePoints <= 20) {
-    if (rand < 0.35) return "SHIELD_PROMO";
-    if (rand < 0.70) return "EXTRA_POT_PROMO";
-    return "DOUBLE_PROMO";
+export function generateMysteryPromoPerk(
+  basePoints: number = 10,
+  miniGameType?: MysteryMiniGameType
+): MysteryPromoPerk {
+  const normType = miniGameType ? normalizeMiniGameType(miniGameType) : "PUSH_YOUR_LUCK";
+  let pool: MysteryPromoPerk[] = [];
+
+  if (normType === "MEMORY_PAIRS") {
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+  } else if (normType === "ONE_SHOT_DOORS") {
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO"];
+  } else if (normType === "TAROT_DESTINY") {
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
   } else {
-    if (rand < 0.25) return "SHIELD_PROMO";
-    if (rand < 0.60) return "EXTRA_POT_PROMO";
-    return "DOUBLE_PROMO";
+    // PUSH_YOUR_LUCK
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "SAFETY_NET_PROMO"];
   }
+
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export function getPerkType(promo?: MysteryQuestState["promoPerk"]): MysteryPromoPerk | undefined {
@@ -438,6 +442,14 @@ export function generateOneShotDoorsTiles(
       deltaPoints: pHigh,
     },
     stealOrBonusDoor,
+    {
+      icon: "⭐",
+      type: "REWARD",
+      storyTitle: "⭐ CỬA TINH TÚ MAY MẮN!",
+      storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${basePoints} điểm thưởng!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: basePoints,
+    },
     {
       icon: "💥",
       type: "BOMB_MAJOR",
@@ -786,12 +798,11 @@ export function generateMysteryStageForTurn({
   const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
   const themeMeta = MYSTERY_THEMES[theme];
 
-  // Completely random minigame ensuring two consecutive turns never have the same game
   const miniGameType = forcedMiniGameType
     ? normalizeMiniGameType(forcedMiniGameType)
     : getRandomMiniGame(prevMiniGameType);
 
-  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints);
+  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints, miniGameType);
 
   const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
@@ -810,11 +821,18 @@ export function generateMysteryStageForTurn({
   switch (miniGameType) {
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
+      if (promoPerk === "PEEK_PROMO") {
+        const firstBomb = tiles.find((t) => t.type !== "REWARD" || t.pairKey === "PAIR_BOMB");
+        if (firstBomb) firstBomb.isPeeked = true;
+      }
       memoryPairsState = {
         firstFlippedTileId: null,
         secondFlippedTileId: null,
+        thirdFlippedTileId: null,
+        keptBombTileIds: [],
+        isBombRescueActive: false,
         attemptsUsed: 0,
-        maxAttempts: 3,
+        maxAttempts: promoPerk === "EXTRA_ATTEMPT_PROMO" ? 4 : 3,
         matchedPairKey: null,
         isMismatchResolving: false,
         round: 1,
@@ -826,14 +844,25 @@ export function generateMysteryStageForTurn({
       tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
       oneShotState = {
         chosenTileId: undefined,
+        selectedDoorIds: [],
+        hasBombDetected: false,
+        phase: "SELECTING",
+        revealedSafeDoorIds: [],
+        chosenFinalDoorId: undefined,
         allRevealed: false,
       };
       break;
 
     case "TAROT_DESTINY":
       tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
+      if (promoPerk === "PEEK_PROMO") {
+        const deathCard = tiles.find((t) => t.type !== "REWARD");
+        if (deathCard) deathCard.isPeeked = true;
+      }
       tarotState = {
         chosenCardId: undefined,
+        canRedraw: promoPerk === "EXTRA_ATTEMPT_PROMO",
+        hasRedrawn: false,
       };
       break;
 
@@ -848,6 +877,15 @@ export function generateMysteryStageForTurn({
       );
       break;
   }
+
+  const nextCardPeek =
+    promoPerk === "PEEK_PROMO" && miniGameType === "PUSH_YOUR_LUCK" && tiles[0]
+      ? {
+          icon: tiles[0].icon,
+          storyTitle: tiles[0].storyTitle,
+          isBomb: tiles[0].type !== "REWARD",
+        }
+      : undefined;
 
   return {
     currentTurnTeamId: currentTeam.id,
@@ -867,11 +905,12 @@ export function generateMysteryStageForTurn({
     promoPerk,
     hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
     potPoints: 0,
-    potMultiplier: 1,
+    potMultiplier: promoPerk === "DOUBLE_PROMO" ? 2 : 1,
     cardsFlippedCount: 0,
     memoryPairsState,
     oneShotState,
     tarotState,
+    nextCardPeek,
   };
 }
 
@@ -1385,149 +1424,142 @@ export function handleFlipCard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT 2: ONE_SHOT_DOORS (Chọn 1 trong 3 cánh cửa)
+  // VARIANT 2: ONE_SHOT_DOORS (4 Cánh Cửa Bí Mật - 2 Giai Đoạn Radar Scan)
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "ONE_SHOT_DOORS") {
-    const tile = state.tiles.find((t) => t.id === tileId);
-    if (!tile || tile.isOpened) {
+    const osState = state.oneShotState || {
+      selectedDoorIds: [],
+      hasBombDetected: false,
+      phase: "SELECTING",
+      revealedSafeDoorIds: [],
+      chosenFinalDoorId: undefined,
+      allRevealed: false,
+    };
+    state.oneShotState = osState;
+
+    if (osState.phase === "RESOLVED") {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    // Reveal chosen door AND simultaneously open the remaining doors for drama!
-    state.tiles.forEach((t) => {
-      t.isOpened = true;
-    });
+    const tile = state.tiles.find((t) => t.id === tileId);
+    if (!tile) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
 
-    state.oneShotState = {
-      chosenTileId: tileId,
-      allRevealed: true,
-    };
-    state.lastFlippedTile = tile;
+    // Phase 1: SELECTING (Chọn 2 trong 4 cửa)
+    if (osState.phase === "SELECTING" || !osState.phase) {
+      const selected = osState.selectedDoorIds || [];
+      if (selected.includes(tileId)) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+      selected.push(tileId);
+      osState.selectedDoorIds = [...selected];
 
-    const isBomb = tile.type !== "REWARD";
-    let penalty = 0;
-    let finalDelta = 0;
+      if (selected.length < 2) {
+        // Đang chờ chọn cửa thứ 2
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+      }
 
-    if (isBomb) {
-      // Shield Protection Check:
-      if (state.hasShield) {
-        state.hasShield = false;
+      // Đã chọn đủ 2 cửa -> Kích hoạt RADAR SCAN!
+      const hasBomb = state.tiles.some(
+        (t) => selected.includes(t.id) && t.type !== "REWARD"
+      );
+
+      if (!hasBomb) {
+        // 🟢 KHÔNG CÓ BOM: Cả 2 cửa đều an toàn! Nhận trọn thưởng cả 2 cửa!
+        osState.hasBombDetected = false;
+        osState.phase = "RESOLVED";
+        osState.allRevealed = true;
+        state.tiles.forEach((t) => {
+          t.isOpened = true;
+        });
+
+        const chosenTiles = state.tiles.filter((t) => selected.includes(t.id));
+        const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+        const extraPotBonus = hasExtraPot ? 5 : 0;
+        const multiplier = state.potMultiplier || 1;
+
+        const stealTile = chosenTiles.find((t) => t.effectType === "STEAL_POINTS");
+        const nonStealTiles = chosenTiles.filter((t) => t.effectType !== "STEAL_POINTS");
+        const nonStealTotal = nonStealTiles.reduce((sum, t) => sum + (t.deltaPoints || 0), 0);
+
+        if (stealTile) {
+          const stealAmount = stealTile.deltaPoints || 20;
+          const eligibleTeams = (allTeams || []).filter(
+            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+          );
+          if (eligibleTeams.length > 0) {
+            state.phase = "STEAL_TARGET_SELECT";
+            state.pendingSteal = {
+              stolenPoints: stealAmount,
+              eligibleTeamIds: eligibleTeams.map((t) => t.id),
+              tileTitle: stealTile.storyTitle,
+              tileIcon: stealTile.icon,
+            };
+            const baseDelta = (nonStealTotal * multiplier) + extraPotBonus;
+            return {
+              updatedState: { ...state },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: baseDelta,
+            };
+          }
+        }
+
+        const rawTotal = chosenTiles.reduce((sum, t) => sum + (t.deltaPoints || 0), 0);
+        const finalDelta = (rawTotal * multiplier) + extraPotBonus;
+
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "DOOR_CHOSEN";
+
+        const oldScore = team.score || 0;
+        const newScore = oldScore + finalDelta;
+
+        const rewardText = `🎉 RADAR AN TOÀN TUYỆT ĐỐI! Cả 2 cánh cửa #${selected[0]} & #${selected[1]} đều không có bom! Nhận trọn vẹn phần thưởng cả 2 cửa: +${finalDelta} điểm!`;
+
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Cửa bẫy bom bị chặn đứng, không bị trừ bất kỳ điểm nào!`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0,
+          rewardText,
+          scoreDelta: finalDelta,
+          oldScore,
+          newScore,
         };
+
         return {
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: 0,
+          finalScoreDelta: finalDelta,
+        };
+      } else {
+        // 🚨 PHÁT HIỆN BẪY BOM TRONG 2 CỬA ĐÃ CHỌN!
+        osState.hasBombDetected = true;
+        osState.phase = "SCANNED";
+        return {
+          updatedState: { ...state },
+          isBomb: false,
+          scorePenalty: 0,
         };
       }
-
-      penalty = Math.abs(tile.deltaPoints || 15);
-      state.potPoints = 0;
-      state.bombExploded = {
-        type: "MAJOR",
-        title: tile.storyTitle,
-        description: tile.storyDescription,
-        penaltyText: `Cửa bẫy nổ! Bị trừ ${penalty} điểm từ tổng điểm.`,
-      };
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
-
-      const oldScore = team.score || 0;
-      const newScore = Math.max(0, oldScore - penalty);
-
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `💥 Mở trúng Cửa Bẫy! ${tile.storyDescription}`,
-        scoreDelta: -penalty,
-        oldScore,
-        newScore,
-      };
-
-      return {
-        updatedState: { ...state },
-        isBomb: true,
-        scorePenalty: penalty,
-        finalScoreDelta: -penalty,
-      };
-    } else {
-      let victimTeamId: string | undefined;
-      let victimTeamName: string | undefined;
-      let stolenPoints: number | undefined;
-
-      const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
-      const extraPotBonus = hasExtraPot ? 5 : 0;
-
-      if (tile.effectType === "STEAL_POINTS") {
-        const stealAmount = tile.deltaPoints || 25;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
-        if (eligibleTeams.length > 0) {
-          state.phase = "STEAL_TARGET_SELECT";
-          state.pendingSteal = {
-            stolenPoints: stealAmount,
-            eligibleTeamIds: eligibleTeams.map((t) => t.id),
-            tileTitle: tile.storyTitle,
-            tileIcon: tile.icon,
-          };
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            finalScoreDelta: 0,
-          };
-        } else {
-          finalDelta = stealAmount + extraPotBonus;
-        }
-      } else {
-        finalDelta = (tile.deltaPoints || 25) + extraPotBonus;
-      }
-
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "DOOR_CHOSEN";
-
-      const oldScore = team.score || 0;
-      const newScore = oldScore + finalDelta;
-      const baseReward = finalDelta - extraPotBonus;
-
-      const rewardText = extraPotBonus > 0
-        ? `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
-        : `🚪 ${tile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
-
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText,
-        scoreDelta: finalDelta,
-        oldScore,
-        newScore,
-      };
-
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-        finalScoreDelta: finalDelta,
-        victimTeamId,
-        victimTeamName,
-        stolenPoints,
-      };
     }
+
+    // Phase 2: SCANNED (Người chơi bấm trực tiếp vào 1 trong 2 cửa đã chọn để liều mở)
+    if (osState.phase === "SCANNED") {
+      if (osState.selectedDoorIds && osState.selectedDoorIds.includes(tileId)) {
+        return handleOneShotDoorsDecision({
+          state,
+          team,
+          allTeams,
+          decision: "RISK_OPEN",
+          chosenDoorId: tileId,
+        });
+      }
+    }
+
+    return { updatedState: state, isBomb: false, scorePenalty: 0 };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1539,12 +1571,27 @@ export function handleFlipCard({
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    // Reveal drawn card and reveal the other 4 cards
+    const tState = state.tarotState || {};
+    state.tarotState = tState;
+
+    // Check if player has redraw option available (EXTRA_ATTEMPT_PROMO) and hasn't redrawn yet
+    const canRedraw = Boolean(tState.canRedraw && !tState.hasRedrawn);
+
+    if (canRedraw) {
+      // First draw with redraw perk: reveal ONLY this card and let the player decide
+      tile.isOpened = true;
+      tState.chosenCardId = tileId;
+      state.lastFlippedTile = tile;
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+    }
+
+    // Normal draw or final draw after redraw: reveal this card and all remaining cards
+    tile.isOpened = true;
     state.tiles.forEach((t) => {
       t.isOpened = true;
     });
 
-    state.tarotState = { chosenCardId: tileId };
+    tState.chosenCardId = tileId;
     state.lastFlippedTile = tile;
 
     const isBomb = tile.type !== "REWARD";
@@ -1612,6 +1659,7 @@ export function handleFlipCard({
 
       const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
       const extraPotBonus = hasExtraPot ? 5 : 0;
+      const multiplier = state.potMultiplier || 1;
 
       if (tile.effectType === "STEAL_POINTS") {
         const stealAmount = tile.deltaPoints || 25;
@@ -1633,10 +1681,10 @@ export function handleFlipCard({
             finalScoreDelta: 0,
           };
         } else {
-          finalDelta = stealAmount + extraPotBonus;
+          finalDelta = (stealAmount * multiplier) + extraPotBonus;
         }
       } else {
-        finalDelta = (tile.deltaPoints || 35) + extraPotBonus;
+        finalDelta = ((tile.deltaPoints || 35) * multiplier) + extraPotBonus;
       }
 
       state.potPoints = 0;
@@ -1746,7 +1794,6 @@ export function handleFlipCard({
         penalty = currentScore < 5 ? currentScore : 5;
         penaltyText = `Bị trừ ${penalty} điểm từ tổng điểm.`;
       } else if (currentScore < 5 * X) {
-        // Điểm hiện có nhỏ hơn 5 * X: Trừ toàn bộ điểm, chia cho những đội điểm thấp nhất mỗi đội 5đ
         const sortedOthers = [...otherTeams].sort((a, b) => {
           const diff = (a.score || 0) - (b.score || 0);
           if (diff !== 0) return diff;
@@ -1765,7 +1812,6 @@ export function handleFlipCard({
           ? `Bị trừ toàn bộ ${penalty} điểm! Đã phân phát cho đội thấp điểm: ${recNames}`
           : `Bị trừ toàn bộ ${penalty} điểm!`;
       } else {
-        // Điểm >= 5 * X: Mất số điểm ngẫu nhiên chia hết cho (X - 1), mỗi đội còn lại nhận điểm như nhau (bội số 5)
         const maxM = Math.floor(currentScore / (5 * otherTeams.length));
         const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
         const pointsPerOtherTeam = 5 * m;
@@ -1827,19 +1873,28 @@ export function handleFlipCard({
       };
     }
 
+    // SAFETY_NET_PROMO: Bảo lưu 50% quỹ điểm nếu có
+    const hasSafetyNet = getPerkType(state.promoPerk) === "SAFETY_NET_PROMO";
+    const savedPotPoints = hasSafetyNet && state.potPoints > 0 ? Math.ceil(state.potPoints * 0.5) : 0;
+    const finalDelta = savedPotPoints - penalty;
+
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "BOMB_HIT";
 
     const oldScore = currentScore;
-    const newScore = Math.max(0, oldScore - penalty);
+    const newScore = Math.max(0, oldScore + finalDelta);
+
+    const safetyNetMsg = savedPotPoints > 0
+      ? ` 🧲 Két Sắt Bảo Lưu đã giải cứu: Bảo lưu an toàn +${savedPotPoints}đ từ Quỹ thưởng!`
+      : "";
 
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `💥 ${tile.storyTitle} ${penaltyText}`,
-      scoreDelta: -penalty,
+      rewardText: `💥 ${tile.storyTitle} ${penaltyText}${safetyNetMsg}`,
+      scoreDelta: finalDelta,
       oldScore,
       newScore,
     };
@@ -1848,7 +1903,7 @@ export function handleFlipCard({
       updatedState: { ...state },
       isBomb: true,
       scorePenalty: penalty,
-      finalScoreDelta: -penalty,
+      finalScoreDelta: finalDelta,
       recipientTeamId,
       giftedPoints,
       darkBombRecipients,
@@ -1904,6 +1959,15 @@ export function handleFlipCard({
     },
   });
   state.tiles.push(nextTopCard);
+
+  // Cập nhật soi trước đỉnh chồng bài nếu có PEEK_PROMO
+  if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+    state.nextCardPeek = {
+      icon: nextTopCard.icon,
+      storyTitle: nextTopCard.storyTitle,
+      isBomb: nextTopCard.type !== "REWARD",
+    };
+  }
 
   return {
     updatedState: { ...state },
@@ -2155,5 +2219,267 @@ export function handleChooseStealTarget({
     stolenPoints,
     finalScoreDelta,
   };
+}
+
+/**
+ * Handles Stage 2 decision for 4 Cánh Cửa Bí Mật (ONE_SHOT_DOORS):
+ * - "SAFE_EXIT": Dừng lại & bảo toàn điểm gốc của câu hỏi (+baseQuestionPoints).
+ * - "RISK_OPEN": Liều mở 1 trong 2 cửa đã chọn (50/50).
+ */
+export function handleOneShotDoorsDecision({
+  state,
+  team,
+  allTeams = [],
+  decision,
+  chosenDoorId,
+}: {
+  state: MysteryQuestState;
+  team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
+  decision: "SAFE_EXIT" | "RISK_OPEN";
+  chosenDoorId?: number;
+}): {
+  updatedState: MysteryQuestState;
+  finalScoreDelta: number;
+  isBomb: boolean;
+  scorePenalty: number;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
+} {
+  const osState = state.oneShotState || {
+    selectedDoorIds: [],
+    hasBombDetected: false,
+    phase: "SELECTING",
+    revealedSafeDoorIds: [],
+    chosenFinalDoorId: undefined,
+    allRevealed: false,
+  };
+  state.oneShotState = osState;
+
+  const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+  const extraPotBonus = hasExtraPot ? 5 : 0;
+  const multiplier = state.potMultiplier || 1;
+
+  if (decision === "SAFE_EXIT") {
+    // 🛡️ DỪNG LẠI & BẢO TOÀN
+    osState.phase = "RESOLVED";
+    osState.allRevealed = true;
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+
+    const finalDelta = (state.baseQuestionPoints || 10) + extraPotBonus;
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "DOOR_CHOSEN";
+
+    const oldScore = team.score || 0;
+    const newScore = oldScore + finalDelta;
+
+    const rewardText = extraPotBonus > 0
+      ? `🛡️ Bảo toàn xuất sắc! Tránh bẫy bom an toàn, nhận +${state.baseQuestionPoints || 10}đ câu hỏi và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+      : `🛡️ Bảo toàn xuất sắc! Tránh bẫy bom an toàn, nhận trọn vẹn +${finalDelta} điểm câu hỏi!`;
+
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText,
+      scoreDelta: finalDelta,
+      oldScore,
+      newScore,
+    };
+
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: finalDelta,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
+  // 🎲 RISK_OPEN: Liều mở 1 trong 2 cửa
+  const doorIdToOpen = chosenDoorId ?? (osState.selectedDoorIds && osState.selectedDoorIds[0]);
+  const chosenTile = state.tiles.find((t) => t.id === doorIdToOpen);
+  if (!chosenTile) {
+    return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  }
+
+  osState.phase = "RESOLVED";
+  osState.allRevealed = true;
+  osState.chosenFinalDoorId = doorIdToOpen;
+  state.tiles.forEach((t) => {
+    t.isOpened = true;
+  });
+
+  const isBomb = chosenTile.type !== "REWARD";
+
+  if (isBomb) {
+    if (state.hasShield) {
+      state.hasShield = false;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "DOOR_CHOSEN";
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, không bị trừ điểm!`,
+        scoreDelta: 0,
+        oldScore: team.score || 0,
+        newScore: team.score || 0,
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: 0,
+      };
+    }
+
+    const penalty = Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);
+    state.potPoints = 0;
+    state.bombExploded = {
+      type: "MAJOR",
+      title: chosenTile.storyTitle,
+      description: chosenTile.storyDescription,
+      penaltyText: `Mở trúng Cửa Bẫy Bom! Bị trừ ${penalty} điểm từ tổng điểm.`,
+    };
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "BOMB_HIT";
+
+    const oldScore = team.score || 0;
+    const newScore = Math.max(0, oldScore - penalty);
+
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `💥 Rủi ro bất thành! Mở trúng Cửa Bẫy Bom: Bị phạt trừ ${penalty} điểm!`,
+      scoreDelta: -penalty,
+      oldScore,
+      newScore,
+    };
+
+    return {
+      updatedState: { ...state },
+      isBomb: true,
+      scorePenalty: penalty,
+      finalScoreDelta: -penalty,
+    };
+  } else {
+    let victimTeamId: string | undefined;
+    let victimTeamName: string | undefined;
+    let stolenPoints: number | undefined;
+    let finalDelta = 0;
+
+    if (chosenTile.effectType === "STEAL_POINTS") {
+      const stealAmount = chosenTile.deltaPoints || 25;
+      const eligibleTeams = (allTeams || []).filter(
+        (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+      );
+      if (eligibleTeams.length > 0) {
+        state.phase = "STEAL_TARGET_SELECT";
+        state.pendingSteal = {
+          stolenPoints: stealAmount,
+          eligibleTeamIds: eligibleTeams.map((t) => t.id),
+          tileTitle: chosenTile.storyTitle,
+          tileIcon: chosenTile.icon,
+        };
+        return {
+          updatedState: { ...state },
+          isBomb: false,
+          scorePenalty: 0,
+          finalScoreDelta: 0,
+        };
+      } else {
+        finalDelta = (stealAmount * multiplier) + extraPotBonus;
+      }
+    } else {
+      finalDelta = ((chosenTile.deltaPoints || 25) * multiplier) + extraPotBonus;
+    }
+
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "DOOR_CHOSEN";
+
+    const oldScore = team.score || 0;
+    const newScore = oldScore + finalDelta;
+
+    const rewardText = `🎉 ĐOÁN ĐÚNG XUẤT SẮC! Mở trúng cánh cửa an toàn #${chosenTile.id}: Nhận trọn vẹn +${finalDelta} điểm!`;
+
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText,
+      scoreDelta: finalDelta,
+      oldScore,
+      newScore,
+    };
+
+    return {
+      updatedState: { ...state },
+      isBomb: false,
+      scorePenalty: 0,
+      finalScoreDelta: finalDelta,
+      victimTeamId,
+      victimTeamName,
+      stolenPoints,
+    };
+  }
+}
+
+/**
+ * Handles Redraw in Tarot of Destiny (when EXTRA_ATTEMPT_PROMO is active).
+ */
+export function handleTarotRedraw({
+  state,
+}: {
+  state: MysteryQuestState;
+}): {
+  updatedState: MysteryQuestState;
+} {
+  if (!state.tarotState) return { updatedState: state };
+  state.tarotState.hasRedrawn = true;
+  state.tarotState.canRedraw = false;
+  state.tarotState.chosenCardId = undefined;
+  return { updatedState: { ...state } };
+}
+
+/**
+ * Handles Confirming the drawn card in Tarot of Destiny without redrawing.
+ */
+export function handleTarotConfirmKeep({
+  state,
+  team,
+  allTeams = [],
+}: {
+  state: MysteryQuestState;
+  team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
+}): {
+  updatedState: MysteryQuestState;
+  finalScoreDelta?: number;
+  isBomb?: boolean;
+  scorePenalty?: number;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
+} {
+  const chosenId = state.tarotState?.chosenCardId;
+  if (!chosenId) return { updatedState: state, finalScoreDelta: 0 };
+  if (state.tarotState) {
+    state.tarotState.canRedraw = false;
+  }
+  const tile = state.tiles.find((t) => t.id === chosenId);
+  if (tile) tile.isOpened = false;
+  return handleFlipCard({
+    state,
+    tileId: chosenId,
+    team,
+    allTeams,
+  });
 }
 

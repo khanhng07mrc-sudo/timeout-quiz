@@ -32,6 +32,8 @@ import {
   generateMysteryPromoPerk,
   shuffleMemoryPairsTiles,
   handleMemoryPairsSecondChanceDecision,
+  handleOneShotDoorsDecision as handleMysteryDoorsDecision,
+  handleTarotRedraw as handleMysteryTarotRedraw,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -2336,6 +2338,61 @@ export default function AdminSandboxPage() {
         const nextRoomState: RoomState = {
           ...roomStateRef.current,
           teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
+      if (e.data?.type === "MYSTERY_DOORS_DECISION" || e.data?.action === "mystery_doors_decision") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:doors_decision" as any, { decision: e.data.decision, chosenDoorId: e.data.chosenDoorId, code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta } = handleMysteryDoorsDecision({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+          decision: e.data.decision,
+          chosenDoorId: e.data.chosenDoorId,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (finalScoreDelta !== 0) {
+          updatedTeams = updatedTeams.map((t) =>
+            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + finalScoreDelta) } : t
+          );
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
+      if (e.data?.type === "MYSTERY_TAROT_REDRAW" || e.data?.action === "mystery_tarot_redraw") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:tarot_redraw" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const { updatedState } = handleMysteryTarotRedraw({
+          state: curMystery,
+        });
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
           mysteryQuestState: updatedState,
         };
         roomStateRef.current = nextRoomState;
@@ -7340,6 +7397,20 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:choose_steal_target" as any, { targetTeamId, code });
                         } else {
                           window.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId }, "*");
+                        }
+                      }}
+                      onDoorsDecision={(payload) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:doors_decision" as any, { ...payload, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_DOORS_DECISION", action: "mystery_doors_decision", ...payload }, "*");
+                        }
+                      }}
+                      onTarotRedraw={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:tarot_redraw" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw" }, "*");
                         }
                       }}
                     />

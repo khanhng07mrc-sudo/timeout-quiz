@@ -1548,6 +1548,20 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
                 }
               }}
+              onDoorsDecision={(payload) => {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:doors_decision", payload);
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_DOORS_DECISION", action: "mystery_doors_decision", ...payload, teamId: effectiveTeamId }, "*");
+                }
+              }}
+              onTarotRedraw={() => {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:tarot_redraw");
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1766,6 +1780,20 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:choose_steal_target", { targetTeamId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onDoorsDecision={(payload) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:doors_decision", payload);
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_DOORS_DECISION", action: "mystery_doors_decision", ...payload, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onTarotRedraw={() => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:tarot_redraw");
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_REDRAW", action: "mystery_tarot_redraw", teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

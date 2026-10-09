@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES } from "@/lib/game-engine/mystery-quest";
+import { MYSTERY_THEMES, getPerkType } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 
 interface Props {
@@ -19,6 +19,8 @@ interface Props {
   onChooseAction?: (action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME") => void;
   onPairsDecision?: (choice: "CASH_OUT" | "PLAY_ROUND_2") => void;
   onChooseStealTarget?: (targetTeamId: string) => void;
+  onDoorsDecision?: (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
+  onTarotRedraw?: () => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
 
@@ -36,6 +38,8 @@ export default function MysteryQuestBoard({
   onChooseAction,
   onPairsDecision,
   onChooseStealTarget,
+  onDoorsDecision,
+  onTarotRedraw,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -80,6 +84,7 @@ export default function MysteryQuestBoard({
     memoryPairsState,
     oneShotState,
     tarotState,
+    nextCardPeek,
   } = mysteryState;
 
   // Sync optimistic set with actual opened tiles from server
@@ -221,7 +226,7 @@ export default function MysteryQuestBoard({
           <span className="text-[10px] font-bold text-slate-400 mr-1">🎮 Đổi Minigame:</span>
           {[
             { key: "MEMORY_PAIRS", label: "🃏 Lật Cặp", icon: "🃏" },
-            { key: "ONE_SHOT_DOORS", label: "🚪 3 Cửa", icon: "🚪" },
+            { key: "ONE_SHOT_DOORS", label: "🚪 4 Cửa", icon: "🚪" },
             { key: "PUSH_YOUR_LUCK", label: "💣 Lật Liều", icon: "💣" },
             { key: "TAROT_DESTINY", label: "🔮 Tarot", icon: "🔮" },
           ].map((v) => {
@@ -357,7 +362,25 @@ export default function MysteryQuestBoard({
                         {perkType === "DOUBLE_PROMO" && (
                           <>
                             <span>⚡</span>
-                            <span className="truncate">Tăng tỉ lệ x2 điểm quỹ!</span>
+                            <span className="truncate">Nhân đôi x2 điểm thưởng!</span>
+                          </>
+                        )}
+                        {perkType === "PEEK_PROMO" && (
+                          <>
+                            <span>👁️</span>
+                            <span className="truncate">Mắt Thần Soi Bài!</span>
+                          </>
+                        )}
+                        {perkType === "EXTRA_ATTEMPT_PROMO" && (
+                          <>
+                            <span>🔄</span>
+                            <span className="truncate">Thêm lượt / Cơ hội thứ hai!</span>
+                          </>
+                        )}
+                        {perkType === "SAFETY_NET_PROMO" && (
+                          <>
+                            <span>🧲</span>
+                            <span className="truncate">Két Sắt Bảo Lưu (giữ 50% quỹ)!</span>
                           </>
                         )}
                       </div>
@@ -503,24 +526,40 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 2: ONE SHOT DOORS HUD */}
             {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl">
-                <div className="text-xs font-black text-amber-300 uppercase tracking-wider mb-0.5">
-                  🚪 CHỌN 1 TRONG 3 CÁNH CỬA HOÀNG GIA
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl text-center space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-black text-amber-300 uppercase tracking-wider text-[11px]">
+                    🚪 4 CÁNH CỬA BÍ MẬT (RADAR SCAN)
+                  </span>
+                  <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[10px]">
+                    {oneShotState?.phase === "SCANNED" ? "🚨 CẢNH BÁO BÃI MÌN" : `Đã chọn: ${oneShotState?.selectedDoorIds?.length || 0}/2`}
+                  </span>
                 </div>
-                <p className="text-[11px] text-white/80 leading-snug">
-                  Chỉ được chọn DUY NHẤT 1 cửa! Gồm 1 Đại Thưởng (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), 1 An Toàn (+{baseQuestionPoints || 10}đ) và 1 Bẫy Bom (-{baseQuestionPoints || 10}đ)!
-                </p>
+                {oneShotState?.phase === "SCANNED" ? (
+                  <p className="text-[11px] text-rose-300 font-bold leading-snug animate-pulse">
+                    🚨 CẢNH BÁO: Radar phát hiện có BẪY BOM trong 2 cửa đã chọn! Chọn Dừng Lại bảo toàn hoặc Liều mở 1 trong 2 cửa!
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-white/85 leading-snug">
+                    Hãy chọn 2 cánh cửa để kích hoạt máy quét Radar! Nếu cả 2 an toàn, nhận trọn cả 2 cửa! Nếu dính bom, Radar sẽ cảnh báo bạn!
+                  </p>
+                )}
               </div>
             )}
 
             {/* VARIANT 4: TAROT DESTINY HUD */}
             {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl">
-                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5">
-                  🔮 RÚT 1 LÁ BÀI TAROT THẦN SỐ VẬN MỆNH
+                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5 flex items-center justify-between">
+                  <span>🔮 RÚT BÀI TAROT THẦN SỐ VẬN MỆNH (5 QUẺ)</span>
+                  {tarotState?.canRedraw && !tarotState?.hasRedrawn && (
+                    <span className="text-[10px] text-amber-300 font-bold px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
+                      🔄 Có quyền rút lại
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-white/80 leading-snug">
-                  Rút duy nhất 1 lá bài định mệnh để giải mã quẻ bài: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
+                  Rút lá bài định mệnh: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
                 </p>
               </div>
             )}
@@ -757,113 +796,173 @@ export default function MysteryQuestBoard({
       {(phase === "PUSH_YOUR_LUCK" || phase === "TURN_SUMMARY") && (
         <div className="relative z-10 mt-2">
         {/* ════════════════════════════════════════════════════════════════════
-            1. VARIANT: ONE_SHOT_DOORS (3 Giant Doors)
+            1. VARIANT: ONE_SHOT_DOORS (4 Cánh Cửa Bí Mật - Radar Scan)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-3.5 max-w-2xl mx-auto py-1">
-            {tiles.map((tile) => {
-              const isChosen = oneShotState?.chosenTileId === tile.id;
-              const isBomb = tile.type !== "REWARD";
-              const isSteal = tile.effectType === "STEAL_POINTS";
-
-              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
-              if (!isCardOpened) {
-                return (
+          <div className="max-w-3xl mx-auto py-1">
+            {/* Stage 2 Radar Alert Modal Banner */}
+            {oneShotState?.phase === "SCANNED" && (
+              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-red-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                <div className="text-3xl animate-pulse">🚨</div>
+                <h4 className="text-sm sm:text-base font-black text-rose-300 uppercase tracking-wider">
+                  RADAR PHÁT HIỆN BẪY BOM TRONG 2 CỬA ĐÃ CHỌN!
+                </h4>
+                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                  Trong 2 cánh cửa #{oneShotState.selectedDoorIds?.[0]} & #{oneShotState.selectedDoorIds?.[1]} có 1 Bẫy Bom và 1 Cửa Thưởng!
+                  <br />
+                  Bạn muốn <strong className="text-emerald-300">Dừng Lại nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong> hay <strong className="text-yellow-300">Liều mở 1 cửa (50/50)</strong>?
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
-                    key={tile.id}
                     type="button"
-                    onClick={() => handleTileClick(tile)}
+                    onClick={() => onDoorsDecision ? onDoorsDecision({ decision: "SAFE_EXIT" }) : onCashOut?.()}
                     disabled={!canInteract}
-                    className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
-                      canInteract
-                        ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-103 shadow-2xl hover:shadow-amber-500/50 group"
-                        : "bg-black/50 border-white/20 opacity-80 cursor-default"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    🛡️ DỪNG LẠI & BẢO TOÀN (+{baseQuestionPoints || 10}Đ)
+                  </button>
+                  <span className="text-[11px] text-amber-200/90 font-bold px-2">
+                    👉 Bấm trực tiếp vào Cửa #{oneShotState.selectedDoorIds?.[0]} hoặc #{oneShotState.selectedDoorIds?.[1]} bên dưới để LIỀU MỞ!
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              {tiles.map((tile) => {
+                const isSelected = Boolean(oneShotState?.selectedDoorIds?.includes(tile.id));
+                const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id || (isSelected && oneShotState?.phase === "RESOLVED" && !oneShotState.hasBombDetected);
+                const isBomb = tile.type !== "REWARD";
+                const isSteal = tile.effectType === "STEAL_POINTS";
+
+                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+                if (!isCardOpened) {
+                  return (
+                    <button
+                      key={tile.id}
+                      type="button"
+                      onClick={() => {
+                        if (oneShotState?.phase === "SCANNED") {
+                          if (isSelected) {
+                            onDoorsDecision
+                              ? onDoorsDecision({ decision: "RISK_OPEN", chosenDoorId: tile.id })
+                              : handleTileClick(tile);
+                          }
+                        } else {
+                          handleTileClick(tile);
+                        }
+                      }}
+                      disabled={
+                        !canInteract ||
+                        (oneShotState?.phase === "SCANNED" ? !isSelected : isSelected)
+                      }
+                      className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 cursor-pointer ${
+                        isSelected
+                          ? oneShotState?.phase === "SCANNED"
+                            ? "bg-gradient-to-b from-rose-900/90 via-red-950/95 to-black border-rose-400 ring-4 ring-rose-500/60 shadow-2xl scale-103 animate-pulse"
+                            : "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/50 shadow-2xl scale-103"
+                          : canInteract && (!oneShotState?.phase || oneShotState.phase === "SELECTING")
+                          ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-amber-400 hover:border-yellow-300 hover:scale-103 shadow-2xl hover:shadow-amber-500/50 group"
+                          : "bg-black/50 border-white/20 opacity-60 cursor-default"
+                      }`}
+                    >
+                      <div className="w-full flex items-center justify-between">
+                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/60 border border-white/30 text-[10px] sm:text-[11px] font-black text-white flex items-center justify-center">
+                          #{tile.id}
+                        </span>
+                        {tile.isPeeked && (
+                          <span className="text-[8px] sm:text-[9px] font-black text-cyan-300 px-1 py-0.2 rounded bg-cyan-950/80 border border-cyan-400 animate-pulse">
+                            👁️ BẪY BOM
+                          </span>
+                        )}
+                        {!tile.isPeeked && isSelected && (
+                          <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded ${
+                            oneShotState?.phase === "SCANNED" ? "bg-rose-500 text-white animate-pulse" : "bg-yellow-400 text-black font-extrabold"
+                          }`}>
+                            {oneShotState?.phase === "SCANNED" ? "MỞ CỬA? 🎲" : "ĐÃ CHỌN ✨"}
+                          </span>
+                        )}
+                        {!tile.isPeeked && !isSelected && canInteract && (!oneShotState?.phase || oneShotState.phase === "SELECTING") && (
+                          <span className="text-[8px] sm:text-[9px] font-black text-yellow-300 animate-pulse">
+                            CHỌN CỬA ✨
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Giant Door Graphic */}
+                      <div className="text-3xl sm:text-5xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
+                        🚪
+                      </div>
+
+                      <div className="w-full text-center pb-0.5">
+                        <span className="text-xs sm:text-sm font-black text-white block">
+                          {tile.label}
+                        </span>
+                        <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
+                          Cánh Cửa Bí Ẩn
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
+
+                // Revealed Door
+                return (
+                  <div
+                    key={tile.id}
+                    className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
+                      isChosenFinal ? "ring-4 ring-yellow-400 scale-103 z-10" : isSelected ? "ring-2 ring-white/50" : "opacity-80"
+                    } ${
+                      isBomb
+                        ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
+                        : isSteal
+                        ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
+                        : "bg-gradient-to-b from-amber-950 via-emerald-950/80 to-black border-emerald-400 text-emerald-200"
                     }`}
                   >
                     <div className="w-full flex items-center justify-between">
-                      <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/60 border border-white/30 text-[10px] sm:text-[11px] font-black text-white flex items-center justify-center">
-                        #{tile.id}
-                      </span>
-                      {canInteract && (
-                        <span className="text-[8px] sm:text-[9px] font-black text-yellow-300 animate-pulse">
-                          CHỌN CỬA ✨
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Giant Door Graphic */}
-                    <div className="text-3xl sm:text-5xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-2xl">
-                      🚪
-                    </div>
-
-                    <div className="w-full text-center pb-0.5">
-                      <span className="text-xs sm:text-sm font-black text-white block">
-                        {tile.label}
-                      </span>
-                      <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
-                        Cánh Cửa Bí Ẩn
+                      <span className="text-xs font-mono font-bold opacity-75">#{tile.id}</span>
+                      <span
+                        className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          isChosenFinal
+                            ? isSteal
+                              ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"
+                              : "bg-yellow-400 text-black font-extrabold"
+                            : isBomb
+                            ? "bg-red-500/30 text-red-300"
+                            : isSteal
+                            ? "bg-rose-500/30 text-rose-300"
+                            : "bg-emerald-500/30 text-emerald-300"
+                        }`}
+                      >
+                        {isChosenFinal ? (isSteal ? "CƯỚP ĐIỂM 🗡️" : "ĐÃ MỞ ⭐") : isBomb ? "BẪY BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
                       </span>
                     </div>
-                  </button>
-                );
-              }
 
-              // Revealed Door
-              return (
-                <div
-                  key={tile.id}
-                  className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 shadow-2xl animate-fade-in ${
-                    isChosen ? "ring-4 ring-yellow-400 scale-103 z-10" : "opacity-80"
-                  } ${
-                    isBomb
-                      ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
-                      : isSteal
-                      ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
-                      : "bg-gradient-to-b from-amber-950 via-emerald-950/80 to-black border-emerald-400 text-emerald-200"
-                  }`}
-                >
-                  <div className="w-full flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold opacity-75">#{tile.id}</span>
-                    <span
-                      className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
-                        isChosen
-                          ? isSteal
-                            ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"
-                            : "bg-yellow-400 text-black font-extrabold"
-                          : isBomb
-                          ? "bg-red-500/30 text-red-300"
+                    <div className="text-3xl sm:text-5xl my-auto text-center drop-shadow-xl">
+                      {isBomb ? "💥" : tile.icon || "👑"}
+                    </div>
+
+                    <div className="w-full text-center pb-1">
+                      <p className="text-xs sm:text-sm font-black text-white leading-tight truncate">
+                        {tile.storyTitle}
+                      </p>
+                      <p
+                        className={`text-xs sm:text-base font-black font-mono mt-0.5 ${
+                          isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
+                        }`}
+                      >
+                        {isBomb
+                          ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng`
                           : isSteal
-                          ? "bg-rose-500/30 text-rose-300"
-                          : "bg-emerald-500/30 text-emerald-300"
-                      }`}
-                    >
-                      {isChosen ? (isSteal ? "CƯỚP ĐIỂM 🗡️" : "ĐÃ CHỌN ⭐") : isBomb ? "BẪY BOM" : isSteal ? "CƯỚP ĐIỂM 🗡️" : "THƯỞNG"}
-                    </span>
+                          ? `Cướp +${tile.deltaPoints}đ`
+                          : `+${tile.deltaPoints}đ`}
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="text-3xl sm:text-5xl my-auto text-center drop-shadow-xl">
-                    {isBomb ? "💥" : tile.icon || "👑"}
-                  </div>
-
-                  <div className="w-full text-center pb-1">
-                    <p className="text-xs sm:text-sm font-black text-white leading-tight truncate">
-                      {tile.storyTitle}
-                    </p>
-                    <p
-                      className={`text-xs sm:text-base font-black font-mono mt-0.5 ${
-                        isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
-                      }`}
-                    >
-                      {isBomb
-                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ Tổng`
-                        : isSteal
-                        ? `Cướp +${tile.deltaPoints}đ`
-                        : `+${tile.deltaPoints}đ`}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -871,51 +970,89 @@ export default function MysteryQuestBoard({
             2. VARIANT: TAROT_DESTINY (5 Mystical Vertical Floating Cards)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 max-w-3xl mx-auto py-1">
-            {tiles.map((tile) => {
-              const isChosen = tarotState?.chosenCardId === tile.id;
-              const isBomb = tile.type !== "REWARD";
-              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
-              const meta = getTarotCardMeta(tile.tarotName, tile.storyTitle);
-
-              if (!isCardOpened) {
-                return (
+          <div className="max-w-3xl mx-auto py-1">
+            {tarotState?.canRedraw && !tarotState?.hasRedrawn && tarotState?.chosenCardId && (
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-purple-950/95 via-indigo-950/90 to-black/95 border-2 border-purple-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                <div className="text-3xl animate-pulse">🔮</div>
+                <h4 className="text-sm sm:text-base font-black text-purple-300 uppercase tracking-wider">
+                  BẠN CÓ QUYỀN: 🔄 RÚT LẠI QUẺ BÀI (CƠ HỘI THỨ HAI)!
+                </h4>
+                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                  Bạn vừa lật lá #{tarotState.chosenCardId}. Bạn có muốn giữ quẻ bài này hay kích hoạt quyền rút lại quẻ khác?
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
-                    key={tile.id}
                     type="button"
-                    onClick={() => handleTileClick(tile)}
+                    onClick={() => {
+                      const curTile = tiles.find((t) => t.id === tarotState.chosenCardId);
+                      if (curTile) handleTileClick(curTile);
+                    }}
                     disabled={!canInteract}
-                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
-                      canInteract
-                        ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
-                        : "border-white/10 opacity-80 cursor-default"
-                    }`}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
-                    {/* Tarot Card Back SVG Artwork */}
-                    <div className="absolute inset-0 z-0">
-                      <TarotCardBackSvg />
-                    </div>
-
-                    {/* Card Back Overlays */}
-                    <div className="w-full flex items-center justify-between z-10 px-0.5 pt-0.5">
-                      <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
-                        #{tile.id}
-                      </span>
-                      {canInteract && (
-                        <span className="text-[8px] sm:text-[9px] font-black text-amber-300 px-1 py-0.2 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
-                          RÚT ✨
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="z-10 w-full text-center pb-0.5">
-                      <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
-                        TAROT
-                      </span>
-                    </div>
+                    ✅ GIỮ LÁ NÀY & HOÀN TẤT
                   </button>
-                );
-              }
+                  <button
+                    type="button"
+                    onClick={() => onTarotRedraw?.()}
+                    disabled={!canInteract}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-xs border border-purple-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    🔄 RÚT LẠI QUẺ KHÁC
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5">
+              {tiles.map((tile) => {
+                const isChosen = tarotState?.chosenCardId === tile.id;
+                const isBomb = tile.type !== "REWARD";
+                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+                const meta = getTarotCardMeta(tile.tarotName, tile.storyTitle);
+
+                if (!isCardOpened) {
+                  return (
+                    <button
+                      key={tile.id}
+                      type="button"
+                      onClick={() => handleTileClick(tile)}
+                      disabled={!canInteract}
+                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
+                        canInteract
+                          ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
+                          : "border-white/10 opacity-80 cursor-default"
+                      }`}
+                    >
+                      {/* Tarot Card Back SVG Artwork */}
+                      <div className="absolute inset-0 z-0">
+                        <TarotCardBackSvg />
+                      </div>
+
+                      {/* Card Back Overlays */}
+                      <div className="w-full flex items-center justify-between z-10 px-0.5 pt-0.5">
+                        <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
+                          #{tile.id}
+                        </span>
+                        {tile.isPeeked ? (
+                          <span className="text-[7px] sm:text-[8px] font-black text-cyan-300 px-1 py-0.2 rounded-full bg-cyan-950/80 border border-cyan-400 animate-pulse">
+                            👁️ THẦN CHẾT
+                          </span>
+                        ) : canInteract ? (
+                          <span className="text-[8px] sm:text-[9px] font-black text-amber-300 px-1 py-0.2 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
+                            RÚT ✨
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="z-10 w-full text-center pb-0.5">
+                        <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
+                          TAROT
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
 
               // Revealed Tarot Card
               return (
@@ -974,6 +1111,7 @@ export default function MysteryQuestBoard({
                 </div>
               );
             })}
+            </div>
           </div>
         )}
 
@@ -1004,6 +1142,11 @@ export default function MysteryQuestBoard({
                       <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
                         #{tile.id}
                       </span>
+                      {tile.isPeeked && (
+                        <span className="text-[7px] font-black text-cyan-300 px-1 py-0.2 rounded bg-cyan-950/80 border border-cyan-400 animate-pulse">
+                          👁️ BOM
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-xl sm:text-2xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
@@ -1089,7 +1232,27 @@ export default function MysteryQuestBoard({
           const nextCardNum = unopenedTile?.id ?? (cardsFlippedCount + 1);
 
           return (
-            <div className="flex flex-col items-center justify-center space-y-2.5 sm:space-y-3 max-w-lg mx-auto py-1">
+            <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-2.5 max-w-lg mx-auto py-1">
+              {nextCardPeek && (
+                <div className="w-full max-w-md px-3 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-400 text-cyan-200 text-xs font-bold flex items-center justify-between shadow-lg animate-pulse">
+                  <span className="flex items-center gap-1.5 truncate">
+                    <span>👁️</span>
+                    <span>Mắt Thần Soi Đỉnh Bài:</span>
+                    <strong className="text-white truncate">{nextCardPeek.icon} {nextCardPeek.storyTitle}</strong>
+                  </span>
+                  <span className={`shrink-0 ml-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
+                    nextCardPeek.isBomb ? "bg-red-500/40 text-red-300 border border-red-400" : "bg-emerald-500/40 text-emerald-300 border border-emerald-400"
+                  }`}>
+                    {nextCardPeek.isBomb ? "💥 BẪY BOM!" : "✨ AN TOÀN!"}
+                  </span>
+                </div>
+              )}
+              {getPerkType(promoPerk) === "SAFETY_NET_PROMO" && (
+                <div className="w-full max-w-md px-3 py-1 rounded-xl bg-blue-950/80 border border-blue-400 text-blue-200 text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-md">
+                  <span>🧲 Két Sắt Bảo Lưu:</span>
+                  <span className="text-white">Bảo lưu 50% quỹ điểm nếu không may dính bom!</span>
+                </div>
+              )}
               {/* ── 2 Main Card Areas: Deck & Latest Drawn Card ── */}
               <div className="grid grid-cols-2 gap-2.5 sm:gap-4 items-center justify-center w-full max-w-md">
                 {/* ── LEFT: CHỒNG BÀI RÚT (STACKED DECK) ── */}

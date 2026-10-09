@@ -35,7 +35,19 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision, handleChooseStealTarget, getPerkType } from "./game-engine/mystery-quest";
+import {
+  generateMysteryStageForTurn,
+  handleFlipCard,
+  handleCashOut,
+  normalizeMiniGameType,
+  shuffleMemoryPairsTiles,
+  handleMemoryPairsSecondChanceDecision,
+  handleChooseStealTarget,
+  handleOneShotDoorsDecision,
+  handleTarotRedraw,
+  handleTarotConfirmKeep,
+  getPerkType,
+} from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -4887,6 +4899,56 @@ export function registerSocketHandlers(io: IO) {
       }
     };
 
+    const executeMysteryDoorsDecision = async (
+      room: any,
+      questState: any,
+      team: any,
+      decision: "SAFE_EXIT" | "RISK_OPEN",
+      chosenDoorId?: number
+    ) => {
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const { updatedState, finalScoreDelta } = handleOneShotDoorsDecision({
+        state: questState,
+        team,
+        allTeams,
+        decision,
+        chosenDoorId,
+      });
+
+      roomMysteryQuests.set(room.id, updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+
+      if (finalScoreDelta !== 0) {
+        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] score delta error:", err);
+        });
+      } else {
+        buildRoomState(room.id).then((refreshedState) => {
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] buildRoomState error:", err);
+        });
+      }
+    };
+
+    const executeMysteryTarotRedraw = async (
+      room: any,
+      questState: any
+    ) => {
+      const { updatedState } = handleTarotRedraw({
+        state: questState,
+      });
+
+      roomMysteryQuests.set(room.id, updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+    };
+
     async function executeMysteryAdvanceTurn(room: any, questState: any) {
       // Immediately clear previous question state across display and player devices (0ms latency)
       stopQuestionTimer(room.id);
@@ -5134,6 +5196,78 @@ export function registerSocketHandlers(io: IO) {
       if (!team) return;
 
       await executeMysteryPairsDecision(room, questState, team, choice);
+    });
+
+    socket.on("game:mystery:doors_decision", async ({ decision, chosenDoorId }: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId);
+    });
+
+    socket.on("admin:mystery:doors_decision", async ({ decision, chosenDoorId, code }: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.oneShotState?.phase !== "SCANNED") return;
+
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId);
+    });
+
+    socket.on("game:mystery:tarot_redraw", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.canRedraw) return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
+        return;
+      }
+
+      await executeMysteryTarotRedraw(room, questState);
+    });
+
+    socket.on("admin:mystery:tarot_redraw", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.canRedraw) return;
+
+      await executeMysteryTarotRedraw(room, questState);
     });
 
     socket.on("game:mystery:steal_buzz", async () => {

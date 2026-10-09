@@ -280,7 +280,7 @@ class SoundManager {
             return;
           }
         }
-      } else if (type === "LOBBY" && this.currentMusicKey === audioKey && (now - this.lastMusicStartTime < 3000 || !nextAudio.paused)) {
+      } else if (type === "LOBBY" && this.currentMusicKey === audioKey && !nextAudio.paused) {
         return;
       }
     }

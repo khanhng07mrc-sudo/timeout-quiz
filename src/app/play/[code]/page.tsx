@@ -90,6 +90,7 @@ export default function PlayPage() {
   const myTeamIdRef = useRef<string | undefined>(undefined);
   const playerIdRef = useRef<string>("");
   const lastQuestionIdRef = useRef<string | null>(null);
+  const lastRevealKeyRef = useRef<string | null>(null);
   const teamAnswersRef = useRef<Map<string, string | string[]>>(new Map());
 
   const currentQuestionRef = useRef<QuestionState | null>(null);
@@ -316,16 +317,22 @@ export default function PlayPage() {
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
           setIsStealPhase(false);
-          if (soundEnabledRef.current) {
-            soundManager.stopMusic(600, true);
-            const myAns = p.revealPayload.answers?.find(
-              (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
-            );
-            if (myAns?.isCorrect) {
-              soundManager.playCorrect();
-            } else {
-              soundManager.playWrong();
+          if (p.revealPayload && soundEnabledRef.current) {
+            const payloadKey = p.revealPayload.questionId || (p.revealPayload.correctAnswer ? JSON.stringify(p.revealPayload.correctAnswer) : "revealed");
+            if (lastRevealKeyRef.current !== payloadKey) {
+              lastRevealKeyRef.current = payloadKey;
+              soundManager.stopMusic(600, true);
+              const myAns = p.revealPayload.answers?.find(
+                (a: any) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
+              );
+              if (myAns?.isCorrect) {
+                soundManager.playCorrect();
+              } else {
+                soundManager.playWrong();
+              }
             }
+          } else if (!p.revealPayload) {
+            lastRevealKeyRef.current = null;
           }
         }
         if (p.timer !== undefined) {
@@ -731,20 +738,25 @@ export default function PlayPage() {
     socket.on("game:answer:reveal", (payload) => {
       setRevealPayload(payload);
       setIsStealPhase(false);
-      if (soundEnabledRef.current) {
-        soundManager.stopMusic(600, true);
-        const myAns = payload.answers.find(
-          (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
-        );
-        if (myAns?.isCorrect) {
-          soundManager.playCorrect();
-        } else {
-          soundManager.playWrong();
+      if (payload && soundEnabledRef.current) {
+        const payloadKey = payload.questionId || (payload.correctAnswer ? JSON.stringify(payload.correctAnswer) : "revealed");
+        if (lastRevealKeyRef.current !== payloadKey) {
+          lastRevealKeyRef.current = payloadKey;
+          soundManager.stopMusic(600, true);
+          const myAns = payload.answers.find(
+            (a) => a.playerId === playerIdRef.current || (myTeamIdRef.current && a.teamId === myTeamIdRef.current)
+          );
+          if (myAns?.isCorrect) {
+            soundManager.playCorrect();
+          } else {
+            soundManager.playWrong();
+          }
         }
       }
     });
 
     socket.on("game:question:clear", () => {
+      lastRevealKeyRef.current = null;
       setCurrentQuestion(null);
       setRevealPayload(null);
       setAnswered(false);

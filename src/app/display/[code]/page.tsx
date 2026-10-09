@@ -85,6 +85,7 @@ export default function DisplayPage() {
     Array<{ id: number; emoji: string; left: number }>
   >([]);
   const [oracleScores, setOracleScores] = useState<Record<string, number> | null>(null);
+  const lastRevealKeyRef = useRef<string | null>(null);
 
   const triggerFloatingCheer = useCallback((emoji: string, _targetTeamId: string) => {
     const id = Date.now() + Math.random();
@@ -202,11 +203,19 @@ export default function DisplayPage() {
         }
         if (p.revealPayload !== undefined) {
           setRevealPayload(p.revealPayload);
-          soundManager.stopMusic(600, true);
-          if (p.revealPayload?.answers?.some((a: any) => a.isCorrect)) {
-            soundManager.playCorrect();
+          if (p.revealPayload) {
+            const payloadKey = p.revealPayload.questionId || (p.revealPayload.correctAnswer ? JSON.stringify(p.revealPayload.correctAnswer) : "revealed");
+            if (lastRevealKeyRef.current !== payloadKey) {
+              lastRevealKeyRef.current = payloadKey;
+              soundManager.stopMusic(600, true);
+              if (p.revealPayload.answers?.some((a: any) => a.isCorrect)) {
+                soundManager.playCorrect();
+              } else {
+                soundManager.playWrong();
+              }
+            }
           } else {
-            soundManager.playWrong();
+            lastRevealKeyRef.current = null;
           }
         }
         if (p.timer !== undefined) {
@@ -485,17 +494,24 @@ export default function DisplayPage() {
       setIsStealOpen(false);
     });
     socket.on("game:answer:reveal", (payload) => {
-      soundManager.stopMusic(600, true);
       setRevealPayload(payload);
       setIsStealOpen(false);
-      if (payload.answers?.some((a) => a.isCorrect)) {
-        soundManager.playCorrect();
-      } else {
-        soundManager.playWrong();
+      if (payload) {
+        const payloadKey = payload.questionId || (payload.correctAnswer ? JSON.stringify(payload.correctAnswer) : "revealed");
+        if (lastRevealKeyRef.current !== payloadKey) {
+          lastRevealKeyRef.current = payloadKey;
+          soundManager.stopMusic(600, true);
+          if (payload.answers?.some((a) => a.isCorrect)) {
+            soundManager.playCorrect();
+          } else {
+            soundManager.playWrong();
+          }
+        }
       }
     });
 
     socket.on("game:question:clear", () => {
+      lastRevealKeyRef.current = null;
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
@@ -1624,7 +1640,7 @@ export default function DisplayPage() {
                         className={`p-2.5 sm:p-3.5 rounded-xl border-2 transition-all text-sm sm:text-base font-medium ${
                           revealPayload
                             ? isRevealed
-                              ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50"
+                              ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50 animate-glow-celebrate"
                               : "border-border opacity-40"
                             : "border-border glass"
                         }`}

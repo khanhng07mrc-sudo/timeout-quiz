@@ -303,6 +303,41 @@ export default function AdminSandboxPage() {
     }
   }, [roomState?.config?.matchMaxQuestions]);
 
+  // Floating animated score popups for Sandbox feedback (+20đ, -10đ)
+  const [scorePopups, setScorePopups] = useState<{ id: string; teamId: string; delta: number; text: string }[]>([]);
+  const prevScoresRef = useRef<Map<string, number>>(new Map());
+
+  useEffect(() => {
+    if (!roomState?.teams || roomState.teams.length === 0) return;
+    const newPopups: { id: string; teamId: string; delta: number; text: string }[] = [];
+    roomState.teams.forEach((t) => {
+      const prev = prevScoresRef.current.get(t.id);
+      if (prev !== undefined && prev !== t.score) {
+        const delta = t.score - prev;
+        if (delta !== 0) {
+          const id = `${t.id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+          newPopups.push({
+            id,
+            teamId: t.id,
+            delta,
+            text: delta > 0 ? `+${delta}đ` : `${delta}đ`,
+          });
+        }
+      }
+      prevScoresRef.current.set(t.id, t.score);
+    });
+
+    if (newPopups.length > 0) {
+      setScorePopups((curr) => [...curr, ...newPopups]);
+      const timer = setTimeout(() => {
+        const idsToRemove = new Set(newPopups.map((p) => p.id));
+        setScorePopups((curr) => curr.filter((p) => !idsToRemove.has(p.id)));
+      }, 1300);
+      return () => clearTimeout(timer);
+    }
+  }, [roomState?.teams]);
+
+
   const offlinePrepIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const offlineWarmupIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingOfflineLaunchRef = useRef<(() => void) | null>(null);
@@ -5322,7 +5357,7 @@ export default function AdminSandboxPage() {
                         <button
                           type="button"
                           onClick={handleConcludeMatch}
-                          className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-xs font-black shadow-lg shadow-amber-500/30 border border-yellow-300 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-yellow-400"
+                          className="px-3 py-1 rounded-lg bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black text-xs font-black shadow-lg shadow-amber-500/30 border border-yellow-300 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-yellow-400 btn-tactile"
                           title="Đã thi đủ số câu quy định theo luật, kết thúc và công bố giải"
                         >
                           <span className="text-sm">🏆</span>
@@ -5336,7 +5371,7 @@ export default function AdminSandboxPage() {
                         <button
                           type="button"
                           onClick={handleAdminNext}
-                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-cyan-400"
+                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white text-xs font-black shadow-lg shadow-purple-500/30 animate-pulse transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap cursor-pointer ring-2 ring-cyan-400 btn-tactile"
                           title="Vào ngay câu hỏi tiếp theo (0s delay, không chờ 3s)"
                         >
                           <span>🚀</span>
@@ -5349,7 +5384,7 @@ export default function AdminSandboxPage() {
                       <button
                         type="button"
                         onClick={handleAdminNext}
-                        className={`px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                        className={`px-3 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 whitespace-nowrap cursor-pointer btn-tactile ${
                           roomState?.mode === "DICE_RACE" && !currentQuestion && roomState?.status === "PLAYING"
                             ? "animate-pulse ring-2 ring-cyan-400 bg-gradient-to-r from-purple-600 to-cyan-600"
                             : ""
@@ -5374,7 +5409,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={handleAdminReveal}
-                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer animate-pulse"
+                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer animate-pulse btn-tactile"
                   >
                     <span>👁️</span>
                     <span>Công bố đáp án</span>
@@ -6540,18 +6575,21 @@ export default function AdminSandboxPage() {
             </div>
 
             {/* Live Bot Event Logs (Compact Single-line Ticker Bar) */}
-            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0">
+            <div className="glass rounded-xl px-3 py-1.5 border border-white/10 text-xs bg-[#121424] flex items-center justify-between shrink-0 shadow-lg">
               <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
-                <span className="font-bold text-slate-400 text-[11px] shrink-0">Nhật ký:</span>
-                <span className="font-mono text-[11px] text-slate-300 truncate">
-                  {botLogs[0] || "Đang chờ sự kiện đầu tiên..."}
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${botAutoEnabled ? "bg-emerald-400 animate-pulse glow-neon-emerald" : "bg-cyan-400 animate-pulse glow-neon-cyan"}`} />
+                <span className="font-bold text-slate-400 text-[11px] shrink-0 uppercase tracking-wider">Live Ticker:</span>
+                <span
+                  key={botLogs[0] || "initial"}
+                  className="font-mono text-[11px] text-slate-200 truncate animate-ticker-slide"
+                >
+                  {botLogs[0] || "Phòng Sandbox sẵn sàng · Đang chờ sự kiện đầu tiên..."}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setShowLogsModal(true)}
-                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition"
+                className="px-2 py-0.5 rounded glass hover:bg-white/10 text-cyan-300 text-[11px] font-bold shrink-0 transition btn-tactile cursor-pointer"
               >
                 📜 Xem tất cả ({botLogs.length})
               </button>
@@ -6570,17 +6608,31 @@ export default function AdminSandboxPage() {
               <div className="grid grid-cols-4 gap-1 flex-1">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
+                  const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
                   return (
                     <button
                       key={t.id}
                       type="button"
                       onClick={() => handleSwitchActiveTeam(idx)}
-                      className={`px-1 sm:px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-0.5 sm:gap-1 cursor-pointer ${
+                      className={`relative px-1 sm:px-1.5 py-1 rounded-lg text-left border transition flex items-center justify-between gap-0.5 sm:gap-1 cursor-pointer btn-tactile ${
                         isActive
                           ? "bg-purple-600/30 border-purple-500 shadow ring-1 ring-purple-400/50"
                           : "glass border-white/10 hover:border-white/30 text-slate-300"
                       }`}
                     >
+                      {/* Floating dynamic score badges */}
+                      {teamPopups.map((p) => (
+                        <span
+                          key={p.id}
+                          className={`absolute -top-3.5 right-1 z-30 font-black text-[10px] px-1.5 py-0.2 rounded-full shadow-lg animate-score-float pointer-events-none whitespace-nowrap ${
+                            p.delta > 0
+                              ? "bg-emerald-500 text-white shadow-emerald-500/50"
+                              : "bg-rose-500 text-white shadow-rose-500/50"
+                          }`}
+                        >
+                          {p.text}
+                        </span>
+                      ))}
                       <div className="flex items-center gap-1 min-w-0">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
                         <span className="font-bold text-[10px] truncate text-white">{t.name}</span>
@@ -6601,16 +6653,30 @@ export default function AdminSandboxPage() {
               {/* Integrated Tester Header (Single Slim Bar) */}
               <div className="bg-[#151728] px-2 sm:px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between gap-1 sm:gap-2 shrink-0 overflow-x-auto no-scrollbar">
                 {/* Active Team Identity Badge */}
-                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0">
+                <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 shrink-0 relative">
                   <span className="w-2.5 h-2.5 rounded-full shrink-0 animate-pulse" style={{ background: currentTeam?.color || "#a855f7" }} />
                   <span className="font-black text-xs text-white truncate max-w-[75px] sm:max-w-[120px]">
                     {activeTeamIndex === 0 ? "Bạn (Tester)" : currentTeam?.name || "Đội"}
                   </span>
-                  <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
-                    {currentTeam?.score ?? 0}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
-                      <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
-                    ) : null}
-                  </span>
+                  <div className="relative inline-flex items-center">
+                    <span className="px-1.5 py-0.2 rounded font-mono font-bold text-[10px] bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shrink-0">
+                      {currentTeam?.score ?? 0}đ{roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState?.currentTurnTeamId === currentTeam?.id && roomState.mysteryQuestState.phase !== "TURN_SUMMARY" && (roomState.mysteryQuestState.potPoints || 0) > 0 ? (
+                        <span className="text-yellow-400 font-extrabold ml-0.5">(+{roomState.mysteryQuestState.potPoints}đ)</span>
+                      ) : null}
+                    </span>
+                    {scorePopups.filter((p) => p.teamId === currentTeam?.id).map((p) => (
+                      <span
+                        key={p.id}
+                        className={`absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 font-black text-[11px] px-1.5 py-0.2 rounded-full shadow-lg animate-score-float pointer-events-none whitespace-nowrap ${
+                          p.delta > 0
+                            ? "bg-emerald-500 text-white shadow-emerald-500/50"
+                            : "bg-rose-500 text-white shadow-rose-500/50"
+                        }`}
+                      >
+                        {p.text}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Quick Test Controls */}
@@ -6621,7 +6687,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(true)}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
                     title="Giả lập đội này chọn đáp án đúng"
                   >
                     ✓ Đúng
@@ -6629,7 +6695,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={() => handleForceActiveTeamAnswer(false)}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
                     title="Giả lập đội này chọn đáp án sai"
                   >
                     ✗ Sai
@@ -6637,7 +6703,7 @@ export default function AdminSandboxPage() {
                   <button
                     type="button"
                     onClick={handleForceActiveTeamBuzz}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm"
+                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
                     title="Giả lập đội này bấm chuông"
                   >
                     ⚡ Buzz
@@ -6649,7 +6715,7 @@ export default function AdminSandboxPage() {
                         if (currentTeam) setDirectAnswerTargetTeamId(currentTeam.id);
                         setShowDirectAnswerModal(true);
                       }}
-                      className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] active:scale-95 cursor-pointer shadow-sm hidden sm:inline-block"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm hidden sm:inline-block"
                       title="MC nộp đáp án trực tiếp cho đội này hoặc đội khác"
                     >
                       🎙️ MC nộp
@@ -6661,7 +6727,7 @@ export default function AdminSandboxPage() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setShowCheatDropdown(!showCheatDropdown); }}
-                      className="px-1.5 sm:px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 cursor-pointer"
+                      className="px-1.5 sm:px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 btn-tactile cursor-pointer"
                       title="Chỉnh điểm nhanh cho đội này"
                     >
                       <span>Cheat</span>

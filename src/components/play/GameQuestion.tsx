@@ -961,7 +961,7 @@ export default function GameQuestion({
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
                     ? isCorrect
-                      ? "border-green-500 bg-green-500/25 text-green-300 ring-2 ring-green-500/50 shadow-lg"
+                      ? "border-green-500 bg-green-500/25 text-green-300 ring-2 ring-green-500/50 shadow-lg animate-glow-celebrate"
                       : "border-border opacity-40"
                     : isSelected
                     ? "border-purple-500 bg-purple-500/25 text-white ring-2 ring-purple-500/60 shadow-lg"
@@ -1007,7 +1007,7 @@ export default function GameQuestion({
                     ? "opacity-25 line-through border-border cursor-not-allowed bg-black/30"
                     : revealPayload
                     ? isCorrect
-                      ? "border-green-500 bg-green-500/20"
+                      ? "border-green-500 bg-green-500/25 text-green-300 ring-2 ring-green-500/50 shadow-lg animate-glow-celebrate"
                       : "border-border opacity-50"
                     : isSelected
                     ? "border-purple-500 bg-purple-500/20"
@@ -1140,7 +1140,7 @@ export default function GameQuestion({
 
       {/* Answer Reveal Section */}
       {revealPayload && (
-        <div className="space-y-3 pt-2">
+        <div className="space-y-3 pt-2 animate-fade-scale">
           <div className="text-center py-2 font-bold text-lg">
             {(() => {
               const myTs = revealPayload.teamSummaries?.find((ts) => Boolean(myTeamId && ts.teamId === myTeamId));

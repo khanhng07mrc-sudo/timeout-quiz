@@ -121,9 +121,19 @@ export default function MysteryQuestBoard({
 
   const handleTileClick = (tile: MysteryTile) => {
     if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id)) return;
-    if (memoryPairsState?.isMismatchResolving) return;
+    if (phase === "TURN_SUMMARY") return;
 
     if (miniGameType === "MEMORY_PAIRS") {
+      if (memoryPairsState?.isMismatchResolving) return;
+      if (memoryPairsState?.promptSecondChance) return;
+      if (memoryPairsState?.matchedPairKey) return;
+      if (
+        (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) &&
+        !memoryPairsState?.isBombRescueActive
+      ) {
+        return;
+      }
+
       // Trong Lật Cặp, chỉ chặn click đúp vào đúng cùng một lá bài trong vòng 200ms
       if (flippingTileIdRef.current === tile.id) return;
       flippingTileIdRef.current = tile.id;
@@ -1197,51 +1207,63 @@ export default function MysteryQuestBoard({
         {/* ════════════════════════════════════════════════════════════════════
             3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
         ════════════════════════════════════════════════════════════════════ */}
-        {miniGameType === "MEMORY_PAIRS" && (
-          <div className="grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1">
-            {tiles.map((tile) => {
-              const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
-              const isBomb = tile.type !== "REWARD";
+        {miniGameType === "MEMORY_PAIRS" && (() => {
+          const isPairsLocked = Boolean(
+            !canInteract ||
+            memoryPairsState?.isMismatchResolving ||
+            memoryPairsState?.promptSecondChance ||
+            memoryPairsState?.matchedPairKey ||
+            phase === "TURN_SUMMARY" ||
+            ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) && !memoryPairsState?.isBombRescueActive)
+          );
 
-              const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
-              if (!isCardOpened) {
-                return (
-                  <button
-                    key={tile.id}
-                    type="button"
-                    onClick={() => handleTileClick(tile)}
-                    disabled={!canInteract || memoryPairsState?.isMismatchResolving}
-                    className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer ${
-                      canInteract && !memoryPairsState?.isMismatchResolving
-                        ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-102 shadow-xl group"
-                        : "bg-black/40 border-white/10 opacity-75 cursor-default"
-                    }`}
-                  >
-                    <div className="w-full flex items-center justify-between">
-                      <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
-                        #{tile.id}
-                      </span>
-                      {tile.isPeeked && (
-                        <span className="text-[7px] font-black text-cyan-300 px-1 py-0.2 rounded bg-cyan-950/80 border border-cyan-400 animate-pulse">
-                          👁️ BOM
+          return (
+            <div className={`grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1 transition-all duration-300 ${
+              isPairsLocked ? "opacity-35 pointer-events-none grayscale-30" : ""
+            }`}>
+              {tiles.map((tile) => {
+                const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
+                const isBomb = tile.type !== "REWARD";
+
+                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+                if (!isCardOpened) {
+                  return (
+                    <button
+                      key={tile.id}
+                      type="button"
+                      onClick={() => handleTileClick(tile)}
+                      disabled={isPairsLocked}
+                      className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
+                        !isPairsLocked
+                          ? "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-102 shadow-xl group cursor-pointer"
+                          : "bg-black/40 border-white/10 opacity-75 cursor-not-allowed pointer-events-none"
+                      }`}
+                    >
+                      <div className="w-full flex items-center justify-between">
+                        <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
+                          #{tile.id}
                         </span>
-                      )}
-                    </div>
+                        {tile.isPeeked && (
+                          <span className="text-[7px] font-black text-cyan-300 px-1 py-0.2 rounded bg-cyan-950/80 border border-cyan-400 animate-pulse">
+                            👁️ BOM
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="text-xl sm:text-2xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
-                      🃏
-                    </div>
+                      <div className="text-xl sm:text-2xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
+                        🃏
+                      </div>
 
-                    <div className="w-full text-center">
-                      <span className="text-[9px] sm:text-[10px] font-black text-white block truncate">
-                        {tile.label}
-                      </span>
-                    </div>
-                  </button>
-                );
-              }
+                      <div className="w-full text-center">
+                        <span className="text-[9px] sm:text-[10px] font-black text-white block truncate">
+                          {tile.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
 
-              // Revealed Tile
+                // Revealed Tile
               const isSteal = tile.effectType === "STEAL_POINTS";
               return (
                 <div
@@ -1299,7 +1321,8 @@ export default function MysteryQuestBoard({
               );
             })}
           </div>
-        )}
+        );
+      })()}
 
         {/* ════════════════════════════════════════════════════════════════════
             4. VARIANT: PUSH_YOUR_LUCK (Chồng Bài Xếp Lớp Vô Hạn Né Bom)

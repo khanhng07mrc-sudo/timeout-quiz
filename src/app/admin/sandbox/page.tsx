@@ -2341,6 +2341,10 @@ export default function AdminSandboxPage() {
           updatedTeams = updatedTeams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
           );
+          addLog(`💰 [${activeTeam.name}] dừng lại an toàn nhận +${finalScoreDelta}đ từ câu hỏi!`);
+          soundManager.playCorrect();
+        } else if (e.data.choice === "PLAY_ROUND_2") {
+          addLog(`🔥 [${activeTeam.name}] quyết định chơi tiếp Vòng 2 (3 lượt mới né bom)!`);
         }
 
         const nextRoomState: RoomState = {

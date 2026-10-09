@@ -1470,7 +1470,7 @@ function handleFlipCard({
       round: 1,
       promptSecondChance: false
     };
-    if (memState.isMismatchResolving) {
+    if (memState.isMismatchResolving || memState.promptSecondChance || memState.matchedPairKey || state.phase === "TURN_SUMMARY" || memState.attemptsUsed >= memState.maxAttempts && !memState.isBombRescueActive) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
     const numTileId = Number(tileId);

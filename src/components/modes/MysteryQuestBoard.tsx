@@ -44,6 +44,7 @@ export default function MysteryQuestBoard({
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
+  const [optimisticMatchedPairKey, setOptimisticMatchedPairKey] = useState<string | null>(null);
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
@@ -88,18 +89,39 @@ export default function MysteryQuestBoard({
     nextCardPeek,
   } = mysteryState;
 
-  // Sync optimistic set with actual opened tiles from server
+  // Sync optimistic set with actual opened tiles from server without redundant re-renders
   useEffect(() => {
     const opened = new Set(tiles.filter((t) => t.isOpened).map((t) => t.id));
-    if (memoryPairsState?.matchedPairKey) {
+    const matchedKey = memoryPairsState?.matchedPairKey || optimisticMatchedPairKey;
+    if (matchedKey) {
       tiles.forEach((t) => {
-        if (t.pairKey === memoryPairsState.matchedPairKey) {
+        if (t.pairKey === matchedKey) {
           opened.add(t.id);
         }
       });
     }
-    setOptimisticOpenedIds(opened);
-  }, [tiles, memoryPairsState?.matchedPairKey]);
+    setOptimisticOpenedIds((prev) => {
+      if (prev.size === opened.size) {
+        let same = true;
+        for (const id of opened) {
+          if (!prev.has(id)) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return prev;
+      }
+      return opened;
+    });
+  }, [tiles, memoryPairsState?.matchedPairKey, optimisticMatchedPairKey]);
+
+  useEffect(() => {
+    if (memoryPairsState?.matchedPairKey) {
+      setOptimisticMatchedPairKey(memoryPairsState.matchedPairKey);
+    } else if (!memoryPairsState?.firstFlippedTileId) {
+      setOptimisticMatchedPairKey(null);
+    }
+  }, [memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -126,12 +148,20 @@ export default function MysteryQuestBoard({
     if (miniGameType === "MEMORY_PAIRS") {
       if (memoryPairsState?.isMismatchResolving) return;
       if (memoryPairsState?.promptSecondChance) return;
-      if (memoryPairsState?.matchedPairKey) return;
+      if (memoryPairsState?.matchedPairKey || optimisticMatchedPairKey) return;
       if (
         (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) &&
         !memoryPairsState?.isBombRescueActive
       ) {
         return;
+      }
+
+      // Check if this click completes a matching pair optimistically
+      if (memoryPairsState?.firstFlippedTileId && Number(memoryPairsState.firstFlippedTileId) !== Number(tile.id)) {
+        const first = tiles.find((t) => Number(t.id) === Number(memoryPairsState.firstFlippedTileId));
+        if (first && first.pairKey && first.pairKey === tile.pairKey) {
+          setOptimisticMatchedPairKey(tile.pairKey);
+        }
       }
 
       // Trong Lật Cặp, chỉ chặn click đúp vào đúng cùng một lá bài trong vòng 200ms
@@ -577,17 +607,30 @@ export default function MysteryQuestBoard({
                   </span>
                   <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[10px]">
                     {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED"
-                      ? "✨ GIAI ĐOẠN 2: CHỌN CỬA ĐANG SÁNG"
+                      ? "✨ GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 2 CỬA ĐÃ ĐỂ RA RIÊNG"
                       : `Giai đoạn 1: Để ra riêng (${oneShotState?.selectedDoorIds?.length || 0}/2 cửa)`}
                   </span>
                 </div>
                 {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED" ? (
-                  <p className="text-[11px] text-yellow-300 font-bold leading-snug animate-pulse">
-                    ✨ GIAI ĐOẠN 2: 2 cánh cửa đã chọn đã được để ra riêng (vẫn úp). Hãy chọn 1 trong 2 cánh cửa còn lại ĐANG SÁNG để mở!
-                  </p>
+                  <div className="space-y-1">
+                    {oneShotState?.hasBombDetected ? (
+                      <div className="p-1.5 sm:p-2 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs font-bold animate-pulse flex items-center justify-center gap-1.5 shadow-inner">
+                        <span>⚠️ CẢNH BÁO:</span>
+                        <span>Trong 2 cánh cửa bạn để ra riêng <strong>CÓ cánh cửa trừ điểm (Bẫy bom)</strong>!</span>
+                      </div>
+                    ) : (
+                      <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold animate-pulse flex items-center justify-center gap-1.5 shadow-inner">
+                        <span>✨ AN TOÀN TUYỆT ĐỐI:</span>
+                        <span>Trong 2 cánh cửa bạn để ra riêng <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 2 đều là thưởng)!</span>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-yellow-300 font-bold leading-snug">
+                      👉 Hãy chọn mở 1 trong 2 cánh cửa đã để ra riêng ĐANG SÁNG (Cửa #{oneShotState?.selectedDoorIds?.[0]} hoặc #{oneShotState?.selectedDoorIds?.[1]}) bên dưới!
+                    </p>
+                  </div>
                 ) : (
                   <p className="text-[11px] text-white/85 leading-snug">
-                    Giai đoạn 1: Hãy chọn 2 cánh cửa để ĐỂ RA RIÊNG (vẫn úp xuống, chưa lật). Ở giai đoạn 2, bạn sẽ mở 1 trong 2 cánh cửa còn lại đang sáng!
+                    Giai đoạn 1: Hãy chọn 2 cánh cửa để <strong className="text-amber-300">ĐỂ RA RIÊNG</strong> (vẫn úp xuống, chưa lật). Hệ thống sẽ quét báo bom, và ở Giai đoạn 2 bạn sẽ mở 1 trong 2 cánh cửa này!
                   </p>
                 )}
               </div>
@@ -846,46 +889,27 @@ export default function MysteryQuestBoard({
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
           <div className="max-w-3xl mx-auto py-1">
-            {/* Stage 2 Glowing Doors Instruction Banner */}
-            {oneShotState?.phase === "STAGE_2_PICK" && (
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-1 animate-bounce-in max-w-xl mx-auto">
-                <div className="text-2xl animate-pulse">✨</div>
+            {/* Stage 2 Door Select Prompt */}
+            {(oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED") && (
+              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                <div className="text-3xl animate-pulse">🚪✨</div>
                 <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
-                  GIAI ĐOẠN 2: HÃY CHỌN 1 TRONG 2 CÁNH CỬA ĐANG SÁNG!
+                  GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 2 CÁNH CỬA ĐÃ ĐỂ RA RIÊNG!
                 </h4>
+                {oneShotState?.hasBombDetected ? (
+                  <div className="px-3 py-1.5 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
+                    <span>⚠️</span>
+                    <span>Radar phát hiện: <strong>CÓ 1 cánh cửa trừ điểm (Bẫy bom)</strong> trong 2 cửa này!</span>
+                  </div>
+                ) : (
+                  <div className="px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
+                    <span>✨</span>
+                    <span>Radar xác nhận: <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 2 đều an toàn)!</span>
+                  </div>
+                )}
                 <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                  2 cánh cửa #{oneShotState.selectedDoorIds?.[0]} & #{oneShotState.selectedDoorIds?.[1]} đã được để ra riêng (vẫn úp).
-                  <br />
-                  Bây giờ bạn hãy chọn mở <strong className="text-yellow-300">1 trong 2 cánh cửa còn lại đang sáng</strong> bên dưới!
+                  2 cánh cửa còn lại đã bị loại bỏ. Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[0]}</strong> hoặc <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[1]}</strong> đang sáng bên dưới để mở!
                 </p>
-              </div>
-            )}
-
-            {/* Stage 2 Radar Alert Modal Banner (Legacy fallback) */}
-            {oneShotState?.phase === "SCANNED" && (
-              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-red-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
-                <div className="text-3xl animate-pulse">🚨</div>
-                <h4 className="text-sm sm:text-base font-black text-rose-300 uppercase tracking-wider">
-                  RADAR PHÁT HIỆN BẪY BOM TRONG 2 CỬA ĐÃ CHỌN!
-                </h4>
-                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
-                  Trong 2 cánh cửa #{oneShotState.selectedDoorIds?.[0]} & #{oneShotState.selectedDoorIds?.[1]} có 1 Bẫy Bom và 1 Cửa Thưởng!
-                  <br />
-                  Bạn muốn <strong className="text-emerald-300">Dừng Lại nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong> hay <strong className="text-yellow-300">Liều mở 1 cửa (50/50)</strong>?
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onDoorsDecision ? onDoorsDecision({ decision: "SAFE_EXIT" }) : onCashOut?.()}
-                    disabled={!canInteract}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
-                  >
-                    🛡️ DỪNG LẠI & BẢO TOÀN (+{baseQuestionPoints || 10}Đ)
-                  </button>
-                  <span className="text-[11px] text-amber-200/90 font-bold px-2">
-                    👉 Bấm trực tiếp vào Cửa #{oneShotState.selectedDoorIds?.[0]} hoặc #{oneShotState.selectedDoorIds?.[1]} bên dưới để LIỀU MỞ!
-                  </span>
-                </div>
               </div>
             )}
 
@@ -906,13 +930,13 @@ export default function MysteryQuestBoard({
                       onClick={() => handleTileClick(tile)}
                       disabled={
                         !canInteract ||
-                        (isStage2 && isSelected)
+                        (isStage2 && !isSelected)
                       }
                       className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 ${
                         isStage2
                           ? isSelected
-                            ? "bg-stone-900/60 border-stone-600 opacity-40 grayscale-40 cursor-not-allowed scale-95"
-                            : "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/80 shadow-[0_0_30px_rgba(250,204,21,0.7)] scale-103 animate-pulse cursor-pointer hover:scale-105"
+                            ? "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/80 shadow-[0_0_30px_rgba(250,204,21,0.7)] scale-103 animate-pulse cursor-pointer hover:scale-105"
+                            : "bg-stone-900/60 border-stone-600 opacity-30 grayscale-60 cursor-not-allowed scale-95 pointer-events-none"
                           : isSelected
                           ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-yellow-300 ring-2 ring-yellow-400/60 shadow-xl scale-101 cursor-pointer"
                           : canInteract
@@ -933,12 +957,12 @@ export default function MysteryQuestBoard({
                           <>
                             {isStage2 ? (
                               isSelected ? (
-                                <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-stone-700 text-stone-300">
-                                  ĐÃ ĐỂ RA RIÊNG 📦
-                                </span>
-                              ) : (
                                 <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-yellow-400 text-black font-extrabold animate-pulse">
                                   CHỌN MỞ ✨
+                                </span>
+                              ) : (
+                                <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-stone-700 text-stone-400">
+                                  ĐÃ BỊ LOẠI ❌
                                 </span>
                               )
                             ) : isSelected ? (
@@ -956,9 +980,9 @@ export default function MysteryQuestBoard({
 
                       {/* Giant Door Graphic */}
                       <div className={`text-3xl sm:text-5xl my-auto transition-transform duration-300 drop-shadow-2xl ${
-                        isStage2 && !isSelected ? "scale-110" : "group-hover:scale-110"
+                        isStage2 && isSelected ? "scale-110" : "group-hover:scale-110"
                       }`}>
-                        {isStage2 && !isSelected ? "🚪✨" : "🚪"}
+                        {isStage2 && isSelected ? "🚪✨" : "🚪"}
                       </div>
 
                       <div className="w-full text-center pb-0.5">
@@ -968,8 +992,8 @@ export default function MysteryQuestBoard({
                         <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
                           {isStage2
                             ? isSelected
-                              ? "Đã để ra riêng"
-                              : "Đang sáng · Bấm mở!"
+                              ? "Đang sáng · Bấm mở!"
+                              : "Đã bị loại bỏ"
                             : isSelected
                             ? "Đã để ra riêng"
                             : "Cánh Cửa Bí Ẩn"}
@@ -1021,10 +1045,10 @@ export default function MysteryQuestBoard({
                           : isSelected
                           ? "ĐỂ RA RIÊNG 📦"
                           : isBomb
-                          ? "BẪY BOM 💥"
+                          ? "BẪY BOM (ĐÃ LOẠI) 💥"
                           : isSteal
-                          ? "CƯỚP ĐIỂM 🗡️"
-                          : "THƯỞNG ⭐"}
+                          ? "CƯỚP (ĐÃ LOẠI) 🗡️"
+                          : "THƯỞNG (ĐÃ LOẠI) ⭐"}
                       </span>
                     </div>
 
@@ -1208,11 +1232,12 @@ export default function MysteryQuestBoard({
             3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
         ════════════════════════════════════════════════════════════════════ */}
         {miniGameType === "MEMORY_PAIRS" && (() => {
+          const effectiveMatchedPairKey = memoryPairsState?.matchedPairKey || optimisticMatchedPairKey;
           const isPairsLocked = Boolean(
             !canInteract ||
             memoryPairsState?.isMismatchResolving ||
             memoryPairsState?.promptSecondChance ||
-            memoryPairsState?.matchedPairKey ||
+            effectiveMatchedPairKey ||
             phase === "TURN_SUMMARY" ||
             ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) && !memoryPairsState?.isBombRescueActive)
           );
@@ -1222,7 +1247,7 @@ export default function MysteryQuestBoard({
               isPairsLocked ? "opacity-35 pointer-events-none grayscale-30" : ""
             }`}>
               {tiles.map((tile) => {
-                const isMatched = memoryPairsState?.matchedPairKey === tile.pairKey;
+                const isMatched = effectiveMatchedPairKey === tile.pairKey;
                 const isBomb = tile.type !== "REWARD";
 
                 const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);

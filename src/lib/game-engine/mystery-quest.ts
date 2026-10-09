@@ -1502,20 +1502,25 @@ export function handleFlipCard({
 
       // Đã chọn đủ 2 cửa để ra riêng!
       // Cả 4 cánh cửa vẫn úp mặt (isOpened: false), chưa lật!
-      // Chuyển sang Giai đoạn 2: Người chơi chọn 1 trong 2 cánh cửa còn lại đang sáng.
+      // Quét xem trong 2 cánh cửa đã để ra riêng này CÓ cánh cửa trừ điểm (Bẫy bom) hay không:
+      const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
+      const hasBombInSelected = selectedTiles.some((t) => t.type !== "REWARD" || (t.deltaPoints && t.deltaPoints < 0));
+      osState.hasBombDetected = hasBombInSelected;
+
+      // Chuyển sang Giai đoạn 2: Người chơi chọn 1 trong 2 cánh cửa đã để ra riêng đang sáng!
       osState.phase = "STAGE_2_PICK";
       return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
     }
 
-    // Giai đoạn 2: Chỉ có thể chọn giữa 1 trong 2 cánh cửa còn lại đang sáng!
+    // Giai đoạn 2: Người chơi PHẢI CHỌN GIỮA 1 TRONG 2 CỬA ĐÃ ĐỂ RA RIÊNG!
     if (osState.phase === "STAGE_2_PICK" || osState.phase === "SCANNED") {
       const selected = osState.selectedDoorIds || [];
-      // 2 cánh cửa đã để ra riêng bị khóa (không được chọn)
-      if (selected.includes(tileId)) {
+      // CHỈ CHO PHÉP chọn 1 trong 2 cánh cửa đã để ra riêng! (Các cánh cửa khác đã bị loại)
+      if (!selected.includes(tileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
-      // Người chơi bấm mở 1 trong 2 cánh cửa đang sáng!
+      // Người chơi bấm mở 1 trong 2 cánh cửa đã để ra riêng!
       osState.chosenFinalDoorId = tileId;
       osState.phase = "RESOLVED";
       osState.allRevealed = true;

@@ -1893,12 +1893,15 @@ function handleFlipCard({
       if (selected.length < 2) {
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
+      const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
+      const hasBombInSelected = selectedTiles.some((t) => t.type !== "REWARD" || t.deltaPoints && t.deltaPoints < 0);
+      osState.hasBombDetected = hasBombInSelected;
       osState.phase = "STAGE_2_PICK";
       return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
     }
     if (osState.phase === "STAGE_2_PICK" || osState.phase === "SCANNED") {
       const selected = osState.selectedDoorIds || [];
-      if (selected.includes(tileId)) {
+      if (!selected.includes(tileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
       osState.chosenFinalDoorId = tileId;

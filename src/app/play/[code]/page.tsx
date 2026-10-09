@@ -389,7 +389,9 @@ export default function PlayPage() {
           setSharedPowerupLockedTeamName(p.sharedPowerupLockedTeamName);
         }
         if (p.mysteryQuestState !== undefined) {
-          setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
+          if (p.roomState === undefined || p.roomState.mysteryQuestState === undefined) {
+            setRoomState((prev) => (prev ? { ...prev, mysteryQuestState: p.mysteryQuestState } : prev));
+          }
           if (p.mysteryQuestState.phase !== "QUESTION_ACTIVE") {
             setCurrentQuestion(null);
             setRevealPayload(null);

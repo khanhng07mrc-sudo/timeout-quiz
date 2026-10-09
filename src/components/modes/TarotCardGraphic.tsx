@@ -1,6 +1,6 @@
 import React from "react";
 
-export type TarotMajorKey = "THE_SUN" | "THE_EMPEROR" | "THE_FOOL" | "DEATH" | "THE_KNIGHT";
+export type TarotMajorKey = "THE_SUN" | "THE_EMPEROR" | "THE_FOOL" | "DEATH" | "THE_KNIGHT" | "THE_STAR";
 
 export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
   key: TarotMajorKey;
@@ -17,7 +17,7 @@ export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
     return {
       key: "THE_SUN",
       roman: "XIX",
-      nameEn: "THE SUN",
+      nameEn: "SUN",
       nameVi: "Mặt Trời",
       tagline: "Đại Hồng Ân Vinh Quang",
       bgGradient: "from-amber-950 via-yellow-950 to-stone-950",
@@ -29,7 +29,7 @@ export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
     return {
       key: "THE_EMPEROR",
       roman: "IV",
-      nameEn: "THE EMPEROR",
+      nameEn: "EMPEROR",
       nameVi: "Hoàng Đế",
       tagline: "Vương Quyền Uy Thế",
       bgGradient: "from-purple-950 via-rose-950 to-stone-950",
@@ -41,7 +41,7 @@ export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
     return {
       key: "THE_FOOL",
       roman: "0",
-      nameEn: "THE FOOL",
+      nameEn: "FOOL",
       nameVi: "Kẻ Khờ",
       tagline: "Đột Phá Bất Ngờ",
       bgGradient: "from-indigo-950 via-blue-950 to-stone-950",
@@ -61,11 +61,23 @@ export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
       glowColor: "rgba(239, 68, 68, 0.4)",
     };
   }
+  if (text.includes("ngôi sao") || text.includes("star")) {
+    return {
+      key: "THE_STAR",
+      roman: "XVII",
+      nameEn: "STAR",
+      nameVi: "Ngôi Sao",
+      tagline: "Hy Vọng Rực Rỡ",
+      bgGradient: "from-sky-950 via-indigo-950 to-stone-950",
+      borderColor: "border-cyan-400",
+      glowColor: "rgba(56, 189, 248, 0.4)",
+    };
+  }
   // Default Knight
   return {
     key: "THE_KNIGHT",
     roman: "VII",
-    nameEn: "THE KNIGHT",
+    nameEn: "KNIGHT",
     nameVi: "Hiệp Sĩ",
     tagline: "Thần Tốc Đột Kích",
     bgGradient: "from-emerald-950 via-teal-950 to-stone-950",
@@ -405,6 +417,46 @@ export function TarotCardEmblem({ cardKey }: { cardKey: TarotMajorKey }) {
 
           {/* Winged Helmet Plume */}
           <path d="M 44 24 Q 60 16 68 28 Q 56 26 44 24 Z" fill="#38bdf8" />
+        </svg>
+      );
+
+    case "THE_STAR":
+      return (
+        <svg viewBox="0 0 100 100" className="w-full h-full" fill="none">
+          <defs>
+            <linearGradient id="starGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="40%" stopColor="#67e8f9" />
+              <stop offset="100%" stopColor="#0284c7" />
+            </linearGradient>
+            <radialGradient id="starCenterGlow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="40%" stopColor="#a5f3fc" stopOpacity="0.8" />
+              <stop offset="100%" stopColor="#0891b2" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+
+          {/* Celestial Aura Circles */}
+          <circle cx="50" cy="50" r="32" fill="url(#starCenterGlow)" />
+          <circle cx="50" cy="50" r="28" stroke="#38bdf8" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.7" />
+
+          {/* 8-Pointed Divine Radiant Star */}
+          <path
+            d="M 50 12 L 54 38 L 80 24 L 62 46 L 88 50 L 62 54 L 80 76 L 54 62 L 50 88 L 46 62 L 20 76 L 38 54 L 12 50 L 38 46 L 20 24 L 46 38 Z"
+            fill="url(#starGlow)"
+            stroke="#e0f2fe"
+            strokeWidth="1.2"
+          />
+
+          {/* Central Bright Core */}
+          <circle cx="50" cy="50" r="7" fill="#ffffff" />
+          <circle cx="50" cy="50" r="3" fill="#38bdf8" />
+
+          {/* Little Starlets */}
+          <circle cx="28" cy="22" r="2" fill="#fef08a" />
+          <circle cx="72" cy="20" r="2.5" fill="#fef08a" />
+          <circle cx="78" cy="74" r="1.8" fill="#fef08a" />
+          <circle cx="22" cy="72" r="2.2" fill="#fef08a" />
         </svg>
       );
   }

@@ -1426,6 +1426,7 @@ export default function AdminRoomPage() {
                 onAdvanceTurn={() => emit("admin:mystery:advance_turn", { code })}
                 onSelectMiniGame={(miniGameType) => emit("admin:mystery:set_minigame_type" as any, { miniGameType, code })}
                 onPairsDecision={(choice) => emit("admin:mystery:pairs_decision", { choice, code })}
+                onChooseStealTarget={(targetTeamId) => emit("admin:mystery:choose_steal_target", { targetTeamId, code })}
               />
             </div>
           )}

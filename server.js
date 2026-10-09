@@ -974,12 +974,33 @@ function shuffleMemoryPairsTiles(tiles) {
     isOpened: false
   }));
 }
-function generateMemoryPairsTiles(basePoints = 20) {
+function generateMemoryPairsTiles(basePoints = 20, options) {
   const pBonusTop = basePoints * 2;
   const pBonusHigh = Math.round(basePoints * 1.5);
   const pBonusMed = basePoints;
   const pSteal = Math.min(25, Math.max(15, basePoints));
   const pPenalty = basePoints;
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
+  );
+  const stealOrBonusPair = canSteal ? {
+    pairKey: "PAIR_STEAL",
+    icon: "\u{1F5E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: "\u{1F5E1}\uFE0F C\u1EB6P H\u1EA2I T\u1EB6C \u0110O\u1EA0T B\u1EA2O!",
+    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p h\u1EA3i t\u1EB7c: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    effectType: "STEAL_POINTS",
+    deltaPoints: pSteal
+  } : {
+    pairKey: "PAIR_SHIELD",
+    icon: "\u{1F6E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: "\u{1F6E1}\uFE0F C\u1EB6P KHI\xCAN V\xC0NG H\u1ED8 TH\xC2N!",
+    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p khi\xEAn ho\xE0ng gia: Nh\u1EADn an to\xE0n +${pSteal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pSteal
+  };
   const pairs = [
     {
       pairKey: "PAIR_MULTIPLY",
@@ -990,15 +1011,7 @@ function generateMemoryPairsTiles(basePoints = 20) {
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop
     },
-    {
-      pairKey: "PAIR_STEAL",
-      icon: "\u{1F5E1}\uFE0F",
-      type: "REWARD",
-      storyTitle: "\u{1F5E1}\uFE0F C\u1EB6P H\u1EA2I T\u1EB6C \u0110O\u1EA0T B\u1EA2O!",
-      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p h\u1EA3i t\u1EB7c: C\u01B0\u1EDBp \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i d\u1EABn \u0111\u1EA7u (t\u1ED1i \u0111a ${pSteal}\u0111, tr\u1EA7n 50% \u0111i\u1EC3m \u0111\u1ED1i th\u1EE7)!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pSteal
-    },
+    stealOrBonusPair,
     {
       pairKey: "PAIR_TREASURE",
       icon: "\u{1F48E}",
@@ -1049,10 +1062,29 @@ function generateMemoryPairsTiles(basePoints = 20) {
     label: `Th\u1EBB #${idx + 1}`
   }));
 }
-function generateOneShotDoorsTiles(basePoints = 20) {
+function generateOneShotDoorsTiles(basePoints = 20, options) {
   const pHigh = basePoints * 2;
   const pSteal = Math.min(25, Math.max(15, basePoints));
   const pPenalty = basePoints;
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
+  );
+  const stealOrBonusDoor = canSteal ? {
+    icon: "\u{1F5E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: "\u{1F5E1}\uFE0F C\u1EECA \u0110O\u1EA0T B\u1EA2O H\u1EA2I T\u1EB6C!",
+    storyDescription: `K\xEDch ho\u1EA1t c\u01B0\u1EDBp b\xF3c \u0111o\u1EA1t b\u1EA3o: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    effectType: "STEAL_POINTS",
+    deltaPoints: pSteal
+  } : {
+    icon: "\u{1F48E}",
+    type: "REWARD",
+    storyTitle: "\u{1F48E} C\u1EECA KHO B\xC1U HO\xC0NG KIM!",
+    storyDescription: `M\u1EDF ra kho b\xE1u ho\xE0ng kim: Nh\u1EADn an to\xE0n +${pSteal} \u0111i\u1EC3m th\u01B0\u1EDFng si\xEAu c\u1EA5p!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pSteal
+  };
   const doors = [
     {
       icon: "\u{1F451}",
@@ -1062,14 +1094,7 @@ function generateOneShotDoorsTiles(basePoints = 20) {
       effectType: "BONUS_POINTS",
       deltaPoints: pHigh
     },
-    {
-      icon: "\u{1F5E1}\uFE0F",
-      type: "REWARD",
-      storyTitle: "\u{1F5E1}\uFE0F C\u1EECA \u0110O\u1EA0T B\u1EA2O H\u1EA2I T\u1EB6C!",
-      storyDescription: `K\xEDch ho\u1EA1t c\u01B0\u1EDBp b\xF3c \u0111o\u1EA1t b\u1EA3o: C\u01B0\u1EDBp \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i d\u1EABn \u0111\u1EA7u (t\u1ED1i \u0111a ${pSteal}\u0111, tr\u1EA7n 50% \u0111i\u1EC3m \u0111\u1ED1i th\u1EE7)!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pSteal
-    },
+    stealOrBonusDoor,
     {
       icon: "\u{1F4A5}",
       type: "BOMB_MAJOR",
@@ -1092,12 +1117,33 @@ function generateOneShotDoorsTiles(basePoints = 20) {
     deltaPoints: d.deltaPoints
   }));
 }
-function generateTarotDestinyTiles(basePoints = 20) {
+function generateTarotDestinyTiles(basePoints = 20, options) {
   const pSun = basePoints * 2;
   const pEmperor = Math.round(basePoints * 1.5);
   const pFool = basePoints + 10;
   const pKnight = basePoints;
   const pDeath = basePoints;
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
+  );
+  const fifthCard = canSteal ? {
+    tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
+    icon: "\u{1F5E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: "\u{1F5E1}\uFE0F HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
+    storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD c\u01B0\u1EDBp ph\xE1: C\u01B0\u1EDBp +${pKnight}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    effectType: "STEAL_POINTS",
+    deltaPoints: pKnight
+  } : {
+    tarotName: "Ng\xF4i Sao Hy V\u1ECDng (The Star)",
+    icon: "\u2B50",
+    type: "REWARD",
+    storyTitle: "\u2B50 NG\xD4I SAO HY V\u1ECCNG",
+    storyDescription: `\xC1nh sao may m\u1EAFn r\u1EA1ng ng\u1EDDi: Nh\u1EADn n\xF3ng +${pKnight} \u0111i\u1EC3m th\u01B0\u1EDFng vinh quang!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pKnight
+  };
   const tarotCards = [
     {
       tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
@@ -1135,15 +1181,7 @@ function generateTarotDestinyTiles(basePoints = 20) {
       effectType: "LOSE_POINTS",
       deltaPoints: -pDeath
     },
-    {
-      tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
-      icon: "\u{1F5E1}\uFE0F",
-      type: "REWARD",
-      storyTitle: "\u{1F5E1}\uFE0F HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
-      storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD c\u01B0\u1EDBp ph\xE1: C\u01B0\u1EDBp th\xEAm ${pKnight} \u0111i\u1EC3m v\xE0o qu\u1EF9 t\u1ED5ng!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pKnight
-    }
+    fifthCard
   ];
   const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
   return shuffled.map((card, idx) => ({
@@ -1164,7 +1202,8 @@ function generateNextPushYourLuckCard({
   drawIndex,
   basePoints = 10,
   teamScore = 0,
-  isDoublePromo = false
+  isDoublePromo = false,
+  options
 }) {
   let bombChance;
   if (basePoints <= 10) {
@@ -1272,6 +1311,21 @@ function generateNextPushYourLuckCard({
     }
   }
   let effectType = template.effectType;
+  if (effectType === "STEAL_POINTS") {
+    const currentRound = options?.currentRound ?? 1;
+    const canSteal = currentRound >= 2 && Boolean(
+      options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= delta)
+    );
+    if (!canSteal) {
+      effectType = "BONUS_POINTS";
+      template = {
+        storyTitle: "\u{1F48E} KHO B\xC1U HO\xC0NG KIM!",
+        storyDescription: `M\u1EDF kh\xF3a kho b\xE1u ho\xE0ng kim: Nh\u1EADn an to\xE0n +${delta} \u0111i\u1EC3m v\xE0o qu\u1EF9!`,
+        deltaPoints: delta,
+        effectType: "BONUS_POINTS"
+      };
+    }
+  }
   if (isDoublePromo && Math.random() < 0.35) {
     effectType = "MULTIPLY_X2";
     delta = 0;
@@ -1288,13 +1342,14 @@ function generateNextPushYourLuckCard({
     deltaPoints: delta
   };
 }
-function generatePushYourLuckTiles(theme, basePoints = 10, teamScore = 0, isDoublePromo = false) {
+function generatePushYourLuckTiles(theme, basePoints = 10, teamScore = 0, isDoublePromo = false, options) {
   const firstCard = generateNextPushYourLuckCard({
     theme,
     drawIndex: 1,
     basePoints,
     teamScore,
-    isDoublePromo
+    isDoublePromo,
+    options
   });
   return [firstCard];
 }
@@ -1319,9 +1374,14 @@ function generateMysteryStageForTurn({
   let memoryPairsState = void 0;
   let oneShotState = void 0;
   let tarotState = void 0;
+  const roundOptions = {
+    currentRound,
+    teams,
+    currentTeamId: currentTeam.id
+  };
   switch (miniGameType) {
     case "MEMORY_PAIRS":
-      tiles = generateMemoryPairsTiles(baseQuestionPoints);
+      tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
       memoryPairsState = {
         firstFlippedTileId: null,
         secondFlippedTileId: null,
@@ -1334,14 +1394,14 @@ function generateMysteryStageForTurn({
       };
       break;
     case "ONE_SHOT_DOORS":
-      tiles = generateOneShotDoorsTiles(baseQuestionPoints);
+      tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
       oneShotState = {
         chosenTileId: void 0,
         allRevealed: false
       };
       break;
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(baseQuestionPoints);
+      tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
       tarotState = {
         chosenCardId: void 0
       };
@@ -1352,7 +1412,8 @@ function generateMysteryStageForTurn({
         theme,
         baseQuestionPoints,
         currentTeam.score || 0,
-        promoPerk === "DOUBLE_PROMO"
+        promoPerk === "DOUBLE_PROMO",
+        roundOptions
       );
       break;
   }
@@ -1483,19 +1544,26 @@ function handleFlipCard({
         let victimTeamName;
         let stolenPoints;
         if (firstTile.effectType === "STEAL_POINTS") {
-          const stealRes = calculateCappedSteal({
-            activeTeamId: team.id,
-            allTeams,
-            targetPoints: firstTile.deltaPoints || 25,
-            maxCap: 25
-          });
-          if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-            victimTeamId = stealRes.victimTeamId;
-            victimTeamName = stealRes.victimTeamName;
-            stolenPoints = stealRes.stolenPoints;
-            finalDelta = stolenPoints;
+          const stealAmount = firstTile.deltaPoints || 25;
+          const eligibleTeams = (allTeams || []).filter(
+            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+          );
+          if (eligibleTeams.length > 0) {
+            state.phase = "STEAL_TARGET_SELECT";
+            state.pendingSteal = {
+              stolenPoints: stealAmount,
+              eligibleTeamIds: eligibleTeams.map((t) => t.id),
+              tileTitle: firstTile.storyTitle,
+              tileIcon: firstTile.icon
+            };
+            return {
+              updatedState: { ...state },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: 0
+            };
           } else {
-            finalDelta = Math.min(firstTile.deltaPoints || 15, 15);
+            finalDelta = stealAmount;
           }
         } else {
           finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
@@ -1672,19 +1740,26 @@ function handleFlipCard({
       let victimTeamName;
       let stolenPoints;
       if (tile2.effectType === "STEAL_POINTS") {
-        const stealRes = calculateCappedSteal({
-          activeTeamId: team.id,
-          allTeams,
-          targetPoints: tile2.deltaPoints || 25,
-          maxCap: 25
-        });
-        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-          victimTeamId = stealRes.victimTeamId;
-          victimTeamName = stealRes.victimTeamName;
-          stolenPoints = stealRes.stolenPoints;
-          finalDelta = stolenPoints;
+        const stealAmount = tile2.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: tile2.storyTitle,
+            tileIcon: tile2.icon
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
         } else {
-          finalDelta = Math.min(tile2.deltaPoints || 15, 15);
+          finalDelta = stealAmount;
         }
       } else {
         finalDelta = tile2.deltaPoints || 25;
@@ -1782,19 +1857,26 @@ function handleFlipCard({
       let victimTeamName;
       let stolenPoints;
       if (tile2.effectType === "STEAL_POINTS") {
-        const stealRes = calculateCappedSteal({
-          activeTeamId: team.id,
-          allTeams,
-          targetPoints: tile2.deltaPoints || 25,
-          maxCap: 25
-        });
-        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-          victimTeamId = stealRes.victimTeamId;
-          victimTeamName = stealRes.victimTeamName;
-          stolenPoints = stealRes.stolenPoints;
-          finalDelta = stolenPoints;
+        const stealAmount = tile2.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: tile2.storyTitle,
+            tileIcon: tile2.icon
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
         } else {
-          finalDelta = Math.min(tile2.deltaPoints || 15, 15);
+          finalDelta = stealAmount;
         }
       } else {
         finalDelta = tile2.deltaPoints || 35;
@@ -1835,7 +1917,12 @@ function handleFlipCard({
       drawIndex: state.cardsFlippedCount + 1,
       basePoints: state.baseQuestionPoints || 10,
       teamScore: team.score || 0,
-      isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO"
+      isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+      options: {
+        currentRound: state.currentRound,
+        teams: allTeams,
+        currentTeamId: team.id
+      }
     });
     state.tiles.push(tile);
   }
@@ -1860,7 +1947,12 @@ function handleFlipCard({
         drawIndex: state.cardsFlippedCount + 1,
         basePoints: state.baseQuestionPoints || 10,
         teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO"
+        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id
+        }
       });
       state.tiles.push(nextTopCard2);
       return {
@@ -2006,7 +2098,12 @@ function handleFlipCard({
         drawIndex: state.cardsFlippedCount + 1,
         basePoints: state.baseQuestionPoints || 10,
         teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO"
+        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id
+        }
       });
       state.tiles.push(nextTopCard2);
       return {
@@ -2042,15 +2139,27 @@ function handleFlipCard({
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
   } else if (tile.effectType === "STEAL_POINTS") {
-    const stealCalc = calculateCappedSteal({
-      activeTeamId: team.id,
-      allTeams,
-      targetPoints: tile.deltaPoints || 20,
-      maxCap: 25
-    });
-    const stealAmt = stealCalc.stolenPoints > 0 ? stealCalc.stolenPoints : 15;
-    state.potPoints += stealAmt * state.potMultiplier;
-    state.stolenPointsPot = (state.stolenPointsPot || 0) + stealAmt * state.potMultiplier;
+    const stealAmount = tile.deltaPoints || 20;
+    const eligibleTeams = (allTeams || []).filter(
+      (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+    );
+    if (eligibleTeams.length > 0) {
+      state.phase = "STEAL_TARGET_SELECT";
+      state.pendingSteal = {
+        stolenPoints: stealAmount,
+        eligibleTeamIds: eligibleTeams.map((t) => t.id),
+        tileTitle: tile.storyTitle,
+        tileIcon: tile.icon
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: 0
+      };
+    } else {
+      state.potPoints += stealAmount * state.potMultiplier;
+    }
   } else {
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
@@ -2059,7 +2168,12 @@ function handleFlipCard({
     drawIndex: state.cardsFlippedCount + 1,
     basePoints: state.baseQuestionPoints || 10,
     teamScore: team.score || 0,
-    isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO"
+    isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+    options: {
+      currentRound: state.currentRound,
+      teams: allTeams,
+      currentTeamId: team.id
+    }
   });
   state.tiles.push(nextTopCard);
   return {
@@ -2080,16 +2194,26 @@ function handleCashOut({
   let victimTeamName;
   let stolenPoints;
   if (state.stolenPointsPot && state.stolenPointsPot > 0 && allTeams.length > 0) {
-    const stealCalc = calculateCappedSteal({
-      activeTeamId: team.id,
-      allTeams,
-      targetPoints: state.stolenPointsPot,
-      maxCap: 25
-    });
-    if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
-      victimTeamId = stealCalc.victimTeamId;
-      victimTeamName = stealCalc.victimTeamName;
-      stolenPoints = stealCalc.stolenPoints;
+    if (state.pendingStealVictimId) {
+      const chosenVictim = allTeams.find((t) => t.id === state.pendingStealVictimId);
+      if (chosenVictim && (chosenVictim.score || 0) > 0) {
+        victimTeamId = chosenVictim.id;
+        victimTeamName = chosenVictim.name;
+        stolenPoints = Math.min(state.stolenPointsPot, chosenVictim.score || 0);
+      }
+    }
+    if (!victimTeamId) {
+      const stealCalc = calculateCappedSteal({
+        activeTeamId: team.id,
+        allTeams,
+        targetPoints: state.stolenPointsPot,
+        maxCap: 25
+      });
+      if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+        victimTeamId = stealCalc.victimTeamId;
+        victimTeamName = stealCalc.victimTeamName;
+        stolenPoints = stealCalc.stolenPoints;
+      }
     }
   }
   state.phase = "TURN_SUMMARY";
@@ -2159,6 +2283,64 @@ function handleMemoryPairsSecondChanceDecision({
       finalScoreDelta: 0
     };
   }
+}
+function handleChooseStealTarget({
+  state,
+  targetTeamId,
+  allTeams = []
+}) {
+  const pending = state.pendingSteal;
+  const targetTeam = (allTeams || []).find((t) => t.id === targetTeamId);
+  const activeTeam = (allTeams || []).find((t) => t.id === state.currentTurnTeamId);
+  const stolenPoints = pending?.stolenPoints || 20;
+  const victimTeamId = targetTeam?.id;
+  const victimTeamName = targetTeam?.name || "\u0110\u1ED1i th\u1EE7";
+  if (state.miniGameType === "PUSH_YOUR_LUCK") {
+    state.phase = "PUSH_YOUR_LUCK";
+    state.pendingSteal = void 0;
+    state.potPoints += stolenPoints * state.potMultiplier;
+    state.stolenPointsPot = (state.stolenPointsPot || 0) + stolenPoints * state.potMultiplier;
+    state.pendingStealVictimId = victimTeamId;
+    state.pendingStealVictimName = victimTeamName;
+    state.storyResult = {
+      teamId: state.currentTurnTeamId,
+      teamName: state.currentTurnTeamName,
+      teamColor: state.currentTurnTeamColor,
+      rewardText: `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${stolenPoints * state.potMultiplier} \u0111i\u1EC3m c\u01B0\u1EDBp v\xE0o qu\u1EF9 \u0111i\u1EC3m!`,
+      scoreDelta: 0,
+      oldScore: activeTeam?.score || 0,
+      newScore: activeTeam?.score || 0
+    };
+    return {
+      updatedState: { ...state },
+      victimTeamId,
+      victimTeamName,
+      stolenPoints,
+      finalScoreDelta: 0
+    };
+  }
+  state.phase = "TURN_SUMMARY";
+  state.turnFinishedReason = state.miniGameType === "TAROT_DESTINY" ? "TAROT_DRAWN" : state.miniGameType === "ONE_SHOT_DOORS" ? "DOOR_CHOSEN" : "PAIR_MATCHED";
+  state.pendingSteal = void 0;
+  state.potPoints = 0;
+  const oldScore = activeTeam?.score || 0;
+  const newScore = oldScore + stolenPoints;
+  state.storyResult = {
+    teamId: state.currentTurnTeamId,
+    teamName: state.currentTurnTeamName,
+    teamColor: state.currentTurnTeamColor,
+    rewardText: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} sang \u0110\u1ED9i ${state.currentTurnTeamName}!`,
+    scoreDelta: stolenPoints,
+    oldScore,
+    newScore
+  };
+  return {
+    updatedState: { ...state },
+    victimTeamId,
+    victimTeamName,
+    stolenPoints,
+    finalScoreDelta: stolenPoints
+  };
 }
 
 // src/lib/game-engine/powerups.ts
@@ -3921,9 +4103,9 @@ function registerSocketHandlers(io2) {
           const prep = roomPrepareStates.get(room.id);
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1e3));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
         callback({ success: true, playerId: player.id, teamId: player.teamId ?? void 0, roomState });
@@ -4053,9 +4235,9 @@ function registerSocketHandlers(io2) {
           const prep = roomPrepareStates.get(room.id);
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1e3));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
         callback?.({ success: true, hostKey: room.hostKey, roomState });
@@ -4204,9 +4386,9 @@ function registerSocketHandlers(io2) {
           const prep = roomPrepareStates.get(room.id);
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1e3));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
       }
@@ -4604,12 +4786,15 @@ function registerSocketHandlers(io2) {
         teamsCount,
         room.quizBank?.questions?.length || 1
       );
+      const prepEndsAt = Date.now() + 3e3;
       const preparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
         points: validPoints,
         timeLimit,
         seconds: 3,
+        endsAt: prepEndsAt,
+        total: 3,
         bloomLevel: getBloomLevelFromPoints(validPoints),
         primaryTeamName: primary?.teamName
       };
@@ -4627,7 +4812,7 @@ function registerSocketHandlers(io2) {
         type: "PREPARE",
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
-        targetTimestamp: Date.now() + 3e3,
+        targetTimestamp: prepEndsAt,
         timer: prepTimer,
         skipCallback: launchQuestionAfterPrepare,
         preparePayload
@@ -5348,12 +5533,13 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (room.status === "LOBBY") {
-        io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
+        const startEndsAt = Date.now() + 5e3;
+        io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5, endsAt: startEndsAt, total: 5 });
         roomPrepareStates.set(room.id, {
           type: "STARTING",
           questionIndex: 0,
           totalQuestions: 0,
-          targetTimestamp: Date.now() + 5e3
+          targetTimestamp: startEndsAt
         });
         room.currentQuestion = 0;
         room.status = "PLAYING";
@@ -6523,7 +6709,8 @@ function registerSocketHandlers(io2) {
         allTeams
       });
       roomMysteryQuests.set(room.id, updatedState);
-      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+      if (updatedState.phase === "STEAL_TARGET_SELECT") {
+      } else if (victimTeamId && stolenPoints && stolenPoints > 0) {
         const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
         const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
         io2.to(`room:${room.code}`).emit("game:score:update", [
@@ -6975,6 +7162,54 @@ function registerSocketHandlers(io2) {
       io2.to(`room:${room.code}`).emit("game:mystery:update", newStage);
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+    });
+    const executeMysteryChooseStealTarget = async (room, questState, targetTeamId) => {
+      const allTeams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        select: { id: true, name: true, color: true, score: true, isEliminated: true }
+      });
+      const { updatedState, victimTeamId, stolenPoints, finalScoreDelta } = handleChooseStealTarget({
+        state: questState,
+        targetTeamId,
+        allTeams
+      });
+      roomMysteryQuests.set(room.id, updatedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+      if (victimTeamId && stolenPoints > 0 && finalScoreDelta > 0) {
+        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
+        io2.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+          { teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
+        ]);
+      }
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+    socket.on("game:mystery:choose_steal_target", async ({ targetTeamId }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EF1a ch\u1ECDn c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      await executeMysteryChooseStealTarget(room, questState, targetTeamId);
+    });
+    socket.on("admin:mystery:choose_steal_target", async (payload) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
+      await executeMysteryChooseStealTarget(room, questState, payload.targetTeamId);
     });
     socket.on("admin:sandbox:adjust_score", async ({ teamId, delta, setScore }) => {
       const room = await getAdminRoom(socket);

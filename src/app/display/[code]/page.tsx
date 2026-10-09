@@ -33,6 +33,7 @@ import {
   calculateAuthoritativeTimer,
   calibrateClockFromPacket,
 } from "@/lib/clock-sync";
+import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -48,7 +49,7 @@ export default function DisplayPage() {
   const [isStealOpen, setIsStealOpen] = useState(false);
   const [stealBuzzed, setStealBuzzed] = useState<{ teamName: string; playerName: string } | null>(null);
 
-  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const matchStartingRef = useRef(false);
   useEffect(() => {
     matchStartingRef.current = Boolean(matchStarting);
@@ -96,40 +97,49 @@ export default function DisplayPage() {
     }, 2500);
   }, []);
 
-  // Local ticker for match warmup countdown (5s)
+  // Authoritative ticker for match warmup countdown (5s)
   useEffect(() => {
     if (!matchStarting) return;
+    const endsAt = matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000);
+    const total = matchStarting.total || 5;
     const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
       setMatchStarting((prev) => {
         if (!prev) return null;
-        if (prev.seconds <= 0) return prev;
-        const next = prev.seconds - 1;
-        if (next >= 0) {
-          soundManager.playCountdownTick(next);
+        if (prev.seconds === remaining) return prev;
+        if (remaining >= 0) {
+          soundManager.playCountdownTick(remaining);
         }
-        return { seconds: next };
+        return { ...prev, seconds: remaining, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 150);
     return () => clearInterval(interval);
-  }, [Boolean(matchStarting)]);
+  }, [matchStarting?.endsAt]);
 
-  // Local ticker for question preparation countdown (3s)
+  // Authoritative ticker for question preparation countdown (3s)
   useEffect(() => {
     if (!questionPrepare) return;
+    const endsAt = questionPrepare.endsAt || (Date.now() + questionPrepare.seconds * 1000);
+    const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
       setQuestionPrepare((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return prev ? { ...prev, seconds: 0 } : null;
+        if (!prev) return null;
+        if (prev.seconds === remaining) return prev;
+        if (remaining >= 0) {
+          soundManager.playCountdownTick(remaining);
         }
-        const next = prev.seconds - 1;
-        if (next >= 0) {
-          soundManager.playCountdownTick(next);
-        }
-        return { ...prev, seconds: next };
+        return { ...prev, seconds: remaining, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 150);
     return () => clearInterval(interval);
-  }, [Boolean(questionPrepare)]);
+  }, [questionPrepare?.endsAt]);
 
   // Authoritative local countdown ticker for 0s lag across screens
   useEffect(() => {
@@ -294,22 +304,23 @@ export default function DisplayPage() {
 
     socket.on("game:starting", (p) => {
       matchStartingRef.current = true;
-      setMatchStarting({ seconds: p.seconds });
+      setMatchStarting({ seconds: p.seconds, endsAt: p.endsAt, total: p.total });
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
-      soundManager.stopMusic(0);
+      soundManager.stopMusic(0, true);
       soundManager.playCountdownTick(p.seconds);
     });
 
     socket.on("game:prepare", (p) => {
+      matchStartingRef.current = false;
       setMatchStarting(null);
       setQuestionPrepare(p);
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
-      soundManager.stopMusic(0);
+      soundManager.stopMusic(0, true);
       soundManager.playCountdownTick(p.seconds);
     });
 
@@ -817,9 +828,29 @@ export default function DisplayPage() {
             <p className="text-xl text-white/70">
               Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
             </p>
-            <div className="py-6">
-              <div className="inline-flex items-center justify-center w-40 h-40 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-8xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
-                {matchStarting.seconds}
+            <div className="py-6 flex flex-col items-center justify-center">
+              <div className="relative flex items-center justify-center">
+                <ContinuousTimerRing
+                  endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                  total={matchStarting.total || 5}
+                  radius={72}
+                  strokeWidth={8}
+                  color="#c084fc"
+                  remainingText=""
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-white text-7xl sm:text-8xl font-black drop-shadow-2xl font-mono">
+                    {matchStarting.seconds}
+                  </span>
+                </div>
+              </div>
+              <div className="w-64 max-w-xs mt-6">
+                <ContinuousTimerBar
+                  endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                  total={matchStarting.total || 5}
+                  color="#c084fc"
+                  heightClassName="h-3"
+                />
               </div>
             </div>
             <p className="text-sm text-cyan-300 font-mono tracking-wider animate-pulse">
@@ -1409,21 +1440,14 @@ export default function DisplayPage() {
               <div className="flex items-center justify-between gap-2.5 sm:gap-4 mb-2.5 sm:mb-4">
                 <div className="flex items-center gap-3 sm:gap-4">
                   {timer && (
-                    <svg className="w-12 h-12 sm:w-16 sm:h-16 shrink-0" viewBox="0 0 64 64">
-                      <circle cx="32" cy="32" r="28" fill="none" stroke="#2d2d5a" strokeWidth="6" />
-                      <circle
-                        cx="32" cy="32" r="28"
-                        fill="none"
-                        stroke={timerColor}
-                        strokeWidth="6"
-                        strokeDasharray={`${2 * Math.PI * 28}`}
-                        strokeDashoffset={`${2 * Math.PI * 28 * (1 - timerPercent / 100)}`}
-                        className="timer-ring transition-all duration-1000"
-                      />
-                      <text x="32" y="38" textAnchor="middle" fill="white" fontSize="18" fontWeight="bold">
-                        {timerDisplayRemaining}
-                      </text>
-                    </svg>
+                    <ContinuousTimerRing
+                      endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
+                      total={timer.total}
+                      radius={28}
+                      strokeWidth={6}
+                      color={timerColor}
+                      remainingText={timerDisplayRemaining}
+                    />
                   )}
                   {currentQuestion.timerPending && !timer && !currentQuestion.bouncebackSelectPhase && (
                     <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">

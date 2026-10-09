@@ -18,6 +18,7 @@ interface Props {
   onSelectMiniGame?: (miniGameType: MysteryMiniGameType) => void;
   onChooseAction?: (action: "TAKE_BASE_POINTS" | "PLAY_MINIGAME") => void;
   onPairsDecision?: (choice: "CASH_OUT" | "PLAY_ROUND_2") => void;
+  onChooseStealTarget?: (targetTeamId: string) => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
 
@@ -34,6 +35,7 @@ export default function MysteryQuestBoard({
   onSelectMiniGame,
   onChooseAction,
   onPairsDecision,
+  onChooseStealTarget,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -883,7 +885,7 @@ export default function MysteryQuestBoard({
                       <span className="font-serif font-black text-[10px] sm:text-xs text-amber-300 tracking-wider">
                         {meta.roman}
                       </span>
-                      <span className="text-[8px] sm:text-[9px] font-bold text-white/90 tracking-wide uppercase truncate max-w-[50px] sm:max-w-none">
+                      <span className="text-[8px] sm:text-[9px] font-bold text-white/90 tracking-wide uppercase whitespace-nowrap">
                         · {meta.nameEn}
                       </span>
                     </div>
@@ -1284,6 +1286,88 @@ export default function MysteryQuestBoard({
             </div>
           );
         })()}
+        </div>
+      )}
+
+      {/* ── Modal Chọn Đội Cướp Điểm (STEAL_TARGET_SELECT) ── */}
+      {phase === "STEAL_TARGET_SELECT" && mysteryState.pendingSteal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
+          <div className="glass bg-gradient-to-br from-rose-950/95 via-purple-950/95 to-slate-950/95 border-2 border-rose-500 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-[0_0_60px_rgba(244,63,94,0.4)] animate-bounce-in space-y-4">
+            <div className="w-16 h-16 mx-auto rounded-full bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center text-3xl shadow-inner animate-pulse">
+              {mysteryState.pendingSteal.tileIcon || "🗡️"}
+            </div>
+
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full bg-rose-500/30 border border-rose-400/50 text-rose-300 font-black text-xs uppercase tracking-widest">
+                KÍCH HOẠT THẺ CƯỚP ĐIỂM
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-white pt-1">
+                {mysteryState.pendingSteal.tileTitle || "Đoạt Bảo Thành Công!"}
+              </h2>
+              <p className="text-sm text-rose-200/90 font-medium">
+                Được quyền cướp <strong className="text-yellow-300 font-mono text-base font-black">+{mysteryState.pendingSteal.stolenPoints}đ</strong> từ một đối thủ đủ điều kiện!
+              </p>
+            </div>
+
+            {/* Danh sách các đội đủ điều kiện để cướp */}
+            <div className="space-y-2 max-h-56 overflow-y-auto pt-2">
+              <p className="text-xs font-bold text-white/60 uppercase tracking-wider text-left">
+                CHỌN ĐỐI THỦ ĐỂ CƯỚP (ĐIỂM ≥ {mysteryState.pendingSteal.stolenPoints}Đ):
+              </p>
+              {(() => {
+                const eligibleTeams = (teams || []).filter((t) =>
+                  mysteryState.pendingSteal?.eligibleTeamIds?.includes(t.id)
+                );
+                if (eligibleTeams.length === 0) {
+                  return (
+                    <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white/70">
+                      Không có đối thủ nào đủ điều kiện cướp điểm.
+                    </div>
+                  );
+                }
+                return eligibleTeams.map((t) => {
+                  const afterScore = Math.max(0, t.score - (mysteryState.pendingSteal?.stolenPoints || 0));
+                  return (
+                    <div
+                      key={t.id}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-white/10 border border-white/15 hover:border-rose-400/60 transition group"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div
+                          className="w-3.5 h-3.5 rounded-full shrink-0 shadow"
+                          style={{ backgroundColor: t.color }}
+                        />
+                        <div className="text-left min-w-0">
+                          <p className="font-bold text-sm text-white truncate">{t.name}</p>
+                          <p className="text-xs text-slate-300 font-mono">
+                            Hiện có: <strong className="text-amber-300">{t.score}đ</strong> ➔ Còn: <span className="text-rose-300 font-bold">{afterScore}đ</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      {(isMyTurn || isAdmin || isSandbox) ? (
+                        <button
+                          type="button"
+                          onClick={() => onChooseStealTarget?.(t.id)}
+                          className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs shadow-md border border-rose-400 hover:scale-105 active:scale-95 transition cursor-pointer shrink-0"
+                        >
+                          CƯỚP 🗡️
+                        </button>
+                      ) : (
+                        <span className="text-xs text-white/40 italic">Đang chờ chọn...</span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+
+            {!(isMyTurn || isAdmin || isSandbox) && (
+              <p className="text-xs text-slate-400 italic animate-pulse">
+                Đang chờ Đội {currentTurnTeamName} lựa chọn đối thủ để cướp điểm...
+              </p>
+            )}
+          </div>
         </div>
       )}
 

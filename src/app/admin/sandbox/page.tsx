@@ -23,10 +23,12 @@ import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import { soundManager } from "@/lib/sound-manager";
 import {
   generateMysteryStageForTurn,
   handleFlipCard as handleMysteryFlipCard,
   handleCashOut as handleMysteryCashOut,
+  handleChooseStealTarget as handleMysteryChooseStealTarget,
   generateMysteryPromoPerk,
   shuffleMemoryPairsTiles,
   handleMemoryPairsSecondChanceDecision,
@@ -285,7 +287,7 @@ export default function AdminSandboxPage() {
   const offlineIntermissionTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Admin Features States & Tickers
-  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [cardsLocked, setCardsLocked] = useState(false);
@@ -344,30 +346,20 @@ export default function AdminSandboxPage() {
   const handleWagerLaunchQuestionRef = useRef<() => void>(() => {});
   const handleAdminNextRef = useRef<() => void>(() => {});
 
-  // Local ticker for match warmup countdown (5s)
+  // Authoritative ticker for question preparation countdown (3s)
   useEffect(() => {
-    if (!matchStarting) return;
+    if (!questionPrepare?.endsAt) return;
     const interval = setInterval(() => {
-      setMatchStarting((prev) => {
-        if (!prev) return null;
-        if (prev.seconds <= 0) return prev;
-        return { seconds: prev.seconds - 1 };
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [Boolean(matchStarting)]);
-
-  // Local ticker for question preparation countdown (3s)
-  useEffect(() => {
-    if (!questionPrepare) return;
-    const interval = setInterval(() => {
+      const rem = Math.max(0, Math.ceil((questionPrepare.endsAt! - Date.now()) / 1000));
       setQuestionPrepare((prev) => {
-        if (!prev || prev.seconds <= 1) return null;
-        return { ...prev, seconds: prev.seconds - 1 };
+        if (!prev) return null;
+        if (rem <= 0) return null;
+        if (prev.seconds === rem) return prev;
+        return { ...prev, seconds: rem };
       });
-    }, 1000);
+    }, 200);
     return () => clearInterval(interval);
-  }, [Boolean(questionPrepare)]);
+  }, [questionPrepare?.endsAt]);
 
   const addLog = useCallback((msg: string) => {
     setBotLogs((prev) => [
@@ -2342,6 +2334,47 @@ export default function AdminSandboxPage() {
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         return;
       }
+      if (e.data?.type === "MYSTERY_CHOOSE_STEAL_TARGET" || e.data?.action === "mystery_choose_steal_target") {
+        const targetTeamId = e.data?.targetTeamId;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:choose_steal_target" as any, { targetTeamId, code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, victimTeamId, victimTeamName, stolenPoints, finalScoreDelta } = handleMysteryChooseStealTarget({
+          state: curMystery,
+          targetTeamId,
+          allTeams: roomStateRef.current.teams,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (victimTeamId && stolenPoints && stolenPoints > 0) {
+          if (updatedState.miniGameType === "PUSH_YOUR_LUCK") {
+            // Trong push-your-luck, điểm được nạp vào pot, trừ điểm đối thủ khi chốt điểm
+          } else {
+            updatedTeams = updatedTeams.map((t) => {
+              if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
+              if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
+              return t;
+            });
+            addLog(`🗡️ [${activeTeam.name}] đã cướp thành công ${stolenPoints}đ từ [${victimTeamName || "Đối thủ"}]!`);
+          }
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
       if (e.data?.type === "MYSTERY_CASH_OUT" || e.data?.action === "mystery_cash_out") {
         if (!isOfflineSandbox) {
           adminSocketRef.current?.emit("admin:mystery:cash_out" as any, { code });
@@ -2515,6 +2548,7 @@ export default function AdminSandboxPage() {
         });
         addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
 
+        soundManager.stopQuestionMusic(0, true);
         handleAdminNextRef.current?.();
         return;
       }
@@ -3422,9 +3456,10 @@ export default function AdminSandboxPage() {
           };
         }
 
-        let warmupSec = 5;
-        setMatchStarting({ seconds: warmupSec });
-        syncToIframes({ matchStarting: { seconds: warmupSec } });
+        const warmupTotal = 5;
+        const warmupEndsAt = Date.now() + warmupTotal * 1000;
+        setMatchStarting({ seconds: warmupTotal, endsAt: warmupEndsAt, total: warmupTotal });
+        syncToIframes({ matchStarting: { seconds: warmupTotal, endsAt: warmupEndsAt, total: warmupTotal } });
         addLog("🏁 Trận đấu bắt đầu! Đếm ngược chuẩn bị 5s...");
 
         const proceedAfterWarmup = () => {
@@ -3488,14 +3523,14 @@ export default function AdminSandboxPage() {
           offlineWarmupIntervalRef.current = null;
         }
         offlineWarmupIntervalRef.current = setInterval(() => {
-          warmupSec -= 1;
-          if (warmupSec > 0) {
-            setMatchStarting({ seconds: warmupSec });
-            syncToIframes({ matchStarting: { seconds: warmupSec } });
+          const rem = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
+          if (rem > 0) {
+            setMatchStarting((prev) => (prev?.seconds === rem ? prev : { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal }));
+            syncToIframes({ matchStarting: { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal } });
           } else {
             proceedAfterWarmup();
           }
-        }, 1000);
+        }, 200);
         return;
       }
 
@@ -7283,6 +7318,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:pairs_decision" as any, { choice, code });
                         } else {
                           window.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice }, "*");
+                        }
+                      }}
+                      onChooseStealTarget={(targetTeamId) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:choose_steal_target" as any, { targetTeamId, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId }, "*");
                         }
                       }}
                     />

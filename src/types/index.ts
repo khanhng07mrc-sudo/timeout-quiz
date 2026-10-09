@@ -906,7 +906,15 @@ export interface MysteryQuestState {
   themeNameVi: string;
   themeBgGradient: string;
   tiles: MysteryTile[];
-  phase: "QUESTION_ACTIVE" | "DECISION_CHOICE" | "STEAL_PHASE" | "PUSH_YOUR_LUCK" | "TURN_SUMMARY";
+  phase: "QUESTION_ACTIVE" | "DECISION_CHOICE" | "STEAL_PHASE" | "PUSH_YOUR_LUCK" | "STEAL_TARGET_SELECT" | "TURN_SUMMARY";
+  pendingSteal?: {
+    stolenPoints: number;
+    eligibleTeamIds: string[];
+    tileTitle: string;
+    tileIcon: string;
+  };
+  pendingStealVictimId?: string;
+  pendingStealVictimName?: string;
   stealBuzzedTeamId?: string;
   stealBuzzedTeamName?: string;
   stealEndsAt?: number;
@@ -1162,6 +1170,8 @@ export interface GameEndPayload {
 
 export interface GameStartingPayload {
   seconds: number;
+  total?: number;
+  endsAt?: number;
   message?: string;
 }
 
@@ -1171,6 +1181,8 @@ export interface GamePreparePayload {
   points: number;
   timeLimit: number;
   seconds: number;
+  total?: number;
+  endsAt?: number;
   bloomLevel?: BloomLevel;
   primaryTeamName?: string;
 }
@@ -1351,6 +1363,8 @@ export interface ClientToServerEvents {
   "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
   "game:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => void;
   "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
+  "game:mystery:choose_steal_target": (payload: { targetTeamId: string }) => void;
+  "admin:mystery:choose_steal_target": (payload: { targetTeamId: string; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;
 }

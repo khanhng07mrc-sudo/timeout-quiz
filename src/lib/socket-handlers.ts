@@ -35,7 +35,7 @@ import {
 } from "@/types";
 import { computePointsAwarded, computeTeamQuestionScore, computeStealAmount, normalizeToThreeLevels, calculateItemIRTMetrics } from "./game-engine/scoring";
 import { generateBalancedDiceTiles, handleDiceRaceLanding } from "./game-engine/dice-race";
-import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision } from "./game-engine/mystery-quest";
+import { generateMysteryStageForTurn, handleFlipCard, handleCashOut, normalizeMiniGameType, shuffleMemoryPairsTiles, handleMemoryPairsSecondChanceDecision, handleChooseStealTarget } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -1557,9 +1557,9 @@ export function registerSocketHandlers(io: IO) {
           const prep = roomPrepareStates.get(room.id)!;
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
 
@@ -1709,9 +1709,9 @@ export function registerSocketHandlers(io: IO) {
           const prep = roomPrepareStates.get(room.id)!;
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
 
@@ -1885,9 +1885,9 @@ export function registerSocketHandlers(io: IO) {
           const prep = roomPrepareStates.get(room.id)!;
           const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
           if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec });
+            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec });
+            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
       }
@@ -2383,12 +2383,15 @@ export function registerSocketHandlers(io: IO) {
         teamsCount,
         room.quizBank?.questions?.length || 1
       );
+      const prepEndsAt = Date.now() + 3000;
       const preparePayload: GamePreparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
         points: validPoints,
         timeLimit,
         seconds: 3,
+        endsAt: prepEndsAt,
+        total: 3,
         bloomLevel: getBloomLevelFromPoints(validPoints),
         primaryTeamName: primary?.teamName,
       };
@@ -2408,7 +2411,7 @@ export function registerSocketHandlers(io: IO) {
         type: "PREPARE",
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
-        targetTimestamp: Date.now() + 3000,
+        targetTimestamp: prepEndsAt,
         timer: prepTimer,
         skipCallback: launchQuestionAfterPrepare,
         preparePayload,
@@ -3243,14 +3246,15 @@ export function registerSocketHandlers(io: IO) {
 
       if (room.status === "LOBBY") {
         // 1. Broadcast game:starting immediately (0ms latency so clients start countdown instantly)
-        io.to(`room:${room.code}`).emit("game:starting", { seconds: 5 });
+        const startEndsAt = Date.now() + 5000;
+        io.to(`room:${room.code}`).emit("game:starting", { seconds: 5, endsAt: startEndsAt, total: 5 });
 
         // Immediately register roomPrepareStates so any joining socket recognizes the warmup countdown
         roomPrepareStates.set(room.id, {
           type: "STARTING",
           questionIndex: 0,
           totalQuestions: 0,
-          targetTimestamp: Date.now() + 5000,
+          targetTimestamp: startEndsAt,
         });
 
         room.currentQuestion = 0;
@@ -4661,7 +4665,9 @@ export function registerSocketHandlers(io: IO) {
 
       roomMysteryQuests.set(room.id, updatedState);
 
-      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+      if (updatedState.phase === "STEAL_TARGET_SELECT") {
+        // CƯỚP ĐIỂM: Chờ người chơi hoặc MC chọn đội mục tiêu trong modal
+      } else if (victimTeamId && stolenPoints && stolenPoints > 0) {
         // CƯỚP ĐIỂM CÓ GIỚI HẠN: Trừ điểm đội bị cướp và cộng điểm cho đội đang chơi
         const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
         const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
@@ -5218,6 +5224,67 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:mystery:update", newStage);
       const refreshedState = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    });
+
+    const executeMysteryChooseStealTarget = async (room: any, questState: any, targetTeamId: string) => {
+      const allTeams = await prisma.team.findMany({
+        where: { roomId: room.id },
+        select: { id: true, name: true, color: true, score: true, isEliminated: true },
+      });
+
+      const { updatedState, victimTeamId, stolenPoints, finalScoreDelta } = handleChooseStealTarget({
+        state: questState,
+        targetTeamId,
+        allTeams,
+      });
+
+      roomMysteryQuests.set(room.id, updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+
+      if (victimTeamId && stolenPoints > 0 && finalScoreDelta > 0) {
+        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
+        io.to(`room:${room.code}`).emit("game:score:update", [
+          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+          { teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta },
+        ]);
+      }
+
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+
+    socket.on("game:mystery:choose_steal_target", async ({ targetTeamId }: { targetTeamId: string }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt lựa chọn của đội bạn!");
+        return;
+      }
+
+      await executeMysteryChooseStealTarget(room, questState, targetTeamId);
+    });
+
+    socket.on("admin:mystery:choose_steal_target", async (payload: { targetTeamId: string; code?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
+
+      await executeMysteryChooseStealTarget(room, questState, payload.targetTeamId);
     });
 
     // ── Admin Sandbox Adjust Score (Sandbox Cheats) ───────────────────────────

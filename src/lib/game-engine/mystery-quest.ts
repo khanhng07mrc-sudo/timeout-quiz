@@ -264,7 +264,14 @@ export function shuffleMemoryPairsTiles(tiles: MysteryTile[]): MysteryTile[] {
 /**
  * Generates tiles specifically for Variant 1: MEMORY_PAIRS (10 tiles = 5 pairs).
  */
-export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[] {
+export function generateMemoryPairsTiles(
+  basePoints: number = 20,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
+): MysteryTile[] {
   interface PairDef {
     pairKey: string;
     icon: string;
@@ -281,6 +288,32 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
   const pSteal = Math.min(25, Math.max(15, basePoints)); // Cặp Hải Tặc Đoạt Bảo (Cướp tối đa 25đ)
   const pPenalty = basePoints; // Cặp Kíp Nổ Hắc Ám (-10đ / -20đ / -30đ)
 
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams &&
+    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
+  );
+
+  const stealOrBonusPair: PairDef = canSteal
+    ? {
+        pairKey: "PAIR_STEAL",
+        icon: "🗡️",
+        type: "REWARD",
+        storyTitle: "🗡️ CẶP HẢI TẶC ĐOẠT BẢO!",
+        storyDescription: `Ghép trúng cặp hải tặc: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
+        effectType: "STEAL_POINTS",
+        deltaPoints: pSteal,
+      }
+    : {
+        pairKey: "PAIR_SHIELD",
+        icon: "🛡️",
+        type: "REWARD",
+        storyTitle: "🛡️ CẶP KHIÊN VÀNG HỘ THÂN!",
+        storyDescription: `Ghép trúng cặp khiên hoàng gia: Nhận an toàn +${pSteal} điểm thưởng!`,
+        effectType: "BONUS_POINTS",
+        deltaPoints: pSteal,
+      };
+
   const pairs: PairDef[] = [
     {
       pairKey: "PAIR_MULTIPLY",
@@ -291,15 +324,7 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop,
     },
-    {
-      pairKey: "PAIR_STEAL",
-      icon: "🗡️",
-      type: "REWARD",
-      storyTitle: "🗡️ CẶP HẢI TẶC ĐOẠT BẢO!",
-      storyDescription: `Ghép trúng cặp hải tặc: Cướp điểm từ Đội dẫn đầu (tối đa ${pSteal}đ, trần 50% điểm đối thủ)!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pSteal,
-    },
+    stealOrBonusPair,
     {
       pairKey: "PAIR_TREASURE",
       icon: "💎",
@@ -358,7 +383,14 @@ export function generateMemoryPairsTiles(basePoints: number = 20): MysteryTile[]
 /**
  * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (3 doors).
  */
-export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[] {
+export function generateOneShotDoorsTiles(
+  basePoints: number = 20,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
+): MysteryTile[] {
   interface DoorDef {
     icon: string;
     type: MysteryTileType;
@@ -372,6 +404,30 @@ export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[
   const pSteal = Math.min(25, Math.max(15, basePoints)); // Cửa Đoạt Bảo: Cướp tối đa 25đ
   const pPenalty = basePoints; // Cửa Bẫy Bom: -10đ với câu 10đ, -20đ với 20đ, -30đ với 30đ
 
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams &&
+    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
+  );
+
+  const stealOrBonusDoor: DoorDef = canSteal
+    ? {
+        icon: "🗡️",
+        type: "REWARD",
+        storyTitle: "🗡️ CỬA ĐOẠT BẢO HẢI TẶC!",
+        storyDescription: `Kích hoạt cướp bóc đoạt bảo: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
+        effectType: "STEAL_POINTS",
+        deltaPoints: pSteal,
+      }
+    : {
+        icon: "💎",
+        type: "REWARD",
+        storyTitle: "💎 CỬA KHO BÁU HOÀNG KIM!",
+        storyDescription: `Mở ra kho báu hoàng kim: Nhận an toàn +${pSteal} điểm thưởng siêu cấp!`,
+        effectType: "BONUS_POINTS",
+        deltaPoints: pSteal,
+      };
+
   const doors: DoorDef[] = [
     {
       icon: "👑",
@@ -381,14 +437,7 @@ export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[
       effectType: "BONUS_POINTS",
       deltaPoints: pHigh,
     },
-    {
-      icon: "🗡️",
-      type: "REWARD",
-      storyTitle: "🗡️ CỬA ĐOẠT BẢO HẢI TẶC!",
-      storyDescription: `Kích hoạt cướp bóc đoạt bảo: Cướp điểm từ Đội dẫn đầu (tối đa ${pSteal}đ, trần 50% điểm đối thủ)!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pSteal,
-    },
+    stealOrBonusDoor,
     {
       icon: "💥",
       type: "BOMB_MAJOR",
@@ -416,7 +465,14 @@ export function generateOneShotDoorsTiles(basePoints: number = 20): MysteryTile[
 /**
  * Generates tiles specifically for Variant 4: TAROT_DESTINY (5 cards).
  */
-export function generateTarotDestinyTiles(basePoints: number = 20): MysteryTile[] {
+export function generateTarotDestinyTiles(
+  basePoints: number = 20,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
+): MysteryTile[] {
   interface TarotDef {
     tarotName: string;
     icon: string;
@@ -432,6 +488,32 @@ export function generateTarotDestinyTiles(basePoints: number = 20): MysteryTile[
   const pFool = basePoints + 10;
   const pKnight = basePoints;
   const pDeath = basePoints;
+
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams &&
+    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
+  );
+
+  const fifthCard: TarotDef = canSteal
+    ? {
+        tarotName: "Hiệp Sĩ Đạo Tặc (The Knight)",
+        icon: "🗡️",
+        type: "REWARD",
+        storyTitle: "🗡️ HIỆP SĨ ĐỘT KÍCH",
+        storyDescription: `Thanh gươm công lý cướp phá: Cướp +${pKnight}đ từ một đối thủ đủ điều kiện!`,
+        effectType: "STEAL_POINTS",
+        deltaPoints: pKnight,
+      }
+    : {
+        tarotName: "Ngôi Sao Hy Vọng (The Star)",
+        icon: "⭐",
+        type: "REWARD",
+        storyTitle: "⭐ NGÔI SAO HY VỌNG",
+        storyDescription: `Ánh sao may mắn rạng ngời: Nhận nóng +${pKnight} điểm thưởng vinh quang!`,
+        effectType: "BONUS_POINTS",
+        deltaPoints: pKnight,
+      };
 
   const tarotCards: TarotDef[] = [
     {
@@ -470,15 +552,7 @@ export function generateTarotDestinyTiles(basePoints: number = 20): MysteryTile[
       effectType: "LOSE_POINTS",
       deltaPoints: -pDeath,
     },
-    {
-      tarotName: "Hiệp Sĩ Đạo Tặc (The Knight)",
-      icon: "🗡️",
-      type: "REWARD",
-      storyTitle: "🗡️ HIỆP SĨ ĐỘT KÍCH",
-      storyDescription: `Thanh gươm công lý cướp phá: Cướp thêm ${pKnight} điểm vào quỹ tổng!`,
-      effectType: "STEAL_POINTS",
-      deltaPoints: pKnight,
-    },
+    fifthCard,
   ];
 
   const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
@@ -512,12 +586,18 @@ export function generateNextPushYourLuckCard({
   basePoints = 10,
   teamScore = 0,
   isDoublePromo = false,
+  options,
 }: {
   theme: MysteryTheme;
   drawIndex: number;
   basePoints?: number;
   teamScore?: number;
   isDoublePromo?: boolean;
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  };
 }): MysteryTile {
   // Risk-reward bomb chance based on base question difficulty:
   let bombChance: number;
@@ -649,6 +729,23 @@ export function generateNextPushYourLuckCard({
   }
 
   let effectType = template.effectType;
+  if (effectType === "STEAL_POINTS") {
+    const currentRound = options?.currentRound ?? 1;
+    const canSteal = currentRound >= 2 && Boolean(
+      options?.teams &&
+      options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= delta)
+    );
+    if (!canSteal) {
+      effectType = "BONUS_POINTS";
+      template = {
+        storyTitle: "💎 KHO BÁU HOÀNG KIM!",
+        storyDescription: `Mở khóa kho báu hoàng kim: Nhận an toàn +${delta} điểm vào quỹ!`,
+        deltaPoints: delta,
+        effectType: "BONUS_POINTS",
+      };
+    }
+  }
+
   if (isDoublePromo && Math.random() < 0.35) {
     effectType = "MULTIPLY_X2";
     delta = 0;
@@ -675,7 +772,12 @@ function generatePushYourLuckTiles(
   theme: MysteryTheme,
   basePoints: number = 10,
   teamScore: number = 0,
-  isDoublePromo: boolean = false
+  isDoublePromo: boolean = false,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
 ): MysteryTile[] {
   const firstCard = generateNextPushYourLuckCard({
     theme,
@@ -683,6 +785,7 @@ function generatePushYourLuckTiles(
     basePoints,
     teamScore,
     isDoublePromo,
+    options,
   });
   return [firstCard];
 }
@@ -728,9 +831,15 @@ export function generateMysteryStageForTurn({
   let oneShotState: MysteryQuestState["oneShotState"] = undefined;
   let tarotState: MysteryQuestState["tarotState"] = undefined;
 
+  const roundOptions = {
+    currentRound,
+    teams,
+    currentTeamId: currentTeam.id,
+  };
+
   switch (miniGameType) {
     case "MEMORY_PAIRS":
-      tiles = generateMemoryPairsTiles(baseQuestionPoints);
+      tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
       memoryPairsState = {
         firstFlippedTileId: null,
         secondFlippedTileId: null,
@@ -744,7 +853,7 @@ export function generateMysteryStageForTurn({
       break;
 
     case "ONE_SHOT_DOORS":
-      tiles = generateOneShotDoorsTiles(baseQuestionPoints);
+      tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
       oneShotState = {
         chosenTileId: undefined,
         allRevealed: false,
@@ -752,7 +861,7 @@ export function generateMysteryStageForTurn({
       break;
 
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(baseQuestionPoints);
+      tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
       tarotState = {
         chosenCardId: undefined,
       };
@@ -764,7 +873,8 @@ export function generateMysteryStageForTurn({
         theme,
         baseQuestionPoints,
         currentTeam.score || 0,
-        promoPerk === "DOUBLE_PROMO"
+        promoPerk === "DOUBLE_PROMO",
+        roundOptions
       );
       break;
   }
@@ -945,19 +1055,26 @@ export function handleFlipCard({
         let stolenPoints: number | undefined;
 
         if (firstTile.effectType === "STEAL_POINTS") {
-          const stealRes = calculateCappedSteal({
-            activeTeamId: team.id,
-            allTeams,
-            targetPoints: firstTile.deltaPoints || 25,
-            maxCap: 25,
-          });
-          if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-            victimTeamId = stealRes.victimTeamId;
-            victimTeamName = stealRes.victimTeamName;
-            stolenPoints = stealRes.stolenPoints;
-            finalDelta = stolenPoints;
+          const stealAmount = firstTile.deltaPoints || 25;
+          const eligibleTeams = (allTeams || []).filter(
+            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+          );
+          if (eligibleTeams.length > 0) {
+            state.phase = "STEAL_TARGET_SELECT";
+            state.pendingSteal = {
+              stolenPoints: stealAmount,
+              eligibleTeamIds: eligibleTeams.map((t) => t.id),
+              tileTitle: firstTile.storyTitle,
+              tileIcon: firstTile.icon,
+            };
+            return {
+              updatedState: { ...state },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: 0,
+            };
           } else {
-            finalDelta = Math.min(firstTile.deltaPoints || 15, 15);
+            finalDelta = stealAmount;
           }
         } else {
           finalDelta = firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20);
@@ -1168,19 +1285,26 @@ export function handleFlipCard({
       let stolenPoints: number | undefined;
 
       if (tile.effectType === "STEAL_POINTS") {
-        const stealRes = calculateCappedSteal({
-          activeTeamId: team.id,
-          allTeams,
-          targetPoints: tile.deltaPoints || 25,
-          maxCap: 25,
-        });
-        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-          victimTeamId = stealRes.victimTeamId;
-          victimTeamName = stealRes.victimTeamName;
-          stolenPoints = stealRes.stolenPoints;
-          finalDelta = stolenPoints;
+        const stealAmount = tile.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: tile.storyTitle,
+            tileIcon: tile.icon,
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
         } else {
-          finalDelta = Math.min(tile.deltaPoints || 15, 15);
+          finalDelta = stealAmount;
         }
       } else {
         finalDelta = tile.deltaPoints || 25;
@@ -1300,19 +1424,26 @@ export function handleFlipCard({
       let stolenPoints: number | undefined;
 
       if (tile.effectType === "STEAL_POINTS") {
-        const stealRes = calculateCappedSteal({
-          activeTeamId: team.id,
-          allTeams,
-          targetPoints: tile.deltaPoints || 25,
-          maxCap: 25,
-        });
-        if (stealRes.victimTeamId && stealRes.stolenPoints > 0) {
-          victimTeamId = stealRes.victimTeamId;
-          victimTeamName = stealRes.victimTeamName;
-          stolenPoints = stealRes.stolenPoints;
-          finalDelta = stolenPoints;
+        const stealAmount = tile.deltaPoints || 25;
+        const eligibleTeams = (allTeams || []).filter(
+          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+        );
+        if (eligibleTeams.length > 0) {
+          state.phase = "STEAL_TARGET_SELECT";
+          state.pendingSteal = {
+            stolenPoints: stealAmount,
+            eligibleTeamIds: eligibleTeams.map((t) => t.id),
+            tileTitle: tile.storyTitle,
+            tileIcon: tile.icon,
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
         } else {
-          finalDelta = Math.min(tile.deltaPoints || 15, 15);
+          finalDelta = stealAmount;
         }
       } else {
         finalDelta = tile.deltaPoints || 35;
@@ -1365,6 +1496,11 @@ export function handleFlipCard({
       basePoints: state.baseQuestionPoints || 10,
       teamScore: team.score || 0,
       isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+      options: {
+        currentRound: state.currentRound,
+        teams: allTeams,
+        currentTeamId: team.id,
+      },
     });
     state.tiles.push(tile);
   }
@@ -1403,6 +1539,11 @@ export function handleFlipCard({
         basePoints: state.baseQuestionPoints || 10,
         teamScore: team.score || 0,
         isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id,
+        },
       });
       state.tiles.push(nextTopCard);
 
@@ -1577,6 +1718,11 @@ export function handleFlipCard({
         basePoints: state.baseQuestionPoints || 10,
         teamScore: team.score || 0,
         isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id,
+        },
       });
       state.tiles.push(nextTopCard);
 
@@ -1619,15 +1765,27 @@ export function handleFlipCard({
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : 20;
   } else if (tile.effectType === "STEAL_POINTS") {
-    const stealCalc = calculateCappedSteal({
-      activeTeamId: team.id,
-      allTeams,
-      targetPoints: tile.deltaPoints || 20,
-      maxCap: 25,
-    });
-    const stealAmt = stealCalc.stolenPoints > 0 ? stealCalc.stolenPoints : 15;
-    state.potPoints += stealAmt * state.potMultiplier;
-    state.stolenPointsPot = (state.stolenPointsPot || 0) + stealAmt * state.potMultiplier;
+    const stealAmount = tile.deltaPoints || 20;
+    const eligibleTeams = (allTeams || []).filter(
+      (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+    );
+    if (eligibleTeams.length > 0) {
+      state.phase = "STEAL_TARGET_SELECT";
+      state.pendingSteal = {
+        stolenPoints: stealAmount,
+        eligibleTeamIds: eligibleTeams.map((t) => t.id),
+        tileTitle: tile.storyTitle,
+        tileIcon: tile.icon,
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: 0,
+      };
+    } else {
+      state.potPoints += stealAmount * state.potMultiplier;
+    }
   } else {
     state.potPoints += (tile.deltaPoints || 15) * state.potMultiplier;
   }
@@ -1639,6 +1797,11 @@ export function handleFlipCard({
     basePoints: state.baseQuestionPoints || 10,
     teamScore: team.score || 0,
     isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+    options: {
+      currentRound: state.currentRound,
+      teams: allTeams,
+      currentTeamId: team.id,
+    },
   });
   state.tiles.push(nextTopCard);
 
@@ -1677,16 +1840,26 @@ export function handleCashOut({
   let stolenPoints: number | undefined;
 
   if (state.stolenPointsPot && state.stolenPointsPot > 0 && allTeams.length > 0) {
-    const stealCalc = calculateCappedSteal({
-      activeTeamId: team.id,
-      allTeams,
-      targetPoints: state.stolenPointsPot,
-      maxCap: 25,
-    });
-    if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
-      victimTeamId = stealCalc.victimTeamId;
-      victimTeamName = stealCalc.victimTeamName;
-      stolenPoints = stealCalc.stolenPoints;
+    if (state.pendingStealVictimId) {
+      const chosenVictim = allTeams.find((t) => t.id === state.pendingStealVictimId);
+      if (chosenVictim && (chosenVictim.score || 0) > 0) {
+        victimTeamId = chosenVictim.id;
+        victimTeamName = chosenVictim.name;
+        stolenPoints = Math.min(state.stolenPointsPot, chosenVictim.score || 0);
+      }
+    }
+    if (!victimTeamId) {
+      const stealCalc = calculateCappedSteal({
+        activeTeamId: team.id,
+        allTeams,
+        targetPoints: state.stolenPointsPot,
+        maxCap: 25,
+      });
+      if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+        victimTeamId = stealCalc.victimTeamId;
+        victimTeamName = stealCalc.victimTeamName;
+        stolenPoints = stealCalc.stolenPoints;
+      }
     }
   }
 
@@ -1782,5 +1955,92 @@ export function handleMemoryPairsSecondChanceDecision({
       finalScoreDelta: 0,
     };
   }
+}
+
+/**
+ * Handles target team selection when a steal card is flipped.
+ */
+export function handleChooseStealTarget({
+  state,
+  targetTeamId,
+  allTeams = [],
+}: {
+  state: MysteryQuestState;
+  targetTeamId: string;
+  allTeams?: MysteryTeamRef[];
+}): {
+  updatedState: MysteryQuestState;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints: number;
+  finalScoreDelta: number;
+} {
+  const pending = state.pendingSteal;
+  const targetTeam = (allTeams || []).find((t) => t.id === targetTeamId);
+  const activeTeam = (allTeams || []).find((t) => t.id === state.currentTurnTeamId);
+
+  const stolenPoints = pending?.stolenPoints || 20;
+  const victimTeamId = targetTeam?.id;
+  const victimTeamName = targetTeam?.name || "Đối thủ";
+
+  if (state.miniGameType === "PUSH_YOUR_LUCK") {
+    // Trong Push-your-luck, cướp điểm nạp vào quỹ pot và tiếp tục chơi
+    state.phase = "PUSH_YOUR_LUCK";
+    state.pendingSteal = undefined;
+    state.potPoints += stolenPoints * state.potMultiplier;
+    state.stolenPointsPot = (state.stolenPointsPot || 0) + stolenPoints * state.potMultiplier;
+    state.pendingStealVictimId = victimTeamId;
+    state.pendingStealVictimName = victimTeamName;
+
+    state.storyResult = {
+      teamId: state.currentTurnTeamId,
+      teamName: state.currentTurnTeamName,
+      teamColor: state.currentTurnTeamColor,
+      rewardText: `🗡️ Đã nhắm Đội ${victimTeamName}! Nạp +${stolenPoints * state.potMultiplier} điểm cướp vào quỹ điểm!`,
+      scoreDelta: 0,
+      oldScore: activeTeam?.score || 0,
+      newScore: activeTeam?.score || 0,
+    };
+
+    return {
+      updatedState: { ...state },
+      victimTeamId,
+      victimTeamName,
+      stolenPoints,
+      finalScoreDelta: 0,
+    };
+  }
+
+  // Đối với các chế độ kết thúc lượt ngay (TAROT_DESTINY, ONE_SHOT_DOORS, MEMORY_PAIRS)
+  state.phase = "TURN_SUMMARY";
+  state.turnFinishedReason =
+    state.miniGameType === "TAROT_DESTINY"
+      ? "TAROT_DRAWN"
+      : state.miniGameType === "ONE_SHOT_DOORS"
+      ? "DOOR_CHOSEN"
+      : "PAIR_MATCHED";
+  state.pendingSteal = undefined;
+  state.potPoints = 0;
+
+  const oldScore = activeTeam?.score || 0;
+  const newScore = oldScore + stolenPoints;
+
+  state.storyResult = {
+    teamId: state.currentTurnTeamId,
+    teamName: state.currentTurnTeamName,
+    teamColor: state.currentTurnTeamColor,
+    rewardText: `🗡️ Cướp thành công! Đã chuyển +${stolenPoints} điểm từ Đội ${victimTeamName} sang Đội ${state.currentTurnTeamName}!`,
+    scoreDelta: stolenPoints,
+    oldScore,
+    newScore,
+  };
+
+  return {
+    updatedState: { ...state },
+    victimTeamId,
+    victimTeamName,
+    stolenPoints,
+    finalScoreDelta: stolenPoints,
+  };
 }
 

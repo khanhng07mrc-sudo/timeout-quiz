@@ -3,6 +3,7 @@
 import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import { useState, useEffect, useRef } from "react";
 import { calculateAuthoritativeTimer } from "@/lib/clock-sync";
+import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
 
 interface Props {
   question: QuestionState;
@@ -312,25 +313,20 @@ export default function GameQuestion({
       {/* Timer */}
       {timer && !question.bouncebackSelectPhase && !isBuzzedWaitingPrep && (
         <div className="flex items-center gap-3">
-          <div className="relative w-12 h-12">
-            <svg className="w-12 h-12" viewBox="0 0 48 48">
-              <circle cx="24" cy="24" r="20" fill="none" stroke="#2d2d5a" strokeWidth="5" />
-              <circle
-                cx="24" cy="24" r="20"
-                fill="none"
-                stroke={timerColor}
-                strokeWidth="5"
-                strokeDasharray={`${2 * Math.PI * 20}`}
-                strokeDashoffset={`${2 * Math.PI * 20 * (1 - timerPercent / 100)}`}
-                className="timer-ring transition-all duration-1000"
-              />
-            </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{timerDisplayRemaining}</span>
-          </div>
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-1000"
-              style={{ width: `${timerPercent}%`, background: timerColor }}
+          <ContinuousTimerRing
+            endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
+            total={timer.total}
+            radius={20}
+            strokeWidth={5}
+            color={timerColor}
+            remainingText={timerDisplayRemaining}
+          />
+          <div className="flex-1">
+            <ContinuousTimerBar
+              endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
+              total={timer.total}
+              color={timerColor}
+              heightClassName="h-2"
             />
           </div>
         </div>

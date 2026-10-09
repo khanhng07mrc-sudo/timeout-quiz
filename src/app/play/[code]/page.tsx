@@ -35,6 +35,7 @@ import {
   calibrateClockFromPacket,
   getServerTime,
 } from "@/lib/clock-sync";
+import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
 
 export default function PlayPage() {
   const { code } = useParams<{ code: string }>();
@@ -55,7 +56,7 @@ export default function PlayPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStealPhase, setIsStealPhase] = useState(false);
   const [stealBuzzedTeam, setStealBuzzedTeam] = useState<{ teamId: string; teamName: string; playerId: string; playerName: string } | null>(null);
-  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
@@ -107,40 +108,49 @@ export default function PlayPage() {
     if (next) soundManager.unlockAudio();
   };
 
-  // Local ticker for match warmup countdown (5s)
+  // Authoritative ticker for match warmup countdown (5s)
   useEffect(() => {
     if (!matchStarting) return;
+    const endsAt = matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000);
+    const total = matchStarting.total || 5;
     const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
       setMatchStarting((prev) => {
         if (!prev) return null;
-        if (prev.seconds <= 0) return prev;
-        const next = prev.seconds - 1;
-        if (next >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(next);
+        if (prev.seconds === remaining) return prev;
+        if (remaining >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(remaining);
         }
-        return { seconds: next };
+        return { ...prev, seconds: remaining, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 150);
     return () => clearInterval(interval);
-  }, [Boolean(matchStarting)]);
+  }, [matchStarting?.endsAt]);
 
-  // Local ticker for question preparation countdown (3s)
+  // Authoritative ticker for question preparation countdown (3s)
   useEffect(() => {
     if (!questionPrepare) return;
+    const endsAt = questionPrepare.endsAt || (Date.now() + questionPrepare.seconds * 1000);
+    const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
       setQuestionPrepare((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return prev ? { ...prev, seconds: 0 } : null;
+        if (!prev) return null;
+        if (prev.seconds === remaining) return prev;
+        if (remaining >= 0 && soundEnabledRef.current) {
+          soundManager.playCountdownTick(remaining);
         }
-        const next = prev.seconds - 1;
-        if (next >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(next);
-        }
-        return { ...prev, seconds: next };
+        return { ...prev, seconds: remaining, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 150);
     return () => clearInterval(interval);
-  }, [Boolean(questionPrepare)]);
+  }, [questionPrepare?.endsAt]);
 
   // Authoritative local countdown ticker for 0s lag across screens
   useEffect(() => {
@@ -524,11 +534,12 @@ export default function PlayPage() {
     });
 
     socket.on("game:starting", (p) => {
-      setMatchStarting({ seconds: p.seconds });
+      setMatchStarting({ seconds: p.seconds, endsAt: p.endsAt, total: p.total });
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
+      soundManager.stopMusic(0, true);
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(p.seconds);
       }
@@ -540,6 +551,7 @@ export default function PlayPage() {
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
+      soundManager.stopMusic(0, true);
       if (soundEnabledRef.current) {
         soundManager.playCountdownTick(p.seconds);
       }
@@ -1251,8 +1263,30 @@ export default function PlayPage() {
           <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
             Trận đấu bắt đầu sau
           </h1>
-          <div className="inline-flex items-center justify-center w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-br from-purple-600 to-cyan-600 text-white text-5xl sm:text-6xl font-black shadow-2xl animate-bounce-in glow-purple border-4 border-white/20">
-            {matchStarting.seconds}
+          <div className="flex flex-col items-center justify-center">
+            <div className="relative flex items-center justify-center">
+              <ContinuousTimerRing
+                endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                total={matchStarting.total || 5}
+                radius={48}
+                strokeWidth={6}
+                color="#c084fc"
+                remainingText=""
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-white text-5xl sm:text-6xl font-black drop-shadow-2xl font-mono">
+                  {matchStarting.seconds}
+                </span>
+              </div>
+            </div>
+            <div className="w-48 max-w-xs mt-4">
+              <ContinuousTimerBar
+                endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                total={matchStarting.total || 5}
+                color="#c084fc"
+                heightClassName="h-2"
+              />
+            </div>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm max-w-xs">
             Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
@@ -1507,6 +1541,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
                 }
               }}
+              onChooseStealTarget={(targetTeamId) => {
+                if (socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:choose_steal_target", { targetTeamId });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1718,6 +1759,13 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:pairs_decision", { choice });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_PAIRS_DECISION", action: "mystery_pairs_decision", choice, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onChooseStealTarget={(targetTeamId) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:choose_steal_target", { targetTeamId });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_CHOOSE_STEAL_TARGET", action: "mystery_choose_steal_target", targetTeamId, teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

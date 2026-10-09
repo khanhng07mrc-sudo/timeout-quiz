@@ -47,6 +47,7 @@ export default function MysteryQuestBoard({
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
+  const flippingTileIdRef = useRef<number | null>(null);
 
   if (!mysteryState) {
     return (
@@ -89,8 +90,16 @@ export default function MysteryQuestBoard({
 
   // Sync optimistic set with actual opened tiles from server
   useEffect(() => {
-    setOptimisticOpenedIds(new Set(tiles.filter((t) => t.isOpened).map((t) => t.id)));
-  }, [tiles]);
+    const opened = new Set(tiles.filter((t) => t.isOpened).map((t) => t.id));
+    if (memoryPairsState?.matchedPairKey) {
+      tiles.forEach((t) => {
+        if (t.pairKey === memoryPairsState.matchedPairKey) {
+          opened.add(t.id);
+        }
+      });
+    }
+    setOptimisticOpenedIds(opened);
+  }, [tiles, memoryPairsState?.matchedPairKey]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -111,10 +120,33 @@ export default function MysteryQuestBoard({
 
 
   const handleTileClick = (tile: MysteryTile) => {
-    if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id) || isFlippingRef.current) return;
+    if (!canInteract || tile.isOpened || optimisticOpenedIds.has(tile.id)) return;
     if (memoryPairsState?.isMismatchResolving) return;
 
-    isFlippingRef.current = true;
+    if (miniGameType === "MEMORY_PAIRS") {
+      // Trong Lật Cặp, chỉ chặn click đúp vào đúng cùng một lá bài trong vòng 200ms
+      if (flippingTileIdRef.current === tile.id) return;
+      flippingTileIdRef.current = tile.id;
+      setTimeout(() => {
+        if (flippingTileIdRef.current === tile.id) {
+          flippingTileIdRef.current = null;
+        }
+      }, 200);
+
+      // Cooldown click giữa 2 thẻ khác nhau cực ngắn (80ms) để không làm mất lượt click thứ 2
+      if (isFlippingRef.current) return;
+      isFlippingRef.current = true;
+      setTimeout(() => {
+        isFlippingRef.current = false;
+      }, 80);
+    } else {
+      if (isFlippingRef.current) return;
+      isFlippingRef.current = true;
+      setTimeout(() => {
+        isFlippingRef.current = false;
+      }, 450);
+    }
+
     // Instant optimistic visual feedback (<16ms) - Trong ONE_SHOT_DOORS Giai đoạn 1 thì chỉ chọn để ra riêng (vẫn úp, không lật)
     const isOneShot = miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS";
     if (!isOneShot || oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED") {
@@ -127,7 +159,6 @@ export default function MysteryQuestBoard({
     }
     setTimeout(() => {
       setFlippingTileId(null);
-      isFlippingRef.current = false;
     }, 450);
 
     onFlipCard?.(tile.id);

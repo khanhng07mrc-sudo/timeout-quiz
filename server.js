@@ -1473,7 +1473,8 @@ function handleFlipCard({
     if (memState.isMismatchResolving) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
-    const tile2 = state.tiles.find((t) => t.id === tileId);
+    const numTileId = Number(tileId);
+    const tile2 = state.tiles.find((t) => Number(t.id) === numTileId);
     if (!tile2 || tile2.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
@@ -1484,16 +1485,18 @@ function handleFlipCard({
     const previouslyKeptBombs = memState.keptBombTileIds || [];
     const hasPriorKeptBomb = previouslyKeptBombs.length > 0;
     if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
-      if (tile2.id === memState.firstFlippedTileId || tile2.id === memState.secondFlippedTileId) {
+      if (Number(tile2.id) === Number(memState.firstFlippedTileId) || Number(tile2.id) === Number(memState.secondFlippedTileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
-      tile2.isOpened = true;
       memState.thirdFlippedTileId = tile2.id;
       memState.attemptsUsed += 1;
       state.lastFlippedTile = tile2;
-      const card1 = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
-      const card2 = state.tiles.find((t) => t.id === memState.secondFlippedTileId);
+      const card1 = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
+      const card2 = state.tiles.find((t) => Number(t.id) === Number(memState.secondFlippedTileId));
       const card3 = tile2;
+      state.tiles = state.tiles.map(
+        (t) => Number(t.id) === numTileId || card1 && Number(t.id) === Number(card1.id) || card2 && Number(t.id) === Number(card2.id) ? { ...t, isOpened: true } : { ...t }
+      );
       const cardsInTurn = [card1, card2, card3].filter(Boolean);
       const nonBombCards = cardsInTurn.filter((c) => !isBombTile(c));
       const bombCard = cardsInTurn.find((c) => isBombTile(c)) || tile2;
@@ -1503,6 +1506,9 @@ function handleFlipCard({
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         state.memoryPairsState = { ...memState };
+        state.tiles = state.tiles.map(
+          (t) => t.pairKey === winCard.pairKey ? { ...t, isOpened: true } : { ...t }
+        );
         let finalDelta = 0;
         let victimTeamId;
         let victimTeamName;
@@ -1521,7 +1527,7 @@ function handleFlipCard({
               tileIcon: winCard.icon
             };
             return {
-              updatedState: { ...state },
+              updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
               isBomb: false,
               scorePenalty: 0,
               finalScoreDelta: 0
@@ -1549,7 +1555,7 @@ function handleFlipCard({
           newScore
         };
         return {
-          updatedState: { ...state },
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
           finalScoreDelta: finalDelta,
@@ -1575,7 +1581,7 @@ function handleFlipCard({
             newScore: team.score || 0
           };
           return {
-            updatedState: { ...state },
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
             finalScoreDelta: 0
@@ -1603,7 +1609,7 @@ function handleFlipCard({
           newScore
         };
         return {
-          updatedState: { ...state },
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: true,
           scorePenalty: penalty,
           finalScoreDelta: -penalty
@@ -1611,30 +1617,34 @@ function handleFlipCard({
       }
     }
     if (!memState.firstFlippedTileId) {
-      tile2.isOpened = true;
       memState.firstFlippedTileId = tile2.id;
       state.lastFlippedTile = tile2;
       if (isBombCard2 && hasPriorKeptBomb) {
         memState.isBombRescueActive = true;
       }
+      state.tiles = state.tiles.map(
+        (t) => Number(t.id) === numTileId ? { ...t, isOpened: true } : { ...t }
+      );
       state.memoryPairsState = { ...memState };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
+    }
+    if (Number(memState.firstFlippedTileId) === numTileId) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
-    if (memState.firstFlippedTileId === tile2.id) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
-    tile2.isOpened = true;
     memState.secondFlippedTileId = tile2.id;
     state.lastFlippedTile = tile2;
-    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+    const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
+    state.tiles = state.tiles.map(
+      (t) => Number(t.id) === numTileId || firstTile && Number(t.id) === Number(firstTile.id) ? { ...t, isOpened: true } : { ...t }
+    );
     if (memState.isBombRescueActive) {
       state.memoryPairsState = { ...memState };
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
     }
     if (isBombCard2 && hasPriorKeptBomb) {
       memState.isBombRescueActive = true;
       state.memoryPairsState = { ...memState };
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
     }
     const isBothBombs = isBombTile(firstTile) && isBombCard2;
     if (isBothBombs) {
@@ -1655,7 +1665,7 @@ function handleFlipCard({
           oldScore: team.score || 0,
           newScore: team.score || 0
         };
-        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
       }
       const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
       state.bombExploded = {
@@ -1678,7 +1688,7 @@ function handleFlipCard({
         oldScore,
         newScore
       };
-      return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
     }
     const isOneBomb = isBombTile(firstTile) || isBombCard2;
     if (isOneBomb) {
@@ -1692,7 +1702,7 @@ function handleFlipCard({
         if (currentRound === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
@@ -1710,7 +1720,7 @@ function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0
             };
-            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1732,17 +1742,20 @@ function handleFlipCard({
             oldScore,
             newScore
           };
-          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
     memState.attemptsUsed += 1;
-    const isMatch = firstTile && firstTile.pairKey === tile2.pairKey;
+    const isMatch = Boolean(firstTile && firstTile.pairKey && firstTile.pairKey === tile2.pairKey);
     if (isMatch && firstTile) {
       memState.matchedPairKey = firstTile.pairKey;
       state.memoryPairsState = { ...memState };
+      state.tiles = state.tiles.map(
+        (t) => t.pairKey === firstTile.pairKey || Number(t.id) === numTileId || Number(t.id) === Number(firstTile.id) ? { ...t, isOpened: true } : { ...t }
+      );
       let victimTeamId;
       let victimTeamName;
       let stolenPoints;
@@ -1761,7 +1774,7 @@ function handleFlipCard({
             tileIcon: firstTile.icon
           };
           return {
-            updatedState: { ...state },
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
             finalScoreDelta: 0
@@ -1789,7 +1802,7 @@ function handleFlipCard({
         newScore
       };
       return {
-        updatedState: { ...state },
+        updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
         isBomb: false,
         scorePenalty: 0,
         finalScoreDelta: finalDelta,
@@ -1805,7 +1818,7 @@ function handleFlipCard({
         if (currentRound === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
@@ -1823,7 +1836,7 @@ function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0
             };
-            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1845,11 +1858,11 @@ function handleFlipCard({
             oldScore,
             newScore
           };
-          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
   }
   if (normType === "ONE_SHOT_DOORS") {
@@ -7016,13 +7029,23 @@ function registerSocketHandlers(io2) {
       }
     });
     const roomMysteryFlipCooldown = /* @__PURE__ */ new Map();
+    const roomMysteryTileCooldown = /* @__PURE__ */ new Map();
     const executeMysteryFlip = async (room, questState, team, tileId) => {
       const now = Date.now();
-      const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
-      if (now - lastFlipTime < 450) {
-        return;
+      const normMiniType = normalizeMiniGameType(questState?.miniGameType);
+      if (normMiniType === "MEMORY_PAIRS") {
+        const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
+        if (now - lastTileFlip < 150) {
+          return;
+        }
+        roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
+      } else {
+        const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
+        if (now - lastFlipTime < 450) {
+          return;
+        }
+        roomMysteryFlipCooldown.set(room.id, now);
       }
-      roomMysteryFlipCooldown.set(room.id, now);
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const {
         updatedState,
@@ -7132,11 +7155,13 @@ function registerSocketHandlers(io2) {
             cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           } else {
-            const keptBombsSet = new Set(keptBombTileIds || []);
-            cur.tiles.forEach((t) => {
-              if ((t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)) {
-                t.isOpened = false;
+            const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+            cur.tiles = cur.tiles.map((t) => {
+              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+              if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                return { ...t, isOpened: false };
               }
+              return { ...t };
             });
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;

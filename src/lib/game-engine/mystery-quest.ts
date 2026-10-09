@@ -973,7 +973,8 @@ export function handleFlipCard({
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    const tile = state.tiles.find((t) => t.id === tileId);
+    const numTileId = Number(tileId);
+    const tile = state.tiles.find((t) => Number(t.id) === numTileId);
     if (!tile || tile.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
@@ -989,18 +990,26 @@ export function handleFlipCard({
     // STEP 3: Lật lá bài thứ 3 (trong lượt giải cứu bom)
     // ─────────────────────────────────────────────────────────────────────────
     if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
-      if (tile.id === memState.firstFlippedTileId || tile.id === memState.secondFlippedTileId) {
+      if (Number(tile.id) === Number(memState.firstFlippedTileId) || Number(tile.id) === Number(memState.secondFlippedTileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
-      tile.isOpened = true;
       memState.thirdFlippedTileId = tile.id;
       memState.attemptsUsed += 1;
       state.lastFlippedTile = tile;
 
-      const card1 = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
-      const card2 = state.tiles.find((t) => t.id === memState.secondFlippedTileId);
+      const card1 = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
+      const card2 = state.tiles.find((t) => Number(t.id) === Number(memState.secondFlippedTileId));
       const card3 = tile;
+
+      // Mark all 3 opened immutably
+      state.tiles = state.tiles.map((t) =>
+        Number(t.id) === numTileId ||
+        (card1 && Number(t.id) === Number(card1.id)) ||
+        (card2 && Number(t.id) === Number(card2.id))
+          ? { ...t, isOpened: true }
+          : { ...t }
+      );
 
       const cardsInTurn = [card1, card2, card3].filter(Boolean) as MysteryTile[];
       const nonBombCards = cardsInTurn.filter((c) => !isBombTile(c));
@@ -1015,6 +1024,9 @@ export function handleFlipCard({
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         state.memoryPairsState = { ...memState };
+        state.tiles = state.tiles.map((t) =>
+          t.pairKey === winCard.pairKey ? { ...t, isOpened: true } : { ...t }
+        );
 
         let finalDelta = 0;
         let victimTeamId: string | undefined;
@@ -1035,7 +1047,7 @@ export function handleFlipCard({
               tileIcon: winCard.icon,
             };
             return {
-              updatedState: { ...state },
+              updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
               isBomb: false,
               scorePenalty: 0,
               finalScoreDelta: 0,
@@ -1070,7 +1082,7 @@ export function handleFlipCard({
         };
 
         return {
-          updatedState: { ...state },
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
           finalScoreDelta: finalDelta,
@@ -1098,7 +1110,7 @@ export function handleFlipCard({
             newScore: team.score || 0,
           };
           return {
-            updatedState: { ...state },
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
             finalScoreDelta: 0,
@@ -1130,7 +1142,7 @@ export function handleFlipCard({
         };
 
         return {
-          updatedState: { ...state },
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: true,
           scorePenalty: penalty,
           finalScoreDelta: -penalty,
@@ -1142,7 +1154,6 @@ export function handleFlipCard({
     // STEP 1: Lật lá bài thứ 1 của lượt
     // ─────────────────────────────────────────────────────────────────────────
     if (!memState.firstFlippedTileId) {
-      tile.isOpened = true;
       memState.firstFlippedTileId = tile.id;
       state.lastFlippedTile = tile;
 
@@ -1151,28 +1162,37 @@ export function handleFlipCard({
         memState.isBombRescueActive = true;
       }
 
+      state.tiles = state.tiles.map((t) =>
+        Number(t.id) === numTileId ? { ...t, isOpened: true } : { ...t }
+      );
       state.memoryPairsState = { ...memState };
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 2: Lật lá bài thứ 2 của lượt
     // ─────────────────────────────────────────────────────────────────────────
-    if (memState.firstFlippedTileId === tile.id) {
+    if (Number(memState.firstFlippedTileId) === numTileId) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    tile.isOpened = true;
     memState.secondFlippedTileId = tile.id;
     state.lastFlippedTile = tile;
 
-    const firstTile = state.tiles.find((t) => t.id === memState.firstFlippedTileId);
+    const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
+
+    // Đánh dấu mở cả 2 lá trong lượt này một cách bất biến
+    state.tiles = state.tiles.map((t) =>
+      Number(t.id) === numTileId || (firstTile && Number(t.id) === Number(firstTile.id))
+        ? { ...t, isOpened: true }
+        : { ...t }
+    );
 
     // TH 2.1: Đang trong lượt giải cứu (Card 1 là lá bom thứ 2, Card 2 là lá thường thứ nhất)
     // -> Giữ nguyên, mở khóa chờ lật tiếp lá thứ 3 (Card 3)!
     if (memState.isBombRescueActive) {
       state.memoryPairsState = { ...memState };
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
     }
 
     // TH 2.2: Card 2 là lá bom thứ 2, trong khi lá bom thứ 1 đã lộ từ trước!
@@ -1180,7 +1200,7 @@ export function handleFlipCard({
     if (isBombCard && hasPriorKeptBomb) {
       memState.isBombRescueActive = true;
       state.memoryPairsState = { ...memState };
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
     }
 
     // TH 2.3: Người chơi lật trúng CẢ 2 LÁ BOM trong CÙNG LƯỢT NÀY!
@@ -1204,7 +1224,7 @@ export function handleFlipCard({
           oldScore: team.score || 0,
           newScore: team.score || 0,
         };
-        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
       }
 
       const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
@@ -1230,7 +1250,7 @@ export function handleFlipCard({
         newScore,
       };
 
-      return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty };
     }
 
     // TH 2.4: Một trong 2 lá là lá bom (lần đầu tiên lật trúng bom), lá còn lại là lá thường!
@@ -1249,7 +1269,7 @@ export function handleFlipCard({
         if (currentRound === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
@@ -1267,7 +1287,7 @@ export function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0,
             };
-            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1289,22 +1309,27 @@ export function handleFlipCard({
             oldScore,
             newScore,
           };
-          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
 
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
 
     // TH 2.5: Cả 2 lá đều là lá thường (không dính bom)
     memState.attemptsUsed += 1;
-    const isMatch = firstTile && firstTile.pairKey === tile.pairKey;
+    const isMatch = Boolean(firstTile && firstTile.pairKey && firstTile.pairKey === tile.pairKey);
 
     if (isMatch && firstTile) {
       // MATCH FOUND!
       memState.matchedPairKey = firstTile.pairKey;
       state.memoryPairsState = { ...memState };
+      state.tiles = state.tiles.map((t) =>
+        t.pairKey === firstTile.pairKey || Number(t.id) === numTileId || Number(t.id) === Number(firstTile.id)
+          ? { ...t, isOpened: true }
+          : { ...t }
+      );
 
       let victimTeamId: string | undefined;
       let victimTeamName: string | undefined;
@@ -1325,7 +1350,7 @@ export function handleFlipCard({
             tileIcon: firstTile.icon,
           };
           return {
-            updatedState: { ...state },
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
             finalScoreDelta: 0,
@@ -1360,7 +1385,7 @@ export function handleFlipCard({
       };
 
       return {
-        updatedState: { ...state },
+        updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
         isBomb: false,
         scorePenalty: 0,
         finalScoreDelta: finalDelta,
@@ -1378,7 +1403,7 @@ export function handleFlipCard({
         if (currentRound === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
           state.memoryPairsState = { ...memState };
           const penalty = state.baseQuestionPoints || 10;
@@ -1396,7 +1421,7 @@ export function handleFlipCard({
               oldScore: team.score || 0,
               newScore: team.score || 0,
             };
-            return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1418,12 +1443,12 @@ export function handleFlipCard({
             oldScore,
             newScore,
           };
-          return { updatedState: { ...state }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
         }
       }
 
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
   }
 

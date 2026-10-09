@@ -2294,12 +2294,14 @@ export default function AdminSandboxPage() {
               cur.memoryPairsState!.isBombRescueActive = false;
               cur.memoryPairsState!.isMismatchResolving = false;
             } else {
-              const keptBombsSet = new Set(keptBombTileIds || []);
-              cur.tiles = cur.tiles.map((t) =>
-                (t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)
-                  ? { ...t, isOpened: false }
-                  : t
-              );
+              const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+              cur.tiles = cur.tiles.map((t) => {
+                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+                if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                  return { ...t, isOpened: false };
+                }
+                return { ...t };
+              });
               cur.memoryPairsState!.firstFlippedTileId = null;
               cur.memoryPairsState!.secondFlippedTileId = null;
               cur.memoryPairsState!.thirdFlippedTileId = null;

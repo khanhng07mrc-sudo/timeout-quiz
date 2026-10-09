@@ -4655,14 +4655,27 @@ export function registerSocketHandlers(io: IO) {
 
     // ── Mystery Quest (Hành Trình Bí Ẩn) Events ──────────────────────────────
     const roomMysteryFlipCooldown = new Map<string, number>();
+    const roomMysteryTileCooldown = new Map<string, number>();
 
     const executeMysteryFlip = async (room: any, questState: any, team: any, tileId: number) => {
       const now = Date.now();
-      const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
-      if (now - lastFlipTime < 450) {
-        return;
+      const normMiniType = normalizeMiniGameType(questState?.miniGameType);
+
+      if (normMiniType === "MEMORY_PAIRS") {
+        // Trong Thử Thách Lật Cặp, cho phép chọn 2 lá bài khác nhau nhanh chóng để ghép cặp mượt mà.
+        // Chỉ debounce khi người chơi click đúp cùng một lá bài trong vòng 150ms.
+        const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
+        if (now - lastTileFlip < 150) {
+          return;
+        }
+        roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
+      } else {
+        const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
+        if (now - lastFlipTime < 450) {
+          return;
+        }
+        roomMysteryFlipCooldown.set(room.id, now);
       }
-      roomMysteryFlipCooldown.set(room.id, now);
 
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const {
@@ -4789,11 +4802,13 @@ export function registerSocketHandlers(io: IO) {
             cur.memoryPairsState.isBombRescueActive = false;
             cur.memoryPairsState.isMismatchResolving = false;
           } else {
-            const keptBombsSet = new Set(keptBombTileIds || []);
-            cur.tiles.forEach((t) => {
-              if ((t.id === firstFlippedTileId || t.id === secondFlippedTileId) && !keptBombsSet.has(t.id)) {
-                t.isOpened = false;
+            const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+            cur.tiles = cur.tiles.map((t: any) => {
+              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+              if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                return { ...t, isOpened: false };
               }
+              return { ...t };
             });
             cur.memoryPairsState.firstFlippedTileId = null;
             cur.memoryPairsState.secondFlippedTileId = null;

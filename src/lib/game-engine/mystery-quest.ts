@@ -599,17 +599,20 @@ export function generateNextPushYourLuckCard({
     currentTeamId?: string;
   };
 }): MysteryTile {
-  // Risk-reward bomb chance based on base question difficulty:
+  // Card 1 is GUARANTEED SAFE reward card to reward player for taking the minigame challenge!
+  // From Card 2 onwards, risk-reward bomb chance kicks in:
   let bombChance: number;
-  if (basePoints <= 10) {
+  if (drawIndex <= 1) {
+    bombChance = 0;
+  } else if (basePoints <= 10) {
     // 10đ: Higher risk
-    bombChance = drawIndex === 1 ? 0.30 : 0.35;
+    bombChance = 0.35;
   } else if (basePoints <= 20) {
     // 20đ: Balanced
-    bombChance = drawIndex === 1 ? 0.20 : 0.25;
+    bombChance = 0.25;
   } else {
     // 30đ: High stakes, lower bomb risk to reward hard questions
-    bombChance = drawIndex === 1 ? 0.15 : 0.20;
+    bombChance = 0.20;
   }
 
   const isBomb = Math.random() < bombChance;
@@ -676,40 +679,7 @@ export function generateNextPushYourLuckCard({
     }
   }
 
-  // Not a bomb: 12% chance for a minor disadvantage or utility trap (TRAP)
-  const isTrap = Math.random() < 0.12;
-  if (isTrap) {
-    if (Math.random() < 0.6) {
-      // Trap 1: Hố Sâu Sụt Lún (-5đ / -10đ pot, does not blow up, player can continue to recover)
-      const trapLoss = basePoints <= 10 ? 5 : 10;
-      return {
-        id,
-        label,
-        icon: "🕳️",
-        isOpened: false,
-        type: "TRAP",
-        storyTitle: "🕳️ HỐ SÂU BẤT NGỜ!",
-        storyDescription: `Địa hình sụt lún! Bị hao hụt -${trapLoss}đ trong quỹ điểm, nhưng bạn vẫn trụ vững và có thể rút tiếp để gỡ lại!`,
-        effectType: "LOSE_POT_POINTS",
-        deltaPoints: trapLoss,
-      };
-    } else {
-      // Trap 2: Khóa Két An Toàn (Force Stop: safely cash out and end turn)
-      return {
-        id,
-        label,
-        icon: "🔒",
-        isOpened: false,
-        type: "TRAP",
-        storyTitle: "🔒 KHÓA KÉT AN TOÀN!",
-        storyDescription: "Hệ thống bảo an khẩn cấp kích hoạt! Tự động chốt và bảo toàn trọn vẹn điểm quỹ hiện tại, kết thúc lượt an toàn!",
-        effectType: "FORCE_STOP",
-        deltaPoints: 0,
-      };
-    }
-  }
-
-  // Safe Reward Card from Theme scaled to question tier
+  // Safe Reward Card from Theme scaled to question tier (all non-bomb cards are rewards)
   const themeRewards = REWARD_TEMPLATES[theme] || REWARD_TEMPLATES.CASTLE;
   let template = themeRewards[Math.floor(Math.random() * themeRewards.length)];
 
@@ -1662,69 +1632,6 @@ export function handleFlipCard({
       giftedPoints,
       darkBombRecipients,
     };
-  }
-
-  // Handle Traps (TRAP)
-  if (tile.type === "TRAP") {
-    if (tile.effectType === "LOSE_POT_POINTS") {
-      const lost = tile.deltaPoints || 5;
-      state.potPoints = Math.max(0, state.potPoints - lost);
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `🕳️ Sụt lún Hố Sâu! Quỹ điểm bị giảm -${lost}đ (còn ${state.potPoints}đ). Bạn vẫn an toàn tiếp tục hành trình!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0,
-      };
-
-      const nextTopCard = generateNextPushYourLuckCard({
-        theme: state.theme,
-        drawIndex: state.cardsFlippedCount + 1,
-        basePoints: state.baseQuestionPoints || 10,
-        teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
-        options: {
-          currentRound: state.currentRound,
-          teams: allTeams,
-          currentTeamId: team.id,
-        },
-      });
-      state.tiles.push(nextTopCard);
-
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-      };
-    } else if (tile.effectType === "FORCE_STOP") {
-      // Force Stop safely cashes out current pot!
-      const finalScoreDelta = state.potPoints;
-      const oldScore = team.score || 0;
-      const newScore = oldScore + finalScoreDelta;
-
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "FORCE_STOP";
-      state.potPoints = 0;
-
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `🔒 Khóa Két An Toàn! Đã tự động chốt và bảo toàn trọn vẹn +${finalScoreDelta} điểm về tổng điểm!`,
-        scoreDelta: finalScoreDelta,
-        oldScore,
-        newScore,
-      };
-
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-        finalScoreDelta,
-      };
-    }
   }
 
   // Safe Reward Card

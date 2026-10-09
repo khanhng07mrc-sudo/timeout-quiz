@@ -898,6 +898,11 @@ export default function GameQuestion({
         <>
           <div>
         <div className="flex flex-wrap items-center gap-2 mb-2">
+          {q.order && (
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-white/10 border border-white/20 text-white whitespace-nowrap shadow-sm">
+              Câu {q.order}
+            </span>
+          )}
           <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold whitespace-nowrap">
             {q.type === "MC_SINGLE" ? "Trắc nghiệm" : q.type === "MC_MULTI" ? "Nhiều đáp án" : q.type === "TRUE_FALSE" ? "Đúng/Sai" : q.type === "FILL_BLANK" ? "Điền vào chỗ trống" : q.type === "ESSAY" ? "Tự luận" : "Câu hỏi"}
           </span>
@@ -910,7 +915,7 @@ export default function GameQuestion({
             <span className="whitespace-nowrap">{bloomMeta.labelVi}</span>
             <span className="opacity-75 whitespace-nowrap">({q.points}đ)</span>
           </span>
-          {question.streakCount && question.streakCount >= 2 && (
+          {Boolean(question.streakCount && question.streakCount >= 2) && (
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
               <span>🔥 Streak x{question.streakCount}</span>
               <span className="text-[10px] text-amber-400 font-bold">

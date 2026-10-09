@@ -1436,214 +1436,252 @@ export default function DisplayPage() {
             ) : (
               <div>
 
-              {/* Timer & Turn Info */}
-              <div className="flex items-center justify-between gap-2.5 sm:gap-4 mb-2.5 sm:mb-4">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  {timer && (
-                    <ContinuousTimerRing
-                      endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
-                      total={timer.total}
-                      radius={20}
-                      strokeWidth={4}
-                      color={timerColor}
-                      remainingText={timerDisplayRemaining}
-                    />
-                  )}
-                  {currentQuestion.timerPending && !timer && !currentQuestion.bouncebackSelectPhase && (
-                    <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
-                      <span>⏱️</span>
-                      <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
-                    </div>
-                  )}
-                  {timer && timerDisplayRemaining === 0 && !revealPayload && (
-                    <div className="px-3.5 py-2 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
-                      <span>⏱️</span>
-                      <span>Hết thời gian! Chờ Quản trò công bố kết quả...</span>
-                    </div>
-                  )}
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
-                        Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}
-                        {roomState.wagerState?.totalRounds
-                          ? ` (Vòng ${(roomState.wagerState.roundIndex ?? 0) + 1}/${roomState.wagerState.totalRounds})`
-                          : ""}
-                      </span>
-                      {roomState.wagerState?.maxBetCap && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold border border-emerald-500/40 bg-emerald-500/20 text-emerald-300">
-                          🛡️ Trần cược: {roomState.wagerState.maxBetCap}đ ({roomState.wagerState.wagerMultiplierCap ?? 2.5}x)
+              {/* ── QUESTION HEADER: 2-TIER SPACIOUS DESIGN ── */}
+              <div className="mb-3 sm:mb-4 space-y-2.5">
+                {/* ── TẦNG 1: ĐỒNG HỒ, SỐ CÂU & ĐỘ KHÓ BLOOM ── */}
+                <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-4">
+                  {/* Cụm trái: Đồng hồ / Trạng thái chờ MC + Số câu + Độ khó */}
+                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                    {timer && (
+                      <ContinuousTimerRing
+                        endsAt={timer.endsAt || (Date.now() + timer.remaining * 1000)}
+                        total={timer.total}
+                        radius={20}
+                        strokeWidth={4}
+                        color={timerColor}
+                        remainingText={timerDisplayRemaining}
+                      />
+                    )}
+                    {currentQuestion.timerPending && !timer && !currentQuestion.bouncebackSelectPhase && (
+                      <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
+                        <span>⏱️</span>
+                        <span>Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
+                      </div>
+                    )}
+                    {timer && timerDisplayRemaining === 0 && !revealPayload && (
+                      <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm flex items-center gap-2 animate-pulse shrink-0">
+                        <span>⏱️</span>
+                        <span>Hết thời gian! Chờ Quản trò công bố kết quả...</span>
+                      </div>
+                    )}
+
+                    {/* Huy hiệu Câu X / Y */}
+                    <div className="px-3 py-1 rounded-xl bg-white/10 border border-white/20 text-white font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-sm">
+                      <span>Câu {roomState.currentQuestionIndex + 1} / {roomState.totalQuestions}</span>
+                      {roomState.wagerState?.totalRounds ? (
+                        <span className="opacity-75 font-normal text-xs">
+                          (Vòng {(roomState.wagerState.roundIndex ?? 0) + 1}/{roomState.wagerState.totalRounds})
                         </span>
-                      )}
-                      <span
-                        className="px-2.5 py-0.5 rounded-full text-xs font-bold border"
-                        style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}40`, background: bloomMeta.bg }}
+                      ) : null}
+                    </div>
+
+                    {/* Huy hiệu Độ khó Bloom */}
+                    <span
+                      className="px-3 py-1 rounded-xl text-xs sm:text-sm font-black border flex items-center gap-1.5 shadow-sm whitespace-nowrap"
+                      style={{ color: bloomMeta.color, borderColor: `${bloomMeta.color}60`, background: bloomMeta.bg }}
+                    >
+                      <span>{bloomMeta.emoji}</span>
+                      <span>{bloomMeta.labelVi}</span>
+                      <span className="opacity-80">({currentQuestion.question.points}đ)</span>
+                    </span>
+
+                    {/* Huy hiệu Streak (Khắc phục lỗi in số 0 rác) */}
+                    {Boolean(currentQuestion.streakCount && currentQuestion.streakCount >= 2) && (
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
+                        🔥 Streak x{currentQuestion.streakCount} (+{currentQuestion.streakCount === 2 ? 10 : currentQuestion.streakCount === 3 ? 20 : currentQuestion.streakCount === 4 ? 30 : 50}%)
+                      </span>
+                    )}
+
+                    {/* Huy hiệu Câu hỏi Điểm Vàng */}
+                    {currentQuestion.isGoldQuestion && (
+                      <span className="px-3 py-1 rounded-xl text-xs font-black border-2 border-yellow-400 bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)] flex items-center gap-1.5 animate-pulse whitespace-nowrap">
+                        <span>⭐</span>
+                        <span>CÂU HỎI ĐIỂM VÀNG (x2 ĐIỂM)</span>
+                      </span>
+                    )}
+
+                    {/* Trần cược Wager */}
+                    {roomState.wagerState?.maxBetCap ? (
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-bold border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 shadow-sm">
+                        🛡️ Trần cược: {roomState.wagerState.maxBetCap}đ ({roomState.wagerState.wagerMultiplierCap ?? 2.5}x)
+                      </span>
+                    ) : null}
+                  </div>
+
+                  {/* Cụm phải: Nút chuyển chế độ xem bảng đấu / bàn cờ */}
+                  {(roomState.mode === "DICE_RACE" || roomState.mode === "GRID_CARO" || roomState.mode === "TOURNAMENT") && (
+                    <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/20 shrink-0 ml-auto shadow">
+                      <button
+                        type="button"
+                        onClick={() => setDisplayModeTab("QUESTION")}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                          displayModeTab === "QUESTION" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
+                        }`}
                       >
-                        {bloomMeta.emoji} {bloomMeta.labelVi} ({currentQuestion.question.points}đ)
-                      </span>
-                      {currentQuestion.streakCount && currentQuestion.streakCount >= 2 && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/50 text-amber-300 animate-pulse whitespace-nowrap">
-                          🔥 Streak x{currentQuestion.streakCount} (+{currentQuestion.streakCount === 2 ? 10 : currentQuestion.streakCount === 3 ? 20 : currentQuestion.streakCount === 4 ? 30 : 50}%)
-                        </span>
-                      )}
-
-                      {/* Classic Gold Rush Indicator */}
-                      {currentQuestion.isGoldQuestion && (
-                        <span className="px-3 py-1 rounded-full text-xs font-black border-2 border-yellow-400 bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)] flex items-center gap-1.5 animate-pulse whitespace-nowrap">
-                          <span>⭐</span>
-                          <span>CÂU HỎI ĐIỂM VÀNG (x2 ĐIỂM)</span>
-                        </span>
-                      )}
-
-                      {/* Mode tab switch for board modes */}
-                      {(roomState.mode === "DICE_RACE" || roomState.mode === "GRID_CARO" || roomState.mode === "TOURNAMENT") && (
-                        <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/20 shrink-0 ml-auto shadow">
-                          <button
-                            type="button"
-                            onClick={() => setDisplayModeTab("QUESTION")}
-                            className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
-                              displayModeTab === "QUESTION" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
-                            }`}
-                          >
-                            <span>📖</span>
-                            <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDisplayModeTab("BOARD")}
-                            className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
-                              displayModeTab === "BOARD" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white hover:bg-white/10"
-                            }`}
-                          >
-                            <span>🗺️</span>
-                            <span>{roomState.mode === "TOURNAMENT" ? "Nhánh đấu" : roomState.mode === "GRID_CARO" ? "Bảng Caro" : "Bàn cờ"}</span>
-                          </button>
-                        </div>
-                      )}
+                        <span>📖</span>
+                        <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDisplayModeTab("BOARD")}
+                        className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                          displayModeTab === "BOARD" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white hover:bg-white/10"
+                        }`}
+                      >
+                        <span>🗺️</span>
+                        <span>{roomState.mode === "TOURNAMENT" ? "Nhánh đấu" : roomState.mode === "GRID_CARO" ? "Bảng Caro" : "Bàn cờ"}</span>
+                      </button>
                     </div>
+                  )}
+                </div>
 
-                    {/* Mode specific info banner */}
-                    {roomState.mode === "BOUNCEBACK" && (
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-black shadow-md border-2 border-slate-200">
-                          <span className="text-blue-600">🎯</span>
-                          <span className="text-xs uppercase tracking-wider text-slate-600 font-bold">Đội trả lời chính:</span>
-                          <span className="text-base text-slate-950 font-black">{currentQuestion.primaryTeamName ?? "..."}</span>
-                        </div>
-                        {(stealBuzzed || currentQuestion.stealBuzzedTeamName) && (
-                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white font-black shadow-lg border-2 border-white/60 animate-pulse">
-                            <span>🚨</span>
-                            <span className="text-xs uppercase tracking-wider text-red-100 font-bold">Đội bấm chuông cướp:</span>
-                            <span className="text-base text-white font-black">{currentQuestion.stealBuzzedTeamName || stealBuzzed?.teamName}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {roomState.mode === "BUZZ" && (buzzed || currentQuestion.buzzedTeamName) && (
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white font-black shadow-lg border-2 border-white/60 animate-pulse">
-                          <span>🚨</span>
-                          <span className="text-xs uppercase tracking-wider text-red-100 font-bold">Đội bấm chuông:</span>
-                          <span className="text-base text-white font-black">{currentQuestion.buzzedTeamName || buzzed?.playerName}</span>
-                        </div>
-                      </div>
-                    )}
-                    {roomState.mode === "TOURNAMENT" && (
-                      <div className="flex flex-col gap-2 mt-1.5 w-full">
-                        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white text-slate-950 font-black shadow-md border-2 border-slate-200 w-fit">
-                          <span className="text-yellow-600">🏆</span>
-                          <span className="text-xs uppercase tracking-wider text-slate-600 font-bold">Đối đầu 1v1:</span>
-                          <span className="text-base text-slate-950 font-black">{currentQuestion.primaryTeamName ?? "..."}</span>
-                        </div>
+                {/* ── TẦNG 2: BANNER THÔNG TIN CHẾ ĐỘ RỘNG RÃI TOÀN MÀN HÌNH ── */}
+                {roomState.mode === "MYSTERY_QUEST" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-slate-900/90 to-purple-950/90 border-2 border-purple-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2.5 animate-slide-up">
+                    <div className="flex items-center gap-2.5 text-sm sm:text-base font-bold text-white flex-wrap">
+                      <GameModeIcon mode="MYSTERY_QUEST" className="w-5 h-5 shrink-0 text-purple-400" />
+                      <span className="uppercase text-xs tracking-wider text-purple-300 font-extrabold">Lượt thi đấu:</span>
+                      <span
+                        className="font-black px-3 py-1 rounded-xl text-white shadow-md text-sm sm:text-base"
+                        style={{ background: roomState.mysteryQuestState?.currentTurnTeamColor || "#a855f7" }}
+                      >
+                        {roomState.mysteryQuestState?.currentTurnTeamName || currentQuestion.primaryTeamName || "..."}
+                      </span>
+                      <span className="text-amber-300 font-mono font-black bg-amber-500/20 px-2.5 py-1 rounded-xl border border-amber-500/40 text-xs sm:text-sm">
+                        💰 Hũ tích lũy: {(roomState.mysteryQuestState?.potPoints || 0)}đ
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-xs sm:text-sm shadow-sm">
+                      <span>🗝️</span>
+                      <span>Trả lời đúng để mở khóa bản đồ lật thẻ may mắn!</span>
+                    </div>
+                  </div>
+                )}
 
-                        {/* Live Fan Support Meter */}
-                        {(() => {
-                          const match = roomState.tournamentState?.matches.find(
-                            (m) => m.id === (currentQuestion.tournamentMatchId || roomState.tournamentState?.currentMatchId)
-                          );
-                          const countA = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countA : (match?.cheers?.countA || 0);
-                          const countB = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countB : (match?.cheers?.countB || 0);
-                          const total = countA + countB;
-                          const pctA = total > 0 ? Math.round((countA / total) * 100) : 50;
-                          const pctB = 100 - pctA;
-
-                          return (
-                            <div className="p-3 rounded-2xl bg-black/50 border border-white/10 shadow-lg space-y-1.5 max-w-2xl">
-                              <div className="flex items-center justify-between text-xs font-bold px-1">
-                                <span className="text-cyan-300 flex items-center gap-1.5 truncate max-w-[40%]">
-                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team1Color || "#06b6d4" }} />
-                                  <span className="truncate">{match?.team1Name || "Đội 1"}: <strong>{pctA}%</strong> ({countA})</span>
-                                </span>
-                                <span className="text-muted-foreground uppercase tracking-widest text-[10px] font-black flex items-center gap-1 shrink-0">
-                                  <span>🔥</span> FAN SUPPORT METER <span>🔥</span>
-                                </span>
-                                <span className="text-pink-300 flex items-center gap-1.5 truncate max-w-[40%] justify-end">
-                                  <span className="truncate">{match?.team2Name || "Đội 2"}: <strong>{pctB}%</strong> ({countB})</span>
-                                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team2Color || "#ec4899" }} />
-                                </span>
-                              </div>
-                              <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex border border-white/20">
-                                <div
-                                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500"
-                                  style={{ width: `${pctA}%` }}
-                                />
-                                <div
-                                  className="h-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
-                                  style={{ width: `${pctB}%` }}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })()}
+                {roomState.mode === "BOUNCEBACK" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-blue-950/90 via-slate-900/90 to-blue-950/90 border-2 border-blue-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2.5 animate-slide-up">
+                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-white">
+                      <span className="text-blue-400 text-lg">🎯</span>
+                      <span className="uppercase text-xs tracking-wider text-blue-300 font-extrabold">Đội trả lời chính:</span>
+                      <span className="font-black px-3 py-1 rounded-xl bg-blue-600 text-white shadow-md">
+                        {currentQuestion.primaryTeamName ?? "..."}
+                      </span>
+                    </div>
+                    {(stealBuzzed || currentQuestion.stealBuzzedTeamName) && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white font-black shadow-lg border-2 border-white/60 animate-pulse text-xs sm:text-sm">
+                        <span>🚨</span>
+                        <span className="uppercase text-xs tracking-wider text-red-100 font-bold">Đội cướp chuông:</span>
+                        <span>{currentQuestion.stealBuzzedTeamName || stealBuzzed?.teamName}</span>
                       </div>
-                    )}
-                    {roomState.mode === "GRID_CARO" && (
-                      <p className="text-base sm:text-lg font-black text-purple-300 mt-1 flex items-center gap-2">
-                        <GameModeIcon mode="GRID_CARO" className="w-5 h-5 shrink-0 inline-block" />
-                        <span>Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của {currentQuestion.primaryTeamName ?? "..."}</span>
-                      </p>
-                    )}
-                    {roomState.mode === "DICE_RACE" && (
-                      <p className="text-base sm:text-lg font-black text-indigo-300 mt-1 flex items-center gap-2">
-                        <GameModeIcon mode="DICE_RACE" className="w-5 h-5 shrink-0 inline-block" />
-                        <span>Xúc xắc: {currentQuestion.diceRollValue ?? "?"} nút — Lượt của {currentQuestion.primaryTeamName ?? "..."}</span>
-                      </p>
-                    )}
-                    {roomState.mode === "WAGER" && (
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-amber-500/20 text-yellow-300 font-bold border border-amber-500/40 shadow-sm text-sm">
-                          <span>👑</span>
-                          <span className="text-xs uppercase tracking-wider opacity-80">Đội cược điểm:</span>
-                          <span className="text-white font-black">{currentQuestion.primaryTeamName || "Đang xác định"}</span>
-                          <span className="text-amber-300 font-mono font-black">({roomState.wagerState?.currentHighestWager || 10}đ cược)</span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 text-xs">
-                          <span>🎯</span>
-                          <span>Đội khác đúng nhận +{Math.max(5, Math.floor((currentQuestion.question?.points || 10) / 2))}đ</span>
-                        </div>
-                      </div>
-                    )}
-                    {roomState.mode === "MYSTERY_QUEST" && (
-                      <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-xl bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40 shadow-sm text-sm">
-                          <GameModeIcon mode="MYSTERY_QUEST" className="w-4 h-4 shrink-0 inline-block" />
-                          <span className="text-xs uppercase tracking-wider opacity-80">Lượt thi đấu:</span>
-                          <span className="text-white font-black">{roomState.mysteryQuestState?.currentTurnTeamName || currentQuestion.primaryTeamName || "..."}</span>
-                          <span className="text-amber-300 font-mono font-black">(Hũ: {roomState.mysteryQuestState?.potPoints || 0}đ)</span>
-                        </div>
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 text-xs">
-                          <span>🗝️</span>
-                          <span>Đúng để mở khóa bản đồ lật thẻ may mắn!</span>
-                        </div>
-                      </div>
-                    )}
-                    {roomState.config.answerMethod === "MC" && (
-                      <p className="text-xs text-yellow-300 font-medium mt-0.5 inline-flex items-center gap-1.5">
-                        <SystemIcon name="mc" className="w-3.5 h-3.5 shrink-0 text-yellow-300" />
-                        <span>Chế độ trả lời miệng qua MC / Ban giám khảo</span>
-                      </p>
                     )}
                   </div>
-                </div>
+                )}
+
+                {roomState.mode === "BUZZ" && (buzzed || currentQuestion.buzzedTeamName) && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-red-950/90 via-slate-900/90 to-red-950/90 border-2 border-red-500/40 shadow-xl flex items-center justify-between gap-2.5 animate-slide-up">
+                    <div className="inline-flex items-center gap-2 text-sm sm:text-base font-bold text-white">
+                      <span className="text-red-400 text-lg">🚨</span>
+                      <span className="uppercase text-xs tracking-wider text-red-300 font-extrabold">Đội bấm chuông:</span>
+                      <span className="font-black px-3 py-1 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-blue-600 text-white shadow-md">
+                        {currentQuestion.buzzedTeamName || buzzed?.playerName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {roomState.mode === "TOURNAMENT" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-yellow-950/90 via-slate-900/90 to-yellow-950/90 border-2 border-yellow-500/40 shadow-xl space-y-2 animate-slide-up">
+                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-white">
+                      <span className="text-yellow-400 text-lg">🏆</span>
+                      <span className="uppercase text-xs tracking-wider text-yellow-300 font-extrabold">Đối đầu 1v1:</span>
+                      <span className="font-black px-3 py-1 rounded-xl bg-yellow-600 text-white shadow-md">
+                        {currentQuestion.primaryTeamName ?? "..."}
+                      </span>
+                    </div>
+
+                    {/* Live Fan Support Meter */}
+                    {(() => {
+                      const match = roomState.tournamentState?.matches.find(
+                        (m) => m.id === (currentQuestion.tournamentMatchId || roomState.tournamentState?.currentMatchId)
+                      );
+                      const countA = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countA : (match?.cheers?.countA || 0);
+                      const countB = (liveCheer && match && liveCheer.matchId === match.id) ? liveCheer.countB : (match?.cheers?.countB || 0);
+                      const total = countA + countB;
+                      const pctA = total > 0 ? Math.round((countA / total) * 100) : 50;
+                      const pctB = 100 - pctA;
+
+                      return (
+                        <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 shadow-lg space-y-1.5 w-full">
+                          <div className="flex items-center justify-between text-xs font-bold px-1">
+                            <span className="text-cyan-300 flex items-center gap-1.5 truncate max-w-[40%]">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team1Color || "#06b6d4" }} />
+                              <span className="truncate">{match?.team1Name || "Đội 1"}: <strong>{pctA}%</strong> ({countA})</span>
+                            </span>
+                            <span className="text-muted-foreground uppercase tracking-widest text-[10px] font-black flex items-center gap-1 shrink-0">
+                              <span>🔥</span> FAN SUPPORT METER <span>🔥</span>
+                            </span>
+                            <span className="text-pink-300 flex items-center gap-1.5 truncate max-w-[40%] justify-end">
+                              <span className="truncate">{match?.team2Name || "Đội 2"}: <strong>{pctB}%</strong> ({countB})</span>
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: match?.team2Color || "#ec4899" }} />
+                            </span>
+                          </div>
+                          <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden flex border border-white/20">
+                            <div
+                              className="h-full bg-gradient-to-r from-cyan-500 to-blue-600 transition-all duration-500"
+                              style={{ width: `${pctA}%` }}
+                            />
+                            <div
+                              className="h-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                              style={{ width: `${pctB}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {roomState.mode === "GRID_CARO" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-slate-900/90 to-purple-950/90 border-2 border-purple-500/40 shadow-xl flex items-center gap-2 animate-slide-up text-white font-bold text-sm sm:text-base">
+                    <GameModeIcon mode="GRID_CARO" className="w-5 h-5 shrink-0 text-purple-400" />
+                    <span className="uppercase text-xs tracking-wider text-purple-300 font-extrabold">Bàn cờ Caro:</span>
+                    <span>Ô số #{currentQuestion.gridCellId ?? "?"} — Lượt của <strong className="text-purple-300">{currentQuestion.primaryTeamName ?? "..."}</strong></span>
+                  </div>
+                )}
+
+                {roomState.mode === "DICE_RACE" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-indigo-950/90 via-slate-900/90 to-indigo-950/90 border-2 border-indigo-500/40 shadow-xl flex items-center gap-2 animate-slide-up text-white font-bold text-sm sm:text-base">
+                    <GameModeIcon mode="DICE_RACE" className="w-5 h-5 shrink-0 text-indigo-400" />
+                    <span className="uppercase text-xs tracking-wider text-indigo-300 font-extrabold">Đường đua Xúc Xắc:</span>
+                    <span>{currentQuestion.diceRollValue ?? "?"} nút — Lượt của <strong className="text-indigo-300">{currentQuestion.primaryTeamName ?? "..."}</strong></span>
+                  </div>
+                )}
+
+                {roomState.mode === "WAGER" && (
+                  <div className="w-full p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-amber-950/90 via-slate-900/90 to-amber-950/90 border-2 border-amber-500/40 shadow-xl flex flex-wrap items-center justify-between gap-2.5 animate-slide-up">
+                    <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-white">
+                      <span>👑</span>
+                      <span className="uppercase text-xs tracking-wider text-amber-300 font-extrabold">Đội cược điểm:</span>
+                      <span className="font-black px-3 py-1 rounded-xl bg-amber-600 text-white shadow-md">
+                        {currentQuestion.primaryTeamName || "Đang xác định"}
+                      </span>
+                      <span className="text-amber-300 font-mono font-black ml-1 bg-amber-500/20 px-2 py-0.5 rounded-lg border border-amber-500/40">
+                        {roomState.wagerState?.currentHighestWager || 10}đ cược
+                      </span>
+                    </div>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/40 text-xs">
+                      <span>🎯</span>
+                      <span>Đội khác đúng nhận +{Math.max(5, Math.floor((currentQuestion.question?.points || 10) / 2))}đ</span>
+                    </div>
+                  </div>
+                )}
+
+                {roomState.config.answerMethod === "MC" && (
+                  <div className="w-full p-2 rounded-xl bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-xs sm:text-sm font-semibold flex items-center gap-2">
+                    <SystemIcon name="mc" className="w-4 h-4 shrink-0 text-yellow-300" />
+                    <span>Chế độ trả lời miệng qua MC / Ban giám khảo chấm điểm</span>
+                  </div>
+                )}
               </div>
 
               {/* Question content */}

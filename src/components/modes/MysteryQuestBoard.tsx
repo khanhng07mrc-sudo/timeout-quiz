@@ -389,7 +389,7 @@ export default function MysteryQuestBoard({
                 <span className="font-bold flex items-center gap-1 truncate">
                   <span>👑</span> Quyền Admin / MC:
                 </span>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                   <button
                     type="button"
                     onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
@@ -404,6 +404,15 @@ export default function MysteryQuestBoard({
                   >
                     MC chọn Chơi Minigame
                   </button>
+                  {onAdvanceTurn && (
+                    <button
+                      type="button"
+                      onClick={onAdvanceTurn}
+                      className="px-2.5 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold cursor-pointer transition text-[11px]"
+                    >
+                      MC Bỏ qua lượt ➔
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -533,6 +542,35 @@ export default function MysteryQuestBoard({
                 <div className="flex items-center justify-between text-[10px] text-white/70 pt-1 border-t border-white/10 mt-0.5">
                   <span>Đã lật: <strong className="text-white">{cardsFlippedCount}</strong> ô</span>
                   <span>Còn lại: <strong className="text-white">{tiles.filter((t) => !t.isOpened).length}</strong> ô bí ẩn</span>
+                </div>
+              </div>
+            )}
+
+            {/* Admin / MC Control Bar during active minigame */}
+            {(isAdmin || isSandbox) && (
+              <div className="w-full max-w-xl mx-auto p-2 rounded-xl bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                <span className="font-bold flex items-center gap-1 truncate">
+                  <span>👑</span> Quyền Admin / MC:
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                  {potPoints > 0 && onCashOut && (
+                    <button
+                      type="button"
+                      onClick={() => onCashOut()}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-700 hover:bg-emerald-600 text-white font-bold cursor-pointer transition text-[11px]"
+                    >
+                      MC Chốt hũ (+{potPoints}đ)
+                    </button>
+                  )}
+                  {onAdvanceTurn && (
+                    <button
+                      type="button"
+                      onClick={onAdvanceTurn}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white font-bold cursor-pointer transition text-[11px]"
+                    >
+                      MC Chuyển lượt ➔
+                    </button>
+                  )}
                 </div>
               </div>
             )}

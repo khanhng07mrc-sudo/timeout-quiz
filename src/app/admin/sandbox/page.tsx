@@ -2454,6 +2454,7 @@ export default function AdminSandboxPage() {
           // PLAY_MINIGAME
           const updatedState = {
             ...curMystery,
+            potPoints: curMystery.potPoints || curMystery.baseQuestionPoints || 10,
             phase: "PUSH_YOUR_LUCK" as const,
             decisionMade: "PLAY_MINIGAME" as const,
           };

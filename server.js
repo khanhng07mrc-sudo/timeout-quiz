@@ -1206,12 +1206,14 @@ function generateNextPushYourLuckCard({
   options
 }) {
   let bombChance;
-  if (basePoints <= 10) {
-    bombChance = drawIndex === 1 ? 0.3 : 0.35;
+  if (drawIndex <= 1) {
+    bombChance = 0;
+  } else if (basePoints <= 10) {
+    bombChance = 0.35;
   } else if (basePoints <= 20) {
-    bombChance = drawIndex === 1 ? 0.2 : 0.25;
+    bombChance = 0.25;
   } else {
-    bombChance = drawIndex === 1 ? 0.15 : 0.2;
+    bombChance = 0.2;
   }
   const isBomb = Math.random() < bombChance;
   const id = drawIndex;
@@ -1265,35 +1267,6 @@ function generateNextPushYourLuckCard({
         storyTitle: "\u{1F381} BOM T\u1EEA THI\u1EC6N HI\u1EBEN T\u1EBE!",
         storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB 50% s\u1ED1 \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
         effectType: "GIFT_POINTS",
-        deltaPoints: 0
-      };
-    }
-  }
-  const isTrap = Math.random() < 0.12;
-  if (isTrap) {
-    if (Math.random() < 0.6) {
-      const trapLoss = basePoints <= 10 ? 5 : 10;
-      return {
-        id,
-        label,
-        icon: "\u{1F573}\uFE0F",
-        isOpened: false,
-        type: "TRAP",
-        storyTitle: "\u{1F573}\uFE0F H\u1ED0 S\xC2U B\u1EA4T NG\u1EDC!",
-        storyDescription: `\u0110\u1ECBa h\xECnh s\u1EE5t l\xFAn! B\u1ECB hao h\u1EE5t -${trapLoss}\u0111 trong qu\u1EF9 \u0111i\u1EC3m, nh\u01B0ng b\u1EA1n v\u1EABn tr\u1EE5 v\u1EEFng v\xE0 c\xF3 th\u1EC3 r\xFAt ti\u1EBFp \u0111\u1EC3 g\u1EE1 l\u1EA1i!`,
-        effectType: "LOSE_POT_POINTS",
-        deltaPoints: trapLoss
-      };
-    } else {
-      return {
-        id,
-        label,
-        icon: "\u{1F512}",
-        isOpened: false,
-        type: "TRAP",
-        storyTitle: "\u{1F512} KH\xD3A K\xC9T AN TO\xC0N!",
-        storyDescription: "H\u1EC7 th\u1ED1ng b\u1EA3o an kh\u1EA9n c\u1EA5p k\xEDch ho\u1EA1t! T\u1EF1 \u0111\u1ED9ng ch\u1ED1t v\xE0 b\u1EA3o to\xE0n tr\u1ECDn v\u1EB9n \u0111i\u1EC3m qu\u1EF9 hi\u1EC7n t\u1EA1i, k\u1EBFt th\xFAc l\u01B0\u1EE3t an to\xE0n!",
-        effectType: "FORCE_STOP",
         deltaPoints: 0
       };
     }
@@ -2049,61 +2022,6 @@ function handleFlipCard({
       giftedPoints,
       darkBombRecipients
     };
-  }
-  if (tile.type === "TRAP") {
-    if (tile.effectType === "LOSE_POT_POINTS") {
-      const lost = tile.deltaPoints || 5;
-      state.potPoints = Math.max(0, state.potPoints - lost);
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F573}\uFE0F S\u1EE5t l\xFAn H\u1ED1 S\xE2u! Qu\u1EF9 \u0111i\u1EC3m b\u1ECB gi\u1EA3m -${lost}\u0111 (c\xF2n ${state.potPoints}\u0111). B\u1EA1n v\u1EABn an to\xE0n ti\u1EBFp t\u1EE5c h\xE0nh tr\xECnh!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0
-      };
-      const nextTopCard2 = generateNextPushYourLuckCard({
-        theme: state.theme,
-        drawIndex: state.cardsFlippedCount + 1,
-        basePoints: state.baseQuestionPoints || 10,
-        teamScore: team.score || 0,
-        isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
-        options: {
-          currentRound: state.currentRound,
-          teams: allTeams,
-          currentTeamId: team.id
-        }
-      });
-      state.tiles.push(nextTopCard2);
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0
-      };
-    } else if (tile.effectType === "FORCE_STOP") {
-      const finalScoreDelta = state.potPoints;
-      const oldScore = team.score || 0;
-      const newScore = oldScore + finalScoreDelta;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "FORCE_STOP";
-      state.potPoints = 0;
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F512} Kh\xF3a K\xE9t An To\xE0n! \u0110\xE3 t\u1EF1 \u0111\u1ED9ng ch\u1ED1t v\xE0 b\u1EA3o to\xE0n tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m v\u1EC1 t\u1ED5ng \u0111i\u1EC3m!`,
-        scoreDelta: finalScoreDelta,
-        oldScore,
-        newScore
-      };
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-        finalScoreDelta
-      };
-    }
   }
   if (tile.effectType === "MULTIPLY_X2") {
     state.potMultiplier *= 2;

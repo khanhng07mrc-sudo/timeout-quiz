@@ -277,6 +277,7 @@ export default function AdminSandboxPage() {
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showCheatDropdown, setShowCheatDropdown] = useState(false);
+  const [cheatMenuPos, setCheatMenuPos] = useState({ top: 0, right: 0 });
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
@@ -6908,11 +6909,19 @@ export default function AdminSandboxPage() {
                     </button>
                   )}
 
-                  {/* Score Cheat Dropdown */}
+                  {/* Score Cheat Dropdown (Fixed Floating Popover) */}
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={(e) => { e.stopPropagation(); setShowCheatDropdown(!showCheatDropdown); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setCheatMenuPos({
+                          top: rect.bottom + 4,
+                          right: Math.max(8, window.innerWidth - rect.right),
+                        });
+                        setShowCheatDropdown((prev) => !prev);
+                      }}
                       className="px-1.5 sm:px-2 py-0.5 rounded-lg glass border border-white/20 text-slate-300 hover:text-white font-bold transition text-[10px] flex items-center gap-0.5 btn-tactile cursor-pointer"
                       title="Chỉnh điểm nhanh cho đội này"
                     >
@@ -6921,67 +6930,83 @@ export default function AdminSandboxPage() {
                     </button>
 
                     {showCheatDropdown && currentTeam && (
-                      <div
-                        className="absolute right-0 top-full mt-1 z-50 p-1.5 rounded-xl glass border border-white/20 bg-[#151728]/95 shadow-2xl flex flex-col gap-1 w-28 text-[10px]"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, 10); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono font-bold"
-                        >
-                          +10 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-green-500/10 hover:bg-green-500/20 text-green-300 text-left font-mono font-bold"
-                        >
-                          +20 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, -10); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono font-bold"
-                        >
-                          -10 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, -20); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-red-500/10 hover:bg-red-500/20 text-red-300 text-left font-mono font-bold"
-                        >
-                          -20 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, undefined, 0); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-300 text-left font-mono font-bold"
-                        >
-                          Set 0 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { handleAdjustScore(currentTeam.id, undefined, 50); setShowCheatDropdown(false); }}
-                          className="px-2 py-1 rounded bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-left font-mono font-bold"
-                        >
-                          Set 50 điểm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
+                      <>
+                        <div
+                          className="fixed inset-0 z-[9998]"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setShowCheatDropdown(false);
-                            const val = window.prompt(`Nhập điểm số chính xác cho ${currentTeam.name}:`, String(currentTeam.score));
-                            if (val !== null) {
-                              const parsed = parseInt(val, 10);
-                              if (!isNaN(parsed)) handleAdjustScore(currentTeam.id, undefined, Math.max(0, parsed));
-                            }
                           }}
-                          className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-left font-bold border border-amber-500/40"
+                        />
+                        <div
+                          className="fixed z-[9999] p-1.5 rounded-xl glass border border-white/25 bg-[#151728]/98 shadow-2xl flex flex-col gap-1 w-32 text-[10px] animate-scale-in"
+                          style={{
+                            top: `${cheatMenuPos.top}px`,
+                            right: `${cheatMenuPos.right}px`,
+                          }}
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          ✏️ Nhập điểm...
-                        </button>
-                      </div>
+                          <div className="px-2 py-0.5 text-[9px] font-bold text-slate-400 border-b border-white/10 uppercase tracking-wider truncate">
+                            {currentTeam.name}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, 10); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-green-500/15 hover:bg-green-500/25 text-green-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            +10 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, 20); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-green-500/15 hover:bg-green-500/25 text-green-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            +20 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, -10); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-red-500/15 hover:bg-red-500/25 text-red-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            -10 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, -20); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-red-500/15 hover:bg-red-500/25 text-red-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            -20 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, undefined, 0); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-yellow-500/15 hover:bg-yellow-500/25 text-yellow-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            Set 0 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleAdjustScore(currentTeam.id, undefined, 50); setShowCheatDropdown(false); }}
+                            className="px-2 py-1 rounded bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 text-left font-mono font-bold transition cursor-pointer"
+                          >
+                            Set 50 điểm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowCheatDropdown(false);
+                              const val = window.prompt(`Nhập điểm số chính xác cho ${currentTeam.name}:`, String(currentTeam.score));
+                              if (val !== null) {
+                                const parsed = parseInt(val, 10);
+                                if (!isNaN(parsed)) handleAdjustScore(currentTeam.id, undefined, Math.max(0, parsed));
+                              }
+                            }}
+                            className="px-2 py-1 rounded bg-amber-500/20 hover:bg-amber-500/35 text-amber-300 text-left font-bold border border-amber-500/40 transition cursor-pointer"
+                          >
+                            ✏️ Nhập điểm...
+                          </button>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>

@@ -7238,149 +7238,168 @@ function registerSocketHandlers(io2) {
     });
     const roomMysteryFlipCooldown = /* @__PURE__ */ new Map();
     const roomMysteryTileCooldown = /* @__PURE__ */ new Map();
-    const executeMysteryFlip = async (room, questState, team, tileId) => {
-      const now = Date.now();
-      const normMiniType = normalizeMiniGameType(questState?.miniGameType);
-      if (normMiniType === "MEMORY_PAIRS") {
-        const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
-        if (now - lastTileFlip < 150) {
-          return;
-        }
-        roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
-      } else {
-        const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
-        if (now - lastFlipTime < 450) {
-          return;
-        }
-        roomMysteryFlipCooldown.set(room.id, now);
-      }
-      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const {
-        updatedState,
-        isBomb,
-        scorePenalty,
-        finalScoreDelta,
-        shouldResetMismatchedCards,
-        recipientTeamId,
-        giftedPoints,
-        darkBombRecipients,
-        victimTeamId,
-        stolenPoints
-      } = handleFlipCard({
-        state: questState,
-        tileId,
-        team,
-        allTeams
+    const roomMysteryActionQueues = /* @__PURE__ */ new Map();
+    const enqueueMysteryAction = (roomId, action) => {
+      const prev = roomMysteryActionQueues.get(roomId) || Promise.resolve();
+      const next2 = prev.then(action).catch((err) => {
+        console.error("[MysteryActionQueue] L\u1ED7i trong room:", roomId, err);
       });
-      roomMysteryQuests.set(room.id, updatedState);
-      if (updatedState.phase === "STEAL_TARGET_SELECT") {
-      } else if (victimTeamId && stolenPoints && stolenPoints > 0) {
-        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
-        const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
-          { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
-        ]);
-      } else if (isBomb) {
-        if (darkBombRecipients && darkBombRecipients.length > 0) {
-          const updates = [];
-          if (scorePenalty > 0) {
-            const donorDelta = await applyScoreDeltaToTeam(team.id, -scorePenalty);
-            updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+      roomMysteryActionQueues.set(roomId, next2);
+      return next2;
+    };
+    const executeMysteryFlip = async (room, _initialQuestState, team, tileId) => {
+      return enqueueMysteryAction(room.id, async () => {
+        const questState = roomMysteryQuests.get(room.id);
+        if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+        const now = Date.now();
+        const normMiniType = normalizeMiniGameType(questState?.miniGameType);
+        if (normMiniType === "MEMORY_PAIRS") {
+          const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
+          if (now - lastTileFlip < 150) {
+            return;
           }
-          for (const rec of darkBombRecipients) {
-            if (rec.points > 0) {
-              const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
-              updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
-            }
+          roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
+        } else {
+          const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
+          if (now - lastFlipTime < 450) {
+            return;
           }
-          if (updates.length > 0) {
-            io2.to(`room:${room.code}`).emit("game:score:update", updates);
-          }
-        } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
-          const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
-          const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
+          roomMysteryFlipCooldown.set(room.id, now);
+        }
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const freshState = roomMysteryQuests.get(room.id) || questState;
+        if (!freshState || freshState.phase !== "PUSH_YOUR_LUCK") return;
+        const {
+          updatedState,
+          isBomb,
+          scorePenalty,
+          finalScoreDelta,
+          shouldResetMismatchedCards,
+          recipientTeamId,
+          giftedPoints,
+          darkBombRecipients,
+          victimTeamId,
+          stolenPoints
+        } = handleFlipCard({
+          state: freshState,
+          tileId,
+          team,
+          allTeams
+        });
+        roomMysteryQuests.set(room.id, updatedState);
+        if (updatedState.phase === "STEAL_TARGET_SELECT") {
+        } else if (victimTeamId && stolenPoints && stolenPoints > 0) {
+          const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+          const stealerDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta || stolenPoints);
           io2.to(`room:${room.code}`).emit("game:score:update", [
-            { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
-            { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta }
+            { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+            { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
           ]);
-        } else if (scorePenalty > 0) {
-          const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+        } else if (isBomb) {
+          if (darkBombRecipients && darkBombRecipients.length > 0) {
+            const updates = [];
+            if (scorePenalty > 0) {
+              const donorDelta = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+              updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+            }
+            for (const rec of darkBombRecipients) {
+              if (rec.points > 0) {
+                const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+                updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+              }
+            }
+            if (updates.length > 0) {
+              io2.to(`room:${room.code}`).emit("game:score:update", updates);
+            }
+          } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+            const donorDelta = await applyScoreDeltaToTeam(team.id, -giftedPoints);
+            const recipientDelta = await applyScoreDeltaToTeam(recipientTeamId, giftedPoints);
+            io2.to(`room:${room.code}`).emit("game:score:update", [
+              { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
+              { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta }
+            ]);
+          } else if (scorePenalty > 0) {
+            const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+            io2.to(`room:${room.code}`).emit("game:score:update", [
+              { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+            ]);
+          }
+        } else if (finalScoreDelta && finalScoreDelta > 0) {
+          const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+          ]);
+        } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
+          const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
           io2.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
           ]);
         }
-      } else if (finalScoreDelta && finalScoreDelta > 0) {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-        ]);
-      } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
-        const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-        ]);
-      }
-      const normType = normalizeMiniGameType(updatedState.miniGameType);
-      let audioTrigger = "NONE";
-      if (normType === "MEMORY_PAIRS") {
-        if (updatedState.memoryPairsState?.matchedPairKey) {
-          audioTrigger = isBomb ? "WRONG" : "CORRECT";
-        } else {
-          audioTrigger = "NONE";
-        }
-      } else if (normType === "ONE_SHOT_DOORS") {
-        audioTrigger = updatedState.oneShotState?.phase === "RESOLVED" ? isBomb ? "WRONG" : "CORRECT" : "NONE";
-      } else if (normType === "TAROT_DESTINY") {
-        audioTrigger = isBomb ? "WRONG" : "CORRECT";
-      } else if (normType === "PUSH_YOUR_LUCK") {
-        audioTrigger = isBomb ? "WRONG" : "NONE";
-      }
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
-      if (updatedState.lastFlippedTile) {
-        io2.to(`room:${room.code}`).emit("game:mystery:card_flipped", {
-          tile: updatedState.lastFlippedTile,
-          potPoints: updatedState.potPoints,
-          potMultiplier: updatedState.potMultiplier,
-          isBomb,
-          bombExploded: updatedState.bombExploded,
-          audioTrigger
-        });
-      }
-      if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
-        setTimeout(async () => {
-          const cur = roomMysteryQuests.get(room.id);
-          if (!cur || !cur.memoryPairsState) return;
-          const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState;
-          if (promptSecondChance) {
-            cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
-            cur.memoryPairsState.firstFlippedTileId = null;
-            cur.memoryPairsState.secondFlippedTileId = null;
-            cur.memoryPairsState.thirdFlippedTileId = null;
-            cur.memoryPairsState.keptBombTileIds = [];
-            cur.memoryPairsState.isBombRescueActive = false;
-            cur.memoryPairsState.isMismatchResolving = false;
+        const normType = normalizeMiniGameType(updatedState.miniGameType);
+        let audioTrigger = "NONE";
+        if (normType === "MEMORY_PAIRS") {
+          if (updatedState.memoryPairsState?.matchedPairKey) {
+            audioTrigger = isBomb ? "WRONG" : "CORRECT";
           } else {
-            const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
-            cur.tiles = cur.tiles.map((t) => {
-              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
-              if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
-                return { ...t, isOpened: false };
-              }
-              return { ...t };
-            });
-            cur.memoryPairsState.firstFlippedTileId = null;
-            cur.memoryPairsState.secondFlippedTileId = null;
-            cur.memoryPairsState.thirdFlippedTileId = null;
-            cur.memoryPairsState.isBombRescueActive = false;
-            cur.memoryPairsState.isMismatchResolving = false;
+            audioTrigger = "NONE";
           }
-          roomMysteryQuests.set(room.id, cur);
-          io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
-        }, 1500);
-      }
+        } else if (normType === "ONE_SHOT_DOORS") {
+          audioTrigger = updatedState.oneShotState?.phase === "RESOLVED" ? isBomb ? "WRONG" : "CORRECT" : "NONE";
+        } else if (normType === "TAROT_DESTINY") {
+          audioTrigger = isBomb ? "WRONG" : "CORRECT";
+        } else if (normType === "PUSH_YOUR_LUCK") {
+          audioTrigger = isBomb ? "WRONG" : "NONE";
+        }
+        const refreshedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+        if (updatedState.lastFlippedTile) {
+          io2.to(`room:${room.code}`).emit("game:mystery:card_flipped", {
+            tile: updatedState.lastFlippedTile,
+            potPoints: updatedState.potPoints,
+            potMultiplier: updatedState.potMultiplier,
+            isBomb,
+            bombExploded: updatedState.bombExploded,
+            audioTrigger
+          });
+        }
+        if (shouldResetMismatchedCards && updatedState.memoryPairsState) {
+          const turnIndexSnapshot = updatedState.currentTurnIndex;
+          setTimeout(async () => {
+            enqueueMysteryAction(room.id, async () => {
+              const cur = roomMysteryQuests.get(room.id);
+              if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
+              if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
+              const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState;
+              if (promptSecondChance) {
+                cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
+                cur.memoryPairsState.firstFlippedTileId = null;
+                cur.memoryPairsState.secondFlippedTileId = null;
+                cur.memoryPairsState.thirdFlippedTileId = null;
+                cur.memoryPairsState.keptBombTileIds = [];
+                cur.memoryPairsState.isBombRescueActive = false;
+                cur.memoryPairsState.isMismatchResolving = false;
+              } else {
+                const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+                cur.tiles = cur.tiles.map((t) => {
+                  const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+                  if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                    return { ...t, isOpened: false };
+                  }
+                  return { ...t };
+                });
+                cur.memoryPairsState.firstFlippedTileId = null;
+                cur.memoryPairsState.secondFlippedTileId = null;
+                cur.memoryPairsState.thirdFlippedTileId = null;
+                cur.memoryPairsState.isBombRescueActive = false;
+                cur.memoryPairsState.isMismatchResolving = false;
+              }
+              roomMysteryQuests.set(room.id, cur);
+              io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
+            });
+          }, 1500);
+        }
+      });
     };
     const executeMysteryCashOut = async (room, questState, team) => {
       const allTeams = await prisma.team.findMany({
@@ -7886,10 +7905,13 @@ function registerSocketHandlers(io2) {
         teams,
         turnsPerTeam: questState.turnsPerTeam,
         prevTheme: questState.theme,
-        forcedMiniGameType: miniGameType
+        forcedMiniGameType: miniGameType,
+        baseQuestionPoints: questState.baseQuestionPoints
       });
       newStage.phase = questState.phase;
       newStage.potPoints = questState.potPoints;
+      if (questState.promoPerk) newStage.promoPerk = questState.promoPerk;
+      if (questState.hasShield !== void 0) newStage.hasShield = questState.hasShield;
       roomMysteryQuests.set(room.id, newStage);
       io2.to(`room:${room.code}`).emit("game:mystery:update", newStage);
       const refreshedState = await buildRoomState(room.id);

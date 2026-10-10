@@ -55,6 +55,7 @@ export default function MysteryQuestBoard({
   const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
+  const lastClickedTileIdRef = useRef<number | null>(null);
 
   if (!mysteryState) {
     return (
@@ -95,21 +96,34 @@ export default function MysteryQuestBoard({
     nextCardPeek,
   } = mysteryState;
 
-  // Sync optimistic set with actual opened tiles from server without redundant re-renders
+  // Sync optimistic set with actual opened tiles from server without redundant re-renders or flickering
   useEffect(() => {
-    const opened = new Set(tiles.filter((t) => t.isOpened).map((t) => t.id));
+    const serverOpened = new Set(tiles.filter((t) => t.isOpened).map((t) => t.id));
     const matchedKey = memoryPairsState?.matchedPairKey || optimisticMatchedPairKey;
     if (matchedKey) {
       tiles.forEach((t) => {
         if (t.pairKey === matchedKey) {
-          opened.add(t.id);
+          serverOpened.add(t.id);
         }
       });
     }
+
     setOptimisticOpenedIds((prev) => {
-      if (prev.size === opened.size) {
+      // If mismatch is resolving, reset unkept cards
+      if (memoryPairsState?.isMismatchResolving) {
+        lastClickedTileIdRef.current = null;
+        return serverOpened;
+      }
+      // If promptSecondChance or turn finished, sync to server
+      if (memoryPairsState?.promptSecondChance || phase === "TURN_SUMMARY") {
+        lastClickedTileIdRef.current = null;
+        return serverOpened;
+      }
+      // Merge serverOpened with previous optimistic clicks so intermediate responses (e.g. Card 1 confirmed) NEVER close Card 2!
+      const merged = new Set([...serverOpened, ...prev]);
+      if (merged.size === prev.size) {
         let same = true;
-        for (const id of opened) {
+        for (const id of merged) {
           if (!prev.has(id)) {
             same = false;
             break;
@@ -117,17 +131,22 @@ export default function MysteryQuestBoard({
         }
         if (same) return prev;
       }
-      return opened;
+      return merged;
     });
-  }, [tiles, memoryPairsState?.matchedPairKey, optimisticMatchedPairKey]);
+  }, [tiles, memoryPairsState?.matchedPairKey, memoryPairsState?.isMismatchResolving, memoryPairsState?.promptSecondChance, phase, optimisticMatchedPairKey]);
 
   useEffect(() => {
     if (memoryPairsState?.matchedPairKey) {
       setOptimisticMatchedPairKey(memoryPairsState.matchedPairKey);
-    } else if (!memoryPairsState?.firstFlippedTileId) {
+    } else if (!memoryPairsState?.firstFlippedTileId && !lastClickedTileIdRef.current) {
       setOptimisticMatchedPairKey(null);
     }
   }, [memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId]);
+
+  useEffect(() => {
+    lastClickedTileIdRef.current = null;
+    setOptimisticMatchedPairKey(null);
+  }, [currentTurnIndex, miniGameType]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -167,11 +186,14 @@ export default function MysteryQuestBoard({
       }
 
       // Check if this click completes a matching pair optimistically
-      if (memoryPairsState?.firstFlippedTileId && Number(memoryPairsState.firstFlippedTileId) !== Number(tile.id)) {
-        const first = tiles.find((t) => Number(t.id) === Number(memoryPairsState.firstFlippedTileId));
+      const priorFlippedId = memoryPairsState?.firstFlippedTileId || lastClickedTileIdRef.current;
+      if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
+        const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
         if (first && first.pairKey && first.pairKey === tile.pairKey) {
           setOptimisticMatchedPairKey(tile.pairKey);
         }
+      } else if (!priorFlippedId) {
+        lastClickedTileIdRef.current = tile.id;
       }
 
       // Trong Lật Cặp, chỉ chặn click đúp vào đúng cùng một lá bài trong vòng 200ms
@@ -1338,9 +1360,11 @@ export default function MysteryQuestBoard({
             ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) && !memoryPairsState?.isBombRescueActive)
           );
 
+          const shouldDimBoard = Boolean(memoryPairsState?.promptSecondChance);
+
           return (
-            <div className={`grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1 transition-all duration-300 ${
-              isPairsLocked ? "opacity-35 pointer-events-none grayscale-30" : ""
+            <div className={`grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1 transition-opacity duration-300 ${
+              shouldDimBoard ? "opacity-40 pointer-events-none grayscale-30" : ""
             }`}>
               {tiles.map((tile) => {
                 const isMatched = effectiveMatchedPairKey === tile.pairKey;
@@ -1389,7 +1413,7 @@ export default function MysteryQuestBoard({
               return (
                 <div
                   key={tile.id}
-                  className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in ${
+                  className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
                     isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
                   } ${
                     isBomb

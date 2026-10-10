@@ -1374,17 +1374,19 @@ function generateMysteryStageForTurn({
   prevTheme,
   prevMiniGameType,
   forcedMiniGameType,
-  baseQuestionPoints = 10
+  baseQuestionPoints
 }) {
   const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
   const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
   const themeMeta = MYSTERY_THEMES[theme];
+  const currentRound = Math.floor(turnIndex / Math.max(1, teams.length)) + 1;
+  const roundDefaultPoints = currentRound === 1 ? 10 : currentRound === 2 ? 20 : 30;
+  const effectiveBasePoints = normalizeToThreeLevels(baseQuestionPoints ?? roundDefaultPoints);
   const miniGameType = forcedMiniGameType ? normalizeMiniGameType(forcedMiniGameType) : getRandomMiniGame(prevMiniGameType);
-  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints, miniGameType, {
+  const promoPerk = generateMysteryPromoPerk(effectiveBasePoints, miniGameType, {
     teams,
     currentTeamId: currentTeam.id
   });
-  const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
   let tiles = [];
   let memoryPairsState = void 0;
@@ -1397,7 +1399,7 @@ function generateMysteryStageForTurn({
   };
   switch (miniGameType) {
     case "MEMORY_PAIRS":
-      tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
+      tiles = generateMemoryPairsTiles(effectiveBasePoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
         const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
         const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
@@ -1427,7 +1429,7 @@ function generateMysteryStageForTurn({
       };
       break;
     case "ONE_SHOT_DOORS":
-      tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
+      tiles = generateOneShotDoorsTiles(effectiveBasePoints, roundOptions);
       oneShotState = {
         chosenTileId: void 0,
         selectedDoorIds: [],
@@ -1439,7 +1441,7 @@ function generateMysteryStageForTurn({
       };
       break;
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
+      tiles = generateTarotDestinyTiles(effectiveBasePoints, roundOptions);
       let prophecyCardId;
       if (promoPerk === "PEEK_PROMO") {
         const prophecyCard = tiles[Math.floor(Math.random() * tiles.length)];
@@ -1458,7 +1460,7 @@ function generateMysteryStageForTurn({
     default:
       tiles = generatePushYourLuckTiles(
         theme,
-        baseQuestionPoints,
+        effectiveBasePoints,
         currentTeam.score || 0,
         false,
         roundOptions
@@ -1480,7 +1482,7 @@ function generateMysteryStageForTurn({
     themeBgGradient: themeMeta.bgGradient,
     tiles,
     phase: "QUESTION_ACTIVE",
-    baseQuestionPoints,
+    baseQuestionPoints: effectiveBasePoints,
     promoPerk,
     hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
     potPoints: 0,
@@ -2952,6 +2954,87 @@ function handleTarotProphecyDecision({
     tState.discardedCardId = tState.prophecyCardId;
     return { updatedState: { ...state }, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
   }
+}
+function synchronizeMysteryStageWithQuestionPoints({
+  state,
+  questionPoints,
+  theme,
+  teams = []
+}) {
+  const normPoints = normalizeToThreeLevels(questionPoints);
+  const currentTeam = teams.find((t) => t.id === state.currentTurnTeamId) || {
+    id: state.currentTurnTeamId,
+    name: state.currentTurnTeamName,
+    color: state.currentTurnTeamColor,
+    score: 0
+  };
+  state.baseQuestionPoints = normPoints;
+  if (state.phase === "DECISION_CHOICE" || state.phase === "PUSH_YOUR_LUCK" && state.cardsFlippedCount === 0) {
+    const extraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO" ? 5 : 0;
+    state.potPoints = normPoints + extraPot;
+  }
+  const normType = normalizeMiniGameType(state.miniGameType);
+  const roundOptions = {
+    currentRound: state.currentRound || 1,
+    teams,
+    currentTeamId: currentTeam.id
+  };
+  switch (normType) {
+    case "MEMORY_PAIRS": {
+      if (!state.memoryPairsState?.firstFlippedTileId && state.cardsFlippedCount === 0) {
+        state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
+        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+          const safeTiles = state.tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
+          const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+          if (shuffledSafe.length >= 2) {
+            const first = shuffledSafe[0];
+            const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+            first.isPeeked = true;
+            first.peekLabel = "AN TO\xC0N";
+            first.peekIcon = "\u2728";
+            second.isPeeked = true;
+            second.peekLabel = "AN TO\xC0N";
+            second.peekIcon = "\u2728";
+          }
+        }
+      }
+      break;
+    }
+    case "ONE_SHOT_DOORS": {
+      if (state.oneShotState?.phase === "SELECTING" && (!state.oneShotState.selectedDoorIds || state.oneShotState.selectedDoorIds.length === 0)) {
+        state.tiles = generateOneShotDoorsTiles(normPoints, roundOptions);
+      }
+      break;
+    }
+    case "TAROT_DESTINY": {
+      if (!state.tarotState?.chosenCardId && (!state.tarotState?.prophecyCardId || !state.tarotState?.prophecyResolved)) {
+        state.tiles = generateTarotDestinyTiles(normPoints, roundOptions);
+        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+          const prophecyCard = state.tiles[Math.floor(Math.random() * state.tiles.length)];
+          prophecyCard.isOpened = true;
+          if (state.tarotState) {
+            state.tarotState.prophecyCardId = prophecyCard.id;
+            state.tarotState.prophecyResolved = false;
+          }
+        }
+      }
+      break;
+    }
+    case "PUSH_YOUR_LUCK":
+    default: {
+      if (state.cardsFlippedCount === 0) {
+        state.tiles = generatePushYourLuckTiles(
+          theme || state.theme || "PIRATE",
+          normPoints,
+          currentTeam.score || 0,
+          false,
+          roundOptions
+        );
+      }
+      break;
+    }
+  }
+  return { ...state };
 }
 
 // src/lib/game-engine/powerups.ts
@@ -5738,16 +5821,27 @@ function registerSocketHandlers(io2) {
         }
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : 30;
+        q.points = normalizeToThreeLevels(q.points || fallbackPts);
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
           primaryTeamName = questState.currentTurnTeamName;
           questState.phase = "QUESTION_ACTIVE";
+          questState.baseQuestionPoints = q.points;
           questState.potPoints = 0;
           questState.potMultiplier = 1;
           questState.bombExploded = void 0;
           questState.turnFinishedReason = void 0;
           questState.storyResult = void 0;
           questState.lastFlippedTile = void 0;
+          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+          synchronizeMysteryStageWithQuestionPoints({
+            state: questState,
+            questionPoints: q.points,
+            theme: questState.theme,
+            teams
+          });
           roomMysteryQuests.set(room.id, questState);
           io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
         }
@@ -5762,9 +5856,6 @@ function registerSocketHandlers(io2) {
           q.points = chosenPoints;
         }
       } else if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        const round = questState ? questState.currentRound : 1;
-        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
       } else if (room.mode === "DICE_RACE") {
         const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
         const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
@@ -6644,9 +6735,9 @@ function registerSocketHandlers(io2) {
           orderBy: { submittedAt: "desc" }
         });
       }
-      const question = await prisma.question.findUnique({ where: { id: questionId } });
-      const rawQ = question || room.quizBank?.questions?.find((q) => q.id === questionId);
-      const basePts = rawQ?.points || 10;
+      const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+      const rawQ = await getResolvedQuestion(room.id, questionId, dbQuestion) || room.quizBank?.questions?.find((q) => q.id === questionId);
+      const basePts = normalizeToThreeLevels(rawQ?.points || 10);
       const prevAwarded = answer?.pointsAwarded ?? 0;
       let newAwarded = isCorrect ? basePts : 0;
       const targetTid = teamId || answer?.teamId;
@@ -6677,6 +6768,13 @@ function registerSocketHandlers(io2) {
             questState.turnFinishedReason = void 0;
             questState.storyResult = void 0;
             questState.decisionMade = void 0;
+            const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+            synchronizeMysteryStageWithQuestionPoints({
+              state: questState,
+              questionPoints: basePts,
+              theme: questState.theme,
+              teams: allTeams
+            });
           } else {
             newAwarded = 0;
             questState.phase = "TURN_SUMMARY";
@@ -7684,6 +7782,17 @@ function registerSocketHandlers(io2) {
       const questions = await getRoomQuestions(room.id);
       const nextQ = getNextUniqueQuestion(room.id, questions, void 0, targetPoints);
       if (nextQ) {
+        const actualPts = normalizeToThreeLevels(nextQ.question.points || targetPoints);
+        if (nextStage.baseQuestionPoints !== actualPts) {
+          synchronizeMysteryStageWithQuestionPoints({
+            state: nextStage,
+            questionPoints: actualPts,
+            theme: nextStage.theme,
+            teams
+          });
+          roomMysteryQuests.set(room.id, nextStage);
+          io2.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
+        }
         room.currentQuestion = nextTurnIndex;
         room.status = "PLAYING";
         roomCache.set(room.id, room);
@@ -7694,7 +7803,7 @@ function registerSocketHandlers(io2) {
     const executeMysteryChooseAction = async (room, questState, action) => {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
-      const basePts = questState.baseQuestionPoints || 10;
+      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
       if (action === "TAKE_BASE_POINTS") {
         const deltaRes = await applyScoreDeltaToTeam(team.id, basePts);
         io2.to(`room:${room.code}`).emit("game:score:update", [
@@ -7723,6 +7832,13 @@ function registerSocketHandlers(io2) {
         questState.potMultiplier = 1;
         questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
         questState.phase = "PUSH_YOUR_LUCK";
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        synchronizeMysteryStageWithQuestionPoints({
+          state: questState,
+          questionPoints: basePts,
+          theme: questState.theme,
+          teams: allTeams
+        });
       }
       roomMysteryQuests.set(room.id, questState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
@@ -9515,7 +9631,8 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
   const qKey = `${roomId}:${questionId}`;
   stopQuestionTimer(roomId);
   const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!room || !question) return;
   const buzz = roomBuzzFirst.get(qKey);
   const effTeamId = buzz?.teamId;
@@ -9616,7 +9733,8 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
     where: { id: roomId },
     include: { teams: { include: { players: true } } }
   });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!tournament || !room || !question) return;
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
   if (!currentMatch) return;
@@ -9855,14 +9973,15 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
     where: { id: roomId },
     include: { teams: { include: { players: true } } }
   });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!wagerState || !room || !question) return;
   wagerState.phase = "REVEAL_PERIOD";
   const scoreUpdates = [];
   const teamSummaries = [];
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  const basePoints = question.points || 20;
+  const basePoints = normalizeToThreeLevels(question.points || 10);
   const nonWagerCorrectPoints = Math.max(5, Math.floor(basePoints / 2));
   const teamAnswers = await prisma.answer.findMany({
     where: { roomId, questionId },
@@ -10210,7 +10329,8 @@ async function finalizeIndividualScores(io2, roomId, roomCode, questionId) {
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
   const room = await prisma.room.findUnique({ where: { id: roomId } });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!room || !question) return;
   const answers = await prisma.answer.findMany({
     where: { roomId, questionId }
@@ -10323,10 +10443,30 @@ async function getRoomQuestions(roomId) {
   }
   return questions;
 }
+async function getResolvedQuestion(roomId, questionId, dbQuestion) {
+  let res = null;
+  const activeQState = roomActiveQuestions.get(roomId);
+  if (activeQState?.question?.id === questionId) {
+    res = { ...dbQuestion || {}, ...activeQState.question };
+  } else {
+    const cachedQuestions = await getRoomQuestions(roomId);
+    const cachedQ = cachedQuestions.find((item) => item.id === questionId);
+    if (cachedQ) {
+      res = { ...dbQuestion || {}, ...cachedQ };
+    } else {
+      res = dbQuestion || await prisma.question.findUnique({ where: { id: questionId } });
+    }
+  }
+  if (res && res.points) {
+    res.points = normalizeToThreeLevels(res.points);
+  }
+  return res;
+}
 async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeamSummaries) {
   stopQuestionTimer(roomId);
   const room = await prisma.room.findUnique({ where: { id: roomId } });
-  const q = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQ = await prisma.question.findUnique({ where: { id: questionId } });
+  const q = await getResolvedQuestion(roomId, questionId, dbQ);
   if (!room || !q) return;
   const config = room.config;
   let teamScoresUpdates = [];
@@ -10551,7 +10691,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
     if (questState) {
       const activeAns = answers.find((a) => a.teamId === questState.currentTurnTeamId);
       const isCorrect = Boolean(activeAns?.isCorrect);
-      const basePts = q.points || 10;
+      const basePts = normalizeToThreeLevels(q.points || 10);
       if (activeAns) {
         await prisma.answer.update({
           where: { id: activeAns.id },
@@ -10564,6 +10704,13 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
         questState.baseQuestionPoints = basePts;
         questState.potPoints = basePts;
         questState.potMultiplier = 1;
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        synchronizeMysteryStageWithQuestionPoints({
+          state: questState,
+          questionPoints: basePts,
+          theme: questState.theme,
+          teams: allTeams
+        });
         roomMysteryQuests.set(room.id, questState);
         io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       } else {
@@ -10800,7 +10947,8 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   if (!room || room.teamMode !== "TEAM" || room.mode !== "CLASSIC" && room.mode !== "ELIMINATION") {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!question) {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }

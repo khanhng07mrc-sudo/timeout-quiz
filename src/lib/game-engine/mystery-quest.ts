@@ -9,6 +9,7 @@ import {
   TeamState,
   CardType,
 } from "@/types";
+import { normalizeToThreeLevels } from "./scoring";
 
 export interface MysteryThemeDetail {
   theme: MysteryTheme;
@@ -838,7 +839,7 @@ export function generateMysteryStageForTurn({
   prevTheme,
   prevMiniGameType,
   forcedMiniGameType,
-  baseQuestionPoints = 10,
+  baseQuestionPoints,
 }: {
   turnIndex: number;
   currentTeam: MysteryTeamRef;
@@ -853,16 +854,19 @@ export function generateMysteryStageForTurn({
   const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
   const themeMeta = MYSTERY_THEMES[theme];
 
+  const currentRound = Math.floor(turnIndex / Math.max(1, teams.length)) + 1;
+  const roundDefaultPoints = currentRound === 1 ? 10 : currentRound === 2 ? 20 : 30;
+  const effectiveBasePoints = normalizeToThreeLevels(baseQuestionPoints ?? roundDefaultPoints);
+
   const miniGameType = forcedMiniGameType
     ? normalizeMiniGameType(forcedMiniGameType)
     : getRandomMiniGame(prevMiniGameType);
 
-  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints, miniGameType, {
+  const promoPerk = generateMysteryPromoPerk(effectiveBasePoints, miniGameType, {
     teams,
     currentTeamId: currentTeam.id,
   });
 
-  const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
 
   let tiles: MysteryTile[] = [];
@@ -878,7 +882,7 @@ export function generateMysteryStageForTurn({
 
   switch (miniGameType) {
     case "MEMORY_PAIRS":
-      tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
+      tiles = generateMemoryPairsTiles(effectiveBasePoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
         // Chỉ 2 lá an toàn khác nhau trên 10 lá (2 lá phải là hai loại cặp khác nhau!)
         const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
@@ -910,7 +914,7 @@ export function generateMysteryStageForTurn({
       break;
 
     case "ONE_SHOT_DOORS":
-      tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
+      tiles = generateOneShotDoorsTiles(effectiveBasePoints, roundOptions);
       // Mắt thần ở 4 cửa KHÔNG soi bom ở đầu game.
       // Thay vào đó, sau khi chọn xong 2 cửa, Mắt thần mới soi/gán nhãn ở Giai đoạn 2!
       oneShotState = {
@@ -925,7 +929,7 @@ export function generateMysteryStageForTurn({
       break;
 
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
+      tiles = generateTarotDestinyTiles(effectiveBasePoints, roundOptions);
       let prophecyCardId: number | undefined;
       if (promoPerk === "PEEK_PROMO") {
         // Mắt Thần Tiên Tri: Lật mở xem trước 1 lá bài bí mật ngẫu nhiên trong 5 lá
@@ -946,7 +950,7 @@ export function generateMysteryStageForTurn({
     default:
       tiles = generatePushYourLuckTiles(
         theme,
-        baseQuestionPoints,
+        effectiveBasePoints,
         currentTeam.score || 0,
         false,
         roundOptions
@@ -971,7 +975,7 @@ export function generateMysteryStageForTurn({
     themeBgGradient: themeMeta.bgGradient,
     tiles,
     phase: "QUESTION_ACTIVE",
-    baseQuestionPoints,
+    baseQuestionPoints: effectiveBasePoints,
     promoPerk,
     hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
     potPoints: 0,
@@ -2876,5 +2880,105 @@ export function handleTarotProphecyDecision({
     tState.discardedCardId = tState.prophecyCardId;
     return { updatedState: { ...state }, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
   }
+}
+
+/**
+ * Tái đồng bộ số điểm câu hỏi và thang điểm minigame (tiles, potPoints, penalty...)
+ * đảm bảo 100% khi câu 30đ thì minigame chạy theo thang 30đ, câu 20đ theo thang 20đ, câu 10đ theo thang 10đ.
+ */
+export function synchronizeMysteryStageWithQuestionPoints({
+  state,
+  questionPoints,
+  theme,
+  teams = [],
+}: {
+  state: MysteryQuestState;
+  questionPoints: number;
+  theme?: MysteryTheme;
+  teams?: MysteryTeamRef[];
+}): MysteryQuestState {
+  const normPoints = normalizeToThreeLevels(questionPoints);
+  const currentTeam = teams.find((t) => t.id === state.currentTurnTeamId) || {
+    id: state.currentTurnTeamId,
+    name: state.currentTurnTeamName,
+    color: state.currentTurnTeamColor,
+    score: 0,
+  };
+
+  state.baseQuestionPoints = normPoints;
+  // Cập nhật potPoints ban đầu khớp điểm câu hỏi nếu đang ở giai đoạn quyết định hoặc chưa lật bài
+  if (state.phase === "DECISION_CHOICE" || (state.phase === "PUSH_YOUR_LUCK" && state.cardsFlippedCount === 0)) {
+    const extraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO" ? 5 : 0;
+    state.potPoints = normPoints + extraPot;
+  }
+
+  const normType = normalizeMiniGameType(state.miniGameType);
+  const roundOptions = {
+    currentRound: state.currentRound || 1,
+    teams,
+    currentTeamId: currentTeam.id,
+  };
+
+  switch (normType) {
+    case "MEMORY_PAIRS": {
+      // Nếu chưa lật lá nào thì generate lại bộ thẻ theo normPoints mới
+      if (!state.memoryPairsState?.firstFlippedTileId && state.cardsFlippedCount === 0) {
+        state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
+        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+          const safeTiles = state.tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
+          const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+          if (shuffledSafe.length >= 2) {
+            const first = shuffledSafe[0];
+            const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+            first.isPeeked = true;
+            first.peekLabel = "AN TOÀN";
+            first.peekIcon = "✨";
+            second.isPeeked = true;
+            second.peekLabel = "AN TOÀN";
+            second.peekIcon = "✨";
+          }
+        }
+      }
+      break;
+    }
+
+    case "ONE_SHOT_DOORS": {
+      if (state.oneShotState?.phase === "SELECTING" && (!state.oneShotState.selectedDoorIds || state.oneShotState.selectedDoorIds.length === 0)) {
+        state.tiles = generateOneShotDoorsTiles(normPoints, roundOptions);
+      }
+      break;
+    }
+
+    case "TAROT_DESTINY": {
+      if (!state.tarotState?.chosenCardId && (!state.tarotState?.prophecyCardId || !state.tarotState?.prophecyResolved)) {
+        state.tiles = generateTarotDestinyTiles(normPoints, roundOptions);
+        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+          const prophecyCard = state.tiles[Math.floor(Math.random() * state.tiles.length)];
+          prophecyCard.isOpened = true;
+          if (state.tarotState) {
+            state.tarotState.prophecyCardId = prophecyCard.id;
+            state.tarotState.prophecyResolved = false;
+          }
+        }
+      }
+      break;
+    }
+
+    case "PUSH_YOUR_LUCK":
+    default: {
+      if (state.cardsFlippedCount === 0) {
+        state.tiles = generatePushYourLuckTiles(
+          theme || state.theme || "PIRATE",
+          normPoints,
+          currentTeam.score || 0,
+          false,
+          roundOptions
+        );
+      }
+      break;
+    }
+  }
+
+  return { ...state };
 }
 

@@ -37,6 +37,7 @@ import {
   handleTarotConfirmKeep as handleMysteryTarotConfirmKeep,
   handlePushYourLuckUsePeek as handleMysteryPushYourLuckUsePeek,
   handleTarotProphecyDecision as handleMysteryTarotProphecyDecision,
+  synchronizeMysteryStageWithQuestionPoints,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -1760,8 +1761,9 @@ export default function AdminSandboxPage() {
       }
 
       // Offline Sandbox Mode: Process synchronously
-      const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestionRef.current?.question;
-      const basePts = rawQ?.points || 10;
+      const curQ = currentQuestionRef.current?.question;
+      const rawQ = curQ || offlineQuestionsRef.current[offlineQIndexRef.current];
+      const basePts = normalizeToThreeLevels(curQ?.points || rawQ?.points || 10);
       let newAwarded = isCorrect ? basePts : 0;
 
       // Update offline answers cache
@@ -1832,6 +1834,12 @@ export default function AdminSandboxPage() {
                 turnFinishedReason: undefined,
                 storyResult: undefined,
               };
+              nextMystery = synchronizeMysteryStageWithQuestionPoints({
+                state: nextMystery,
+                questionPoints: basePts,
+                theme: nextMystery.theme,
+                teams: updatedTeams,
+              });
             } else {
               nextMystery = {
                 ...curMystery,
@@ -2601,7 +2609,7 @@ export default function AdminSandboxPage() {
         if (!activeTeam) return;
 
         if (actionChoice === "TAKE_BASE_POINTS") {
-          const basePts = curMystery.baseQuestionPoints || curMystery.potPoints || 20;
+          const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || curMystery.potPoints || 10);
           const updatedTeams = roomStateRef.current.teams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: t.score + basePts } : t
           );
@@ -2633,14 +2641,22 @@ export default function AdminSandboxPage() {
         } else {
           // PLAY_MINIGAME
           const perkType = typeof curMystery.promoPerk === "string" ? curMystery.promoPerk : curMystery.promoPerk?.type;
-          const initialPot = (curMystery.baseQuestionPoints || 10) + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
-          const updatedState = {
+          const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || 10);
+          const initialPot = basePts + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
+          let updatedState: MysteryQuestState = {
             ...curMystery,
+            baseQuestionPoints: basePts,
             potPoints: initialPot,
             hasShield: perkType === "SHIELD_PROMO",
             phase: "PUSH_YOUR_LUCK" as const,
             decisionMade: "PLAY_MINIGAME" as const,
           };
+          updatedState = synchronizeMysteryStageWithQuestionPoints({
+            state: updatedState,
+            questionPoints: basePts,
+            theme: updatedState.theme,
+            teams: roomStateRef.current?.teams || [],
+          });
           const nextRoomState: RoomState = {
             ...roomStateRef.current,
             mysteryQuestState: updatedState,
@@ -2706,7 +2722,7 @@ export default function AdminSandboxPage() {
         const nextTurnIdx = curMystery.currentTurnIndex + 1;
         const nextTeam = teams[nextTurnIdx % teams.length];
 
-        const nextStage = generateMysteryStageForTurn({
+        let nextStage = generateMysteryStageForTurn({
           turnIndex: nextTurnIdx,
           currentTeam: nextTeam,
           teams,
@@ -2714,6 +2730,18 @@ export default function AdminSandboxPage() {
           prevTheme: curMystery.theme,
           prevMiniGameType: curMystery.miniGameType,
         });
+
+        const nextQIdx = offlineQIndexRef.current + 1;
+        const nextQ = offlineQuestionsRef.current[nextQIdx % (offlineQuestionsRef.current.length || 1)];
+        if (nextQ?.points) {
+          const normPts = normalizeToThreeLevels(nextQ.points);
+          nextStage = synchronizeMysteryStageWithQuestionPoints({
+            state: nextStage,
+            questionPoints: normPts,
+            theme: nextStage.theme,
+            teams,
+          });
+        }
 
         const nextRoomState: RoomState = {
           ...roomStateRef.current,
@@ -3232,7 +3260,8 @@ export default function AdminSandboxPage() {
     offlineQIndexRef.current = nextIdx;
     const q = questions[nextIdx] || DEFAULT_OFFLINE_BANK.questions![0];
 
-    const timeLimit = quantizeOlympiaTimeLimit(q.points || 10, q.timeLimit);
+    const normPoints = normalizeToThreeLevels(q.points || 10);
+    const timeLimit = quantizeOlympiaTimeLimit(normPoints, q.timeLimit);
     const endsAt = Date.now() + timeLimit * 1000;
     const autoTimer = roomState?.config.autoTimerStart === true;
     const offlineQId = q.id || `q_${nextIdx + 1}`;
@@ -3252,7 +3281,7 @@ export default function AdminSandboxPage() {
         type: q.type || "MC_SINGLE",
         content: q.content,
         options: q.options?.map((o: any) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })),
-        points: q.points || 10,
+        points: normPoints,
         timeLimit,
         hint: q.hint,
         order: (selectedMode === "MYSTERY_QUEST" && roomState?.mysteryQuestState ? roomState.mysteryQuestState.currentTurnIndex : nextIdx) + 1,
@@ -3297,7 +3326,7 @@ export default function AdminSandboxPage() {
       tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
       tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
       isGoldQuestion: selectedMode === "CLASSIC" && questions.length >= 7 && (
-        q.points === 30 || nextIdx >= Math.floor(questions.length * 0.7)
+        normPoints === 30 || nextIdx >= Math.floor(questions.length * 0.7)
       ),
     };
 
@@ -3306,9 +3335,23 @@ export default function AdminSandboxPage() {
       const nextDice = prev.diceRaceState
         ? { ...prev.diceRaceState, canRollDice: false }
         : undefined;
-      const nextMystery = prev.mysteryQuestState
-        ? { ...prev.mysteryQuestState, phase: "QUESTION_ACTIVE" as const, potPoints: 0, bombExploded: undefined, turnFinishedReason: undefined }
-        : undefined;
+      let nextMystery = prev.mysteryQuestState;
+      if (nextMystery) {
+        nextMystery = {
+          ...nextMystery,
+          phase: "QUESTION_ACTIVE" as const,
+          baseQuestionPoints: normPoints,
+          potPoints: 0,
+          bombExploded: undefined,
+          turnFinishedReason: undefined,
+        };
+        nextMystery = synchronizeMysteryStageWithQuestionPoints({
+          state: nextMystery,
+          questionPoints: normPoints,
+          theme: nextMystery.theme,
+          teams: prev.teams,
+        });
+      }
       return {
         ...prev,
         status: "PLAYING",
@@ -3901,7 +3944,7 @@ export default function AdminSandboxPage() {
       const curWager = roomState?.wagerState;
       const lastWagerTeamId = curWager?.lastWagerTeamId;
       const wagerAmount = curWager?.currentHighestWager || 10;
-      const baseQPoints = currentQuestion.question.points || 20;
+      const baseQPoints = normalizeToThreeLevels(currentQuestion.question.points || 10);
 
       // 1. Điểm các đội không cược khi đúng: 1/2 điểm gốc cố định (5đ/10đ/15đ), sai = 0đ
       const nonWagerCorrectPoints = Math.max(5, Math.floor(baseQPoints / 2));
@@ -4015,7 +4058,7 @@ export default function AdminSandboxPage() {
             basePts = 0;
           }
         } else {
-          const base = currentQuestion.question.points || 10;
+          const base = normalizeToThreeLevels(currentQuestion.question.points || 10);
           pts = isCorrect ? base : 0;
           basePts = pts;
         }
@@ -4247,8 +4290,9 @@ export default function AdminSandboxPage() {
           const isCorrect = Boolean(activeAns?.isCorrect);
 
           if (isCorrect) {
-            const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion?.question;
-            const basePts = rawQ?.points || 20;
+            const curQ = currentQuestion?.question;
+            const rawQ = curQ || offlineQuestionsRef.current[offlineQIndexRef.current];
+            const basePts = normalizeToThreeLevels(curQ?.points || rawQ?.points || 10);
             const promo = generateMysteryPromoPerk(basePts);
             nextMystery = {
               ...curMystery,
@@ -4260,6 +4304,12 @@ export default function AdminSandboxPage() {
               hasShield: promo === "SHIELD_PROMO",
               decisionMade: undefined,
             };
+            nextMystery = synchronizeMysteryStageWithQuestionPoints({
+              state: nextMystery,
+              questionPoints: basePts,
+              theme: nextMystery.theme,
+              teams: updatedTeams,
+            });
           } else {
             nextMystery = {
               ...curMystery,

@@ -48,6 +48,7 @@ import {
   handleTarotConfirmKeep,
   handlePushYourLuckUsePeek,
   handleTarotProphecyDecision,
+  synchronizeMysteryStageWithQuestionPoints,
   getPerkType,
 } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
@@ -2788,17 +2789,30 @@ export function registerSocketHandlers(io: IO) {
         }
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
+        const round = questState ? questState.currentRound : 1;
+        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : 30;
+        q.points = normalizeToThreeLevels(q.points || fallbackPts);
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
           primaryTeamName = questState.currentTurnTeamName;
           // Crucial fix: question launch resets phase to QUESTION_ACTIVE so question card displays cleanly
           questState.phase = "QUESTION_ACTIVE";
+          questState.baseQuestionPoints = q.points;
           questState.potPoints = 0;
           questState.potMultiplier = 1;
           questState.bombExploded = undefined;
           questState.turnFinishedReason = undefined;
           questState.storyResult = undefined;
           questState.lastFlippedTile = undefined;
+
+          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
+          synchronizeMysteryStageWithQuestionPoints({
+            state: questState,
+            questionPoints: q.points,
+            theme: questState.theme,
+            teams,
+          });
+
           roomMysteryQuests.set(room.id, questState);
           io.to(`room:${room.code}`).emit("game:mystery:update", questState);
         }
@@ -2816,9 +2830,7 @@ export function registerSocketHandlers(io: IO) {
           q.points = chosenPoints;
         }
       } else if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        const round = questState ? questState.currentRound : 1;
-        q.points = round === 1 ? 10 : round === 2 ? 20 : 30;
+        // Points already normalized and synchronized above
       } else if (room.mode === "DICE_RACE") {
         const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
         const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
@@ -3849,9 +3861,9 @@ export function registerSocketHandlers(io: IO) {
         });
       }
 
-      const question = await prisma.question.findUnique({ where: { id: questionId } });
-      const rawQ = question || (room.quizBank?.questions as any[])?.find((q: any) => q.id === questionId);
-      const basePts = rawQ?.points || 10;
+      const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+      const rawQ = (await getResolvedQuestion(room.id, questionId, dbQuestion)) || (room.quizBank?.questions as any[])?.find((q: any) => q.id === questionId);
+      const basePts = normalizeToThreeLevels(rawQ?.points || 10);
       const prevAwarded = answer?.pointsAwarded ?? 0;
       let newAwarded = isCorrect ? basePts : 0;
       const targetTid = teamId || answer?.teamId;
@@ -3885,6 +3897,14 @@ export function registerSocketHandlers(io: IO) {
             questState.turnFinishedReason = undefined;
             questState.storyResult = undefined;
             questState.decisionMade = undefined;
+
+            const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+            synchronizeMysteryStageWithQuestionPoints({
+              state: questState,
+              questionPoints: basePts,
+              theme: questState.theme,
+              teams: allTeams,
+            });
           } else {
             newAwarded = 0;
             questState.phase = "TURN_SUMMARY";
@@ -5121,6 +5141,18 @@ export function registerSocketHandlers(io: IO) {
       const questions = await getRoomQuestions(room.id);
       const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetPoints);
       if (nextQ) {
+        const actualPts = normalizeToThreeLevels(nextQ.question.points || targetPoints);
+        if (nextStage.baseQuestionPoints !== actualPts) {
+          synchronizeMysteryStageWithQuestionPoints({
+            state: nextStage,
+            questionPoints: actualPts,
+            theme: nextStage.theme,
+            teams,
+          });
+          roomMysteryQuests.set(room.id, nextStage);
+          io.to(`room:${room.code}`).emit("game:mystery:update", nextStage);
+        }
+
         room.currentQuestion = nextTurnIndex;
         room.status = "PLAYING";
         roomCache.set(room.id, room);
@@ -5137,7 +5169,7 @@ export function registerSocketHandlers(io: IO) {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
 
-      const basePts = questState.baseQuestionPoints || 10;
+      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
 
       if (action === "TAKE_BASE_POINTS") {
         const deltaRes = await applyScoreDeltaToTeam(team.id, basePts);
@@ -5168,6 +5200,14 @@ export function registerSocketHandlers(io: IO) {
         questState.potMultiplier = 1;
         questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
         questState.phase = "PUSH_YOUR_LUCK";
+
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        synchronizeMysteryStageWithQuestionPoints({
+          state: questState,
+          questionPoints: basePts,
+          theme: questState.theme,
+          teams: allTeams,
+        });
       }
 
       roomMysteryQuests.set(room.id, questState);
@@ -7413,7 +7453,8 @@ async function finalizeBuzzAnswer(
   stopQuestionTimer(roomId);
 
   const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!room || !question) return;
 
   const buzz = roomBuzzFirst.get(qKey);
@@ -7539,7 +7580,8 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
     where: { id: roomId },
     include: { teams: { include: { players: true } } },
   });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!tournament || !room || !question) return;
 
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
@@ -7837,7 +7879,8 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     where: { id: roomId },
     include: { teams: { include: { players: true } } },
   });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!wagerState || !room || !question) return;
 
   wagerState.phase = "REVEAL_PERIOD";
@@ -7846,7 +7889,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
 
   const lastWagerTeamId = wagerState.lastWagerTeamId;
   const wagerAmount = wagerState.currentHighestWager || 10;
-  const basePoints = question.points || 20;
+  const basePoints = normalizeToThreeLevels(question.points || 10);
 
   // 1. Điểm cho các đội không cược khi đúng: cố định 1/2 điểm gốc câu hỏi (5đ / 10đ / 15đ), sai = 0đ
   const nonWagerCorrectPoints = Math.max(5, Math.floor(basePoints / 2));
@@ -8289,7 +8332,8 @@ async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string
   roomQuestionProcessed.add(qKey);
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!room || !question) return;
 
   const answers = await prisma.answer.findMany({
@@ -8421,11 +8465,32 @@ async function getRoomQuestions(roomId: string) {
   return questions;
 }
 
+async function getResolvedQuestion(roomId: string, questionId: string, dbQuestion?: any) {
+  let res: any = null;
+  const activeQState = roomActiveQuestions.get(roomId);
+  if (activeQState?.question?.id === questionId) {
+    res = { ...(dbQuestion || {}), ...activeQState.question };
+  } else {
+    const cachedQuestions = await getRoomQuestions(roomId);
+    const cachedQ = cachedQuestions.find((item: any) => item.id === questionId);
+    if (cachedQ) {
+      res = { ...(dbQuestion || {}), ...cachedQ };
+    } else {
+      res = dbQuestion || (await prisma.question.findUnique({ where: { id: questionId } }));
+    }
+  }
+  if (res && res.points) {
+    res.points = normalizeToThreeLevels(res.points);
+  }
+  return res;
+}
+
 async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, questionId: string, customTeamSummaries?: TeamRevealSummary[]) {
   stopQuestionTimer(roomId);
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
-  const q = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQ = await prisma.question.findUnique({ where: { id: questionId } });
+  const q = await getResolvedQuestion(roomId, questionId, dbQ);
   if (!room || !q) return;
 
   const config = room.config as any;
@@ -8709,7 +8774,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
     if (questState) {
       const activeAns = answers.find((a) => a.teamId === questState.currentTurnTeamId);
       const isCorrect = Boolean(activeAns?.isCorrect);
-      const basePts = q.points || 10;
+      const basePts = normalizeToThreeLevels(q.points || 10);
 
       if (activeAns) {
         await prisma.answer.update({
@@ -8723,6 +8788,16 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
         questState.baseQuestionPoints = basePts;
         questState.potPoints = basePts;
         questState.potMultiplier = 1;
+
+        // Đồng bộ toàn bộ tiles và minigame theo đúng thang điểm câu hỏi vừa trả lời
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        synchronizeMysteryStageWithQuestionPoints({
+          state: questState,
+          questionPoints: basePts,
+          theme: questState.theme,
+          teams: allTeams,
+        });
+
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       } else {
@@ -9030,7 +9105,8 @@ async function resolveQuestionTeamScores(
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }
 
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = await getResolvedQuestion(roomId, questionId, dbQuestion);
   if (!question) {
     return { teamScoresUpdates: [], teamSummaries: [], roomAccuracy: 1, rarityBonusPercent: 0 };
   }

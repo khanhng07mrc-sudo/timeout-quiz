@@ -4,6 +4,7 @@ import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloo
 import { useState, useEffect, useRef } from "react";
 import { calculateAuthoritativeTimer } from "@/lib/clock-sync";
 import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
+import { soundManager } from "@/lib/sound-manager";
 
 interface Props {
   question: QuestionState;
@@ -117,12 +118,32 @@ export default function GameQuestion({
     setIsBuzzedLocally(false);
   }, [q.id, myTeamId, playerId, initialAnswer, isSingleSubmit]);
 
+  // Instant tactile feedback (haptics + click sound)
+  const triggerBuzzHaptic = () => {
+    if (typeof window !== "undefined") {
+      if ("vibrate" in navigator) {
+        try {
+          navigator.vibrate([40, 25, 40]);
+        } catch {}
+      }
+      soundManager.playBuzz();
+    }
+  };
+
   // Reset isBuzzedLocally when buzzer reopens (attempt 2, 3), or when buzz/steal state is cleared
   useEffect(() => {
-    if (question.buzzUnlocked || !buzzedBy || !question.buzzedTeamId || question.isStealPhase || !stealBuzzedTeam) {
+    if (roomMode === "BUZZ") {
+      if (question.buzzUnlocked || (!buzzedBy && !question.buzzedTeamId)) {
+        setIsBuzzedLocally(false);
+      }
+    } else if (roomMode === "BOUNCEBACK") {
+      if (question.isStealPhase || (!stealBuzzedTeam && !question.stealBuzzedTeamId)) {
+        setIsBuzzedLocally(false);
+      }
+    } else {
       setIsBuzzedLocally(false);
     }
-  }, [question.buzzUnlocked, question.buzzAttemptNumber, buzzedBy, question.buzzedTeamId, question.isStealPhase, stealBuzzedTeam]);
+  }, [roomMode, question.buzzUnlocked, question.buzzAttemptNumber, buzzedBy, question.buzzedTeamId, question.isStealPhase, stealBuzzedTeam, question.stealBuzzedTeamId]);
 
   const timerAuth = timer
     ? calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining)
@@ -555,11 +576,18 @@ export default function GameQuestion({
                 </p>
                 <button
                   type="button"
-                  onClick={() => {
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    if (isBuzzedLocally) return;
                     setIsBuzzedLocally(true);
+                    triggerBuzzHaptic();
                     onBuzz();
                   }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                  }}
                   disabled={isBuzzedLocally}
+                  style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
                   className={`w-48 h-48 sm:w-60 sm:h-60 rounded-full border-4 sm:border-8 border-yellow-300 shadow-[0_0_60px_rgba(245,158,11,0.85)] active:scale-90 transition-transform flex flex-col items-center justify-center gap-2 select-none cursor-pointer my-2 ${
                     isBuzzedLocally
                       ? "bg-gradient-to-br from-green-500 to-emerald-700 opacity-90 scale-95"
@@ -704,12 +732,19 @@ export default function GameQuestion({
                 </p>
               </div>
               <button
-                onClick={() => {
-                  if (isDisqualifiedFromBuzz) return;
+                type="button"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  if (isDisqualifiedFromBuzz || !question.buzzUnlocked || isBuzzedLocally) return;
                   setIsBuzzedLocally(true);
+                  triggerBuzzHaptic();
                   onBuzz();
                 }}
+                onClick={(e) => {
+                  e.preventDefault();
+                }}
                 disabled={!question.buzzUnlocked || isBuzzedLocally || isDisqualifiedFromBuzz}
+                style={{ touchAction: "manipulation", userSelect: "none", WebkitUserSelect: "none" }}
                 className={`w-full sm:w-auto px-5 sm:px-6 py-2.5 rounded-xl font-black text-sm whitespace-nowrap shrink-0 transition-all ${
                   isDisqualifiedFromBuzz
                     ? "bg-rose-950/60 text-rose-400 border border-rose-500/40 cursor-not-allowed opacity-75"

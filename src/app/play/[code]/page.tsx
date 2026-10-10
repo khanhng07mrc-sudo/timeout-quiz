@@ -700,9 +700,15 @@ export default function PlayPage() {
         prev
           ? {
               ...prev,
+              buzzedTeamId: payload.teamId,
+              buzzedTeamName: payload.teamName,
+              buzzAnsweringActive: true,
+              buzzUnlocked: false,
+              buzzWindowActive: false,
               buzzAttemptNumber: payload?.attemptNumber ?? prev.buzzAttemptNumber,
               buzzMaxAttempts: payload?.maxAttempts ?? prev.buzzMaxAttempts,
               buzzMultiplier: payload?.multiplier ?? prev.buzzMultiplier,
+              timeLimit: payload.timeLimit,
             }
           : prev
       );
@@ -782,9 +788,6 @@ export default function PlayPage() {
       }
     });
 
-    socket.on("game:buzz:closed", () => {
-      setIsStealPhase(false);
-    });
 
     socket.on("game:answer:reveal", (payload) => {
       setRevealPayload(payload);
@@ -954,6 +957,7 @@ export default function PlayPage() {
       setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false } : prev));
     });
     socket.on("game:buzz:closed", () => {
+      setIsStealPhase(false);
       setCurrentQuestion((prev) => (prev ? { ...prev, buzzUnlocked: false, buzzWindowActive: false } : prev));
     });
 

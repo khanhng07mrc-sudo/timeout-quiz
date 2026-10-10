@@ -3985,6 +3985,7 @@ var roomBuzzWindowEndsAt = /* @__PURE__ */ new Map();
 var roomBuzzWindowRemaining = /* @__PURE__ */ new Map();
 var roomBuzzDisqualified = /* @__PURE__ */ new Map();
 var roomBuzzAnsweringTimers = /* @__PURE__ */ new Map();
+var roomTotalActorsCache = /* @__PURE__ */ new Map();
 var roomTournaments = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
@@ -4837,16 +4838,11 @@ function registerSocketHandlers(io2) {
       attempts.push(buzzInfo);
       roomBuzzAttemptOrder.set(qKey, attempts);
       stopQuestionTimer(roomId);
-      const questions = await getRoomQuestions(roomId);
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        select: { currentQuestion: true, config: true }
-      });
-      const currentQ = questions[room?.currentQuestion ?? 0];
-      const isDeviceAnswer = room?.config?.answerMethod !== "MC";
-      const answerTimeLimit = isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15;
-      const answerEndsAt = Date.now() + answerTimeLimit * 1e3;
       const activeQ = roomActiveQuestions.get(roomId);
+      const currentQ = activeQ?.question;
+      const isDeviceAnswer = activeQ?.answerMethod !== "MC";
+      const answerTimeLimit = currentQ ? isDeviceAnswer ? getBuzzedAnswerTimeLimit(currentQ) : 15 : 15;
+      const answerEndsAt = Date.now() + answerTimeLimit * 1e3;
       if (activeQ) {
         activeQ.buzzedTeamId = winner.teamId;
         activeQ.buzzedTeamName = winner.teamName;
@@ -4894,13 +4890,8 @@ function registerSocketHandlers(io2) {
         playerName: winner.playerName
       };
       roomStealBuzzed.set(qKey, stealInfo);
-      const questions = await getRoomQuestions(roomId);
-      const room = await prisma.room.findUnique({
-        where: { id: roomId },
-        select: { currentQuestion: true, config: true }
-      });
-      const currentQ = questions[room?.currentQuestion ?? 0];
       const activeQ = roomActiveQuestions.get(roomId);
+      const currentQ = activeQ?.question;
       if (activeQ) {
         activeQ.isStealPhase = false;
         activeQ.stealBuzzedTeamId = stealInfo.teamId;
@@ -5598,9 +5589,7 @@ function registerSocketHandlers(io2) {
       const mode = session.roomMode;
       if (mode === "BUZZ") {
         const isUnlocked = roomBuzzUnlocked.get(qKey) ?? false;
-        const windowEndsAt = roomBuzzWindowEndsAt.get(qKey);
-        const inGracePeriod = Boolean(windowEndsAt && (clientBuzzedAt <= windowEndsAt + 200 || now <= windowEndsAt + 400));
-        if (!isUnlocked && !inGracePeriod) {
+        if (!isUnlocked) {
           socket.emit("error", "Chu\xF4ng \u0111ang b\u1ECB kh\xF3a! Vui l\xF2ng ch\u1EDD m\u1EDF chu\xF4ng.");
           return;
         }
@@ -5619,24 +5608,6 @@ function registerSocketHandlers(io2) {
           socket.emit("error", "M\u1ED7i \u0111\u1ED9i ch\u1EC9 \u0111\u01B0\u1EE3c b\u1EA5m chu\xF4ng t\u1ED1i \u0111a 1 l\u1EA7n cho m\u1ED7i c\xE2u h\u1ECFi!");
           return;
         }
-        const minAllowedTime = (roomBuzzWindowOpenedAt.get(qKey) ?? now - 2e3) - 150;
-        const safeClientBuzzedAt = Math.min(Math.max(clientBuzzedAt, minAllowedTime), now + 150);
-        if (roomBuzzArbitration.has(qKey)) {
-          const arb = roomBuzzArbitration.get(qKey);
-          if (!arb.candidates.some((c) => c.teamId === teamId)) {
-            arb.candidates.push({
-              teamId,
-              teamName,
-              playerId: session.playerId,
-              playerName: session.playerName,
-              clientBuzzedAt: safeClientBuzzedAt,
-              receivedAt: now,
-              socket,
-              mode: "BUZZ"
-            });
-          }
-          return;
-        }
         roomBuzzUnlocked.set(qKey, false);
         if (roomBuzzWindowTimers.has(qKey)) {
           clearTimeout(roomBuzzWindowTimers.get(qKey));
@@ -5645,30 +5616,20 @@ function registerSocketHandlers(io2) {
         const wEndsAt = roomBuzzWindowEndsAt.get(qKey) || now;
         const remWindowMs = Math.max(0, wEndsAt - now);
         roomBuzzWindowRemaining.set(qKey, remWindowMs);
-        const candidates = [{
+        const winnerCandidate = {
           teamId,
           teamName,
           playerId: session.playerId,
           playerName: session.playerName,
-          clientBuzzedAt: safeClientBuzzedAt,
+          clientBuzzedAt,
           receivedAt: now,
           socket,
           mode: "BUZZ"
-        }];
-        const arbTimer = setTimeout(async () => {
-          roomBuzzArbitration.delete(qKey);
-          await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BUZZ", candidates);
-        }, 120);
-        roomBuzzArbitration.set(qKey, {
-          timer: arbTimer,
-          candidates,
-          deadline: now + 120
-        });
+        };
+        await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BUZZ", [winnerCandidate]);
       } else if (mode === "BOUNCEBACK") {
         const isSteal = roomStealPhase.get(qKey) ?? false;
-        const stealEndsAt = roomStealEndsAt.get(qKey);
-        const inGracePeriod = Boolean(stealEndsAt && (clientBuzzedAt <= stealEndsAt + 200 || now <= stealEndsAt + 400));
-        if (!isSteal && !inGracePeriod) return;
+        if (!isSteal) return;
         const primary = roomPrimaryTeams.get(qKey);
         if (session.teamId && primary && session.teamId === primary.teamId) {
           socket.emit("error", "\u0110\u1ED9i c\u1EE7a b\u1EA1n l\xE0 \u0111\u1ED9i tr\u1EA3 l\u1EDDi ch\xEDnh, kh\xF4ng th\u1EC3 c\u01B0\u1EDBp l\u01B0\u1EE3t c\xE2u n\xE0y!");
@@ -5677,48 +5638,22 @@ function registerSocketHandlers(io2) {
         if (roomStealBuzzed.has(qKey)) return;
         const teamId = session.teamId ?? session.playerId;
         const teamName = session.teamName ?? session.playerName;
-        const minAllowedTime = (roomStealOpenedAt.get(qKey) ?? now - 2e3) - 150;
-        const safeClientBuzzedAt = Math.min(Math.max(clientBuzzedAt, minAllowedTime), now + 150);
-        if (roomBuzzArbitration.has(qKey)) {
-          const arb = roomBuzzArbitration.get(qKey);
-          if (!arb.candidates.some((c) => c.teamId === teamId)) {
-            arb.candidates.push({
-              teamId,
-              teamName,
-              playerId: session.playerId,
-              playerName: session.playerName,
-              clientBuzzedAt: safeClientBuzzedAt,
-              receivedAt: now,
-              socket,
-              mode: "BOUNCEBACK"
-            });
-          }
-          return;
-        }
         if (roomStealTimer.has(qKey)) {
           clearTimeout(roomStealTimer.get(qKey));
           roomStealTimer.delete(qKey);
         }
         roomStealPhase.set(qKey, false);
-        const candidates = [{
+        const winnerCandidate = {
           teamId,
           teamName,
           playerId: session.playerId,
           playerName: session.playerName,
-          clientBuzzedAt: safeClientBuzzedAt,
+          clientBuzzedAt,
           receivedAt: now,
           socket,
           mode: "BOUNCEBACK"
-        }];
-        const arbTimer = setTimeout(async () => {
-          roomBuzzArbitration.delete(qKey);
-          await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BOUNCEBACK", candidates);
-        }, 120);
-        roomBuzzArbitration.set(qKey, {
-          timer: arbTimer,
-          candidates,
-          deadline: now + 120
-        });
+        };
+        await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BOUNCEBACK", [winnerCandidate]);
       }
     });
     socket.on("admin:buzz:unlock", async () => {
@@ -8601,32 +8536,44 @@ function registerSocketHandlers(io2) {
       await executeMysteryDrawTarot(room, questState, team);
     });
     socket.on("game:mystery:steal_buzz", async () => {
+      if (!checkActionDebounce(socket.id, 150)) return;
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room || !player.teamId) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
-      const questState = roomMysteryQuests.get(room.id);
+      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+      if (!session) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true, team: true }
+        });
+        if (!player || !player.room || !player.teamId) return;
+        session = {
+          playerId: player.id,
+          playerName: player.name,
+          roomId: player.room.id,
+          roomCode: player.room.code,
+          teamId: player.teamId,
+          teamName: player.team?.name ?? player.name,
+          roomMode: player.room.mode,
+          teamMode: player.room.teamMode
+        };
+        socketPlayerSessions.set(socket.id, session);
+        playerSessions.set(player.id, session);
+      }
+      if (session.roomMode !== "MYSTERY_QUEST" || !session.teamId) return;
+      const questState = roomMysteryQuests.get(session.roomId);
       if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
-      if (questState.currentTurnTeamId === player.teamId) return;
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
-      if (!team) return;
-      questState.stealBuzzedTeamId = team.id;
-      questState.stealBuzzedTeamName = team.name;
+      if (questState.currentTurnTeamId === session.teamId) return;
+      questState.stealBuzzedTeamId = session.teamId;
+      questState.stealBuzzedTeamName = session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp";
       questState.phase = "PUSH_YOUR_LUCK";
-      questState.currentTurnTeamId = team.id;
-      questState.currentTurnTeamName = team.name;
-      questState.currentTurnTeamColor = team.color;
+      questState.currentTurnTeamId = session.teamId;
+      questState.currentTurnTeamName = session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp";
       questState.potPoints = 15;
-      roomMysteryQuests.set(room.id, questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:steal_buzzed", {
-        teamId: team.id,
-        teamName: team.name,
+      roomMysteryQuests.set(session.roomId, questState);
+      io2.to(`room:${session.roomCode}`).emit("game:mystery:update", questState);
+      io2.to(`room:${session.roomCode}`).emit("game:mystery:steal_buzzed", {
+        teamId: session.teamId,
+        teamName: session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp",
         timeLimit: 15
       });
     });
@@ -10071,9 +10018,13 @@ async function openBuzzWindow(io2, roomId, roomCode, questionId, customDurationM
   }
   roomBuzzWindowRemaining.set(qKey, remainingMs);
   const attempts = roomBuzzAttemptOrder.get(qKey) || [];
-  const room = await prisma.room.findUnique({ where: { id: roomId }, select: { teamMode: true } });
-  const isTeamMode = room?.teamMode === "TEAM";
-  const totalActors = isTeamMode ? await prisma.team.count({ where: { roomId } }) : await prisma.player.count({ where: { roomId } });
+  let totalActors = roomTotalActorsCache.get(roomId);
+  if (totalActors === void 0) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { teamMode: true } });
+    const isTeamMode = room?.teamMode === "TEAM";
+    totalActors = isTeamMode ? await prisma.team.count({ where: { roomId } }) : await prisma.player.count({ where: { roomId } });
+    roomTotalActorsCache.set(roomId, totalActors);
+  }
   const disqSet = roomBuzzDisqualified.get(qKey) || /* @__PURE__ */ new Set();
   const maxAttempts = totalActors <= 2 ? 2 : 3;
   const eligibleCount = Math.max(0, totalActors - disqSet.size);

@@ -1114,20 +1114,23 @@ export function handleFlipCard({
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "PAIR_MATCHED";
           state.potPoints = 0;
+          const basePoints = state.baseQuestionPoints || 10;
+          const oldScore = team.score || 0;
+          const newScore = oldScore + basePoints;
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đôi đã bị vô hiệu hóa an toàn, không bị trừ điểm nào!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0,
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đôi đã bị vô hiệu hóa an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+            scoreDelta: basePoints,
+            oldScore,
+            newScore,
           };
           return {
             updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: 0,
+            finalScoreDelta: basePoints,
           };
         }
 
@@ -1229,16 +1232,19 @@ export function handleFlipCard({
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
+        const basePoints = state.baseQuestionPoints || 10;
+        const oldScore = team.score || 0;
+        const newScore = oldScore + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đã bị vô hiệu hóa an toàn, không bị trừ điểm nào!`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0,
+          rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Cặp kíp nổ đã bị vô hiệu hóa an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+          scoreDelta: basePoints,
+          oldScore,
+          newScore,
         };
-        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints };
       }
 
       const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
@@ -1292,16 +1298,19 @@ export function handleFlipCard({
             state.phase = "TURN_SUMMARY";
             state.turnFinishedReason = "PAIR_MATCHED";
             state.potPoints = 0;
+            const basePoints = state.baseQuestionPoints || 10;
+            const oldScore = team.score || 0;
+            const newScore = oldScore + basePoints;
             state.storyResult = {
               teamId: team.id,
               teamName: team.name,
               teamColor: team.color || "#ef4444",
-              rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Vụ nổ trừng phạt vòng 2 đã bị chặn đứng an toàn!`,
-              scoreDelta: 0,
-              oldScore: team.score || 0,
-              newScore: team.score || 0,
+              rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Vụ nổ trừng phạt vòng 2 đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+              scoreDelta: basePoints,
+              oldScore,
+              newScore,
             };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1426,16 +1435,19 @@ export function handleFlipCard({
             state.phase = "TURN_SUMMARY";
             state.turnFinishedReason = "PAIR_MATCHED";
             state.potPoints = 0;
+            const basePoints = state.baseQuestionPoints || 10;
+            const oldScore = team.score || 0;
+            const newScore = oldScore + basePoints;
             state.storyResult = {
               teamId: team.id,
               teamName: team.name,
               teamColor: team.color || "#ef4444",
-              rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Vụ nổ trừng phạt vòng 2 đã bị chặn đứng an toàn!`,
-              scoreDelta: 0,
-              oldScore: team.score || 0,
-              newScore: team.score || 0,
+              rewardText: `🛡️ KHIÊN THẦN ĐÃ BẢO VỆ BẠN! Vụ nổ trừng phạt vòng 2 đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+              scoreDelta: basePoints,
+              oldScore,
+              newScore,
             };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1546,20 +1558,23 @@ export function handleFlipCard({
           state.potPoints = 0;
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "DOOR_CHOSEN";
+          const basePoints = state.baseQuestionPoints || 10;
+          const oldScore = team.score || 0;
+          const newScore = oldScore + basePoints;
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, không bị trừ điểm!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0,
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+            scoreDelta: basePoints,
+            oldScore,
+            newScore,
           };
           return {
             updatedState: { ...state },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: 0,
+            finalScoreDelta: basePoints,
           };
         }
 
@@ -1700,20 +1715,23 @@ export function handleFlipCard({
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "TAROT_DRAWN";
+        const basePoints = state.baseQuestionPoints || 20;
+        const oldScore = team.score || 0;
+        const newScore = oldScore + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `🛡️ KHIÊN THẦN ĐẨY LÙI THẦN CHẾT! Bạn an toàn thoát hiểm và không bị trừ điểm!`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0,
+          rewardText: `🛡️ KHIÊN THẦN ĐẨY LÙI THẦN CHẾT! Bạn an toàn thoát hiểm và nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+          scoreDelta: basePoints,
+          oldScore,
+          newScore,
         };
         return {
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: 0,
+          finalScoreDelta: basePoints,
         };
       }
 
@@ -1853,6 +1871,31 @@ export function handleFlipCard({
     tile.type === "BOMB_DOOM";
 
   if (isBombCard) {
+    if (state.hasShield) {
+      state.hasShield = false;
+      const basePoints = state.baseQuestionPoints || 10;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      const oldScore = team.score || 0;
+      const newScore = oldScore + basePoints;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Vô hiệu hóa bẫy bom an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+        scoreDelta: basePoints,
+        oldScore,
+        newScore,
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: basePoints,
+      };
+    }
+
     // Dính bom: Mất quyền lật ngay lập tức và chịu tác động của loại bom dính phải
 
     // Standard Bomb Penalties:
@@ -2416,20 +2459,23 @@ export function handleOneShotDoorsDecision({
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
+      const basePoints = state.baseQuestionPoints || 10;
+      const oldScore = team.score || 0;
+      const newScore = oldScore + basePoints;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, không bị trừ điểm!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0,
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+        scoreDelta: basePoints,
+        oldScore,
+        newScore,
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: 0,
+        finalScoreDelta: basePoints,
       };
     }
 

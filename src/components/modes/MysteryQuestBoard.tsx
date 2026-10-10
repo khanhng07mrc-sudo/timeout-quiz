@@ -434,7 +434,7 @@ export default function MysteryQuestBoard({
                         {perkType === "SHIELD_PROMO" && (
                           <>
                             <span>🛡️</span>
-                            <span className="truncate">Tặng 01 Khiên Chặn Bom!</span>
+                            <span className="truncate">Khiên Chặn Bom (Bảo toàn điểm gốc)!</span>
                           </>
                         )}
                         {perkType === "EXTRA_POT_PROMO" && (

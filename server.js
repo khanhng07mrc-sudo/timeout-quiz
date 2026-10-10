@@ -1578,20 +1578,23 @@ function handleFlipCard({
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "PAIR_MATCHED";
           state.potPoints = 0;
+          const basePoints = state.baseQuestionPoints || 10;
+          const oldScore2 = team.score || 0;
+          const newScore2 = oldScore2 + basePoints;
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xF4i \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m n\xE0o!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0
+            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xF4i \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+            scoreDelta: basePoints,
+            oldScore: oldScore2,
+            newScore: newScore2
           };
           return {
             updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: 0
+            finalScoreDelta: basePoints
           };
         }
         const penalty = Math.abs(bombCard.deltaPoints || state.baseQuestionPoints || 10);
@@ -1663,16 +1666,19 @@ function handleFlipCard({
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
+        const basePoints = state.baseQuestionPoints || 10;
+        const oldScore2 = team.score || 0;
+        const newScore2 = oldScore2 + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m n\xE0o!`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0
+          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+          scoreDelta: basePoints,
+          oldScore: oldScore2,
+          newScore: newScore2
         };
-        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints };
       }
       const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
       state.bombExploded = {
@@ -1718,16 +1724,19 @@ function handleFlipCard({
             state.phase = "TURN_SUMMARY";
             state.turnFinishedReason = "PAIR_MATCHED";
             state.potPoints = 0;
+            const basePoints = state.baseQuestionPoints || 10;
+            const oldScore2 = team.score || 0;
+            const newScore2 = oldScore2 + basePoints;
             state.storyResult = {
               teamId: team.id,
               teamName: team.name,
               teamColor: team.color || "#ef4444",
-              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n!`,
-              scoreDelta: 0,
-              oldScore: team.score || 0,
-              newScore: team.score || 0
+              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+              scoreDelta: basePoints,
+              oldScore: oldScore2,
+              newScore: newScore2
             };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1834,16 +1843,19 @@ function handleFlipCard({
             state.phase = "TURN_SUMMARY";
             state.turnFinishedReason = "PAIR_MATCHED";
             state.potPoints = 0;
+            const basePoints = state.baseQuestionPoints || 10;
+            const oldScore2 = team.score || 0;
+            const newScore2 = oldScore2 + basePoints;
             state.storyResult = {
               teamId: team.id,
               teamName: team.name,
               teamColor: team.color || "#ef4444",
-              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n!`,
-              scoreDelta: 0,
-              oldScore: team.score || 0,
-              newScore: team.score || 0
+              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+              scoreDelta: basePoints,
+              oldScore: oldScore2,
+              newScore: newScore2
             };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0, shouldResetMismatchedCards: true };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
           }
           state.bombExploded = {
             type: "MAJOR",
@@ -1924,20 +1936,23 @@ function handleFlipCard({
           state.potPoints = 0;
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "DOOR_CHOSEN";
+          const basePoints = state.baseQuestionPoints || 10;
+          const oldScore3 = team.score || 0;
+          const newScore3 = oldScore3 + basePoints;
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY BOM! C\u1EEDa b\u1EABy n\u1ED5 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m!`,
-            scoreDelta: 0,
-            oldScore: team.score || 0,
-            newScore: team.score || 0
+            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY BOM! C\u1EEDa b\u1EABy n\u1ED5 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+            scoreDelta: basePoints,
+            oldScore: oldScore3,
+            newScore: newScore3
           };
           return {
             updatedState: { ...state },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: 0
+            finalScoreDelta: basePoints
           };
         }
         const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
@@ -2047,20 +2062,23 @@ function handleFlipCard({
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "TAROT_DRAWN";
+        const basePoints = state.baseQuestionPoints || 20;
+        const oldScore2 = team.score || 0;
+        const newScore2 = oldScore2 + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\u1EA8Y L\xD9I TH\u1EA6N CH\u1EBET! B\u1EA1n an to\xE0n tho\xE1t hi\u1EC3m v\xE0 kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m!`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0
+          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\u1EA8Y L\xD9I TH\u1EA6N CH\u1EBET! B\u1EA1n an to\xE0n tho\xE1t hi\u1EC3m v\xE0 nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+          scoreDelta: basePoints,
+          oldScore: oldScore2,
+          newScore: newScore2
         };
         return {
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: 0
+          finalScoreDelta: basePoints
         };
       }
       penalty = Math.abs(tile2.deltaPoints || 20);
@@ -2173,6 +2191,30 @@ function handleFlipCard({
   state.cardsFlippedCount++;
   const isBombCard = tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY" || tile.type === "BOMB_MINOR" || tile.type === "BOMB_MAJOR" || tile.type === "BOMB_DOOM";
   if (isBombCard) {
+    if (state.hasShield) {
+      state.hasShield = false;
+      const basePoints = state.baseQuestionPoints || 10;
+      state.potPoints = 0;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      const oldScore2 = team.score || 0;
+      const newScore2 = oldScore2 + basePoints;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! V\xF4 hi\u1EC7u h\xF3a b\u1EABy bom an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+        scoreDelta: basePoints,
+        oldScore: oldScore2,
+        newScore: newScore2
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: basePoints
+      };
+    }
     let penalty = 0;
     let penaltyText = "";
     let recipientTeamId = void 0;
@@ -2586,20 +2628,23 @@ function handleOneShotDoorsDecision({
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
+      const basePoints = state.baseQuestionPoints || 10;
+      const oldScore2 = team.score || 0;
+      const newScore2 = oldScore2 + basePoints;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY BOM! C\u1EEDa b\u1EABy n\u1ED5 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m!`,
-        scoreDelta: 0,
-        oldScore: team.score || 0,
-        newScore: team.score || 0
+        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY BOM! C\u1EEDa b\u1EABy n\u1ED5 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+        scoreDelta: basePoints,
+        oldScore: oldScore2,
+        newScore: newScore2
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: 0
+        finalScoreDelta: basePoints
       };
     }
     const penalty = Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);

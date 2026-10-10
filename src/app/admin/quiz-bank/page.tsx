@@ -14,6 +14,7 @@ import {
   parseExcelQuestions,
   parseCsvQuestions,
 } from "@/lib/quiz-document-parser";
+import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
 
 interface QuestionItem {
   id?: string;
@@ -77,6 +78,9 @@ export default function QuizBankPage() {
   const [previewNewBankTitle, setPreviewNewBankTitle] = useState("");
   const [previewNewBankDesc, setPreviewNewBankDesc] = useState("");
   const [isSavingPreview, setIsSavingPreview] = useState(false);
+  const [showStudioModal, setShowStudioModal] = useState(false);
+  const [rebalancingIndex, setRebalancingIndex] = useState<number | null>(null);
+  const [isRefiningAll, setIsRefiningAll] = useState(false);
 
   // Edit Bank Modal State
   const [showEditBankModal, setShowEditBankModal] = useState(false);
@@ -472,6 +476,90 @@ export default function QuizBankPage() {
     }
   };
 
+  // Handle Question Studio Generation Success
+  const handleStudioSuccess = (
+    generatedQuestions: ParsedQuestionItem[],
+    bankTitle: string,
+    bankDesc: string
+  ) => {
+    setPreviewQuestions(generatedQuestions);
+    setPreviewNewBankTitle(bankTitle);
+    setPreviewNewBankDesc(bankDesc);
+    setPreviewTargetMode(selectedBank ? "current" : "new");
+    setShowPreviewModal(true);
+  };
+
+  // Handle Rebalancing a single question with AI
+  const handleRebalanceQuestion = async (idx: number) => {
+    const targetQ = previewQuestions[idx];
+    if (!targetQ) return;
+    setRebalancingIndex(idx);
+
+    try {
+      const savedProvider = (localStorage.getItem("ai_provider") as any) || "gemini";
+      const savedKey = localStorage.getItem(`ai_key_${savedProvider}`) || "";
+
+      const res = await fetch("/api/quiz-bank/generate-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: savedProvider,
+          apiKey: savedKey || undefined,
+          action: "rebalance_question",
+          targetQuestion: targetQ,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể cân bằng lại câu hỏi");
+
+      if (data.question) {
+        setPreviewQuestions((prev) => {
+          const next = [...prev];
+          next[idx] = data.question;
+          return next;
+        });
+      }
+    } catch (err: any) {
+      alert("Lỗi cân bằng lại: " + (err.message || String(err)));
+    } finally {
+      setRebalancingIndex(null);
+    }
+  };
+
+  // Handle Refining all questions with AI
+  const handleRefineAllQuestions = async () => {
+    if (previewQuestions.length === 0) return;
+    setIsRefiningAll(true);
+
+    try {
+      const savedProvider = (localStorage.getItem("ai_provider") as any) || "gemini";
+      const savedKey = localStorage.getItem(`ai_key_${savedProvider}`) || "";
+
+      const res = await fetch("/api/quiz-bank/generate-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: savedProvider,
+          apiKey: savedKey || undefined,
+          action: "refine_parsed",
+          rawQuestions: previewQuestions,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Không thể hoàn thiện toàn bộ đề");
+
+      if (data.questions && Array.isArray(data.questions)) {
+        setPreviewQuestions(data.questions);
+      }
+    } catch (err: any) {
+      alert("Lỗi hoàn thiện: " + (err.message || String(err)));
+    } finally {
+      setIsRefiningAll(false);
+    }
+  };
+
   // Handle Process Raw Text Paste
   const handleProcessRawText = () => {
     if (!rawTextContent.trim()) {
@@ -722,22 +810,22 @@ export default function QuizBankPage() {
           <button
             onClick={() => {
               setPreviewTargetMode("new");
-              setShowAiModal(true);
+              setShowStudioModal(true);
             }}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm transition inline-flex items-center gap-2 shadow-lg shadow-amber-500/20 whitespace-nowrap cursor-pointer"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:opacity-95 text-white font-black text-xs sm:text-sm transition inline-flex items-center gap-2 shadow-xl shadow-purple-500/25 whitespace-nowrap cursor-pointer border border-purple-400/40"
           >
-            <span>✨</span>
-            <span>Tạo đề bằng AI</span>
+            <span>⚡</span>
+            <span>Question Studio (Tạo đề AI & Tài liệu)</span>
           </button>
           <button
             onClick={() => {
               setPreviewTargetMode("new");
               setShowFileModal(true);
             }}
-            className="px-4 py-2.5 rounded-xl glass border border-cyan-500/40 hover:bg-cyan-500/10 font-bold text-xs sm:text-sm text-cyan-300 transition inline-flex items-center gap-2 whitespace-nowrap cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl glass border border-cyan-500/40 hover:bg-cyan-500/10 font-bold text-xs sm:text-sm text-cyan-300 transition inline-flex items-center gap-2 whitespace-nowrap cursor-pointer"
           >
             <span>📂</span>
-            <span>Nhập File / Văn Bản</span>
+            <span>Nhập File / Text</span>
           </button>
           <label className="cursor-pointer px-4 py-2.5 rounded-xl glass border border-purple-500/40 hover:bg-purple-500/10 font-bold text-xs sm:text-sm text-purple-300 transition inline-flex items-center gap-2 whitespace-nowrap">
             <span>📥</span>
@@ -847,12 +935,12 @@ export default function QuizBankPage() {
                   <button
                     onClick={() => {
                       setPreviewTargetMode("current");
-                      setShowAiModal(true);
+                      setShowStudioModal(true);
                     }}
-                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-400/40 text-amber-300 text-xs sm:text-sm font-bold transition whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:opacity-95 text-white text-xs sm:text-sm font-black transition whitespace-nowrap inline-flex items-center gap-1.5 shadow-lg shadow-purple-500/20 cursor-pointer"
                   >
-                    <span>✨</span>
-                    <span>AI Tạo thêm</span>
+                    <span>⚡</span>
+                    <span>Question Studio</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1854,6 +1942,25 @@ export default function QuizBankPage() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  onClick={handleRefineAllQuestions}
+                  disabled={isRefiningAll || previewQuestions.length === 0}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:opacity-95 text-white text-xs font-black transition flex items-center gap-1.5 shadow-lg shadow-purple-600/20 cursor-pointer disabled:opacity-50"
+                  title="Tự động sửa lỗi cú pháp, cân bằng độ dài 4 phương án và chuẩn hóa điểm số theo chuẩn Quizorra"
+                >
+                  {isRefiningAll ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Đang hoàn thiện...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span>
+                      <span>AI Hoàn Thiện & Cân Bằng Đề</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  type="button"
                   onClick={handleAddPreviewItem}
                   className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-cyan-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                 >
@@ -1869,6 +1976,45 @@ export default function QuizBankPage() {
                 </button>
               </div>
             </div>
+
+            {/* Quizorra Game Mode Distribution Summary */}
+            {(() => {
+              const totalQ = previewQuestions.length;
+              if (totalQ === 0) return null;
+              const p10 = previewQuestions.filter((q) => q.points === 10).length;
+              const p20 = previewQuestions.filter((q) => q.points === 20).length;
+              const p30 = previewQuestions.filter((q) => q.points === 30).length;
+              const outlierCount = previewQuestions.filter((q) => q.uniformity && !q.uniformity.isUniform).length;
+
+              return (
+                <div className="py-2 px-3 rounded-2xl bg-black/40 border border-purple-500/30 my-1.5 shrink-0 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-300">Phân bổ chuẩn Quizorra:</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
+                      🟢 10đ: {p10} ({Math.round((p10 / totalQ) * 100)}%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30">
+                      🟡 20đ: {p20} ({Math.round((p20 / totalQ) * 100)}%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                      🟣 30đ: {p30} ({Math.round((p30 / totalQ) * 100)}%)
+                    </span>
+                  </div>
+
+                  {outlierCount > 0 ? (
+                    <div className="flex items-center gap-1.5 text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 px-2.5 py-0.5 rounded-lg">
+                      <span>⚠️</span>
+                      <span>{outlierCount} câu có độ dài phương án bị lệch</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-cyan-300 font-bold bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-0.5 rounded-lg">
+                      <span>🛡️</span>
+                      <span>100% phương án đạt chuẩn đồng nhất</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Target Bank Destination Configuration */}
             <div className="py-2.5 px-3 rounded-2xl bg-white/5 border border-white/10 my-2 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
@@ -1939,6 +2085,15 @@ export default function QuizBankPage() {
                         <span className="text-xs font-bold px-2 py-0.5 rounded bg-white/10 text-slate-300">
                           {item.type}
                         </span>
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
+                          item.points >= 30
+                            ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                            : item.points >= 20
+                            ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                            : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        }`}>
+                          {item.points >= 30 ? "🟣 30đ (30s)" : item.points >= 20 ? "🟡 20đ (20s)" : "🟢 10đ (15s)"}
+                        </span>
                         {!item.isValid && (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
                             ⚠️ {item.validationErrors.join(", ")}
@@ -1951,7 +2106,13 @@ export default function QuizBankPage() {
                           <span className="text-slate-400">Điểm:</span>
                           <select
                             value={item.points}
-                            onChange={(e) => handleUpdatePreviewItem(qIdx, { points: Number(e.target.value) })}
+                            onChange={(e) => {
+                              const pts = Number(e.target.value) as 10 | 20 | 30;
+                              handleUpdatePreviewItem(qIdx, {
+                                points: pts,
+                                timeLimit: pts === 30 ? 30 : pts === 20 ? 20 : 15,
+                              });
+                            }}
                             className="px-1.5 py-0.5 rounded glass border border-white/20 text-amber-300 font-bold bg-[#151728]"
                           >
                             <option value={10}>10đ</option>
@@ -2050,6 +2211,34 @@ export default function QuizBankPage() {
                         <span>{item.hint}</span>
                       </div>
                     )}
+
+                    {/* Uniformity Warning / Rebalance Button */}
+                    {item.uniformity && !item.uniformity.isUniform && (
+                      <div className="mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <span>⚠️</span>
+                          <span>{item.uniformity.warningMessage || "Phương án có độ lệch độ dài bất thường (nguy cơ lộ đáp án)"}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRebalanceQuestion(qIdx)}
+                          disabled={rebalancingIndex === qIdx}
+                          className="px-3 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-200 font-bold text-[11px] flex items-center gap-1 transition cursor-pointer"
+                        >
+                          {rebalancingIndex === qIdx ? (
+                            <>
+                              <span className="w-3 h-3 border-2 border-amber-300/30 border-t-amber-300 rounded-full animate-spin" />
+                              <span>Đang cân bằng...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>✨</span>
+                              <span>AI Cân bằng lại</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -2093,6 +2282,15 @@ export default function QuizBankPage() {
           </div>
         </div>
       )}
+      {/* ═════════════════════════════════════════════════════════════════════
+          QUIZORRA QUESTION STUDIO MODAL
+         ═════════════════════════════════════════════════════════════════════ */}
+      <QuizorraQuestionStudioModal
+        isOpen={showStudioModal}
+        onClose={() => setShowStudioModal(false)}
+        onSuccess={handleStudioSuccess}
+        selectedBank={selectedBank}
+      />
     </div>
   );
 }

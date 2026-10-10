@@ -1,8 +1,18 @@
 import * as XLSX from "xlsx";
 import Papa from "papaparse";
-// mammoth is imported dynamically or directly when parsing docx in browser or node
 import * as mammoth from "mammoth";
 import { normalizeToThreeLevels } from "./game-engine/scoring";
+import { quantizeOlympiaTimeLimit } from "@/types";
+
+export interface OptionUniformityAnalysis {
+  isUniform: boolean;
+  uniformityScore: number; // 0 to 100
+  hasAsymmetricAnnotations: boolean;
+  isCorrectOutlier: boolean;
+  lengthRatio: number; // length of correct option / average length of distractors
+  warningMessage?: string;
+  charLengths: { id: string; length: number; wordCount: number; isCorrect: boolean }[];
+}
 
 export interface ParsedQuestionItem {
   id?: string;
@@ -10,11 +20,144 @@ export interface ParsedQuestionItem {
   content: string;
   options: { id: string; text: string; isCorrect: boolean }[];
   answer?: string;
-  points: number;
+  points: 10 | 20 | 30;
   timeLimit: number;
   hint?: string;
   isValid: boolean;
   validationErrors: string[];
+  uniformity?: OptionUniformityAnalysis;
+}
+
+/**
+ * Tự động loại bỏ các chú giải đơn lẻ xuất hiện riêng ở đáp án đúng và đưa vào trường hint.
+ * Ví dụ: "Hà Nội (Thủ đô của Việt Nam)" khi các phương án khác là "Đà Nẵng", "Huế", "TP.HCM"
+ * -> Tách "Thủ đô của Việt Nam" vào hint, giữ text là "Hà Nội".
+ */
+export function sanitizeAndBalanceOptions(
+  options: { id: string; text: string; isCorrect: boolean }[],
+  existingHint?: string
+): { options: { id: string; text: string; isCorrect: boolean }[]; hint?: string } {
+  let updatedHint = existingHint ? existingHint.trim() : "";
+  const cleanedOptions = options.map((opt) => {
+    let t = (opt.text || "").trim();
+    // Bỏ tiền tố lặp như "A. ", "B) ", "C: " nếu vô tình sót lại
+    t = t.replace(/^[A-Fa-f][\.\)\:\-]\s*/, "").trim();
+    return { ...opt, text: t };
+  });
+
+  const correctOpt = cleanedOptions.find((o) => o.isCorrect);
+  const distractors = cleanedOptions.filter((o) => !o.isCorrect);
+
+  if (correctOpt && distractors.length > 0) {
+    // Kiểm tra xem đáp án đúng có đuôi mở ngoặc "(...)" trong khi KHÔNG CÓ distractor nào có mở ngoặc
+    const correctParenMatch = correctOpt.text.match(/\s*\(([^)]+)\)\s*$/);
+    const distractorsHaveParen = distractors.some((d) => /\([^)]+\)/.test(d.text));
+
+    if (correctParenMatch && !distractorsHaveParen) {
+      const extractedClue = correctParenMatch[1].trim();
+      correctOpt.text = correctOpt.text.replace(/\s*\([^)]+\)\s*$/, "").trim();
+      if (!updatedHint) {
+        updatedHint = extractedClue;
+      } else if (!updatedHint.includes(extractedClue)) {
+        updatedHint = `${updatedHint} (${extractedClue})`;
+      }
+    }
+  }
+
+  return {
+    options: cleanedOptions,
+    hint: updatedHint || undefined,
+  };
+}
+
+/**
+ * Đánh giá độ đồng nhất hình thức (Psychometric Uniformity & Distractor Plausibility)
+ * Ngăn ngừa hiện tượng test-taking cueing (lộ đáp án do đáp án đúng quá dài hoặc quá chi tiết).
+ */
+export function analyzeOptionUniformity(
+  options: { id: string; text: string; isCorrect: boolean }[]
+): OptionUniformityAnalysis {
+  if (options.length < 2) {
+    return {
+      isUniform: true,
+      uniformityScore: 100,
+      hasAsymmetricAnnotations: false,
+      isCorrectOutlier: false,
+      lengthRatio: 1,
+      charLengths: [],
+    };
+  }
+
+  const charLengths = options.map((o) => {
+    const text = (o.text || "").trim();
+    const wordCount = text.length > 0 ? text.split(/\s+/).length : 0;
+    return {
+      id: o.id,
+      length: text.length,
+      wordCount,
+      isCorrect: o.isCorrect,
+    };
+  });
+
+  const correctItems = charLengths.filter((o) => o.isCorrect);
+  const distractors = charLengths.filter((o) => !o.isCorrect);
+
+  if (correctItems.length === 0 || distractors.length === 0) {
+    return {
+      isUniform: true,
+      uniformityScore: 100,
+      hasAsymmetricAnnotations: false,
+      isCorrectOutlier: false,
+      lengthRatio: 1,
+      charLengths,
+    };
+  }
+
+  const avgDistractorLength = distractors.reduce((acc, d) => acc + d.length, 0) / distractors.length;
+  const avgDistractorWords = distractors.reduce((acc, d) => acc + d.wordCount, 0) / distractors.length;
+  const correctLength = correctItems[0].length;
+  const correctWords = correctItems[0].wordCount;
+
+  const lengthRatio = avgDistractorLength > 0 ? Number((correctLength / avgDistractorLength).toFixed(2)) : 1;
+
+  // Kiểm tra chú thích bất đối xứng
+  const hasAsymmetricAnnotations =
+    options.some((o) => o.isCorrect && /\([^)]+\)/.test(o.text)) &&
+    options.every((o) => o.isCorrect || !/\([^)]+\)/.test(o.text));
+
+  // Kiểm tra đáp án đúng có bị lệch (quá dài > 1.7x hoặc quá ngắn < 0.45x)
+  const isTooLong = (lengthRatio > 1.7 && correctWords >= avgDistractorWords + 4) || lengthRatio > 2.2;
+  const isTooShort = lengthRatio < 0.45 && avgDistractorWords >= correctWords + 4;
+  const isCorrectOutlier = isTooLong || isTooShort;
+
+  // Tính điểm đồng nhất (0 - 100)
+  let penalty = 0;
+  if (isTooLong) penalty += 40;
+  if (isTooShort) penalty += 30;
+  if (hasAsymmetricAnnotations) penalty += 35;
+  if (lengthRatio > 1.4 && lengthRatio <= 1.7) penalty += 15;
+
+  const uniformityScore = Math.max(10, Math.min(100, 100 - penalty));
+  const isUniform = uniformityScore >= 75 && !hasAsymmetricAnnotations && !isCorrectOutlier;
+
+  let warningMessage: string | undefined = undefined;
+  if (hasAsymmetricAnnotations) {
+    warningMessage = "⚠️ Đáp án đúng chứa chú thích riêng biệt (dễ làm lộ câu trả lời)";
+  } else if (isTooLong) {
+    warningMessage = `⚠️ Đáp án đúng dài hơn đáng kể (${lengthRatio}x) so với các phương án còn lại`;
+  } else if (isTooShort) {
+    warningMessage = `⚠️ Đáp án đúng ngắn bất thường (${lengthRatio}x) so với các phương án còn lại`;
+  }
+
+  return {
+    isUniform,
+    uniformityScore,
+    hasAsymmetricAnnotations,
+    isCorrectOutlier,
+    lengthRatio,
+    warningMessage,
+    charLengths,
+  };
 }
 
 /**
@@ -25,8 +168,8 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
   const content = (q.content || "").trim();
   const type = q.type || "MC_SINGLE";
   const points = normalizeToThreeLevels(Number(q.points) || 10);
-  const timeLimit = Math.max(5, Number(q.timeLimit) || 30);
-  const hint = q.hint?.trim() || undefined;
+  const timeLimit = Math.max(5, Number(q.timeLimit) || quantizeOlympiaTimeLimit(points));
+  let hint = q.hint?.trim() || undefined;
 
   if (!content) {
     errors.push("Nội dung câu hỏi không được để trống");
@@ -41,6 +184,11 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
   let answer = q.answer?.trim();
 
   if (type === "MC_SINGLE" || type === "MC_MULTI") {
+    // Sanitize options to avoid isolated clues in correct answer
+    const sanitized = sanitizeAndBalanceOptions(options, hint);
+    options = sanitized.options;
+    hint = sanitized.hint;
+
     // Filter non-empty options
     const validOpts = options.filter((o) => o.text !== "");
     if (validOpts.length < 2) {
@@ -70,6 +218,8 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
     }
   }
 
+  const uniformity = analyzeOptionUniformity(options);
+
   return {
     id: q.id,
     type,
@@ -81,27 +231,20 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
     hint,
     isValid: errors.length === 0,
     validationErrors: errors,
+    uniformity,
   };
 }
 
 /**
  * Parses raw text containing quiz questions in typical Vietnamese or English formats
- * Examples:
- * Câu 1: Thủ đô của Việt Nam là gì?
- * A. Đà Nẵng
- * B. Hà Nội*
- * C. Hải Phòng
- * D. Cần Thơ
- * Đáp án: B
  */
-export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTime = 30): ParsedQuestionItem[] {
+export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTime = 15): ParsedQuestionItem[] {
   if (!rawText || !rawText.trim()) return [];
 
   // Normalize line breaks
   const normalized = rawText.replace(/\r\n/g, "\n").replace(/\r/g, "\n").trim();
 
   // Split into question blocks by "Câu X:", "Câu hỏi X:", or numbered "1.", "2."
-  // Pattern: matches beginning of question block
   const lines = normalized.split("\n");
   const blocks: string[][] = [];
   let currentBlock: string[] = [];
@@ -126,7 +269,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
       if (currentBlock.length > 0) {
         currentBlock.push(line);
       } else if (line.trim().length > 0) {
-        // First block without header
         currentBlock.push(line);
       }
     }
@@ -135,7 +277,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
     blocks.push(currentBlock);
   }
 
-  // Parse each block into a QuestionItem
   const parsedItems: ParsedQuestionItem[] = [];
 
   for (const block of blocks) {
@@ -150,11 +291,9 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
     const blockLines = block.map((l) => l.trim()).filter((l) => l.length > 0);
     if (blockLines.length === 0) continue;
 
-    // Header / Content line
     let contentLines: string[] = [];
     let i = 0;
 
-    // Consume content until we hit options or answers
     while (i < blockLines.length) {
       const line = blockLines[i];
       const optMatch = line.match(/^([A-Fa-f])[\.\)\:\-]\s*(.*)$/);
@@ -165,7 +304,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
         break;
       }
 
-      // Strip "Câu 1: " or "1. " from first line
       if (i === 0) {
         const cleanContent = line.replace(/^(?:Câu\s+\d+[:.]|Câu\s+hỏi\s+\d+[:.]|Bài\s+\d+[:.]|\d+[\.\)]\s*)/i, "").trim();
         contentLines.push(cleanContent || line);
@@ -177,7 +315,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
 
     content = contentLines.join(" ").trim();
 
-    // Consume options and answer metadata
     while (i < blockLines.length) {
       const line = blockLines[i];
       const optMatch = line.match(/^([A-Fa-f])[\.\)\:\-]\s*(.*)$/);
@@ -189,7 +326,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
         let optText = optMatch[2].trim();
         let isCorrect = false;
 
-        // Check if marked with asterisk or [x] (e.g. "B. Hà Nội*")
         if (optText.endsWith("*") || optText.endsWith("✓") || optText.endsWith("(đúng)")) {
           isCorrect = true;
           optText = optText.replace(/[*✓]|\(đúng\)$/g, "").trim();
@@ -208,7 +344,6 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
       i++;
     }
 
-    // Apply detected answer key if options didn't have asterisks
     if (detectedAnswerKey) {
       const answers = detectedAnswerKey.split(/[,;\s]+/).map((a) => a.trim().toUpperCase());
       options.forEach((opt) => {
@@ -218,23 +353,45 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
       });
     }
 
-    // Determine type: MC_MULTI if multiple correct, otherwise MC_SINGLE
     const correctCount = options.filter((o) => o.isCorrect).length;
     const type = correctCount > 1 ? "MC_MULTI" : "MC_SINGLE";
+    const normPts = normalizeToThreeLevels(defaultPoints);
 
     parsedItems.push(
       validateQuestionItem({
         type,
         content,
         options,
-        points: defaultPoints,
-        timeLimit: defaultTime,
+        points: normPts,
+        timeLimit: quantizeOlympiaTimeLimit(normPts, defaultTime),
         hint,
       })
     );
   }
 
   return parsedItems;
+}
+
+/**
+ * Extracts raw text from a PDF file using pdf-parse
+ */
+export async function extractTextFromPdf(file: File | ArrayBuffer | Buffer): Promise<string> {
+  try {
+    const pdfParse = require("pdf-parse");
+    let buffer: Buffer;
+    if (Buffer.isBuffer(file)) {
+      buffer = file;
+    } else if (file instanceof ArrayBuffer) {
+      buffer = Buffer.from(file);
+    } else {
+      const arrayBuf = await file.arrayBuffer();
+      buffer = Buffer.from(arrayBuf);
+    }
+    const data = await pdfParse(buffer);
+    return data.text || "";
+  } catch (err: any) {
+    throw new Error("Không thể trích xuất file PDF: " + (err.message || String(err)));
+  }
 }
 
 /**
@@ -258,7 +415,7 @@ export async function extractTextFromDocx(file: File | ArrayBuffer): Promise<str
 /**
  * Parses questions from an Excel (.xlsx, .xls) file
  */
-export async function parseExcelQuestions(file: File | ArrayBuffer, defaultPoints = 10, defaultTime = 30): Promise<ParsedQuestionItem[]> {
+export async function parseExcelQuestions(file: File | ArrayBuffer, defaultPoints = 10, defaultTime = 15): Promise<ParsedQuestionItem[]> {
   let arrayBuffer: ArrayBuffer;
   if (file instanceof ArrayBuffer) {
     arrayBuffer = file;
@@ -286,8 +443,9 @@ export async function parseExcelQuestions(file: File | ArrayBuffer, defaultPoint
     ].filter((o) => o.text !== "");
 
     const type = correctKeys.length > 1 ? "MC_MULTI" : "MC_SINGLE";
-    const points = Math.max(10, Math.round((Number(row.points || row["Điểm"]) || defaultPoints) / 10) * 10);
-    const timeLimit = Number(row.timeLimit || row["Thời gian"]) || defaultTime;
+    const rawPoints = Number(row.points || row["Điểm"]) || defaultPoints;
+    const points = normalizeToThreeLevels(rawPoints);
+    const timeLimit = Number(row.timeLimit || row["Thời gian"]) || quantizeOlympiaTimeLimit(points, defaultTime);
     const content = String(row.content || row.question || row["Câu hỏi"] || `Câu hỏi ${idx + 1}`).trim();
     const hint = row.hint || row["Gợi ý"] || undefined;
 
@@ -305,7 +463,7 @@ export async function parseExcelQuestions(file: File | ArrayBuffer, defaultPoint
 /**
  * Parses questions from a CSV file using PapaParse
  */
-export async function parseCsvQuestions(file: File | string, defaultPoints = 10, defaultTime = 30): Promise<ParsedQuestionItem[]> {
+export async function parseCsvQuestions(file: File | string, defaultPoints = 10, defaultTime = 15): Promise<ParsedQuestionItem[]> {
   return new Promise((resolve, reject) => {
     Papa.parse(file, {
       header: true,
@@ -324,8 +482,9 @@ export async function parseCsvQuestions(file: File | string, defaultPoints = 10,
             ].filter((o) => o.text !== "");
 
             const type = correctKeys.length > 1 ? "MC_MULTI" : "MC_SINGLE";
-            const points = Math.max(10, Math.round((Number(row.points) || defaultPoints) / 10) * 10);
-            const timeLimit = Number(row.timeLimit) || defaultTime;
+            const rawPoints = Number(row.points) || defaultPoints;
+            const points = normalizeToThreeLevels(rawPoints);
+            const timeLimit = Number(row.timeLimit) || quantizeOlympiaTimeLimit(points, defaultTime);
             const content = String(row.content || row.question || `Câu hỏi ${idx + 1}`).trim();
             const hint = row.hint || undefined;
 

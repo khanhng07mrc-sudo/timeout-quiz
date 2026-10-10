@@ -851,7 +851,8 @@ export type MysteryMiniGameType =
 export type MysteryPromoPerk =
   | "SHIELD_PROMO"        // 🛡️ Tặng 01 Khiên Chặn Bom!
   | "EXTRA_POT_PROMO"     // 🎁 Quỹ thưởng +5đ!
-  | "DOUBLE_PROMO"        // ⚡ Nhân đôi điểm thưởng x2!
+  | "STEAL_5_PROMO"       // 🗡️ Đánh cắp 5đ từ đội cao điểm nhất!
+  | "DOUBLE_PROMO"        // ⚡ Nhân đôi điểm thưởng x2! (Legacy)
   | "PEEK_PROMO"          // 👁️ Mắt Thần Soi Bài!
   | "EXTRA_ATTEMPT_PROMO" // 🔄 Thêm lượt lật / Cơ hội thứ hai!
   | "SAFETY_NET_PROMO";   // 🧲 Két Sắt Bảo Lưu (giữ 50% điểm quỹ nếu dính bom trong Lật Liều)

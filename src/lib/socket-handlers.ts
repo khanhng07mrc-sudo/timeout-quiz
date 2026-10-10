@@ -4922,7 +4922,7 @@ export function registerSocketHandlers(io: IO) {
       chosenDoorId?: number
     ) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, finalScoreDelta } = handleOneShotDoorsDecision({
+      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleOneShotDoorsDecision({
         state: questState,
         team,
         allTeams,
@@ -4933,7 +4933,21 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, updatedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
 
-      if (finalScoreDelta !== 0) {
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(victimTeamId, -stolenPoints),
+          applyScoreDeltaToTeam(team.id, finalScoreDelta),
+        ]).then(async ([victimDelta, stealerDelta]) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+            { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] steal delta error:", err);
+        });
+      } else if (finalScoreDelta !== 0) {
         applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
           io.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },

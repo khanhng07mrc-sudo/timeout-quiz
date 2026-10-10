@@ -864,19 +864,46 @@ function getRandomMiniGame(prevMiniGame) {
   const chosen = candidates[Math.floor(Math.random() * candidates.length)];
   return chosen;
 }
-function generateMysteryPromoPerk(basePoints = 10, miniGameType) {
+function generateMysteryPromoPerk(basePoints = 10, miniGameType, options) {
   const normType = miniGameType ? normalizeMiniGameType(miniGameType) : "PUSH_YOUR_LUCK";
+  const hasOpponentWithScore = Boolean(
+    options?.teams && options.teams.some((t) => t.id !== options.currentTeamId && (t.score || 0) > 0)
+  );
   let pool = [];
   if (normType === "MEMORY_PAIRS") {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else if (normType === "ONE_SHOT_DOORS") {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO"];
+    if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else if (normType === "TAROT_DESTINY") {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "DOUBLE_PROMO", "PEEK_PROMO", "SAFETY_NET_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "SAFETY_NET_PROMO"];
+    if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   }
   return pool[Math.floor(Math.random() * pool.length)];
+}
+function calculatePromoSteal5({
+  activeTeamId,
+  allTeams
+}) {
+  const opponents = (allTeams || []).filter(
+    (t) => t.id !== activeTeamId && !t.isEliminated && (t.score || 0) > 0
+  );
+  if (opponents.length === 0) {
+    return { stolenPoints: 0 };
+  }
+  const maxScore = Math.max(...opponents.map((t) => t.score || 0));
+  const topOpponents = opponents.filter((t) => (t.score || 0) === maxScore);
+  const chosenVictim = topOpponents[Math.floor(Math.random() * topOpponents.length)];
+  const stolenPoints = Math.min(5, chosenVictim.score || 0);
+  return {
+    victimTeamId: chosenVictim.id,
+    victimTeamName: chosenVictim.name,
+    stolenPoints
+  };
 }
 function getPerkType(promo) {
   if (!promo) return void 0;
@@ -1353,7 +1380,10 @@ function generateMysteryStageForTurn({
   const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
   const themeMeta = MYSTERY_THEMES[theme];
   const miniGameType = forcedMiniGameType ? normalizeMiniGameType(forcedMiniGameType) : getRandomMiniGame(prevMiniGameType);
-  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints, miniGameType);
+  const promoPerk = generateMysteryPromoPerk(baseQuestionPoints, miniGameType, {
+    teams,
+    currentTeamId: currentTeam.id
+  });
   const currentRound = Math.floor(turnIndex / teams.length) + 1;
   const totalTurns = teams.length * turnsPerTeam;
   let tiles = [];
@@ -1420,7 +1450,7 @@ function generateMysteryStageForTurn({
         theme,
         baseQuestionPoints,
         currentTeam.score || 0,
-        promoPerk === "DOUBLE_PROMO",
+        false,
         roundOptions
       );
       break;
@@ -1448,7 +1478,7 @@ function generateMysteryStageForTurn({
     promoPerk,
     hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
     potPoints: 0,
-    potMultiplier: promoPerk === "DOUBLE_PROMO" ? 2 : 1,
+    potMultiplier: 1,
     cardsFlippedCount: 0,
     memoryPairsState,
     oneShotState,
@@ -1545,13 +1575,28 @@ function handleFlipCard({
         } else {
           finalDelta = (winCard.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus2;
         }
+        if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+          const promoSteal = calculatePromoSteal5({
+            activeTeamId: team.id,
+            allTeams
+          });
+          if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+            victimTeamId = promoSteal.victimTeamId;
+            victimTeamName = promoSteal.victimTeamName;
+            stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
+            finalDelta += promoSteal.stolenPoints;
+          }
+        }
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
-        const baseReward = finalDelta - extraPotBonus2;
-        const rewardText = extraPotBonus2 > 0 ? `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+        const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
+        let rewardText = extraPotBonus2 > 0 ? `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+        if (stolenPoints && victimTeamName) {
+          rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
+        }
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
@@ -1801,13 +1846,28 @@ function handleFlipCard({
       } else {
         finalDelta = (firstTile.deltaPoints || (state.baseQuestionPoints ? state.baseQuestionPoints * 2 : 20)) + extraPotBonus2;
       }
+      if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+        const promoSteal = calculatePromoSteal5({
+          activeTeamId: team.id,
+          allTeams
+        });
+        if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+          victimTeamId = promoSteal.victimTeamId;
+          victimTeamName = promoSteal.victimTeamName;
+          stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
+          finalDelta += promoSteal.stolenPoints;
+        }
+      }
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "PAIR_MATCHED";
       state.potPoints = 0;
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
-      const baseReward = finalDelta - extraPotBonus2;
-      const rewardText = extraPotBonus2 > 0 ? `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
+      let rewardText = extraPotBonus2 > 0 ? `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Gh\xE9p th\xE0nh c\xF4ng ${firstTile.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      if (stolenPoints && victimTeamName) {
+        rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
+      }
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
@@ -2008,13 +2068,31 @@ function handleFlipCard({
         }
       }
       const baseReward = tile2.deltaPoints || 10;
-      const finalDelta = baseReward * multiplier + extraPotBonus2;
+      let finalDelta = baseReward * multiplier + extraPotBonus2;
+      let victimTeamId;
+      let victimTeamName;
+      let stolenPoints;
+      if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+        const promoSteal = calculatePromoSteal5({
+          activeTeamId: team.id,
+          allTeams
+        });
+        if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+          victimTeamId = promoSteal.victimTeamId;
+          victimTeamName = promoSteal.victimTeamName;
+          stolenPoints = promoSteal.stolenPoints;
+          finalDelta += promoSteal.stolenPoints;
+        }
+      }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "DOOR_CHOSEN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
-      const rewardText = extraPotBonus2 > 0 ? `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn +${baseReward * multiplier}\u0111 v\xE0 +${extraPotBonus2}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
+      let rewardText = extraPotBonus2 > 0 ? `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn +${baseReward * multiplier}\u0111 v\xE0 +${extraPotBonus2}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
+      if (stolenPoints && victimTeamName) {
+        rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
+      }
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
@@ -2028,7 +2106,10 @@ function handleFlipCard({
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: finalDelta
+        finalScoreDelta: finalDelta,
+        victimTeamId,
+        victimTeamName,
+        stolenPoints
       };
     }
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -2140,13 +2221,28 @@ function handleFlipCard({
       } else {
         finalDelta = (tile2.deltaPoints || 35) * multiplier + extraPotBonus2;
       }
+      if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+        const promoSteal = calculatePromoSteal5({
+          activeTeamId: team.id,
+          allTeams
+        });
+        if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+          victimTeamId = promoSteal.victimTeamId;
+          victimTeamName = promoSteal.victimTeamName;
+          stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
+          finalDelta += promoSteal.stolenPoints;
+        }
+      }
       state.potPoints = 0;
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "TAROT_DRAWN";
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
-      const baseReward = finalDelta - extraPotBonus2;
-      const rewardText = extraPotBonus2 > 0 ? `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
+      let rewardText = extraPotBonus2 > 0 ? `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F52E} ${tile2.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+      if (stolenPoints && victimTeamName) {
+        rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
+      }
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
@@ -2177,7 +2273,7 @@ function handleFlipCard({
       drawIndex: state.cardsFlippedCount + 1,
       basePoints: state.baseQuestionPoints || 10,
       teamScore: team.score || 0,
-      isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+      isDoublePromo: false,
       options: {
         currentRound: state.currentRound,
         teams: allTeams,
@@ -2373,7 +2469,7 @@ function handleFlipCard({
     drawIndex: state.cardsFlippedCount + 1,
     basePoints: state.baseQuestionPoints || 10,
     teamScore: team.score || 0,
-    isDoublePromo: getPerkType(state.promoPerk) === "DOUBLE_PROMO",
+    isDoublePromo: false,
     options: {
       currentRound: state.currentRound,
       teams: allTeams,
@@ -2399,9 +2495,7 @@ function handleCashOut({
   team,
   allTeams = []
 }) {
-  const finalScoreDelta = state.potPoints;
-  const oldScore = team.score || 0;
-  const newScore = oldScore + finalScoreDelta;
+  let finalScoreDelta = state.potPoints;
   let victimTeamId;
   let victimTeamName;
   let stolenPoints;
@@ -2428,11 +2522,36 @@ function handleCashOut({
       }
     }
   }
+  let promoStealDetails;
+  if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams.length > 0) {
+    const promoSteal = calculatePromoSteal5({
+      activeTeamId: team.id,
+      allTeams
+    });
+    if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+      promoStealDetails = { victimName: promoSteal.victimTeamName, stolen: promoSteal.stolenPoints };
+      finalScoreDelta += promoSteal.stolenPoints;
+      if (victimTeamId && victimTeamId === promoSteal.victimTeamId) {
+        stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
+      } else if (!victimTeamId) {
+        victimTeamId = promoSteal.victimTeamId;
+        victimTeamName = promoSteal.victimTeamName;
+        stolenPoints = promoSteal.stolenPoints;
+      }
+    }
+  }
+  const oldScore = team.score || 0;
+  const newScore = oldScore + finalScoreDelta;
   state.phase = "TURN_SUMMARY";
   state.turnFinishedReason = "CASH_OUT";
   state.potPoints = 0;
   state.stolenPointsPot = 0;
-  const rewardText = victimTeamName && stolenPoints ? `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (\u0111\xE3 c\u01B0\u1EDBp ${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName} c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!` : `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
+  let rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m!`;
+  if (promoStealDetails && promoStealDetails.stolen > 0) {
+    rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (bao g\u1ED3m \u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp ${promoStealDetails.stolen}\u0111 t\u1EEB \u0110\u1ED9i ${promoStealDetails.victimName})!`;
+  } else if (victimTeamName && stolenPoints) {
+    rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (\u0111\xE3 c\u01B0\u1EDBp ${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName} c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!`;
+  }
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
@@ -2704,12 +2823,27 @@ function handleOneShotDoorsDecision({
     } else {
       finalDelta = (chosenTile.deltaPoints || 25) * multiplier + extraPotBonus;
     }
+    if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+      const promoSteal = calculatePromoSteal5({
+        activeTeamId: team.id,
+        allTeams
+      });
+      if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+        victimTeamId = promoSteal.victimTeamId;
+        victimTeamName = promoSteal.victimTeamName;
+        stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
+        finalDelta += promoSteal.stolenPoints;
+      }
+    }
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "DOOR_CHOSEN";
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
-    const rewardText = `\u{1F389} \u0110O\xC1N \u0110\xDANG XU\u1EA4T S\u1EAEC! M\u1EDF tr\xFAng c\xE1nh c\u1EEDa an to\xE0n #${chosenTile.id}: Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+    let rewardText = `\u{1F389} \u0110O\xC1N \u0110\xDANG XU\u1EA4T S\u1EAEC! M\u1EDF tr\xFAng c\xE1nh c\u1EEDa an to\xE0n #${chosenTile.id}: Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+    if (stolenPoints && victimTeamName) {
+      rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
+    }
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
@@ -7326,7 +7460,7 @@ function registerSocketHandlers(io2) {
     };
     const executeMysteryDoorsDecision = async (room, questState, team, decision, chosenDoorId) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, finalScoreDelta } = handleOneShotDoorsDecision({
+      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleOneShotDoorsDecision({
         state: questState,
         team,
         allTeams,
@@ -7335,7 +7469,21 @@ function registerSocketHandlers(io2) {
       });
       roomMysteryQuests.set(room.id, updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
-      if (finalScoreDelta !== 0) {
+      if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(victimTeamId, -stolenPoints),
+          applyScoreDeltaToTeam(team.id, finalScoreDelta)
+        ]).then(async ([victimDelta, stealerDelta]) => {
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
+            { teamId: team.id, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] steal delta error:", err);
+        });
+      } else if (finalScoreDelta !== 0) {
         applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
           io2.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }

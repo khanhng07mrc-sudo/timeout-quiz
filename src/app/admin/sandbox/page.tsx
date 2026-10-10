@@ -2368,7 +2368,7 @@ export default function AdminSandboxPage() {
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, finalScoreDelta } = handleMysteryDoorsDecision({
+        const { updatedState, finalScoreDelta, victimTeamId, victimTeamName, stolenPoints } = handleMysteryDoorsDecision({
           state: curMystery,
           team: activeTeam,
           allTeams: roomStateRef.current.teams,
@@ -2377,7 +2377,14 @@ export default function AdminSandboxPage() {
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (finalScoreDelta !== 0) {
+        if (victimTeamId && stolenPoints && stolenPoints > 0) {
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
+            if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
+            return t;
+          });
+          addLog(`🗡️ [${activeTeam.name}] cướp thành công ${stolenPoints}đ từ [${victimTeamName || "Đội dẫn đầu"}] (Đạo Tặc 5đ)!`);
+        } else if (finalScoreDelta !== 0) {
           updatedTeams = updatedTeams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + finalScoreDelta) } : t
           );

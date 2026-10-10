@@ -443,6 +443,12 @@ export default function MysteryQuestBoard({
                             <span className="truncate">Quỹ thưởng +5đ!</span>
                           </>
                         )}
+                        {perkType === "STEAL_5_PROMO" && (
+                          <>
+                            <span>🗡️</span>
+                            <span className="truncate">Đạo Tặc (Đánh cắp 5đ từ đội cao nhất)!</span>
+                          </>
+                        )}
                         {perkType === "DOUBLE_PROMO" && (
                           <>
                             <span>⚡</span>

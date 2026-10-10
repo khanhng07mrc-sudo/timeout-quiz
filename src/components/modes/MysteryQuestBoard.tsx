@@ -1135,7 +1135,7 @@ export default function MysteryQuestBoard({
             {/* Global SVG ClipPath for realistic door shape: arched top, pointed shield bottom */}
             <DoorClipPathDefinition />
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 max-w-3xl mx-auto py-2">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-4 max-w-3xl mx-auto py-2">
               {tiles.map((tile) => {
                 const isSelected = Boolean(oneShotState?.selectedDoorIds?.includes(tile.id));
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
@@ -1156,7 +1156,7 @@ export default function MysteryQuestBoard({
                         (isStage2 && (!isSelected || isWaitingRiskDecision))
                       }
                       style={{ clipPath: "url(#realisticDoorClip)" }}
-                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
+                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-1 sm:p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
                         isStage2
                           ? isSelected
                             ? isWaitingRiskDecision
@@ -1182,12 +1182,12 @@ export default function MysteryQuestBoard({
                       />
 
                       {/* Overlay Header: Door # and Peek Badge */}
-                      <div className="w-full flex items-center justify-between z-10 px-1 pt-1.5">
-                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-black/80 border border-amber-400/80 text-[10px] sm:text-[11px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
+                      <div className="w-full flex items-center justify-between z-10 px-0.5 sm:px-1 pt-1 sm:pt-1.5">
+                        <span className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[11px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md shrink-0">
                           #{tile.id}
                         </span>
                         {tile.isPeeked && (
-                          <span className="text-[7.5px] sm:text-[8.5px] font-black text-cyan-200 px-1.5 py-0.5 rounded-full bg-cyan-950/95 border border-cyan-400 animate-pulse shadow-md flex items-center gap-1 max-w-[125px] truncate">
+                          <span className="text-[6.5px] sm:text-[8.5px] font-black text-cyan-200 px-1 py-0.5 rounded-full bg-cyan-950/95 border border-cyan-400 animate-pulse shadow-md flex items-center gap-1 max-w-[125px] truncate">
                             <span>👁️</span>
                             <span className="truncate">{tile.peekLabel ? `${tile.peekIcon || "✨"} ${tile.peekLabel}` : "AN TOÀN"}</span>
                           </span>
@@ -1196,24 +1196,24 @@ export default function MysteryQuestBoard({
                           <>
                             {isStage2 ? (
                               isSelected ? (
-                                <span className={`text-[7.5px] sm:text-[8.5px] font-black px-1.5 py-0.5 rounded-full font-extrabold ${
+                                <span className={`text-[6.5px] sm:text-[8.5px] font-black px-1 py-0.5 rounded-full font-extrabold ${
                                   isWaitingRiskDecision
                                     ? "bg-amber-500/80 text-black"
                                     : "bg-yellow-400 text-black animate-pulse"
                                 }`}>
-                                  {isWaitingRiskDecision ? "CHỜ QUYẾT ĐỊNH" : "CHỌN MỞ ✨"}
+                                  {isWaitingRiskDecision ? "CHỜ ĐỢI" : "MỞ ✨"}
                                 </span>
                               ) : (
-                                <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-full bg-stone-800 text-stone-400">
+                                <span className="text-[6px] sm:text-[8px] font-black px-1 py-0.5 rounded-full bg-stone-800 text-stone-400">
                                   LOẠI ❌
                                 </span>
                               )
                             ) : isSelected ? (
-                              <span className="text-[7.5px] sm:text-[8.5px] font-black px-1.5 py-0.5 rounded-full bg-amber-500 text-black font-extrabold">
-                                ĐỂ RIÊNG ({oneShotState?.selectedDoorIds?.indexOf(tile.id)! + 1}/2) 📦
+                              <span className="text-[6.5px] sm:text-[8.5px] font-black px-1 py-0.5 rounded-full bg-amber-500 text-black font-extrabold truncate max-w-[80px]">
+                                ĐỂ RIÊNG #{tile.id} 📦
                               </span>
                             ) : canInteract ? (
-                              <span className="text-[7.5px] sm:text-[8.5px] font-black text-yellow-300 animate-pulse">
+                              <span className="text-[6.5px] sm:text-[8.5px] font-black text-yellow-300 animate-pulse">
                                 CHỌN ✨
                               </span>
                             ) : null}
@@ -1224,29 +1224,29 @@ export default function MysteryQuestBoard({
                       {/* Middle Center Emblem / Peek Indicator */}
                       <div className="z-10 my-auto text-center flex flex-col items-center">
                         {tile.isPeeked ? (
-                          <div className="text-2xl sm:text-4xl animate-bounce drop-shadow-md">
+                          <div className="text-xl sm:text-4xl animate-bounce drop-shadow-md">
                             {tile.peekIcon || "✨"}
                           </div>
                         ) : (
-                          <div className={`text-2xl sm:text-4xl transition-transform duration-300 drop-shadow-md ${
+                          <div className={`text-xl sm:text-4xl transition-transform duration-300 drop-shadow-md ${
                             isStage2 && isSelected && !isWaitingRiskDecision ? "scale-110 animate-pulse text-amber-300" : "group-hover:scale-110"
                           }`}>
                             {isStage2 && isSelected && !isWaitingRiskDecision ? "🗝️✨" : "🔒"}
                           </div>
                         )}
                         {tile.isPeeked && tile.peekLabel && (
-                          <span className="text-[8px] sm:text-[9.5px] font-black uppercase text-cyan-200 max-w-[110px] truncate block px-1.5 py-0.5 bg-black/75 rounded border border-cyan-400/60 mt-1">
+                          <span className="text-[7px] sm:text-[9.5px] font-black uppercase text-cyan-200 max-w-[110px] truncate block px-1 py-0.5 bg-black/75 rounded border border-cyan-400/60 mt-0.5">
                             {tile.peekLabel}
                           </span>
                         )}
                       </div>
 
                       {/* Bottom Footer: Label and State */}
-                      <div className="w-full text-center pb-2.5 z-10 px-0.5">
-                        <span className="text-[11px] sm:text-xs font-black text-white block drop-shadow-md">
+                      <div className="w-full text-center pb-1.5 sm:pb-2.5 z-10 px-0.5">
+                        <span className="text-[10px] sm:text-xs font-black text-white block drop-shadow-md truncate">
                           {tile.label}
                         </span>
-                        <span className="text-[7.5px] sm:text-[8.5px] uppercase tracking-wider text-amber-300 font-extrabold block drop-shadow-sm truncate">
+                        <span className="text-[6.5px] sm:text-[8.5px] uppercase tracking-wider text-amber-300 font-extrabold block drop-shadow-sm truncate">
                           {isStage2
                             ? isSelected
                               ? isWaitingRiskDecision
@@ -1267,7 +1267,7 @@ export default function MysteryQuestBoard({
                   <div
                     key={tile.id}
                     style={{ clipPath: "url(#realisticDoorClip)" }}
-                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-2 flex flex-col items-center justify-between shadow-2xl transition-all duration-300 overflow-hidden ${
+                    className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-1 sm:p-2 flex flex-col items-center justify-between shadow-2xl transition-all duration-300 overflow-hidden ${
                       isChosenFinal ? "scale-104 z-10 ring-4 ring-yellow-400" : isSelected ? "opacity-90 ring-2 ring-white/30" : "opacity-70"
                     }`}
                   >
@@ -1283,10 +1283,10 @@ export default function MysteryQuestBoard({
                     />
 
                     {/* Overlay Header: Door # and Result Badge */}
-                    <div className="w-full flex items-center justify-between z-10 px-1 pt-1.5">
-                      <span className="text-[10px] sm:text-xs font-mono font-bold text-white/80">#{tile.id}</span>
+                    <div className="w-full flex items-center justify-between z-10 px-0.5 sm:px-1 pt-1 sm:pt-1.5">
+                      <span className="text-[9px] sm:text-xs font-mono font-bold text-white/80">#{tile.id}</span>
                       <span
-                        className={`text-[7.5px] sm:text-[8.5px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        className={`text-[6.5px] sm:text-[8.5px] font-black uppercase px-1.5 py-0.5 rounded-full truncate ${
                           isChosenFinal
                             ? isSteal
                               ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"

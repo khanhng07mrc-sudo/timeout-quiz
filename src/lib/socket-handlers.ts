@@ -5565,9 +5565,11 @@ export function registerSocketHandlers(io: IO) {
     const executeMysterySpinTarotWheel = async (
       room: any,
       questState: any,
-      team: any,
+      teamOrTeamId: any,
       powerPercent: number = 50
     ) => {
+      const targetTeamId = typeof teamOrTeamId === "string" ? teamOrTeamId : teamOrTeamId?.id;
+      if (!targetTeamId) return;
       if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
 
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
@@ -5578,11 +5580,11 @@ export function registerSocketHandlers(io: IO) {
         score: t.score || 0,
       }));
 
-      const teamRef = allTeams.find((t) => t.id === team.id) || {
-        id: team.id,
-        name: team.name,
-        color: team.color || "#ef4444",
-        score: team.score || 0,
+      const teamRef = allTeams.find((t) => t.id === targetTeamId) || {
+        id: targetTeamId,
+        name: typeof teamOrTeamId === "object" ? teamOrTeamId?.name || "Đội chơi" : "Đội chơi",
+        color: typeof teamOrTeamId === "object" ? teamOrTeamId?.color || "#ef4444" : "#ef4444",
+        score: typeof teamOrTeamId === "object" ? teamOrTeamId?.score || 0 : 0,
       };
 
       const result = handleAncientTarotSpinWheel({
@@ -5656,7 +5658,7 @@ export function registerSocketHandlers(io: IO) {
       await executeMysterySpinTarotWheel(room, questState, team, 50);
     };
 
-    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent }: { powerPercent: number }) => {
+    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent = 50 }: { powerPercent?: number } = {}) => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({
@@ -5676,10 +5678,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
-      if (!team) return;
-
-      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+      await executeMysterySpinTarotWheel(room, questState, player.teamId, powerPercent);
     });
 
     socket.on("admin:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code }: { powerPercent?: number; code?: string } = {}) => {
@@ -5689,10 +5688,7 @@ export function registerSocketHandlers(io: IO) {
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
 
-      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
-      if (!team) return;
-
-      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+      await executeMysterySpinTarotWheel(room, questState, questState.currentTurnTeamId, powerPercent);
     });
 
     socket.on("game:mystery:draw_tarot", async () => {

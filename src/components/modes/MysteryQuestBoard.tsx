@@ -64,7 +64,8 @@ export default function MysteryQuestBoard({
   const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
   const [wheelPower, setWheelPower] = useState<number>(50);
   const [isPowerIncreasing, setIsPowerIncreasing] = useState<boolean>(true);
-  const [spinCountdown, setSpinCountdown] = useState<number>(20);
+  const [isWheelSpinningOptimistic, setIsWheelSpinningOptimistic] = useState<boolean>(false);
+  const [lockedPower, setLockedPower] = useState<number | null>(null);
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
@@ -186,6 +187,22 @@ export default function MysteryQuestBoard({
     setDoorsRiskAccepted(false);
   }, [currentTurnIndex, miniGameType, oneShotState?.phase]);
 
+  // Reset optimistic spin state when turn changes or card is revealed
+  useEffect(() => {
+    setIsWheelSpinningOptimistic(false);
+    setLockedPower(null);
+  }, [currentTurnIndex, miniGameType, tarotState?.isDrawn]);
+
+  // Fallback safety timeout for optimistic spin state
+  useEffect(() => {
+    if (!isWheelSpinningOptimistic) return;
+    const fallbackTimer = setTimeout(() => {
+      setIsWheelSpinningOptimistic(false);
+      setLockedPower(null);
+    }, 10000);
+    return () => clearTimeout(fallbackTimer);
+  }, [isWheelSpinningOptimistic]);
+
   // Synchronize Tarot Wheel angle when server spins or stops
   useEffect(() => {
     if (tarotState?.targetAngle !== undefined && tarotState.targetAngle !== null) {
@@ -193,9 +210,9 @@ export default function MysteryQuestBoard({
     }
   }, [tarotState?.targetAngle, tarotState?.isWheelSpinning]);
 
-  // Ping-pong power gauge loop (0% -> 100% -> 0%)
+  // Ping-pong power gauge loop (0% -> 100% -> 0%) - freezes immediately when spun
   useEffect(() => {
-    const isSpinning = Boolean(tarotState?.isWheelSpinning);
+    const isSpinning = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
     if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || tarotState?.isDrawn) {
       return;
     }
@@ -213,33 +230,7 @@ export default function MysteryQuestBoard({
       });
     }, 35);
     return () => clearInterval(interval);
-  }, [miniGameType, phase, tarotState?.isWheelSpinning, tarotState?.isDrawn, isPowerIncreasing]);
-
-  // 20s countdown timer for Tarot Wheel
-  useEffect(() => {
-    const isSpinning = Boolean(tarotState?.isWheelSpinning);
-    if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || tarotState?.isDrawn) {
-      setSpinCountdown(20);
-      return;
-    }
-    const interval = setInterval(() => {
-      setSpinCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          // Tự động chốt lực nếu là người chơi đang tới lượt hoặc admin/sandbox
-          const isMyTurnActive = Boolean(myTeamId && myTeamId === currentTurnTeamId);
-          if ((isMyTurnActive || isAdmin || isSandbox) && onSpinTarotWheel) {
-            onSpinTarotWheel(wheelPower);
-          } else if ((isMyTurnActive || isAdmin || isSandbox) && onDrawTarot) {
-            onDrawTarot();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [miniGameType, phase, tarotState?.isWheelSpinning, tarotState?.isDrawn, myTeamId, currentTurnTeamId, isAdmin, isSandbox, onSpinTarotWheel, onDrawTarot, wheelPower]);
+  }, [miniGameType, phase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic, tarotState?.isDrawn, isPowerIncreasing]);
 
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
@@ -1428,7 +1419,7 @@ export default function MysteryQuestBoard({
                   {/* ── SVG 20-Segment Wheel with 12 o'clock pointer ── */}
                   <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-1 flex items-center justify-center z-10">
                     {/* Pointer Needle at 12 o'clock (pointing down) */}
-                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${tarotState?.isWheelSpinning ? "animate-bounce" : ""}`}>
+                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
                       <svg width="32" height="32" viewBox="0 0 32 32">
                         <polygon points="6,2 26,2 16,26" fill="#ef4444" stroke="#fef08a" strokeWidth="2.5" />
                         <circle cx="16" cy="8" r="3.5" fill="#fef08a" />
@@ -1443,7 +1434,7 @@ export default function MysteryQuestBoard({
                       className="w-full h-full rounded-full overflow-hidden shadow-2xl relative"
                       style={{
                         transform: `rotate(${tarotState?.targetAngle ?? clientWheelAngle ?? 0}deg)`,
-                        transition: tarotState?.isWheelSpinning
+                        transition: tarotState?.isWheelSpinning || isWheelSpinningOptimistic
                           ? `transform ${tarotState?.spinDurationMs ?? 5000}ms cubic-bezier(0.15, 0.9, 0.25, 1)`
                           : "none",
                       }}
@@ -1518,103 +1509,111 @@ export default function MysteryQuestBoard({
                   </div>
 
                   {/* ── Ping-pong Power Gauge ── */}
-                  <div className="w-full max-w-sm mx-auto space-y-1.5 px-2 z-10">
-                    <div className="flex items-center justify-between text-xs font-black">
-                      <span className="text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1">
-                        ⚡ LỰC QUAY DAO ĐỘNG:
-                      </span>
-                      <span
-                        className={`font-mono text-xs px-2 py-0.5 rounded font-black border ${
-                          wheelPower > 75
-                            ? "bg-rose-500/30 text-rose-300 border-rose-400"
-                            : wheelPower > 40
-                            ? "bg-amber-500/30 text-amber-300 border-amber-400"
-                            : "bg-emerald-500/30 text-emerald-300 border-emerald-400"
-                        }`}
-                      >
-                        {wheelPower}%
-                      </span>
-                    </div>
+                  {(() => {
+                    const effectivePower = lockedPower ?? wheelPower;
+                    const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
 
-                    {/* Gauge track */}
-                    <div className="w-full h-4 rounded-full bg-black/80 border border-white/20 p-0.5 relative overflow-hidden shadow-inner">
-                      <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-30 text-[8px] font-mono font-bold text-white items-center">
-                        <span>0</span>
-                        <span>25</span>
-                        <span>50</span>
-                        <span>75</span>
-                        <span>100</span>
-                      </div>
-                      <div
-                        style={{ width: `${wheelPower}%` }}
-                        className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 to-rose-600 shadow-[0_0_12px_rgba(245,158,11,0.6)]"
-                      />
-                    </div>
+                    const handleTriggerSpin = () => {
+                      if (isSpinningActive) return;
+                      const powerToLock = wheelPower;
+                      setLockedPower(powerToLock);
+                      setIsWheelSpinningOptimistic(true);
+                      if (onSpinTarotWheel) {
+                        onSpinTarotWheel(powerToLock);
+                      } else if (onDrawTarot) {
+                        onDrawTarot();
+                      } else {
+                        onFlipCard?.(0);
+                      }
+                    };
 
-                    {/* 20s Countdown */}
-                    <div className="flex items-center justify-between text-[11px] text-white/70 pt-0.5">
-                      <span className="flex items-center gap-1 font-mono">
-                        <span>⏱️</span>
-                        <span>Tự động chốt sau:</span>
-                        <strong className={spinCountdown <= 5 ? "text-rose-400 animate-pulse font-black" : "text-amber-300 font-bold"}>
-                          {spinCountdown}s
-                        </strong>
-                      </span>
-                      <span className="text-[10px] text-slate-400">Dao động Ping-pong</span>
-                    </div>
-                  </div>
+                    return (
+                      <>
+                        <div className="w-full max-w-sm mx-auto space-y-1.5 px-2 z-10">
+                          <div className="flex items-center justify-between text-xs font-black">
+                            <span className="text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1">
+                              ⚡ LỰC QUAY DAO ĐỘNG:
+                            </span>
+                            <span
+                              className={`font-mono text-xs px-2 py-0.5 rounded font-black border transition-colors ${
+                                effectivePower > 75
+                                  ? "bg-rose-500/30 text-rose-300 border-rose-400"
+                                  : effectivePower > 40
+                                  ? "bg-amber-500/30 text-amber-300 border-amber-400"
+                                  : "bg-emerald-500/30 text-emerald-300 border-emerald-400"
+                              }`}
+                            >
+                              {effectivePower}%
+                            </span>
+                          </div>
 
-                  {/* ── Spin Action Buttons ── */}
-                  <div className="text-center space-y-2 z-10 w-full max-w-sm pt-1">
-                    {canInteract ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onSpinTarotWheel) {
-                            onSpinTarotWheel(wheelPower);
-                          } else if (onDrawTarot) {
-                            onDrawTarot();
-                          } else {
-                            onFlipCard?.(0);
-                          }
-                        }}
-                        disabled={Boolean(tarotState?.isWheelSpinning)}
-                        className={`w-full py-3 px-6 rounded-2xl font-black text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
-                          tarotState?.isWheelSpinning
-                            ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
-                            : "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white border-amber-300/90 shadow-purple-900/60 hover:scale-[1.02] active:scale-95"
-                        }`}
-                      >
-                        {tarotState?.isWheelSpinning ? "🌀 ĐANG QUAY VÒNG ĐỊNH MỆNH..." : `🎯 CHỐT LỰC & QUAY (${wheelPower}%)`}
-                      </button>
-                    ) : (
-                      <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic text-center">
-                        {tarotState?.isWheelSpinning
-                          ? "🌀 Vòng quay định mệnh đang xoay..."
-                          : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
-                      </div>
-                    )}
+                          {/* Gauge track */}
+                          <div className="w-full h-4 rounded-full bg-black/80 border border-white/20 p-0.5 relative overflow-hidden shadow-inner">
+                            <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-30 text-[8px] font-mono font-bold text-white items-center">
+                              <span>0</span>
+                              <span>25</span>
+                              <span>50</span>
+                              <span>75</span>
+                              <span>100</span>
+                            </div>
+                            <div
+                              style={{ width: `${effectivePower}%` }}
+                              className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 to-rose-600 shadow-[0_0_12px_rgba(245,158,11,0.6)]"
+                            />
+                          </div>
 
-                    {(isAdmin || isSandbox) && !tarotState?.isWheelSpinning && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onSpinTarotWheel) {
-                            onSpinTarotWheel(wheelPower);
-                          } else if (onDrawTarot) {
-                            onDrawTarot();
-                          }
-                        }}
-                        className="w-full py-1.5 px-3 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
-                      >
-                        ⚡ Admin Quay Hộ ({wheelPower}%)
-                      </button>
-                    )}
+                          {/* Free-timing info without 20s countdown */}
+                          <div className="flex items-center justify-between text-[11px] text-white/70 pt-0.5">
+                            <span className="flex items-center gap-1 font-sans">
+                              <span>🎯</span>
+                              <span className="text-amber-300 font-medium">Chủ động chốt lực khi sẵn sàng</span>
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {isSpinningActive ? "Đã khóa lực" : "Dao động Ping-pong"}
+                            </span>
+                          </div>
+                        </div>
 
-                    <p className="text-[10px] text-white/60">
-                      Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)
-                    </p>
-                  </div>
+                        {/* ── Spin Action Buttons ── */}
+                        <div className="text-center space-y-2 z-10 w-full max-w-sm pt-1">
+                          {canInteract ? (
+                            <button
+                              type="button"
+                              onClick={handleTriggerSpin}
+                              disabled={isSpinningActive}
+                              className={`w-full py-3 px-6 rounded-2xl font-black text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
+                                isSpinningActive
+                                  ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
+                                  : "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white border-amber-300/90 shadow-purple-900/60 hover:scale-[1.02] active:scale-95"
+                              }`}
+                            >
+                              {isSpinningActive ? "🌀 ĐANG QUAY VÒNG ĐỊNH MỆNH..." : `🎯 CHỐT LỰC & QUAY (${effectivePower}%)`}
+                            </button>
+                          ) : (
+                            <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic text-center">
+                              {isSpinningActive
+                                ? "🌀 Vòng quay định mệnh đang xoay..."
+                                : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
+                            </div>
+                          )}
+
+                          {(isAdmin || isSandbox) && !isSpinningActive && (
+                            <button
+                              type="button"
+                              onClick={handleTriggerSpin}
+                              className="w-full py-1.5 px-3 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
+                            >
+                              ⚡ Admin Quay Hộ ({effectivePower}%)
+                            </button>
+                          )}
+
+                          <p className="text-[10px] text-white/60">
+                            Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)
+                          </p>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               ) : (
                 /* ── Trạng thái ĐÃ RÚT: Hiển thị 1 Thực Thể Cổ Xưa được chọn ── */

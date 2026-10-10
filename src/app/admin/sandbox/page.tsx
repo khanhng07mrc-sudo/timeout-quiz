@@ -2820,36 +2820,63 @@ export default function AdminSandboxPage() {
           adminSocketRef.current?.emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent });
           return;
         }
-        if (!roomStateRef.current?.mysteryQuestState) return;
-        const curMystery = { ...roomStateRef.current.mysteryQuestState };
-        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        const currentRoomState = roomStateRef.current;
+        if (!currentRoomState?.mysteryQuestState) return;
+        const curMystery = currentRoomState.mysteryQuestState;
+        const activeTeam = currentRoomState.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, scoreDeltas, landedSegment } = handleAncientTarotSpinWheel({
+        const { updatedState, scoreDeltas, landedSegment, targetAngle, spinDurationMs, landedIndex, drawnCard } = handleAncientTarotSpinWheel({
           state: curMystery,
           team: activeTeam,
-          allTeams: roomStateRef.current.teams,
+          allTeams: currentRoomState.teams,
           powerPercent,
         });
 
-        let updatedTeams = [...roomStateRef.current.teams];
-        for (const item of scoreDeltas) {
-          if (item.delta !== 0) {
-            updatedTeams = updatedTeams.map((t) =>
-              t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
-            );
-          }
-        }
-
-        const nextRoomState: RoomState = {
-          ...roomStateRef.current,
-          teams: updatedTeams,
-          mysteryQuestState: updatedState,
+        // Set wheel to spinning state first so animation runs
+        const spinningMystery: MysteryQuestState = {
+          ...curMystery,
+          tarotState: {
+            ...curMystery.tarotState,
+            isWheelSpinning: true,
+            wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            targetAngle,
+            spinDurationMs,
+            selectedSegmentIndex: landedIndex,
+            drawnCard,
+            isDrawn: false,
+          },
         };
-        roomStateRef.current = nextRoomState;
-        setRoomState(nextRoomState);
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Trúng [${landedSegment.nameVi}]!`);
+
+        const spinningRoomState: RoomState = {
+          ...currentRoomState,
+          mysteryQuestState: spinningMystery,
+        };
+        roomStateRef.current = spinningRoomState;
+        setRoomState(spinningRoomState);
+        syncToIframes({ roomState: spinningRoomState, mysteryQuestState: spinningMystery });
+
+        setTimeout(() => {
+          if (!roomStateRef.current) return;
+          let updatedTeams = [...roomStateRef.current.teams];
+          for (const item of scoreDeltas) {
+            if (item.delta !== 0) {
+              updatedTeams = updatedTeams.map((t) =>
+                t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+              );
+            }
+          }
+
+          const nextRoomState: RoomState = {
+            ...roomStateRef.current,
+            teams: updatedTeams,
+            mysteryQuestState: updatedState,
+          };
+          roomStateRef.current = nextRoomState;
+          setRoomState(nextRoomState);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+          addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Trúng [${landedSegment.nameVi}]!`);
+        }, spinDurationMs + 200);
         return;
       }
       if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {

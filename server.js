@@ -8542,7 +8542,9 @@ function registerSocketHandlers(io2) {
       if (!team) return;
       await executeMysteryTarotProphecyDecision(room, questState, team, choice);
     });
-    const executeMysterySpinTarotWheel = async (room, questState, team, powerPercent = 50) => {
+    const executeMysterySpinTarotWheel = async (room, questState, teamOrTeamId, powerPercent = 50) => {
+      const targetTeamId = typeof teamOrTeamId === "string" ? teamOrTeamId : teamOrTeamId?.id;
+      if (!targetTeamId) return;
       if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
       const allTeams = rawTeams.map((t) => ({
@@ -8551,11 +8553,11 @@ function registerSocketHandlers(io2) {
         color: t.color || "#ef4444",
         score: t.score || 0
       }));
-      const teamRef = allTeams.find((t) => t.id === team.id) || {
-        id: team.id,
-        name: team.name,
-        color: team.color || "#ef4444",
-        score: team.score || 0
+      const teamRef = allTeams.find((t) => t.id === targetTeamId) || {
+        id: targetTeamId,
+        name: typeof teamOrTeamId === "object" ? teamOrTeamId?.name || "\u0110\u1ED9i ch\u01A1i" : "\u0110\u1ED9i ch\u01A1i",
+        color: typeof teamOrTeamId === "object" ? teamOrTeamId?.color || "#ef4444" : "#ef4444",
+        score: typeof teamOrTeamId === "object" ? teamOrTeamId?.score || 0 : 0
       };
       const result = handleAncientTarotSpinWheel({
         state: questState,
@@ -8617,7 +8619,7 @@ function registerSocketHandlers(io2) {
     const executeMysteryDrawTarot = async (room, questState, team) => {
       await executeMysterySpinTarotWheel(room, questState, team, 50);
     };
-    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent }) => {
+    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent = 50 } = {}) => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({
@@ -8633,18 +8635,14 @@ function registerSocketHandlers(io2) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quay c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
-      if (!team) return;
-      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+      await executeMysterySpinTarotWheel(room, questState, player.teamId, powerPercent);
     });
     socket.on("admin:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code } = {}) => {
       const room = await getAdminRoom(socket, code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
-      if (!team) return;
-      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+      await executeMysterySpinTarotWheel(room, questState, questState.currentTurnTeamId, powerPercent);
     });
     socket.on("game:mystery:draw_tarot", async () => {
       const playerId = playerSockets.get(socket.id);

@@ -695,19 +695,26 @@ export function generateNextPushYourLuckCard({
   const themeRewards = REWARD_TEMPLATES[theme] || REWARD_TEMPLATES.CASTLE;
   let template = themeRewards[Math.floor(Math.random() * themeRewards.length)];
 
-  // Scale reward deltaPoints according to basePoints
+  // Scale reward deltaPoints according to basePoints (guarantee rewards are >= basePoints)
   let delta = template.deltaPoints;
   if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
     if (basePoints <= 10) {
-      // 10đ tier: +5đ, +10đ, +15đ, +20đ
-      delta = [5, 10, 15, 20][Math.floor(Math.random() * 4)];
+      // 10đ tier: +10đ, +15đ, +20đ, +25đ
+      delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
     } else if (basePoints <= 20) {
-      // 20đ tier: +10đ, +15đ, +20đ, +30đ
-      delta = [10, 15, 20, 30][Math.floor(Math.random() * 4)];
+      // 20đ tier: +20đ, +25đ, +30đ, +40đ
+      delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
     } else {
-      // 30đ tier: +15đ, +20đ, +30đ, +50đ
-      delta = [15, 20, 30, 50][Math.floor(Math.random() * 4)];
+      // 30đ tier: +30đ, +35đ, +45đ, +60đ
+      delta = [30, 35, 45, 60][Math.floor(Math.random() * 4)];
     }
+  }
+
+  let storyDescription = template.storyDescription;
+  if (template.effectType === "BONUS_POINTS") {
+    storyDescription = storyDescription.replace(/\+\d+\s*(điểm|đ)/g, `+${delta} $1`);
+  } else if (template.effectType === "STEAL_POINTS") {
+    storyDescription = storyDescription.replace(/\b\d+\s*(điểm|đ)/g, `${delta} $1`);
   }
 
   let effectType = template.effectType;
@@ -725,6 +732,7 @@ export function generateNextPushYourLuckCard({
         deltaPoints: delta,
         effectType: "BONUS_POINTS",
       };
+      storyDescription = template.storyDescription;
     }
   }
 
@@ -740,7 +748,7 @@ export function generateNextPushYourLuckCard({
     isOpened: false,
     type: "REWARD",
     storyTitle: template.storyTitle,
-    storyDescription: template.storyDescription,
+    storyDescription,
     effectType,
     deltaPoints: delta,
   };

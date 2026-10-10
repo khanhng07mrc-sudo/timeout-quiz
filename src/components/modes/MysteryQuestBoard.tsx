@@ -52,6 +52,7 @@ export default function MysteryQuestBoard({
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
+  const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
 
@@ -131,6 +132,10 @@ export default function MysteryQuestBoard({
   useEffect(() => {
     setIsCashingOut(false);
   }, [phase, potPoints]);
+
+  useEffect(() => {
+    setDoorsRiskAccepted(false);
+  }, [currentTurnIndex, miniGameType, oneShotState?.phase]);
 
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
@@ -916,25 +921,77 @@ export default function MysteryQuestBoard({
           <div className="max-w-3xl mx-auto py-1">
             {/* Stage 2 Door Select Prompt */}
             {(oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED") && (
-              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
-                <div className="text-3xl animate-pulse">🚪✨</div>
-                <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
-                  GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 2 CÁNH CỬA ĐÃ ĐỂ RA RIÊNG!
-                </h4>
-                {oneShotState?.hasBombDetected ? (
-                  <div className="px-3 py-1.5 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
-                    <span>⚠️</span>
-                    <span>Radar phát hiện: <strong>CÓ 1 cánh cửa trừ điểm (Bẫy bom)</strong> trong 2 cửa này!</span>
-                  </div>
+              <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
+                {oneShotState?.hasBombDetected && !doorsRiskAccepted ? (
+                  <>
+                    <div className="text-4xl animate-bounce">⚠️💣</div>
+                    <h4 className="text-xs sm:text-sm font-black text-red-400 uppercase tracking-wider">
+                      CẢNH BÁO: 1 TRONG 2 CỬA ĐÃ CHỌN CHỨA BẪY BOM TRỪ ĐIỂM!
+                    </h4>
+                    <div className="px-3 py-1.5 rounded-xl bg-red-950/90 border border-red-500/80 text-red-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
+                      <span>⚠️</span>
+                      <span>Radar quét: Có 1 cánh cửa Bẫy Bom (-{baseQuestionPoints || 10}đ) trong 2 cửa này!</span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                      Bạn có chấp nhận rủi ro 50/50 để tiếp tục mở 1 trong 2 cửa, hay muốn dừng lại rút lui an toàn nhận điểm gốc câu hỏi?
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
+                        disabled={!canInteract}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-400/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span>🛡️</span>
+                        <span>Rút lui an toàn (+{baseQuestionPoints || 10}đ)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDoorsRiskAccepted(true)}
+                        disabled={!canInteract}
+                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-900/50 border border-amber-400/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 animate-pulse"
+                      >
+                        <span>🎲</span>
+                        <span>Chấp nhận rủi ro (Mở 1 trong 2)</span>
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
-                    <span>✨</span>
-                    <span>Radar xác nhận: <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 2 đều an toàn)!</span>
-                  </div>
+                  <>
+                    <div className="text-3xl animate-pulse">🚪✨</div>
+                    <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
+                      {oneShotState?.hasBombDetected
+                        ? "ĐÃ CHẤP NHẬN RỦI RO! BẤM MỞ 1 TRONG 2 CÁNH CỬA:"
+                        : "GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 2 CÁNH CỬA ĐÃ ĐỂ RA RIÊNG!"}
+                    </h4>
+                    {oneShotState?.hasBombDetected ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner">
+                        <span>⚠️</span>
+                        <span>Radar phát hiện: <strong>CÓ 1 cánh cửa trừ điểm (Bẫy bom)</strong> trong 2 cửa này!</span>
+                      </div>
+                    ) : (
+                      <div className="px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
+                        <span>✨</span>
+                        <span>Radar xác nhận: <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 2 đều an toàn)!</span>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
+                      2 cánh cửa còn lại đã bị loại bỏ. Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[0]}</strong> hoặc <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[1]}</strong> đang sáng bên dưới để mở!
+                    </p>
+                    {oneShotState?.hasBombDetected && (
+                      <div className="pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
+                          disabled={!canInteract}
+                          className="px-3 py-1 rounded-lg bg-stone-800/90 hover:bg-stone-700 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition-all cursor-pointer"
+                        >
+                          🛡️ Đổi ý: Rút lui an toàn (+{baseQuestionPoints || 10}đ)
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
-                <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                  2 cánh cửa còn lại đã bị loại bỏ. Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[0]}</strong> hoặc <strong className="text-yellow-300 underline">Cửa #{oneShotState.selectedDoorIds?.[1]}</strong> đang sáng bên dưới để mở!
-                </p>
               </div>
             )}
 
@@ -945,6 +1002,7 @@ export default function MysteryQuestBoard({
                 const isBomb = tile.type !== "REWARD";
                 const isSteal = tile.effectType === "STEAL_POINTS";
                 const isStage2 = oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED";
+                const isWaitingRiskDecision = Boolean(isStage2 && oneShotState?.hasBombDetected && !doorsRiskAccepted);
 
                 const isCardOpened = tile.isOpened || (isStage2 && optimisticOpenedIds.has(tile.id));
                 if (!isCardOpened) {
@@ -955,12 +1013,14 @@ export default function MysteryQuestBoard({
                       onClick={() => handleTileClick(tile)}
                       disabled={
                         !canInteract ||
-                        (isStage2 && !isSelected)
+                        (isStage2 && (!isSelected || isWaitingRiskDecision))
                       }
                       className={`relative aspect-[3/4] sm:aspect-[4/5] max-h-[25vh] sm:max-h-[28vh] rounded-2xl p-2 sm:p-2.5 flex flex-col items-center justify-between border-3 transition-all duration-300 ${
                         isStage2
                           ? isSelected
-                            ? "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/80 shadow-[0_0_30px_rgba(250,204,21,0.7)] scale-103 animate-pulse cursor-pointer hover:scale-105"
+                            ? isWaitingRiskDecision
+                              ? "bg-gradient-to-b from-amber-800/80 via-stone-900/95 to-stone-950 border-amber-400/80 ring-2 ring-amber-400/50 shadow-lg scale-100 opacity-90 cursor-not-allowed"
+                              : "bg-gradient-to-b from-amber-600/90 via-amber-900/95 to-stone-950 border-yellow-300 ring-4 ring-yellow-400/80 shadow-[0_0_30px_rgba(250,204,21,0.7)] scale-103 animate-pulse cursor-pointer hover:scale-105"
                             : "bg-stone-900/60 border-stone-600 opacity-30 grayscale-60 cursor-not-allowed scale-95 pointer-events-none"
                           : isSelected
                           ? "bg-gradient-to-b from-amber-700/80 via-amber-900/90 to-stone-950 border-yellow-300 ring-2 ring-yellow-400/60 shadow-xl scale-101 cursor-pointer"
@@ -982,8 +1042,12 @@ export default function MysteryQuestBoard({
                           <>
                             {isStage2 ? (
                               isSelected ? (
-                                <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-yellow-400 text-black font-extrabold animate-pulse">
-                                  CHỌN MỞ ✨
+                                <span className={`text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded font-extrabold ${
+                                  isWaitingRiskDecision
+                                    ? "bg-amber-500/80 text-black"
+                                    : "bg-yellow-400 text-black animate-pulse"
+                                }`}>
+                                  {isWaitingRiskDecision ? "CHỜ QUYẾT ĐỊNH" : "CHỌN MỞ ✨"}
                                 </span>
                               ) : (
                                 <span className="text-[8px] sm:text-[9px] font-black px-1.5 py-0.2 rounded bg-stone-700 text-stone-400">
@@ -1005,9 +1069,9 @@ export default function MysteryQuestBoard({
 
                       {/* Giant Door Graphic */}
                       <div className={`text-3xl sm:text-5xl my-auto transition-transform duration-300 drop-shadow-2xl ${
-                        isStage2 && isSelected ? "scale-110" : "group-hover:scale-110"
+                        isStage2 && isSelected && !isWaitingRiskDecision ? "scale-110" : "group-hover:scale-110"
                       }`}>
-                        {isStage2 && isSelected ? "🚪✨" : "🚪"}
+                        {isStage2 && isSelected && !isWaitingRiskDecision ? "🚪✨" : "🚪"}
                       </div>
 
                       <div className="w-full text-center pb-0.5">
@@ -1017,7 +1081,9 @@ export default function MysteryQuestBoard({
                         <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-amber-300/80 font-bold block">
                           {isStage2
                             ? isSelected
-                              ? "Đang sáng · Bấm mở!"
+                              ? isWaitingRiskDecision
+                                ? "Chờ chọn liều / rút lui"
+                                : "Đang sáng · Bấm mở!"
                               : "Đã bị loại bỏ"
                             : isSelected
                             ? "Đã để ra riêng"

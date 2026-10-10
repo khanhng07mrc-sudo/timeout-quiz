@@ -1282,12 +1282,18 @@ function generateNextPushYourLuckCard({
   let delta = template.deltaPoints;
   if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
     if (basePoints <= 10) {
-      delta = [5, 10, 15, 20][Math.floor(Math.random() * 4)];
+      delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
     } else if (basePoints <= 20) {
-      delta = [10, 15, 20, 30][Math.floor(Math.random() * 4)];
+      delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
     } else {
-      delta = [15, 20, 30, 50][Math.floor(Math.random() * 4)];
+      delta = [30, 35, 45, 60][Math.floor(Math.random() * 4)];
     }
+  }
+  let storyDescription = template.storyDescription;
+  if (template.effectType === "BONUS_POINTS") {
+    storyDescription = storyDescription.replace(/\+\d+\s*(điểm|đ)/g, `+${delta} $1`);
+  } else if (template.effectType === "STEAL_POINTS") {
+    storyDescription = storyDescription.replace(/\b\d+\s*(điểm|đ)/g, `${delta} $1`);
   }
   let effectType = template.effectType;
   if (effectType === "STEAL_POINTS") {
@@ -1303,6 +1309,7 @@ function generateNextPushYourLuckCard({
         deltaPoints: delta,
         effectType: "BONUS_POINTS"
       };
+      storyDescription = template.storyDescription;
     }
   }
   if (isDoublePromo && Math.random() < 0.35) {
@@ -1316,7 +1323,7 @@ function generateNextPushYourLuckCard({
     isOpened: false,
     type: "REWARD",
     storyTitle: template.storyTitle,
-    storyDescription: template.storyDescription,
+    storyDescription,
     effectType,
     deltaPoints: delta
   };

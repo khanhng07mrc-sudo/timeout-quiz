@@ -5616,28 +5616,9 @@ export function registerSocketHandlers(io: IO) {
         data: { teamId },
       }).catch(() => {});
 
-      if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        if (questState) {
-          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-          const newTeam = teams.find((t) => t.id === teamId);
-          if (newTeam) {
-            questState.currentTurnTeamId = newTeam.id;
-            questState.currentTurnTeamName = newTeam.name;
-            questState.currentTurnTeamColor = newTeam.color || "#ef4444";
-            if (roomActiveQuestions.has(room.id) || room.status === "PLAYING") {
-              questState.phase = "QUESTION_ACTIVE";
-              questState.potPoints = 0;
-              questState.bombExploded = undefined;
-              questState.turnFinishedReason = undefined;
-            }
-            roomMysteryQuests.set(room.id, questState);
-            io.to(`room:${room.code}`).emit("game:mystery:update", questState);
-            const refState = await buildRoomState(room.id);
-            io.to(`room:${room.code}`).emit("room:state", refState);
-          }
-        }
-      }
+      // Active team switch only updates sandbox tester player, does NOT hijack official room turn!
+      const refState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refState);
     });
 
     // ── Cài đặt điểm số ban đầu cho các đội khi bắt đầu thi ────────────────────

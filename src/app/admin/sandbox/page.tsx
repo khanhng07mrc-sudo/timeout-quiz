@@ -5049,24 +5049,7 @@ export default function AdminSandboxPage() {
         code,
       });
     }
-    if (roomStateRef.current?.mode === "MYSTERY_QUEST" && roomStateRef.current?.mysteryQuestState) {
-      setRoomState((prev) => {
-        if (!prev?.mysteryQuestState) return prev;
-        return {
-          ...prev,
-          mysteryQuestState: {
-            ...prev.mysteryQuestState,
-            currentTurnTeamId: targetTeam.id,
-            currentTurnTeamName: targetTeam.name,
-            currentTurnTeamColor: targetTeam.color || "#ef4444",
-            phase: currentQuestion ? "QUESTION_ACTIVE" : prev.mysteryQuestState.phase,
-            potPoints: 0,
-            bombExploded: undefined,
-            turnFinishedReason: undefined,
-          },
-        };
-      });
-    }
+
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
     const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
     playerIframeRef.current?.contentWindow?.postMessage(

@@ -880,8 +880,14 @@ export function generateMysteryStageForTurn({
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
-        const firstBomb = tiles.find((t) => t.type !== "REWARD" || t.pairKey === "PAIR_BOMB");
-        if (firstBomb) firstBomb.isPeeked = true;
+        // Soi 40% (4 lá trên 10 lá) chắc chắn an toàn (REWARD), tuyệt đối không soi bom!
+        const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
+        const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+        shuffledSafe.slice(0, 4).forEach((t) => {
+          t.isPeeked = true;
+          t.peekLabel = "AN TOÀN";
+          t.peekIcon = "✨";
+        });
       }
       memoryPairsState = {
         firstFlippedTileId: null,
@@ -900,10 +906,8 @@ export function generateMysteryStageForTurn({
 
     case "ONE_SHOT_DOORS":
       tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
-      if (promoPerk === "PEEK_PROMO") {
-        const bombDoor = tiles.find((t) => t.type !== "REWARD");
-        if (bombDoor) bombDoor.isPeeked = true;
-      }
+      // Mắt thần ở 4 cửa KHÔNG soi bom ở đầu game.
+      // Thay vào đó, sau khi chọn xong 2 cửa, Mắt thần mới soi/gán nhãn ở Giai đoạn 2!
       oneShotState = {
         chosenTileId: undefined,
         selectedDoorIds: [],
@@ -918,8 +922,14 @@ export function generateMysteryStageForTurn({
     case "TAROT_DESTINY":
       tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
-        const deathCard = tiles.find((t) => t.type !== "REWARD");
-        if (deathCard) deathCard.isPeeked = true;
+        // Soi 40% (2 lá trên 5 lá) chắc chắn an toàn (REWARD), tuyệt đối không soi Thần Chết!
+        const safeCards = tiles.filter((t) => t.type === "REWARD");
+        const shuffledSafe = [...safeCards].sort(() => Math.random() - 0.5);
+        shuffledSafe.slice(0, 2).forEach((c) => {
+          c.isPeeked = true;
+          c.peekLabel = "AN TOÀN";
+          c.peekIcon = "✨";
+        });
       }
       tarotState = {
         chosenCardId: undefined,
@@ -1608,6 +1618,25 @@ export function handleFlipCard({
       const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
       const hasBombInSelected = selectedTiles.some((t) => t.type !== "REWARD" || (t.deltaPoints && t.deltaPoints < 0));
       osState.hasBombDetected = hasBombInSelected;
+
+      // Kích hoạt cơ chế Mắt Thần cho 4 Cửa nếu có PEEK_PROMO:
+      if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+        if (!hasBombInSelected) {
+          // KHÔNG CÓ BOM: Hiện chức năng của 1 trong hai cửa
+          const randomSafe = selectedTiles[Math.floor(Math.random() * selectedTiles.length)];
+          randomSafe.isPeeked = true;
+          randomSafe.peekLabel = randomSafe.storyTitle;
+          randomSafe.peekIcon = randomSafe.icon;
+        } else {
+          // CÓ BOM: Gán nhãn cho CẢ HAI CỬA là chức năng của cửa cộng điểm!
+          const rewardTile = selectedTiles.find((t) => t.type === "REWARD") || selectedTiles[0];
+          selectedTiles.forEach((t) => {
+            t.isPeeked = true;
+            t.peekLabel = rewardTile.storyTitle;
+            t.peekIcon = rewardTile.icon;
+          });
+        }
+      }
 
       // Chuyển sang Giai đoạn 2: Người chơi chọn 1 trong 2 cánh cửa đã để ra riêng đang sáng!
       osState.phase = "STAGE_2_PICK";

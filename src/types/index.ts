@@ -896,6 +896,8 @@ export interface MysteryTile {
   pairKey?: string; // Khóa ghép cặp cho MEMORY_PAIRS
   tarotName?: string; // Tên lá bài cho TAROT_DESTINY
   isPeeked?: boolean; // Được soi sáng hiển thị trước bởi Mắt Thần
+  peekLabel?: string; // Nhãn chức năng hiển thị hé lộ của Mắt Thần
+  peekIcon?: string;  // Icon hiển thị hé lộ của Mắt Thần
 }
 
 export interface MysteryQuestState {
@@ -1000,6 +1002,8 @@ export interface MysteryQuestState {
     revealedSafeDoorIds?: number[];
     chosenFinalDoorId?: number;
     allRevealed?: boolean;
+    peekAvailable?: boolean;    // Có đặc quyền Mắt Thần
+    peekActivated?: boolean;    // Đã kích hoạt Mắt Thần (khóa 2 cửa 50/50 Hoàng Gia vs Bom)
   };
   tarotState?: {
     chosenCardId?: number;

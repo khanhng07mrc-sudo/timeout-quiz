@@ -1399,8 +1399,13 @@ function generateMysteryStageForTurn({
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
-        const firstBomb = tiles.find((t) => t.type !== "REWARD" || t.pairKey === "PAIR_BOMB");
-        if (firstBomb) firstBomb.isPeeked = true;
+        const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
+        const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+        shuffledSafe.slice(0, 4).forEach((t) => {
+          t.isPeeked = true;
+          t.peekLabel = "AN TO\xC0N";
+          t.peekIcon = "\u2728";
+        });
       }
       memoryPairsState = {
         firstFlippedTileId: null,
@@ -1418,10 +1423,6 @@ function generateMysteryStageForTurn({
       break;
     case "ONE_SHOT_DOORS":
       tiles = generateOneShotDoorsTiles(baseQuestionPoints, roundOptions);
-      if (promoPerk === "PEEK_PROMO") {
-        const bombDoor = tiles.find((t) => t.type !== "REWARD");
-        if (bombDoor) bombDoor.isPeeked = true;
-      }
       oneShotState = {
         chosenTileId: void 0,
         selectedDoorIds: [],
@@ -1435,8 +1436,13 @@ function generateMysteryStageForTurn({
     case "TAROT_DESTINY":
       tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
-        const deathCard = tiles.find((t) => t.type !== "REWARD");
-        if (deathCard) deathCard.isPeeked = true;
+        const safeCards = tiles.filter((t) => t.type === "REWARD");
+        const shuffledSafe = [...safeCards].sort(() => Math.random() - 0.5);
+        shuffledSafe.slice(0, 2).forEach((c) => {
+          c.isPeeked = true;
+          c.peekLabel = "AN TO\xC0N";
+          c.peekIcon = "\u2728";
+        });
       }
       tarotState = {
         chosenCardId: void 0,
@@ -1975,6 +1981,21 @@ function handleFlipCard({
       const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
       const hasBombInSelected = selectedTiles.some((t) => t.type !== "REWARD" || t.deltaPoints && t.deltaPoints < 0);
       osState.hasBombDetected = hasBombInSelected;
+      if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
+        if (!hasBombInSelected) {
+          const randomSafe = selectedTiles[Math.floor(Math.random() * selectedTiles.length)];
+          randomSafe.isPeeked = true;
+          randomSafe.peekLabel = randomSafe.storyTitle;
+          randomSafe.peekIcon = randomSafe.icon;
+        } else {
+          const rewardTile = selectedTiles.find((t) => t.type === "REWARD") || selectedTiles[0];
+          selectedTiles.forEach((t) => {
+            t.isPeeked = true;
+            t.peekLabel = rewardTile.storyTitle;
+            t.peekIcon = rewardTile.icon;
+          });
+        }
+      }
       osState.phase = "STAGE_2_PICK";
       return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
     }
@@ -8007,28 +8028,8 @@ function registerSocketHandlers(io2) {
         data: { teamId }
       }).catch(() => {
       });
-      if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        if (questState) {
-          const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-          const newTeam = teams.find((t) => t.id === teamId);
-          if (newTeam) {
-            questState.currentTurnTeamId = newTeam.id;
-            questState.currentTurnTeamName = newTeam.name;
-            questState.currentTurnTeamColor = newTeam.color || "#ef4444";
-            if (roomActiveQuestions.has(room.id) || room.status === "PLAYING") {
-              questState.phase = "QUESTION_ACTIVE";
-              questState.potPoints = 0;
-              questState.bombExploded = void 0;
-              questState.turnFinishedReason = void 0;
-            }
-            roomMysteryQuests.set(room.id, questState);
-            io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
-            const refState = await buildRoomState(room.id);
-            io2.to(`room:${room.code}`).emit("room:state", refState);
-          }
-        }
-      }
+      const refState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refState);
     });
     socket.on("admin:teams:set_initial_scores", async ({ defaultScore, teamScores, code }, callback) => {
       try {

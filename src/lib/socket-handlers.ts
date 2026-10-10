@@ -3278,6 +3278,14 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (room.status === "LOBBY") {
+        // Reset state so each match starts clean with full questions bank
+        roomUsedQuestions.delete(room.id);
+        roomIntermissions.delete(room.id);
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id)!);
+          roomIntermissionTimers.delete(room.id);
+        }
+
         // 1. Broadcast game:starting immediately (0ms latency so clients start countdown instantly)
         const startEndsAt = Date.now() + 5000;
         io.to(`room:${room.code}`).emit("game:starting", { seconds: 5, endsAt: startEndsAt, total: 5 });
@@ -3561,16 +3569,35 @@ export function registerSocketHandlers(io: IO) {
       }
 
       if (room.mode === "GRID_CARO") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
         await advanceGridToBoard(io, room.id, room.code);
         return;
       }
 
+      if (room.mode === "MYSTERY_QUEST") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          await executeMysteryAdvanceTurn(room, questState);
+        }
+        return;
+      }
+
       if (room.mode === "DICE_RACE") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:question:clear");
         const diceState = roomDiceRaces.get(room.id);
         if (diceState) {
           const allFinished = Object.values(diceState.teamPositions).every((p) => p.hasFinished);
           if (allFinished) {
-            stopQuestionTimer(room.id);
             room.status = "FINISHED";
             roomCache.set(room.id, room);
             prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
@@ -3578,7 +3605,36 @@ export function registerSocketHandlers(io: IO) {
             io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
             return;
           }
+          io.to(`room:${room.code}`).emit("game:dice:update", diceState);
         }
+        return;
+      }
+
+      // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission):
+      // Bấm nút sẽ vào thẳng câu hỏi tiếp theo NGAY LẬP TỨC (0s delay)!
+      if (roomIntermissions.has(room.id)) {
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id)!);
+          roomIntermissionTimers.delete(room.id);
+        }
+        const interPayload = roomIntermissions.get(room.id)!;
+        roomIntermissions.delete(room.id);
+        io.to(`room:${room.code}`).emit("game:intermission", null);
+
+        const nextIndex = interPayload.nextQuestionIndex;
+        room.currentQuestion = nextIndex;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
+
+        // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
+        if (nextIndex > 0 && nextIndex % 3 === 0) {
+          replenishTeamPowerups(room.id, io).catch(console.error);
+        }
+
+        const candidateQ = questions[nextIndex] || (await getRoomQuestions(room.id))[nextIndex];
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex, candidateQ);
+        return;
       }
 
       // Kiểm tra giới hạn số câu hỏi của trận đấu theo luật thi đấu
@@ -3601,18 +3657,7 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
-      // Lấy câu hỏi độc nhất tiếp theo (đồng nhất điểm theo vòng ở các mode theo lượt)
-      let targetRoundPoints: number | undefined = undefined;
-      if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        const round = questState ? questState.currentRound : 1;
-        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
-      } else if (room.mode === "DICE_RACE") {
-        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
-        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
-        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
-      }
-      const nextQ = getNextUniqueQuestion(room.id, questions, undefined, targetRoundPoints);
+      const nextQ = getNextUniqueQuestion(room.id, questions);
       if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
@@ -3624,64 +3669,6 @@ export function registerSocketHandlers(io: IO) {
       }
 
       const nextIndex = nextQ.index;
-
-      // Nếu đang ở màn hình Bảng xếp hạng giữa hiệp (Intermission):
-      // Bấm nút sẽ vào thẳng câu hỏi tiếp theo NGAY LẬP TỨC (0s delay)!
-      if (roomIntermissions.has(room.id)) {
-        if (roomIntermissionTimers.has(room.id)) {
-          clearTimeout(roomIntermissionTimers.get(room.id)!);
-          roomIntermissionTimers.delete(room.id);
-        }
-        roomIntermissions.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:intermission", null);
-
-        room.currentQuestion = nextIndex;
-        room.status = "PLAYING";
-        roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
-
-        // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
-        if (nextIndex > 0 && nextIndex % 3 === 0) {
-          replenishTeamPowerups(room.id, io).catch(console.error);
-        }
-
-        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
-        return;
-      }
-
-      // Board / Turn modes bypass 3s intermission countdown completely
-      if (room.mode === "MYSTERY_QUEST") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:question:clear");
-        const questState = roomMysteryQuests.get(room.id);
-        if (questState) {
-          await executeMysteryAdvanceTurn(room, questState);
-        }
-        return;
-      }
-
-      if (room.mode === "GRID_CARO") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:question:clear");
-        await advanceGridToBoard(io, room.id, room.code);
-        return;
-      }
-
-      if (room.mode === "DICE_RACE") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io.to(`room:${room.code}`).emit("game:question:clear");
-        const diceState = roomDiceRaces.get(room.id);
-        if (diceState) {
-          io.to(`room:${room.code}`).emit("game:dice:update", diceState);
-        }
-        return;
-      }
 
       // Nếu đang trong câu hỏi hoặc vừa công bố đáp án xong:
       // Chuyển qua màn hình Bảng xếp hạng giữa hiệp (Leaderboard Intermission)

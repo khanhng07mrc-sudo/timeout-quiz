@@ -3346,48 +3346,33 @@ function getTargetTotalQuestions(mode, config, teamsCount, bankTotal) {
   const safeBankTotal = Math.max(1, bankTotal);
   const safeTeamsCount = Math.max(1, teamsCount);
   const maxQ = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : void 0;
+  const effectiveTarget = maxQ ? Math.min(safeBankTotal, maxQ) : safeBankTotal;
   if (mode === "MYSTERY_QUEST") {
-    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const turnsPerTeam = Math.max(1, Math.floor(effectiveTarget / safeTeamsCount));
     const modeLimit = safeTeamsCount * turnsPerTeam;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "WAGER") {
-    const rounds = config?.wagerRoundsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const rounds = Math.max(1, Math.floor(effectiveTarget / safeTeamsCount));
     const modeLimit = safeTeamsCount * rounds;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "BOUNCEBACK") {
     const qPerTurn = config?.bouncebackQuestionsPerTurn || 1;
-    const cycles = config?.bouncebackCycles || (maxQ ? Math.max(1, Math.floor(maxQ / (safeTeamsCount * qPerTurn))) : 1);
+    const cycles = Math.max(1, Math.floor(effectiveTarget / (safeTeamsCount * qPerTurn)));
     const modeLimit = safeTeamsCount * cycles * qPerTurn;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "GRID_CARO") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    const rounds = config?.gridRoundsPerTeam;
-    if (rounds && rounds > 0) {
-      return Math.min(safeBankTotal, safeTeamsCount * rounds);
-    }
-    if (config?.gridMaxQuestions && config.gridMaxQuestions > 0) {
-      return Math.min(safeBankTotal, config.gridMaxQuestions);
-    }
-    return safeBankTotal;
+    return effectiveTarget;
   }
   if (mode === "DICE_RACE") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    if (config?.diceRaceMaxQuestions && config.diceRaceMaxQuestions > 0) {
-      return Math.min(safeBankTotal, config.diceRaceMaxQuestions);
-    }
-    return safeBankTotal;
+    return effectiveTarget;
   }
   if (mode === "TOURNAMENT") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    return safeBankTotal;
+    return effectiveTarget;
   }
-  if (maxQ) {
-    return Math.min(safeBankTotal, maxQ);
-  }
-  return safeBankTotal;
+  return effectiveTarget;
 }
 function shuffleArray(array) {
   const arr = [...array];
@@ -6238,6 +6223,12 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (room.status === "LOBBY") {
+        roomUsedQuestions.delete(room.id);
+        roomIntermissions.delete(room.id);
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id));
+          roomIntermissionTimers.delete(room.id);
+        }
         const startEndsAt = Date.now() + 5e3;
         io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5, endsAt: startEndsAt, total: 5 });
         roomPrepareStates.set(room.id, {
@@ -6484,15 +6475,33 @@ function registerSocketHandlers(io2) {
         return;
       }
       if (room.mode === "GRID_CARO") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
         await advanceGridToBoard(io2, room.id, room.code);
         return;
       }
+      if (room.mode === "MYSTERY_QUEST") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
+        const questState = roomMysteryQuests.get(room.id);
+        if (questState) {
+          await executeMysteryAdvanceTurn(room, questState);
+        }
+        return;
+      }
       if (room.mode === "DICE_RACE") {
+        stopQuestionTimer(room.id);
+        roomActiveQuestions.delete(room.id);
+        roomRevealPayloads.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:question:clear");
         const diceState = roomDiceRaces.get(room.id);
         if (diceState) {
           const allFinished = Object.values(diceState.teamPositions).every((p) => p.hasFinished);
           if (allFinished) {
-            stopQuestionTimer(room.id);
             room.status = "FINISHED";
             roomCache.set(room.id, room);
             prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
@@ -6500,7 +6509,29 @@ function registerSocketHandlers(io2) {
             io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
             return;
           }
+          io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
         }
+        return;
+      }
+      if (roomIntermissions.has(room.id)) {
+        if (roomIntermissionTimers.has(room.id)) {
+          clearTimeout(roomIntermissionTimers.get(room.id));
+          roomIntermissionTimers.delete(room.id);
+        }
+        const interPayload = roomIntermissions.get(room.id);
+        roomIntermissions.delete(room.id);
+        io2.to(`room:${room.code}`).emit("game:intermission", null);
+        const nextIndex2 = interPayload.nextQuestionIndex;
+        room.currentQuestion = nextIndex2;
+        room.status = "PLAYING";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex2, status: "PLAYING" } }).catch(console.error);
+        if (nextIndex2 > 0 && nextIndex2 % 3 === 0) {
+          replenishTeamPowerups(room.id, io2).catch(console.error);
+        }
+        const candidateQ = questions[nextIndex2] || (await getRoomQuestions(room.id))[nextIndex2];
+        await startQuestionPrepareAndLaunch(room, questions, nextIndex2, candidateQ);
+        return;
       }
       const config = room.config;
       const targetQuestions = getTargetTotalQuestions(
@@ -6519,17 +6550,7 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
         return;
       }
-      let targetRoundPoints = void 0;
-      if (room.mode === "MYSTERY_QUEST") {
-        const questState = roomMysteryQuests.get(room.id);
-        const round = questState ? questState.currentRound : 1;
-        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
-      } else if (room.mode === "DICE_RACE") {
-        const teamsCount = await prisma.team.count({ where: { roomId: room.id } }).catch(() => 4);
-        const round = Math.floor((room.currentQuestion || 0) / Math.max(1, teamsCount)) + 1;
-        targetRoundPoints = round === 1 ? 10 : round === 2 ? 20 : 30;
-      }
-      const nextQ = getNextUniqueQuestion(room.id, questions, void 0, targetRoundPoints);
+      const nextQ = getNextUniqueQuestion(room.id, questions);
       if (!nextQ) {
         stopQuestionTimer(room.id);
         room.status = "FINISHED";
@@ -6540,53 +6561,6 @@ function registerSocketHandlers(io2) {
         return;
       }
       const nextIndex = nextQ.index;
-      if (roomIntermissions.has(room.id)) {
-        if (roomIntermissionTimers.has(room.id)) {
-          clearTimeout(roomIntermissionTimers.get(room.id));
-          roomIntermissionTimers.delete(room.id);
-        }
-        roomIntermissions.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:intermission", null);
-        room.currentQuestion = nextIndex;
-        room.status = "PLAYING";
-        roomCache.set(room.id, room);
-        await prisma.room.update({ where: { id: room.id }, data: { currentQuestion: nextIndex, status: "PLAYING" } }).catch(console.error);
-        if (nextIndex > 0 && nextIndex % 3 === 0) {
-          replenishTeamPowerups(room.id, io2).catch(console.error);
-        }
-        await startQuestionPrepareAndLaunch(room, questions, nextIndex, nextQ.question);
-        return;
-      }
-      if (room.mode === "MYSTERY_QUEST") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:question:clear");
-        const questState = roomMysteryQuests.get(room.id);
-        if (questState) {
-          await executeMysteryAdvanceTurn(room, questState);
-        }
-        return;
-      }
-      if (room.mode === "GRID_CARO") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:question:clear");
-        await advanceGridToBoard(io2, room.id, room.code);
-        return;
-      }
-      if (room.mode === "DICE_RACE") {
-        stopQuestionTimer(room.id);
-        roomActiveQuestions.delete(room.id);
-        roomRevealPayloads.delete(room.id);
-        io2.to(`room:${room.code}`).emit("game:question:clear");
-        const diceState = roomDiceRaces.get(room.id);
-        if (diceState) {
-          io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
-        }
-        return;
-      }
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
       roomRevealPayloads.delete(room.id);

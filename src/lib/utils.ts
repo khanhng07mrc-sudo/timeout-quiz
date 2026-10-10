@@ -15,50 +15,35 @@ export function getTargetTotalQuestions(
   const safeBankTotal = Math.max(1, bankTotal);
   const safeTeamsCount = Math.max(1, teamsCount);
   const maxQ = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : undefined;
+  const effectiveTarget = maxQ ? Math.min(safeBankTotal, maxQ) : safeBankTotal;
 
   if (mode === "MYSTERY_QUEST") {
-    const turnsPerTeam = config?.mysteryQuestTurnsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const turnsPerTeam = Math.max(1, Math.floor(effectiveTarget / safeTeamsCount));
     const modeLimit = safeTeamsCount * turnsPerTeam;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "WAGER") {
-    const rounds = config?.wagerRoundsPerTeam || (maxQ ? Math.max(1, Math.floor(maxQ / safeTeamsCount)) : 2);
+    const rounds = Math.max(1, Math.floor(effectiveTarget / safeTeamsCount));
     const modeLimit = safeTeamsCount * rounds;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "BOUNCEBACK") {
     const qPerTurn = config?.bouncebackQuestionsPerTurn || 1;
-    const cycles = config?.bouncebackCycles || (maxQ ? Math.max(1, Math.floor(maxQ / (safeTeamsCount * qPerTurn))) : 1);
+    const cycles = Math.max(1, Math.floor(effectiveTarget / (safeTeamsCount * qPerTurn)));
     const modeLimit = safeTeamsCount * cycles * qPerTurn;
-    return Math.min(safeBankTotal, maxQ ? Math.min(maxQ, modeLimit) : modeLimit);
+    return Math.min(safeBankTotal, modeLimit);
   }
   if (mode === "GRID_CARO") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    const rounds = config?.gridRoundsPerTeam;
-    if (rounds && rounds > 0) {
-      return Math.min(safeBankTotal, safeTeamsCount * rounds);
-    }
-    if (config?.gridMaxQuestions && config.gridMaxQuestions > 0) {
-      return Math.min(safeBankTotal, config.gridMaxQuestions);
-    }
-    return safeBankTotal;
+    return effectiveTarget;
   }
   if (mode === "DICE_RACE") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    if (config?.diceRaceMaxQuestions && config.diceRaceMaxQuestions > 0) {
-      return Math.min(safeBankTotal, config.diceRaceMaxQuestions);
-    }
-    return safeBankTotal;
+    return effectiveTarget;
   }
   if (mode === "TOURNAMENT") {
-    if (maxQ) return Math.min(safeBankTotal, maxQ);
-    return safeBankTotal;
+    return effectiveTarget;
   }
   // Simultaneous modes: CLASSIC, BUZZ, POWERUP, ELIMINATION, etc.
-  if (maxQ) {
-    return Math.min(safeBankTotal, maxQ);
-  }
-  return safeBankTotal;
+  return effectiveTarget;
 }
 
 export function generateRoomCode(): string {

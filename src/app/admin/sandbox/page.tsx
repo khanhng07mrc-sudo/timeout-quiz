@@ -352,6 +352,7 @@ export default function AdminSandboxPage() {
   const pendingOfflineLaunchRef = useRef<(() => void) | null>(null);
   const handleWagerLaunchQuestionRef = useRef<() => void>(() => {});
   const handleAdminNextRef = useRef<() => void>(() => {});
+  const launchOfflineQuestionRef = useRef<(idx: number) => void>(() => {});
 
   // Authoritative ticker for question preparation countdown (3s)
   useEffect(() => {
@@ -1217,7 +1218,7 @@ export default function AdminSandboxPage() {
         turnIndex: 0,
         currentTeam: teams[0],
         teams,
-        turnsPerTeam: 2,
+        turnsPerTeam: allocResult.derivedConfig?.mysteryQuestTurnsPerTeam || 2,
       });
     }
 
@@ -1234,6 +1235,7 @@ export default function AdminSandboxPage() {
       players,
       sharedCards: [],
       config: {
+        ...(allocResult.derivedConfig || {}),
         powerupEnabled: mode === "MYSTERY_QUEST" ? false : true,
         powerupOwnerType: "TEAM",
         powerupCountPerTeam: mode === "MYSTERY_QUEST" ? 0 : 2,
@@ -2024,15 +2026,68 @@ export default function AdminSandboxPage() {
   const handleAssignQuizBank = useCallback(async (bankId: string) => {
     if (isOfflineSandbox) {
       setSelectedBankId(bankId);
-      const bank = (bankId && offlineStorage.getLocalBankById(bankId)) || DEFAULT_OFFLINE_BANK;
-      const questions = bank.questions && bank.questions.length > 0 ? bank.questions : DEFAULT_OFFLINE_BANK.questions!;
-      offlineQuestionsRef.current = questions.map((q) => ({
+      let bank = (bankId && offlineStorage.getLocalBankById(bankId)) || null;
+      if (!bank && bankId) {
+        try {
+          const res = await fetch(`/api/quiz-bank/${bankId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.bank) {
+              const fetchedBank = data.bank;
+              bank = fetchedBank;
+              offlineStorage.saveLocalBank(fetchedBank as any);
+            }
+          }
+        } catch (e) {
+          console.error("Failed to fetch bank for offline sandbox:", e);
+        }
+      }
+      if (!bank) bank = DEFAULT_OFFLINE_BANK;
+
+      const rawQuestions = (bank.questions && bank.questions.length > 0 ? bank.questions : DEFAULT_OFFLINE_BANK.questions!).map((q: any) => ({
         ...q,
         points: normalizeToThreeLevels(q.points || 10),
       }));
+
+      const maxQ = roomState?.config?.matchMaxQuestions && roomState.config.matchMaxQuestions > 0 ? roomState.config.matchMaxQuestions : undefined;
+      const allocResult = allocateQuestionsForMatch({
+        questions: rawQuestions,
+        targetCount: maxQ,
+        mode: roomState?.mode || "CLASSIC",
+        teamsCount: roomState?.teams?.length || 4,
+      });
+
+      offlineQuestionsRef.current = allocResult.allocatedQuestions;
       offlineUsedQuestionIdsRef.current.clear();
-      offlineQIndexRef.current = 0;
-      addLog(`Ngoại tuyến: Đã chuyển sang bộ đề [${bank.title}] (${questions.length} câu)`);
+      offlineAnswersRef.current.clear();
+      offlineQIndexRef.current = -1;
+
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const updatedConfig = {
+          ...prev.config,
+          ...(allocResult.derivedConfig || {}),
+        };
+        let updatedMystery = prev.mysteryQuestState;
+        if (prev.mode === "MYSTERY_QUEST" && prev.teams.length > 0) {
+          updatedMystery = generateMysteryStageForTurn({
+            turnIndex: 0,
+            currentTeam: prev.teams[0],
+            teams: prev.teams,
+            turnsPerTeam: allocResult.derivedConfig?.mysteryQuestTurnsPerTeam || 2,
+          });
+        }
+        const nextState = {
+          ...prev,
+          totalQuestions: allocResult.allocatedQuestions.length,
+          config: updatedConfig,
+          mysteryQuestState: updatedMystery,
+        };
+        setTimeout(() => syncToIframes({ roomState: nextState }), 50);
+        return nextState;
+      });
+
+      addLog(`Ngoại tuyến: Đã chuyển sang bộ đề [${bank.title}] (${allocResult.allocatedQuestions.length} câu)`);
       return;
     }
     try {
@@ -2058,7 +2113,7 @@ export default function AdminSandboxPage() {
       console.error(err);
       alert("Lỗi kết nối khi đổi bộ đề!");
     }
-  }, [isOfflineSandbox, code, quizBanks, addLog]);
+  }, [isOfflineSandbox, code, quizBanks, addLog, roomState, syncToIframes]);
 
   const processOfflineWager = useCallback((targetTeamId: string, amount: number) => {
     if (!roomStateRef.current?.wagerState) return;
@@ -2720,6 +2775,27 @@ export default function AdminSandboxPage() {
         const curMystery = roomStateRef.current.mysteryQuestState;
         const teams = roomStateRef.current.teams;
         const nextTurnIdx = curMystery.currentTurnIndex + 1;
+
+        if (nextTurnIdx >= curMystery.totalTurns) {
+          addLog("🏁 Mystery Quest: Đã hoàn thành tất cả các lượt chơi!");
+          const finalState: RoomState = {
+            ...roomStateRef.current,
+            status: "FINISHED",
+          };
+          roomStateRef.current = finalState;
+          setRoomState(finalState);
+          setCurrentQuestion(null);
+          setRevealPayload(null);
+          setTimer(null);
+          syncToIframes({
+            roomState: finalState,
+            currentQuestion: null,
+            revealPayload: null,
+            timer: null,
+          });
+          return;
+        }
+
         const nextTeam = teams[nextTurnIdx % teams.length];
 
         let nextStage = generateMysteryStageForTurn({
@@ -2731,8 +2807,20 @@ export default function AdminSandboxPage() {
           prevMiniGameType: curMystery.miniGameType,
         });
 
-        const nextQIdx = offlineQIndexRef.current + 1;
-        const nextQ = offlineQuestionsRef.current[nextQIdx % (offlineQuestionsRef.current.length || 1)];
+        const questions = offlineQuestionsRef.current;
+        let nextQIdx = -1;
+        for (let i = 0; i < questions.length; i++) {
+          const qId = questions[i].id || `q_${i + 1}`;
+          if (!offlineUsedQuestionIdsRef.current.has(qId)) {
+            nextQIdx = i;
+            break;
+          }
+        }
+        if (nextQIdx === -1 && questions.length > 0) {
+          nextQIdx = (offlineQIndexRef.current + 1) % questions.length;
+        }
+
+        const nextQ = questions[nextQIdx];
         if (nextQ?.points) {
           const normPts = normalizeToThreeLevels(nextQ.points);
           nextStage = synchronizeMysteryStageWithQuestionPoints({
@@ -2762,7 +2850,9 @@ export default function AdminSandboxPage() {
         addLog(`➡️ Chuyển sang lượt #${nextTurnIdx + 1} của [${nextTeam.name}] (Chủ đề: ${nextStage.themeNameVi})`);
 
         soundManager.stopQuestionMusic(0, true);
-        handleAdminNextRef.current?.();
+        if (nextQIdx !== -1) {
+          launchOfflineQuestionRef.current?.(nextQIdx);
+        }
         return;
       }
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
@@ -3265,6 +3355,7 @@ export default function AdminSandboxPage() {
     const endsAt = Date.now() + timeLimit * 1000;
     const autoTimer = roomState?.config.autoTimerStart === true;
     const offlineQId = q.id || `q_${nextIdx + 1}`;
+    offlineUsedQuestionIdsRef.current.add(offlineQId);
 
     adminQuestionDataRef.current = {
       questionId: offlineQId,
@@ -3618,6 +3709,7 @@ export default function AdminSandboxPage() {
 
     addLog(`Admin: Bắt đầu câu hỏi #${nextIdx + 1}: "${q.content.slice(0, 30)}..."`);
   };
+  launchOfflineQuestionRef.current = launchOfflineQuestion;
 
   // ── Config Toggle Helper ──────────────────────────────────────────────────
   const updateConfig = useCallback(<K extends keyof NonNullable<RoomState["config"]>>(key: K, value: NonNullable<RoomState["config"]>[K]) => {
@@ -3674,6 +3766,8 @@ export default function AdminSandboxPage() {
   const handleAdminNext = () => {
     if (isOfflineSandbox) {
       if (roomState?.status === "LOBBY") {
+        offlineUsedQuestionIdsRef.current.clear();
+        offlineAnswersRef.current.clear();
         let tourState: TournamentState | undefined = undefined;
         if (selectedMode === "TOURNAMENT") {
           const tourMatches = buildOfflineTournamentMatches(roomState?.teams || []);
@@ -3810,6 +3904,20 @@ export default function AdminSandboxPage() {
         return;
       }
       if (selectedMode === "DICE_RACE") {
+        if (!currentQuestion) {
+          let nextIdx = -1;
+          for (let i = 0; i < questions.length; i++) {
+            const qId = questions[i].id || `q_${i + 1}`;
+            if (!offlineUsedQuestionIdsRef.current.has(qId)) {
+              nextIdx = i;
+              break;
+            }
+          }
+          if (nextIdx !== -1) {
+            launchOfflineQuestion(nextIdx);
+            return;
+          }
+        }
         setCurrentQuestion(null);
         setRevealPayload(null);
         setTimer(null);

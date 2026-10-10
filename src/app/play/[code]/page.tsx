@@ -1603,6 +1603,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot", teamId: effectiveTeamId }, "*");
                 }
               }}
+              onSpinTarotWheel={(powerPercent) => {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:spin_tarot_wheel", { powerPercent });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1867,6 +1874,13 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:draw_tarot");
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot", teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onSpinTarotWheel={(powerPercent) => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:spin_tarot_wheel", { powerPercent });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

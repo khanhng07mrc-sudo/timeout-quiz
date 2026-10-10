@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES, getPerkType } from "@/lib/game-engine/mystery-quest";
+import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
 
@@ -27,6 +27,7 @@ interface Props {
   onTarotProphecyDecision?: (choice: "KEEP" | "DISCARD") => void;
   onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
   onDrawTarot?: () => void;
+  onSpinTarotWheel?: (powerPercent: number) => void;
   teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
 }
 
@@ -51,6 +52,7 @@ export default function MysteryQuestBoard({
   onTarotProphecyDecision,
   onAdjustScore,
   onDrawTarot,
+  onSpinTarotWheel,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -60,6 +62,10 @@ export default function MysteryQuestBoard({
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
   const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
+  const [wheelPower, setWheelPower] = useState<number>(50);
+  const [isPowerIncreasing, setIsPowerIncreasing] = useState<boolean>(true);
+  const [spinCountdown, setSpinCountdown] = useState<number>(20);
+  const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
   const lastClickedTileIdRef = useRef<number | null>(null);
@@ -179,6 +185,61 @@ export default function MysteryQuestBoard({
   useEffect(() => {
     setDoorsRiskAccepted(false);
   }, [currentTurnIndex, miniGameType, oneShotState?.phase]);
+
+  // Synchronize Tarot Wheel angle when server spins or stops
+  useEffect(() => {
+    if (tarotState?.targetAngle !== undefined && tarotState.targetAngle !== null) {
+      setClientWheelAngle(tarotState.targetAngle);
+    }
+  }, [tarotState?.targetAngle, tarotState?.isWheelSpinning]);
+
+  // Ping-pong power gauge loop (0% -> 100% -> 0%)
+  useEffect(() => {
+    const isSpinning = Boolean(tarotState?.isWheelSpinning);
+    if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || tarotState?.isDrawn) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setWheelPower((prev) => {
+        if (prev >= 100) {
+          setIsPowerIncreasing(false);
+          return 97;
+        }
+        if (prev <= 5) {
+          setIsPowerIncreasing(true);
+          return 8;
+        }
+        return isPowerIncreasing ? prev + 3 : prev - 3;
+      });
+    }, 35);
+    return () => clearInterval(interval);
+  }, [miniGameType, phase, tarotState?.isWheelSpinning, tarotState?.isDrawn, isPowerIncreasing]);
+
+  // 20s countdown timer for Tarot Wheel
+  useEffect(() => {
+    const isSpinning = Boolean(tarotState?.isWheelSpinning);
+    if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || tarotState?.isDrawn) {
+      setSpinCountdown(20);
+      return;
+    }
+    const interval = setInterval(() => {
+      setSpinCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          // Tự động chốt lực nếu là người chơi đang tới lượt hoặc admin/sandbox
+          const isMyTurnActive = Boolean(myTeamId && myTeamId === currentTurnTeamId);
+          if ((isMyTurnActive || isAdmin || isSandbox) && onSpinTarotWheel) {
+            onSpinTarotWheel(wheelPower);
+          } else if ((isMyTurnActive || isAdmin || isSandbox) && onDrawTarot) {
+            onDrawTarot();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [miniGameType, phase, tarotState?.isWheelSpinning, tarotState?.isDrawn, myTeamId, currentTurnTeamId, isAdmin, isSandbox, onSpinTarotWheel, onDrawTarot, wheelPower]);
 
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
@@ -620,7 +681,7 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-black text-indigo-300 uppercase tracking-wider text-[11px]">
-                    🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (10 THẺ)
+                    🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)
                   </span>
                   <div className="flex items-center gap-2">
                     {memoryPairsState?.isBombRescueActive ? (
@@ -639,23 +700,23 @@ export default function MysteryQuestBoard({
                       </span>
                     )}
                     <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
-                      Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 3}
+                      Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 4}
                     </span>
                   </div>
                 </div>
                 {memoryPairsState?.isBombRescueActive ? (
                   <p className="text-[11px] text-amber-200 font-bold leading-snug animate-pulse">
-                    ⚠️ Bạn đã lật trúng lá bom thứ 2! Hệ thống mở khóa lượt lật 3 lá: Hãy lật thêm 1 lá để ghép cặp 2 lá còn lại. Nếu trùng nhau sẽ được cộng điểm, ngược lại sẽ bị trừ điểm!
+                    ⚠️ Đã ghép phải 2 lá của cặp phạt! Mở khóa lượt giải cứu (lá thứ 3): Ghép trúng cặp thưởng để thoát hiểm. Nếu trùng cặp phạt còn lại, hệ thống sẽ hủy cặp cũ và phạt theo cặp mới!
                   </p>
                 ) : (memoryPairsState?.keptBombTileIds && memoryPairsState.keptBombTileIds.length > 0) ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
-                    💣 Cảnh báo: Đã có 1 lá bom bị lộ (#{memoryPairsState.keptBombTileIds.join(", #")}) và giữ nguyên trên bàn! Tránh lật trúng lá bom thứ 2!
+                    💣 Cảnh báo: Đã có {memoryPairsState.keptBombTileIds.length} lá phạt bị lộ (#{memoryPairsState.keptBombTileIds.join(", #")}) và giữ nguyên trên bàn! Tránh lật trúng lá cùng loại để né kích nổ phạt!
                   </p>
                 ) : (
                   <p className="text-[11px] text-white/80 leading-snug">
                     {memoryPairsState?.round === 2
-                      ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 3 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
-                      : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 3 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
+                      ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 4 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
+                      : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 4 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
                   </p>
                 )}
               </div>
@@ -666,12 +727,12 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-2 z-30">
                 <div className="text-3xl animate-pulse">🔀</div>
                 <h4 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wider">
-                  HẾT 3 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
+                  HẾT 4 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
                 </h4>
                 <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
                   Bạn chưa ghép được cặp nào trong Vòng 1. Không bị mất điểm!
                   <br />
-                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 3 lượt tiếp theo</strong> (nhưng nếu trượt cả 3 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong>!
+                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 4 lượt tiếp theo</strong> (nhưng nếu trượt cả 4 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong>!
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
@@ -1347,55 +1408,211 @@ export default function MysteryQuestBoard({
           const cardVisual = getEntityVisuals(drawnCard?.key);
 
           return (
-            <div className="max-w-xl mx-auto py-3">
+            <div className="max-w-xl mx-auto py-2">
               {!isDrawn ? (
-                /* ── Trạng thái CHƯA RÚT: Bộ bài huyền bí trung tâm ── */
-                <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl bg-black/60 border-2 border-purple-500/40 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 20 Nan Quạt ── */
+                <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/60 border-2 border-purple-500/40 backdrop-blur-xl shadow-2xl relative overflow-hidden group space-y-3">
                   {/* Glowing background aura */}
                   <div className="absolute inset-0 bg-radial from-purple-600/20 via-transparent to-transparent opacity-75 pointer-events-none animate-pulse" />
 
-                  {/* Shuffling / Hovering Deck Visual */}
-                  <div className="relative w-36 h-52 sm:w-44 sm:h-64 mb-6 perspective-1000 cursor-pointer">
-                    {/* Shadow card 1 */}
-                    <div className="absolute inset-0 rounded-2xl bg-purple-950/50 border border-purple-600/30 transform -rotate-6 translate-x-2 translate-y-1 shadow-lg" />
-                    {/* Shadow card 2 */}
-                    <div className="absolute inset-0 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 transform rotate-4 -translate-x-1.5 translate-y-0.5 shadow-lg" />
-                    {/* Top deck card */}
-                    <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/80 shadow-2xl shadow-purple-900/60 overflow-hidden transform hover:-translate-y-2 transition-all duration-300 ring-2 ring-purple-400/30">
-                      <TarotCardBackSvg />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 text-center">
-                        <span className="text-xs font-black text-amber-200 uppercase tracking-widest drop-shadow">
-                          BÀI TAROT
-                        </span>
-                        <span className="text-[10px] text-purple-300 font-serif">5 Thực Thể Cổ Xưa</span>
-                      </div>
+                  {/* Header Title */}
+                  <div className="text-center z-10">
+                    <h3 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-widest drop-shadow">
+                      🎡 VÒNG QUAY TAROT ĐỊNH MỆNH
+                    </h3>
+                    <p className="text-[11px] text-purple-300 font-serif mt-0.5">
+                      20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%
+                    </p>
+                  </div>
+
+                  {/* ── SVG 20-Segment Wheel with 12 o'clock pointer ── */}
+                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-1 flex items-center justify-center z-10">
+                    {/* Pointer Needle at 12 o'clock (pointing down) */}
+                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${tarotState?.isWheelSpinning ? "animate-bounce" : ""}`}>
+                      <svg width="32" height="32" viewBox="0 0 32 32">
+                        <polygon points="6,2 26,2 16,26" fill="#ef4444" stroke="#fef08a" strokeWidth="2.5" />
+                        <circle cx="16" cy="8" r="3.5" fill="#fef08a" />
+                      </svg>
+                    </div>
+
+                    {/* Outer Glowing Border Ring */}
+                    <div className="absolute inset-0 rounded-full border-4 border-amber-400/80 shadow-[0_0_30px_rgba(168,85,247,0.5)] pointer-events-none z-20" />
+
+                    {/* Spinning Wheel */}
+                    <div
+                      className="w-full h-full rounded-full overflow-hidden shadow-2xl relative"
+                      style={{
+                        transform: `rotate(${tarotState?.targetAngle ?? clientWheelAngle ?? 0}deg)`,
+                        transition: tarotState?.isWheelSpinning
+                          ? `transform ${tarotState?.spinDurationMs ?? 5000}ms cubic-bezier(0.15, 0.9, 0.25, 1)`
+                          : "none",
+                      }}
+                    >
+                      <svg viewBox="0 0 340 340" className="w-full h-full select-none">
+                        <defs>
+                          <radialGradient id="hubGradient" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#fbbf24" />
+                            <stop offset="70%" stopColor="#b45309" />
+                            <stop offset="100%" stopColor="#451a03" />
+                          </radialGradient>
+                        </defs>
+
+                        {/* 20 Segments (18 deg each) */}
+                        {TAROT_WHEEL_SEGMENTS.map((seg, i) => {
+                          const theta1 = (i * 18 * Math.PI) / 180;
+                          const theta2 = ((i + 1) * 18 * Math.PI) / 180;
+                          const r = 168;
+                          const cx = 170;
+                          const cy = 170;
+                          const x1 = cx + r * Math.sin(theta1);
+                          const y1 = cy - r * Math.cos(theta1);
+                          const x2 = cx + r * Math.sin(theta2);
+                          const y2 = cy - r * Math.cos(theta2);
+                          const midDeg = (i + 0.5) * 18;
+
+                          return (
+                            <g key={seg.index}>
+                              <path
+                                d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
+                                fill={seg.bgColor}
+                                stroke={seg.borderColor}
+                                strokeWidth="1.2"
+                              />
+                              <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
+                                <text
+                                  x={cx}
+                                  y={cy - 122}
+                                  textAnchor="middle"
+                                  fontSize="12"
+                                  dominantBaseline="central"
+                                  className="select-none pointer-events-none drop-shadow"
+                                >
+                                  {seg.icon}
+                                </text>
+                                <text
+                                  x={cx}
+                                  y={cy - 98}
+                                  textAnchor="middle"
+                                  fontSize="7.5"
+                                  fontWeight="900"
+                                  fill={seg.textColor}
+                                  dominantBaseline="central"
+                                  className="font-serif select-none pointer-events-none"
+                                >
+                                  {seg.roman}
+                                </text>
+                              </g>
+                            </g>
+                          );
+                        })}
+
+                        {/* Center Hub */}
+                        <circle cx="170" cy="170" r="30" fill="#09090b" stroke="#f59e0b" strokeWidth="3" />
+                        <circle cx="170" cy="170" r="24" fill="url(#hubGradient)" />
+                        <circle cx="170" cy="170" r="13" fill="#09090b" stroke="#fde047" strokeWidth="1.5" />
+                        <text x="170" y="174" textAnchor="middle" fontSize="13" dominantBaseline="central">
+                          🔮
+                        </text>
+                      </svg>
                     </div>
                   </div>
 
-                  {/* Draw button or waiting notice */}
-                  <div className="text-center space-y-3 z-10 w-full max-w-sm">
+                  {/* ── Ping-pong Power Gauge ── */}
+                  <div className="w-full max-w-sm mx-auto space-y-1.5 px-2 z-10">
+                    <div className="flex items-center justify-between text-xs font-black">
+                      <span className="text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1">
+                        ⚡ LỰC QUAY DAO ĐỘNG:
+                      </span>
+                      <span
+                        className={`font-mono text-xs px-2 py-0.5 rounded font-black border ${
+                          wheelPower > 75
+                            ? "bg-rose-500/30 text-rose-300 border-rose-400"
+                            : wheelPower > 40
+                            ? "bg-amber-500/30 text-amber-300 border-amber-400"
+                            : "bg-emerald-500/30 text-emerald-300 border-emerald-400"
+                        }`}
+                      >
+                        {wheelPower}%
+                      </span>
+                    </div>
+
+                    {/* Gauge track */}
+                    <div className="w-full h-4 rounded-full bg-black/80 border border-white/20 p-0.5 relative overflow-hidden shadow-inner">
+                      <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-30 text-[8px] font-mono font-bold text-white items-center">
+                        <span>0</span>
+                        <span>25</span>
+                        <span>50</span>
+                        <span>75</span>
+                        <span>100</span>
+                      </div>
+                      <div
+                        style={{ width: `${wheelPower}%` }}
+                        className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 to-rose-600 shadow-[0_0_12px_rgba(245,158,11,0.6)]"
+                      />
+                    </div>
+
+                    {/* 20s Countdown */}
+                    <div className="flex items-center justify-between text-[11px] text-white/70 pt-0.5">
+                      <span className="flex items-center gap-1 font-mono">
+                        <span>⏱️</span>
+                        <span>Tự động chốt sau:</span>
+                        <strong className={spinCountdown <= 5 ? "text-rose-400 animate-pulse font-black" : "text-amber-300 font-bold"}>
+                          {spinCountdown}s
+                        </strong>
+                      </span>
+                      <span className="text-[10px] text-slate-400">Dao động Ping-pong</span>
+                    </div>
+                  </div>
+
+                  {/* ── Spin Action Buttons ── */}
+                  <div className="text-center space-y-2 z-10 w-full max-w-sm pt-1">
                     {canInteract ? (
                       <button
                         type="button"
                         onClick={() => {
-                          if (onDrawTarot) {
+                          if (onSpinTarotWheel) {
+                            onSpinTarotWheel(wheelPower);
+                          } else if (onDrawTarot) {
                             onDrawTarot();
                           } else {
                             onFlipCard?.(0);
                           }
                         }}
-                        disabled={isDrawingAnimation}
-                        className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-2xl shadow-purple-900/60 border-2 border-amber-300/80 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer animate-pulse"
+                        disabled={Boolean(tarotState?.isWheelSpinning)}
+                        className={`w-full py-3 px-6 rounded-2xl font-black text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
+                          tarotState?.isWheelSpinning
+                            ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
+                            : "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white border-amber-300/90 shadow-purple-900/60 hover:scale-[1.02] active:scale-95"
+                        }`}
                       >
-                        🔮 RÚT BÀI ĐỊNH MỆNH
+                        {tarotState?.isWheelSpinning ? "🌀 ĐANG QUAY VÒNG ĐỊNH MỆNH..." : `🎯 CHỐT LỰC & QUAY (${wheelPower}%)`}
                       </button>
                     ) : (
-                      <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic">
-                        Đang đợi Đội <strong style={{ color: currentTurnTeamColor }}>{currentTurnTeamName}</strong> rút bài định mệnh...
+                      <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic text-center">
+                        {tarotState?.isWheelSpinning
+                          ? "🌀 Vòng quay định mệnh đang xoay..."
+                          : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
                       </div>
                     )}
-                    <p className="text-[11px] text-white/60">
-                      Tỷ lệ Định mệnh: Thường (60%) | Đột biến (30%) | Chí mạng (10%)
+
+                    {(isAdmin || isSandbox) && !tarotState?.isWheelSpinning && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onSpinTarotWheel) {
+                            onSpinTarotWheel(wheelPower);
+                          } else if (onDrawTarot) {
+                            onDrawTarot();
+                          }
+                        }}
+                        className="w-full py-1.5 px-3 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
+                      >
+                        ⚡ Admin Quay Hộ ({wheelPower}%)
+                      </button>
+                    )}
+
+                    <p className="text-[10px] text-white/60">
+                      Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)
                     </p>
                   </div>
                 </div>
@@ -1468,7 +1685,7 @@ export default function MysteryQuestBoard({
         })()}
 
         {/* ════════════════════════════════════════════════════════════════════
-            3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
+            3. VARIANT: MEMORY_PAIRS (12 Cards / 6 Pairs)
         ════════════════════════════════════════════════════════════════════ */}
         {miniGameType === "MEMORY_PAIRS" && (() => {
           const effectiveMatchedPairKey = memoryPairsState?.matchedPairKey || optimisticMatchedPairKey;
@@ -1478,13 +1695,13 @@ export default function MysteryQuestBoard({
             memoryPairsState?.promptSecondChance ||
             effectiveMatchedPairKey ||
             phase === "TURN_SUMMARY" ||
-            ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) && !memoryPairsState?.isBombRescueActive)
+            ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 4) && !memoryPairsState?.isBombRescueActive)
           );
 
           const shouldDimBoard = Boolean(memoryPairsState?.promptSecondChance);
 
           return (
-            <div className={`grid grid-cols-5 gap-1.5 sm:gap-2 max-w-2xl mx-auto py-1 transition-opacity duration-300 ${
+            <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 max-w-2xl mx-auto py-1 transition-opacity duration-300 ${
               shouldDimBoard ? "opacity-40 pointer-events-none grayscale-30" : ""
             }`}>
               {tiles.map((tile) => {

@@ -51,6 +51,8 @@ import {
   synchronizeMysteryStageWithQuestionPoints,
   getPerkType,
   handleAncientTarotDraw,
+  handleAncientTarotSpinWheel,
+  TAROT_WHEEL_SEGMENTS,
   roundToMultipleOfFive,
 } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
@@ -5560,8 +5562,13 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryTarotProphecyDecision(room, questState, team, choice);
     });
 
-    const executeMysteryDrawTarot = async (room: any, questState: any, team: any) => {
-      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn) return;
+    const executeMysterySpinTarotWheel = async (
+      room: any,
+      questState: any,
+      team: any,
+      powerPercent: number = 50
+    ) => {
+      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
 
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
       const allTeams = rawTeams.map((t) => ({
@@ -5578,33 +5585,115 @@ export function registerSocketHandlers(io: IO) {
         score: team.score || 0,
       };
 
-      const result = handleAncientTarotDraw({
+      const result = handleAncientTarotSpinWheel({
         state: questState,
         team: teamRef,
         allTeams,
+        powerPercent,
       });
 
-      const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
-      for (const item of result.scoreDeltas) {
-        if (item.delta !== 0) {
-          const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
-          scoreUpdates.push({
-            teamId: item.teamId,
-            score: deltaRes.newScore,
-            delta: deltaRes.effectiveDelta,
-          });
+      // Mark wheel as spinning on clients immediately
+      const spinningState: MysteryQuestState = {
+        ...result.updatedState,
+        tarotState: {
+          ...result.updatedState.tarotState,
+          isWheelSpinning: true,
+          wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+          targetAngle: result.targetAngle,
+          spinDurationMs: result.spinDurationMs,
+          selectedSegmentIndex: result.landedIndex,
+          drawnCard: result.drawnCard,
+          isDrawn: false,
+        },
+      };
+
+      roomMysteryQuests.set(room.id, spinningState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", spinningState);
+
+      // Settle scores and transition after spinDurationMs finishes
+      setTimeout(async () => {
+        const curQuest = roomMysteryQuests.get(room.id);
+        if (!curQuest) return;
+
+        const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
+        for (const item of result.scoreDeltas) {
+          if (item.delta !== 0) {
+            const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
+            scoreUpdates.push({
+              teamId: item.teamId,
+              score: deltaRes.newScore,
+              delta: deltaRes.effectiveDelta,
+            });
+          }
         }
-      }
 
-      if (scoreUpdates.length > 0) {
-        io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
-      }
+        if (scoreUpdates.length > 0) {
+          io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
 
-      roomMysteryQuests.set(room.id, result.updatedState);
-      io.to(`room:${room.code}`).emit("game:mystery:update", result.updatedState);
-      const refreshedState = await buildRoomState(room.id);
-      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        const settledState: MysteryQuestState = {
+          ...result.updatedState,
+          tarotState: {
+            ...result.updatedState.tarotState,
+            isWheelSpinning: false,
+            wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            targetAngle: result.targetAngle,
+            spinDurationMs: result.spinDurationMs,
+            selectedSegmentIndex: result.landedIndex,
+            drawnCard: result.drawnCard,
+            isDrawn: true,
+          },
+        };
+
+        roomMysteryQuests.set(room.id, settledState);
+        io.to(`room:${room.code}`).emit("game:mystery:update", settledState);
+        const refreshedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", refreshedState);
+      }, result.spinDurationMs + 250);
     };
+
+    const executeMysteryDrawTarot = async (room: any, questState: any, team: any) => {
+      await executeMysterySpinTarotWheel(room, questState, team, 50);
+    };
+
+    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent }: { powerPercent: number }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quay của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+    });
+
+    socket.on("admin:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code }: { powerPercent?: number; code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+    });
 
     socket.on("game:mystery:draw_tarot", async () => {
       const playerId = playerSockets.get(socket.id);

@@ -885,6 +885,11 @@ function rollBombTypeForMinigame(mode, teamScore = 0) {
     if (r < 0.95) return "BOMB_DARK";
     return "BOMB_CHARITY";
   }
+  if (mode === "TAROT_DESTINY") {
+    if (r < 0.5) return "BOMB_SMOKE";
+    if (r < 0.85) return "BOMB_DARK";
+    return "BOMB_CHARITY";
+  }
   return "BOMB_SMOKE";
 }
 function resolveBombOutcome({
@@ -1193,11 +1198,20 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       deltaPoints: pBonusMed
     },
     {
+      pairKey: "PAIR_TRAP",
+      icon: "\u{1F4A8}",
+      type: "BOMB_SMOKE",
+      storyTitle: "\u{1F4A8} C\u1EB6P B\u1EAAY KH\xD3I \u0110\u1ED8C!",
+      storyDescription: `K\xEDch ho\u1EA1t b\u1EABy kh\xF3i \u0111\u1ED9c: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u h\u1ECFi n\xE0y (0\u0111)!`,
+      effectType: "LOSE_POT_POINTS",
+      deltaPoints: 0
+    },
+    {
       pairKey: "PAIR_BOMB",
       icon: "\u{1F4A3}",
       type: "BOMB_MAJOR",
       storyTitle: "\u{1F4A3} C\u1EB6P K\xCDP N\u1ED4 H\u1EAEC \xC1M!",
-      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 li\xEAn ho\xE0n: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m, b\u1ECB ph\u1EA1t tr\u1EEB ${pPenalty} \u0111i\u1EC3m!`,
+      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 li\xEAn ho\xE0n: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m h\u1EE7y di\u1EC7t t\u1ED5ng \u0111i\u1EC3m!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty
     }
@@ -1568,8 +1582,9 @@ function generateMysteryStageForTurn({
         thirdFlippedTileId: null,
         keptBombTileIds: [],
         isBombRescueActive: false,
+        activePenaltyPairKey: null,
         attemptsUsed: 0,
-        maxAttempts: promoPerk === "EXTRA_ATTEMPT_PROMO" ? 4 : 3,
+        maxAttempts: promoPerk === "EXTRA_ATTEMPT_PROMO" ? 5 : 4,
         matchedPairKey: null,
         isMismatchResolving: false,
         round: 1,
@@ -1659,8 +1674,9 @@ function handleFlipCard({
       thirdFlippedTileId: null,
       keptBombTileIds: [],
       isBombRescueActive: false,
+      activePenaltyPairKey: null,
       attemptsUsed: 0,
-      maxAttempts: 3,
+      maxAttempts: getPerkType(state.promoPerk) === "EXTRA_ATTEMPT_PROMO" ? 5 : 4,
       matchedPairKey: null,
       isMismatchResolving: false,
       round: 1,
@@ -1674,12 +1690,111 @@ function handleFlipCard({
     if (!tile2 || tile2.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
-    const isBombTile = (t) => Boolean(t && (t.type !== "REWARD" || t.pairKey === "PAIR_BOMB"));
+    const isTrapTile = (t) => Boolean(t && t.pairKey === "PAIR_TRAP");
+    const isBombTile = (t) => Boolean(t && (t.pairKey === "PAIR_BOMB" || t.type !== "REWARD" && t.pairKey !== "PAIR_TRAP"));
+    const isPenaltyTile = (t) => isTrapTile(t) || isBombTile(t);
+    const getPenaltyKey = (t) => {
+      if (!t) return null;
+      if (t.pairKey === "PAIR_TRAP") return "PAIR_TRAP";
+      if (t.pairKey === "PAIR_BOMB" || t.type !== "REWARD") return "PAIR_BOMB";
+      return null;
+    };
     const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
     const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
-    const isBombCard2 = isBombTile(tile2);
     const previouslyKeptBombs = memState.keptBombTileIds || [];
-    const hasPriorKeptBomb = previouslyKeptBombs.length > 0;
+    const executePenalty = ({
+      penaltyKey,
+      cancelOldKey
+    }) => {
+      memState.isBombRescueActive = false;
+      state.memoryPairsState = { ...memState };
+      const cancelPrefix = cancelOldKey ? `\u26A0\uFE0F \u0110\xC3 H\u1EE6Y B\u1ECE C\u1EB6P ${cancelOldKey === "PAIR_TRAP" ? "B\u1EAAY KH\xD3I" : "K\xCDP N\u1ED4"} C\u0168! Th\u1EF1c hi\u1EC7n ph\u1EA1t theo c\u1EB7p m\u1EDBi: ` : "";
+      if (state.hasShield) {
+        state.hasShield = false;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "PAIR_MATCHED";
+        state.potPoints = 0;
+        const basePoints = state.baseQuestionPoints || 10;
+        const oldScore = team.score || 0;
+        const newScore = oldScore + basePoints;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `${cancelPrefix}\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 PH\u1EA0T! Nh\u1EADn an to\xE0n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
+          scoreDelta: basePoints,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0,
+          finalScoreDelta: basePoints
+        };
+      }
+      if (penaltyKey === "PAIR_TRAP") {
+        state.bombExploded = {
+          type: "SMOKE",
+          title: "\u{1F4A8} C\u1EB6P B\u1EAAY KH\xD3I \u0110\u1ED8C PH\xC1T N\u1ED4!",
+          description: "K\xEDch ho\u1EA1t b\u1EABy kh\xF3i \u0111\u1ED9c: To\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u h\u1ECFi n\xE0y b\u1ECB x\xF3a s\u1EA1ch (0\u0111)!",
+          penaltyText: "M\u1EA5t \u0111i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i, t\u1ED5ng \u0111i\u1EC3m \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n."
+        };
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = oldScore;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `${cancelPrefix}\u{1F4A8} C\u1EB7p B\u1EABy Kh\xF3i \u0110\u1ED9c k\xEDch ho\u1EA1t! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u h\u1ECFi n\xE0y (0\u0111), b\u1EA3o to\xE0n t\u1ED5ng \u0111i\u1EC3m!`,
+          scoreDelta: 0,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: true,
+          scorePenalty: 0,
+          finalScoreDelta: 0
+        };
+      } else {
+        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0);
+        const outcome = resolveBombOutcome({
+          bombType,
+          team,
+          allTeams,
+          storyDescription: `${cancelPrefix}Gh\xE9p tr\xFAng C\u1EB7p K\xEDp N\u1ED5 H\u1EAFc \xC1m!`
+        });
+        state.bombExploded = outcome.bombExploded;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - outcome.penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `${cancelPrefix}\u{1F4A5} ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+          scoreDelta: -outcome.penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: true,
+          scorePenalty: outcome.penalty,
+          finalScoreDelta: -outcome.penalty,
+          giftedPoints: outcome.giftedPoints,
+          recipientTeamId: outcome.recipientTeamId,
+          recipientTeamName: outcome.recipientTeamName,
+          darkBombRecipients: outcome.darkBombRecipients
+        };
+      }
+    };
     if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
       if (Number(tile2.id) === Number(memState.firstFlippedTileId) || Number(tile2.id) === Number(memState.secondFlippedTileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -1693,12 +1808,26 @@ function handleFlipCard({
       state.tiles = state.tiles.map(
         (t) => Number(t.id) === numTileId || card1 && Number(t.id) === Number(card1.id) || card2 && Number(t.id) === Number(card2.id) ? { ...t, isOpened: true } : { ...t }
       );
+      const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
+      const otherPenaltyKey = oldPenaltyKey === "PAIR_TRAP" ? "PAIR_BOMB" : "PAIR_TRAP";
+      const isCard3OtherPenalty = getPenaltyKey(card3) === otherPenaltyKey;
+      let matchedOtherPenalty = false;
+      if (isCard3OtherPenalty) {
+        const priorOtherBombTile = state.tiles.find(
+          (t) => Number(t.id) !== Number(card3.id) && getPenaltyKey(t) === otherPenaltyKey && (previouslyKeptBombs.includes(t.id) || card1 && Number(t.id) === Number(card1.id) || card2 && Number(t.id) === Number(card2.id))
+        );
+        if (priorOtherBombTile) {
+          matchedOtherPenalty = true;
+        }
+      }
+      if (matchedOtherPenalty) {
+        return executePenalty({ penaltyKey: otherPenaltyKey, cancelOldKey: oldPenaltyKey });
+      }
       const cardsInTurn = [card1, card2, card3].filter(Boolean);
-      const nonBombCards = cardsInTurn.filter((c) => !isBombTile(c));
-      const bombCard = cardsInTurn.find((c) => isBombTile(c)) || tile2;
-      const isRescueSuccess = nonBombCards.length === 2 && nonBombCards[0].pairKey === nonBombCards[1].pairKey;
+      const rewardCards = cardsInTurn.filter((c) => !isPenaltyTile(c));
+      const isRescueSuccess = rewardCards.length === 2 && rewardCards[0].pairKey === rewardCards[1].pairKey;
       if (isRescueSuccess) {
-        const winCard = nonBombCards[0];
+        const winCard = rewardCards[0];
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         state.memoryPairsState = { ...memState };
@@ -1752,7 +1881,7 @@ function handleFlipCard({
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
         const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
-        let rewardText = extraPotBonus2 > 0 ? `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! L\u1EADt ph\u1EA3i 2 l\xE1 bom nh\u01B0ng \u0111\xE3 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
+        let rewardText = extraPotBonus2 > 0 ? `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! H\xF3a gi\u1EA3i c\u1EB7p ph\u1EA1t v\xE0 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${baseReward}\u0111 v\xE0 +${extraPotBonus2}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Tho\xE1t hi\u1EC3m ngo\u1EA1n m\u1EE5c! H\xF3a gi\u1EA3i c\u1EB7p ph\u1EA1t v\xE0 gh\xE9p ch\xEDnh x\xE1c c\u1EB7p ${winCard.storyTitle}! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
         if (stolenPoints && victimTeamName) {
           rewardText += ` (\u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp +${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName}!)`;
         }
@@ -1775,72 +1904,31 @@ function handleFlipCard({
           stolenPoints
         };
       } else {
-        memState.isBombRescueActive = false;
-        state.memoryPairsState = { ...memState };
-        if (state.hasShield) {
-          state.hasShield = false;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "PAIR_MATCHED";
-          state.potPoints = 0;
-          const basePoints = state.baseQuestionPoints || 10;
-          const oldScore2 = team.score || 0;
-          const newScore2 = oldScore2 + basePoints;
-          state.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xF4i \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-            scoreDelta: basePoints,
-            oldScore: oldScore2,
-            newScore: newScore2
-          };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: false,
-            scorePenalty: 0,
-            finalScoreDelta: basePoints
-          };
-        }
-        const penalty = Math.abs(bombCard.deltaPoints || state.baseQuestionPoints || 10);
-        state.bombExploded = {
-          type: "MAJOR",
-          title: "\u{1F4A3} K\xCDP N\u1ED4 \u0110\xD4I H\u1EAEC \xC1M PH\xC1T N\u1ED4!",
-          description: "\u0110\xE3 l\u1EADt ph\u1EA3i 2 l\xE1 bom v\xE0 2 l\xE1 b\xE0i b\u1ED5 sung kh\xF4ng tr\xF9ng nhau! B\u1ECB ph\u1EA1t tr\u1EEB \u0111i\u1EC3m!",
-          penaltyText: `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
-        };
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "BOMB_HIT";
-        state.potPoints = 0;
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - penalty);
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F4A5} K\xEDp n\u1ED5 \u0111\xF4i ph\xE1t n\u1ED5! N\u1ED7 l\u1EF1c gh\xE9p c\u1EB7p gi\u1EA3i c\u1EE9u kh\xF4ng th\xE0nh c\xF4ng, b\u1ECB ph\u1EA1t tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
-          scoreDelta: -penalty,
-          oldScore,
-          newScore
-        };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: true,
-          scorePenalty: penalty,
-          finalScoreDelta: -penalty
-        };
+        return executePenalty({ penaltyKey: oldPenaltyKey });
       }
     }
     if (!memState.firstFlippedTileId) {
       memState.firstFlippedTileId = tile2.id;
       state.lastFlippedTile = tile2;
-      if (isBombCard2 && hasPriorKeptBomb) {
-        memState.isBombRescueActive = true;
-      }
       state.tiles = state.tiles.map(
         (t) => Number(t.id) === numTileId ? { ...t, isOpened: true } : { ...t }
       );
+      const tilePenaltyKey = getPenaltyKey(tile2);
+      if (tilePenaltyKey) {
+        const matchingPriorBomb = state.tiles.find(
+          (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === tilePenaltyKey
+        );
+        if (matchingPriorBomb) {
+          memState.isBombRescueActive = true;
+          memState.activePenaltyPairKey = tilePenaltyKey;
+        }
+      }
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
+      return {
+        updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+        isBomb: false,
+        scorePenalty: 0
+      };
     }
     if (Number(memState.firstFlippedTileId) === numTileId) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
@@ -1853,75 +1941,62 @@ function handleFlipCard({
     );
     if (memState.isBombRescueActive) {
       state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
-    }
-    if (isBombCard2 && hasPriorKeptBomb) {
-      memState.isBombRescueActive = true;
-      state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0 };
-    }
-    const isBothBombs = isBombTile(firstTile) && isBombCard2;
-    if (isBothBombs) {
-      memState.attemptsUsed += 1;
-      memState.matchedPairKey = "PAIR_BOMB";
-      state.memoryPairsState = { ...memState };
-      if (state.hasShield) {
-        state.hasShield = false;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "PAIR_MATCHED";
-        state.potPoints = 0;
-        const basePoints = state.baseQuestionPoints || 10;
-        const oldScore2 = team.score || 0;
-        const newScore2 = oldScore2 + basePoints;
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! C\u1EB7p k\xEDp n\u1ED5 \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-          scoreDelta: basePoints,
-          oldScore: oldScore2,
-          newScore: newScore2
-        };
-        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints };
-      }
-      const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0);
-      const outcome = resolveBombOutcome({
-        bombType,
-        team,
-        allTeams,
-        storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 li\xEAn ho\xE0n! K\xEDch n\u1ED5 ${bombType === "BOMB_SMOKE" ? "Bom Kh\xF3i" : bombType === "BOMB_DARK" ? "Bom H\u1EAFc \xC1m" : "Bom T\u1EEB Thi\u1EC7n"}!`
-      });
-      state.bombExploded = outcome.bombExploded;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
-      state.potPoints = 0;
-      const oldScore = team.score || 0;
-      const newScore = Math.max(0, oldScore - outcome.penalty);
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F4A5} ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
-        scoreDelta: -outcome.penalty,
-        oldScore,
-        newScore
-      };
       return {
         updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-        isBomb: true,
-        scorePenalty: outcome.penalty,
-        finalScoreDelta: -outcome.penalty,
-        giftedPoints: outcome.giftedPoints,
-        recipientTeamId: outcome.recipientTeamId,
-        recipientTeamName: outcome.recipientTeamName,
-        darkBombRecipients: outcome.darkBombRecipients
+        isBomb: false,
+        scorePenalty: 0
       };
     }
-    const isOneBomb = isBombTile(firstTile) || isBombCard2;
-    if (isOneBomb) {
+    const secondTilePenaltyKey = getPenaltyKey(tile2);
+    if (secondTilePenaltyKey) {
+      const matchingPriorBomb = state.tiles.find(
+        (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === secondTilePenaltyKey
+      );
+      if (matchingPriorBomb) {
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = secondTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0
+        };
+      }
+    }
+    const firstTilePenaltyKey = getPenaltyKey(firstTile);
+    if (firstTilePenaltyKey && secondTilePenaltyKey) {
+      if (firstTilePenaltyKey === secondTilePenaltyKey) {
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = firstTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0
+        };
+      } else {
+        memState.attemptsUsed += 1;
+        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
+        memState.isMismatchResolving = true;
+        const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+        const currentRound = memState.round || 1;
+        if (isRoundOver) {
+          if (currentRound === 1) {
+            memState.promptSecondChance = true;
+            state.memoryPairsState = { ...memState };
+            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+          } else {
+            return executePenalty({ penaltyKey: "PAIR_BOMB" });
+          }
+        }
+        state.memoryPairsState = { ...memState };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      }
+    }
+    if (firstTilePenaltyKey || secondTilePenaltyKey) {
       memState.attemptsUsed += 1;
-      const bombTile = isBombTile(firstTile) ? firstTile : tile2;
-      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, bombTile.id]));
+      const penaltyTile = firstTilePenaltyKey ? firstTile : tile2;
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, penaltyTile.id]));
       memState.isMismatchResolving = true;
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
       const currentRound = memState.round || 1;
@@ -1931,60 +2006,7 @@ function handleFlipCard({
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
-          state.memoryPairsState = { ...memState };
-          const penalty = state.baseQuestionPoints || 10;
-          if (state.hasShield) {
-            state.hasShield = false;
-            state.phase = "TURN_SUMMARY";
-            state.turnFinishedReason = "PAIR_MATCHED";
-            state.potPoints = 0;
-            const basePoints = state.baseQuestionPoints || 10;
-            const oldScore2 = team.score || 0;
-            const newScore2 = oldScore2 + basePoints;
-            state.storyResult = {
-              teamId: team.id,
-              teamName: team.name,
-              teamColor: team.color || "#ef4444",
-              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-              scoreDelta: basePoints,
-              oldScore: oldScore2,
-              newScore: newScore2
-            };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
-          }
-          const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0);
-          const outcome = resolveBombOutcome({
-            bombType,
-            team,
-            allTeams,
-            storyDescription: "\u0110\xE3 c\u1EA1n 3 l\u01B0\u1EE3t l\u1EADt V\xF2ng 2 m\xE0 v\u1EABn kh\xF4ng t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. K\xEDch n\u1ED5 bom tr\u1EEBng ph\u1EA1t!"
-          });
-          state.bombExploded = outcome.bombExploded;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "BOMB_HIT";
-          state.potPoints = 0;
-          const oldScore = team.score || 0;
-          const newScore = Math.max(0, oldScore - outcome.penalty);
-          state.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F4A5} Th\u1EA5t b\u1EA1i sau 3 l\u01B0\u1EE3t V\xF2ng 2! ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
-            scoreDelta: -outcome.penalty,
-            oldScore,
-            newScore
-          };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: true,
-            scorePenalty: outcome.penalty,
-            finalScoreDelta: -outcome.penalty,
-            giftedPoints: outcome.giftedPoints,
-            recipientTeamId: outcome.recipientTeamId,
-            recipientTeamName: outcome.recipientTeamName,
-            darkBombRecipients: outcome.darkBombRecipients,
-            shouldResetMismatchedCards: true
-          };
+          return executePenalty({ penaltyKey: "PAIR_BOMB" });
         }
       }
       state.memoryPairsState = { ...memState };
@@ -2077,48 +2099,7 @@ function handleFlipCard({
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
-          state.memoryPairsState = { ...memState };
-          const penalty = state.baseQuestionPoints || 10;
-          if (state.hasShield) {
-            state.hasShield = false;
-            state.phase = "TURN_SUMMARY";
-            state.turnFinishedReason = "PAIR_MATCHED";
-            state.potPoints = 0;
-            const basePoints = state.baseQuestionPoints || 10;
-            const oldScore2 = team.score || 0;
-            const newScore2 = oldScore2 + basePoints;
-            state.storyResult = {
-              teamId: team.id,
-              teamName: team.name,
-              teamColor: team.color || "#ef4444",
-              rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 B\u1EA2O V\u1EC6 B\u1EA0N! V\u1EE5 n\u1ED5 tr\u1EEBng ph\u1EA1t v\xF2ng 2 \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-              scoreDelta: basePoints,
-              oldScore: oldScore2,
-              newScore: newScore2
-            };
-            return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, finalScoreDelta: basePoints, shouldResetMismatchedCards: true };
-          }
-          state.bombExploded = {
-            type: "MAJOR",
-            title: "\u{1F4A3} K\xCDCH HO\u1EA0T BOM PH\u1EA0T DO TH\u1EA4T B\u1EA0I V\xD2NG 2!",
-            description: "\u0110\xE3 c\u1EA1n 3 l\u01B0\u1EE3t l\u1EADt V\xF2ng 2 m\xE0 v\u1EABn kh\xF4ng t\xECm th\u1EA5y c\u1EB7p tr\xF9ng nhau. K\xEDch n\u1ED5 bom tr\u1EEBng ph\u1EA1t!",
-            penaltyText: `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
-          };
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "BOMB_HIT";
-          state.potPoints = 0;
-          const oldScore = team.score || 0;
-          const newScore = Math.max(0, oldScore - penalty);
-          state.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F4A5} Th\u1EA5t b\u1EA1i sau 3 l\u01B0\u1EE3t V\xF2ng 2! D\xEDnh bom tr\u1EEBng ph\u1EA1t, b\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
-            scoreDelta: -penalty,
-            oldScore,
-            newScore
-          };
-          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: true, scorePenalty: penalty, finalScoreDelta: -penalty, shouldResetMismatchedCards: true };
+          return executePenalty({ penaltyKey: "PAIR_BOMB" });
         }
       }
       state.memoryPairsState = { ...memState };
@@ -3058,103 +3039,170 @@ function handleOneShotDoorsDecision({
     };
   }
 }
-function handleAncientTarotDraw({
+var TAROT_WHEEL_SEGMENTS = [
+  { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 3, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 4, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 5, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 6, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 7, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 9, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 10, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 11, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 14, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 16, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 17, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
+];
+function calculateTarotWheelSpin({
+  powerPercent,
+  currentAngle = 0
+}) {
+  const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
+  const baseTurns = 6;
+  const extraAngle = Math.round(clampedPower / 100 * 1440);
+  const jitter = Math.floor(Math.random() * 7) - 3;
+  let totalDelta = baseTurns * 360 + extraAngle + jitter;
+  let pointerAngle = (360 - (currentAngle + totalDelta) % 360) % 360;
+  const remInSeg = pointerAngle % 18;
+  if (remInSeg < 2) {
+    totalDelta += 3;
+  } else if (remInSeg > 16) {
+    totalDelta -= 3;
+  }
+  const targetAngle = currentAngle + totalDelta;
+  pointerAngle = (360 - targetAngle % 360) % 360;
+  const landedIndex = Math.floor(pointerAngle / 18) % 20;
+  const landedSegment = TAROT_WHEEL_SEGMENTS[landedIndex];
+  const spinDurationMs = 4500 + Math.round(clampedPower / 100 * 1500);
+  return {
+    targetAngle,
+    spinDurationMs,
+    landedSegment,
+    landedIndex
+  };
+}
+function handleAncientTarotSpinWheel({
   state,
   team,
-  allTeams = []
+  allTeams = [],
+  powerPercent
 }) {
-  const basePoints = normalizeToThreeLevels(state.baseQuestionPoints || 10);
+  const currentAngle = state.tarotState?.targetAngle || 0;
+  const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
+    powerPercent,
+    currentAngle
+  });
+  const basePoints = state.baseQuestionPoints || 10;
   const currentScore = team.score || 0;
-  const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-  const rand = Math.random();
+  const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
   let drawnCard;
-  if (rand < 0.3) {
-    drawnCard = {
-      key: "THE_SUN",
-      nameVi: "M\u1EB7t Tr\u1EDDi",
-      nameEn: "The Sun",
-      icon: "\u2600\uFE0F",
-      roman: "XIX",
-      group: "COMMON",
-      scoreDelta: basePoints
-    };
-  } else if (rand < 0.6) {
-    drawnCard = {
-      key: "THE_FOOL",
-      nameVi: "K\u1EBB Kh\u1EDD",
-      nameEn: "The Fool",
-      icon: "\u{1F0CF}",
-      roman: "0",
-      group: "COMMON",
-      scoreDelta: 0
-    };
-  } else if (rand < 0.75) {
-    const darkOutcome = resolveBombOutcome({
-      bombType: "BOMB_DARK",
-      team,
-      allTeams,
-      storyDescription: "Ho\xE0ng \u0110\u1EBF uy quy\u1EC1n h\u1EAFc \xE1m! R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED1i th\u1EE7!"
-    });
-    drawnCard = {
-      key: "THE_EMPEROR",
-      nameVi: "Ho\xE0ng \u0110\u1EBF",
-      nameEn: "The Emperor",
-      icon: "\u{1F451}",
-      roman: "IV",
-      group: "MUTATION",
-      scoreDelta: -darkOutcome.penalty,
-      darkBombRecipients: darkOutcome.darkBombRecipients
-    };
-  } else if (rand < 0.9) {
-    const penalty = roundToMultipleOfFive(currentScore * 0.5);
-    drawnCard = {
-      key: "THE_KNIGHT",
-      nameVi: "Hi\u1EC7p S\u0129",
-      nameEn: "The Knight",
-      icon: "\u{1F5E1}\uFE0F",
-      roman: "XII",
-      group: "MUTATION",
-      scoreDelta: -penalty
-    };
-  } else {
-    const subRand = Math.random();
-    let top1Team = void 0;
-    if (otherTeams.length > 0) {
-      const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
-      const topCandidates = otherTeams.filter((t) => (t.score || 0) === maxScore);
-      top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+  switch (landedSegment.key) {
+    case "THE_SUN":
+      drawnCard = {
+        key: "THE_SUN",
+        nameVi: "M\u1EB7t Tr\u1EDDi",
+        nameEn: "The Sun",
+        icon: "\u2600\uFE0F",
+        roman: "XIX",
+        group: "COMMON",
+        scoreDelta: basePoints
+      };
+      break;
+    case "THE_FOOL":
+      drawnCard = {
+        key: "THE_FOOL",
+        nameVi: "K\u1EBB Kh\u1EDD",
+        nameEn: "The Fool",
+        icon: "\u{1F0CF}",
+        roman: "0",
+        group: "COMMON",
+        scoreDelta: 0
+      };
+      break;
+    case "THE_EMPEROR": {
+      const minPenalty = Math.min(currentScore, 5 * Math.max(1, otherTeams.length));
+      const rawPenalty = Math.max(minPenalty, roundToMultipleOfFive(basePoints * 1.5));
+      const penalty = Math.min(currentScore, rawPenalty);
+      const numRecipients = Math.max(1, otherTeams.length);
+      const perTeamRaw = Math.floor(penalty / numRecipients / 5) * 5;
+      const darkBombRecipients = otherTeams.map((ot) => ({
+        teamId: ot.id,
+        teamName: ot.name,
+        points: perTeamRaw
+      }));
+      drawnCard = {
+        key: "THE_EMPEROR",
+        nameVi: "Ho\xE0ng \u0110\u1EBF",
+        nameEn: "The Emperor",
+        icon: "\u{1F451}",
+        roman: "IV",
+        group: "MUTATION",
+        scoreDelta: -penalty,
+        darkBombRecipients
+      };
+      break;
     }
-    if (subRand < 0.5) {
-      const gifted = roundToMultipleOfFive(currentScore * 0.5);
+    case "THE_KNIGHT": {
+      const halfScore = roundToMultipleOfFive(currentScore * 0.5);
       drawnCard = {
-        key: "THE_DEATH",
-        nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)",
-        nameEn: "Death",
-        icon: "\u{1F480}",
-        roman: "XIII",
-        group: "CRITICAL",
-        deathSubtype: "GIFT_TOP1",
-        scoreDelta: -gifted,
-        giftedPoints: gifted,
-        victimTeamId: top1Team?.id,
-        victimTeamName: top1Team?.name
+        key: "THE_KNIGHT",
+        nameVi: "Hi\u1EC7p S\u0129",
+        nameEn: "The Knight",
+        icon: "\u{1F5E1}\uFE0F",
+        roman: "VII",
+        group: "MUTATION",
+        scoreDelta: -halfScore
       };
-    } else {
-      const stolen = basePoints * 2;
-      const top1Score = top1Team?.score || 0;
-      drawnCard = {
-        key: "THE_DEATH",
-        nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)",
-        nameEn: "Death",
-        icon: "\u{1F480}",
-        roman: "XIII",
-        group: "CRITICAL",
-        deathSubtype: "STEAL_TOP1",
-        scoreDelta: stolen,
-        stolenPoints: stolen,
-        victimTeamId: top1Team?.id,
-        victimTeamName: top1Team?.name
-      };
+      break;
+    }
+    case "THE_DEATH":
+    default: {
+      let top1Team = void 0;
+      if (otherTeams.length > 0) {
+        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
+        const topCandidates = otherTeams.filter((t) => (t.score || 0) === maxScore);
+        top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+      }
+      if (landedSegment.deathSubtype === "GIFT_TOP1") {
+        const gifted = roundToMultipleOfFive(currentScore * 0.5);
+        drawnCard = {
+          key: "THE_DEATH",
+          nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)",
+          nameEn: "Death",
+          icon: "\u{1F480}",
+          roman: "XIII",
+          group: "CRITICAL",
+          deathSubtype: "GIFT_TOP1",
+          scoreDelta: -gifted,
+          giftedPoints: gifted,
+          victimTeamId: top1Team?.id,
+          victimTeamName: top1Team?.name
+        };
+      } else {
+        const stolen = basePoints * 2;
+        drawnCard = {
+          key: "THE_DEATH",
+          nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)",
+          nameEn: "Death",
+          icon: "\u{1F480}",
+          roman: "XIII",
+          group: "CRITICAL",
+          deathSubtype: "STEAL_TOP1",
+          scoreDelta: stolen,
+          stolenPoints: stolen,
+          victimTeamId: top1Team?.id,
+          victimTeamName: top1Team?.name
+        };
+      }
+      break;
     }
   }
   const isNegative = drawnCard.key === "THE_FOOL" || drawnCard.key === "THE_EMPEROR" || drawnCard.key === "THE_KNIGHT" || drawnCard.key === "THE_DEATH" && drawnCard.deathSubtype === "GIFT_TOP1";
@@ -3162,9 +3210,14 @@ function handleAncientTarotDraw({
     state.hasShield = false;
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "TAROT_DRAWN";
+    state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotState = {
       ...state.tarotState || {},
+      isWheelSpinning: false,
+      wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+      targetAngle,
+      spinDurationMs,
+      selectedSegmentIndex: landedIndex,
       drawnCard,
       isDrawn: true
     };
@@ -3186,14 +3239,23 @@ function handleAncientTarotDraw({
       isBomb: false,
       scorePenalty: 0,
       drawnCard,
-      scoreDeltas: scoreDeltas2
+      scoreDeltas: scoreDeltas2,
+      targetAngle,
+      spinDurationMs,
+      landedSegment,
+      landedIndex
     };
   }
   state.potPoints = 0;
   state.phase = "TURN_SUMMARY";
-  state.turnFinishedReason = "TAROT_DRAWN";
+  state.turnFinishedReason = "TAROT_WHEEL_SPUN";
   state.tarotState = {
     ...state.tarotState || {},
+    isWheelSpinning: false,
+    wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+    targetAngle,
+    spinDurationMs,
+    selectedSegmentIndex: landedIndex,
     drawnCard,
     isDrawn: true
   };
@@ -3271,7 +3333,11 @@ function handleAncientTarotDraw({
     giftedPoints: drawnCard.giftedPoints,
     darkBombRecipients: drawnCard.darkBombRecipients,
     drawnCard,
-    scoreDeltas
+    scoreDeltas,
+    targetAngle,
+    spinDurationMs,
+    landedSegment,
+    landedIndex
   };
 }
 function handleTarotRedraw({
@@ -8476,8 +8542,8 @@ function registerSocketHandlers(io2) {
       if (!team) return;
       await executeMysteryTarotProphecyDecision(room, questState, team, choice);
     });
-    const executeMysteryDrawTarot = async (room, questState, team) => {
-      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn) return;
+    const executeMysterySpinTarotWheel = async (room, questState, team, powerPercent = 50) => {
+      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
       const allTeams = rawTeams.map((t) => ({
         id: t.id,
@@ -8491,30 +8557,95 @@ function registerSocketHandlers(io2) {
         color: team.color || "#ef4444",
         score: team.score || 0
       };
-      const result = handleAncientTarotDraw({
+      const result = handleAncientTarotSpinWheel({
         state: questState,
         team: teamRef,
-        allTeams
+        allTeams,
+        powerPercent
       });
-      const scoreUpdates = [];
-      for (const item of result.scoreDeltas) {
-        if (item.delta !== 0) {
-          const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
-          scoreUpdates.push({
-            teamId: item.teamId,
-            score: deltaRes.newScore,
-            delta: deltaRes.effectiveDelta
-          });
+      const spinningState = {
+        ...result.updatedState,
+        tarotState: {
+          ...result.updatedState.tarotState,
+          isWheelSpinning: true,
+          wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+          targetAngle: result.targetAngle,
+          spinDurationMs: result.spinDurationMs,
+          selectedSegmentIndex: result.landedIndex,
+          drawnCard: result.drawnCard,
+          isDrawn: false
         }
-      }
-      if (scoreUpdates.length > 0) {
-        io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
-      }
-      roomMysteryQuests.set(room.id, result.updatedState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", result.updatedState);
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      };
+      roomMysteryQuests.set(room.id, spinningState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", spinningState);
+      setTimeout(async () => {
+        const curQuest = roomMysteryQuests.get(room.id);
+        if (!curQuest) return;
+        const scoreUpdates = [];
+        for (const item of result.scoreDeltas) {
+          if (item.delta !== 0) {
+            const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
+            scoreUpdates.push({
+              teamId: item.teamId,
+              score: deltaRes.newScore,
+              delta: deltaRes.effectiveDelta
+            });
+          }
+        }
+        if (scoreUpdates.length > 0) {
+          io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
+        const settledState = {
+          ...result.updatedState,
+          tarotState: {
+            ...result.updatedState.tarotState,
+            isWheelSpinning: false,
+            wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            targetAngle: result.targetAngle,
+            spinDurationMs: result.spinDurationMs,
+            selectedSegmentIndex: result.landedIndex,
+            drawnCard: result.drawnCard,
+            isDrawn: true
+          }
+        };
+        roomMysteryQuests.set(room.id, settledState);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", settledState);
+        const refreshedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      }, result.spinDurationMs + 250);
     };
+    const executeMysteryDrawTarot = async (room, questState, team) => {
+      await executeMysterySpinTarotWheel(room, questState, team, 50);
+    };
+    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quay c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+    });
+    socket.on("admin:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+      await executeMysterySpinTarotWheel(room, questState, team, powerPercent);
+    });
     socket.on("game:mystery:draw_tarot", async () => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;

@@ -39,6 +39,7 @@ import {
   handleTarotProphecyDecision as handleMysteryTarotProphecyDecision,
   synchronizeMysteryStageWithQuestionPoints,
   handleAncientTarotDraw,
+  handleAncientTarotSpinWheel,
   roundToMultipleOfFive,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
@@ -2811,6 +2812,44 @@ export default function AdminSandboxPage() {
         setRoomState(nextRoomState);
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         addLog(`🔮 [${activeTeam.name}] RÚT BÀI TAROT: [${drawnCard.nameVi}]!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_SPIN_TAROT_WHEEL" || e.data?.action === "mystery_spin_tarot_wheel") {
+        const powerPercent = typeof e.data?.powerPercent === "number" ? e.data.powerPercent : 50;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, scoreDeltas, landedSegment } = handleAncientTarotSpinWheel({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+          powerPercent,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        for (const item of scoreDeltas) {
+          if (item.delta !== 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+            );
+          }
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Trúng [${landedSegment.nameVi}]!`);
         return;
       }
       if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {
@@ -7902,6 +7941,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:draw_tarot" as any, { code });
                         } else {
                           window.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot" }, "*");
+                        }
+                      }}
+                      onSpinTarotWheel={(powerPercent) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent }, "*");
                         }
                       }}
                       onAdjustScore={(teamId, delta, setScore) => handleAdjustScore(teamId, delta, setScore)}

@@ -920,6 +920,20 @@ export interface AncientTarotDrawnCard {
   darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
 }
 
+export interface TarotWheelSegment {
+  index: number;
+  key: AncientTarotCardKey;
+  nameVi: string;
+  nameEn: string;
+  icon: string;
+  roman: string;
+  group: "COMMON" | "MUTATION" | "CRITICAL";
+  deathSubtype?: TarotDeathSubtype;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+}
+
 export interface MysteryQuestState {
   currentTurnTeamId: string;
   currentTurnTeamName: string;
@@ -992,6 +1006,7 @@ export interface MysteryQuestState {
     | "PAIR_MATCHED"
     | "DOOR_CHOSEN"
     | "TAROT_DRAWN"
+    | "TAROT_WHEEL_SPUN"
     | "MAX_ATTEMPTS";
   storyResult?: {
     teamId: string;
@@ -1009,6 +1024,7 @@ export interface MysteryQuestState {
     thirdFlippedTileId?: number | null;
     keptBombTileIds?: number[];
     isBombRescueActive?: boolean;
+    activePenaltyPairKey?: string | null;
     attemptsUsed: number;
     maxAttempts: number;
     matchedPairKey?: string | null;
@@ -1036,6 +1052,13 @@ export interface MysteryQuestState {
     discardedCardId?: number;   // Lá bài đã bị bỏ qua (khóa lại)
     drawnCard?: AncientTarotDrawnCard; // Lá bài cổ xưa được bốc theo thể thức Định Mệnh Chọn Lá
     isDrawn?: boolean; // Đã rút bài hay chưa
+    // Tarot Wheel of Destiny
+    isWheelSpinning?: boolean;
+    wheelPower?: number; // 0 - 100
+    targetAngle?: number; // degree of wheel rotation
+    spinDurationMs?: number;
+    selectedSegmentIndex?: number;
+    spinTimeoutSeconds?: number;
   };
   peekUsesRemaining?: number;    // Số lượt sử dụng Mắt Thần còn lại (cho PUSH_YOUR_LUCK)
   nextCardPeek?: {
@@ -1419,6 +1442,8 @@ export interface ClientToServerEvents {
   "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => void;
   "game:mystery:draw_tarot": () => void;
   "admin:mystery:draw_tarot": (payload?: { code?: string }) => void;
+  "game:mystery:spin_tarot_wheel": (payload: { powerPercent: number }) => void;
+  "admin:mystery:spin_tarot_wheel": (payload?: { powerPercent?: number; code?: string }) => void;
   "game:mystery:tarot_redraw": () => void;
   "admin:mystery:tarot_redraw": (payload?: { code?: string }) => void;
   "game:mystery:tarot_keep": () => void;

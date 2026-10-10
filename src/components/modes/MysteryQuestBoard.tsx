@@ -23,6 +23,8 @@ interface Props {
   onDoorsDecision?: (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
   onTarotRedraw?: () => void;
   onTarotConfirmKeep?: () => void;
+  onUsePeek?: () => void;
+  onTarotProphecyDecision?: (choice: "KEEP" | "DISCARD") => void;
   onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
   teams?: Array<{ id: string; name: string; color: string; score: number }>;
 }
@@ -44,6 +46,8 @@ export default function MysteryQuestBoard({
   onDoorsDecision,
   onTarotRedraw,
   onTarotConfirmKeep,
+  onUsePeek,
+  onTarotProphecyDecision,
   onAdjustScore,
   teams = [],
 }: Props) {
@@ -95,6 +99,7 @@ export default function MysteryQuestBoard({
     oneShotState,
     tarotState,
     nextCardPeek,
+    peekUsesRemaining,
   } = mysteryState;
 
   // Sync optimistic set with actual opened tiles from server without redundant re-renders or flickering
@@ -1268,6 +1273,37 @@ export default function MysteryQuestBoard({
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
           <div className="max-w-3xl mx-auto py-1">
+            {/* ── Banner Mắt Thần Tiên Tri ── */}
+            {tarotState?.prophecyCardId && !tarotState?.prophecyResolved && (
+              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/90 to-black/95 border-2 border-cyan-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                <div className="text-3xl animate-pulse">👁️🔮</div>
+                <h4 className="text-sm sm:text-base font-black text-cyan-300 uppercase tracking-wider">
+                  MẮT THẦN TIÊN TRI ĐÃ HÉ LỘ LÁ #{tarotState.prophecyCardId}!
+                </h4>
+                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                  Quẻ số phận hé lộ trước một lá bài bí mật. Bạn muốn chốt luôn lá này hay bỏ qua để thử vận may với 4 lá còn lại?
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onTarotProphecyDecision?.("KEEP")}
+                    disabled={!canInteract}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    ✅ CHỌN LUÔN LÁ NÀY
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTarotProphecyDecision?.("DISCARD")}
+                    disabled={!canInteract}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
+                  >
+                    🔄 BỎ QUA & RÚT LÁ KHÁC
+                  </button>
+                </div>
+              </div>
+            )}
+
             {tarotState?.canRedraw && !tarotState?.hasRedrawn && tarotState?.chosenCardId && (
               <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-purple-950/95 via-indigo-950/90 to-black/95 border-2 border-purple-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
                 <div className="text-3xl animate-pulse">🔮</div>
@@ -1303,6 +1339,9 @@ export default function MysteryQuestBoard({
             <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5">
               {tiles.map((tile) => {
                 const isChosen = tarotState?.chosenCardId === tile.id;
+                const isDiscarded = tarotState?.discardedCardId === tile.id;
+                const isProphecyCard = tarotState?.prophecyCardId === tile.id;
+                const isProphecyPending = Boolean(tarotState?.prophecyCardId && !tarotState?.prophecyResolved);
                 const isBomb = tile.type !== "REWARD";
                 const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
                 const meta = getTarotCardMeta(tile.tarotName, tile.storyTitle);
@@ -1313,13 +1352,11 @@ export default function MysteryQuestBoard({
                       key={tile.id}
                       type="button"
                       onClick={() => handleTileClick(tile)}
-                      disabled={!canInteract}
+                      disabled={!canInteract || isProphecyPending || isDiscarded}
                       className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
-                        canInteract
-                          ? tile.isPeeked
-                            ? "border-emerald-400/90 ring-2 ring-emerald-400/50 hover:border-emerald-300 hover:-translate-y-1 shadow-2xl hover:shadow-emerald-500/50 group"
-                            : "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
-                          : "border-white/10 opacity-80 cursor-default"
+                        canInteract && !isProphecyPending && !isDiscarded
+                          ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
+                          : "border-white/10 opacity-60 cursor-default"
                       }`}
                     >
                       {/* Tarot Card Back SVG Artwork */}
@@ -1332,11 +1369,7 @@ export default function MysteryQuestBoard({
                         <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
                           #{tile.id}
                         </span>
-                        {tile.isPeeked ? (
-                          <span className="text-[7px] sm:text-[8px] font-black text-emerald-300 px-1.5 py-0.2 rounded-full bg-emerald-950/90 border border-emerald-400 animate-pulse shadow-md">
-                            👁️ AN TOÀN ✨
-                          </span>
-                        ) : canInteract ? (
+                        {canInteract && !isProphecyPending && !isDiscarded ? (
                           <span className="text-[8px] sm:text-[9px] font-black text-amber-300 px-1 py-0.2 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
                             RÚT ✨
                           </span>
@@ -1357,16 +1390,43 @@ export default function MysteryQuestBoard({
                 <div
                   key={tile.id}
                   className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
-                    isChosen ? "ring-2 sm:ring-4 ring-yellow-400 scale-103 z-20" : "opacity-90"
+                    isChosen
+                      ? "ring-2 sm:ring-4 ring-yellow-400 scale-103 z-20"
+                      : isProphecyCard && isProphecyPending
+                      ? "ring-2 ring-cyan-400 border-cyan-400 shadow-cyan-500/40"
+                      : isDiscarded
+                      ? "opacity-50 grayscale-50 border-gray-600"
+                      : "opacity-90"
                   } bg-gradient-to-b ${meta.bgGradient} ${meta.borderColor}`}
                   style={{
                     boxShadow: isChosen
                       ? `0 0 25px ${meta.glowColor}, 0 0 8px rgba(250, 204, 21, 0.6)`
+                      : isProphecyCard && isProphecyPending
+                      ? `0 0 20px rgba(6, 182, 212, 0.7)`
                       : `0 4px 15px ${meta.glowColor}`,
                   }}
                 >
+                  {/* Overlay for discarded card */}
+                  {isDiscarded && (
+                    <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
+                      <span className="text-2xl mb-1">❌</span>
+                      <span className="text-[9px] font-black uppercase text-red-300 px-1.5 py-0.5 rounded bg-red-950/80 border border-red-500/50">
+                        ĐÃ BỎ QUA
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Prophecy Indicator Tag */}
+                  {isProphecyCard && isProphecyPending && (
+                    <div className="absolute top-1 left-1 right-1 z-25 flex justify-center">
+                      <span className="text-[8px] font-black uppercase text-cyan-200 px-1.5 py-0.2 rounded-full bg-cyan-950/90 border border-cyan-400 animate-pulse shadow-md">
+                        👁️ QUẺ TIÊN TRI
+                      </span>
+                    </div>
+                  )}
+
                   {/* Card Header: Roman Numeral & English Name in 1 clean line */}
-                  <div className="w-full flex items-center justify-between border-b border-white/15 pb-0.5">
+                  <div className={`w-full flex items-center justify-between border-b border-white/15 pb-0.5 ${isProphecyCard && isProphecyPending ? "pt-3.5" : ""}`}>
                     <span className="text-[9px] font-mono font-bold opacity-75 text-amber-200/80">
                       #{tile.id}
                     </span>
@@ -1561,6 +1621,12 @@ export default function MysteryQuestBoard({
                   }`}>
                     {nextCardPeek.isBomb ? "💥 BẪY BOM!" : "✨ AN TOÀN!"}
                   </span>
+                </div>
+              )}
+              {(peekUsesRemaining ?? 0) > 0 && !nextCardPeek && (
+                <div className="w-full max-w-md px-3 py-1 rounded-xl bg-cyan-950/80 border border-cyan-400 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-md">
+                  <span>👁️ Mắt Thần Chủ Động:</span>
+                  <span className="text-white">Bạn có {peekUsesRemaining} lượt chủ động bấm soi trước lá bài trên đỉnh!</span>
                 </div>
               )}
               {getPerkType(promoPerk) === "SAFETY_NET_PROMO" && (
@@ -1777,6 +1843,17 @@ export default function MysteryQuestBoard({
                     >
                       <span>{isCashingOut ? "⏳" : "💰"}</span>
                       <span>{isCashingOut ? "ĐANG CHỐT..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
+                    </button>
+                  )}
+
+                  {canInteract && (peekUsesRemaining ?? 0) > 0 && !nextCardPeek && (
+                    <button
+                      type="button"
+                      onClick={() => onUsePeek?.()}
+                      className="px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-600 via-teal-600 to-cyan-600 hover:from-cyan-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm shadow-xl border border-cyan-300 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer animate-pulse"
+                    >
+                      <span>👁️</span>
+                      <span>SOI ĐỈNH BÀI ({peekUsesRemaining})</span>
                     </button>
                   )}
                 </div>

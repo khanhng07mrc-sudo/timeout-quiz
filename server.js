@@ -1401,11 +1401,16 @@ function generateMysteryStageForTurn({
       if (promoPerk === "PEEK_PROMO") {
         const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
         const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
-        shuffledSafe.slice(0, 4).forEach((t) => {
-          t.isPeeked = true;
-          t.peekLabel = "AN TO\xC0N";
-          t.peekIcon = "\u2728";
-        });
+        if (shuffledSafe.length >= 2) {
+          const first = shuffledSafe[0];
+          const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+          first.isPeeked = true;
+          first.peekLabel = "AN TO\xC0N";
+          first.peekIcon = "\u2728";
+          second.isPeeked = true;
+          second.peekLabel = "AN TO\xC0N";
+          second.peekIcon = "\u2728";
+        }
       }
       memoryPairsState = {
         firstFlippedTileId: null,
@@ -1435,19 +1440,18 @@ function generateMysteryStageForTurn({
       break;
     case "TAROT_DESTINY":
       tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
+      let prophecyCardId;
       if (promoPerk === "PEEK_PROMO") {
-        const safeCards = tiles.filter((t) => t.type === "REWARD");
-        const shuffledSafe = [...safeCards].sort(() => Math.random() - 0.5);
-        shuffledSafe.slice(0, 2).forEach((c) => {
-          c.isPeeked = true;
-          c.peekLabel = "AN TO\xC0N";
-          c.peekIcon = "\u2728";
-        });
+        const prophecyCard = tiles[Math.floor(Math.random() * tiles.length)];
+        prophecyCard.isOpened = true;
+        prophecyCardId = prophecyCard.id;
       }
       tarotState = {
         chosenCardId: void 0,
         canRedraw: promoPerk === "EXTRA_ATTEMPT_PROMO",
-        hasRedrawn: false
+        hasRedrawn: false,
+        prophecyCardId,
+        prophecyResolved: false
       };
       break;
     case "PUSH_YOUR_LUCK":
@@ -1461,11 +1465,7 @@ function generateMysteryStageForTurn({
       );
       break;
   }
-  const nextCardPeek = promoPerk === "PEEK_PROMO" && miniGameType === "PUSH_YOUR_LUCK" && tiles[0] ? {
-    icon: tiles[0].icon,
-    storyTitle: tiles[0].storyTitle,
-    isBomb: tiles[0].type !== "REWARD"
-  } : void 0;
+  const peekUsesRemaining = promoPerk === "PEEK_PROMO" && miniGameType === "PUSH_YOUR_LUCK" ? 1 : 0;
   return {
     currentTurnTeamId: currentTeam.id,
     currentTurnTeamName: currentTeam.name,
@@ -1489,7 +1489,8 @@ function generateMysteryStageForTurn({
     memoryPairsState,
     oneShotState,
     tarotState,
-    nextCardPeek
+    peekUsesRemaining,
+    nextCardPeek: void 0
   };
 }
 function handleFlipCard({
@@ -2136,12 +2137,12 @@ function handleFlipCard({
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
   }
   if (normType === "TAROT_DESTINY") {
-    const tile2 = state.tiles.find((t) => t.id === tileId);
-    if (!tile2 || tile2.isOpened) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
     const tState = state.tarotState || {};
     state.tarotState = tState;
+    const tile2 = state.tiles.find((t) => t.id === tileId);
+    if (!tile2 || tile2.isOpened || tileId === tState?.discardedCardId || tState?.prophecyCardId && !tState?.prophecyResolved) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
     const canRedraw = Boolean(tState.canRedraw && !tState.hasRedrawn);
     if (canRedraw) {
       tile2.isOpened = true;
@@ -2498,13 +2499,7 @@ function handleFlipCard({
     }
   });
   state.tiles.push(nextTopCard);
-  if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-    state.nextCardPeek = {
-      icon: nextTopCard.icon,
-      storyTitle: nextTopCard.storyTitle,
-      isBomb: nextTopCard.type !== "REWARD"
-    };
-  }
+  state.nextCardPeek = void 0;
   return {
     updatedState: { ...state },
     isBomb: false,
@@ -2912,6 +2907,51 @@ function handleTarotConfirmKeep({
     team,
     allTeams
   });
+}
+function handlePushYourLuckUsePeek({
+  state
+}) {
+  if (!state.peekUsesRemaining || state.peekUsesRemaining <= 0) {
+    return { updatedState: state };
+  }
+  state.peekUsesRemaining -= 1;
+  const topCard = state.tiles.find((t) => !t.isOpened);
+  if (topCard) {
+    state.nextCardPeek = {
+      icon: topCard.icon,
+      storyTitle: topCard.storyTitle,
+      isBomb: topCard.type !== "REWARD"
+    };
+  }
+  return { updatedState: { ...state } };
+}
+function handleTarotProphecyDecision({
+  state,
+  team,
+  allTeams = [],
+  choice
+}) {
+  const tState = state.tarotState || {};
+  state.tarotState = tState;
+  if (choice === "KEEP") {
+    const targetTileId = tState.prophecyCardId;
+    tState.prophecyResolved = true;
+    if (targetTileId) {
+      const targetTile = state.tiles.find((t) => t.id === targetTileId);
+      if (targetTile) targetTile.isOpened = false;
+      return handleFlipCard({
+        state,
+        tileId: targetTileId,
+        team,
+        allTeams
+      });
+    }
+    return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  } else {
+    tState.prophecyResolved = true;
+    tState.discardedCardId = tState.prophecyCardId;
+    return { updatedState: { ...state }, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  }
 }
 
 // src/lib/game-engine/powerups.ts
@@ -7575,6 +7615,38 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("room:state", rState);
       }).catch(console.error);
     };
+    const executeMysteryUsePeek = async (room, questState) => {
+      const { updatedState } = handlePushYourLuckUsePeek({
+        state: questState
+      });
+      roomMysteryQuests.set(room.id, updatedState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+    };
+    const executeMysteryTarotProphecyDecision = async (room, questState, team, choice) => {
+      if (choice === "KEEP") {
+        const prophecyCardId = questState.tarotState?.prophecyCardId;
+        if (prophecyCardId) {
+          if (questState.tarotState) {
+            questState.tarotState.prophecyResolved = true;
+          }
+          const tile = questState.tiles.find((t) => t.id === prophecyCardId);
+          if (tile) tile.isOpened = false;
+          await executeMysteryFlip(room, questState, team, prophecyCardId);
+        }
+      } else {
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const { updatedState } = handleTarotProphecyDecision({
+          state: questState,
+          team,
+          allTeams,
+          choice: "DISCARD"
+        });
+        roomMysteryQuests.set(room.id, updatedState);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+        const refreshedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      }
+    };
     async function executeMysteryAdvanceTurn(room, questState) {
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
@@ -7851,6 +7923,65 @@ function registerSocketHandlers(io2) {
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
       await executeMysteryTarotKeep(room, questState, team);
+    });
+    socket.on("game:mystery:use_peek", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t d\xF9ng M\u1EAFt Th\u1EA7n c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      if ((questState.peekUsesRemaining ?? 0) <= 0) {
+        socket.emit("error", "B\u1EA1n \u0111\xE3 h\u1EBFt l\u01B0\u1EE3t s\u1EED d\u1EE5ng M\u1EAFt Th\u1EA7n!");
+        return;
+      }
+      await executeMysteryUsePeek(room, questState);
+    });
+    socket.on("admin:mystery:use_peek", async ({ code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if ((questState.peekUsesRemaining ?? 0) <= 0) return;
+      await executeMysteryUsePeek(room, questState);
+    });
+    socket.on("game:mystery:tarot_prophecy_decision", async ({ choice }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.prophecyCardId || questState.tarotState?.prophecyResolved) return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+      await executeMysteryTarotProphecyDecision(room, questState, team, choice);
+    });
+    socket.on("admin:mystery:tarot_prophecy_decision", async ({ choice, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.prophecyCardId || questState.tarotState?.prophecyResolved) return;
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+      await executeMysteryTarotProphecyDecision(room, questState, team, choice);
     });
     socket.on("game:mystery:steal_buzz", async () => {
       const playerId = playerSockets.get(socket.id);

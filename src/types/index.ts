@@ -1009,7 +1009,11 @@ export interface MysteryQuestState {
     chosenCardId?: number;
     canRedraw?: boolean;
     hasRedrawn?: boolean;
+    prophecyCardId?: number;    // ID lá bài Mắt Thần tiên tri hé lộ trước
+    prophecyResolved?: boolean;  // Đã chốt quyết định tiên tri (chọn luôn hay bỏ qua)
+    discardedCardId?: number;   // Lá bài đã bị bỏ qua (khóa lại)
   };
+  peekUsesRemaining?: number;    // Số lượt sử dụng Mắt Thần còn lại (cho PUSH_YOUR_LUCK)
   nextCardPeek?: {
     icon: string;
     storyTitle: string;
@@ -1395,6 +1399,10 @@ export interface ClientToServerEvents {
   "admin:mystery:tarot_keep": (payload?: { code?: string }) => void;
   "game:mystery:choose_steal_target": (payload: { targetTeamId: string }) => void;
   "admin:mystery:choose_steal_target": (payload: { targetTeamId: string; code?: string }) => void;
+  "game:mystery:use_peek": () => void;
+  "admin:mystery:use_peek": (payload?: { code?: string }) => void;
+  "game:mystery:tarot_prophecy_decision": (payload: { choice: "KEEP" | "DISCARD" }) => void;
+  "admin:mystery:tarot_prophecy_decision": (payload: { choice: "KEEP" | "DISCARD"; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;
 }

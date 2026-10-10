@@ -46,6 +46,8 @@ import {
   handleOneShotDoorsDecision,
   handleTarotRedraw,
   handleTarotConfirmKeep,
+  handlePushYourLuckUsePeek,
+  handleTarotProphecyDecision,
   getPerkType,
 } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
@@ -5036,6 +5038,45 @@ export function registerSocketHandlers(io: IO) {
       }).catch(console.error);
     };
 
+    const executeMysteryUsePeek = async (room: any, questState: any) => {
+      const { updatedState } = handlePushYourLuckUsePeek({
+        state: questState,
+      });
+      roomMysteryQuests.set(room.id, updatedState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+    };
+
+    const executeMysteryTarotProphecyDecision = async (
+      room: any,
+      questState: any,
+      team: any,
+      choice: "KEEP" | "DISCARD"
+    ) => {
+      if (choice === "KEEP") {
+        const prophecyCardId = questState.tarotState?.prophecyCardId;
+        if (prophecyCardId) {
+          if (questState.tarotState) {
+            questState.tarotState.prophecyResolved = true;
+          }
+          const tile = questState.tiles.find((t: any) => t.id === prophecyCardId);
+          if (tile) tile.isOpened = false;
+          await executeMysteryFlip(room, questState, team, prophecyCardId);
+        }
+      } else {
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const { updatedState } = handleTarotProphecyDecision({
+          state: questState,
+          team,
+          allTeams,
+          choice: "DISCARD",
+        });
+        roomMysteryQuests.set(room.id, updatedState);
+        io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+        const refreshedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", refreshedState);
+      }
+    };
+
     async function executeMysteryAdvanceTurn(room: any, questState: any) {
       // Immediately clear previous question state across display and player devices (0ms latency)
       stopQuestionTimer(room.id);
@@ -5394,6 +5435,85 @@ export function registerSocketHandlers(io: IO) {
       if (!team) return;
 
       await executeMysteryTarotKeep(room, questState, team);
+    });
+
+    socket.on("game:mystery:use_peek", async () => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt dùng Mắt Thần của đội bạn!");
+        return;
+      }
+
+      if ((questState.peekUsesRemaining ?? 0) <= 0) {
+        socket.emit("error", "Bạn đã hết lượt sử dụng Mắt Thần!");
+        return;
+      }
+
+      await executeMysteryUsePeek(room, questState);
+    });
+
+    socket.on("admin:mystery:use_peek", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+
+      if ((questState.peekUsesRemaining ?? 0) <= 0) return;
+
+      await executeMysteryUsePeek(room, questState);
+    });
+
+    socket.on("game:mystery:tarot_prophecy_decision", async ({ choice }: { choice: "KEEP" | "DISCARD" }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.prophecyCardId || questState.tarotState?.prophecyResolved) return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
+        return;
+      }
+
+      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      if (!team) return;
+
+      await executeMysteryTarotProphecyDecision(room, questState, team, choice);
+    });
+
+    socket.on("admin:mystery:tarot_prophecy_decision", async ({ choice, code }: { choice: "KEEP" | "DISCARD"; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.tarotState?.prophecyCardId || questState.tarotState?.prophecyResolved) return;
+
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      await executeMysteryTarotProphecyDecision(room, questState, team, choice);
     });
 
     socket.on("game:mystery:steal_buzz", async () => {

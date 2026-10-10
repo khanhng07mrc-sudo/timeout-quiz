@@ -880,14 +880,19 @@ export function generateMysteryStageForTurn({
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(baseQuestionPoints, roundOptions);
       if (promoPerk === "PEEK_PROMO") {
-        // Soi 40% (4 lá trên 10 lá) chắc chắn an toàn (REWARD), tuyệt đối không soi bom!
+        // Chỉ 2 lá an toàn khác nhau trên 10 lá (2 lá phải là hai loại cặp khác nhau!)
         const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
         const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
-        shuffledSafe.slice(0, 4).forEach((t) => {
-          t.isPeeked = true;
-          t.peekLabel = "AN TOÀN";
-          t.peekIcon = "✨";
-        });
+        if (shuffledSafe.length >= 2) {
+          const first = shuffledSafe[0];
+          const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+          first.isPeeked = true;
+          first.peekLabel = "AN TOÀN";
+          first.peekIcon = "✨";
+          second.isPeeked = true;
+          second.peekLabel = "AN TOÀN";
+          second.peekIcon = "✨";
+        }
       }
       memoryPairsState = {
         firstFlippedTileId: null,
@@ -921,20 +926,19 @@ export function generateMysteryStageForTurn({
 
     case "TAROT_DESTINY":
       tiles = generateTarotDestinyTiles(baseQuestionPoints, roundOptions);
+      let prophecyCardId: number | undefined;
       if (promoPerk === "PEEK_PROMO") {
-        // Soi 40% (2 lá trên 5 lá) chắc chắn an toàn (REWARD), tuyệt đối không soi Thần Chết!
-        const safeCards = tiles.filter((t) => t.type === "REWARD");
-        const shuffledSafe = [...safeCards].sort(() => Math.random() - 0.5);
-        shuffledSafe.slice(0, 2).forEach((c) => {
-          c.isPeeked = true;
-          c.peekLabel = "AN TOÀN";
-          c.peekIcon = "✨";
-        });
+        // Mắt Thần Tiên Tri: Lật mở xem trước 1 lá bài bí mật ngẫu nhiên trong 5 lá
+        const prophecyCard = tiles[Math.floor(Math.random() * tiles.length)];
+        prophecyCard.isOpened = true;
+        prophecyCardId = prophecyCard.id;
       }
       tarotState = {
         chosenCardId: undefined,
         canRedraw: promoPerk === "EXTRA_ATTEMPT_PROMO",
         hasRedrawn: false,
+        prophecyCardId,
+        prophecyResolved: false,
       };
       break;
 
@@ -950,14 +954,8 @@ export function generateMysteryStageForTurn({
       break;
   }
 
-  const nextCardPeek =
-    promoPerk === "PEEK_PROMO" && miniGameType === "PUSH_YOUR_LUCK" && tiles[0]
-      ? {
-          icon: tiles[0].icon,
-          storyTitle: tiles[0].storyTitle,
-          isBomb: tiles[0].type !== "REWARD",
-        }
-      : undefined;
+  const peekUsesRemaining =
+    promoPerk === "PEEK_PROMO" && miniGameType === "PUSH_YOUR_LUCK" ? 1 : 0;
 
   return {
     currentTurnTeamId: currentTeam.id,
@@ -982,7 +980,8 @@ export function generateMysteryStageForTurn({
     memoryPairsState,
     oneShotState,
     tarotState,
-    nextCardPeek,
+    peekUsesRemaining,
+    nextCardPeek: undefined,
   };
 }
 
@@ -1809,13 +1808,13 @@ export function handleFlipCard({
   // VARIANT 4: TAROT_DESTINY (Rút 1 trong 5 lá bài Tarot thần số)
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "TAROT_DESTINY") {
-    const tile = state.tiles.find((t) => t.id === tileId);
-    if (!tile || tile.isOpened) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
-    }
-
     const tState = state.tarotState || {};
     state.tarotState = tState;
+
+    const tile = state.tiles.find((t) => t.id === tileId);
+    if (!tile || tile.isOpened || tileId === tState?.discardedCardId || (tState?.prophecyCardId && !tState?.prophecyResolved)) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
 
     // Check if player has redraw option available (EXTRA_ATTEMPT_PROMO) and hasn't redrawn yet
     const canRedraw = Boolean(tState.canRedraw && !tState.hasRedrawn);
@@ -2247,14 +2246,8 @@ export function handleFlipCard({
   });
   state.tiles.push(nextTopCard);
 
-  // Cập nhật soi trước đỉnh chồng bài nếu có PEEK_PROMO
-  if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-    state.nextCardPeek = {
-      icon: nextTopCard.icon,
-      storyTitle: nextTopCard.storyTitle,
-      isBomb: nextTopCard.type !== "REWARD",
-    };
-  }
+  // Rút xong thì lá bài tiếp theo úp lại bí mật (trừ khi người chơi chủ động bấm nút soi)
+  state.nextCardPeek = undefined;
 
   return {
     updatedState: { ...state },
@@ -2811,5 +2804,77 @@ export function handleTarotConfirmKeep({
     team,
     allTeams,
   });
+}
+
+/**
+ * Kích hoạt Mắt Thần soi đỉnh bài 1 lần duy nhất trong PUSH_YOUR_LUCK.
+ */
+export function handlePushYourLuckUsePeek({
+  state,
+}: {
+  state: MysteryQuestState;
+}): { updatedState: MysteryQuestState } {
+  if (!state.peekUsesRemaining || state.peekUsesRemaining <= 0) {
+    return { updatedState: state };
+  }
+  state.peekUsesRemaining -= 1;
+  const topCard = state.tiles.find((t) => !t.isOpened);
+  if (topCard) {
+    state.nextCardPeek = {
+      icon: topCard.icon,
+      storyTitle: topCard.storyTitle,
+      isBomb: topCard.type !== "REWARD",
+    };
+  }
+  return { updatedState: { ...state } };
+}
+
+/**
+ * Xử lý quyết định Mắt Thần Tiên Tri trong TAROT_DESTINY:
+ * - "KEEP": Người chơi chọn luôn lá được tiên tri hé lộ.
+ * - "DISCARD": Người chơi bỏ qua lá được tiên tri, khóa lá đó lại và được rút 1 trong 4 lá còn lại.
+ */
+export function handleTarotProphecyDecision({
+  state,
+  team,
+  allTeams = [],
+  choice,
+}: {
+  state: MysteryQuestState;
+  team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
+  choice: "KEEP" | "DISCARD";
+}): {
+  updatedState: MysteryQuestState;
+  finalScoreDelta?: number;
+  isBomb?: boolean;
+  scorePenalty?: number;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
+} {
+  const tState = state.tarotState || {};
+  state.tarotState = tState;
+
+  if (choice === "KEEP") {
+    const targetTileId = tState.prophecyCardId;
+    tState.prophecyResolved = true;
+    if (targetTileId) {
+      const targetTile = state.tiles.find((t) => t.id === targetTileId);
+      if (targetTile) targetTile.isOpened = false;
+      return handleFlipCard({
+        state,
+        tileId: targetTileId,
+        team,
+        allTeams,
+      });
+    }
+    return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  } else {
+    // DISCARD: Khóa lá bài tiên tri, cho phép rút 4 lá còn lại
+    tState.prophecyResolved = true;
+    tState.discardedCardId = tState.prophecyCardId;
+    return { updatedState: { ...state }, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  }
 }
 

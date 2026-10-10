@@ -35,6 +35,8 @@ import {
   handleOneShotDoorsDecision as handleMysteryDoorsDecision,
   handleTarotRedraw as handleMysteryTarotRedraw,
   handleTarotConfirmKeep as handleMysteryTarotConfirmKeep,
+  handlePushYourLuckUsePeek as handleMysteryPushYourLuckUsePeek,
+  handleTarotProphecyDecision as handleMysteryTarotProphecyDecision,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -2441,6 +2443,67 @@ export default function AdminSandboxPage() {
         const updatedTeams = roomStateRef.current.teams.map((t) =>
           t.id === activeTeam.id ? { ...t, score: Math.max(0, (t.score || 0) + delta) } : t
         );
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
+      if (e.data?.type === "MYSTERY_USE_PEEK" || e.data?.action === "mystery_use_peek") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:use_peek" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const { updatedState } = handleMysteryPushYourLuckUsePeek({
+          state: curMystery,
+        });
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        return;
+      }
+      if (e.data?.type === "MYSTERY_TAROT_PROPHECY_DECISION" || e.data?.action === "mystery_tarot_prophecy_decision") {
+        const choice = e.data?.choice as "KEEP" | "DISCARD";
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:tarot_prophecy_decision" as any, { choice, code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, finalScoreDelta, isBomb, scorePenalty } = handleMysteryTarotProphecyDecision({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+          choice,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (choice === "KEEP") {
+          if (isBomb && scorePenalty && scorePenalty > 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === activeTeam.id ? { ...t, score: Math.max(0, (t.score || 0) - scorePenalty) } : t
+            );
+          } else if (finalScoreDelta && finalScoreDelta > 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === activeTeam.id ? { ...t, score: (t.score || 0) + finalScoreDelta } : t
+            );
+          }
+        }
 
         const nextRoomState: RoomState = {
           ...roomStateRef.current,
@@ -7533,6 +7596,20 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:tarot_keep" as any, { code });
                         } else {
                           window.postMessage({ type: "MYSTERY_TAROT_KEEP", action: "mystery_tarot_keep" }, "*");
+                        }
+                      }}
+                      onUsePeek={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:use_peek" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_USE_PEEK", action: "mystery_use_peek" }, "*");
+                        }
+                      }}
+                      onTarotProphecyDecision={(choice) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:tarot_prophecy_decision" as any, { choice, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_PROPHECY_DECISION", action: "mystery_tarot_prophecy_decision", choice }, "*");
                         }
                       }}
                       onAdjustScore={(teamId, delta, setScore) => handleAdjustScore(teamId, delta, setScore)}

@@ -16,7 +16,7 @@ interface ContinuousTimerBarProps {
  * 60fps Hardware-Accelerated Smooth Timer Progress Bar
  * Runs continuously based on authoritative epoch ms without 1-second step-jumps.
  */
-export function ContinuousTimerBar({
+export const ContinuousTimerBar = React.memo(function ContinuousTimerBar({
   endsAt,
   total,
   color = "#06b6d4",
@@ -25,11 +25,20 @@ export function ContinuousTimerBar({
   isPaused = false,
 }: ContinuousTimerBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
+  const stableEndsAtRef = useRef<number | null>(null);
+
+  if (endsAt && endsAt > 0) {
+    stableEndsAtRef.current = endsAt;
+  } else if (!stableEndsAtRef.current && total > 0) {
+    stableEndsAtRef.current = Date.now() + getServerClockOffset() + total * 1000;
+  }
+
+  const effectiveEndsAt = stableEndsAtRef.current;
 
   useEffect(() => {
     if (!barRef.current) return;
-    if (!endsAt || endsAt <= 0 || total <= 0 || isPaused) {
-      if (!endsAt || endsAt <= 0) {
+    if (!effectiveEndsAt || effectiveEndsAt <= 0 || total <= 0 || isPaused) {
+      if (!effectiveEndsAt || effectiveEndsAt <= 0) {
         barRef.current.style.width = "100%";
       }
       return;
@@ -40,7 +49,7 @@ export function ContinuousTimerBar({
     const tick = () => {
       if (!barRef.current) return;
       const now = Date.now() + getServerClockOffset();
-      const msRemaining = Math.max(0, endsAt - now);
+      const msRemaining = Math.max(0, effectiveEndsAt - now);
       const pct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
 
       barRef.current.style.width = `${pct}%`;
@@ -52,7 +61,7 @@ export function ContinuousTimerBar({
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [endsAt, total, isPaused]);
+  }, [effectiveEndsAt, total, isPaused]);
 
   return (
     <div className={`w-full bg-slate-800/80 rounded-full overflow-hidden ${heightClassName} ${className}`}>
@@ -66,7 +75,7 @@ export function ContinuousTimerBar({
       />
     </div>
   );
-}
+});
 
 interface ContinuousTimerRingProps {
   endsAt?: number;
@@ -83,7 +92,7 @@ interface ContinuousTimerRingProps {
  * 60fps Smooth Circular SVG Timer Ring
  * Rotates smoothly without 1-second stepped jumps.
  */
-export function ContinuousTimerRing({
+export const ContinuousTimerRing = React.memo(function ContinuousTimerRing({
   endsAt,
   total,
   radius = 28,
@@ -97,11 +106,20 @@ export function ContinuousTimerRing({
   const circumference = 2 * Math.PI * radius;
   const size = (radius + strokeWidth) * 2;
   const center = radius + strokeWidth;
+  const stableEndsAtRef = useRef<number | null>(null);
+
+  if (endsAt && endsAt > 0) {
+    stableEndsAtRef.current = endsAt;
+  } else if (!stableEndsAtRef.current && total > 0) {
+    stableEndsAtRef.current = Date.now() + getServerClockOffset() + total * 1000;
+  }
+
+  const effectiveEndsAt = stableEndsAtRef.current;
 
   useEffect(() => {
     if (!circleRef.current) return;
-    if (!endsAt || endsAt <= 0 || total <= 0 || isPaused) {
-      if (!endsAt || endsAt <= 0) {
+    if (!effectiveEndsAt || effectiveEndsAt <= 0 || total <= 0 || isPaused) {
+      if (!effectiveEndsAt || effectiveEndsAt <= 0) {
         circleRef.current.style.strokeDashoffset = "0";
       }
       return;
@@ -112,7 +130,7 @@ export function ContinuousTimerRing({
     const tick = () => {
       if (!circleRef.current) return;
       const now = Date.now() + getServerClockOffset();
-      const msRemaining = Math.max(0, endsAt - now);
+      const msRemaining = Math.max(0, effectiveEndsAt - now);
       const pct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
 
       circleRef.current.style.strokeDashoffset = `${circumference * (1 - pct / 100)}`;
@@ -124,7 +142,7 @@ export function ContinuousTimerRing({
 
     animId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animId);
-  }, [endsAt, total, circumference, isPaused]);
+  }, [effectiveEndsAt, total, circumference, isPaused]);
 
   return (
     <svg
@@ -151,7 +169,6 @@ export function ContinuousTimerRing({
         stroke={color}
         strokeWidth={strokeWidth}
         strokeDasharray={`${circumference}`}
-        strokeDashoffset="0"
         strokeLinecap="round"
         className="transition-none will-change-[stroke-dashoffset]"
       />
@@ -169,4 +186,4 @@ export function ContinuousTimerRing({
       )}
     </svg>
   );
-}
+});

@@ -325,7 +325,7 @@ export function generateMysteryPromoPerk(
     pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO"];
     if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else if (normType === "TAROT_DESTINY") {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "SUN_MAGNET_PROMO"];
     if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else {
     // PUSH_YOUR_LUCK
@@ -1147,20 +1147,11 @@ export function generateMysteryStageForTurn({
       break;
 
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(effectiveBasePoints, roundOptions);
-      let prophecyCardId: number | undefined;
-      if (promoPerk === "PEEK_PROMO") {
-        // Mắt Thần Tiên Tri: Lật mở xem trước 1 lá bài bí mật ngẫu nhiên trong 5 lá
-        const prophecyCard = tiles[Math.floor(Math.random() * tiles.length)];
-        prophecyCard.isOpened = true;
-        prophecyCardId = prophecyCard.id;
-      }
+      tiles = [];
       tarotState = {
-        chosenCardId: undefined,
-        canRedraw: promoPerk === "EXTRA_ATTEMPT_PROMO",
-        hasRedrawn: false,
-        prophecyCardId,
-        prophecyResolved: false,
+        isWheelSpinning: false,
+        isDrawn: false,
+        targetAngle: 0,
       };
       break;
 
@@ -3313,14 +3304,42 @@ export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = [
 ];
 
 /**
+ * Trả về danh sách 20 nan quạt có áp dụng hiệu ứng Perk (SUN_MAGNET_PROMO).
+ * Nếu sở hữu Perk Nam Châm Thái Dương: Ô Kẻ Khờ (index 2) sẽ được chuyển hóa thành Mặt Trời Nam Châm!
+ */
+export function getEffectiveTarotWheelSegments(hasSunMagnet: boolean = false): TarotWheelSegment[] {
+  if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
+  return TAROT_WHEEL_SEGMENTS.map((seg) => {
+    if (seg.index === 2) {
+      return {
+        ...seg,
+        key: "THE_SUN" as const,
+        nameVi: "Mặt Trời (Nam Châm)",
+        nameEn: "The Sun (Magnet)",
+        icon: "☀️",
+        roman: "XIX",
+        group: "COMMON" as const,
+        bgColor: "#92400e",
+        borderColor: "#fde047",
+        textColor: "#ffffff",
+        isMagnetized: true,
+      };
+    }
+    return seg;
+  });
+}
+
+/**
  * Tính toán góc quay vật lý và ô trúng thưởng dựa trên lực nạp (Power Percent 1-100%).
  */
 export function calculateTarotWheelSpin({
   powerPercent,
   currentAngle = 0,
+  hasSunMagnet = false,
 }: {
   powerPercent: number;
   currentAngle?: number;
+  hasSunMagnet?: boolean;
 }): {
   targetAngle: number;
   spinDurationMs: number;
@@ -3344,7 +3363,8 @@ export function calculateTarotWheelSpin({
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - (targetAngle % 360)) % 360;
   const landedIndex = Math.floor(pointerAngle / 18) % 20;
-  const landedSegment = TAROT_WHEEL_SEGMENTS[landedIndex];
+  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet);
+  const landedSegment = effectiveSegments[landedIndex];
   const spinDurationMs = 4500 + Math.round((clampedPower / 100) * 1500);
 
   return {
@@ -3389,9 +3409,11 @@ export function handleAncientTarotSpinWheel({
   landedIndex: number;
 } {
   const currentAngle = state.tarotState?.targetAngle || 0;
+  const hasSunMagnet = getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
+    hasSunMagnet,
   });
 
   const basePoints = state.baseQuestionPoints || 10;
@@ -3404,7 +3426,7 @@ export function handleAncientTarotSpinWheel({
     case "THE_SUN":
       drawnCard = {
         key: "THE_SUN",
-        nameVi: "Mặt Trời",
+        nameVi: landedSegment.isMagnetized ? "Mặt Trời (Nam Châm)" : "Mặt Trời",
         nameEn: "The Sun",
         icon: "☀️",
         roman: "XIX",
@@ -3851,17 +3873,7 @@ export function synchronizeMysteryStageWithQuestionPoints({
     }
 
     case "TAROT_DESTINY": {
-      if (!state.tarotState?.chosenCardId && (!state.tarotState?.prophecyCardId || !state.tarotState?.prophecyResolved)) {
-        state.tiles = generateTarotDestinyTiles(normPoints, roundOptions);
-        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-          const prophecyCard = state.tiles[Math.floor(Math.random() * state.tiles.length)];
-          prophecyCard.isOpened = true;
-          if (state.tarotState) {
-            state.tarotState.prophecyCardId = prophecyCard.id;
-            state.tarotState.prophecyResolved = false;
-          }
-        }
-      }
+      state.tiles = [];
       break;
     }
 

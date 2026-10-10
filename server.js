@@ -1019,7 +1019,7 @@ function generateMysteryPromoPerk(basePoints = 10, miniGameType, options) {
     pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO"];
     if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else if (normType === "TAROT_DESTINY") {
-    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "EXTRA_ATTEMPT_PROMO"];
+    pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "SUN_MAGNET_PROMO"];
     if (hasOpponentWithScore) pool.push("STEAL_5_PROMO");
   } else {
     pool = ["SHIELD_PROMO", "EXTRA_POT_PROMO", "PEEK_PROMO", "SAFETY_NET_PROMO"];
@@ -1301,86 +1301,6 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     deltaPoints: d.deltaPoints
   }));
 }
-function generateTarotDestinyTiles(basePoints = 20, options) {
-  const pSun = basePoints * 2;
-  const pEmperor = Math.round(basePoints * 1.5);
-  const pFool = basePoints + 10;
-  const pKnight = basePoints;
-  const pDeath = basePoints;
-  const currentRound = options?.currentRound ?? 1;
-  const canSteal = currentRound >= 2 && Boolean(
-    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
-  );
-  const fifthCard = canSteal ? {
-    tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
-    icon: "\u{1F5E1}\uFE0F",
-    type: "REWARD",
-    storyTitle: "\u{1F5E1}\uFE0F HI\u1EC6P S\u0128 \u0110\u1ED8T K\xCDCH",
-    storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD c\u01B0\u1EDBp ph\xE1: C\u01B0\u1EDBp +${pKnight}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
-    effectType: "STEAL_POINTS",
-    deltaPoints: pKnight
-  } : {
-    tarotName: "Ng\xF4i Sao Hy V\u1ECDng (The Star)",
-    icon: "\u2B50",
-    type: "REWARD",
-    storyTitle: "\u2B50 NG\xD4I SAO HY V\u1ECCNG",
-    storyDescription: `\xC1nh sao may m\u1EAFn r\u1EA1ng ng\u1EDDi: Nh\u1EADn n\xF3ng +${pKnight} \u0111i\u1EC3m th\u01B0\u1EDFng vinh quang!`,
-    effectType: "BONUS_POINTS",
-    deltaPoints: pKnight
-  };
-  const tarotCards = [
-    {
-      tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
-      icon: "\u2600\uFE0F",
-      type: "REWARD",
-      storyTitle: "\u2600\uFE0F M\u1EB6T TR\u1EDCI QUANG MINH",
-      storyDescription: `\xC1nh d\u01B0\u01A1ng th\u1EA7n th\xE1nh chi\u1EBFu r\u1ECDi: \u0110\u1EA1i h\u1ED3ng \xE2n ban t\u1EB7ng +${pSun} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pSun
-    },
-    {
-      tarotName: "Ho\xE0ng \u0110\u1EBF (The Emperor)",
-      icon: "\u{1F451}",
-      type: "REWARD",
-      storyTitle: "\u{1F451} HO\xC0NG \u0110\u1EBE V\u01AF\u01A0NG QUY\u1EC0N",
-      storyDescription: `V\u01B0\u01A1ng mi\u1EC7n uy quy\u1EC1n t\u1ED1i th\u01B0\u1EE3ng: Th\u01B0\u1EDFng n\xF3ng +${pEmperor} \u0111i\u1EC3m danh d\u1EF1!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pEmperor
-    },
-    {
-      tarotName: "K\u1EBB Kh\u1EDD (The Fool)",
-      icon: "\u{1F0CF}",
-      type: "REWARD",
-      storyTitle: "\u{1F0CF} K\u1EBA KH\u1EDC PHI TH\u01AF\u1EDCNG",
-      storyDescription: `V\u1EADn may b\u1EA5t ng\u1EDD c\u1EE7a k\u1EBB kh\u1EDD: \u0110\u1ED9t ph\xE1 n\u0103ng l\u01B0\u1EE3ng (+${pFool}\u0111)!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pFool
-    },
-    {
-      tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
-      icon: "\u{1F480}",
-      type: "BOMB_MAJOR",
-      storyTitle: "\u{1F480} TH\u1EA6N CH\u1EBET \u0110O\u1EA0T M\u1EC6NH",
-      storyDescription: `L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh bu\xF4ng xu\u1ED1ng: B\u1ECB ph\u1EA1t tr\u1EEB ${pDeath} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!`,
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pDeath
-    },
-    fifthCard
-  ];
-  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
-  return shuffled.map((card, idx) => ({
-    id: idx + 1,
-    label: `L\xE1 #${idx + 1}`,
-    tarotName: card.tarotName,
-    icon: card.icon,
-    isOpened: false,
-    type: card.type,
-    storyTitle: card.storyTitle,
-    storyDescription: card.storyDescription,
-    effectType: card.effectType,
-    deltaPoints: card.deltaPoints
-  }));
-}
 function generateNextPushYourLuckCard({
   theme,
   drawIndex,
@@ -1604,19 +1524,11 @@ function generateMysteryStageForTurn({
       };
       break;
     case "TAROT_DESTINY":
-      tiles = generateTarotDestinyTiles(effectiveBasePoints, roundOptions);
-      let prophecyCardId;
-      if (promoPerk === "PEEK_PROMO") {
-        const prophecyCard = tiles[Math.floor(Math.random() * tiles.length)];
-        prophecyCard.isOpened = true;
-        prophecyCardId = prophecyCard.id;
-      }
+      tiles = [];
       tarotState = {
-        chosenCardId: void 0,
-        canRedraw: promoPerk === "EXTRA_ATTEMPT_PROMO",
-        hasRedrawn: false,
-        prophecyCardId,
-        prophecyResolved: false
+        isWheelSpinning: false,
+        isDrawn: false,
+        targetAngle: 0
       };
       break;
     case "PUSH_YOUR_LUCK":
@@ -3061,9 +2973,31 @@ var TAROT_WHEEL_SEGMENTS = [
   { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
 ];
+function getEffectiveTarotWheelSegments(hasSunMagnet = false) {
+  if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
+  return TAROT_WHEEL_SEGMENTS.map((seg) => {
+    if (seg.index === 2) {
+      return {
+        ...seg,
+        key: "THE_SUN",
+        nameVi: "M\u1EB7t Tr\u1EDDi (Nam Ch\xE2m)",
+        nameEn: "The Sun (Magnet)",
+        icon: "\u2600\uFE0F",
+        roman: "XIX",
+        group: "COMMON",
+        bgColor: "#92400e",
+        borderColor: "#fde047",
+        textColor: "#ffffff",
+        isMagnetized: true
+      };
+    }
+    return seg;
+  });
+}
 function calculateTarotWheelSpin({
   powerPercent,
-  currentAngle = 0
+  currentAngle = 0,
+  hasSunMagnet = false
 }) {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
   const baseTurns = 6;
@@ -3080,7 +3014,8 @@ function calculateTarotWheelSpin({
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - targetAngle % 360) % 360;
   const landedIndex = Math.floor(pointerAngle / 18) % 20;
-  const landedSegment = TAROT_WHEEL_SEGMENTS[landedIndex];
+  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet);
+  const landedSegment = effectiveSegments[landedIndex];
   const spinDurationMs = 4500 + Math.round(clampedPower / 100 * 1500);
   return {
     targetAngle,
@@ -3096,9 +3031,11 @@ function handleAncientTarotSpinWheel({
   powerPercent
 }) {
   const currentAngle = state.tarotState?.targetAngle || 0;
+  const hasSunMagnet = getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
-    currentAngle
+    currentAngle,
+    hasSunMagnet
   });
   const basePoints = state.baseQuestionPoints || 10;
   const currentScore = team.score || 0;
@@ -3108,7 +3045,7 @@ function handleAncientTarotSpinWheel({
     case "THE_SUN":
       drawnCard = {
         key: "THE_SUN",
-        nameVi: "M\u1EB7t Tr\u1EDDi",
+        nameVi: landedSegment.isMagnetized ? "M\u1EB7t Tr\u1EDDi (Nam Ch\xE2m)" : "M\u1EB7t Tr\u1EDDi",
         nameEn: "The Sun",
         icon: "\u2600\uFE0F",
         roman: "XIX",
@@ -3465,17 +3402,7 @@ function synchronizeMysteryStageWithQuestionPoints({
       break;
     }
     case "TAROT_DESTINY": {
-      if (!state.tarotState?.chosenCardId && (!state.tarotState?.prophecyCardId || !state.tarotState?.prophecyResolved)) {
-        state.tiles = generateTarotDestinyTiles(normPoints, roundOptions);
-        if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-          const prophecyCard = state.tiles[Math.floor(Math.random() * state.tiles.length)];
-          prophecyCard.isOpened = true;
-          if (state.tarotState) {
-            state.tarotState.prophecyCardId = prophecyCard.id;
-            state.tarotState.prophecyResolved = false;
-          }
-        }
-      }
+      state.tiles = [];
       break;
     }
     case "PUSH_YOUR_LUCK":

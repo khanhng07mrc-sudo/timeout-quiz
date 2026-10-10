@@ -1830,7 +1830,7 @@ export default function AdminSandboxPage() {
           const curMystery = prev.mysteryQuestState;
           if (curMystery.currentTurnTeamId === targetTeamId) {
             if (isCorrect) {
-              const promo = generateMysteryPromoPerk(basePts);
+              const promo = generateMysteryPromoPerk(basePts, curMystery.miniGameType, { teams: prev.teams, currentTeamId: targetTeamId });
               nextMystery = {
                 ...curMystery,
                 phase: "DECISION_CHOICE",
@@ -4561,7 +4561,10 @@ export default function AdminSandboxPage() {
             const curQ = currentQuestion?.question;
             const rawQ = curQ || offlineQuestionsRef.current[offlineQIndexRef.current];
             const basePts = normalizeToThreeLevels(curQ?.points || rawQ?.points || 10);
-            const promo = generateMysteryPromoPerk(basePts);
+            const promo = generateMysteryPromoPerk(basePts, curMystery.miniGameType, {
+              teams: prev.teams,
+              currentTeamId: activeTeamId,
+            });
             nextMystery = {
               ...curMystery,
               phase: "DECISION_CHOICE",

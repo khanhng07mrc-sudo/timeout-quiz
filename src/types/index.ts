@@ -856,7 +856,8 @@ export type MysteryPromoPerk =
   | "DOUBLE_PROMO"        // ⚡ Nhân đôi điểm thưởng x2! (Legacy)
   | "PEEK_PROMO"          // 👁️ Mắt Thần Soi Bài!
   | "EXTRA_ATTEMPT_PROMO" // 🔄 Thêm lượt lật / Cơ hội thứ hai!
-  | "SAFETY_NET_PROMO";   // 🧲 Két Sắt Bảo Lưu (giữ 50% điểm quỹ nếu dính bom trong Lật Liều)
+  | "SAFETY_NET_PROMO"    // 🧲 Két Sắt Bảo Lưu (giữ 50% điểm quỹ nếu dính bom trong Lật Liều)
+  | "SUN_MAGNET_PROMO";   // ☀️ Nam Châm Thái Dương (biến 1 ô Kẻ Khờ thành Mặt Trời trong Vòng Quay Tarot)
 
 export type MysteryTileEffectType =
   | "BONUS_POINTS" // +20đ, +50đ, +100đ (Jackpot)
@@ -932,6 +933,7 @@ export interface TarotWheelSegment {
   bgColor: string;
   borderColor: string;
   textColor: string;
+  isMagnetized?: boolean;
 }
 
 export interface MysteryQuestState {

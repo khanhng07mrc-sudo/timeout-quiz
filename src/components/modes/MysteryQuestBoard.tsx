@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS } from "@/lib/game-engine/mystery-quest";
+import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
 
@@ -593,6 +593,12 @@ export default function MysteryQuestBoard({
                           <>
                             <span>🧲</span>
                             <span className="truncate">Két Sắt Bảo Lưu (giữ 50% quỹ)!</span>
+                          </>
+                        )}
+                        {perkType === "SUN_MAGNET_PROMO" && (
+                          <>
+                            <span>☀️</span>
+                            <span className="truncate">Nam Châm Thái Dương (Hóa 1 ô Kẻ Khờ thành Mặt Trời)!</span>
                           </>
                         )}
                       </div>
@@ -1399,7 +1405,7 @@ export default function MysteryQuestBoard({
           const cardVisual = getEntityVisuals(drawnCard?.key);
 
           return (
-            <div className="max-w-xl mx-auto py-2">
+            <div className="max-w-2xl mx-auto py-2">
               {!isDrawn ? (
                 /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 20 Nan Quạt ── */
                 <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/60 border-2 border-purple-500/40 backdrop-blur-xl shadow-2xl relative overflow-hidden group space-y-3">
@@ -1407,27 +1413,38 @@ export default function MysteryQuestBoard({
                   <div className="absolute inset-0 bg-radial from-purple-600/20 via-transparent to-transparent opacity-75 pointer-events-none animate-pulse" />
 
                   {/* Header Title */}
-                  <div className="text-center z-10">
-                    <h3 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-widest drop-shadow">
-                      🎡 VÒNG QUAY TAROT ĐỊNH MỆNH
-                    </h3>
-                    <p className="text-[11px] text-purple-300 font-serif mt-0.5">
-                      20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%
-                    </p>
-                  </div>
+                  {(() => {
+                    const hasSunMagnet = getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
+                    return (
+                      <div className="text-center z-10 space-y-1">
+                        <h3 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest drop-shadow">
+                          🎡 VÒNG QUAY TAROT ĐỊNH MỆNH
+                        </h3>
+                        <p className="text-xs sm:text-sm text-purple-200 font-serif">
+                          20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%
+                        </p>
+                        {hasSunMagnet && (
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-200 text-xs font-bold shadow-lg animate-pulse mt-1">
+                            <span>☀️</span>
+                            <span>Nam Châm Thái Dương: Nan số II đã hóa thành Mặt Trời (+{baseQuestionPoints || 10}đ)!</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* ── SVG 20-Segment Wheel with 12 o'clock pointer ── */}
-                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto my-1 flex items-center justify-center z-10">
+                  <div className="relative w-80 h-80 sm:w-96 sm:h-96 md:w-[440px] md:h-[440px] lg:w-[460px] lg:h-[460px] mx-auto my-2 sm:my-3 flex items-center justify-center z-10">
                     {/* Pointer Needle at 12 o'clock (pointing down) */}
-                    <div className={`absolute -top-3.5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
-                      <svg width="32" height="32" viewBox="0 0 32 32">
+                    <div className={`absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
+                      <svg width="42" height="42" viewBox="0 0 32 32">
                         <polygon points="6,2 26,2 16,26" fill="#ef4444" stroke="#fef08a" strokeWidth="2.5" />
                         <circle cx="16" cy="8" r="3.5" fill="#fef08a" />
                       </svg>
                     </div>
 
                     {/* Outer Glowing Border Ring */}
-                    <div className="absolute inset-0 rounded-full border-4 border-amber-400/80 shadow-[0_0_30px_rgba(168,85,247,0.5)] pointer-events-none z-20" />
+                    <div className="absolute inset-0 rounded-full border-4 sm:border-[5px] border-amber-400/90 shadow-[0_0_35px_rgba(168,85,247,0.6)] pointer-events-none z-20" />
 
                     {/* Spinning Wheel */}
                     <div
@@ -1449,7 +1466,7 @@ export default function MysteryQuestBoard({
                         </defs>
 
                         {/* 20 Segments (18 deg each) */}
-                        {TAROT_WHEEL_SEGMENTS.map((seg, i) => {
+                        {getEffectiveTarotWheelSegments(getPerkType(promoPerk) === "SUN_MAGNET_PROMO").map((seg, i) => {
                           const theta1 = (i * 18 * Math.PI) / 180;
                           const theta2 = ((i + 1) * 18 * Math.PI) / 180;
                           const r = 168;
@@ -1465,28 +1482,28 @@ export default function MysteryQuestBoard({
                             <g key={seg.index}>
                               <path
                                 d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                                fill={seg.bgColor}
-                                stroke={seg.borderColor}
-                                strokeWidth="1.2"
+                                fill={seg.isMagnetized ? "#b45309" : seg.bgColor}
+                                stroke={seg.isMagnetized ? "#fef08a" : seg.borderColor}
+                                strokeWidth={seg.isMagnetized ? "2.5" : "1.2"}
                               />
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
                                 <text
                                   x={cx}
-                                  y={cy - 122}
+                                  y={cy - 124}
                                   textAnchor="middle"
-                                  fontSize="12"
+                                  fontSize="16.5"
                                   dominantBaseline="central"
-                                  className="select-none pointer-events-none drop-shadow"
+                                  className="select-none pointer-events-none drop-shadow-md"
                                 >
                                   {seg.icon}
                                 </text>
                                 <text
                                   x={cx}
-                                  y={cy - 98}
+                                  y={cy - 96}
                                   textAnchor="middle"
-                                  fontSize="7.5"
+                                  fontSize="10"
                                   fontWeight="900"
-                                  fill={seg.textColor}
+                                  fill={seg.isMagnetized ? "#fef08a" : seg.textColor}
                                   dominantBaseline="central"
                                   className="font-serif select-none pointer-events-none"
                                 >
@@ -1498,10 +1515,10 @@ export default function MysteryQuestBoard({
                         })}
 
                         {/* Center Hub */}
-                        <circle cx="170" cy="170" r="30" fill="#09090b" stroke="#f59e0b" strokeWidth="3" />
-                        <circle cx="170" cy="170" r="24" fill="url(#hubGradient)" />
-                        <circle cx="170" cy="170" r="13" fill="#09090b" stroke="#fde047" strokeWidth="1.5" />
-                        <text x="170" y="174" textAnchor="middle" fontSize="13" dominantBaseline="central">
+                        <circle cx="170" cy="170" r="34" fill="#09090b" stroke="#f59e0b" strokeWidth="3" />
+                        <circle cx="170" cy="170" r="27" fill="url(#hubGradient)" />
+                        <circle cx="170" cy="170" r="14" fill="#09090b" stroke="#fde047" strokeWidth="1.5" />
+                        <text x="170" y="175" textAnchor="middle" fontSize="16" dominantBaseline="central">
                           🔮
                         </text>
                       </svg>
@@ -1608,7 +1625,9 @@ export default function MysteryQuestBoard({
                           )}
 
                           <p className="text-[10px] text-white/60">
-                            Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)
+                            {getPerkType(promoPerk) === "SUN_MAGNET_PROMO"
+                              ? "Tỷ lệ: Thường 50% (6 Sun, 4 Fool - Có Nam Châm Thái Dương) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"
+                              : "Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"}
                           </p>
                         </div>
                       </>

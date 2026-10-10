@@ -109,46 +109,56 @@ export default function PlayPage() {
   };
 
   // Authoritative ticker for match warmup countdown (5s)
+  const lastMatchTickRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!matchStarting) return;
-    const endsAt = matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000);
+    if (!matchStarting) {
+      lastMatchTickRef.current = null;
+      return;
+    }
+    const endsAt = matchStarting.endsAt || (getServerTime() + matchStarting.seconds * 1000);
     const total = matchStarting.total || 5;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
+      if (lastMatchTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
+        lastMatchTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
       setMatchStarting((prev) => {
         if (!prev) return null;
-        if (prev.seconds === remaining) return prev;
-        if (remaining >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(remaining);
-        }
+        if (prev.seconds === remaining && prev.endsAt === endsAt) return prev;
         return { ...prev, seconds: remaining, endsAt, total };
       });
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 150);
+    }, 100);
     return () => clearInterval(interval);
   }, [matchStarting?.endsAt]);
 
   // Authoritative ticker for question preparation countdown (3s)
+  const lastPrepareTickRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!questionPrepare) return;
-    const endsAt = questionPrepare.endsAt || (Date.now() + questionPrepare.seconds * 1000);
+    if (!questionPrepare) {
+      lastPrepareTickRef.current = null;
+      return;
+    }
+    const endsAt = questionPrepare.endsAt || (getServerTime() + questionPrepare.seconds * 1000);
     const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
+      if (lastPrepareTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
+        lastPrepareTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
       setQuestionPrepare((prev) => {
         if (!prev) return null;
-        if (prev.seconds === remaining) return prev;
-        if (remaining >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(remaining);
-        }
+        if (prev.seconds === remaining && prev.endsAt === endsAt) return prev;
         return { ...prev, seconds: remaining, endsAt, total };
       });
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 150);
+    }, 100);
     return () => clearInterval(interval);
   }, [questionPrepare?.endsAt]);
 
@@ -353,8 +363,26 @@ export default function PlayPage() {
         }
         if (p.buzzedBy !== undefined) setBuzzedBy(p.buzzedBy);
         if (p.lastPowerup !== undefined) setLastPowerup(p.lastPowerup);
-        if (p.matchStarting !== undefined) setMatchStarting(p.matchStarting);
-        if (p.questionPrepare !== undefined) setQuestionPrepare(p.questionPrepare);
+        if (p.matchStarting !== undefined) {
+          if (p.matchStarting === null) {
+            setMatchStarting(null);
+          } else {
+            setMatchStarting((prev) => {
+              const stableEndsAt = p.matchStarting.endsAt || prev?.endsAt || (getServerTime() + p.matchStarting.seconds * 1000);
+              return { ...p.matchStarting, endsAt: stableEndsAt, total: p.matchStarting.total || prev?.total || 5 };
+            });
+          }
+        }
+        if (p.questionPrepare !== undefined) {
+          if (p.questionPrepare === null) {
+            setQuestionPrepare(null);
+          } else {
+            setQuestionPrepare((prev) => {
+              const stableEndsAt = p.questionPrepare.endsAt || prev?.endsAt || (getServerTime() + p.questionPrepare.seconds * 1000);
+              return { ...p.questionPrepare, endsAt: stableEndsAt, total: p.questionPrepare.total || prev?.total || 3 };
+            });
+          }
+        }
         if (p.intermission !== undefined) setIntermission(p.intermission);
         if (p.gameEnd !== undefined) {
           setGameEnd(p.gameEnd);
@@ -543,7 +571,8 @@ export default function PlayPage() {
     });
 
     socket.on("game:starting", (p) => {
-      setMatchStarting({ seconds: p.seconds, endsAt: p.endsAt, total: p.total });
+      const endsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
+      setMatchStarting({ seconds: p.seconds, endsAt, total: p.total || p.seconds });
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
@@ -556,7 +585,8 @@ export default function PlayPage() {
 
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
-      setQuestionPrepare(p);
+      const endsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
+      setQuestionPrepare({ ...p, endsAt, total: p.total || p.seconds });
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);
@@ -1275,7 +1305,7 @@ export default function PlayPage() {
           <div className="flex flex-col items-center justify-center">
             <div className="relative flex items-center justify-center">
               <ContinuousTimerRing
-                endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                endsAt={matchStarting.endsAt}
                 total={matchStarting.total || 5}
                 radius={30}
                 strokeWidth={5}
@@ -1290,7 +1320,7 @@ export default function PlayPage() {
             </div>
             <div className="w-48 max-w-xs mt-4">
               <ContinuousTimerBar
-                endsAt={matchStarting.endsAt || (Date.now() + matchStarting.seconds * 1000)}
+                endsAt={matchStarting.endsAt}
                 total={matchStarting.total || 5}
                 color="#c084fc"
                 heightClassName="h-2"

@@ -26,7 +26,8 @@ interface Props {
   onUsePeek?: () => void;
   onTarotProphecyDecision?: (choice: "KEEP" | "DISCARD") => void;
   onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
-  teams?: Array<{ id: string; name: string; color: string; score: number }>;
+  onDrawTarot?: () => void;
+  teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
 }
 
 export default function MysteryQuestBoard({
@@ -49,6 +50,7 @@ export default function MysteryQuestBoard({
   onUsePeek,
   onTarotProphecyDecision,
   onAdjustScore,
+  onDrawTarot,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -268,7 +270,7 @@ export default function MysteryQuestBoard({
         return { title: "🚪 4 Cánh Cửa Bí Mật (2 Giai Đoạn)", badge: "4 Secret Doors" };
       case "TAROT_DESTINY":
       case "TAROT_CARDS":
-        return { title: "🔮 Rút Thẻ Bài Tarot Thần Số", badge: "Tarot of Destiny" };
+        return { title: "🔮 BÀI TAROT (Định Mệnh Chọn Lá)", badge: "Tarot" };
       case "PUSH_YOUR_LUCK":
       case "RADAR_WINDOWS":
       default:
@@ -412,39 +414,63 @@ export default function MysteryQuestBoard({
 
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {/* Option A: Nhận điểm an toàn */}
-              <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-emerald-950/80 via-black/80 to-emerald-950/80 border-2 border-emerald-400/60 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-emerald-300 transition-all">
-                <div className="space-y-1 sm:space-y-1.5">
-                  <div className="text-2xl sm:text-3xl">🛡️</div>
-                  <h4 className="text-xs sm:text-sm font-black text-emerald-300 uppercase tracking-wide">
-                    Phương Án 1: Nhận An Toàn
-                  </h4>
-                  <div className="py-0.5">
-                    <span className="text-2xl sm:text-4xl font-black font-mono text-emerald-400">
-                      +{baseQuestionPoints || 10}
-                    </span>
-                    <span className="text-emerald-300 font-bold ml-1 text-xs sm:text-sm">điểm</span>
-                  </div>
-                  <p className="text-[10px] sm:text-xs text-white/70 leading-snug line-clamp-2">
-                    Nhận trọn vẹn điểm số câu hỏi trực tiếp vào bảng điểm. Tỉ lệ an toàn 100%, không lo bom nổ.
-                  </p>
-                </div>
+              {(() => {
+                const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
+                const teamHeartsVal = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                const hasHearts = teamHeartsVal > 0;
 
-                <div className="pt-2 sm:pt-3">
-                  {canInteractDecision ? (
-                    <button
-                      type="button"
-                      onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
-                      className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
-                    >
-                      🛡️ Chốt +{baseQuestionPoints || 10}đ An Toàn
-                    </button>
-                  ) : (
-                    <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
-                      Đang đợi Đội {currentTurnTeamName}...
+                return (
+                  <div className={`p-3 sm:p-4 rounded-2xl bg-gradient-to-b ${hasHearts ? "from-emerald-950/80 via-black/80 to-emerald-950/80 border-emerald-400/60 hover:border-emerald-300" : "from-gray-950/80 via-black/80 to-gray-950/80 border-rose-500/30 opacity-80"} border-2 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group transition-all`}>
+                    <div className="space-y-1 sm:space-y-1.5">
+                      <div className="text-2xl sm:text-3xl">{hasHearts ? "🛡️" : "🔒"}</div>
+                      <h4 className={`text-xs sm:text-sm font-black uppercase tracking-wide ${hasHearts ? "text-emerald-300" : "text-rose-400"}`}>
+                        Phương Án 1: Nhận An Toàn
+                      </h4>
+                      <div className="py-0.5">
+                        <span className={`text-2xl sm:text-4xl font-black font-mono ${hasHearts ? "text-emerald-400" : "text-slate-400"}`}>
+                          +{baseQuestionPoints || 10}
+                        </span>
+                        <span className={`font-bold ml-1 text-xs sm:text-sm ${hasHearts ? "text-emerald-300" : "text-slate-500"}`}>điểm</span>
+                      </div>
+                      {hasHearts ? (
+                        <p className="text-[10px] sm:text-xs text-white/70 leading-snug line-clamp-2">
+                          Tiêu hao 1 ❤️ để nhận trọn vẹn điểm số câu hỏi (Hiện có: <strong className="text-rose-400">❤️ {teamHeartsVal}</strong>).
+                        </p>
+                      ) : (
+                        <p className="text-[10px] sm:text-xs text-rose-300/90 leading-snug line-clamp-2 font-medium">
+                          🔒 Đội đã hết Tim (0 ❤️)! Khóa quyền ăn điểm an toàn, bắt buộc phải vào Minigame né bom!
+                        </p>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+
+                    <div className="pt-2 sm:pt-3">
+                      {canInteractDecision ? (
+                        hasHearts ? (
+                          <button
+                            type="button"
+                            onClick={() => onChooseAction?.("TAKE_BASE_POINTS")}
+                            className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-300 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                          >
+                            🛡️ Chốt +{baseQuestionPoints || 10}đ An Toàn (-1 ❤️)
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-slate-800/80 text-rose-300/80 font-black text-xs sm:text-sm uppercase tracking-wider border border-rose-500/30 cursor-not-allowed opacity-75"
+                          >
+                            🔒 Đã hết Tim! Bắt buộc vào Minigame
+                          </button>
+                        )
+                      ) : (
+                        <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
+                          Đang đợi Đội {currentTurnTeamName}...
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Option B: Chơi Minigame */}
               <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-purple-950/80 via-black/80 to-amber-950/80 border-2 border-amber-400/60 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group hover:border-amber-300 transition-all">
@@ -708,17 +734,12 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 4: TAROT DESTINY HUD */}
             {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl">
-                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5 flex items-center justify-between">
-                  <span>🔮 RÚT BÀI TAROT THẦN SỐ VẬN MỆNH (5 QUẺ)</span>
-                  {tarotState?.canRedraw && !tarotState?.hasRedrawn && (
-                    <span className="text-[10px] text-amber-300 font-bold px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/30">
-                      🔄 Có quyền rút lại
-                    </span>
-                  )}
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl text-center">
+                <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5">
+                  🔮 BÀI TAROT — ĐỊNH MỆNH CHỌN LÁ
                 </div>
                 <p className="text-[11px] text-white/80 leading-snug">
-                  Rút lá bài định mệnh: Mặt Trời (+{baseQuestionPoints ? baseQuestionPoints * 2 : 20}đ), Hoàng Đế, Kẻ Khờ, Hiệp Sĩ hay Thần Chết (-{baseQuestionPoints || 10}đ)!
+                  5 Thực Thể Cổ Xưa: Mặt Trời (+{baseQuestionPoints || 10}đ), Kẻ Khờ (0đ), Hoàng Đế (chia đều), Hiệp Sĩ (-50%), Thần Chết (Tặng/Cướp)!
                 </p>
               </div>
             )}
@@ -1269,209 +1290,182 @@ export default function MysteryQuestBoard({
         )}
 
         {/* ════════════════════════════════════════════════════════════════════
-            2. VARIANT: TAROT_DESTINY (5 Mystical Vertical Floating Cards)
+            2. VARIANT: BÀI TAROT (Định Mệnh Chọn Lá - 5 Thực Thể Cổ Xưa)
         ════════════════════════════════════════════════════════════════════ */}
-        {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-          <div className="max-w-3xl mx-auto py-1">
-            {/* ── Banner Mắt Thần Tiên Tri ── */}
-            {tarotState?.prophecyCardId && !tarotState?.prophecyResolved && (
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/90 to-black/95 border-2 border-cyan-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
-                <div className="text-3xl animate-pulse">👁️🔮</div>
-                <h4 className="text-sm sm:text-base font-black text-cyan-300 uppercase tracking-wider">
-                  MẮT THẦN TIÊN TRI ĐÃ HÉ LỘ LÁ #{tarotState.prophecyCardId}!
-                </h4>
-                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
-                  Quẻ số phận hé lộ trước một lá bài bí mật. Bạn muốn chốt luôn lá này hay bỏ qua để thử vận may với 4 lá còn lại?
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onTarotProphecyDecision?.("KEEP")}
-                    disabled={!canInteract}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
-                  >
-                    ✅ CHỌN LUÔN LÁ NÀY
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onTarotProphecyDecision?.("DISCARD")}
-                    disabled={!canInteract}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
-                  >
-                    🔄 BỎ QUA & RÚT LÁ KHÁC
-                  </button>
-                </div>
-              </div>
-            )}
+        {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (() => {
+          const isDrawn = Boolean(tarotState?.isDrawn && tarotState?.drawnCard);
+          const drawnCard = tarotState?.drawnCard;
 
-            {tarotState?.canRedraw && !tarotState?.hasRedrawn && tarotState?.chosenCardId && (
-              <div className="mb-3 p-3 rounded-2xl bg-gradient-to-b from-purple-950/95 via-indigo-950/90 to-black/95 border-2 border-purple-400 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
-                <div className="text-3xl animate-pulse">🔮</div>
-                <h4 className="text-sm sm:text-base font-black text-purple-300 uppercase tracking-wider">
-                  BẠN CÓ QUYỀN: 🔄 RÚT LẠI QUẺ BÀI (CƠ HỘI THỨ HAI)!
-                </h4>
-                <p className="text-xs text-white/90 max-w-md mx-auto leading-relaxed">
-                  Bạn vừa lật lá #{tarotState.chosenCardId}. Bạn có muốn giữ quẻ bài này hay kích hoạt quyền rút lại quẻ khác?
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onTarotConfirmKeep?.();
-                    }}
-                    disabled={!canInteract}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
-                  >
-                    ✅ GIỮ LÁ NÀY & HOÀN TẤT
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onTarotRedraw?.()}
-                    disabled={!canInteract}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-xs border border-purple-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
-                  >
-                    🔄 RÚT LẠI QUẺ KHÁC
-                  </button>
-                </div>
-              </div>
-            )}
+          // Color & Glow scheme for the 5 Ancient Entities
+          const getEntityVisuals = (cardKey?: string) => {
+            switch (cardKey) {
+              case "THE_SUN":
+                return {
+                  gradient: "from-amber-600/30 via-yellow-500/20 to-amber-950/80",
+                  border: "border-amber-400",
+                  glow: "rgba(251, 191, 36, 0.6)",
+                  tagColor: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+                  textColor: "text-amber-300",
+                };
+              case "THE_FOOL":
+                return {
+                  gradient: "from-purple-950/40 via-violet-900/30 to-black/90",
+                  border: "border-purple-500",
+                  glow: "rgba(168, 85, 247, 0.5)",
+                  tagColor: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+                  textColor: "text-purple-300",
+                };
+              case "THE_EMPEROR":
+                return {
+                  gradient: "from-amber-950/40 via-orange-950/30 to-black/90",
+                  border: "border-orange-500",
+                  glow: "rgba(249, 115, 22, 0.5)",
+                  tagColor: "bg-orange-500/20 text-orange-300 border-orange-400/40",
+                  textColor: "text-orange-300",
+                };
+              case "THE_KNIGHT":
+                return {
+                  gradient: "from-blue-950/40 via-indigo-950/30 to-black/90",
+                  border: "border-indigo-400",
+                  glow: "rgba(99, 102, 241, 0.5)",
+                  tagColor: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+                  textColor: "text-indigo-300",
+                };
+              case "THE_DEATH":
+              case "DEATH":
+              default:
+                return {
+                  gradient: "from-rose-950/50 via-red-950/40 to-black/95",
+                  border: "border-rose-500",
+                  glow: "rgba(244, 63, 94, 0.6)",
+                  tagColor: "bg-red-500/20 text-red-300 border-red-500/40",
+                  textColor: "text-rose-400",
+                };
+            }
+          };
 
-            <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5">
-              {tiles.map((tile) => {
-                const isChosen = tarotState?.chosenCardId === tile.id;
-                const isDiscarded = tarotState?.discardedCardId === tile.id;
-                const isProphecyCard = tarotState?.prophecyCardId === tile.id;
-                const isProphecyPending = Boolean(tarotState?.prophecyCardId && !tarotState?.prophecyResolved);
-                const isBomb = tile.type !== "REWARD";
-                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
-                const meta = getTarotCardMeta(tile.tarotName, tile.storyTitle);
+          const cardVisual = getEntityVisuals(drawnCard?.key);
 
-                if (!isCardOpened) {
-                  return (
-                    <button
-                      key={tile.id}
-                      type="button"
-                      onClick={() => handleTileClick(tile)}
-                      disabled={!canInteract || isProphecyPending || isDiscarded}
-                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 transition-all duration-300 cursor-pointer overflow-hidden ${
-                        canInteract && !isProphecyPending && !isDiscarded
-                          ? "border-amber-400/70 hover:border-yellow-300 hover:-translate-y-1 shadow-2xl hover:shadow-amber-500/40 group ring-1 ring-amber-400/30"
-                          : "border-white/10 opacity-60 cursor-default"
-                      }`}
-                    >
-                      {/* Tarot Card Back SVG Artwork */}
-                      <div className="absolute inset-0 z-0">
-                        <TarotCardBackSvg />
-                      </div>
+          return (
+            <div className="max-w-xl mx-auto py-3">
+              {!isDrawn ? (
+                /* ── Trạng thái CHƯA RÚT: Bộ bài huyền bí trung tâm ── */
+                <div className="flex flex-col items-center justify-center p-6 sm:p-8 rounded-3xl bg-black/60 border-2 border-purple-500/40 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                  {/* Glowing background aura */}
+                  <div className="absolute inset-0 bg-radial from-purple-600/20 via-transparent to-transparent opacity-75 pointer-events-none animate-pulse" />
 
-                      {/* Card Back Overlays */}
-                      <div className="w-full flex items-center justify-between z-10 px-0.5 pt-0.5">
-                        <span className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[9px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md">
-                          #{tile.id}
+                  {/* Shuffling / Hovering Deck Visual */}
+                  <div className="relative w-36 h-52 sm:w-44 sm:h-64 mb-6 perspective-1000 cursor-pointer">
+                    {/* Shadow card 1 */}
+                    <div className="absolute inset-0 rounded-2xl bg-purple-950/50 border border-purple-600/30 transform -rotate-6 translate-x-2 translate-y-1 shadow-lg" />
+                    {/* Shadow card 2 */}
+                    <div className="absolute inset-0 rounded-2xl bg-indigo-950/60 border border-indigo-500/40 transform rotate-4 -translate-x-1.5 translate-y-0.5 shadow-lg" />
+                    {/* Top deck card */}
+                    <div className="absolute inset-0 rounded-2xl border-2 border-amber-400/80 shadow-2xl shadow-purple-900/60 overflow-hidden transform hover:-translate-y-2 transition-all duration-300 ring-2 ring-purple-400/30">
+                      <TarotCardBackSvg />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3 text-center">
+                        <span className="text-xs font-black text-amber-200 uppercase tracking-widest drop-shadow">
+                          BÀI TAROT
                         </span>
-                        {canInteract && !isProphecyPending && !isDiscarded ? (
-                          <span className="text-[8px] sm:text-[9px] font-black text-amber-300 px-1 py-0.2 rounded-full bg-black/70 border border-amber-400/60 animate-pulse">
-                            RÚT ✨
-                          </span>
-                        ) : null}
+                        <span className="text-[10px] text-purple-300 font-serif">5 Thực Thể Cổ Xưa</span>
                       </div>
-
-                      <div className="z-10 w-full text-center pb-0.5">
-                        <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-widest text-amber-200 block drop-shadow-md">
-                          TAROT
-                        </span>
-                      </div>
-                    </button>
-                  );
-                }
-
-              // Revealed Tarot Card
-              return (
-                <div
-                  key={tile.id}
-                  className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[22vh] sm:max-h-[26vh] rounded-xl sm:rounded-2xl p-1.5 sm:p-2 flex flex-col items-center justify-between border-2 shadow-2xl animate-fade-in transition-all overflow-hidden ${
-                    isChosen
-                      ? "ring-2 sm:ring-4 ring-yellow-400 scale-103 z-20"
-                      : isProphecyCard && isProphecyPending
-                      ? "ring-2 ring-cyan-400 border-cyan-400 shadow-cyan-500/40"
-                      : isDiscarded
-                      ? "opacity-50 grayscale-50 border-gray-600"
-                      : "opacity-90"
-                  } bg-gradient-to-b ${meta.bgGradient} ${meta.borderColor}`}
-                  style={{
-                    boxShadow: isChosen
-                      ? `0 0 25px ${meta.glowColor}, 0 0 8px rgba(250, 204, 21, 0.6)`
-                      : isProphecyCard && isProphecyPending
-                      ? `0 0 20px rgba(6, 182, 212, 0.7)`
-                      : `0 4px 15px ${meta.glowColor}`,
-                  }}
-                >
-                  {/* Overlay for discarded card */}
-                  {isDiscarded && (
-                    <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center text-center p-1 pointer-events-none">
-                      <span className="text-2xl mb-1">❌</span>
-                      <span className="text-[9px] font-black uppercase text-red-300 px-1.5 py-0.5 rounded bg-red-950/80 border border-red-500/50">
-                        ĐÃ BỎ QUA
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Prophecy Indicator Tag */}
-                  {isProphecyCard && isProphecyPending && (
-                    <div className="absolute top-1 left-1 right-1 z-25 flex justify-center">
-                      <span className="text-[8px] font-black uppercase text-cyan-200 px-1.5 py-0.2 rounded-full bg-cyan-950/90 border border-cyan-400 animate-pulse shadow-md">
-                        👁️ QUẺ TIÊN TRI
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Card Header: Roman Numeral & English Name in 1 clean line */}
-                  <div className={`w-full flex items-center justify-between border-b border-white/15 pb-0.5 ${isProphecyCard && isProphecyPending ? "pt-3.5" : ""}`}>
-                    <span className="text-[9px] font-mono font-bold opacity-75 text-amber-200/80">
-                      #{tile.id}
-                    </span>
-                    <div className="flex items-center gap-0.5 sm:gap-1">
-                      <span className="font-serif font-black text-[10px] sm:text-xs text-amber-300 tracking-wider">
-                        {meta.roman}
-                      </span>
-                      <span className="text-[8px] sm:text-[9px] font-bold text-white/90 tracking-wide uppercase whitespace-nowrap">
-                        · {meta.nameEn}
-                      </span>
                     </div>
                   </div>
 
-                  {/* Card Center: Rich Tarot Artwork SVG */}
-                  <div className="w-10 h-10 sm:w-14 sm:h-14 my-auto relative flex items-center justify-center p-0.5 drop-shadow-2xl">
-                    <TarotCardEmblem cardKey={meta.key} />
-                  </div>
-
-                  {/* Card Footer: Vietnamese Title & Single-line Score Pill */}
-                  <div className="w-full text-center space-y-0.5">
-                    <p className="text-[10px] sm:text-xs font-black text-white tracking-wide truncate">
-                      {meta.nameVi}
+                  {/* Draw button or waiting notice */}
+                  <div className="text-center space-y-3 z-10 w-full max-w-sm">
+                    {canInteract ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onDrawTarot) {
+                            onDrawTarot();
+                          } else {
+                            onFlipCard?.(0);
+                          }
+                        }}
+                        disabled={isDrawingAnimation}
+                        className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-2xl shadow-purple-900/60 border-2 border-amber-300/80 hover:scale-[1.03] active:scale-95 transition-all cursor-pointer animate-pulse"
+                      >
+                        🔮 RÚT BÀI ĐỊNH MỆNH
+                      </button>
+                    ) : (
+                      <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic">
+                        Đang đợi Đội <strong style={{ color: currentTurnTeamColor }}>{currentTurnTeamName}</strong> rút bài định mệnh...
+                      </div>
+                    )}
+                    <p className="text-[11px] text-white/60">
+                      Tỷ lệ Định mệnh: Thường (60%) | Đột biến (30%) | Chí mạng (10%)
                     </p>
-                    <div
-                      className={`inline-flex items-center justify-center px-1.5 py-0.2 rounded-full text-[9px] sm:text-[11px] font-black font-mono shadow-md whitespace-nowrap ${
-                        isBomb
-                          ? "bg-rose-500/30 border border-rose-400/80 text-rose-200"
-                          : meta.key === "THE_KNIGHT"
-                          ? "bg-emerald-500/30 border border-emerald-400/80 text-emerald-200"
-                          : "bg-amber-500/30 border border-amber-300/80 text-amber-200"
-                      }`}
-                    >
-                      {isBomb
-                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
-                        : meta.key === "THE_KNIGHT"
-                        ? `Cướp ${tile.deltaPoints}đ`
-                        : `+${tile.deltaPoints}đ`}
+                  </div>
+                </div>
+              ) : (
+                /* ── Trạng thái ĐÃ RÚT: Hiển thị 1 Thực Thể Cổ Xưa được chọn ── */
+                <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/70 border-2 border-purple-500/50 backdrop-blur-xl shadow-2xl animate-fade-in relative overflow-hidden">
+                  <div className="text-center mb-3">
+                    <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
+                      {drawnCard?.group === "COMMON"
+                        ? "✨ ĐỊNH MỆNH THƯỜNG (60%)"
+                        : drawnCard?.group === "MUTATION"
+                        ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN (30%)"
+                        : "💀 ĐỊNH MỆNH CHÍ MẠNG (10%)"}
+                    </span>
+                  </div>
+
+                  {/* Main Drawn Card Artwork */}
+                  <div
+                    className={`relative w-48 h-72 sm:w-56 sm:h-80 rounded-2xl p-4 flex flex-col items-center justify-between border-2 shadow-2xl bg-gradient-to-b ${cardVisual.gradient} ${cardVisual.border} transition-all duration-500`}
+                    style={{ boxShadow: `0 0 35px ${cardVisual.glow}, 0 0 10px rgba(255,255,255,0.2)` }}
+                  >
+                    {/* Roman Numeral & English name */}
+                    <div className="w-full flex items-center justify-between border-b border-white/15 pb-1">
+                      <span className="font-serif font-black text-sm text-amber-300 tracking-wider">
+                        {drawnCard?.roman}
+                      </span>
+                      <span className="text-[10px] font-bold text-white/90 tracking-wider uppercase">
+                        {drawnCard?.nameEn}
+                      </span>
+                    </div>
+
+                    {/* Central Entity Icon Artwork */}
+                    <div className="my-auto flex flex-col items-center justify-center">
+                      <span className="text-6xl sm:text-7xl drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] animate-bounce-in">
+                        {drawnCard?.icon}
+                      </span>
+                    </div>
+
+                    {/* Footer: Card Name and Concise Delta */}
+                    <div className="w-full text-center space-y-1">
+                      <h3 className={`text-lg sm:text-xl font-black uppercase tracking-wider ${cardVisual.textColor}`}>
+                        {drawnCard?.nameVi}
+                      </h3>
+                      <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/60 border border-white/20">
+                        {drawnCard?.key === "THE_SUN" && (
+                          <span className="text-emerald-400">+{drawnCard.scoreDelta}đ (An Toàn)</span>
+                        )}
+                        {drawnCard?.key === "THE_FOOL" && (
+                          <span className="text-rose-400">0đ (Mất điểm câu)</span>
+                        )}
+                        {drawnCard?.key === "THE_EMPEROR" && (
+                          <span className="text-orange-400">-{drawnCard.scoreDelta}đ (Chia đều đối thủ)</span>
+                        )}
+                        {drawnCard?.key === "THE_KNIGHT" && (
+                          <span className="text-rose-400">-{drawnCard.scoreDelta}đ (Mất 1/2 tổng điểm)</span>
+                        )}
+                        {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "GIFT_TOP1" || (drawnCard.deathSubtype as any) === "GIFT") && (
+                          <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
+                        )}
+                        {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "STEAL_TOP1" || (drawnCard.deathSubtype as any) === "STEAL") && (
+                          <span className="text-emerald-400">+{drawnCard.stolenPoints || drawnCard.scoreDelta}đ ➔ Cướp từ {drawnCard.victimTeamName || "Top 1"}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              );
-            })}
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* ════════════════════════════════════════════════════════════════════
             3. VARIANT: MEMORY_PAIRS (10 Cards / 5 Pairs)
@@ -2001,31 +1995,72 @@ export default function MysteryQuestBoard({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {teams.map((t) => (
-              <div
-                key={t.id}
-                onClick={() => {
-                  if ((isAdmin || isSandbox) && onAdjustScore) {
-                    setShowScoreEditModal(true);
+            {teams.map((t) => {
+              const currentHearts = t.hearts ?? mysteryState?.teamHearts?.[t.id] ?? mysteryState?.initialHeartsPerTeam ?? 0;
+
+              // Calculate specific score delta for this team if Tarot was drawn
+              let tarotDelta: number | null = null;
+              if (miniGameType === "TAROT_DESTINY" && tarotState?.isDrawn && tarotState?.drawnCard) {
+                const dc = tarotState.drawnCard;
+                if (t.id === currentTurnTeamId) {
+                  if (dc.key === "THE_SUN") tarotDelta = dc.scoreDelta;
+                  else if (dc.key === "THE_FOOL") tarotDelta = 0;
+                  else if (dc.key === "THE_EMPEROR" || dc.key === "THE_KNIGHT") tarotDelta = -dc.scoreDelta;
+                  else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT")) tarotDelta = -Math.abs(dc.scoreDelta);
+                  else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL")) tarotDelta = dc.stolenPoints || dc.scoreDelta;
+                } else {
+                  if (dc.key === "THE_EMPEROR") {
+                    const rec = dc.darkBombRecipients?.find((r) => r.teamId === t.id);
+                    if (rec) tarotDelta = rec.points;
+                  } else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") && t.id === dc.victimTeamId) {
+                    tarotDelta = dc.giftedPoints || Math.abs(dc.scoreDelta);
+                  } else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") && t.id === dc.victimTeamId) {
+                    tarotDelta = -(dc.stolenPoints || dc.scoreDelta);
                   }
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition ${
-                  (isAdmin || isSandbox) && onAdjustScore ? "cursor-pointer hover:border-amber-400/60" : ""
-                } ${
-                  t.id === currentTurnTeamId
-                    ? "bg-white/15 border-white/40 text-white font-bold"
-                    : "bg-black/30 border-white/10 text-white/70"
-                }`}
-                title={(isAdmin || isSandbox) && onAdjustScore ? `Nhấp để sửa điểm cho ${t.name}` : undefined}
-              >
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: t.color }} />
-                <span>{t.name}:</span>
-                <span className="font-mono font-bold text-amber-300">{t.score.toLocaleString()}đ</span>
-                {(isAdmin || isSandbox) && onAdjustScore && (
-                  <span className="text-[9px] text-amber-400/80 ml-0.5">✏️</span>
-                )}
-              </div>
-            ))}
+                }
+              }
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => {
+                    if ((isAdmin || isSandbox) && onAdjustScore) {
+                      setShowScoreEditModal(true);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border transition relative ${
+                    (isAdmin || isSandbox) && onAdjustScore ? "cursor-pointer hover:border-amber-400/60" : ""
+                  } ${
+                    t.id === currentTurnTeamId
+                      ? "bg-white/15 border-white/40 text-white font-bold"
+                      : "bg-black/30 border-white/10 text-white/70"
+                  }`}
+                  title={(isAdmin || isSandbox) && onAdjustScore ? `Nhấp để sửa điểm cho ${t.name}` : undefined}
+                >
+                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
+                  <span>{t.name}:</span>
+                  <span className="font-mono font-bold text-amber-300">{t.score.toLocaleString()}đ</span>
+                  <span className="flex items-center gap-0.5 text-xs text-rose-400 font-bold ml-1 bg-rose-950/40 px-1.5 py-0.5 rounded-md border border-rose-500/30" title={`${currentHearts} Tim`}>
+                    ❤️ {currentHearts}
+                  </span>
+                  {/* Floating brief score delta indicator for Divine Eye / Mắt Thần */}
+                  {tarotDelta !== null && tarotDelta !== 0 && (
+                    <span
+                      className={`ml-1 font-mono font-black text-xs px-1.5 py-0.5 rounded-md border animate-bounce ${
+                        tarotDelta > 0
+                          ? "bg-emerald-500/30 text-emerald-300 border-emerald-400"
+                          : "bg-rose-500/30 text-rose-300 border-rose-400"
+                      }`}
+                    >
+                      {tarotDelta > 0 ? `+${tarotDelta}` : `${tarotDelta}`}
+                    </span>
+                  )}
+                  {(isAdmin || isSandbox) && onAdjustScore && (
+                    <span className="text-[9px] text-amber-400/80 ml-0.5">✏️</span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

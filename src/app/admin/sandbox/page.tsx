@@ -38,6 +38,8 @@ import {
   handlePushYourLuckUsePeek as handleMysteryPushYourLuckUsePeek,
   handleTarotProphecyDecision as handleMysteryTarotProphecyDecision,
   synchronizeMysteryStageWithQuestionPoints,
+  handleAncientTarotDraw,
+  roundToMultipleOfFive,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -1154,7 +1156,7 @@ export default function AdminSandboxPage() {
     const offlineCardsMap = distributeCategorizedCardsToTeams(teamIds, modeAllowedPowerups as any, 2, 2);
     offlineSharedPowerupUsedThisQuestionRef.current = false;
 
-    const teams = [
+    let teams = [
       { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_red") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_r${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_red", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
       { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_blue") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_b${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_blue", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
       { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_yellow") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_y${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_yellow", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
@@ -1220,6 +1222,10 @@ export default function AdminSandboxPage() {
         teams,
         turnsPerTeam: allocResult.derivedConfig?.mysteryQuestTurnsPerTeam || 2,
       });
+      teams = teams.map((t) => ({
+        ...t,
+        hearts: mysteryQuestState.teamHearts?.[t.id] ?? mysteryQuestState.initialHeartsPerTeam ?? 0,
+      }));
     }
 
     const initialRoomState: RoomState = {
@@ -1814,7 +1820,7 @@ export default function AdminSandboxPage() {
 
         // Score delta calculation
         const netDelta = newAwarded - prevAwarded;
-        const updatedTeams = prev.teams.map((t) =>
+        let updatedTeams = prev.teams.map((t) =>
           t.id === targetTeamId ? { ...t, score: Math.max(0, t.score + netDelta) } : t
         );
 
@@ -1843,20 +1849,50 @@ export default function AdminSandboxPage() {
                 teams: updatedTeams,
               });
             } else {
+              const currentTeamObj = updatedTeams.find((t) => t.id === curMystery.currentTurnTeamId);
+              const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
+              const currentHearts = teamHearts[curMystery.currentTurnTeamId] ?? currentTeamObj?.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
+              const oldScore = currentTeamObj?.score || 0;
+              let penaltyDelta = 0;
+              let rewardText = "";
+
+              if (currentHearts > 0) {
+                teamHearts[curMystery.currentTurnTeamId] = currentHearts - 1;
+                rewardText = `💔 MC can thiệp: Không chính xác! Tiêu hao 1 ❤️ để bảo vệ tổng điểm! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
+              } else {
+                const halfPts = roundToMultipleOfFive(basePts / 2);
+                penaltyDelta = -Math.min(oldScore, halfPts);
+                rewardText = `💀 MC can thiệp: Hết Tim và không chính xác! Bị trừ ${Math.abs(penaltyDelta)}đ (${halfPts}đ)!`;
+              }
+
+              if (penaltyDelta !== 0 && currentTeamObj) {
+                updatedTeams = updatedTeams.map((t) =>
+                  t.id === curMystery.currentTurnTeamId
+                    ? { ...t, score: Math.max(0, t.score + penaltyDelta), hearts: teamHearts[t.id] }
+                    : { ...t, hearts: teamHearts[t.id] ?? t.hearts }
+                );
+              } else {
+                updatedTeams = updatedTeams.map((t) => ({
+                  ...t,
+                  hearts: teamHearts[t.id] ?? t.hearts,
+                }));
+              }
+
               nextMystery = {
                 ...curMystery,
                 phase: "TURN_SUMMARY",
                 turnFinishedReason: "QUESTION_FAILED",
                 potPoints: 0,
                 decisionMade: undefined,
+                teamHearts,
                 storyResult: {
                   teamId: curMystery.currentTurnTeamId,
                   teamName: curMystery.currentTurnTeamName,
                   teamColor: curMystery.currentTurnTeamColor,
-                  rewardText: "MC can thiệp chấm lại: Không chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
-                  scoreDelta: 0,
-                  oldScore: 0,
-                  newScore: 0,
+                  rewardText,
+                  scoreDelta: penaltyDelta,
+                  oldScore,
+                  newScore: Math.max(0, oldScore + penaltyDelta),
                 },
               };
             }
@@ -2069,6 +2105,7 @@ export default function AdminSandboxPage() {
           ...(allocResult.derivedConfig || {}),
         };
         let updatedMystery = prev.mysteryQuestState;
+        let nextTeams = prev.teams;
         if (prev.mode === "MYSTERY_QUEST" && prev.teams.length > 0) {
           updatedMystery = generateMysteryStageForTurn({
             turnIndex: 0,
@@ -2076,9 +2113,14 @@ export default function AdminSandboxPage() {
             teams: prev.teams,
             turnsPerTeam: allocResult.derivedConfig?.mysteryQuestTurnsPerTeam || 2,
           });
+          nextTeams = nextTeams.map((t) => ({
+            ...t,
+            hearts: updatedMystery?.teamHearts?.[t.id] ?? updatedMystery?.initialHeartsPerTeam ?? 0,
+          }));
         }
         const nextState = {
           ...prev,
+          teams: nextTeams,
           totalQuestions: allocResult.allocatedQuestions.length,
           config: updatedConfig,
           mysteryQuestState: updatedMystery,
@@ -2651,7 +2693,7 @@ export default function AdminSandboxPage() {
         return;
       }
       if (e.data?.type === "MYSTERY_CHOOSE_ACTION" || e.data?.action === "mystery_choose_action") {
-        const actionChoice = e.data?.actionChoice || e.data?.action || e.data?.choice;
+        let actionChoice = e.data?.actionChoice || e.data?.action || e.data?.choice;
         const targetTeamId = e.data?.teamId || roomStateRef.current?.mysteryQuestState?.currentTurnTeamId;
         if (!isOfflineSandbox) {
           adminSocketRef.current?.emit("admin:mystery:choose_action" as any, { action: actionChoice, teamId: targetTeamId, code });
@@ -2663,64 +2705,112 @@ export default function AdminSandboxPage() {
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === (targetTeamId || curMystery.currentTurnTeamId));
         if (!activeTeam) return;
 
+        const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
+        const currentHearts = teamHearts[activeTeam.id] ?? activeTeam.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
+
         if (actionChoice === "TAKE_BASE_POINTS") {
-          const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || curMystery.potPoints || 10);
-          const updatedTeams = roomStateRef.current.teams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: t.score + basePts } : t
-          );
-          const updatedState = {
-            ...curMystery,
-            phase: "TURN_SUMMARY" as const,
-            turnFinishedReason: "TOOK_BASE_POINTS" as const,
-            decisionMade: "TAKE_BASE_POINTS" as const,
-            potPoints: 0,
-            storyResult: {
-              teamId: activeTeam.id,
-              teamName: activeTeam.name,
-              teamColor: activeTeam.color,
-              rewardText: `Lựa chọn an toàn! Nhận trọn vẹn +${basePts} điểm câu hỏi.`,
-              scoreDelta: basePts,
-              oldScore: activeTeam.score,
-              newScore: activeTeam.score + basePts,
-            },
-          };
-          const nextRoomState: RoomState = {
-            ...roomStateRef.current,
-            teams: updatedTeams,
-            mysteryQuestState: updatedState,
-          };
-          roomStateRef.current = nextRoomState;
-          setRoomState(nextRoomState);
-          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-          addLog(`🛡️ [${activeTeam.name}] CHỌN AN TOÀN: Nhận +${basePts} điểm câu hỏi!`);
-        } else {
-          // PLAY_MINIGAME
-          const perkType = typeof curMystery.promoPerk === "string" ? curMystery.promoPerk : curMystery.promoPerk?.type;
-          const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || 10);
-          const initialPot = basePts + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
-          let updatedState: MysteryQuestState = {
-            ...curMystery,
-            baseQuestionPoints: basePts,
-            potPoints: initialPot,
-            hasShield: perkType === "SHIELD_PROMO",
-            phase: "PUSH_YOUR_LUCK" as const,
-            decisionMade: "PLAY_MINIGAME" as const,
-          };
-          updatedState = synchronizeMysteryStageWithQuestionPoints({
-            state: updatedState,
-            questionPoints: basePts,
-            theme: updatedState.theme,
-            teams: roomStateRef.current?.teams || [],
-          });
-          const nextRoomState: RoomState = {
-            ...roomStateRef.current,
-            mysteryQuestState: updatedState,
-          };
-          roomStateRef.current = nextRoomState;
-          setRoomState(nextRoomState);
-          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-          addLog(`🎲 [${activeTeam.name}] CHỌN THỬ THÁCH MINIGAME: Quyết định chơi lớn!`);
+          if (currentHearts <= 0) {
+            actionChoice = "PLAY_MINIGAME";
+          } else {
+            teamHearts[activeTeam.id] = Math.max(0, currentHearts - 1);
+            const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || curMystery.potPoints || 10);
+            const updatedTeams = roomStateRef.current.teams.map((t) =>
+              t.id === activeTeam.id
+                ? { ...t, score: t.score + basePts, hearts: teamHearts[t.id] }
+                : { ...t, hearts: teamHearts[t.id] ?? t.hearts }
+            );
+            const updatedState = {
+              ...curMystery,
+              teamHearts,
+              phase: "TURN_SUMMARY" as const,
+              turnFinishedReason: "TOOK_BASE_POINTS" as const,
+              decisionMade: "TAKE_BASE_POINTS" as const,
+              potPoints: 0,
+              storyResult: {
+                teamId: activeTeam.id,
+                teamName: activeTeam.name,
+                teamColor: activeTeam.color,
+                rewardText: `🛡️ Đội đã dùng 1 ❤️ để chốt an toàn +${basePts} điểm câu hỏi! (Còn ${teamHearts[activeTeam.id]} ❤️)`,
+                scoreDelta: basePts,
+                oldScore: activeTeam.score,
+                newScore: activeTeam.score + basePts,
+              },
+            };
+            const nextRoomState: RoomState = {
+              ...roomStateRef.current,
+              teams: updatedTeams,
+              mysteryQuestState: updatedState,
+            };
+            roomStateRef.current = nextRoomState;
+            setRoomState(nextRoomState);
+            syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+            addLog(`🛡️ [${activeTeam.name}] CHỌN AN TOÀN (Dùng 1 ❤️, còn ${teamHearts[activeTeam.id]} ❤️): Nhận +${basePts} điểm câu hỏi!`);
+            return;
+          }
         }
+
+        // PLAY_MINIGAME
+        const perkType = typeof curMystery.promoPerk === "string" ? curMystery.promoPerk : curMystery.promoPerk?.type;
+        const basePts = normalizeToThreeLevels(curMystery.baseQuestionPoints || 10);
+        const initialPot = basePts + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
+        let updatedState: MysteryQuestState = {
+          ...curMystery,
+          baseQuestionPoints: basePts,
+          potPoints: initialPot,
+          hasShield: perkType === "SHIELD_PROMO",
+          phase: "PUSH_YOUR_LUCK" as const,
+          decisionMade: "PLAY_MINIGAME" as const,
+        };
+        updatedState = synchronizeMysteryStageWithQuestionPoints({
+          state: updatedState,
+          questionPoints: basePts,
+          theme: updatedState.theme,
+          teams: roomStateRef.current?.teams || [],
+        });
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(`🎲 [${activeTeam.name}] CHỌN THỬ THÁCH MINIGAME: Quyết định chơi lớn!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_DRAW_TAROT" || e.data?.action === "mystery_draw_tarot") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:draw_tarot" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, scoreDeltas, drawnCard } = handleAncientTarotDraw({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+        });
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        for (const item of scoreDeltas) {
+          if (item.delta !== 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+            );
+          }
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+        addLog(`🔮 [${activeTeam.name}] RÚT BÀI TAROT: [${drawnCard.nameVi}]!`);
         return;
       }
       if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {
@@ -2752,6 +2842,8 @@ export default function AdminSandboxPage() {
           turnsPerTeam: curMystery.turnsPerTeam,
           prevTheme: curMystery.theme,
           forcedMiniGameType: miniGameType,
+          initialHeartsPerTeam: curMystery.initialHeartsPerTeam,
+          teamHearts: curMystery.teamHearts,
         });
         nextStage.phase = curMystery.phase;
         nextStage.potPoints = curMystery.potPoints;
@@ -2805,6 +2897,8 @@ export default function AdminSandboxPage() {
           turnsPerTeam: curMystery.turnsPerTeam,
           prevTheme: curMystery.theme,
           prevMiniGameType: curMystery.miniGameType,
+          initialHeartsPerTeam: curMystery.initialHeartsPerTeam,
+          teamHearts: curMystery.teamHearts,
         });
 
         const questions = offlineQuestionsRef.current;
@@ -4419,20 +4513,53 @@ export default function AdminSandboxPage() {
               teams: updatedTeams,
             });
           } else {
+            const currentTeamObj = updatedTeams.find((t) => t.id === curMystery.currentTurnTeamId);
+            const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
+            const currentHearts = teamHearts[curMystery.currentTurnTeamId] ?? currentTeamObj?.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
+            const oldScore = currentTeamObj?.score || 0;
+            const curQ = currentQuestion?.question;
+            const rawQ = curQ || offlineQuestionsRef.current[offlineQIndexRef.current];
+            const basePts = normalizeToThreeLevels(curQ?.points || rawQ?.points || 10);
+            let penaltyDelta = 0;
+            let rewardText = "";
+
+            if (currentHearts > 0) {
+              teamHearts[curMystery.currentTurnTeamId] = currentHearts - 1;
+              rewardText = `💔 Trả lời chưa chính xác! Tiêu hao 1 ❤️ để bảo vệ tổng điểm! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
+            } else {
+              const halfPts = roundToMultipleOfFive(basePts / 2);
+              penaltyDelta = -Math.min(oldScore, halfPts);
+              rewardText = `💀 Đã hết Tim và trả lời chưa chính xác! Bị trừ ${Math.abs(penaltyDelta)}đ (${halfPts}đ)!`;
+            }
+
+            if (penaltyDelta !== 0 && currentTeamObj) {
+              updatedTeams = updatedTeams.map((t) =>
+                t.id === curMystery.currentTurnTeamId
+                  ? { ...t, score: Math.max(0, t.score + penaltyDelta), hearts: teamHearts[t.id] }
+                  : { ...t, hearts: teamHearts[t.id] ?? t.hearts }
+              );
+            } else {
+              updatedTeams = updatedTeams.map((t) => ({
+                ...t,
+                hearts: teamHearts[t.id] ?? t.hearts,
+              }));
+            }
+
             nextMystery = {
               ...curMystery,
               phase: "TURN_SUMMARY",
               turnFinishedReason: "QUESTION_FAILED",
               potPoints: 0,
               potMultiplier: 1,
+              teamHearts,
               storyResult: {
                 teamId: curMystery.currentTurnTeamId,
                 teamName: curMystery.currentTurnTeamName,
                 teamColor: curMystery.currentTurnTeamColor,
-                rewardText: "Trả lời chưa chính xác. Lượt thi kết thúc với 0 điểm tích lũy.",
-                scoreDelta: 0,
-                oldScore: 0,
-                newScore: 0,
+                rewardText,
+                scoreDelta: penaltyDelta,
+                oldScore,
+                newScore: Math.max(0, oldScore + penaltyDelta),
               },
             };
           }
@@ -7768,6 +7895,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:tarot_prophecy_decision" as any, { choice, code });
                         } else {
                           window.postMessage({ type: "MYSTERY_TAROT_PROPHECY_DECISION", action: "mystery_tarot_prophecy_decision", choice }, "*");
+                        }
+                      }}
+                      onDrawTarot={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:draw_tarot" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot" }, "*");
                         }
                       }}
                       onAdjustScore={(teamId, delta, setScore) => handleAdjustScore(teamId, delta, setScore)}

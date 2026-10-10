@@ -612,6 +612,7 @@ export interface TeamState {
   shieldCount: number;
   cards: PowerupCard[];
   playerCount: number;
+  hearts?: number; // Số trái tim phòng thủ trong Mystery Quest (Math.round(turnsPerTeam / 3))
   bailoutsRemaining?: number;
   streak?: number;
   accuracyRatio?: number;
@@ -900,6 +901,25 @@ export interface MysteryTile {
   peekIcon?: string;  // Icon hiển thị hé lộ của Mắt Thần
 }
 
+export type AncientTarotCardKey = "THE_SUN" | "THE_FOOL" | "THE_EMPEROR" | "THE_KNIGHT" | "THE_DEATH" | "DEATH";
+export type TarotDeathSubtype = "GIFT" | "STEAL" | "GIFT_TOP1" | "STEAL_TOP1";
+
+export interface AncientTarotDrawnCard {
+  key: AncientTarotCardKey;
+  nameVi: string;
+  nameEn: string;
+  icon: string;
+  roman: string;
+  group: "COMMON" | "MUTATION" | "CRITICAL";
+  deathSubtype?: TarotDeathSubtype;
+  scoreDelta: number;
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints?: number;
+  giftedPoints?: number;
+  darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
+}
+
 export interface MysteryQuestState {
   currentTurnTeamId: string;
   currentTurnTeamName: string;
@@ -907,6 +927,8 @@ export interface MysteryQuestState {
   currentTurnIndex: number; // 0, 1, 2...
   totalTurns: number; // teams.length * turnsPerTeam
   turnsPerTeam: number;
+  initialHeartsPerTeam?: number; // Số Tim ban đầu: Math.round(turnsPerTeam / 3)
+  teamHearts?: Record<string, number>; // Quản lý số Tim thực tế của từng team (teamId -> hearts)
   currentRound: number; // 1, 2, ...
   theme: MysteryTheme;
   miniGameType: MysteryMiniGameType;
@@ -1012,6 +1034,8 @@ export interface MysteryQuestState {
     prophecyCardId?: number;    // ID lá bài Mắt Thần tiên tri hé lộ trước
     prophecyResolved?: boolean;  // Đã chốt quyết định tiên tri (chọn luôn hay bỏ qua)
     discardedCardId?: number;   // Lá bài đã bị bỏ qua (khóa lại)
+    drawnCard?: AncientTarotDrawnCard; // Lá bài cổ xưa được bốc theo thể thức Định Mệnh Chọn Lá
+    isDrawn?: boolean; // Đã rút bài hay chưa
   };
   peekUsesRemaining?: number;    // Số lượt sử dụng Mắt Thần còn lại (cho PUSH_YOUR_LUCK)
   nextCardPeek?: {
@@ -1393,6 +1417,8 @@ export interface ClientToServerEvents {
   "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
   "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
   "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => void;
+  "game:mystery:draw_tarot": () => void;
+  "admin:mystery:draw_tarot": (payload?: { code?: string }) => void;
   "game:mystery:tarot_redraw": () => void;
   "admin:mystery:tarot_redraw": (payload?: { code?: string }) => void;
   "game:mystery:tarot_keep": () => void;

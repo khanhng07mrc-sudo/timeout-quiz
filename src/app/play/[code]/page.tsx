@@ -1596,6 +1596,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_PROPHECY_DECISION", action: "mystery_tarot_prophecy_decision", choice, teamId: effectiveTeamId }, "*");
                 }
               }}
+              onDrawTarot={() => {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:draw_tarot");
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot", teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1853,6 +1860,13 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:tarot_prophecy_decision", { choice });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_TAROT_PROPHECY_DECISION", action: "mystery_tarot_prophecy_decision", choice, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onDrawTarot={() => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:draw_tarot");
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_DRAW_TAROT", action: "mystery_draw_tarot", teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

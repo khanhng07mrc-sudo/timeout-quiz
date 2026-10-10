@@ -4880,8 +4880,10 @@ export function registerSocketHandlers(io: IO) {
       room: any,
       questState: any,
       team: any,
-      decision: "SAFE_EXIT" | "RISK_OPEN",
-      chosenDoorId?: number
+      decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART",
+      chosenDoorId?: number,
+      swapRemovedDoorId?: number,
+      swapAddedDoorId?: number
     ) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleOneShotDoorsDecision({
@@ -4890,6 +4892,8 @@ export function registerSocketHandlers(io: IO) {
         allTeams,
         decision,
         chosenDoorId,
+        swapRemovedDoorId,
+        swapAddedDoorId,
       });
 
       roomMysteryQuests.set(room.id, updatedState);
@@ -5299,7 +5303,7 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryPairsDecision(room, questState, team, choice);
     });
 
-    socket.on("game:mystery:doors_decision", async ({ decision, chosenDoorId }: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => {
+    socket.on("game:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({
@@ -5312,7 +5316,8 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || (questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK")) return;
+      const osPhase = questState?.oneShotState?.phase;
+      if (!questState || (osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
 
       if (questState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
@@ -5322,20 +5327,21 @@ export function registerSocketHandlers(io: IO) {
       const team = await prisma.team.findUnique({ where: { id: player.teamId } });
       if (!team) return;
 
-      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId);
+      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId);
     });
 
-    socket.on("admin:mystery:doors_decision", async ({ decision, chosenDoorId, code }: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => {
+    socket.on("admin:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId, code }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => {
       const room = await getAdminRoom(socket, code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || (questState.oneShotState?.phase !== "SCANNED" && questState.oneShotState?.phase !== "STAGE_2_PICK")) return;
+      const osPhase = questState?.oneShotState?.phase;
+      if (!questState || (osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
 
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
 
-      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId);
+      await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId);
     });
 
     socket.on("game:mystery:tarot_redraw", async () => {

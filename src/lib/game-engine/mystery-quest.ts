@@ -458,17 +458,18 @@ export interface StealResult {
 export function calculateCappedSteal({
   activeTeamId,
   allTeams,
-  targetPoints = 25,
-  maxCap = 25,
+  targetPoints = 20,
+  maxCap,
 }: {
   activeTeamId: string;
   allTeams: MysteryTeamRef[];
   targetPoints?: number;
   maxCap?: number;
 }): StealResult {
+  const effectiveCap = maxCap ?? Math.max(targetPoints, 50);
   const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
   if (otherTeams.length === 0) {
-    return { stolenPoints: Math.min(targetPoints, maxCap) };
+    return { stolenPoints: Math.min(targetPoints, effectiveCap) };
   }
   const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
   const victim = sorted[0];
@@ -482,9 +483,9 @@ export function calculateCappedSteal({
     };
   }
 
-  // Cap: maximum 50% of victim's points and maximum maxCap (e.g. 25đ)
+  // Cap: maximum 50% of victim's points and maximum effectiveCap
   const halfScore = Math.floor(victimScore * 0.5);
-  const allowed = Math.min(targetPoints, maxCap, halfScore);
+  const allowed = Math.min(targetPoints, effectiveCap, halfScore);
   const finalSteal = Math.max(1, allowed);
 
   return {
@@ -531,7 +532,7 @@ export function generateMemoryPairsTiles(
   const pBonusTop = basePoints * 2; // Siêu Thưởng Nhân Đôi (+20đ / +40đ / +60đ)
   const pBonusHigh = Math.round(basePoints * 1.5); // Thưởng Lớn Kho Báu (+15đ / +30đ / +45đ)
   const pBonusMed = basePoints; // Thưởng Trung Bình Tinh Tú (+10đ / +20đ / +30đ)
-  const pSteal = Math.min(25, Math.max(15, basePoints)); // Cặp Hải Tặc Đoạt Bảo (Cướp tối đa 25đ)
+  const pSteal = basePoints; // Cặp Hải Tặc Đoạt Bảo (Cướp đúng điểm gốc câu hỏi)
   const pPenalty = basePoints; // Cặp Kíp Nổ Hắc Ám (-10đ / -20đ / -30đ)
 
   const currentRound = options?.currentRound ?? 1;
@@ -638,12 +639,19 @@ export function generateMemoryPairsTiles(
 /**
  * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (3 doors).
  */
+/**
+ * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (5 Cánh Cửa Bí Mật).
+ * - 3 Cửa Thưởng: Hoàng Gia (+2x), Đoạt Bảo (+1x) / Kho Báu (+1.5x), Tinh Tú (+1x)
+ * - 2 Cửa Trừ: Cửa Trừ Điểm Gốc (-1x) & Cửa Bom Ngẫu Nhiên (Khói / Hắc Ám / Từ Thiện)
+ * - Mắt Thần (PEEK_PROMO): Tự động phát hiện vị trí Cửa Trừ Điểm Gốc và khóa không cho chọn.
+ */
 export function generateOneShotDoorsTiles(
   basePoints: number = 20,
   options?: {
     currentRound?: number;
     teams?: MysteryTeamRef[];
     currentTeamId?: string;
+    promoPerk?: any;
   }
 ): MysteryTile[] {
   interface DoorDef {
@@ -653,11 +661,16 @@ export function generateOneShotDoorsTiles(
     storyDescription: string;
     effectType: MysteryTileEffectType;
     deltaPoints: number;
+    isBasePenalty?: boolean;
+    isBombDoor?: boolean;
+    bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
   }
 
   const pHigh = basePoints * 2; // Cửa Hoàng Gia: 20đ với câu 10đ, 40đ với 20đ, 60đ với 30đ
-  const pSteal = Math.min(25, Math.max(15, basePoints)); // Cửa Đoạt Bảo: Cướp tối đa 25đ
-  const pPenalty = basePoints; // Cửa Bẫy Bom: -10đ với câu 10đ, -20đ với 20đ, -30đ với 30đ
+  const pSteal = basePoints; // Cửa Đoạt Bảo: Cướp đúng điểm gốc câu hỏi (10đ/20đ/30đ)
+  const pTreasure = Math.round(basePoints * 1.5); // Kho Báu thay thế nếu không có đối thủ đủ điểm cướp
+  const pNormal = basePoints; // Cửa Tinh Tú: +10đ/+20đ/+30đ
+  const pPenalty = basePoints; // Cửa Trừ Gốc: -10đ/-20đ/-30đ
 
   const currentRound = options?.currentRound ?? 1;
   const canSteal = currentRound >= 2 && Boolean(
@@ -678,12 +691,17 @@ export function generateOneShotDoorsTiles(
         icon: "💎",
         type: "REWARD",
         storyTitle: "💎 CỬA KHO BÁU HOÀNG KIM!",
-        storyDescription: `Mở ra kho báu hoàng kim: Nhận an toàn +${pSteal} điểm thưởng siêu cấp!`,
+        storyDescription: `Mở ra kho báu hoàng kim: Nhận an toàn +${pTreasure} điểm thưởng siêu cấp!`,
         effectType: "BONUS_POINTS",
-        deltaPoints: pSteal,
+        deltaPoints: pTreasure,
       };
 
+  // Cửa Bom Ngẫu Nhiên: Random 1 trong 3 loại bom (Khói / Hắc Ám / Từ Thiện)
+  const bombTypes: Array<"BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY"> = ["BOMB_SMOKE", "BOMB_DARK", "BOMB_CHARITY"];
+  const selectedBombType = bombTypes[Math.floor(Math.random() * bombTypes.length)];
+
   const doors: DoorDef[] = [
+    // 1. Cửa Hoàng Gia (+2x basePoints)
     {
       icon: "👑",
       type: "REWARD",
@@ -692,37 +710,61 @@ export function generateOneShotDoorsTiles(
       effectType: "BONUS_POINTS",
       deltaPoints: pHigh,
     },
+    // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
     stealOrBonusDoor,
+    // 3. Cửa Tinh Tú (+1x basePoints)
     {
       icon: "⭐",
       type: "REWARD",
       storyTitle: "⭐ CỬA TINH TÚ MAY MẮN!",
-      storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${basePoints} điểm thưởng!`,
+      storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
       effectType: "BONUS_POINTS",
-      deltaPoints: basePoints,
+      deltaPoints: pNormal,
     },
+    // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints)
     {
-      icon: "💥",
-      type: "BOMB_MAJOR",
-      storyTitle: "💥 CỬA BẪY BOM CÔNG PHÁ!",
-      storyDescription: `Dính bẫy ngầm sau cánh cửa: Bom phát nổ, bị trừ ${pPenalty} điểm từ tổng điểm!`,
+      icon: "⚠️",
+      type: "BOMB_MINOR",
+      storyTitle: "⚠️ CỬA BẪY TRỪ ĐIỂM GỐC!",
+      storyDescription: `Dính bẫy phạt: Trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
+      isBasePenalty: true,
+    },
+    // 5. Cửa Bẫy Bom Ngẫu Nhiên (Ẩn danh lúc chưa mở, random 1 trong 3 loại bom)
+    {
+      icon: "💣",
+      type: "BOMB_MAJOR",
+      storyTitle: "💣 CỬA BẪY BOM MA THUẬT!",
+      storyDescription: "Dính bẫy ngầm ma thuật: Kích nổ bom bất ngờ mang hiệu ứng đặc biệt!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      isBombDoor: true,
+      bombDoorType: selectedBombType,
     },
   ];
 
   const shuffled = [...doors].sort(() => Math.random() - 0.5);
-  return shuffled.map((d, idx) => ({
-    id: idx + 1,
-    label: `Cửa #${idx + 1}`,
-    icon: d.icon,
-    isOpened: false,
-    type: d.type,
-    storyTitle: d.storyTitle,
-    storyDescription: d.storyDescription,
-    effectType: d.effectType,
-    deltaPoints: d.deltaPoints,
-  }));
+  const hasPeekPerk = options?.promoPerk && getPerkType(options.promoPerk) === "PEEK_PROMO";
+
+  return shuffled.map((d, idx) => {
+    const isPeekedDoor = Boolean(hasPeekPerk && d.isBasePenalty);
+    return {
+      id: idx + 1,
+      label: `Cửa #${idx + 1}`,
+      icon: d.icon,
+      isOpened: false,
+      type: d.type,
+      storyTitle: d.storyTitle,
+      storyDescription: d.storyDescription,
+      effectType: d.effectType,
+      deltaPoints: d.deltaPoints,
+      isPeeked: isPeekedDoor,
+      peekLabel: isPeekedDoor ? `⚠️ MẮT THẦN: CỬA BẪY TRỪ GỐC (-${pPenalty}đ)` : undefined,
+      peekIcon: isPeekedDoor ? "⚠️" : undefined,
+      bombDoorType: d.bombDoorType,
+    };
+  });
 }
 
 /**
@@ -1132,17 +1174,19 @@ export function generateMysteryStageForTurn({
       break;
 
     case "ONE_SHOT_DOORS":
-      tiles = generateOneShotDoorsTiles(effectiveBasePoints, roundOptions);
-      // Mắt thần ở 4 cửa KHÔNG soi bom ở đầu game.
-      // Thay vào đó, sau khi chọn xong 2 cửa, Mắt thần mới soi/gán nhãn ở Giai đoạn 2!
+      tiles = generateOneShotDoorsTiles(effectiveBasePoints, { ...roundOptions, promoPerk });
       oneShotState = {
         chosenTileId: undefined,
         selectedDoorIds: [],
+        penaltyDoorsCount: undefined,
         hasBombDetected: false,
         phase: "SELECTING",
         revealedSafeDoorIds: [],
         chosenFinalDoorId: undefined,
         allRevealed: false,
+        peekAvailable: getPerkType(promoPerk) === "PEEK_PROMO",
+        peekActivated: getPerkType(promoPerk) === "PEEK_PROMO",
+        hasSwapped: false,
       };
       break;
 
@@ -1471,7 +1515,7 @@ export function handleFlipCard({
         let stolenPoints: number | undefined;
 
         if (winCard.effectType === "STEAL_POINTS") {
-          const stealAmount = winCard.deltaPoints || 25;
+          const stealAmount = winCard.deltaPoints || state.baseQuestionPoints || 10;
           const eligibleTeams = (allTeams || []).filter(
             (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
           );
@@ -1716,7 +1760,7 @@ export function handleFlipCard({
       let finalDelta = 0;
 
       if (firstTile.effectType === "STEAL_POINTS") {
-        const stealAmount = firstTile.deltaPoints || 25;
+        const stealAmount = firstTile.deltaPoints || state.baseQuestionPoints || 10;
         const eligibleTeams = (allTeams || []).filter(
           (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
         );
@@ -1810,9 +1854,10 @@ export function handleFlipCard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT 2: ONE_SHOT_DOORS (4 Cánh Cửa Bí Mật - 2 Giai Đoạn)
-  // Giai đoạn 1: Chọn 2 trong 4 cửa để để ra riêng (vẫn úp xuống, chưa lật).
-  // Giai đoạn 2: Người chơi chỉ có thể chọn giữa 1 trong 2 cánh cửa còn lại đang sáng (bất kể có bom hay không).
+  // VARIANT 2: ONE_SHOT_DOORS (5 Cánh Cửa Bí Mật - 2 Giai Đoạn)
+  // Giai đoạn 1: Chọn 3 trong 5 cửa để để ra riêng (vẫn úp xuống, chưa lật).
+  // Hệ thống báo số lượng lá trừ trong 3 lá đã chọn.
+  // Giai đoạn 2: Người chơi PHẢI LẤY 3 CỬA ĐÃ CHỌN để chơi tiếp vòng 2, không dùng 2 cửa còn lại.
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "ONE_SHOT_DOORS") {
     const osState = state.oneShotState || {
@@ -1834,11 +1879,16 @@ export function handleFlipCard({
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
-    // Giai đoạn 1: Chọn 2 trong 4 cửa để ĐỂ RA RIÊNG (vẫn úp mặt, chưa lật)
+    // Giai đoạn 1: Chọn 3 trong 5 cửa để ĐỂ RA RIÊNG (vẫn úp mặt, chưa lật)
     if (osState.phase === "SELECTING" || !osState.phase) {
+      // Cửa bị Mắt Thần khóa (Cửa bẫy trừ gốc) tuyệt đối không cho chọn!
+      if (tile.isPeeked) {
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+      }
+
       const selected = osState.selectedDoorIds || [];
       if (selected.includes(tileId)) {
-        // Cho phép bỏ chọn nếu mới chọn 1 cửa
+        // Cho phép bỏ chọn nếu đang chọn dở
         osState.selectedDoorIds = selected.filter((id) => id !== tileId);
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
@@ -1846,63 +1896,51 @@ export function handleFlipCard({
       selected.push(tileId);
       osState.selectedDoorIds = [...selected];
 
-      if (selected.length < 2) {
-        // Đang chờ chọn cửa thứ 2 để ra riêng
+      if (selected.length < 3) {
+        // Đang chờ chọn đủ 3 cửa để ra riêng
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
 
-      // Đã chọn đủ 2 cửa để ra riêng!
-      // Cả 4 cánh cửa vẫn úp mặt (isOpened: false), chưa lật!
-      // Quét xem trong 2 cánh cửa đã để ra riêng này CÓ cánh cửa trừ điểm (Bẫy bom) hay không:
+      // Đã chọn đủ 3 cửa để ra riêng!
+      // Cả 5 cánh cửa vẫn úp mặt (isOpened: false), chưa lật!
+      // Radar quét xem trong 3 cánh cửa đã chọn có bao nhiêu cánh cửa trừ điểm (Bẫy bom hoặc Bẫy trừ gốc):
       const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
-      const hasBombInSelected = selectedTiles.some((t) => t.type !== "REWARD" || (t.deltaPoints && t.deltaPoints < 0));
-      osState.hasBombDetected = hasBombInSelected;
+      const penaltyCount = selectedTiles.filter((t) => t.type !== "REWARD" || (t.deltaPoints && t.deltaPoints < 0)).length;
+      osState.penaltyDoorsCount = penaltyCount;
+      osState.hasBombDetected = penaltyCount > 0;
 
-      // Kích hoạt cơ chế Mắt Thần cho 4 Cửa nếu có PEEK_PROMO:
-      if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-        if (!hasBombInSelected) {
-          // KHÔNG CÓ BOM: Hiện chức năng của 1 trong hai cửa
-          const randomSafe = selectedTiles[Math.floor(Math.random() * selectedTiles.length)];
-          randomSafe.isPeeked = true;
-          randomSafe.peekLabel = randomSafe.storyTitle;
-          randomSafe.peekIcon = randomSafe.icon;
-        } else {
-          // CÓ BOM: Gán nhãn cho CẢ HAI CỬA là chức năng của cửa cộng điểm!
-          const rewardTile = selectedTiles.find((t) => t.type === "REWARD") || selectedTiles[0];
-          selectedTiles.forEach((t) => {
-            t.isPeeked = true;
-            t.peekLabel = rewardTile.storyTitle;
-            t.peekIcon = rewardTile.icon;
-          });
-        }
+      if (penaltyCount === 0) {
+        // 0 lá trừ: Chuyển thẳng sang Giai đoạn 2 (Mở 1 trong 3 lá)
+        osState.phase = "STAGE_2_PICK";
+      } else {
+        // Có lá trừ (> 0): Chuyển sang lựa chọn: Đổi 1 lá HOẶC Lấy điểm gốc (-1 Tim)
+        osState.phase = "PENALTY_DECISION";
       }
 
-      // Chuyển sang Giai đoạn 2: Người chơi chọn 1 trong 2 cánh cửa đã để ra riêng đang sáng!
-      osState.phase = "STAGE_2_PICK";
       return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
     }
 
-    // Giai đoạn 2: Người chơi PHẢI CHỌN GIỮA 1 TRONG 2 CỬA ĐÃ ĐỂ RA RIÊNG!
+    // Giai đoạn 2: Người chơi PHẢI CHỌN GIỮA 1 TRONG 3 CỬA ĐÃ ĐỂ RA RIÊNG! (2 cửa còn lại bị loại bỏ)
     if (osState.phase === "STAGE_2_PICK" || osState.phase === "SCANNED") {
       const selected = osState.selectedDoorIds || [];
-      // CHỈ CHO PHÉP chọn 1 trong 2 cánh cửa đã để ra riêng! (Các cánh cửa khác đã bị loại)
+      // CHỈ CHO PHÉP chọn 1 trong 3 cánh cửa đã để ra riêng! (2 cánh cửa còn lại đã bị loại bỏ)
       if (!selected.includes(tileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
-      // Người chơi bấm mở 1 trong 2 cánh cửa đã để ra riêng!
+      // Người chơi bấm mở 1 trong 3 cánh cửa đã để ra riêng!
       osState.chosenFinalDoorId = tileId;
       osState.phase = "RESOLVED";
       osState.allRevealed = true;
 
-      // Lật mở toàn bộ 4 cánh cửa để hé lộ tất cả
+      // Lật mở toàn bộ 5 cánh cửa để hé lộ tất cả
       state.tiles.forEach((t) => {
         t.isOpened = true;
       });
 
-      const isBomb = tile.type !== "REWARD";
+      const isNegative = tile.type !== "REWARD" || (tile.deltaPoints && tile.deltaPoints < 0);
 
-      if (isBomb) {
+      if (isNegative) {
         if (state.hasShield) {
           state.hasShield = false;
           state.potPoints = 0;
@@ -1915,7 +1953,7 @@ export function handleFlipCard({
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa phạt đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
             scoreDelta: basePoints,
             oldScore,
             newScore,
@@ -1928,45 +1966,85 @@ export function handleFlipCard({
           };
         }
 
-        const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
-        state.potPoints = 0;
-        state.bombExploded = {
-          type: "MAJOR",
-          title: tile.storyTitle,
-          description: tile.storyDescription,
-          penaltyText: `Mở trúng Cửa Bẫy Bom! Bị trừ ${penalty} điểm từ tổng điểm.`,
-        };
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "BOMB_HIT";
+        // Kiểm tra loại cửa phạt: Cửa Trừ Gốc hay Cửa Bom Ngẫu Nhiên
+        const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType);
 
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - penalty);
+        if (isRandomBomb) {
+          const bombType = (tile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
+          const outcome = resolveBombOutcome({
+            bombType,
+            team,
+            allTeams,
+            storyDescription: tile.storyDescription || "Mở trúng Cửa Bẫy Bom!",
+          });
+          state.potPoints = 0;
+          state.bombExploded = outcome.bombExploded;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
 
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `💥 Mở trúng Cửa Bẫy Bom! Phát nổ và bị trừ ${penalty} điểm!`,
-          scoreDelta: -penalty,
-          oldScore,
-          newScore,
-        };
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - outcome.penalty);
 
-        return {
-          updatedState: { ...state },
-          isBomb: true,
-          scorePenalty: penalty,
-          finalScoreDelta: -penalty,
-        };
-      }
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `💥 Rủi ro bất thành! ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+            scoreDelta: -outcome.penalty,
+            oldScore,
+            newScore,
+          };
 
-      // CỬA AN TOÀN / PHẦN THƯỞNG
+          return {
+            updatedState: { ...state },
+            isBomb: true,
+            scorePenalty: outcome.penalty,
+            finalScoreDelta: -outcome.penalty,
+            victimTeamId: outcome.recipientTeamId,
+            victimTeamName: outcome.recipientTeamName,
+            stolenPoints: outcome.giftedPoints,
+          };
+        } else {
+          // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi
+          const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
+          state.potPoints = 0;
+          state.bombExploded = {
+            type: "MINOR",
+            title: tile.storyTitle,
+            description: tile.storyDescription,
+            penaltyText: `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
+          };
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
+
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - penalty);
+
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
+            scoreDelta: -penalty,
+            oldScore,
+            newScore,
+          };
+
+          return {
+            updatedState: { ...state },
+            isBomb: true,
+            scorePenalty: penalty,
+            finalScoreDelta: -penalty,
+          };
+        }
+      } else {
+        // CỬA AN TOÀN / PHẦN THƯỞNG
       const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
       const extraPotBonus = hasExtraPot ? 5 : 0;
       const multiplier = state.potMultiplier || 1;
 
       if (tile.effectType === "STEAL_POINTS") {
-        const stealAmount = tile.deltaPoints || 20;
+        const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
         const eligibleTeams = (allTeams || []).filter(
           (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
         );
@@ -1987,7 +2065,7 @@ export function handleFlipCard({
         }
       }
 
-      const baseReward = tile.deltaPoints || 10;
+      const baseReward = tile.deltaPoints || state.baseQuestionPoints || 10;
       let finalDelta = (baseReward * multiplier) + extraPotBonus;
       let victimTeamId: string | undefined;
       let victimTeamName: string | undefined;
@@ -2040,7 +2118,7 @@ export function handleFlipCard({
         stolenPoints,
       };
     }
-
+  }
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
   }
 
@@ -2147,7 +2225,7 @@ export function handleFlipCard({
       const multiplier = state.potMultiplier || 1;
 
       if (tile.effectType === "STEAL_POINTS") {
-        const stealAmount = tile.deltaPoints || 25;
+        const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
         const eligibleTeams = (allTeams || []).filter(
           (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
         );
@@ -2444,7 +2522,7 @@ export function handleFlipCard({
     state.potMultiplier *= 2;
     state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : (20 + extraPotBonus) * state.potMultiplier;
   } else if (tile.effectType === "STEAL_POINTS") {
-    const stealAmount = tile.deltaPoints || 20;
+    const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
     const eligibleTeams = (allTeams || []).filter(
       (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
     );
@@ -2766,9 +2844,10 @@ export function handleChooseStealTarget({
 }
 
 /**
- * Handles Stage 2 decision for 4 Cánh Cửa Bí Mật (ONE_SHOT_DOORS):
- * - "SAFE_EXIT": Dừng lại & bảo toàn điểm gốc của câu hỏi (+baseQuestionPoints).
- * - "RISK_OPEN": Liều mở 1 trong 2 cửa đã chọn (50/50).
+ * Handles decisions for 5 Cánh Cửa Bí Mật (ONE_SHOT_DOORS):
+ * - "SWAP_DOOR": Đổi 1 trong 3 lá đã chọn sang 1 lá khác (chỉ 1 lần duy nhất, không quét lại số lá trừ).
+ * - "TAKE_BASE_MINUS_HEART" / "SAFE_EXIT": Rút lui nhận điểm câu hỏi gốc và bị trừ 1 Tim.
+ * - "RISK_OPEN": Mở 1 trong 3 cánh cửa đã chọn để nhận kết quả.
  */
 export function handleOneShotDoorsDecision({
   state,
@@ -2776,12 +2855,16 @@ export function handleOneShotDoorsDecision({
   allTeams = [],
   decision,
   chosenDoorId,
+  swapRemovedDoorId,
+  swapAddedDoorId,
 }: {
   state: MysteryQuestState;
   team: MysteryTeamRef;
   allTeams?: MysteryTeamRef[];
-  decision: "SAFE_EXIT" | "RISK_OPEN";
+  decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART";
   chosenDoorId?: number;
+  swapRemovedDoorId?: number;
+  swapAddedDoorId?: number;
 }): {
   updatedState: MysteryQuestState;
   finalScoreDelta: number;
@@ -2805,10 +2888,56 @@ export function handleOneShotDoorsDecision({
   const extraPotBonus = hasExtraPot ? 5 : 0;
   const multiplier = state.potMultiplier || 1;
 
-  if (decision === "SAFE_EXIT") {
-    // 🛡️ DỪNG LẠI & BẢO TOÀN
+  // ─────────────────────────────────────────────────────────────────────────
+  // PHƯƠNG ÁN 1: ĐỔI 1 TRONG 3 LÁ ĐÃ CHỌN SANG 1 LÁ KHÁC (1 LẦN DUY NHẤT)
+  // ĐẶC BIỆT: HỆ THỐNG KHÔNG BÁO LẠI SỐ LÁ TRỪ MỚI (để tránh người chơi né)!
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "SWAP_DOOR") {
+    if (osState.hasSwapped) {
+      // Đã đổi 1 lần rồi thì không cho đổi tiếp
+      return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+    }
+
+    const currentSelected = [...(osState.selectedDoorIds || [])];
+    if (swapRemovedDoorId && swapAddedDoorId) {
+      // Thay thế lá cũ bằng lá mới
+      const newSelected = currentSelected
+        .filter((id) => id !== swapRemovedDoorId)
+        .concat(swapAddedDoorId);
+
+      osState.selectedDoorIds = newSelected;
+      osState.hasSwapped = true;
+      osState.swapRemovedDoorId = swapRemovedDoorId;
+      osState.swapAddedDoorId = swapAddedDoorId;
+      // Tuyệt đối không báo lại số lá trừ mới theo yêu cầu:
+      osState.penaltyDoorsCount = undefined;
+      osState.hasBombDetected = false;
+      osState.phase = "STAGE_2_PICK";
+    }
+
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: 0,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PHƯƠNG ÁN 2: LẤY ĐIỂM GỐC NHƯNG BỊ TRỪ 1 TIM (RÚT LUI AN TOÀN)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "TAKE_BASE_MINUS_HEART" || decision === "SAFE_EXIT") {
+    // Trừ 1 Tim của đội nếu đội còn Tim
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
+
     osState.phase = "RESOLVED";
     osState.allRevealed = true;
+    osState.isBasePointsWithMinusHeart = true;
     state.tiles.forEach((t) => {
       t.isOpened = true;
     });
@@ -2816,14 +2945,15 @@ export function handleOneShotDoorsDecision({
     const finalDelta = (state.baseQuestionPoints || 10) + extraPotBonus;
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "DOOR_CHOSEN";
+    state.turnFinishedReason = "TOOK_BASE_POINTS";
 
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
 
     const rewardText = extraPotBonus > 0
-      ? `🛡️ Bảo toàn xuất sắc! Tránh bẫy bom an toàn, nhận +${state.baseQuestionPoints || 10}đ câu hỏi và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
-      : `🛡️ Bảo toàn xuất sắc! Tránh bẫy bom an toàn, nhận trọn vẹn +${finalDelta} điểm câu hỏi!`;
+      ? `🛡️ Rút lui bảo toàn! Chấp nhận tiêu hao 1 ❤️ để nhận an toàn +${state.baseQuestionPoints || 10}đ câu hỏi và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm, còn ${remainingHearts} ❤️)!`
+      : `🛡️ Rút lui bảo toàn! Chấp nhận tiêu hao 1 ❤️ để nhận an toàn trọn vẹn +${finalDelta} điểm câu hỏi (Còn ${remainingHearts} ❤️)!`;
 
     state.storyResult = {
       teamId: team.id,
@@ -2843,7 +2973,19 @@ export function handleOneShotDoorsDecision({
     };
   }
 
-  // 🎲 RISK_OPEN: Liều mở 1 trong 2 cửa
+  // ─────────────────────────────────────────────────────────────────────────
+  // MỞ 1 TRONG 3 CÁNH CỬA ĐÃ CHỌN (GIAI ĐOẠN 2)
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "RISK_OPEN" && !chosenDoorId && osState.phase === "PENALTY_DECISION") {
+    osState.phase = "STAGE_2_PICK";
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: 0,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
   const doorIdToOpen = chosenDoorId ?? (osState.selectedDoorIds && osState.selectedDoorIds[0]);
   const chosenTile = state.tiles.find((t) => t.id === doorIdToOpen);
   if (!chosenTile) {
@@ -2857,9 +2999,9 @@ export function handleOneShotDoorsDecision({
     t.isOpened = true;
   });
 
-  const isBomb = chosenTile.type !== "REWARD";
+  const isNegative = chosenTile.type !== "REWARD" || (chosenTile.deltaPoints && chosenTile.deltaPoints < 0);
 
-  if (isBomb) {
+  if (isNegative) {
     if (state.hasShield) {
       state.hasShield = false;
       state.potPoints = 0;
@@ -2872,7 +3014,7 @@ export function handleOneShotDoorsDecision({
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY BOM! Cửa bẫy nổ đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa phạt đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
         scoreDelta: basePoints,
         oldScore,
         newScore,
@@ -2885,40 +3027,76 @@ export function handleOneShotDoorsDecision({
       };
     }
 
-    const bombType = rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
-    const outcome = resolveBombOutcome({
-      bombType,
-      team,
-      allTeams,
-      storyDescription: chosenTile.storyDescription || "Mở trúng Cửa Bẫy Bom!",
-    });
-    state.potPoints = 0;
-    state.bombExploded = outcome.bombExploded;
-    state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "BOMB_HIT";
+    const isRandomBomb = chosenTile.type === "BOMB_MAJOR" || Boolean((chosenTile as any).bombDoorType);
 
-    const oldScore = team.score || 0;
-    const newScore = Math.max(0, oldScore - outcome.penalty);
+    if (isRandomBomb) {
+      const bombType = (chosenTile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
+      const outcome = resolveBombOutcome({
+        bombType,
+        team,
+        allTeams,
+        storyDescription: chosenTile.storyDescription || "Mở trúng Cửa Bẫy Bom!",
+      });
+      state.potPoints = 0;
+      state.bombExploded = outcome.bombExploded;
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
 
-    state.storyResult = {
-      teamId: team.id,
-      teamName: team.name,
-      teamColor: team.color || "#ef4444",
-      rewardText: `💥 Rủi ro bất thành! ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
-      scoreDelta: -outcome.penalty,
-      oldScore,
-      newScore,
-    };
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - outcome.penalty);
 
-    return {
-      updatedState: { ...state },
-      isBomb: true,
-      scorePenalty: outcome.penalty,
-      finalScoreDelta: -outcome.penalty,
-      victimTeamId: outcome.recipientTeamId,
-      victimTeamName: outcome.recipientTeamName,
-      stolenPoints: outcome.giftedPoints,
-    };
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💥 Rủi ro bất thành! ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+        scoreDelta: -outcome.penalty,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: outcome.penalty,
+        finalScoreDelta: -outcome.penalty,
+        victimTeamId: outcome.recipientTeamId,
+        victimTeamName: outcome.recipientTeamName,
+        stolenPoints: outcome.giftedPoints,
+      };
+    } else {
+      // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi
+      const penalty = Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "MINOR",
+        title: chosenTile.storyTitle,
+        description: chosenTile.storyDescription,
+        penaltyText: `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - penalty);
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
+        scoreDelta: -penalty,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: -penalty,
+      };
+    }
   } else {
     let victimTeamId: string | undefined;
     let victimTeamName: string | undefined;
@@ -2926,7 +3104,7 @@ export function handleOneShotDoorsDecision({
     let finalDelta = 0;
 
     if (chosenTile.effectType === "STEAL_POINTS") {
-      const stealAmount = chosenTile.deltaPoints || 25;
+      const stealAmount = chosenTile.deltaPoints || state.baseQuestionPoints || 10;
       const eligibleTeams = (allTeams || []).filter(
         (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
       );
@@ -2948,7 +3126,7 @@ export function handleOneShotDoorsDecision({
         finalDelta = (stealAmount * multiplier) + extraPotBonus;
       }
     } else {
-      finalDelta = ((chosenTile.deltaPoints || 25) * multiplier) + extraPotBonus;
+      finalDelta = ((chosenTile.deltaPoints ?? (state.baseQuestionPoints || 10)) * multiplier) + extraPotBonus;
     }
 
     if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {

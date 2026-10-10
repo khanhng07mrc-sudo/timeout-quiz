@@ -1036,14 +1036,20 @@ export interface MysteryQuestState {
   };
   oneShotState?: {
     chosenTileId?: number;
-    selectedDoorIds?: number[]; // 2 cửa đã chọn ở Giai đoạn 1 (để ra riêng, vẫn úp mặt)
-    hasBombDetected?: boolean;  // Backward compat
-    phase?: "SELECTING" | "STAGE_2_PICK" | "SCANNED" | "RESOLVED";
+    selectedDoorIds?: number[]; // 3 cửa đã chọn ở Giai đoạn 1 (để ra riêng, vẫn úp mặt)
+    penaltyDoorsCount?: number; // Số lượng cánh cửa trừ điểm (0, 1 hoặc 2) trong 3 cửa đã chọn
+    hasBombDetected?: boolean;  // Backward compat (true nếu penaltyDoorsCount > 0)
+    phase?: "SELECTING" | "PENALTY_DECISION" | "STAGE_2_PICK" | "SCANNED" | "RESOLVED";
     revealedSafeDoorIds?: number[];
     chosenFinalDoorId?: number;
     allRevealed?: boolean;
     peekAvailable?: boolean;    // Có đặc quyền Mắt Thần
-    peekActivated?: boolean;    // Đã kích hoạt Mắt Thần (khóa 2 cửa 50/50 Hoàng Gia vs Bom)
+    peekActivated?: boolean;    // Đã kích hoạt Mắt Thần (tự động khóa cửa trừ gốc)
+    hasSwapped?: boolean;       // Đã đổi 1 lá sang lá khác (chỉ 1 lần duy nhất)
+    swapRemovedDoorId?: number; // Cửa bỏ ra
+    swapAddedDoorId?: number;   // Cửa thay vào
+    isBasePointsWithMinusHeart?: boolean; // Rút lui nhận điểm gốc câu hỏi và trừ 1 Tim
+    bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY"; // Loại bom ngẫu nhiên của Cửa Bom
   };
   tarotState?: {
     chosenCardId?: number;
@@ -1440,8 +1446,8 @@ export interface ClientToServerEvents {
   "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
   "game:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => void;
   "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
-  "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number }) => void;
-  "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN"; chosenDoorId?: number; code?: string }) => void;
+  "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => void;
+  "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => void;
   "game:mystery:draw_tarot": () => void;
   "admin:mystery:draw_tarot": (payload?: { code?: string }) => void;
   "game:mystery:spin_tarot_wheel": (payload: { powerPercent: number }) => void;

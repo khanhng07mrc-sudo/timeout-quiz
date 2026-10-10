@@ -2469,7 +2469,13 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type === "MYSTERY_DOORS_DECISION" || e.data?.action === "mystery_doors_decision") {
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:doors_decision" as any, { decision: e.data.decision, chosenDoorId: e.data.chosenDoorId, code });
+          adminSocketRef.current?.emit("admin:mystery:doors_decision" as any, {
+            decision: e.data.decision,
+            chosenDoorId: e.data.chosenDoorId,
+            swapRemovedDoorId: e.data.swapRemovedDoorId,
+            swapAddedDoorId: e.data.swapAddedDoorId,
+            code,
+          });
           return;
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
@@ -2483,6 +2489,8 @@ export default function AdminSandboxPage() {
           allTeams: roomStateRef.current.teams,
           decision: e.data.decision,
           chosenDoorId: e.data.chosenDoorId,
+          swapRemovedDoorId: e.data.swapRemovedDoorId,
+          swapAddedDoorId: e.data.swapAddedDoorId,
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
@@ -2497,6 +2505,13 @@ export default function AdminSandboxPage() {
           updatedTeams = updatedTeams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + finalScoreDelta) } : t
           );
+        }
+
+        if (updatedState.teamHearts) {
+          updatedTeams = updatedTeams.map((t) => ({
+            ...t,
+            hearts: updatedState.teamHearts?.[t.id] ?? t.hearts,
+          }));
         }
 
         const nextRoomState: RoomState = {

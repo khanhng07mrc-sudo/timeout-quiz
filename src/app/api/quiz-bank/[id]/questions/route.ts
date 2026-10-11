@@ -26,7 +26,7 @@ export async function POST(
   const { id } = await params;
   const body = await req.json();
 
-  const normalizePoints = (pts: any): 10 | 20 | 30 => normalizeToThreeLevels(Number(pts) || 10);
+  const normalizePoints = (pts: any): 10 | 20 | 30 | 40 => normalizeToThreeLevels(Number(pts) || 10);
 
   // Support bulk creation (import)
   if (Array.isArray(body)) {

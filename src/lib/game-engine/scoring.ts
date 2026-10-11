@@ -108,30 +108,43 @@ export function calculateItemIRTMetrics(params: {
 
 /**
  * Chuẩn hóa điểm gốc theo chế độ chơi:
- * - Đối với CLASSIC & ELIMINATION: Thang điểm chuẩn Kahoot 1.000 - 2.000 điểm
+ * - Đối với CLASSIC & ELIMINATION: Thang điểm chuẩn Kahoot 1.000 - 2.500 điểm
  *   + Dễ (<= 10đ): 1.000 điểm
  *   + Trung bình (11 - 20đ): 1.500 điểm
- *   + Khó (> 20đ): 2.000 điểm
- * - Đối với các mode khác (BOUNCEBACK, GRID_CARO, DICE_RACE, BUZZ, WAGER, TOURNAMENT):
- *   Giữ nguyên thang 10, 20, 30 điểm truyền thống.
+ *   + Khó (21 - 30đ): 2.000 điểm
+ *   + Rất khó / Đa số liệu (> 30đ): 2.500 điểm
+ * - Đối với các mode khác (BOUNCEBACK, GRID_CARO, DICE_RACE, BUZZ, WAGER, TOURNAMENT, MYSTERY_QUEST):
+ *   Giữ nguyên thang 10, 20, 30, 40 điểm chuẩn.
  */
 export function getBasePointsForMode(rawPoints: number, mode?: GameMode): number {
   if (mode === "CLASSIC" || mode === "ELIMINATION") {
     if (rawPoints <= 10) return 1000;
     if (rawPoints <= 20) return 1500;
-    return 2000;
+    if (rawPoints <= 30) return 2000;
+    return 2500;
   }
-  return normalizeToThreeLevels(rawPoints);
+  return normalizeToFourLevels(rawPoints);
 }
 
 /**
- * Chuẩn hóa điểm câu hỏi về 3 mức chuẩn 10, 20, 30 điểm cho các chế độ truyền thống
- * Dễ (<=10đ) -> 10đ; Trung bình (11-20đ) -> 20đ; Khó (>20đ) -> 30đ
+ * Chuẩn hóa điểm câu hỏi về 4 mức chuẩn 10, 20, 30, 40 điểm:
+ * - Dễ (<=10đ) -> 10đ
+ * - Trung bình (11-20đ) -> 20đ
+ * - Khó (21-30đ) -> 30đ
+ * - Rất khó / Tính toán phức tạp (>30đ) -> 40đ
  */
-export function normalizeToThreeLevels(points: number): 10 | 20 | 30 {
+export function normalizeToFourLevels(points: number): 10 | 20 | 30 | 40 {
   if (points <= 10) return 10;
   if (points <= 20) return 20;
-  return 30;
+  if (points <= 30) return 30;
+  return 40;
+}
+
+/**
+ * Chuẩn hóa điểm câu hỏi (tương thích ngược với hệ thống 3 mức, tự động hỗ trợ mức 40đ)
+ */
+export function normalizeToThreeLevels(points: number): 10 | 20 | 30 | 40 {
+  return normalizeToFourLevels(points);
 }
 
 /**

@@ -70,7 +70,8 @@ export function calculateAuthoritativeTimer(
 
   const now = getServerTime();
   const msRemaining = Math.max(0, endsAt - now);
-  const remaining = Math.max(0, Math.ceil(msRemaining / 1000));
+  const rawRemaining = Math.max(0, Math.ceil(msRemaining / 1000));
+  const remaining = total > 0 ? Math.min(total, rawRemaining) : rawRemaining;
   const percent = total > 0 ? Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100)) : 0;
 
   return {

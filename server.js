@@ -206,7 +206,8 @@ function getBloomLevelFromPoints(points, explicitLevel) {
 function quantizeOlympiaTimeLimit(points = 10, _explicitTimeLimit) {
   if (points <= 10) return 15;
   if (points <= 20) return 20;
-  return 30;
+  if (points <= 30) return 30;
+  return 60;
 }
 function getBuzzedAnswerTimeLimit(question, overridePoints) {
   if (question.type === "MC_SINGLE" || question.type === "TRUE_FALSE") {
@@ -214,13 +215,16 @@ function getBuzzedAnswerTimeLimit(question, overridePoints) {
   }
   const effPoints = overridePoints !== void 0 ? overridePoints : question.points ?? 10;
   const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
+  const isUltra = effPoints >= 40;
   const isHigh = bloom === "ANALYZE" || effPoints >= 30;
   const isMedium = bloom === "APPLY" || effPoints >= 20;
   if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
+    if (isUltra) return 35;
     if (isHigh) return 25;
     if (isMedium) return 20;
     return 15;
   }
+  if (isUltra) return 30;
   if (isHigh) return 20;
   if (isMedium) return 15;
   return 10;
@@ -229,7 +233,8 @@ function getStandardQuestionTimeLimit(question, overridePoints) {
   const effPoints = overridePoints !== void 0 ? overridePoints : question.points ?? 10;
   if (effPoints <= 10) return 15;
   if (effPoints <= 20) return 20;
-  return 30;
+  if (effPoints <= 30) return 30;
+  return 60;
 }
 
 // src/lib/game-engine/scoring.ts
@@ -272,14 +277,19 @@ function getBasePointsForMode(rawPoints, mode) {
   if (mode === "CLASSIC" || mode === "ELIMINATION") {
     if (rawPoints <= 10) return 1e3;
     if (rawPoints <= 20) return 1500;
-    return 2e3;
+    if (rawPoints <= 30) return 2e3;
+    return 2500;
   }
-  return normalizeToThreeLevels(rawPoints);
+  return normalizeToFourLevels(rawPoints);
 }
-function normalizeToThreeLevels(points) {
+function normalizeToFourLevels(points) {
   if (points <= 10) return 10;
   if (points <= 20) return 20;
-  return 30;
+  if (points <= 30) return 30;
+  return 40;
+}
+function normalizeToThreeLevels(points) {
+  return normalizeToFourLevels(points);
 }
 function computeDetailedPointsAwarded(ctx) {
   const base = getBasePointsForMode(ctx.basePoints, ctx.mode);
@@ -867,30 +877,78 @@ function getRandomMiniGame(prevMiniGame) {
 function roundToMultipleOfFive(points) {
   return Math.round(points / 5) * 5;
 }
-function rollBombTypeForMinigame(mode, teamScore = 0) {
-  if (teamScore <= 0) return "BOMB_SMOKE";
-  const r = Math.random();
-  if (mode === "PUSH_YOUR_LUCK") {
-    if (r < 0.5) return "BOMB_SMOKE";
-    if (r < 0.85) return "BOMB_DARK";
-    return "BOMB_CHARITY";
+function evaluateTeamRiskTier({
+  team,
+  allTeams = [],
+  consecutiveBombs = 0
+}) {
+  const activeTeams = (allTeams || []).filter((t) => !t.isEliminated);
+  if (activeTeams.length <= 1) return "NEUTRAL";
+  const myScore = team.score || 0;
+  const sorted = [...activeTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const top1 = sorted[0];
+  const top2 = sorted[1];
+  const bottom = sorted[sorted.length - 1];
+  if (consecutiveBombs >= 1) {
+    return "UNDERDOG";
   }
+  if (myScore <= 0 && (top1.score || 0) >= 20) {
+    return "UNDERDOG";
+  }
+  if (team.id === bottom.id && (top1.score || 0) - myScore >= 25) {
+    return "UNDERDOG";
+  }
+  if (team.id === top1.id && top2 && myScore - (top2.score || 0) >= 25) {
+    return "DOMINANT";
+  }
+  return "NEUTRAL";
+}
+function rollBombTypeForMinigame(mode, teamScore = 0, options) {
+  if (teamScore <= 0) return "BOMB_SMOKE";
+  const currentRound = options?.currentRound ?? 1;
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  if (riskTier === "UNDERDOG") {
+    const r2 = Math.random();
+    if (r2 < 0.9) return "BOMB_SMOKE";
+    return "BOMB_DARK";
+  }
+  if (currentRound <= 1) {
+    const r2 = Math.random();
+    if (mode === "MEMORY_PAIRS") {
+      return r2 < 0.85 ? "BOMB_SMOKE" : "BOMB_DARK";
+    }
+    if (mode === "ONE_SHOT_DOORS") {
+      return r2 < 0.75 ? "BOMB_SMOKE" : "BOMB_DARK";
+    }
+    return r2 < 0.6 ? "BOMB_SMOKE" : "BOMB_DARK";
+  }
+  if (riskTier === "DOMINANT") {
+    const r2 = Math.random();
+    if (currentRound === 2) {
+      if (r2 < 0.4) return "BOMB_SMOKE";
+      if (r2 < 0.9) return "BOMB_DARK";
+      return "BOMB_CHARITY";
+    } else {
+      if (r2 < 0.3) return "BOMB_SMOKE";
+      if (r2 < 0.8) return "BOMB_DARK";
+      return "BOMB_CHARITY";
+    }
+  }
+  const charityChance = currentRound === 2 ? 0.05 : 0.1;
+  const r = Math.random();
   if (mode === "MEMORY_PAIRS") {
     if (r < 0.8) return "BOMB_SMOKE";
-    if (r < 0.95) return "BOMB_DARK";
+    if (r < 1 - charityChance) return "BOMB_DARK";
     return "BOMB_CHARITY";
   }
   if (mode === "ONE_SHOT_DOORS") {
     if (r < 0.7) return "BOMB_SMOKE";
-    if (r < 0.95) return "BOMB_DARK";
+    if (r < 1 - charityChance) return "BOMB_DARK";
     return "BOMB_CHARITY";
   }
-  if (mode === "TAROT_DESTINY") {
-    if (r < 0.5) return "BOMB_SMOKE";
-    if (r < 0.85) return "BOMB_DARK";
-    return "BOMB_CHARITY";
-  }
-  return "BOMB_SMOKE";
+  if (r < 0.5) return "BOMB_SMOKE";
+  if (r < 1 - charityChance) return "BOMB_DARK";
+  return "BOMB_CHARITY";
 }
 function resolveBombOutcome({
   bombType,
@@ -1074,16 +1132,25 @@ function generateMysteryPromoPerk(basePoints = 10, miniGameType, options) {
 }
 function calculatePromoSteal5({
   activeTeamId,
-  allTeams
+  allTeams,
+  timesStolenInCycle = {}
 }) {
   const opponents = (allTeams || []).filter(
     (t) => t.id !== activeTeamId && !t.isEliminated && (t.score || 0) > 0
   );
   if (opponents.length === 0) {
-    return { stolenPoints: 0 };
+    return { stolenPoints: 5, isFromBank: true };
   }
-  const maxScore = Math.max(...opponents.map((t) => t.score || 0));
-  const topOpponents = opponents.filter((t) => (t.score || 0) === maxScore);
+  const eligibleOpponents = opponents.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+  if (eligibleOpponents.length === 0) {
+    return {
+      stolenPoints: 5,
+      isFromBank: true,
+      protectionNote: "C\xE1c \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7! Nh\u1EADn 5\u0111 t\u1EEB Qu\u1EF9 H\u1EC7 Th\u1ED1ng."
+    };
+  }
+  const maxScore = Math.max(...eligibleOpponents.map((t) => t.score || 0));
+  const topOpponents = eligibleOpponents.filter((t) => (t.score || 0) === maxScore);
   const chosenVictim = topOpponents[Math.floor(Math.random() * topOpponents.length)];
   const stolenPoints = Math.min(5, chosenVictim.score || 0);
   return {
@@ -1169,14 +1236,24 @@ function calculateCappedSteal({
   activeTeamId,
   allTeams,
   targetPoints = 20,
-  maxCap
+  maxCap,
+  timesStolenInCycle = {}
 }) {
   const effectiveCap = maxCap ?? Math.max(targetPoints, 50);
   const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
   if (otherTeams.length === 0) {
-    return { stolenPoints: Math.min(targetPoints, effectiveCap) };
+    return { stolenPoints: Math.min(targetPoints, effectiveCap), isFromBank: true };
   }
-  const sorted = [...otherTeams].sort((a, b) => (b.score || 0) - (a.score || 0));
+  const eligibleVictims = otherTeams.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+  if (eligibleVictims.length === 0) {
+    const finalSteal = Math.min(targetPoints, effectiveCap);
+    return {
+      stolenPoints: finalSteal,
+      isFromBank: true,
+      protectionNote: "T\u1EA5t c\u1EA3 \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7! Nh\u1EADn \u0111i\u1EC3m an to\xE0n t\u1EEB Qu\u1EF9 H\u1EC7 Th\u1ED1ng."
+    };
+  }
+  const sorted = [...eligibleVictims].sort((a, b) => (b.score || 0) - (a.score || 0));
   const victim = sorted[0];
   const victimScore = victim.score || 0;
   if (victimScore <= 0) {
@@ -1188,11 +1265,23 @@ function calculateCappedSteal({
   }
   const halfScore = Math.floor(victimScore * 0.5);
   const allowed = Math.min(targetPoints, effectiveCap, halfScore);
-  const finalSteal = Math.max(1, allowed);
+  const baseSteal = Math.max(1, allowed);
+  const timesStolen = timesStolenInCycle[victim.id] ?? 0;
+  if (timesStolen === 1) {
+    const halfSteal = Math.max(5, roundToMultipleOfFive(baseSteal * 0.5));
+    const finalSteal = Math.min(baseSteal, halfSteal);
+    return {
+      victimTeamId: victim.id,
+      victimTeamName: victim.name,
+      stolenPoints: finalSteal,
+      isHalfProtection: true,
+      protectionNote: `Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50% (-${finalSteal}\u0111)!`
+    };
+  }
   return {
     victimTeamId: victim.id,
     victimTeamName: victim.name,
-    stolenPoints: finalSteal
+    stolenPoints: baseSteal
   };
 }
 function shuffleMemoryPairsTiles(tiles) {
@@ -1205,11 +1294,12 @@ function shuffleMemoryPairsTiles(tiles) {
   }));
 }
 function generateMemoryPairsTiles(basePoints = 20, options) {
+  const riskTier = options?.riskTier ?? "NEUTRAL";
   const pBonusTop = basePoints * 2;
-  const pBonusHigh = Math.round(basePoints * 1.5);
+  const pBonusHigh = riskTier === "UNDERDOG" ? basePoints * 2 : Math.round(basePoints * 1.5);
   const pBonusMed = basePoints;
   const pSteal = basePoints;
-  const pPenalty = basePoints;
+  const pPenalty = riskTier === "UNDERDOG" ? 0 : basePoints;
   const currentRound = options?.currentRound ?? 1;
   const canSteal = currentRound >= 2 && Boolean(
     options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
@@ -1230,6 +1320,23 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p khi\xEAn: Nh\u1EADn an to\xE0n +${pSteal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
     effectType: "BONUS_POINTS",
     deltaPoints: pSteal
+  };
+  const bombPairDef = riskTier === "UNDERDOG" ? {
+    pairKey: "PAIR_BOMB",
+    icon: "\u{1F4A8}",
+    type: "BOMB_SMOKE",
+    storyTitle: "\u{1F4A8} K\xEDp N\u1ED5 Kh\xF3i 0\u0111",
+    storyDescription: "May m\u1EAFn tho\xE1t hi\u1EC3m! K\xEDp n\u1ED5 h\u1EAFc \xE1m ch\u1EC9 gi\u1EA3i ph\xF3ng kh\xF3i m\xF9 (0\u0111 ph\u1EA1t t\u1ED5ng \u0111i\u1EC3m)!",
+    effectType: "LOSE_POT_POINTS",
+    deltaPoints: 0
+  } : {
+    pairKey: "PAIR_BOMB",
+    icon: "\u{1F4A3}",
+    type: "BOMB_MAJOR",
+    storyTitle: `\u{1F4A3} K\xEDp N\u1ED5 -${pPenalty}\u0111`,
+    storyDescription: "Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m h\u1EE7y di\u1EC7t t\u1ED5ng \u0111i\u1EC3m!",
+    effectType: "LOSE_POINTS",
+    deltaPoints: -pPenalty
   };
   const pairs = [
     {
@@ -1269,15 +1376,7 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       effectType: "LOSE_POT_POINTS",
       deltaPoints: 0
     },
-    {
-      pairKey: "PAIR_BOMB",
-      icon: "\u{1F4A3}",
-      type: "BOMB_MAJOR",
-      storyTitle: `\u{1F4A3} K\xEDp N\u1ED5 -${pPenalty}\u0111`,
-      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m h\u1EE7y di\u1EC7t t\u1ED5ng \u0111i\u1EC3m!`,
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pPenalty
-    }
+    bombPairDef
   ];
   const tileItems = [];
   pairs.forEach((p) => {
@@ -1381,12 +1480,15 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
   }));
 }
 function generateOneShotDoorsTiles(basePoints = 20, options) {
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  const currentRound = options?.currentRound ?? 1;
+  const currentTeam = options?.teams?.find((t) => t.id === options?.currentTeamId);
+  const currentTeamScore = currentTeam?.score || 0;
   const pHigh = basePoints * 2;
   const pSteal = basePoints;
-  const pTreasure = Math.round(basePoints * 1.5);
+  const pTreasure = riskTier === "UNDERDOG" ? basePoints * 2 : Math.round(basePoints * 1.5);
   const pNormal = basePoints;
-  const pPenalty = basePoints;
-  const currentRound = options?.currentRound ?? 1;
+  const pPenalty = riskTier === "UNDERDOG" ? 0 : basePoints;
   const canSteal = currentRound >= 2 && Boolean(
     options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
   );
@@ -1405,8 +1507,10 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     effectType: "BONUS_POINTS",
     deltaPoints: pTreasure
   };
-  const bombTypes = ["BOMB_SMOKE", "BOMB_DARK", "BOMB_CHARITY"];
-  const selectedBombType = bombTypes[Math.floor(Math.random() * bombTypes.length)];
+  const selectedBombType = rollBombTypeForMinigame("ONE_SHOT_DOORS", currentTeamScore, {
+    currentRound,
+    riskTier
+  });
   const doors = [
     // 1. Cửa Hoàng Gia (+2x basePoints)
     {
@@ -1543,6 +1647,96 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     bombDoorType: d.bombDoorType
   }));
 }
+function generateTarotDestinyTiles(basePoints = 20, options) {
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  const pSun = riskTier === "UNDERDOG" ? Math.round(basePoints * 2.5) : basePoints * 2;
+  const pEmperor = Math.round(basePoints * 1.5);
+  const pFool = basePoints + 10;
+  const pKnight = basePoints;
+  const pDeath = riskTier === "UNDERDOG" ? 0 : basePoints;
+  const currentRound = options?.currentRound ?? 1;
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
+  );
+  const fifthCard = canSteal ? {
+    tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
+    icon: "\u{1F5E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp +${pKnight}\u0111`,
+    storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD: C\u01B0\u1EDBp +${pKnight}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    effectType: "STEAL_POINTS",
+    deltaPoints: pKnight
+  } : {
+    tarotName: "Ng\xF4i Sao Hy V\u1ECDng (The Star)",
+    icon: "\u2B50",
+    type: "REWARD",
+    storyTitle: `\u2B50 Ng\xF4i Sao +${pKnight}\u0111`,
+    storyDescription: `\xC1nh sao may m\u1EAFn: Nh\u1EADn n\xF3ng +${pKnight} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pKnight
+  };
+  const deathCard = riskTier === "UNDERDOG" ? {
+    tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
+    icon: "\u{1F480}",
+    type: "BOMB_SMOKE",
+    storyTitle: "\u{1F480} Th\u1EA7n Ch\u1EBFt Th\u1EED Th\xE1ch 0\u0111",
+    storyDescription: "L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh tha th\u1EE9 cho \u0111\u1ED9i y\u1EBFu th\u1EBF: Ch\u1EC9 m\u1EA5t \u0111i\u1EC3m t\xEDch l\u0169y c\xE2u hi\u1EC7n t\u1EA1i, t\u1ED5ng \u0111i\u1EC3m kh\xF4ng \u0111\u1ED5i!",
+    effectType: "LOSE_POT_POINTS",
+    deltaPoints: 0
+  } : {
+    tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
+    icon: "\u{1F480}",
+    type: "BOMB_MAJOR",
+    storyTitle: `\u{1F480} Th\u1EA7n Ch\u1EBFt -${pDeath}\u0111`,
+    storyDescription: `L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh: B\u1ECB ph\u1EA1t tr\u1EEB ${pDeath} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!`,
+    effectType: "LOSE_POINTS",
+    deltaPoints: -pDeath
+  };
+  const tarotCards = [
+    {
+      tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
+      icon: "\u2600\uFE0F",
+      type: "REWARD",
+      storyTitle: `\u2600\uFE0F M\u1EB7t Tr\u1EDDi +${pSun}\u0111`,
+      storyDescription: `\xC1nh d\u01B0\u01A1ng soi r\u1ECDi: Ban t\u1EB7ng +${pSun} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pSun
+    },
+    {
+      tarotName: "Ho\xE0ng \u0110\u1EBF (The Emperor)",
+      icon: "\u{1F451}",
+      type: "REWARD",
+      storyTitle: `\u{1F451} Ho\xE0ng \u0110\u1EBF +${pEmperor}\u0111`,
+      storyDescription: `V\u01B0\u01A1ng mi\u1EC7n uy quy\u1EC1n: Th\u01B0\u1EDFng n\xF3ng +${pEmperor} \u0111i\u1EC3m danh d\u1EF1!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pEmperor
+    },
+    {
+      tarotName: "K\u1EBB Kh\u1EDD (The Fool)",
+      icon: "\u{1F0CF}",
+      type: "REWARD",
+      storyTitle: `\u{1F0CF} K\u1EBB Kh\u1EDD +${pFool}\u0111`,
+      storyDescription: `V\u1EADn may b\u1EA5t ng\u1EDD: \u0110\u1ED9t ph\xE1 n\u0103ng l\u01B0\u1EE3ng (+${pFool}\u0111)!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pFool
+    },
+    deathCard,
+    fifthCard
+  ];
+  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
+  return shuffled.map((card, idx) => ({
+    id: idx + 1,
+    label: `L\xE1 #${idx + 1}`,
+    tarotName: card.tarotName,
+    icon: card.icon,
+    isOpened: false,
+    type: card.type,
+    storyTitle: card.storyTitle,
+    storyDescription: card.storyDescription,
+    effectType: card.effectType,
+    deltaPoints: card.deltaPoints
+  }));
+}
 function generateNextPushYourLuckCard({
   theme,
   drawIndex,
@@ -1551,9 +1745,15 @@ function generateNextPushYourLuckCard({
   isDoublePromo = false,
   options
 }) {
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  const currentRound = options?.currentRound ?? 1;
   let bombChance;
   if (drawIndex <= 1) {
     bombChance = 0;
+  } else if (riskTier === "UNDERDOG") {
+    bombChance = 0.1;
+  } else if (riskTier === "DOMINANT") {
+    bombChance = basePoints <= 10 ? 0.4 : basePoints <= 20 ? 0.35 : 0.3;
   } else if (basePoints <= 10) {
     bombChance = 0.35;
   } else if (basePoints <= 20) {
@@ -1578,8 +1778,11 @@ function generateNextPushYourLuckCard({
         deltaPoints: 0
       };
     }
-    const bombKindRand = Math.random();
-    if (bombKindRand < 0.5) {
+    const bombType = rollBombTypeForMinigame("PUSH_YOUR_LUCK", teamScore, {
+      currentRound,
+      riskTier
+    });
+    if (bombType === "BOMB_SMOKE") {
       return {
         id,
         label,
@@ -1591,7 +1794,7 @@ function generateNextPushYourLuckCard({
         effectType: "LOSE_POINTS",
         deltaPoints: 0
       };
-    } else if (bombKindRand < 0.85) {
+    } else if (bombType === "BOMB_DARK") {
       return {
         id,
         label,
@@ -1611,7 +1814,7 @@ function generateNextPushYourLuckCard({
         isOpened: false,
         type: "BOMB_CHARITY",
         storyTitle: "\u{1F381} Bom T\u1EB7ng",
-        storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB 50% s\u1ED1 \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
+        storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
         effectType: "GIFT_POINTS",
         deltaPoints: 0
       };
@@ -1625,8 +1828,10 @@ function generateNextPushYourLuckCard({
       delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
     } else if (basePoints <= 20) {
       delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
-    } else {
+    } else if (basePoints <= 30) {
       delta = [30, 35, 45, 60][Math.floor(Math.random() * 4)];
+    } else {
+      delta = [40, 50, 60, 80][Math.floor(Math.random() * 4)];
     }
   }
   let storyTitle = template.storyTitle;
@@ -1641,8 +1846,8 @@ function generateNextPushYourLuckCard({
   }
   let effectType = template.effectType;
   if (effectType === "STEAL_POINTS") {
-    const currentRound = options?.currentRound ?? 1;
-    const canSteal = currentRound >= 2 && Boolean(
+    const currentRound2 = options?.currentRound ?? 1;
+    const canSteal = currentRound2 >= 2 && Boolean(
       options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= delta)
     );
     if (!canSteal) {
@@ -1769,7 +1974,9 @@ function generateMysteryStageForTurn({
   forcedMiniGameType,
   baseQuestionPoints,
   initialHeartsPerTeam,
-  teamHearts
+  teamHearts,
+  timesStolenInCycle,
+  consecutiveBombsByTeam
 }) {
   const computedInitialHearts = initialHeartsPerTeam !== void 0 ? initialHeartsPerTeam : Math.round(turnsPerTeam / 3);
   let resolvedTeamHearts = {};
@@ -1780,11 +1987,19 @@ function generateMysteryStageForTurn({
       resolvedTeamHearts[t.id] = computedInitialHearts;
     }
   }
+  const updatedTimesStolen = { ...timesStolenInCycle || {} };
+  updatedTimesStolen[currentTeam.id] = 0;
+  const consecutiveBombs = consecutiveBombsByTeam?.[currentTeam.id] ?? 0;
+  const currentTeamRiskTier = evaluateTeamRiskTier({
+    team: currentTeam,
+    allTeams: teams,
+    consecutiveBombs
+  });
   const availableThemes = prevTheme ? THEME_KEYS.filter((t) => t !== prevTheme) : THEME_KEYS;
   const theme = availableThemes[Math.floor(Math.random() * availableThemes.length)];
   const themeMeta = MYSTERY_THEMES[theme];
   const currentRound = Math.floor(turnIndex / Math.max(1, teams.length)) + 1;
-  const roundDefaultPoints = currentRound === 1 ? 10 : currentRound === 2 ? 20 : 30;
+  const roundDefaultPoints = currentRound === 1 ? 10 : currentRound === 2 ? 20 : currentRound === 3 ? 30 : 40;
   const effectiveBasePoints = normalizeToThreeLevels(baseQuestionPoints ?? roundDefaultPoints);
   const miniGameType = forcedMiniGameType ? normalizeMiniGameType(forcedMiniGameType) : getRandomMiniGame(prevMiniGameType);
   const promoPerk = generateMysteryPromoPerk(effectiveBasePoints, miniGameType, {
@@ -1799,7 +2014,8 @@ function generateMysteryStageForTurn({
   const roundOptions = {
     currentRound,
     teams,
-    currentTeamId: currentTeam.id
+    currentTeamId: currentTeam.id,
+    riskTier: currentTeamRiskTier
   };
   switch (miniGameType) {
     case "MEMORY_PAIRS":
@@ -1850,7 +2066,7 @@ function generateMysteryStageForTurn({
       };
       break;
     case "TAROT_DESTINY":
-      tiles = [];
+      tiles = generateTarotDestinyTiles(effectiveBasePoints, roundOptions);
       tarotState = {
         isWheelSpinning: false,
         isDrawn: false,
@@ -1886,6 +2102,9 @@ function generateMysteryStageForTurn({
     baseQuestionPoints: effectiveBasePoints,
     promoPerk,
     hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
+    currentTeamRiskTier,
+    timesStolenInCycle: updatedTimesStolen,
+    consecutiveBombsByTeam: consecutiveBombsByTeam ? { ...consecutiveBombsByTeam } : {},
     potPoints: 0,
     potMultiplier: 1,
     cardsFlippedCount: 0,
@@ -3221,6 +3440,8 @@ function handleFlipCard({
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
+    if (!state.consecutiveBombsByTeam) state.consecutiveBombsByTeam = {};
+    state.consecutiveBombsByTeam[team.id] = (state.consecutiveBombsByTeam[team.id] || 0) + 1;
     const oldScore = team.score || 0;
     const newScore = Math.max(0, oldScore + finalDelta);
     const safetyNetMsg = savedPotPoints > 0 ? ` \u{1F9F2} K\xE9t S\u1EAFt B\u1EA3o L\u01B0u \u0111\xE3 gi\u1EA3i c\u1EE9u: B\u1EA3o l\u01B0u an to\xE0n +${savedPotPoints}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng!` : "";
@@ -3299,9 +3520,12 @@ function handleCashOut({
   allTeams = []
 }) {
   let finalScoreDelta = state.potPoints;
+  if (!state.consecutiveBombsByTeam) state.consecutiveBombsByTeam = {};
+  state.consecutiveBombsByTeam[team.id] = 0;
   let victimTeamId;
   let victimTeamName;
   let stolenPoints;
+  let stealProtectionNote;
   if (state.stolenPointsPot && state.stolenPointsPot > 0 && allTeams.length > 0) {
     if (state.pendingStealVictimId) {
       const chosenVictim = allTeams.find((t) => t.id === state.pendingStealVictimId);
@@ -3316,12 +3540,14 @@ function handleCashOut({
         activeTeamId: team.id,
         allTeams,
         targetPoints: state.stolenPointsPot,
-        maxCap: 25
+        maxCap: 25,
+        timesStolenInCycle: state.timesStolenInCycle
       });
       if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
         victimTeamId = stealCalc.victimTeamId;
         victimTeamName = stealCalc.victimTeamName;
         stolenPoints = stealCalc.stolenPoints;
+        stealProtectionNote = stealCalc.protectionNote;
       }
     }
   }
@@ -3329,7 +3555,8 @@ function handleCashOut({
   if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams.length > 0) {
     const promoSteal = calculatePromoSteal5({
       activeTeamId: team.id,
-      allTeams
+      allTeams,
+      timesStolenInCycle: state.timesStolenInCycle
     });
     if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
       promoStealDetails = { victimName: promoSteal.victimTeamName, stolen: promoSteal.stolenPoints };
@@ -3343,6 +3570,10 @@ function handleCashOut({
       }
     }
   }
+  if (victimTeamId) {
+    if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+    state.timesStolenInCycle[victimTeamId] = (state.timesStolenInCycle[victimTeamId] || 0) + 1;
+  }
   const oldScore = team.score || 0;
   const newScore = oldScore + finalScoreDelta;
   state.phase = "TURN_SUMMARY";
@@ -3350,10 +3581,12 @@ function handleCashOut({
   state.potPoints = 0;
   state.stolenPointsPot = 0;
   let rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m!`;
-  if (promoStealDetails && promoStealDetails.stolen > 0) {
+  if (stealProtectionNote) {
+    rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn +${finalScoreDelta} \u0111i\u1EC3m (${stealProtectionNote})!`;
+  } else if (promoStealDetails && promoStealDetails.stolen > 0) {
     rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (bao g\u1ED3m \u{1F5E1}\uFE0F \u0110\u1EA1o T\u1EB7c \u0111\xE1nh c\u1EAFp ${promoStealDetails.stolen}\u0111 t\u1EEB \u0110\u1ED9i ${promoStealDetails.victimName})!`;
   } else if (victimTeamName && stolenPoints) {
-    rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (\u0111\xE3 c\u01B0\u1EDBp ${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName} c\xF3 gi\u1EDBi h\u1EA1n b\u1EA3o v\u1EC7)!`;
+    rewardText = `\u{1F4B0} B\u1EA3o to\xE0n th\xE0nh c\xF4ng! Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalScoreDelta} \u0111i\u1EC3m (\u0111\xE3 c\u01B0\u1EDBp ${stolenPoints}\u0111 t\u1EEB \u0110\u1ED9i ${victimTeamName})!`;
   }
   state.storyResult = {
     teamId: team.id,
@@ -3429,11 +3662,23 @@ function handleChooseStealTarget({
   const pending = state.pendingSteal;
   const targetTeam = (allTeams || []).find((t) => t.id === targetTeamId);
   const activeTeam = (allTeams || []).find((t) => t.id === state.currentTurnTeamId);
-  const stolenPoints = pending?.stolenPoints || 20;
+  const rawStolenPoints = pending?.stolenPoints || 20;
   const victimTeamId = targetTeam?.id;
   const victimTeamName = targetTeam?.name || "\u0110\u1ED1i th\u1EE7";
   const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
   const extraPotBonus = hasExtraPot ? 5 : 0;
+  if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+  const timesStolen = victimTeamId ? state.timesStolenInCycle[victimTeamId] || 0 : 0;
+  let stolenPoints = rawStolenPoints;
+  let isHalfProtected = false;
+  if (victimTeamId && timesStolen === 1) {
+    stolenPoints = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
+    isHalfProtected = true;
+  }
+  if (victimTeamId) {
+    state.timesStolenInCycle[victimTeamId] = timesStolen + 1;
+  }
+  const protectionNote = isHalfProtected ? ` (Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victimTeamName} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50%!)` : "";
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
     const totalPotFromSteal = (stolenPoints + extraPotBonus) * state.potMultiplier;
     state.phase = "PUSH_YOUR_LUCK";
@@ -3446,7 +3691,7 @@ function handleChooseStealTarget({
       teamId: state.currentTurnTeamId,
       teamName: state.currentTurnTeamName,
       teamColor: state.currentTurnTeamColor,
-      rewardText: extraPotBonus > 0 ? `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${stolenPoints}\u0111 c\u01B0\u1EDBp v\xE0 +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng v\xE0o qu\u1EF9 \u0111i\u1EC3m (T\u1ED5ng +${totalPotFromSteal}\u0111)!` : `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${totalPotFromSteal} \u0111i\u1EC3m c\u01B0\u1EDBp v\xE0o qu\u1EF9 \u0111i\u1EC3m!`,
+      rewardText: extraPotBonus > 0 ? `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${stolenPoints}\u0111 c\u01B0\u1EDBp${protectionNote} v\xE0 +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng v\xE0o qu\u1EF9 \u0111i\u1EC3m (T\u1ED5ng +${totalPotFromSteal}\u0111)!` : `\u{1F5E1}\uFE0F \u0110\xE3 nh\u1EAFm \u0110\u1ED9i ${victimTeamName}! N\u1EA1p +${totalPotFromSteal} \u0111i\u1EC3m c\u01B0\u1EDBp${protectionNote} v\xE0o qu\u1EF9 \u0111i\u1EC3m!`,
       scoreDelta: 0,
       oldScore: activeTeam?.score || 0,
       newScore: activeTeam?.score || 0
@@ -3466,7 +3711,7 @@ function handleChooseStealTarget({
   const finalScoreDelta = stolenPoints + extraPotBonus;
   const oldScore = activeTeam?.score || 0;
   const newScore = oldScore + finalScoreDelta;
-  const rewardText = extraPotBonus > 0 ? `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} v\xE0 nh\u1EADn th\xEAm +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (+${finalScoreDelta} \u0111i\u1EC3m cho \u0110\u1ED9i ${state.currentTurnTeamName})!` : `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName} sang \u0110\u1ED9i ${state.currentTurnTeamName}!`;
+  const rewardText = extraPotBonus > 0 ? `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName}${protectionNote} v\xE0 nh\u1EADn th\xEAm +${extraPotBonus}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng (+${finalScoreDelta} \u0111i\u1EC3m cho \u0110\u1ED9i ${state.currentTurnTeamName})!` : `\u{1F5E1}\uFE0F C\u01B0\u1EDBp th\xE0nh c\xF4ng! \u0110\xE3 chuy\u1EC3n +${stolenPoints} \u0111i\u1EC3m t\u1EEB \u0110\u1ED9i ${victimTeamName}${protectionNote} sang \u0110\u1ED9i ${state.currentTurnTeamName}!`;
   state.storyResult = {
     teamId: state.currentTurnTeamId,
     teamName: state.currentTurnTeamName,
@@ -7422,7 +7667,7 @@ function registerSocketHandlers(io2) {
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
         const round = questState ? questState.currentRound : 1;
-        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : 30;
+        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : round === 3 ? 30 : 40;
         q.points = normalizeToThreeLevels(q.points || fallbackPts);
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
@@ -9391,7 +9636,9 @@ function registerSocketHandlers(io2) {
         prevMiniGameType: questState.miniGameType,
         baseQuestionPoints: targetPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
-        teamHearts: questState.teamHearts
+        teamHearts: questState.teamHearts,
+        timesStolenInCycle: questState.timesStolenInCycle,
+        consecutiveBombsByTeam: questState.consecutiveBombsByTeam
       });
       nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
@@ -10015,7 +10262,9 @@ function registerSocketHandlers(io2) {
         forcedMiniGameType: miniGameType,
         baseQuestionPoints: questState.baseQuestionPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
-        teamHearts: questState.teamHearts
+        teamHearts: questState.teamHearts,
+        timesStolenInCycle: questState.timesStolenInCycle,
+        consecutiveBombsByTeam: questState.consecutiveBombsByTeam
       });
       newStage.phase = questState.phase;
       newStage.potPoints = questState.potPoints;
@@ -10023,6 +10272,8 @@ function registerSocketHandlers(io2) {
       if (questState.hasShield !== void 0) newStage.hasShield = questState.hasShield;
       if (questState.teamHearts) newStage.teamHearts = questState.teamHearts;
       if (questState.initialHeartsPerTeam !== void 0) newStage.initialHeartsPerTeam = questState.initialHeartsPerTeam;
+      if (questState.timesStolenInCycle) newStage.timesStolenInCycle = questState.timesStolenInCycle;
+      if (questState.consecutiveBombsByTeam) newStage.consecutiveBombsByTeam = questState.consecutiveBombsByTeam;
       roomMysteryQuests.set(room.id, newStage);
       io2.to(`room:${room.code}`).emit("game:mystery:update", newStage);
       const refreshedState = await buildRoomState(room.id);
@@ -11024,6 +11275,26 @@ function evaluateAnswerCorrectness(question, submittedAnswer) {
     const expected = question.answer || options.find((o) => o.isCorrect)?.text || "";
     const submitted = ansArray[0] || "";
     isAutoCorrect = matchFillBlankText(expected, submitted);
+  } else if (question.type === "MATCHING") {
+    if (question.pairs && question.pairs.length > 0) {
+      let allMatched = true;
+      const subObj = typeof ansArray[0] === "object" && ansArray[0] !== null ? ansArray[0] : typeof question.rawSubmission === "object" ? question.rawSubmission : {};
+      for (let i = 0; i < question.pairs.length; i++) {
+        const expectedRight = String.fromCharCode(65 + i);
+        const userRight = subObj[`L_${i}`] || subObj[String(i)] || subObj[question.pairs[i].left];
+        if (userRight !== expectedRight) {
+          allMatched = false;
+          break;
+        }
+      }
+      isAutoCorrect = allMatched;
+    } else {
+      isAutoCorrect = false;
+    }
+  } else if (question.type === "DRAG_DROP") {
+    const correctOrder = options.map((o) => o.id);
+    const submittedOrder = Array.isArray(ansArray) ? ansArray : [];
+    isAutoCorrect = correctOrder.length === submittedOrder.length && correctOrder.every((id, idx) => id === submittedOrder[idx]);
   }
   return { isAutoCorrect, answerText };
 }

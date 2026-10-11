@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments } from "@/lib/game-engine/mystery-quest";
+import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments, evaluateTeamRiskTier } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
 
@@ -65,6 +65,7 @@ export default function MysteryQuestBoard({
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [optimisticMatchedPairKey, setOptimisticMatchedPairKey] = useState<string | null>(null);
+  const [optimisticSelectedDoorIds, setOptimisticSelectedDoorIds] = useState<number[]>([]);
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
@@ -126,6 +127,13 @@ export default function MysteryQuestBoard({
     survivalDilemmaChoice,
   } = mysteryState;
 
+  // Synchronize optimistic selection for ONE_SHOT_DOORS Phase 1
+  useEffect(() => {
+    if (oneShotState?.selectedDoorIds) {
+      setOptimisticSelectedDoorIds(oneShotState.selectedDoorIds);
+    }
+  }, [oneShotState?.selectedDoorIds]);
+
   // Sync optimistic set with actual opened tiles from server without redundant re-renders or flickering
   useEffect(() => {
     const serverOpened = new Set(tiles.filter((t) => t.isOpened).map((t) => t.id));
@@ -148,11 +156,13 @@ export default function MysteryQuestBoard({
         if (
           !memoryPairsState?.firstFlippedTileId &&
           !memoryPairsState?.secondFlippedTileId &&
-          !memoryPairsState?.isMismatchResolving
+          !memoryPairsState?.isMismatchResolving &&
+          !memoryPairsState?.isBombRescueActive
         ) {
           pendingFlippedIdsRef.current.clear();
           lastClickedTileIdRef.current = null;
-          return serverOpened;
+          const kept = new Set((memoryPairsState?.keptBombTileIds || []).map(Number));
+          return new Set([...serverOpened, ...kept]);
         }
 
         // Khi đang có lá bài lật dở trong lượt (ví dụ lá 1 hoặc lá 2 vừa bấm, hoặc đang giải quyết mismatch):
@@ -161,9 +171,11 @@ export default function MysteryQuestBoard({
         if (memoryPairsState?.firstFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.firstFlippedTileId));
         if (memoryPairsState?.secondFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.secondFlippedTileId));
         if (lastClickedTileIdRef.current) currentAttemptIds.add(Number(lastClickedTileIdRef.current));
+        const kept = new Set((memoryPairsState?.keptBombTileIds || []).map(Number));
 
         const merged = new Set([
           ...serverOpened,
+          ...kept,
           ...currentAttemptIds,
           ...pendingFlippedIdsRef.current,
           ...prev,
@@ -201,7 +213,7 @@ export default function MysteryQuestBoard({
       }
       return merged;
     });
-  }, [tiles, memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId, memoryPairsState?.secondFlippedTileId, memoryPairsState?.isMismatchResolving, memoryPairsState?.promptSecondChance, phase, optimisticMatchedPairKey, miniGameType]);
+  }, [tiles, memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId, memoryPairsState?.secondFlippedTileId, memoryPairsState?.isMismatchResolving, memoryPairsState?.isBombRescueActive, memoryPairsState?.keptBombTileIds, memoryPairsState?.promptSecondChance, phase, optimisticMatchedPairKey, miniGameType]);
 
   useEffect(() => {
     if (memoryPairsState?.matchedPairKey) {
@@ -216,6 +228,7 @@ export default function MysteryQuestBoard({
     lastClickedTileIdRef.current = null;
     setOptimisticMatchedPairKey(null);
     setOptimisticOpenedIds(new Set());
+    setOptimisticSelectedDoorIds([]);
     setSwapStep("IDLE");
     setSwapRemovedId(null);
   }, [currentTurnIndex, miniGameType, phase]);
@@ -314,7 +327,9 @@ export default function MysteryQuestBoard({
       const priorFlippedId = memoryPairsState?.firstFlippedTileId;
       if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
         const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
-        if (first && first.pairKey && first.pairKey === tile.pairKey) {
+        // ONLY set optimistic matched pair key for REWARD cards!
+        // Penalty cards (PAIR_BOMB, PAIR_TRAP) are NOT matching reward pairs!
+        if (first && first.pairKey && first.pairKey === tile.pairKey && first.type === "REWARD" && first.pairKey !== "PAIR_BOMB" && first.pairKey !== "PAIR_TRAP") {
           setOptimisticMatchedPairKey(tile.pairKey);
         }
       }
@@ -337,11 +352,34 @@ export default function MysteryQuestBoard({
         isFlippingRef.current = false;
       }, 80);
     } else {
+      const isOneShot = miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS";
+      // Trong Chọn Cửa Giai Đoạn 1: Cung cấp phản hồi thị giác siêu tốc (<16ms) và cooldown ngắn 80ms!
+      if (isOneShot && (oneShotState?.phase === "SELECTING" || !oneShotState?.phase) && !isPenaltySurvivalMode) {
+        setOptimisticSelectedDoorIds((prev) => {
+          if (prev.includes(tile.id)) {
+            return prev.filter((id) => id !== tile.id);
+          }
+          if (prev.length < 3) {
+            return [...prev, tile.id];
+          }
+          return prev;
+        });
+
+        if (isFlippingRef.current) return;
+        isFlippingRef.current = true;
+        setTimeout(() => {
+          isFlippingRef.current = false;
+        }, 80);
+
+        onFlipCard?.(tile.id);
+        return;
+      }
+
       if (isFlippingRef.current) return;
       isFlippingRef.current = true;
       setTimeout(() => {
         isFlippingRef.current = false;
-      }, 450);
+      }, 250);
     }
 
     // Instant optimistic visual feedback (<16ms) - Trong ONE_SHOT_DOORS Giai đoạn 1 thì chỉ chọn để ra riêng (vẫn úp, không lật)
@@ -415,11 +453,11 @@ export default function MysteryQuestBoard({
       icon: "🔮",
       steps: [
         { step: "1. Chọn phương thức", desc: "Quay Vòng Quay Định Mệnh 20 nan quạt hoặc Rút 1 trong 5 lá Tarot cổ đại.", icon: "🎡" },
-        { step: "2. Tỷ lệ vàng 70/30", desc: "70% có lợi (Mặt Trời an toàn, Thần Chết cướp điểm,...) và chỉ 30% rủi ro.", icon: "☀️" },
-        { step: "3. Khiên thần bảo hộ", desc: "Nếu đội có Khiên Thần, mọi hiệu ứng phạt xấu sẽ tự động được triệt tiêu 100%.", icon: "🛡️" },
+        { step: "2. Cơ cấu tỷ lệ gốc", desc: "Tỷ lệ chuẩn: ☀️ Mặt Trời 25%, 👑 Hoàng Đế 25%, 🗡️ Hiệp Sĩ 20%, 🃏 Kẻ Khờ 15%, 💀 Thần Chết Cướp Điểm 15%.", icon: "⚖️" },
+        { step: "3. Thích ứng động", desc: "Tự động biến thiên theo thế trận: Trợ lực đội yếu thế (+10% cơ hội lật kèo, giảm phạt), tăng kịch tính chia điểm cho đội dẫn đầu.", icon: "🔄" },
       ],
-      rewardMechanic: "Mặt Trời (+2x điểm), Hoàng Đế (+1.5x điểm), Kẻ Khờ (+1x + 10đ), Hiệp Sĩ (Cướp điểm).",
-      riskMechanic: "Lá Thần Chết (-điểm gốc). Trên Vòng Quay: Ô Bom Khói (0đ câu này), Ô Bom Hắc Ám (-chia đối thủ).",
+      rewardMechanic: "Mặt Trời (+1x điểm), Thần Chết Cướp Điểm (Cướp +2x điểm Top 1), Kẻ Khờ (An toàn hòa 0đ).",
+      riskMechanic: "Hoàng Đế (Bom Hắc Ám chia điểm đối thủ), Hiệp Sĩ (Trừ 50% điểm).",
       survivalMechanic: "Khi vào Sinh Tử: 20% quay trúng Thoát Hiểm an toàn & 80% ô Bẫy/Bom phạt.",
     },
   };
@@ -1591,7 +1629,10 @@ export default function MysteryQuestBoard({
 
             <div className="grid grid-cols-5 gap-1 sm:gap-2.5 max-w-4xl mx-auto py-2">
               {tiles.map((tile) => {
-                const isSelected = Boolean(oneShotState?.selectedDoorIds?.includes(tile.id));
+                const effectiveSelectedDoorIds = (oneShotState?.selectedDoorIds && oneShotState.selectedDoorIds.length > 0)
+                  ? oneShotState.selectedDoorIds
+                  : optimisticSelectedDoorIds;
+                const isSelected = Boolean(effectiveSelectedDoorIds.includes(tile.id));
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
                 const isBomb = tile.type !== "REWARD" && tile.type !== "ESCAPE_SAFE";
                 const isSteal = tile.effectType === "STEAL_POINTS";
@@ -2039,7 +2080,17 @@ export default function MysteryQuestBoard({
                         </defs>
 
                         {/* 20 Segments (18 deg each) */}
-                        {getEffectiveTarotWheelSegments(!isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO", Boolean(isPenaltySurvivalMode)).map((seg, i) => {
+                        {(() => {
+                          const currentTurnTeam = teams?.find((t) => t.id === currentTurnTeamId);
+                          const activeRiskTier = currentTurnTeam && teams
+                            ? evaluateTeamRiskTier({ team: currentTurnTeam, allTeams: teams, currentRound })
+                            : "NEUTRAL";
+                          return getEffectiveTarotWheelSegments(
+                            !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO",
+                            Boolean(isPenaltySurvivalMode),
+                            { riskTier: activeRiskTier, currentRound, teamScore: currentTurnTeam?.score }
+                          );
+                        })().map((seg, i) => {
                           const theta1 = (i * 18 * Math.PI) / 180;
                           const theta2 = ((i + 1) * 18 * Math.PI) / 180;
                           const r = 168;

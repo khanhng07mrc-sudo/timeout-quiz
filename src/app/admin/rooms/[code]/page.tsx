@@ -240,7 +240,7 @@ export default function AdminRoomPage() {
 
     const adminToken = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       auth: { token: adminToken },
     });
     socketRef.current = socket;

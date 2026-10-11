@@ -437,15 +437,17 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
 }
 
 /**
- * Quy chuẩn thời gian đếm ngược chính xác theo 3 mức điểm chuẩn của Timeout Quiz:
+ * Quy chuẩn thời gian đếm ngược chính xác theo 4 mức điểm chuẩn của Timeout Quiz:
  * - 10 điểm (Nhận biết) -> 15 giây (olympia_15s.mp3)
  * - 20 điểm (Thông hiểu / Vận dụng) -> 20 giây (olympia_20s.ogg)
  * - 30 điểm (Vận dụng cao) -> 30 giây (olympia_30s.mp3)
+ * - 40 điểm (Tính toán phức tạp, đa số liệu) -> 60 giây (olympia_60s.mp3)
  */
 export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit?: number): number {
   if (points <= 10) return 15;
   if (points <= 20) return 20;
-  return 30;
+  if (points <= 30) return 30;
+  return 60;
 }
 
 /**
@@ -454,11 +456,13 @@ export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit
  * - Trắc nghiệm nhiều đáp án (MC_MULTI) và tự luận (FILL_BLANK, ESSAY):
  *   + Dễ (points <= 10 hoặc REMEMBER): 10s.
  *   + Trung bình (points 11-20 hoặc APPLY): 15s.
- *   + Khó (points > 20 hoặc ANALYZE): 20s.
+ *   + Khó (points 21-30 hoặc ANALYZE): 20s.
+ *   + Rất khó (points > 30): 30s.
  * - Nối cặp (MATCHING) và Kéo thả (DRAG_DROP):
  *   + Dễ: 15s.
  *   + Trung bình: 20s.
- *   + Khó: 25s.
+ *   + Khó (30đ): 25s.
+ *   + Rất khó (40đ): 35s.
  */
 export function getBuzzedAnswerTimeLimit(
   question: { type: QuestionType; points?: number; bloomLevel?: BloomLevel },
@@ -469,16 +473,19 @@ export function getBuzzedAnswerTimeLimit(
   }
   const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
   const bloom = question.bloomLevel ?? getBloomLevelFromPoints(effPoints);
+  const isUltra = effPoints >= 40;
   const isHigh = bloom === "ANALYZE" || effPoints >= 30;
   const isMedium = bloom === "APPLY" || effPoints >= 20;
 
   if (question.type === "MATCHING" || question.type === "DRAG_DROP") {
+    if (isUltra) return 35;
     if (isHigh) return 25;
     if (isMedium) return 20;
     return 15;
   }
 
   // MC_MULTI, FILL_BLANK, ESSAY
+  if (isUltra) return 30;
   if (isHigh) return 20;
   if (isMedium) return 15;
   return 10;
@@ -486,10 +493,11 @@ export function getBuzzedAnswerTimeLimit(
 
 /**
  * Tính thời gian tiêu chuẩn cho câu hỏi trả lời trên thiết bị cá nhân hoặc hiển thị phòng:
- * Luôn khóa cứng theo quy chuẩn 3 mức điểm 10/20/30:
+ * Khóa cứng theo quy chuẩn 4 mức điểm 10/20/30/40:
  * - 10 điểm -> 15 giây
  * - 20 điểm -> 20 giây
  * - 30 điểm -> 30 giây
+ * - 40 điểm -> 60 giây (bài toán tính toán phức tạp, đa số liệu)
  */
 export function getStandardQuestionTimeLimit(
   question: { type?: QuestionType; points?: number; timeLimit?: number; bloomLevel?: BloomLevel },
@@ -498,7 +506,8 @@ export function getStandardQuestionTimeLimit(
   const effPoints = overridePoints !== undefined ? overridePoints : (question.points ?? 10);
   if (effPoints <= 10) return 15;
   if (effPoints <= 20) return 20;
-  return 30;
+  if (effPoints <= 30) return 30;
+  return 60;
 }
 
 
@@ -938,6 +947,8 @@ export interface TarotWheelSegment {
   isMagnetized?: boolean;
 }
 
+export type TeamRiskTier = "UNDERDOG" | "NEUTRAL" | "DOMINANT";
+
 export interface MysteryQuestState {
   currentTurnTeamId: string;
   currentTurnTeamName: string;
@@ -977,6 +988,9 @@ export interface MysteryQuestState {
         icon: string;
       };
   hasShield?: boolean;
+  currentTeamRiskTier?: TeamRiskTier;
+  timesStolenInCycle?: Record<string, number>;
+  consecutiveBombsByTeam?: Record<string, number>;
   // Push-your-luck pot & minigame state
   potPoints: number; // Điểm tích lũy trong lượt này
   potMultiplier: number; // Hệ số nhân

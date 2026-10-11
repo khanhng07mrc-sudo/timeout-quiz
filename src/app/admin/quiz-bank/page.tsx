@@ -1134,20 +1134,27 @@ export default function QuizBankPage() {
                   <option value="TRUE_FALSE">Đúng / Sai</option>
                   <option value="FILL_BLANK">Điền từ</option>
                   <option value="ESSAY">Tự luận</option>
+                  <option value="MATCHING">Nối cặp tương ứng</option>
+                  <option value="DRAG_DROP">Kéo thả / Sắp xếp thứ tự</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ)</label>
+                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ, 40đ)</label>
                 <select
                   value={qPoints}
-                  onChange={(e) => setQPoints(Number(e.target.value))}
+                  onChange={(e) => {
+                    const pts = Number(e.target.value);
+                    setQPoints(pts);
+                    setQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
+                  }}
                   className="w-full px-3 py-2 rounded-xl bg-input border border-border"
                 >
-                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ)</option>
-                  <option value={20}>20 Điểm (Trung bình / Thông hiểu)</option>
-                  <option value={30}>30 Điểm (Nâng cao / Vận dụng)</option>
+                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
+                  <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
+                  <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
+                  <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
                 </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 3 mức điểm gốc duy nhất</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc chính thức</p>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
@@ -1370,20 +1377,27 @@ export default function QuizBankPage() {
                   <option value="TRUE_FALSE">Đúng / Sai</option>
                   <option value="FILL_BLANK">Điền từ</option>
                   <option value="ESSAY">Tự luận</option>
+                  <option value="MATCHING">Nối cặp tương ứng</option>
+                  <option value="DRAG_DROP">Kéo thả / Sắp xếp thứ tự</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ)</label>
+                <label className="block text-xs font-medium mb-1">Điểm số gốc (10đ, 20đ, 30đ, 40đ)</label>
                 <select
                   value={editQPoints}
-                  onChange={(e) => setEditQPoints(Number(e.target.value))}
+                  onChange={(e) => {
+                    const pts = Number(e.target.value);
+                    setEditQPoints(pts);
+                    setEditQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
+                  }}
                   className="w-full px-3 py-2 rounded-xl bg-input border border-border"
                 >
-                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ)</option>
-                  <option value={20}>20 Điểm (Trung bình / Thông hiểu)</option>
-                  <option value={30}>30 Điểm (Nâng cao / Vận dụng)</option>
+                  <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
+                  <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
+                  <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
+                  <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
                 </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 3 mức điểm gốc duy nhất</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc chính thức</p>
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
@@ -1984,6 +1998,7 @@ export default function QuizBankPage() {
               const p10 = previewQuestions.filter((q) => q.points === 10).length;
               const p20 = previewQuestions.filter((q) => q.points === 20).length;
               const p30 = previewQuestions.filter((q) => q.points === 30).length;
+              const p40 = previewQuestions.filter((q) => q.points === 40).length;
               const outlierCount = previewQuestions.filter((q) => q.uniformity && !q.uniformity.isUniform).length;
 
               return (
@@ -1998,6 +2013,9 @@ export default function QuizBankPage() {
                     </span>
                     <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
                       🟣 30đ: {p30} ({Math.round((p30 / totalQ) * 100)}%)
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/30">
+                      🔴 40đ: {p40} ({Math.round((p40 / totalQ) * 100)}%)
                     </span>
                   </div>
 
@@ -2086,13 +2104,15 @@ export default function QuizBankPage() {
                           {item.type}
                         </span>
                         <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${
-                          item.points >= 30
+                          item.points >= 40
+                            ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                            : item.points >= 30
                             ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
                             : item.points >= 20
                             ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
                             : "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                         }`}>
-                          {item.points >= 30 ? "🟣 30đ (30s)" : item.points >= 20 ? "🟡 20đ (20s)" : "🟢 10đ (15s)"}
+                          {item.points >= 40 ? "🔴 40đ (60s)" : item.points >= 30 ? "🟣 30đ (30s)" : item.points >= 20 ? "🟡 20đ (20s)" : "🟢 10đ (15s)"}
                         </span>
                         {!item.isValid && (
                           <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40">
@@ -2107,10 +2127,10 @@ export default function QuizBankPage() {
                           <select
                             value={item.points}
                             onChange={(e) => {
-                              const pts = Number(e.target.value) as 10 | 20 | 30;
+                              const pts = Number(e.target.value) as 10 | 20 | 30 | 40;
                               handleUpdatePreviewItem(qIdx, {
                                 points: pts,
-                                timeLimit: pts === 30 ? 30 : pts === 20 ? 20 : 15,
+                                timeLimit: pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15,
                               });
                             }}
                             className="px-1.5 py-0.5 rounded glass border border-white/20 text-amber-300 font-bold bg-[#151728]"
@@ -2118,6 +2138,7 @@ export default function QuizBankPage() {
                             <option value={10}>10đ</option>
                             <option value={20}>20đ</option>
                             <option value={30}>30đ</option>
+                            <option value={40}>40đ</option>
                           </select>
                         </div>
 

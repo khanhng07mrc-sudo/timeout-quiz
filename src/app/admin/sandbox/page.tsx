@@ -363,9 +363,10 @@ export default function AdminSandboxPage() {
   useEffect(() => {
     if (!questionPrepare?.endsAt) return;
     const interval = setInterval(() => {
-      const rem = Math.max(0, Math.ceil((questionPrepare.endsAt! - Date.now()) / 1000));
+      const rawRem = Math.max(0, Math.ceil((questionPrepare.endsAt! - Date.now()) / 1000));
       setQuestionPrepare((prev) => {
         if (!prev) return null;
+        const rem = Math.min(prev.seconds, Math.min(3, rawRem));
         if (rem <= 0) return null;
         if (prev.seconds === rem) return prev;
         return { ...prev, seconds: rem };
@@ -422,7 +423,7 @@ export default function AdminSandboxPage() {
     teams.forEach((team, botIdx) => {
       if (botIdx === 0) return;
       const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-        transports: ["websocket", "polling"],
+        transports: ["websocket"],
         query: { sandbox: "1" },
       });
 
@@ -683,7 +684,7 @@ export default function AdminSandboxPage() {
       : "";
 
     const sock: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       auth: { token: adminToken },
     });
     adminSocketRef.current = sock;
@@ -1107,7 +1108,8 @@ export default function AdminSandboxPage() {
               setTimer({ remaining: 0, total: curQ.timeLimit, endsAt: 0 });
               syncToIframes({ timer: { remaining: 0, total: curQ.timeLimit, endsAt: 0 } });
             } else {
-              const rem = Math.max(0, Math.ceil((curQ.endsAt - now) / 1000));
+              const rawRem = Math.max(0, Math.ceil((curQ.endsAt - now) / 1000));
+              const rem = Math.min(offlineRemainingRef.current, Math.min(curQ.timeLimit, rawRem));
               offlineRemainingRef.current = rem;
               setTimer({ remaining: rem, total: curQ.timeLimit, endsAt: curQ.endsAt });
               syncToIframes({ timer: { remaining: rem, total: curQ.timeLimit, endsAt: curQ.endsAt } });
@@ -2437,6 +2439,7 @@ export default function AdminSandboxPage() {
             if (!roomStateRef.current?.mysteryQuestState?.memoryPairsState) return;
             const cur = { ...roomStateRef.current.mysteryQuestState };
             const curMem = { ...cur.memoryPairsState! };
+            if (curMem.isBombRescueActive) return;
             const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = curMem;
             const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
             cur.tiles = cur.tiles.map((t) => {
@@ -3974,7 +3977,8 @@ export default function AdminSandboxPage() {
         }
 
         offlineTimerRef.current = setInterval(() => {
-          const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+          const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+          const rem = Math.min(offlineRemainingRef.current, Math.min(timeLimit, rawRem));
           offlineRemainingRef.current = rem;
           setTimer({ remaining: rem, total: timeLimit, endsAt });
           if (rem <= 0) {
@@ -4924,7 +4928,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rem = Math.min(offlineRemainingRef.current, Math.min(timeLimit, rawRem));
         offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: timeLimit, endsAt });
         syncToIframes({ timer: { remaining: rem, total: timeLimit, endsAt } });
@@ -4985,7 +4990,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rem = Math.min(offlineRemainingRef.current, Math.min(finalDuration, rawRem));
         offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: finalDuration, endsAt });
         syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
@@ -5047,7 +5053,8 @@ export default function AdminSandboxPage() {
 
       if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = setInterval(() => {
-        const rem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+        const rem = Math.min(offlineRemainingRef.current, Math.min(finalDuration, rawRem));
         offlineRemainingRef.current = rem;
         setTimer({ remaining: rem, total: finalDuration, endsAt });
         syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });

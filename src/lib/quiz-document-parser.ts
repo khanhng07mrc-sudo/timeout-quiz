@@ -16,11 +16,11 @@ export interface OptionUniformityAnalysis {
 
 export interface ParsedQuestionItem {
   id?: string;
-  type: "MC_SINGLE" | "MC_MULTI" | "TRUE_FALSE" | "FILL_BLANK" | "ESSAY";
+  type: "MC_SINGLE" | "MC_MULTI" | "TRUE_FALSE" | "FILL_BLANK" | "ESSAY" | "MATCHING" | "DRAG_DROP";
   content: string;
   options: { id: string; text: string; isCorrect: boolean }[];
   answer?: string;
-  points: 10 | 20 | 30;
+  points: 10 | 20 | 30 | 40;
   timeLimit: number;
   hint?: string;
   isValid: boolean;

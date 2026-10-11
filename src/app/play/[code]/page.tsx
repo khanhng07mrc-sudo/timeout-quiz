@@ -151,7 +151,8 @@ export default function PlayPage() {
     const endsAt = questionPrepare.endsAt || (getServerTime() + questionPrepare.seconds * 1000);
     const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
+      const rawRem = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
+      const remaining = Math.min(total, rawRem);
       if (lastPrepareTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
         lastPrepareTickRef.current = remaining;
         soundManager.playCountdownTick(remaining);
@@ -175,8 +176,10 @@ export default function PlayPage() {
       const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
       setTimer((prev) => {
         if (!prev) return null;
-        if (prev.remaining === auth.remaining) return prev;
-        return { ...prev, remaining: auth.remaining };
+        // Monotonic non-increasing: in the same question countdown, never jump backwards +1s
+        const safeRemaining = Math.min(prev.remaining, auth.remaining);
+        if (prev.remaining === safeRemaining) return prev;
+        return { ...prev, remaining: safeRemaining };
       });
     }, 100);
     return () => clearInterval(interval);
@@ -473,7 +476,7 @@ export default function PlayPage() {
     }
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
       query: isSandboxRef.current ? { sandbox: "1" } : {},
       reconnection: true,
       reconnectionAttempts: Infinity,

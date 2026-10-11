@@ -26,7 +26,8 @@
         "isCorrect": false
       }
     ],
-    "hint": "Nguyên tắc nhằm tránh sự mâu thuẫn trong mệnh lệnh và xung đột thẩm quyền quản lý."
+    "hint": "Nguyên tắc nhằm tránh sự mâu thuẫn trong mệnh lệnh và xung đột thẩm quyền quản lý.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
@@ -55,13 +56,14 @@
         "isCorrect": false
       }
     ],
-    "hint": "Chức năng đầu tiên trong chu trình quản lý, xác định đích đến trước khi phân bổ nguồn lực."
+    "hint": "Chức năng đầu tiên trong chu trình quản lý, xác định đích đến trước khi phân bổ nguồn lực.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_MULTI",
     "content": "Theo Thuyết Hai nhân tố của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) tạo ra sự thỏa mãn thực sự trong công việc?",
-    "points": 20,
-    "timeLimit": 20,
+    "points": 10,
+    "timeLimit": 15,
     "options": [
       {
         "id": "A",
@@ -84,7 +86,8 @@
         "isCorrect": false
       }
     ],
-    "hint": "Phân biệt giữa yếu tố duy trì (ngăn bất mãn) và yếu tố động viên (thúc đẩy hăng say cống hiến)."
+    "hint": "Phân biệt giữa yếu tố duy trì (ngăn bất mãn) và yếu tố động viên (thúc đẩy hăng say cống hiến).",
+    "isTieBreaker": false
   },
   {
     "type": "TRUE_FALSE",
@@ -103,13 +106,14 @@
         "isCorrect": true
       }
     ],
-    "hint": "Tầm hạn rộng nghĩa là một người quản lý được nhiều cấp dưới ➔ ít tầng nấc hơn (cơ cấu nằm ngang/dẹt)."
+    "hint": "Tầm hạn rộng nghĩa là một người quản lý được nhiều cấp dưới ➔ ít tầng nấc hơn (cơ cấu nằm ngang/dẹt).",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Loại hình kiểm soát nào được thực hiện TRƯỚC KHI hoạt động thực tế bắt đầu nhằm ngăn chặn sai lệch từ khâu chuẩn bị nguồn lực?",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 20,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -128,11 +132,12 @@
       },
       {
         "id": "D",
-        "text": "Kiểm toán tài chính độc lập",
+        "text": "Kiểm toán tài chính độc lập theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Chủ động kiểm tra nguyên vật liệu, chất lượng đầu vào và năng lực nhân sự trước khi sản xuất."
+    "hint": "Chủ động kiểm tra nguyên vật liệu, chất lượng đầu vào và năng lực nhân sự trước khi sản xuất.",
+    "isTieBreaker": false
   },
   {
     "type": "FILL_BLANK",
@@ -140,7 +145,8 @@
     "answer": "Taylor",
     "points": 20,
     "timeLimit": 20,
-    "hint": "Tên đầy đủ là Frederick Winslow Taylor."
+    "hint": "Tên đầy đủ là Frederick Winslow Taylor.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
@@ -169,22 +175,23 @@
         "isCorrect": true
       }
     ],
-    "hint": "Người phát ngôn thuộc nhóm vai trò thông tin (Informational roles)."
+    "hint": "Người phát ngôn thuộc nhóm vai trò thông tin (Informational roles).",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Trong phong cách lãnh đạo theo mô hình Kurt Lewin, phong cách nào phát huy tối đa tính sáng tạo và trách nhiệm của nhân viên có trình độ chuyên môn cao?",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 20,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
-        "text": "Độc đoán (Autocratic)",
+        "text": "Độc đoán (Autocratic) theo các quy định thông thường",
         "isCorrect": false
       },
       {
         "id": "B",
-        "text": "Dân chủ (Democratic)",
+        "text": "Dân chủ (Democratic) theo các quy định thông thường",
         "isCorrect": false
       },
       {
@@ -198,13 +205,14 @@
         "isCorrect": false
       }
     ],
-    "hint": "Nhà lãnh đạo trao quyền quyết định hoàn toàn cho cấp dưới, phù hợp với các nhóm chuyên gia nghiên cứu R&D."
+    "hint": "Nhà lãnh đạo trao quyền quyết định hoàn toàn cho cấp dưới, phù hợp với các nhóm chuyên gia nghiên cứu R&D.",
+    "isTieBreaker": false
   },
   {
     "type": "TRUE_FALSE",
     "content": "Kỹ năng tư duy (Conceptual skills) có vai trò và tỷ trọng quan trọng nhất đối với nhà quản trị cấp cơ sở (tổ trưởng, trưởng ca) so với nhà quản trị cấp cao.",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 20,
+    "timeLimit": 20,
     "options": [
       {
         "id": "true",
@@ -217,7 +225,8 @@
         "isCorrect": true
       }
     ],
-    "hint": "Nhà quản trị cấp cao cần kỹ năng tư duy chiến lược nhiều nhất; cấp cơ sở cần kỹ năng chuyên môn kỹ thuật nhiều nhất."
+    "hint": "Nhà quản trị cấp cao cần kỹ năng tư duy chiến lược nhiều nhất; cấp cơ sở cần kỹ năng chuyên môn kỹ thuật nhiều nhất.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
@@ -237,22 +246,23 @@
       },
       {
         "id": "C",
-        "text": "Đạt cả hiệu quả và hiệu lực cao",
+        "text": "Đạt cả hiệu quả và hiệu lực cao theo các quy định thông thường",
         "isCorrect": false
       },
       {
         "id": "D",
-        "text": "Kém cả hiệu quả lẫn hiệu lực",
+        "text": "Kém cả hiệu quả lẫn hiệu lực theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Hiệu quả là làm việc đúng cách (tiết kiệm chi phí), còn hiệu lực là làm đúng việc (đáp ứng đúng mục tiêu thị trường cần)."
+    "hint": "Hiệu quả là làm việc đúng cách (tiết kiệm chi phí), còn hiệu lực là làm đúng việc (đáp ứng đúng mục tiêu thị trường cần).",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Trường phái quản trị khoa học của Frederick Winslow Taylor tập trung chủ yếu vào cấp độ quản trị nào trong doanh nghiệp?",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 20,
+    "timeLimit": 20,
     "options": [
       {
         "id": "A",
@@ -261,7 +271,7 @@
       },
       {
         "id": "B",
-        "text": "Cấp độ phân xưởng và người thừa hành (tối ưu hóa thao tác lao động)",
+        "text": "Cấp độ phân xưởng và người thừa hành",
         "isCorrect": true
       },
       {
@@ -275,7 +285,8 @@
         "isCorrect": false
       }
     ],
-    "hint": "Taylor tập trung vào nghiên cứu thời gian và động tác tại vị trí làm việc của công nhân."
+    "hint": "Taylor tập trung vào nghiên cứu thời gian và động tác tại vị trí làm việc của công nhân. (tối ưu hóa thao tác lao động)",
+    "isTieBreaker": false
   },
   {
     "type": "MC_MULTI",
@@ -304,148 +315,14 @@
         "isCorrect": true
       }
     ],
-    "hint": "Weber đề xuất mô hình dựa trên tính duy lý và pháp lý, xóa bỏ chủ nghĩa thân tộc thiên vị."
-  },
-  {
-    "type": "TRUE_FALSE",
-    "content": "Thí nghiệm Hawthorne của Elton Mayo chứng minh rằng các yếu tố vật lý như ánh sáng và nhiệt độ tại nơi làm việc là nhân tố duy nhất quyết định năng suất lao động.",
-    "points": 10,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "true",
-        "text": "Đúng (True)",
-        "isCorrect": false
-      },
-      {
-        "id": "false",
-        "text": "Sai (False)",
-        "isCorrect": true
-      }
-    ],
-    "hint": "Hawthorne mở đường cho trường phái tâm lý - xã hội, chứng minh yếu tố tâm lý nhóm và sự quan tâm của cấp trên tác động mạnh mẽ đến năng suất."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Trong thang bậc nhu cầu của Abraham Maslow, sau khi nhu cầu An toàn (Safety) đã được thỏa mãn cơ bản, con người sẽ có động lực hướng tới bậc nhu cầu nào tiếp theo?",
-    "points": 10,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Nhu cầu tự hoàn thiện (Self-actualization)",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Nhu cầu được tôn trọng (Esteem)",
-        "isCorrect": false
-      },
-      {
-        "id": "C",
-        "text": "Nhu cầu xã hội / Được thuộc về (Social / Belongingness)",
-        "isCorrect": true
-      },
-      {
-        "id": "D",
-        "text": "Nhu cầu sinh học cơ bản (Physiological)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Nhu cầu giao lưu tình cảm, thuộc về một tập thể và được bạn bè, đồng nghiệp chấp nhận."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo Thuyết X và Thuyết Y của Douglas McGregor, nhà quản lý theo Thuyết Y nhìn nhận bản chất người lao động như thế nào?",
-    "points": 10,
-    "timeLimit": 15,
-    "options": [
-      {
-        "id": "A",
-        "text": "Con người lười biếng, trốn tránh trách nhiệm và phải bị đe dọa trừng phạt mới chịu làm việc",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Con người xem lao động là nhu cầu tự nhiên, có năng lực sáng tạo và sẵn sàng nhận trách nhiệm nếu được tin tưởng",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Con người chỉ làm việc vì tiền thưởng vật chất trước mắt",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Con người không bao giờ có mục tiêu cá nhân ăn nhập với mục tiêu công ty",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Thuyết Y đại diện cho cái nhìn nhân văn và lạc quan về tiềm năng phát triển của con người."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Theo Thuyết kỳ vọng của Victor Vroom, Động lực làm việc (Motivation) được xác định bằng công thức nào?",
-    "points": 20,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Động lực = Kỳ vọng (Expectancy) + Phương tiện (Instrumentality) + Giá trị phần thưởng (Valence)",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Động lực = Kỳ vọng (Expectancy) × Phương tiện (Instrumentality) × Giá trị phần thưởng (Valence)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Động lực = Tiền lương × Năng suất cá nhân",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Động lực = Sự nỗ lực ÷ Độ khó của mục tiêu",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Tích số của ba nhân tố: Nếu bất kỳ nhân tố nào bằng 0, động lực tổng thể sẽ bằng 0."
-  },
-  {
-    "type": "MC_SINGLE",
-    "content": "Trong Lưới lãnh đạo của Robert Blake và Jane Mouton, phong cách quản trị ở tọa độ (9,9) - nơi nhà lãnh đạo quan tâm cao độ đến cả con người lẫn kết quả sản xuất - được gọi là gì?",
-    "points": 20,
-    "timeLimit": 20,
-    "options": [
-      {
-        "id": "A",
-        "text": "Quản trị kiểu câu lạc bộ đồng quê (Country Club Management)",
-        "isCorrect": false
-      },
-      {
-        "id": "B",
-        "text": "Quản trị nhóm (Team Management)",
-        "isCorrect": true
-      },
-      {
-        "id": "C",
-        "text": "Quản trị quyền uy - phục tùng (Authority-Compliance)",
-        "isCorrect": false
-      },
-      {
-        "id": "D",
-        "text": "Quản trị suy giảm / bỏ mặc (Impoverished Management)",
-        "isCorrect": false
-      }
-    ],
-    "hint": "Phong cách lý tưởng thúc đẩy sự gắn kết và hiệu suất cao nhất nhờ mục tiêu chung."
+    "hint": "Weber đề xuất mô hình dựa trên tính duy lý và pháp lý, xóa bỏ chủ nghĩa thân tộc thiên vị.",
+    "isTieBreaker": false
   },
   {
     "type": "TRUE_FALSE",
     "content": "Cơ cấu tổ chức kiểu Ma trận (Matrix Structure) vi phạm nguyên tắc 'Thống nhất chỉ huy' của Henry Fayol vì một nhân viên có thể chịu sự giám sát của hai người quản lý cùng lúc.",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "true",
@@ -458,13 +335,14 @@
         "isCorrect": false
       }
     ],
-    "hint": "Trong ma trận, thành viên dự án vừa báo cáo cho Trưởng phòng chức năng vừa báo cáo cho Quản trị viên dự án."
+    "hint": "Trong ma trận, thành viên dự án vừa báo cáo cho Trưởng phòng chức năng vừa báo cáo cho Quản trị viên dự án.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Khi doanh nghiệp hoạt động trong môi trường kinh doanh có độ bất định cao và công nghệ biến đổi nhanh chóng, mô hình tổ chức nào thường mang lại tính linh hoạt và thích ứng cao nhất?",
-    "points": 20,
-    "timeLimit": 20,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -483,21 +361,22 @@
       },
       {
         "id": "D",
-        "text": "Cơ cấu dựa hoàn toàn trên thâm niên công tác",
+        "text": "Cơ cấu dựa hoàn toàn trên thâm niên công tác theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Cơ cấu hữu cơ có ít quy chế cứng nhắc, trao quyền rộng rãi và giao tiếp đa chiều."
+    "hint": "Cơ cấu hữu cơ có ít quy chế cứng nhắc, trao quyền rộng rãi và giao tiếp đa chiều.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Bước đầu tiên có tính quyết định trong quy trình ra quyết định quản trị hợp lý là gì?",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
-        "text": "Đánh giá các giải pháp thay thế",
+        "text": "Đánh giá các giải pháp thay thế theo các quy định thông thường",
         "isCorrect": false
       },
       {
@@ -512,17 +391,18 @@
       },
       {
         "id": "D",
-        "text": "Phân bổ ngân sách dự phòng",
+        "text": "Phân bổ ngân sách dự phòng theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Nếu xác định sai vấn đề, mọi giải pháp xây dựng sau đó đều trở nên vô nghĩa."
+    "hint": "Nếu xác định sai vấn đề, mọi giải pháp xây dựng sau đó đều trở nên vô nghĩa.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_MULTI",
     "content": "Kỹ thuật động não (Brainstorming) khi áp dụng trong ra quyết định nhóm đòi hỏi tuân thủ những nguyên tắc cốt lõi nào?",
-    "points": 20,
-    "timeLimit": 20,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -545,13 +425,14 @@
         "isCorrect": false
       }
     ],
-    "hint": "Mục tiêu là khơi mở tự do sáng tạo và tận dụng trí tuệ tập thể không rào cản."
+    "hint": "Mục tiêu là khơi mở tự do sáng tạo và tận dụng trí tuệ tập thể không rào cản.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Kỹ thuật Delphi trong ra quyết định và dự báo nhóm có đặc điểm nổi bật nào dưới đây?",
-    "points": 20,
-    "timeLimit": 20,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -565,22 +446,23 @@
       },
       {
         "id": "C",
-        "text": "Bỏ phiếu công khai bằng giơ tay biểu quyết",
+        "text": "Bỏ phiếu công khai bằng giơ tay biểu quyết theo các quy định thông thường",
         "isCorrect": false
       },
       {
         "id": "D",
-        "text": "Lấy ý kiến ngẫu nhiên của khách hàng vãng lai",
+        "text": "Lấy ý kiến ngẫu nhiên của khách hàng vãng lai theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Tính ẩn danh giúp tránh hiện tượng tâm lý a dua theo số đông hoặc bị chi phối bởi người có chức quyền."
+    "hint": "Tính ẩn danh giúp tránh hiện tượng tâm lý a dua theo số đông hoặc bị chi phối bởi người có chức quyền.",
+    "isTieBreaker": false
   },
   {
     "type": "TRUE_FALSE",
     "content": "Điểm hòa vốn (Break-even point) là mức sản lượng tại đó Tổng doanh thu vừa đủ bù đắp Tổng chi phí (cả định phí và biến phí), và Lợi nhuận của doanh nghiệp bằng 0.",
-    "points": 10,
-    "timeLimit": 15,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "true",
@@ -593,13 +475,14 @@
         "isCorrect": false
       }
     ],
-    "hint": "Tại điểm hòa vốn: Doanh thu = Chi phí, không lãi và không lỗ."
+    "hint": "Tại điểm hòa vốn: Doanh thu = Chi phí, không lãi và không lỗ.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "Theo nghiên cứu của Henry Mintzberg, vai trò 'Người phát ngôn' (Spokesperson) và 'Người giám sát thông tin' (Monitor) của nhà quản trị thuộc nhóm vai trò nào?",
-    "points": 20,
-    "timeLimit": 20,
+    "points": 30,
+    "timeLimit": 30,
     "options": [
       {
         "id": "A",
@@ -622,7 +505,8 @@
         "isCorrect": false
       }
     ],
-    "hint": "Mintzberg chia 10 vai trò thành 3 nhóm: Quan hệ con người, Thông tin và Ra quyết định."
+    "hint": "Mintzberg chia 10 vai trò thành 3 nhóm: Quan hệ con người, Thông tin và Ra quyết định.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
@@ -642,21 +526,169 @@
       },
       {
         "id": "C",
-        "text": "Quan điểm trốn tránh pháp lý",
+        "text": "Quan điểm trốn tránh pháp lý theo các quy định thông thường",
         "isCorrect": false
       },
       {
         "id": "D",
-        "text": "Quan điểm cơ hội ngắn hạn",
+        "text": "Quan điểm cơ hội ngắn hạn theo các quy định thông thường",
         "isCorrect": false
       }
     ],
-    "hint": "Đặt quyền lợi an toàn của các bên liên quan (khách hàng, xã hội) lên trên lợi ích tài chính thuần túy ngắn hạn."
+    "hint": "Đặt quyền lợi an toàn của các bên liên quan (khách hàng, xã hội) lên trên lợi ích tài chính thuần túy ngắn hạn.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Doanh nghiệp sản xuất kinh doanh sản phẩm A có đơn giá bán 50.000đ/sp, biến phí đơn vị là 30.000đ/sp. Tổng định phí hoạt động hàng năm của doanh nghiệp là 600 triệu đồng. Sản lượng hòa vốn và Doanh thu hòa vốn hàng năm của doanh nghiệp là bao nhiêu?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "30.000 sản phẩm và 1.500 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "20.000 sản phẩm và 1.000 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "25.000 sản phẩm và 1.250 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "35.000 sản phẩm và 1.750 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Số dư đảm phí đơn vị = 50.000 - 30.000 = 20.000đ. Sản lượng hòa vốn = 600.000.000 / 20.000 = 30.000 sp. Doanh thu hòa vốn = 30.000 * 50.000 = 1.500 triệu đồng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một nhà quản trị cần lựa chọn giữa hai phương án đầu tư công nghệ trong điều kiện bất định. Phương án 1 có lợi nhuận trong 3 kịch bản thị trường (Tốt, Trung bình, Xấu) là [100, 50, -20] triệu. Phương án 2 có lợi nhuận là [80, 60, 10] triệu. Theo tiêu chuẩn Maximin (Cực đại hóa mức tối thiểu - quan điểm thận trọng bi quan của Wald), nhà quản trị sẽ chọn phương án nào và giá trị lợi nhuận đảm bảo là bao nhiêu?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phương án 2 với mức lợi nhuận tối thiểu được bảo đảm là 10 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phương án 1 với mức lợi nhuận tối thiểu là -20 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Phương án 1 với mức lợi nhuận cao nhất đạt 100 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Phương án 2 với mức lợi nhuận cao nhất đạt 80 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tiêu chuẩn Maximin tìm giá trị nhỏ nhất của mỗi phương án: PA 1 là -20, PA 2 là 10. Sau đó chọn giá trị lớn nhất trong các số nhỏ nhất: Max(-20, 10) = 10 (chọn PA 2).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng 4 trường phái quản trị kinh điển với luận điểm lý thuyết cốt lõi của họ:",
+    "points": 40,
+    "timeLimit": 60,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Quản trị khoa học (Taylor)",
+        "right": "Tối ưu hóa thao tác, định mức lao động và trả lương theo sản phẩm"
+      },
+      {
+        "id": "p2",
+        "left": "Quản trị hành chính (Fayol)",
+        "right": "14 nguyên tắc quản trị và 5 chức năng cơ bản của nhà quản trị"
+      },
+      {
+        "id": "p3",
+        "left": "Tâm lý xã hội (Mayo)",
+        "right": "Thừa nhận yếu tố con người, quan hệ nhóm phi chính thức và động viên tinh thần"
+      },
+      {
+        "id": "p4",
+        "left": "Quản trị ngẫu tình (Contingency)",
+        "right": "Không có nguyên tắc duy nhất đúng cho mọi hoàn cảnh kinh doanh"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Các trường phái quản trị học căn bản.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng trình tự 5 nấc thang nhu cầu con người từ thấp đến cao theo Tháp nhu cầu Maslow:",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Nhu cầu sinh lý (ăn, mặc, ở, nghỉ ngơi cơ bản)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Nhu cầu an toàn (an toàn thân thể, việc làm, tài chính)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Nhu cầu xã hội (gắn kết bạn bè, gia đình, hòa nhập tập thể)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Nhu cầu được tôn trọng (địa vị, danh tiếng, công nhận thành tích)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Nhu cầu tự thể hiện bản thân (phát huy tối đa tiềm năng cá nhân)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Sinh lý -> An toàn -> Xã hội -> Tôn trọng -> Tự khẳng định.",
+    "isTieBreaker": false
   },
   {
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Ai được coi là 'Cha đẻ của Thuyết Quản trị Khoa học' (Scientific Management)?",
-    "points": 10,
+    "points": 20,
     "timeLimit": 20,
     "isTieBreaker": true,
     "options": [
@@ -686,18 +718,18 @@
   {
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Trong Tháp nhu cầu của Abraham Maslow, nhu cầu nào nằm ở đỉnh cao nhất?",
-    "points": 10,
+    "points": 20,
     "timeLimit": 20,
     "isTieBreaker": true,
     "options": [
       {
         "id": "A",
-        "text": "Nhu cầu an toàn (Safety)",
+        "text": "Nhu cầu an toàn (Safety) theo các quy định thông thường",
         "isCorrect": false
       },
       {
         "id": "B",
-        "text": "Nhu cầu xã hội (Social)",
+        "text": "Nhu cầu xã hội (Social) theo các quy định thông thường",
         "isCorrect": false
       },
       {
@@ -707,7 +739,7 @@
       },
       {
         "id": "D",
-        "text": "Nhu cầu được tôn trọng (Esteem)",
+        "text": "Nhu cầu được tôn trọng (Esteem) theo các quy định thông thường",
         "isCorrect": false
       }
     ],
@@ -716,8 +748,8 @@
   {
     "type": "MC_SINGLE",
     "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Hiệu ứng Hawthorne nổi tiếng chứng minh yếu tố nào có tác động quyết định đến năng suất lao động của công nhân?",
-    "points": 10,
-    "timeLimit": 20,
+    "points": 30,
+    "timeLimit": 30,
     "isTieBreaker": true,
     "options": [
       {
@@ -737,7 +769,7 @@
       },
       {
         "id": "D",
-        "text": "Mức độ giám sát khắt khe của quản đốc",
+        "text": "Mức độ giám sát khắt khe của quản đốc theo các quy định thông thường",
         "isCorrect": false
       }
     ],

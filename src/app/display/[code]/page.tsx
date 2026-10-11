@@ -112,7 +112,8 @@ export default function DisplayPage() {
     const total = matchStarting.total || 5;
     const interval = setInterval(() => {
       const now = Date.now() + getServerClockOffset();
-      const remaining = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const remaining = Math.min(total, rawRem);
       if (lastMatchTickRef.current !== remaining && remaining > 0) {
         lastMatchTickRef.current = remaining;
         soundManager.playCountdownTick(remaining);
@@ -140,7 +141,8 @@ export default function DisplayPage() {
     const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
       const now = Date.now() + getServerClockOffset();
-      const remaining = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const remaining = Math.min(total, rawRem);
       if (lastPrepareTickRef.current !== remaining && remaining > 0) {
         lastPrepareTickRef.current = remaining;
         soundManager.playCountdownTick(remaining);
@@ -164,8 +166,9 @@ export default function DisplayPage() {
       const auth = calculateAuthoritativeTimer(timer.endsAt, timer.total, timer.remaining);
       setTimer((prev) => {
         if (!prev) return null;
-        if (prev.remaining === auth.remaining) return prev;
-        return { ...prev, remaining: auth.remaining };
+        const safeRemaining = Math.min(prev.remaining, auth.remaining);
+        if (prev.remaining === safeRemaining) return prev;
+        return { ...prev, remaining: safeRemaining };
       });
     }, 100);
     return () => clearInterval(interval);
@@ -318,7 +321,7 @@ export default function DisplayPage() {
     window.addEventListener("message", handlePostMessage);
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
     });
     socketRef.current = socket;
 

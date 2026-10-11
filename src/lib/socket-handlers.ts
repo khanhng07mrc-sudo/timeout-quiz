@@ -2774,7 +2774,7 @@ export function registerSocketHandlers(io: IO) {
       } else if (room.mode === "MYSTERY_QUEST") {
         const questState = roomMysteryQuests.get(room.id);
         const round = questState ? questState.currentRound : 1;
-        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : 30;
+        const fallbackPts = round === 1 ? 10 : round === 2 ? 20 : round === 3 ? 30 : 40;
         q.points = normalizeToThreeLevels(q.points || fallbackPts);
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
@@ -4672,9 +4672,16 @@ export function registerSocketHandlers(io: IO) {
             return;
           }
           roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
+        } else if (normMiniType === "ONE_SHOT_DOORS" && (questState?.oneShotState?.phase === "SELECTING" || !questState?.oneShotState?.phase)) {
+          // Trong Chọn Cửa Giai Đoạn 1: Chọn 3 cửa để ra riêng nhanh chóng, không debounce nặng!
+          const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
+          if (now - lastTileFlip < 80) {
+            return;
+          }
+          roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
         } else {
           const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
-          if (now - lastFlipTime < 450) {
+          if (now - lastFlipTime < 250) {
             return;
           }
           roomMysteryFlipCooldown.set(room.id, now);
@@ -4703,6 +4710,12 @@ export function registerSocketHandlers(io: IO) {
         });
 
         roomMysteryQuests.set(room.id, updatedState);
+
+        // Tối ưu hóa siêu tốc cho Chọn Cửa Giai Đoạn 1: không có thay đổi điểm số hay kết quả kết thúc, chỉ chọn 3 cửa để ra riêng (<2ms)
+        if (normMiniType === "ONE_SHOT_DOORS" && (updatedState.oneShotState?.phase === "SELECTING" || (updatedState.oneShotState?.selectedDoorIds?.length || 0) < 3)) {
+          io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+          return;
+        }
 
         if (updatedState.phase === "STEAL_TARGET_SELECT") {
           // CƯỚP ĐIỂM: Chờ người chơi hoặc MC chọn đội mục tiêu trong modal
@@ -4800,6 +4813,7 @@ export function registerSocketHandlers(io: IO) {
               const cur = roomMysteryQuests.get(room.id);
               if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
               if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
+              if (cur.memoryPairsState.isBombRescueActive) return; // Nếu đang trong lượt giải cứu bom, các lá phạt giữ nguyên ngửa!
               const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
               const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
               cur.tiles = cur.tiles.map((t: any) => {
@@ -5131,6 +5145,8 @@ export function registerSocketHandlers(io: IO) {
         baseQuestionPoints: targetPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
         teamHearts: questState.teamHearts,
+        timesStolenInCycle: questState.timesStolenInCycle,
+        consecutiveBombsByTeam: questState.consecutiveBombsByTeam,
       });
       nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
@@ -5932,6 +5948,8 @@ export function registerSocketHandlers(io: IO) {
         baseQuestionPoints: questState.baseQuestionPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
         teamHearts: questState.teamHearts,
+        timesStolenInCycle: questState.timesStolenInCycle,
+        consecutiveBombsByTeam: questState.consecutiveBombsByTeam,
       });
       // Retain active phase, potPoints & perks
       newStage.phase = questState.phase;
@@ -5940,6 +5958,8 @@ export function registerSocketHandlers(io: IO) {
       if (questState.hasShield !== undefined) newStage.hasShield = questState.hasShield;
       if (questState.teamHearts) newStage.teamHearts = questState.teamHearts;
       if (questState.initialHeartsPerTeam !== undefined) newStage.initialHeartsPerTeam = questState.initialHeartsPerTeam;
+      if (questState.timesStolenInCycle) newStage.timesStolenInCycle = questState.timesStolenInCycle;
+      if (questState.consecutiveBombsByTeam) newStage.consecutiveBombsByTeam = questState.consecutiveBombsByTeam;
       roomMysteryQuests.set(room.id, newStage);
 
       io.to(`room:${room.code}`).emit("game:mystery:update", newStage);
@@ -7153,6 +7173,32 @@ function evaluateAnswerCorrectness(
     const expected = question.answer || (options.find((o: any) => o.isCorrect)?.text) || "";
     const submitted = ansArray[0] || "";
     isAutoCorrect = matchFillBlankText(expected, submitted);
+  } else if (question.type === "MATCHING") {
+    // Expected pairs can come from question.pairs or options
+    // Submitted answer can be an object map (Record<string, string>) or array of pairs
+    if (question.pairs && question.pairs.length > 0) {
+      let allMatched = true;
+      const subObj: Record<string, string> = (typeof ansArray[0] === "object" && ansArray[0] !== null)
+        ? (ansArray[0] as any)
+        : (typeof (question as any).rawSubmission === "object" ? (question as any).rawSubmission : {});
+      for (let i = 0; i < question.pairs.length; i++) {
+        const expectedRight = String.fromCharCode(65 + i);
+        const userRight = subObj[`L_${i}`] || subObj[String(i)] || subObj[question.pairs[i].left];
+        if (userRight !== expectedRight) {
+          allMatched = false;
+          break;
+        }
+      }
+      isAutoCorrect = allMatched;
+    } else {
+      isAutoCorrect = false;
+    }
+  } else if (question.type === "DRAG_DROP") {
+    // Expected order: correct options in order or question.options sorted
+    const correctOrder = options.map((o: any) => o.id);
+    const submittedOrder = Array.isArray(ansArray) ? ansArray : [];
+    isAutoCorrect = correctOrder.length === submittedOrder.length &&
+      correctOrder.every((id: string, idx: number) => id === submittedOrder[idx]);
   }
 
   return { isAutoCorrect, answerText };

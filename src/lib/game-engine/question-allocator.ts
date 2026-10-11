@@ -209,7 +209,10 @@ export function calculateModeDerivedConfig(
  */
 export function allocateQuestionsForMatch(params: QuestionAllocationParams): AllocationResult {
   const { questions, mode, targetCount, teamsCount = 4, options } = params;
-  const bankTotal = questions.length;
+  // Loại trừ các câu hỏi phụ (Tie-breaker) ra khỏi danh sách câu hỏi phân bổ của trận đấu chính
+  const regularQuestions = questions.filter((q) => !q.isTieBreaker);
+  const poolToUse = regularQuestions.length > 0 ? regularQuestions : questions;
+  const bankTotal = poolToUse.length;
   const safeTeams = Math.max(1, teamsCount);
 
   // 1. Xác định số câu hỏi mục tiêu
@@ -230,7 +233,7 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
   const medPool: any[] = [];
   const hardPool: any[] = [];
 
-  for (const q of questions) {
+  for (const q of poolToUse) {
     const diff = classifyQuestionDifficulty(q);
     if (diff === "EASY") easyPool.push(q);
     else if (diff === "MEDIUM") medPool.push(q);
@@ -294,7 +297,7 @@ export function allocateQuestionsForMatch(params: QuestionAllocationParams): All
 
   // 5.4 Nếu pool Khó còn thiếu chỉ tiêu (do kho đề ít câu 30đ):
   // Rút từ các câu chưa chọn còn lại (ưu tiên từ medPool rồi easyPool) và nâng cấp lên 30đ!
-  const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
+  const remainingCandidates = shuffle(poolToUse.filter((q) => !pickedIds.has(q.id)));
   while (selectedHard.length < targetHard && remainingCandidates.length > 0) {
     const q = remainingCandidates.pop()!;
     pickedIds.add(q.id);

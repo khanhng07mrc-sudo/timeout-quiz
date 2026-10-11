@@ -4505,7 +4505,9 @@ function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) 
 }
 function allocateQuestionsForMatch(params) {
   const { questions, mode, targetCount, teamsCount = 4, options } = params;
-  const bankTotal = questions.length;
+  const regularQuestions = questions.filter((q) => !q.isTieBreaker);
+  const poolToUse = regularQuestions.length > 0 ? regularQuestions : questions;
+  const bankTotal = poolToUse.length;
   const safeTeams = Math.max(1, teamsCount);
   let desiredCount;
   if (targetCount && targetCount > 0) {
@@ -4518,7 +4520,7 @@ function allocateQuestionsForMatch(params) {
   const easyPool = [];
   const medPool = [];
   const hardPool = [];
-  for (const q of questions) {
+  for (const q of poolToUse) {
     const diff = classifyQuestionDifficulty(q);
     if (diff === "EASY") easyPool.push(q);
     else if (diff === "MEDIUM") medPool.push(q);
@@ -4559,7 +4561,7 @@ function allocateQuestionsForMatch(params) {
       selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
     }
   }
-  const remainingCandidates = shuffle(questions.filter((q) => !pickedIds.has(q.id)));
+  const remainingCandidates = shuffle(poolToUse.filter((q) => !pickedIds.has(q.id)));
   while (selectedHard.length < targetHard && remainingCandidates.length > 0) {
     const q = remainingCandidates.pop();
     pickedIds.add(q.id);
@@ -4873,6 +4875,338 @@ function getBroadTopic(params) {
     }
   }
   return "Ki\u1EBFn th\u1EE9c T\u1ED5ng h\u1EE3p";
+}
+
+// src/lib/game-engine/tie-breaker.ts
+var roomTieBreakers = /* @__PURE__ */ new Map();
+var tieBreakerTimers = /* @__PURE__ */ new Map();
+function clearTieBreakerTimer(roomId) {
+  const timer = tieBreakerTimers.get(roomId);
+  if (timer) {
+    clearTimeout(timer);
+    tieBreakerTimers.delete(roomId);
+  }
+}
+function cleanupTieBreaker(roomId) {
+  clearTieBreakerTimer(roomId);
+  roomTieBreakers.delete(roomId);
+}
+var EMERGENCY_TIE_BREAKER_QUESTIONS = [
+  {
+    id: "EMERGENCY_TB_1",
+    content: "Th\u1EE7 \u0111\xF4 c\u1EE7a qu\u1ED1c gia n\xE0o \u0111\u01B0\u1EE3c m\u1EC7nh danh l\xE0 'Th\xE0nh ph\u1ED1 \xC1nh S\xE1ng'?",
+    options: [
+      { id: "A", text: "Paris (Ph\xE1p)", isCorrect: true },
+      { id: "B", text: "Rome (\xDD)", isCorrect: false },
+      { id: "C", text: "Tokyo (Nh\u1EADt B\u1EA3n)", isCorrect: false },
+      { id: "D", text: "London (Anh)", isCorrect: false }
+    ],
+    hint: "Th\xE0nh ph\u1ED1 n\u1ED5i ti\u1EBFng v\u1EDBi th\xE1p Eiffel v\xE0 d\xF2ng s\xF4ng Seine th\u01A1 m\u1ED9ng."
+  },
+  {
+    id: "EMERGENCY_TB_2",
+    content: "\u0110\u1EA1i d\u01B0\u01A1ng n\xE0o c\xF3 di\u1EC7n t\xEDch l\u1EDBn nh\u1EA5t tr\xEAn Tr\xE1i \u0110\u1EA5t?",
+    options: [
+      { id: "A", text: "\u0110\u1EA1i T\xE2y D\u01B0\u01A1ng", isCorrect: false },
+      { id: "B", text: "Th\xE1i B\xECnh D\u01B0\u01A1ng", isCorrect: true },
+      { id: "C", text: "\u1EA4n \u0110\u1ED9 D\u01B0\u01A1ng", isCorrect: false },
+      { id: "D", text: "B\u1EAFc B\u0103ng D\u01B0\u01A1ng", isCorrect: false }
+    ],
+    hint: "Chi\u1EBFm kho\u1EA3ng m\u1ED9t ph\u1EA7n ba b\u1EC1 m\u1EB7t Tr\xE1i \u0110\u1EA5t."
+  },
+  {
+    id: "EMERGENCY_TB_3",
+    content: "B\u1EA3ng tu\u1EA7n ho\xE0n c\xE1c nguy\xEAn t\u1ED1 h\xF3a h\u1ECDc \u0111\u1EA7u ti\xEAn do nh\xE0 khoa h\u1ECDc n\xE0o ph\xE1t minh ra?",
+    options: [
+      { id: "A", text: "Dmitri Mendeleev", isCorrect: true },
+      { id: "B", text: "Marie Curie", isCorrect: false },
+      { id: "C", text: "Albert Einstein", isCorrect: false },
+      { id: "D", text: "Isaac Newton", isCorrect: false }
+    ],
+    hint: "Nh\xE0 h\xF3a h\u1ECDc ng\u01B0\u1EDDi Nga sinh n\u0103m 1834."
+  }
+];
+async function checkAndTriggerTieBreakerIfTied({
+  io: io2,
+  room,
+  leaderboard,
+  roomQuestions,
+  onGameEnd
+}) {
+  const existingTB = roomTieBreakers.get(room.id);
+  if (existingTB && existingTB.status === "COMPLETED") {
+    return true;
+  }
+  if (!leaderboard || leaderboard.length < 2) {
+    return true;
+  }
+  const topScore = leaderboard[0].score;
+  const tiedTopTeams = leaderboard.filter((t) => t.score === topScore);
+  if (tiedTopTeams.length < 2) {
+    return true;
+  }
+  console.log(`\u2694\uFE0F [TIE-BREAKER] Ph\xE1t hi\u1EC7n h\xF2a \u0111i\u1EC3m Top 1 t\u1EA1i ph\xF2ng ${room.code} (${tiedTopTeams.length} \u0111\u1ED9i: ${tiedTopTeams.map((t) => t.name).join(", ")}, \u0110i\u1EC3m: ${topScore})! B\u1EAFt \u0111\u1EA7u c\xE2u h\u1ECFi ph\u1EE5!`);
+  let tieQuestions = [];
+  if (roomQuestions && roomQuestions.length > 0) {
+    tieQuestions = roomQuestions.filter((q) => Boolean(q.isTieBreaker));
+  }
+  if (tieQuestions.length === 0 && room.quizBankId) {
+    const dbQuestions = await prisma.question.findMany({
+      where: { quizBankId: room.quizBankId, isTieBreaker: true },
+      orderBy: { order: "asc" }
+    });
+    if (dbQuestions && dbQuestions.length > 0) {
+      tieQuestions = dbQuestions;
+    }
+  }
+  if (tieQuestions.length < 3) {
+    const needed = 3 - tieQuestions.length;
+    tieQuestions = [...tieQuestions, ...EMERGENCY_TIE_BREAKER_QUESTIONS.slice(0, needed)];
+  }
+  const tiedTeamsInfo = tiedTopTeams.map((t) => {
+    const teamObj = (room.teams || []).find((rt) => rt.id === (t.teamId || t.id));
+    return {
+      id: t.teamId || t.id || "",
+      name: t.name,
+      score: t.score,
+      color: teamObj?.color || "#f59e0b",
+      avatar: teamObj?.avatar || "\u{1F451}"
+    };
+  });
+  const tieState = {
+    roomId: room.id,
+    roomCode: room.code,
+    tiedTeams: tiedTeamsInfo,
+    questionIndex: 0,
+    maxQuestions: 3,
+    status: "INTRO",
+    questions: tieQuestions.slice(0, 3),
+    attemptedTeamIds: []
+  };
+  roomTieBreakers.set(room.id, tieState);
+  io2.to(`room:${room.code}`).emit("game:tie_breaker:state", tieState);
+  clearTieBreakerTimer(room.id);
+  const introTimer = setTimeout(() => {
+    launchTieBreakerQuestion({ io: io2, roomId: room.id, qIndex: 0, onGameEnd });
+  }, 4e3);
+  tieBreakerTimers.set(room.id, introTimer);
+  return false;
+}
+function launchTieBreakerQuestion({
+  io: io2,
+  roomId,
+  qIndex,
+  onGameEnd
+}) {
+  clearTieBreakerTimer(roomId);
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState) return;
+  if (qIndex >= tieState.maxQuestions) {
+    launchTieBreakerLuckyDraw({ io: io2, roomId, onGameEnd });
+    return;
+  }
+  const q = tieState.questions?.[qIndex];
+  if (!q) {
+    launchTieBreakerLuckyDraw({ io: io2, roomId, onGameEnd });
+    return;
+  }
+  const rawOptions = typeof q.options === "string" ? JSON.parse(q.options) : q.options || [];
+  const options = rawOptions.map((opt) => ({
+    id: opt.id,
+    text: opt.text
+  }));
+  const correctOpt = rawOptions.find((opt) => opt.isCorrect);
+  const correctOptionId = correctOpt ? correctOpt.id : q.answer || "A";
+  const timeLimit = 20;
+  tieState.questionIndex = qIndex;
+  tieState.status = "QUESTION_ACTIVE";
+  tieState.buzzedTeamId = void 0;
+  tieState.buzzedTeamName = void 0;
+  tieState.buzzedPlayerName = void 0;
+  tieState.buzzedAt = void 0;
+  tieState.attemptedTeamIds = [];
+  tieState.currentQuestion = {
+    id: q.id || `tie-q-${qIndex + 1}`,
+    content: q.content,
+    options,
+    correctOptionId,
+    explanation: q.hint || void 0,
+    timeLimit,
+    endsAt: Date.now() + timeLimit * 1e3
+  };
+  roomTieBreakers.set(roomId, tieState);
+  io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+  const qTimer = setTimeout(() => {
+    handleTieQuestionTimeout({ io: io2, roomId, onGameEnd });
+  }, timeLimit * 1e3);
+  tieBreakerTimers.set(roomId, qTimer);
+}
+function handleTieQuestionTimeout({
+  io: io2,
+  roomId,
+  onGameEnd
+}) {
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState || tieState.status !== "QUESTION_ACTIVE") return;
+  tieState.status = "ANSWER_REVEALED";
+  roomTieBreakers.set(roomId, tieState);
+  io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+  clearTieBreakerTimer(roomId);
+  const nextTimer = setTimeout(() => {
+    launchTieBreakerQuestion({ io: io2, roomId, qIndex: tieState.questionIndex + 1, onGameEnd });
+  }, 3500);
+  tieBreakerTimers.set(roomId, nextTimer);
+}
+function handleTieBreakerBuzz({
+  io: io2,
+  roomId,
+  teamId,
+  teamName,
+  playerName,
+  onGameEnd
+}) {
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState || tieState.status !== "QUESTION_ACTIVE") return false;
+  const isTiedTeam = tieState.tiedTeams.some((t) => t.id === teamId);
+  if (!isTiedTeam) return false;
+  if (tieState.attemptedTeamIds.includes(teamId)) return false;
+  clearTieBreakerTimer(roomId);
+  const answerDuration = 10;
+  tieState.status = "BUZZER_LOCKED";
+  tieState.buzzedTeamId = teamId;
+  tieState.buzzedTeamName = teamName;
+  tieState.buzzedPlayerName = playerName;
+  tieState.buzzedAt = Date.now();
+  tieState.answeringTimeRemaining = answerDuration;
+  roomTieBreakers.set(roomId, tieState);
+  io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+  const ansTimer = setTimeout(() => {
+    handleTieBreakerAnswer({
+      io: io2,
+      roomId,
+      teamId,
+      optionId: "__TIMEOUT__",
+      onGameEnd
+    });
+  }, answerDuration * 1e3);
+  tieBreakerTimers.set(roomId, ansTimer);
+  return true;
+}
+function handleTieBreakerAnswer({
+  io: io2,
+  roomId,
+  teamId,
+  optionId,
+  onGameEnd
+}) {
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState || tieState.status !== "BUZZER_LOCKED") return;
+  if (tieState.buzzedTeamId !== teamId) return;
+  clearTieBreakerTimer(roomId);
+  const isCorrect = optionId === tieState.currentQuestion?.correctOptionId;
+  if (isCorrect) {
+    tieState.status = "COMPLETED";
+    tieState.championTeamId = teamId;
+    tieState.championTeamName = tieState.buzzedTeamName;
+    roomTieBreakers.set(roomId, tieState);
+    io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+    const endTimer = setTimeout(async () => {
+      await onGameEnd();
+    }, 5e3);
+    tieBreakerTimers.set(roomId, endTimer);
+  } else {
+    tieState.attemptedTeamIds.push(teamId);
+    const remainingTeams = tieState.tiedTeams.filter((t) => !tieState.attemptedTeamIds.includes(t.id));
+    if (remainingTeams.length > 0) {
+      const retryDuration = 10;
+      tieState.status = "QUESTION_ACTIVE";
+      tieState.buzzedTeamId = void 0;
+      tieState.buzzedTeamName = void 0;
+      tieState.buzzedPlayerName = void 0;
+      tieState.buzzedAt = void 0;
+      if (tieState.currentQuestion) {
+        tieState.currentQuestion.endsAt = Date.now() + retryDuration * 1e3;
+      }
+      roomTieBreakers.set(roomId, tieState);
+      io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+      const retryTimer = setTimeout(() => {
+        handleTieQuestionTimeout({ io: io2, roomId, onGameEnd });
+      }, retryDuration * 1e3);
+      tieBreakerTimers.set(roomId, retryTimer);
+    } else {
+      tieState.status = "ANSWER_REVEALED";
+      roomTieBreakers.set(roomId, tieState);
+      io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+      const nextTimer = setTimeout(() => {
+        launchTieBreakerQuestion({ io: io2, roomId, qIndex: tieState.questionIndex + 1, onGameEnd });
+      }, 3500);
+      tieBreakerTimers.set(roomId, nextTimer);
+    }
+  }
+}
+function launchTieBreakerLuckyDraw({
+  io: io2,
+  roomId,
+  onGameEnd
+}) {
+  clearTieBreakerTimer(roomId);
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState) return;
+  const count = tieState.tiedTeams.length;
+  const envelopes = Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    isChampion: false,
+    isOpened: false
+  }));
+  const luckyIndex = Math.floor(Math.random() * count);
+  envelopes[luckyIndex].isChampion = true;
+  tieState.status = "LUCKY_DRAW";
+  tieState.luckyDraw = {
+    envelopes,
+    currentTurnTeamId: tieState.tiedTeams[0]?.id,
+    currentTurnTeamName: tieState.tiedTeams[0]?.name
+  };
+  roomTieBreakers.set(roomId, tieState);
+  io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+}
+function handleTieBreakerLuckyPick({
+  io: io2,
+  roomId,
+  teamId,
+  envelopeId,
+  onGameEnd
+}) {
+  const tieState = roomTieBreakers.get(roomId);
+  if (!tieState || tieState.status !== "LUCKY_DRAW" || !tieState.luckyDraw) return;
+  const env = tieState.luckyDraw.envelopes.find((e) => e.id === envelopeId);
+  if (!env || env.isOpened) return;
+  const team = tieState.tiedTeams.find((t) => t.id === teamId);
+  if (!team) return;
+  env.isOpened = true;
+  env.pickedByTeamId = team.id;
+  env.pickedByTeamName = team.name;
+  let winnerTeam = team;
+  if (!env.isChampion) {
+    const otherTeam = tieState.tiedTeams.find((t) => t.id !== teamId);
+    if (otherTeam) {
+      winnerTeam = otherTeam;
+    }
+  }
+  tieState.luckyDraw.envelopes.forEach((e) => {
+    e.isOpened = true;
+  });
+  tieState.status = "COMPLETED";
+  tieState.championTeamId = winnerTeam.id;
+  tieState.championTeamName = winnerTeam.name;
+  tieState.luckyDraw.winnerTeamId = winnerTeam.id;
+  tieState.luckyDraw.winnerTeamName = winnerTeam.name;
+  roomTieBreakers.set(roomId, tieState);
+  io2.to(`room:${tieState.roomCode}`).emit("game:tie_breaker:state", tieState);
+  clearTieBreakerTimer(roomId);
+  const endTimer = setTimeout(async () => {
+    await onGameEnd();
+  }, 5500);
+  tieBreakerTimers.set(roomId, endTimer);
 }
 
 // src/lib/socket-handlers.ts
@@ -5617,6 +5951,7 @@ function cleanupRoomInMemory(roomId) {
       if (key.startsWith(prefix)) roomStealEndsAt.delete(key);
     }
     roomQuestionStartedAt.delete(roomId);
+    cleanupTieBreaker(roomId);
   } catch (err) {
     console.error(`[cleanupRoomInMemory] Error clearing room ${roomId}:`, err);
   }
@@ -6068,6 +6403,9 @@ function registerSocketHandlers(io2) {
           if (roomTournaments.has(room.id)) {
             socket.emit("game:tournament:update", roomTournaments.get(room.id));
           }
+          if (roomTieBreakers.has(room.id)) {
+            socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
+          }
           const currentQ = room.quizBank?.questions?.[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -6220,6 +6558,9 @@ function registerSocketHandlers(io2) {
             socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
         }
+        if (roomTieBreakers.has(room.id)) {
+          socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
+        }
         callback?.({ success: true, hostKey: room.hostKey, roomState });
       } catch (err) {
         console.error("[admin:join]", err);
@@ -6361,6 +6702,9 @@ function registerSocketHandlers(io2) {
         }
         if (roomTournaments.has(room.id)) {
           socket.emit("game:tournament:update", roomTournaments.get(room.id));
+        }
+        if (roomTieBreakers.has(room.id)) {
+          socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
         }
         if (roomPrepareStates.has(room.id)) {
           const prep = roomPrepareStates.get(room.id);
@@ -7754,11 +8098,8 @@ function registerSocketHandlers(io2) {
         if (diceState) {
           const allFinished = Object.values(diceState.teamPositions).every((p) => p.hasFinished);
           if (allFinished) {
-            room.status = "FINISHED";
-            roomCache.set(room.id, room);
-            prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
-            const leaderboard = await buildLeaderboard(room.id);
-            io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+            const ended = await safelyFinishGame({ io: io2, room, questions });
+            if (!ended) return;
             return;
           }
           io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
@@ -7795,21 +8136,15 @@ function registerSocketHandlers(io2) {
       const usedCount = roomUsedQuestions.get(room.id)?.size ?? 0;
       if (usedCount >= targetQuestions) {
         stopQuestionTimer(room.id);
-        room.status = "FINISHED";
-        roomCache.set(room.id, room);
-        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io: io2, room, questions });
+        if (!ended) return;
         return;
       }
       const nextQ = getNextUniqueQuestion(room.id, questions);
       if (!nextQ) {
         stopQuestionTimer(room.id);
-        room.status = "FINISHED";
-        roomCache.set(room.id, room);
-        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io: io2, room, questions });
+        if (!ended) return;
         return;
       }
       const nextIndex = nextQ.index;
@@ -8260,10 +8595,8 @@ function registerSocketHandlers(io2) {
       if (!targetQ) {
         gridState.selectedCellAnimation = false;
         io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
-        room.status = "FINISHED";
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io: io2, room, questions: rawQuestions });
+        if (!ended) return;
         return;
       }
       usedSet.add(targetQ.id);
@@ -9026,9 +9359,8 @@ function registerSocketHandlers(io2) {
       if (teams.length === 0) return;
       const nextTurnIndex = questState.currentTurnIndex + 1;
       if (nextTurnIndex >= questState.totalTurns) {
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
-        const leaderboard = await buildLeaderboard(room.id);
-        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io: io2, room, questions: questState.questions });
+        if (!ended) return;
         return;
       }
       const nextRound = Math.floor(nextTurnIndex / teams.length) + 1;
@@ -10308,6 +10640,118 @@ function registerSocketHandlers(io2) {
       const state = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", state);
     });
+    socket.on("tie_breaker:buzz", async () => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session) {
+        const playerId = playerSockets.get(socket.id);
+        if (playerId) {
+          const player = await prisma.player.findUnique({
+            where: { id: playerId },
+            include: { room: true, team: true }
+          });
+          if (player && player.room && player.teamId) {
+            session = {
+              playerId: player.id,
+              playerName: player.name,
+              roomId: player.room.id,
+              roomCode: player.room.code,
+              teamId: player.teamId,
+              teamName: player.team?.name ?? player.name,
+              roomMode: player.room.mode,
+              teamMode: player.room.teamMode
+            };
+            socketPlayerSessions.set(socket.id, session);
+            playerSessions.set(player.id, session);
+          }
+        }
+      }
+      if (!session || !session.teamId) return;
+      const currentRoomId = session.roomId;
+      handleTieBreakerBuzz({
+        io: io2,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        teamName: session.teamName || "Th\xED sinh",
+        playerName: session.playerName || "Th\xED sinh",
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        }
+      });
+    });
+    socket.on("tie_breaker:answer", async ({ optionId }) => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session || !session.teamId) return;
+      const currentRoomId = session.roomId;
+      handleTieBreakerAnswer({
+        io: io2,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        optionId,
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        }
+      });
+    });
+    socket.on("tie_breaker:lucky_pick", async ({ envelopeId }) => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session || !session.teamId) return;
+      const currentRoomId = session.roomId;
+      handleTieBreakerLuckyPick({
+        io: io2,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        envelopeId,
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        }
+      });
+    });
+    socket.on("admin:tie_breaker:advance", async (payload) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room) return;
+      const tieState = roomTieBreakers.get(room.id);
+      if (!tieState) return;
+      const onGameEnd = async () => {
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+      };
+      if (payload?.action === "NEXT_QUESTION") {
+        launchTieBreakerQuestion({ io: io2, roomId: room.id, qIndex: tieState.questionIndex + 1, onGameEnd });
+      } else if (payload?.action === "START_LUCKY_DRAW") {
+        launchTieBreakerLuckyDraw({ io: io2, roomId: room.id, onGameEnd });
+      } else if (payload?.action === "FORCE_CHAMPION" && payload.winnerTeamId) {
+        tieState.status = "COMPLETED";
+        tieState.championTeamId = payload.winnerTeamId;
+        const championTeam = tieState.tiedTeams.find((t) => t.id === payload.winnerTeamId);
+        tieState.championTeamName = championTeam?.name;
+        roomTieBreakers.set(room.id, tieState);
+        io2.to(`room:${room.code}`).emit("game:tie_breaker:state", tieState);
+        setTimeout(async () => {
+          await onGameEnd();
+        }, 3e3);
+      }
+    });
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
@@ -11336,12 +11780,8 @@ async function advanceGridToBoard(io2, roomId, roomCode) {
   }
   const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
   if (isMatchOver) {
-    await prisma.room.update({
-      where: { id: roomId },
-      data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() }
-    });
-    const leaderboard = await buildLeaderboard(roomId);
-    io2.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+    const ended = await safelyFinishGame({ io: io2, room });
+    if (!ended) return;
   } else {
     io2.to(`room:${roomCode}`).emit("game:question:clear");
     io2.to(`room:${roomCode}`).emit("game:grid:update", gridState);
@@ -12892,10 +13332,15 @@ async function buildLeaderboard(roomId) {
     }
   });
   if (!room) return [];
+  const championId = roomTieBreakers.get(roomId)?.championTeamId;
   if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(roomId);
     if (diceState) {
       return room.teams.slice().sort((a, b) => {
+        if (championId) {
+          if (a.id === championId) return -1;
+          if (b.id === championId) return 1;
+        }
         const progA = diceState.teamPositions[a.id];
         const progB = diceState.teamPositions[b.id];
         if (progA?.hasFinished && progB?.hasFinished) {
@@ -12924,7 +13369,13 @@ async function buildLeaderboard(roomId) {
     }
   }
   if (room.teamMode === "TEAM") {
-    return room.teams.sort((a, b) => b.score - a.score).map((t, i) => ({
+    return room.teams.slice().sort((a, b) => {
+      if (championId) {
+        if (a.id === championId && a.score === b.score) return -1;
+        if (b.id === championId && a.score === b.score) return 1;
+      }
+      return b.score - a.score;
+    }).map((t, i) => ({
       rank: i + 1,
       teamId: t.id,
       name: t.name,
@@ -12934,7 +13385,13 @@ async function buildLeaderboard(roomId) {
     }));
   } else {
     const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
-    return validPlayers.sort((a, b) => b.score - a.score).map((p, i) => ({
+    return validPlayers.slice().sort((a, b) => {
+      if (championId) {
+        if (a.id === championId && a.score === b.score) return -1;
+        if (b.id === championId && a.score === b.score) return 1;
+      }
+      return b.score - a.score;
+    }).map((p, i) => ({
       rank: i + 1,
       playerId: p.id,
       name: p.name,
@@ -12943,6 +13400,40 @@ async function buildLeaderboard(roomId) {
       totalAnswers: room.answers.filter((a) => a.playerId === p.id).length
     }));
   }
+}
+async function safelyFinishGame({
+  io: io2,
+  room,
+  questions
+}) {
+  const leaderboard = await buildLeaderboard(room.id);
+  const shouldEnd = await checkAndTriggerTieBreakerIfTied({
+    io: io2,
+    room,
+    leaderboard,
+    roomQuestions: questions,
+    onGameEnd: async () => {
+      room.status = "FINISHED";
+      roomCache.set(room.id, room);
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() }
+      }).catch(console.error);
+      const finalLb = await buildLeaderboard(room.id);
+      io2.to(`room:${room.code}`).emit("game:ended", { leaderboard: finalLb });
+    }
+  });
+  if (!shouldEnd) {
+    return false;
+  }
+  room.status = "FINISHED";
+  roomCache.set(room.id, room);
+  await prisma.room.update({
+    where: { id: room.id },
+    data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() }
+  }).catch(console.error);
+  io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+  return true;
 }
 
 // src/lib/room-cleanup.ts

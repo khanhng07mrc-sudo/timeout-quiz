@@ -652,5 +652,95 @@
       }
     ],
     "hint": "CPI = EV / AC = 240 / 300 = 0.8. EAC = BAC / CPI = 600 / 0.8 = 750 triệu đồng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ DỰ ÁN] Trong quản lý dự án theo phương pháp CPM/PERT, 'Đường găng' (Critical Path) là gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chuỗi các công việc có thời gian dự trữ (slack/float) lớn nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Chuỗi các công việc dài nhất quyết định tổng thời gian hoàn thành dự án",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Chuỗi công việc có chi phí tài chính cao nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chuỗi công việc có mức độ rủi ro an toàn lao động cao nhất",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bất kỳ sự chậm trễ nào trên đường này đều làm chậm trễ tiến độ toàn bộ dự án."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ DỰ ÁN] Trong phương pháp Quản lý giá trị thu được (EVM), chỉ số CPI = EV / AC > 1 có ý nghĩa gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Dự án đang bội chi ngân sách (vượt chi)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Dự án đang tiết kiệm chi phí (dưới ngân sách dự toán)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Dự án đang chậm tiến độ",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Dự án đang vượt tiến độ",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Cost Performance Index lớn hơn 1 phản ánh hiệu quả sử dụng chi phí tốt."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ DỰ ÁN] Công cụ nào dùng để phân rã thứ bậc toàn bộ phạm vi dự án thành các gói công việc (Work Packages) nhỏ hơn?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "WBS (Work Breakdown Structure)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Bảng cân đối kế toán",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Biểu đồ xương cá Ishikawa",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Sơ đồ luồng dữ liệu DFD",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Cấu trúc phân chia công việc nền tảng trong PMBOK."
   }
 ]

@@ -652,5 +652,95 @@
       }
     ],
     "hint": "Chi phí vốn tối thiểu = 1.000 triệu × 12% = 120 triệu. RI = 150 - 120 = 30 triệu đồng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KIỂM SOÁT QUẢN LÝ] Thẻ điểm cân bằng (Balanced Scorecard - BSC) đo lường hiệu quả hoạt động của doanh nghiệp qua bao nhiêu khía cạnh?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "2 khía cạnh",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "3 khía cạnh",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "4 khía cạnh",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "5 khía cạnh",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Gồm Tài chính, Khách hàng, Quy trình nội bộ, và Học hỏi & Phát triển."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KIỂM SOÁT QUẢN LÝ] Trong khung kiểm soát nội bộ COSO, thành tố nào đóng vai trò là 'nền tảng' cho tất cả các thành tố còn lại?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đánh giá rủi ro (Risk Assessment)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Môi trường kiểm soát (Control Environment)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hoạt động kiểm soát (Control Activities)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Giám sát (Monitoring)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thể hiện qua văn hóa doanh nghiệp, tính chính trực và giá trị đạo đức của ban lãnh đạo."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KIỂM SOÁT QUẢN LÝ] Trung tâm trách nhiệm nào mà người quản lý chịu trách nhiệm cả về Doanh thu, Chi phí và Vốn đầu tư?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Trung tâm chi phí (Cost center)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Trung tâm doanh thu (Revenue center)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trung tâm lợi nhuận (Profit center)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trung tâm đầu tư (Investment center)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Được đánh giá bằng các chỉ tiêu như ROI (Return on Investment) và EVA (Economic Value Added)."
   }
 ]

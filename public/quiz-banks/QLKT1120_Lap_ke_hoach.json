@@ -652,5 +652,95 @@
       }
     ],
     "hint": "IRR là tỷ lệ chiết khấu mà tại đó NPV = 0; nếu IRR > chi phí sử dụng vốn WACC thì dự án đáng giá để đầu tư."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Chữ 'R' trong nguyên tắc thiết lập mục tiêu SMART đại diện cho tiêu chí nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Rapid (Nhanh chóng)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Relevant / Realistic (Phù hợp / Thực tế)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Resilient (Bền bỉ)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Routine (Thường nhật)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mục tiêu phải gắn liền với tầm nhìn chiến lược và có tính khả thi thực tế."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Trong ma trận BCG, đơn vị kinh doanh chiến lược (SBU) có thị phần cao trong một ngành tăng trưởng chậm được gọi là gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Ngôi sao (Star)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Bò sữa (Cash Cow)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Dấu hỏi (Question Mark)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Con chó (Dog)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đơn vị mang lại dòng tiền dồi dào để tài trợ cho các đơn vị kinh doanh khác."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - LẬP KẾ HOẠCH] Trong phân tích PESTEL, yếu tố nào khảo sát về biến động tỷ giá, lãi suất và lạm phát?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Political (Chính trị)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Economic (Kinh tế)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Social (Xã hội)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Legal (Pháp lý)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chữ E đầu tiên trong từ viết tắt PESTEL."
   }
 ]

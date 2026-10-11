@@ -69,6 +69,7 @@ async function main() {
             timeLimit: normalizedPts <= 10 ? 15 : normalizedPts <= 20 ? 20 : 30,
             hint: q.hint || null,
             order: i + 1,
+            isTieBreaker: Boolean(q.isTieBreaker),
           },
         });
       }

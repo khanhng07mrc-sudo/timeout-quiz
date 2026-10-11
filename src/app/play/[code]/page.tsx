@@ -27,6 +27,8 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
+import type { TieBreakerState } from "@/types";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import StealPrepCountdown from "@/components/ui/StealPrepCountdown";
 import {
@@ -47,6 +49,7 @@ export default function PlayPage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
+  const [tieBreaker, setTieBreaker] = useState<TieBreakerState | null>(null);
   const [playerId, setPlayerId] = useState("");
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string; teamName?: string } | null>(null);
@@ -968,7 +971,11 @@ export default function PlayPage() {
       setTimeout(() => setErrorMessage(null), 4000);
     });
 
+    socket.on("game:tie_breaker:state", (tbState) => {
+      setTieBreaker(tbState);
+    });
     socket.on("game:ended", (payload) => {
+      setTieBreaker(null);
       setGameEnd(payload);
     });
     socket.on("game:early_completed", () => {
@@ -1001,6 +1008,18 @@ export default function PlayPage() {
         playerId: playerIdRef.current,
       }, "*");
     }
+  };
+
+  const handleTieBreakerBuzz = () => {
+    socketRef.current?.emit("tie_breaker:buzz", { clientBuzzedAt: getServerTime() });
+  };
+
+  const handleTieBreakerAnswer = (optionId: string) => {
+    socketRef.current?.emit("tie_breaker:answer", { optionId });
+  };
+
+  const handleTieBreakerLuckyPick = (envelopeId: number) => {
+    socketRef.current?.emit("tie_breaker:lucky_pick", { envelopeId });
   };
 
   const handleAnswer = (answer: string | string[], explicitTeamId?: string) => {
@@ -1245,6 +1264,24 @@ export default function PlayPage() {
           </button>
         </div>
       </div>
+    );
+  }
+
+  if (tieBreaker) {
+    const mePlayer = roomState?.players.find((p) => p.id === playerId);
+    const effectiveTeamId = activeTeamId || selectedTeamId || myTeamIdRef.current || mePlayer?.teamId || roomState?.teams[0]?.id;
+    return (
+      <>
+        {reconnectBanner}
+        <TieBreakerOverlay
+          role="PLAYER"
+          tieBreaker={tieBreaker}
+          playerTeamId={effectiveTeamId}
+          onBuzz={handleTieBreakerBuzz}
+          onAnswer={handleTieBreakerAnswer}
+          onLuckyPick={handleTieBreakerLuckyPick}
+        />
+      </>
     );
   }
 

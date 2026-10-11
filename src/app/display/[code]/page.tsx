@@ -23,6 +23,8 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
+import type { TieBreakerState } from "@/types";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
 import GameModeIcon from "@/components/ui/GameModeIcon";
@@ -44,6 +46,7 @@ export default function DisplayPage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnd, setGameEnd] = useState<GameEndPayload | null>(null);
+  const [tieBreaker, setTieBreaker] = useState<TieBreakerState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [buzzed, setBuzzed] = useState<{ playerName: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
@@ -685,8 +688,12 @@ export default function DisplayPage() {
       soundManager.playPowerup();
       setTimeout(() => setLastPowerup(null), 4000);
     });
+    socket.on("game:tie_breaker:state", (tbState) => {
+      setTieBreaker(tbState);
+    });
     socket.on("game:ended", (payload) => {
       soundManager.stopMusic(0, true);
+      setTieBreaker(null);
       setGameEnd(payload);
     });
     socket.on("game:paused", () => {
@@ -772,6 +779,10 @@ export default function DisplayPage() {
       handleUnlockAudio();
     }
   };
+
+  if (tieBreaker) {
+    return <TieBreakerOverlay role="DISPLAY" tieBreaker={tieBreaker} />;
+  }
 
   // ── Leaderboard (game end) ──────────────────────────────────────────────────
   if (gameEnd) {

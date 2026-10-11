@@ -657,5 +657,95 @@
       }
     ],
     "hint": "Bài toán gom nhóm tự động không có nhãn đầu ra là bài toán kinh điển của Học không giám sát (Clustering)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Thuật toán phân cụm K-Means thuộc nhóm học máy (Machine Learning) nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Học có giám sát (Supervised Learning)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Học không giám sát (Unsupervised Learning)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Học tăng cường (Reinforcement Learning)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Học bán giám sát (Semi-supervised Learning)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Dữ liệu huấn luyện không có sẵn nhãn phân loại (labels/targets)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Hiện tượng mô hình hoạt động quá xuất sắc trên tập huấn luyện (Train) nhưng lại kém trên tập kiểm thử (Test) được gọi là gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Underfitting (Chưa khớp)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Overfitting (Quá khớp)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Data Leakage (Rò rỉ dữ liệu)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Bias (Độ chệch)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mô hình học vẹt cả nhiễu (noise) của dữ liệu huấn luyện, mất đi tính tổng quát hóa."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KHOA HỌC DỮ LIỆU] Trong mô hình hồi quy Logistic, hàm số nào được dùng để nén giá trị đầu ra về khoảng xác suất (0, 1)?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hàm ReLU",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Hàm Sigmoid",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Hàm Tuyến tính y = ax + b",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Hàm Bước nhảy Heaviside",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Có dạng đồ thị hình chữ S: f(z) = 1 / (1 + e^-z)."
   }
 ]

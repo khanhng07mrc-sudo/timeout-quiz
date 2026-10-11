@@ -652,5 +652,95 @@
       }
     ],
     "hint": "Kế toán bán hàng gồm 2 bút toán song song: phản ánh giá vốn hàng bán và phản ánh doanh thu bán hàng."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Phương trình kế toán cơ bản luôn được duy trì cân bằng là gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tài sản = Nợ phải trả + Vốn chủ sở hữu",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tài sản = Doanh thu - Chi phí",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Vốn chủ sở hữu = Tài sản + Nợ phải trả",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Lợi nhuận = Nợ phải trả - Tài sản",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tổng nguồn lực doanh nghiệp sở hữu luôn bằng tổng các nguồn tài trợ."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Nguyên tắc kế toán dồn tích (Accrual Basis) quy định doanh thu và chi phí phải được ghi nhận vào thời điểm nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khi thực tế thu hoặc chi bằng tiền mặt",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Khi nghiệp vụ kinh tế phát sinh, không căn cứ vào thời điểm thực tế thu chi tiền",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Vào ngày cuối cùng của năm tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Khi có chữ ký duyệt của kế toán trưởng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khác biệt căn bản giữa kế toán dồn tích và kế toán tiền mặt (Cash basis)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - NGUYÊN LÝ KẾ TOÁN] Báo cáo tài chính nào phản ánh tổng hợp tình hình Tài sản, Nợ phải trả và Vốn chủ sở hữu tại một thời điểm nhất định?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Báo cáo kết quả hoạt động kinh doanh",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Bảng cân đối kế toán (Báo cáo tình hình tài chính)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Báo cáo lưu chuyển tiền tệ",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thuyết minh báo cáo tài chính",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bức ảnh chụp nhanh (snapshot) sức khỏe tài chính của doanh nghiệp tại một thời điểm."
   }
 ]

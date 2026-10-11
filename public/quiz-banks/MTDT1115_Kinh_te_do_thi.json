@@ -652,5 +652,95 @@
       }
     ],
     "hint": "Nội hóa chi phí ngoại ứng kẹt xe và thúc đẩy phương thức công cộng hiệu quả hơn việc tiếp tục chạy đua xây thêm làn cho xe cá nhân."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Mô hình 'Thành phố đơn tâm' (Monocentric City Model) kinh điển của kinh tế đô thị gắn liền với tên tuổi của nhà kinh tế học nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "William Alonso",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Paul Krugman",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Alfred Marshall",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "David Ricardo",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phát triển lý thuyết giá thầu địa tô (Bid-rent function) dựa trên khoảng cách tới trung tâm CBD."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Khái niệm mô hình TOD (Transit-Oriented Development) trong quy hoạch đô thị nhấn mạnh phát triển xoay quanh yếu tố nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hệ thống cảng hàng không quốc tế",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Đầu mối giao thông công cộng sức chở lớn (Metro, BRT)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Mạng lưới đường cao tốc liên tỉnh",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Khu công nghiệp ven đô",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đô thị nén kết nối mật độ cao trong bán kính đi bộ quanh nhà ga đường sắt đô thị."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ ĐÔ THỊ] Chính sách thu phí tắc nghẽn giao thông (Congestion Pricing) dựa trên nguyên lý kinh tế học nào?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Nội hóa chi phí ngoại ứng tiêu cực (Internalizing negative externality)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Trợ cấp hàng hóa công cộng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Độc quyền tự nhiên",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Kiểm soát giá trần (Price ceiling)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mỗi phương tiện gia nhập dòng xe gây thêm chậm trễ cho người khác mà không phải tự trả chi phí đó."
   }
 ]

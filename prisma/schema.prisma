@@ -148,6 +148,7 @@ model Question {
   mediaType  String?
   hint       String?      @db.Text
   order      Int          @default(0)
+  isTieBreaker Boolean    @default(false)
   quizBankId String
   createdAt  DateTime     @default(now())
 

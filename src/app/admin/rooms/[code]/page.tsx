@@ -23,6 +23,8 @@ import SystemIcon from "@/components/ui/SystemIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
+import type { TieBreakerState } from "@/types";
 import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
@@ -37,6 +39,7 @@ export default function AdminRoomPage() {
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [revealPayload, setRevealPayload] = useState<AnswerRevealPayload | null>(null);
   const [gameEnded, setGameEnded] = useState(false);
+  const [tieBreaker, setTieBreaker] = useState<TieBreakerState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [cardsLocked, setCardsLocked] = useState(false);
   const [buzzedTeam, setBuzzedTeam] = useState<{ teamId?: string; teamName?: string; playerId: string; playerName: string } | null>(null);
@@ -541,7 +544,11 @@ export default function AdminRoomPage() {
         setTimer(null);
       }
     });
+    socket.on("game:tie_breaker:state", (tbState) => {
+      setTieBreaker(tbState);
+    });
     socket.on("game:ended", () => {
+      setTieBreaker(null);
       setGameEnded(true);
     });
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
@@ -979,6 +986,16 @@ export default function AdminRoomPage() {
             </div>
           )}
         </div>
+      )}
+
+      {tieBreaker && (
+        <TieBreakerOverlay
+          role="ADMIN"
+          tieBreaker={tieBreaker}
+          onAdminAction={(action, winnerTeamId) => {
+            emit("admin:tie_breaker:advance", { code, action, winnerTeamId });
+          }}
+        />
       )}
 
       {gameEnded && (

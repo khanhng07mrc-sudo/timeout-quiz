@@ -652,5 +652,95 @@
       }
     ],
     "hint": "Hiệu quả tối ưu đạt được khi MACx = MACy: 10Qx = 20Qy => Qx = 2Qy. Kết hợp Qx + Qy = 30 => Qy = 10, Qx = 20."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ BĐKH] Mục tiêu 'Net Zero' (Phát thải ròng bằng 0) nghĩa là gì?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Cắt giảm 100% mọi hoạt động sản xuất công nghiệp phát thải",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Lượng khí nhà kính phát thải vào khí quyển cân bằng với lượng được hấp thụ hoặc loại bỏ",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Đưa lượng tiêu thụ năng lượng hóa thạch về con số 0 trong 1 năm",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Không tính lượng khí thải của ngành nông nghiệp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Sự cân bằng tuyệt đối giữa phát thải nhân tạo và khả năng hấp thụ của các bể chứa carbon."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ BĐKH] Thỏa thuận Paris (2015) đặt mục tiêu giữ mức tăng nhiệt độ toàn cầu không vượt quá bao nhiêu độ C so với thời kỳ tiền công nghiệp?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Dưới 1.5°C đến tối đa 2.0°C",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Dưới 3.0°C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Dưới 0.5°C",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Dưới 4.0°C",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mục tiêu lý tưởng là 1.5 độ C nhằm hạn chế các rủi ro thảm họa khí hậu."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - KINH TẾ BĐKH] Cơ chế nào đặt ra hạn ngạch tổng phát thải (Cap) và cho phép các doanh nghiệp mua bán chứng chỉ thừa/thiếu (Trade)?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thuế Pigouvian Carbon",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Hệ thống giao dịch phát thải ETS (Cap-and-Trade)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tiêu chuẩn kỹ thuật bắt buộc",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trợ cấp năng lượng xanh",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hệ thống thị trường định giá carbon phổ biến tại Liên minh Châu Âu (EU ETS)."
   }
 ]

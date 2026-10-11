@@ -1292,6 +1292,56 @@ export interface GameIntermissionPayload {
   countdownSeconds?: number;
 }
 
+export interface TieBreakerTeam {
+  id: string;
+  name: string;
+  score: number;
+  color?: string;
+  avatar?: string;
+}
+
+export interface TieBreakerEnvelope {
+  id: number;
+  isChampion: boolean;
+  isOpened: boolean;
+  pickedByTeamId?: string;
+  pickedByTeamName?: string;
+}
+
+export interface TieBreakerState {
+  roomId: string;
+  roomCode: string;
+  tiedTeams: TieBreakerTeam[];
+  questionIndex: number; // 0, 1, 2 (câu 1, 2, 3)
+  maxQuestions: number; // 3
+  questions?: any[];
+  status: "INTRO" | "QUESTION_ACTIVE" | "BUZZER_LOCKED" | "ANSWER_REVEALED" | "LUCKY_DRAW" | "COMPLETED";
+  currentQuestion?: {
+    id: string;
+    content: string;
+    options: Array<{ id: string; text: string }>;
+    correctOptionId?: string;
+    explanation?: string;
+    timeLimit: number;
+    endsAt?: number;
+  };
+  buzzedTeamId?: string;
+  buzzedTeamName?: string;
+  buzzedPlayerName?: string;
+  buzzedAt?: number;
+  answeringTimeRemaining?: number;
+  attemptedTeamIds: string[];
+  luckyDraw?: {
+    envelopes: TieBreakerEnvelope[];
+    currentTurnTeamId?: string;
+    currentTurnTeamName?: string;
+    winnerTeamId?: string;
+    winnerTeamName?: string;
+  };
+  championTeamId?: string;
+  championTeamName?: string;
+}
+
 export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "game:starting": (payload: GameStartingPayload) => void;
@@ -1312,6 +1362,7 @@ export interface ServerToClientEvents {
   "game:powerup:shared_locked": (payload: { cardType: CardType; usedByTeamId: string; usedByTeamName: string; questionIndex: number }) => void;
   "game:fifty_fifty:applied": (payload: { teamId: string; hiddenOptionIds: string[] }) => void;
   "game:ended": (payload: GameEndPayload) => void;
+  "game:tie_breaker:state": (state: TieBreakerState | null) => void;
   "game:paused": () => void;
   "game:resumed": () => void;
   "player:joined": (player: PlayerState) => void;
@@ -1480,6 +1531,11 @@ export interface ClientToServerEvents {
   "admin:mystery:cash_out_manual": () => void;
   "game:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL" }) => void;
   "admin:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL"; code?: string }) => void;
+  // Tie-Breaker Client Events
+  "tie_breaker:buzz": (payload?: { clientBuzzedAt?: number }) => void;
+  "tie_breaker:answer": (payload: { optionId: string }) => void;
+  "tie_breaker:lucky_pick": (payload: { envelopeId: number }) => void;
+  "admin:tie_breaker:advance": (payload?: { code?: string; action?: "NEXT_QUESTION" | "START_LUCKY_DRAW" | "FORCE_CHAMPION"; winnerTeamId?: string }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

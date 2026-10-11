@@ -652,5 +652,95 @@
       }
     ],
     "hint": "Đặt quyền lợi an toàn của các bên liên quan (khách hàng, xã hội) lên trên lợi ích tài chính thuần túy ngắn hạn."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Ai được coi là 'Cha đẻ của Thuyết Quản trị Khoa học' (Scientific Management)?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Frederick Winslow Taylor",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Henri Fayol",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Max Weber",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Peter Drucker",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tác giả cuốn 'Các nguyên lý của quản trị khoa học' xuất bản năm 1911."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Trong Tháp nhu cầu của Abraham Maslow, nhu cầu nào nằm ở đỉnh cao nhất?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Nhu cầu an toàn (Safety)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Nhu cầu xã hội (Social)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Nhu cầu tự hoàn thiện / khẳng định bản thân (Self-actualization)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Nhu cầu được tôn trọng (Esteem)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Nhu cầu phát huy tối đa tiềm năng và đam mê cá nhân."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "[CÂU HỎI PHỤ - QUẢN LÝ HỌC] Hiệu ứng Hawthorne nổi tiếng chứng minh yếu tố nào có tác động quyết định đến năng suất lao động của công nhân?",
+    "points": 10,
+    "timeLimit": 20,
+    "isTieBreaker": true,
+    "options": [
+      {
+        "id": "A",
+        "text": "Cường độ ánh sáng và nhiệt độ phòng làm việc",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sự chú ý xã hội và mối quan hệ tâm lý giữa các cá nhân trong nhóm",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Mức lương trả theo sản phẩm giản đơn",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Mức độ giám sát khắt khe của quản đốc",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Nghiên cứu của Elton Mayo tại nhà máy Western Electric."
   }
 ]

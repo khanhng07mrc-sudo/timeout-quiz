@@ -63,6 +63,16 @@ import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
 import { checkPlayerJoinLimit, checkActionDebounce, MAX_PLAYERS_PER_ROOM } from "./rate-limiter";
 import { getBroadTopic } from "./topics";
+import {
+  roomTieBreakers,
+  cleanupTieBreaker,
+  checkAndTriggerTieBreakerIfTied,
+  handleTieBreakerBuzz,
+  handleTieBreakerAnswer,
+  handleTieBreakerLuckyPick,
+  launchTieBreakerQuestion,
+  launchTieBreakerLuckyDraw,
+} from "./game-engine/tie-breaker";
 
 type IO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -1006,6 +1016,7 @@ export function cleanupRoomInMemory(roomId: string) {
       if (key.startsWith(prefix)) roomStealEndsAt.delete(key);
     }
     roomQuestionStartedAt.delete(roomId);
+    cleanupTieBreaker(roomId);
   } catch (err) {
     console.error(`[cleanupRoomInMemory] Error clearing room ${roomId}:`, err);
   }
@@ -1553,6 +1564,9 @@ export function registerSocketHandlers(io: IO) {
           if (roomTournaments.has(room.id)) {
             socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
           }
+          if (roomTieBreakers.has(room.id)) {
+            socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
+          }
           const currentQ = room.quizBank?.questions?.[room.currentQuestion];
           if (currentQ) {
             const qKey = `${room.id}:${currentQ.id}`;
@@ -1727,6 +1741,10 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
+        if (roomTieBreakers.has(room.id)) {
+          socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
+        }
+
         callback?.({ success: true, hostKey: room.hostKey, roomState });
       } catch (err) {
         console.error("[admin:join]", err);
@@ -1891,6 +1909,9 @@ export function registerSocketHandlers(io: IO) {
         }
         if (roomTournaments.has(room.id)) {
           socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
+        }
+        if (roomTieBreakers.has(room.id)) {
+          socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
         }
 
         if (roomPrepareStates.has(room.id)) {
@@ -3538,11 +3559,8 @@ export function registerSocketHandlers(io: IO) {
         if (diceState) {
           const allFinished = Object.values(diceState.teamPositions).every((p) => p.hasFinished);
           if (allFinished) {
-            room.status = "FINISHED";
-            roomCache.set(room.id, room);
-            prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
-            const leaderboard = await buildLeaderboard(room.id);
-            io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+            const ended = await safelyFinishGame({ io, room, questions });
+            if (!ended) return;
             return;
           }
           io.to(`room:${room.code}`).emit("game:dice:update", diceState);
@@ -3589,22 +3607,16 @@ export function registerSocketHandlers(io: IO) {
       const usedCount = roomUsedQuestions.get(room.id)?.size ?? 0;
       if (usedCount >= targetQuestions) {
         stopQuestionTimer(room.id);
-        room.status = "FINISHED";
-        roomCache.set(room.id, room);
-        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io, room, questions });
+        if (!ended) return;
         return;
       }
 
       const nextQ = getNextUniqueQuestion(room.id, questions);
       if (!nextQ) {
         stopQuestionTimer(room.id);
-        room.status = "FINISHED";
-        roomCache.set(room.id, room);
-        prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io, room, questions });
+        if (!ended) return;
         return;
       }
 
@@ -4142,10 +4154,8 @@ export function registerSocketHandlers(io: IO) {
         // Theo quy tắc: Hết câu hỏi mà chưa ai thắng hoặc không dùng hết ô -> Dừng luôn cuộc chơi và tính hạng luôn
         gridState.selectedCellAnimation = false;
         io.to(`room:${room.code}`).emit("game:grid:update", gridState);
-        room.status = "FINISHED";
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
-        const leaderboard = await buildLeaderboard(room.id);
-        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io, room, questions: rawQuestions });
+        if (!ended) return;
         return;
       }
 
@@ -5084,9 +5094,8 @@ export function registerSocketHandlers(io: IO) {
 
       const nextTurnIndex = questState.currentTurnIndex + 1;
       if (nextTurnIndex >= questState.totalTurns) {
-        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
-        const leaderboard = await buildLeaderboard(room.id);
-        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        const ended = await safelyFinishGame({ io, room, questions: questState.questions });
+        if (!ended) return;
         return;
       }
 
@@ -6656,6 +6665,129 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("room:state", state);
     });
 
+    // ── Tie-Breaker Handlers ─────────────────────────────────────────────────
+    socket.on("tie_breaker:buzz", async () => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session) {
+        const playerId = playerSockets.get(socket.id);
+        if (playerId) {
+          const player = await prisma.player.findUnique({
+            where: { id: playerId },
+            include: { room: true, team: true },
+          });
+          if (player && player.room && player.teamId) {
+            session = {
+              playerId: player.id,
+              playerName: player.name,
+              roomId: player.room.id,
+              roomCode: player.room.code,
+              teamId: player.teamId,
+              teamName: player.team?.name ?? player.name,
+              roomMode: player.room.mode as any,
+              teamMode: player.room.teamMode as any,
+            };
+            socketPlayerSessions.set(socket.id, session);
+            playerSessions.set(player.id, session);
+          }
+        }
+      }
+      if (!session || !session.teamId) return;
+
+      const currentRoomId = session.roomId;
+      handleTieBreakerBuzz({
+        io,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        teamName: session.teamName || "Thí sinh",
+        playerName: session.playerName || "Thí sinh",
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        },
+      });
+    });
+
+    socket.on("tie_breaker:answer", async ({ optionId }: { optionId: string }) => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session || !session.teamId) return;
+
+      const currentRoomId = session.roomId;
+      handleTieBreakerAnswer({
+        io,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        optionId,
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        },
+      });
+    });
+
+    socket.on("tie_breaker:lucky_pick", async ({ envelopeId }: { envelopeId: number }) => {
+      let session = socketPlayerSessions.get(socket.id);
+      if (!session || !session.teamId) return;
+
+      const currentRoomId = session.roomId;
+      handleTieBreakerLuckyPick({
+        io,
+        roomId: currentRoomId,
+        teamId: session.teamId,
+        envelopeId,
+        onGameEnd: async () => {
+          const room = await prisma.room.findUnique({ where: { id: currentRoomId } });
+          if (!room) return;
+          room.status = "FINISHED";
+          roomCache.set(room.id, room);
+          await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+          const leaderboard = await buildLeaderboard(room.id);
+          io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        },
+      });
+    });
+
+    socket.on("admin:tie_breaker:advance", async (payload?: { code?: string; action?: "NEXT_QUESTION" | "START_LUCKY_DRAW" | "FORCE_CHAMPION"; winnerTeamId?: string }) => {
+      const room = await getAdminRoom(socket, payload?.code);
+      if (!room) return;
+
+      const tieState = roomTieBreakers.get(room.id);
+      if (!tieState) return;
+
+      const onGameEnd = async () => {
+        room.status = "FINISHED";
+        roomCache.set(room.id, room);
+        await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
+        const leaderboard = await buildLeaderboard(room.id);
+        io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+      };
+
+      if (payload?.action === "NEXT_QUESTION") {
+        launchTieBreakerQuestion({ io, roomId: room.id, qIndex: tieState.questionIndex + 1, onGameEnd });
+      } else if (payload?.action === "START_LUCKY_DRAW") {
+        launchTieBreakerLuckyDraw({ io, roomId: room.id, onGameEnd });
+      } else if (payload?.action === "FORCE_CHAMPION" && payload.winnerTeamId) {
+        tieState.status = "COMPLETED";
+        tieState.championTeamId = payload.winnerTeamId;
+        const championTeam = tieState.tiedTeams.find((t) => t.id === payload.winnerTeamId);
+        tieState.championTeamName = championTeam?.name;
+        roomTieBreakers.set(room.id, tieState);
+        io.to(`room:${room.code}`).emit("game:tie_breaker:state", tieState);
+        setTimeout(async () => {
+          await onGameEnd();
+        }, 3000);
+      }
+    });
+
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
@@ -7971,12 +8103,8 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
   const isMatchOver = gridState.turnsCompleted >= gridState.maxTurns || gridState.cells.every((c) => c.isCompleted);
 
   if (isMatchOver) {
-    await prisma.room.update({
-      where: { id: roomId },
-      data: { status: "FINISHED", endedAt: new Date() },
-    });
-    const leaderboard = await buildLeaderboard(roomId);
-    io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+    const ended = await safelyFinishGame({ io, room });
+    if (!ended) return;
   } else {
     io.to(`room:${roomCode}`).emit("game:question:clear");
     io.to(`room:${roomCode}`).emit("game:grid:update", gridState);
@@ -9893,12 +10021,18 @@ async function buildLeaderboard(roomId: string) {
   });
   if (!room) return [];
 
+  const championId = roomTieBreakers.get(roomId)?.championTeamId;
+
   if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(roomId);
     if (diceState) {
       return room.teams
         .slice()
         .sort((a, b) => {
+          if (championId) {
+            if (a.id === championId) return -1;
+            if (b.id === championId) return 1;
+          }
           const progA = diceState.teamPositions[a.id];
           const progB = diceState.teamPositions[b.id];
           if (progA?.hasFinished && progB?.hasFinished) {
@@ -9930,7 +10064,14 @@ async function buildLeaderboard(roomId: string) {
 
   if (room.teamMode === "TEAM") {
     return room.teams
-      .sort((a, b) => b.score - a.score)
+      .slice()
+      .sort((a, b) => {
+        if (championId) {
+          if (a.id === championId && a.score === b.score) return -1;
+          if (b.id === championId && a.score === b.score) return 1;
+        }
+        return b.score - a.score;
+      })
       .map((t, i) => ({
         rank: i + 1,
         teamId: t.id,
@@ -9942,7 +10083,14 @@ async function buildLeaderboard(roomId: string) {
   } else {
     const validPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
     return validPlayers
-      .sort((a, b) => b.score - a.score)
+      .slice()
+      .sort((a, b) => {
+        if (championId) {
+          if (a.id === championId && a.score === b.score) return -1;
+          if (b.id === championId && a.score === b.score) return 1;
+        }
+        return b.score - a.score;
+      })
       .map((p, i) => ({
         rank: i + 1,
         playerId: p.id,
@@ -9952,4 +10100,45 @@ async function buildLeaderboard(roomId: string) {
         totalAnswers: room.answers.filter((a) => a.playerId === p.id).length,
       }));
   }
+}
+
+async function safelyFinishGame({
+  io,
+  room,
+  questions,
+}: {
+  io: IO;
+  room: any;
+  questions?: any[];
+}): Promise<boolean> {
+  const leaderboard = await buildLeaderboard(room.id);
+  const shouldEnd = await checkAndTriggerTieBreakerIfTied({
+    io,
+    room,
+    leaderboard,
+    roomQuestions: questions,
+    onGameEnd: async () => {
+      room.status = "FINISHED";
+      roomCache.set(room.id, room);
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { status: "FINISHED", endedAt: new Date() },
+      }).catch(console.error);
+      const finalLb = await buildLeaderboard(room.id);
+      io.to(`room:${room.code}`).emit("game:ended", { leaderboard: finalLb });
+    },
+  });
+
+  if (!shouldEnd) {
+    return false;
+  }
+
+  room.status = "FINISHED";
+  roomCache.set(room.id, room);
+  await prisma.room.update({
+    where: { id: room.id },
+    data: { status: "FINISHED", endedAt: new Date() },
+  }).catch(console.error);
+  io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+  return true;
 }

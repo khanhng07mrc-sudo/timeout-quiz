@@ -980,22 +980,30 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-black text-indigo-300 uppercase tracking-wider text-[11px]">
-                    🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)
+                    {isPenaltySurvivalMode
+                      ? "💀 LẬT CẶP SINH TỬ (10 THẺ - 5 CẶP)"
+                      : "🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)"}
                   </span>
                   <div className="flex items-center gap-2">
                     {memoryPairsState?.isBombRescueActive ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/30 text-amber-300 border border-amber-400 animate-pulse">
-                        ⚠️ LƯỢT GIẢI CỨU: 3 LÁ
+                        ⚠️ LƯỢT GIẢI CỨU (CHỌN 2 LÁ)
                       </span>
                     ) : (
                       <span
                         className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                          memoryPairsState?.round === 2
+                          isPenaltySurvivalMode
+                            ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
+                            : memoryPairsState?.round === 2
                             ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
                             : "bg-indigo-500/30 text-indigo-200 border border-indigo-500/40"
                         }`}
                       >
-                        {memoryPairsState?.round === 2 ? "🔥 VÒNG 2 SINH TỬ" : "✨ VÒNG 1"}
+                        {isPenaltySurvivalMode
+                          ? "💀 1 LẦN CHƠI DUY NHẤT"
+                          : memoryPairsState?.round === 2
+                          ? "🔥 VÒNG 2 SINH TỬ"
+                          : "✨ VÒNG 1"}
                       </span>
                     )}
                     <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
@@ -1005,7 +1013,13 @@ export default function MysteryQuestBoard({
                 </div>
                 {memoryPairsState?.isBombRescueActive ? (
                   <p className="text-[11px] text-amber-200 font-bold leading-snug animate-pulse">
-                    ⚠️ Đã ghép phải 2 lá của cặp phạt! Mở khóa lượt giải cứu (lá thứ 3): Ghép trúng cặp thưởng để thoát hiểm. Nếu trùng cặp phạt còn lại, hệ thống sẽ hủy cặp cũ và phạt theo cặp mới!
+                    {isPenaltySurvivalMode
+                      ? "⚠️ Đã mở trúng 2 lá tiêu cực cùng loại! Hãy chọn 2 lá còn lại giống nhau để thay sang hình phạt mới (hoặc Thoát Hiểm 0đ), nếu không sẽ giữ hình phạt cũ!"
+                      : "⚠️ Đã ghép phải 2 lá của cặp phạt! Mở khóa lượt giải cứu (lá thứ 3): Ghép trúng cặp thưởng để thoát hiểm. Nếu trùng cặp phạt còn lại, hệ thống sẽ hủy cặp cũ và phạt theo cặp mới!"}
+                  </p>
+                ) : isPenaltySurvivalMode ? (
+                  <p className="text-[11px] text-white/80 leading-snug">
+                    💀 Mọi lá khi lật đều luôn để ngửa. Ghép trúng cặp Thoát Hiểm 🕊️ để không bị trừ điểm. Nếu lật đủ 2 lá tiêu cực cùng loại, bạn sẽ phải chọn 2 lá giống nhau để thay hình phạt!
                   </p>
                 ) : (memoryPairsState?.keptBombTileIds && memoryPairsState.keptBombTileIds.length > 0) ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
@@ -1022,7 +1036,7 @@ export default function MysteryQuestBoard({
             )}
 
             {/* MEMORY PAIRS SECOND CHANCE MODAL */}
-            {miniGameType === "MEMORY_PAIRS" && memoryPairsState?.promptSecondChance && (
+            {miniGameType === "MEMORY_PAIRS" && !isPenaltySurvivalMode && memoryPairsState?.promptSecondChance && (
               <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-2 z-30">
                 <div className="text-3xl animate-pulse">🔀</div>
                 <h4 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wider">
@@ -1330,6 +1344,28 @@ export default function MysteryQuestBoard({
                 </p>
                 <div className="p-2 rounded-xl bg-teal-500/20 border border-teal-400/50 text-teal-300 font-black text-sm font-mono">
                   {storyResult?.rewardText || "Bảo toàn thành công!"}
+                </div>
+              </div>
+            ) : turnFinishedReason === "SURVIVAL_ESCAPE" ? (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-emerald-950/90 to-black/90 border-2 border-emerald-400 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">🕊️</div>
+                <h3 className="text-lg sm:text-xl font-black text-emerald-300">THOÁT HIỂM SINH TỬ THÀNH CÔNG!</h3>
+                <p className="text-xs text-emerald-100 max-w-md mx-auto">
+                  Kỳ tích xuất hiện! Đội <strong className="text-white">{currentTurnTeamName}</strong> đã lật trúng cặp Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim (0đ)!
+                </p>
+                <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-300 font-black text-xs font-mono">
+                  {storyResult?.rewardText || "0đ (Bảo toàn điểm số)"}
+                </div>
+              </div>
+            ) : turnFinishedReason === "SURVIVAL_FAILED" ? (
+              <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/90 to-black/90 border-2 border-rose-500 shadow-2xl space-y-1.5">
+                <div className="text-3xl sm:text-4xl animate-bounce">💀</div>
+                <h3 className="text-lg sm:text-xl font-black text-rose-400">HÌNH PHẠT SINH TỬ KÍCH HOẠT!</h3>
+                <p className="text-xs text-rose-100 max-w-md mx-auto">
+                  Đội <strong className="text-white">{currentTurnTeamName}</strong> không thể né bẫy phạt của Chế độ Sinh Tử!
+                </p>
+                <div className="p-2 rounded-xl bg-rose-500/20 border border-rose-400/50 text-rose-300 font-black text-xs font-mono">
+                  {storyResult?.rewardText || "Bị trừ điểm phạt!"}
                 </div>
               </div>
             ) : (
@@ -2270,7 +2306,8 @@ export default function MysteryQuestBoard({
             }`}>
               {tiles.map((tile) => {
                 const isMatched = effectiveMatchedPairKey === tile.pairKey;
-                const isBomb = tile.type !== "REWARD";
+                const isEscapeSafe = tile.type === "ESCAPE_SAFE" || tile.pairKey === "PAIR_ESCAPE";
+                const isBomb = !isEscapeSafe && tile.type !== "REWARD";
 
                 const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
                 if (!isCardOpened) {
@@ -2320,7 +2357,9 @@ export default function MysteryQuestBoard({
                   className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
                     isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
                   } ${
-                    isBomb
+                    isEscapeSafe
+                      ? "bg-gradient-to-b from-emerald-950 via-teal-950 to-black border-emerald-400 text-emerald-200"
+                      : isBomb
                       ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
                       : isSteal
                       ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
@@ -2332,9 +2371,13 @@ export default function MysteryQuestBoard({
                     <span
                       className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
                         isMatched
-                          ? isSteal
+                          ? isEscapeSafe
+                            ? "bg-emerald-400 text-black font-extrabold"
+                            : isSteal
                             ? "bg-rose-500 text-white font-extrabold"
                             : "bg-yellow-400 text-black font-extrabold"
+                          : isEscapeSafe
+                          ? "bg-emerald-400 text-black font-extrabold"
                           : isBomb
                           ? "bg-red-500/30 text-red-300"
                           : isSteal
@@ -2342,7 +2385,19 @@ export default function MysteryQuestBoard({
                           : "bg-emerald-500/30 text-emerald-300"
                       }`}
                     >
-                      {isMatched ? (isSteal ? "CƯỚP! 🗡️" : "CẶP! ⭐") : isBomb ? "BOM" : isSteal ? "CƯỚP 🗡️" : "THƯỞNG"}
+                      {isMatched
+                        ? isEscapeSafe
+                          ? "THOÁT! 🕊️"
+                          : isSteal
+                          ? "CƯỚP! 🗡️"
+                          : "CẶP! ⭐"
+                        : isEscapeSafe
+                        ? "THOÁT HIỂM 🕊️"
+                        : isBomb
+                        ? "BOM"
+                        : isSteal
+                        ? "CƯỚP 🗡️"
+                        : "THƯỞNG"}
                     </span>
                   </div>
 
@@ -2356,12 +2411,20 @@ export default function MysteryQuestBoard({
                     </p>
                     <p
                       className={`text-[9px] sm:text-[10px] font-black font-mono mt-0.2 ${
-                        isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
+                        isEscapeSafe
+                          ? "text-emerald-300"
+                          : isBomb
+                          ? "text-red-400"
+                          : isSteal
+                          ? "text-rose-300"
+                          : "text-amber-300"
                       }`}
                     >
-                      {isBomb
+                      {isEscapeSafe
+                        ? "0đ (Thoát Hiểm)"
+                        : isBomb
                         ? (tile.type === "BOMB_SMOKE" || tile.pairKey === "PAIR_TRAP" || tile.deltaPoints === 0)
-                          ? "0đ (Mất câu)"
+                          ? (tile.deltaPoints && tile.deltaPoints < 0 ? `${tile.deltaPoints}đ` : "0đ (Mất câu)")
                           : `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                         : isSteal
                         ? `Cướp +${tile.deltaPoints}đ`

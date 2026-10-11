@@ -1805,22 +1805,17 @@ function generateMysteryStageForTurn({
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(effectiveBasePoints, roundOptions);
       if (getPerkType(promoPerk) === "PEEK_PROMO") {
-        const safeRewardTiles = tiles.filter(
-          (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
-        );
-        const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey)));
-        if (availablePairKeys.length > 0) {
-          const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
-          const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
-          if (matchingPair.length >= 2) {
-            const [first, second] = matchingPair;
-            first.isPeeked = true;
-            first.peekLabel = "C\u1EB6P AN TO\xC0N";
-            first.peekIcon = "\u2728";
-            second.isPeeked = true;
-            second.peekLabel = "C\u1EB6P AN TO\xC0N";
-            second.peekIcon = "\u2728";
-          }
+        const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP");
+        const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+        if (shuffledSafe.length >= 2) {
+          const first = shuffledSafe[0];
+          const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+          first.isPeeked = true;
+          first.peekLabel = "AN TO\xC0N";
+          first.peekIcon = "\u2728";
+          second.isPeeked = true;
+          second.peekLabel = "AN TO\xC0N";
+          second.peekIcon = "\u2728";
         }
       }
       memoryPairsState = {
@@ -4289,22 +4284,19 @@ function synchronizeMysteryStageWithQuestionPoints({
         state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
         state.memoryPairsState = getInitialMemoryPairsState(state.promoPerk);
         if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-          const safeRewardTiles = state.tiles.filter(
-            (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
+          const safeTiles = state.tiles.filter(
+            (t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
           );
-          const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey)));
-          if (availablePairKeys.length > 0) {
-            const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
-            const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
-            if (matchingPair.length >= 2) {
-              const [first, second] = matchingPair;
-              first.isPeeked = true;
-              first.peekLabel = "C\u1EB6P AN TO\xC0N";
-              first.peekIcon = "\u2728";
-              second.isPeeked = true;
-              second.peekLabel = "C\u1EB6P AN TO\xC0N";
-              second.peekIcon = "\u2728";
-            }
+          const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+          if (shuffledSafe.length >= 2) {
+            const first = shuffledSafe[0];
+            const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+            first.isPeeked = true;
+            first.peekLabel = "AN TO\xC0N";
+            first.peekIcon = "\u2728";
+            second.isPeeked = true;
+            second.peekLabel = "AN TO\xC0N";
+            second.peekIcon = "\u2728";
           }
         }
       }

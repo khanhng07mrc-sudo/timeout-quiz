@@ -1526,23 +1526,18 @@ export function generateMysteryStageForTurn({
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(effectiveBasePoints, roundOptions);
       if (getPerkType(promoPerk) === "PEEK_PROMO") {
-        // Mắt Thần Soi Bài: Soi sáng chính xác 1 CẶP AN TOÀN TRÙNG NHAU (cùng pairKey)
-        const safeRewardTiles = tiles.filter(
-          (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
-        );
-        const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey!)));
-        if (availablePairKeys.length > 0) {
-          const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
-          const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
-          if (matchingPair.length >= 2) {
-            const [first, second] = matchingPair;
-            first.isPeeked = true;
-            first.peekLabel = "CẶP AN TOÀN";
-            first.peekIcon = "✨";
-            second.isPeeked = true;
-            second.peekLabel = "CẶP AN TOÀN";
-            second.peekIcon = "✨";
-          }
+        // Mắt Thần Soi Bài: Soi sáng 2 lá an toàn thuộc 2 cặp khác nhau (giúp né bom, không kiến tạo chiến thắng chắc chắn)
+        const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP");
+        const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+        if (shuffledSafe.length >= 2) {
+          const first = shuffledSafe[0];
+          const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+          first.isPeeked = true;
+          first.peekLabel = "AN TOÀN";
+          first.peekIcon = "✨";
+          second.isPeeked = true;
+          second.peekLabel = "AN TOÀN";
+          second.peekIcon = "✨";
         }
       }
       memoryPairsState = {
@@ -5088,23 +5083,20 @@ export function synchronizeMysteryStageWithQuestionPoints({
         state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
         state.memoryPairsState = getInitialMemoryPairsState(state.promoPerk);
         if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-          // Mắt Thần Soi Bài: Soi sáng chính xác 1 CẶP AN TOÀN TRÙNG NHAU (cùng pairKey)
-          const safeRewardTiles = state.tiles.filter(
-            (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
+          // Mắt Thần Soi Bài: Soi sáng 2 lá an toàn thuộc 2 cặp khác nhau (giúp né bom, không kiến tạo chiến thắng chắc chắn)
+          const safeTiles = state.tiles.filter(
+            (t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
           );
-          const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey!)));
-          if (availablePairKeys.length > 0) {
-            const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
-            const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
-            if (matchingPair.length >= 2) {
-              const [first, second] = matchingPair;
-              first.isPeeked = true;
-              first.peekLabel = "CẶP AN TOÀN";
-              first.peekIcon = "✨";
-              second.isPeeked = true;
-              second.peekLabel = "CẶP AN TOÀN";
-              second.peekIcon = "✨";
-            }
+          const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
+          if (shuffledSafe.length >= 2) {
+            const first = shuffledSafe[0];
+            const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
+            first.isPeeked = true;
+            first.peekLabel = "AN TOÀN";
+            first.peekIcon = "✨";
+            second.isPeeked = true;
+            second.peekLabel = "AN TOÀN";
+            second.peekIcon = "✨";
           }
         }
       }

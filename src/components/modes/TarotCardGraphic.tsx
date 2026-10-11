@@ -1,6 +1,6 @@
 import React from "react";
 
-export type TarotMajorKey = "THE_SUN" | "THE_EMPEROR" | "THE_FOOL" | "DEATH" | "THE_KNIGHT" | "THE_STAR";
+export type TarotMajorKey = "THE_SUN" | "THE_EMPEROR" | "THE_FOOL" | "DEATH" | "THE_KNIGHT" | "THE_STAR" | "THE_PEACE";
 
 export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
   key: TarotMajorKey;
@@ -13,6 +13,18 @@ export function getTarotCardMeta(tarotName?: string, storyTitle?: string): {
   glowColor: string;
 } {
   const text = `${tarotName || ""} ${storyTitle || ""}`.toLowerCase();
+  if (text.includes("bình yên") || text.includes("peace")) {
+    return {
+      key: "THE_PEACE",
+      roman: "XXI",
+      nameEn: "PEACE",
+      nameVi: "Bình Yên Thoát Nạn",
+      tagline: "Hóa Giải Kiếp Nạn",
+      bgGradient: "from-emerald-950 via-teal-950 to-stone-950",
+      borderColor: "border-emerald-400",
+      glowColor: "rgba(16, 185, 129, 0.4)",
+    };
+  }
   if (text.includes("mặt trời") || text.includes("sun")) {
     return {
       key: "THE_SUN",

@@ -1433,6 +1433,7 @@ export default function AdminRoomPage() {
                 onUsePeek={() => emit("admin:mystery:use_peek", { code })}
                 onDrawTarot={() => emit("admin:mystery:draw_tarot", { code })}
                 onSpinTarotWheel={(powerPercent) => emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent })}
+                onSurvivalChoice={(choice) => emit("admin:mystery:survival_choice", { choice, code })}
                 onAdjustScore={(teamId, delta, setScore) => {
                   const currentTeam = roomState?.teams.find((t) => t.id === teamId);
                   if (!currentTeam) return;

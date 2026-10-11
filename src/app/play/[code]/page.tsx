@@ -1644,6 +1644,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
                 }
               }}
+              onSurvivalChoice={(choice) => {
+                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:survival_choice", { choice });
+                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_SURVIVAL_CHOICE", action: "mystery_survival_choice", choice, teamId: effectiveTeamId }, "*");
+                }
+              }}
             />
           </div>
         ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
@@ -1915,6 +1922,13 @@ export default function PlayPage() {
                       socketRef.current.emit("game:mystery:spin_tarot_wheel", { powerPercent });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
+                  onSurvivalChoice={(choice) => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:survival_choice", { choice });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_SURVIVAL_CHOICE", action: "mystery_survival_choice", choice, teamId: effectiveTeamId }, "*");
                     }
                   }}
                 />

@@ -159,11 +159,15 @@ export function resolveBombOutcome({
   team,
   allTeams = [],
   storyDescription,
+  baseQuestionPoints = 20,
+  isSurvivalPenalty = false,
 }: {
   bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
   team: MysteryTeamRef;
   allTeams?: MysteryTeamRef[];
   storyDescription?: string;
+  baseQuestionPoints?: number;
+  isSurvivalPenalty?: boolean;
 }): {
   penalty: number;
   penaltyText: string;
@@ -178,6 +182,25 @@ export function resolveBombOutcome({
   const X = allTeams.length;
 
   if (bombType === "BOMB_SMOKE") {
+    if (isSurvivalPenalty) {
+      const penalty = Math.min(currentScore, roundToMultipleOfFive(baseQuestionPoints * 0.5));
+      const penaltyText = `Khói mù bao phủ! Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${penalty}đ)!`;
+      return {
+        penalty,
+        penaltyText,
+        giftedPoints: 0,
+        bombExploded: {
+          type: "SMOKE",
+          title: "Bom Khói 💨",
+          description: storyDescription || "Khói mù bao phủ! Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi.",
+          penaltyText,
+          donorTeamId: team.id,
+          donorTeamName: team.name,
+          deductedPoints: penalty,
+        },
+      };
+    }
+
     const penaltyText = "Mất sạch điểm của câu này. Tổng điểm của đội không đổi.";
     return {
       penalty: 0,
@@ -257,9 +280,13 @@ export function resolveBombOutcome({
     };
   }
 
-  // BOMB_CHARITY: Mất 50% số điểm (làm tròn bội số của 5), tặng cho đội có điểm cao nhất
-  const rawHalf = currentScore * 0.5;
-  const giftedPoints = currentScore > 0 ? Math.min(currentScore, roundToMultipleOfFive(rawHalf)) : 0;
+  // BOMB_CHARITY: Ưu tiên phương án trừ thấp hơn giữa:
+  // 1. Trừ nửa số điểm của đội (roundToMultipleOfFive(currentScore * 0.5))
+  // 2. Trao 1.5 lần điểm gốc câu hỏi (roundToMultipleOfFive(baseQuestionPoints * 1.5))
+  const rawHalf = roundToMultipleOfFive(currentScore * 0.5);
+  const rawBaseMultiplier = roundToMultipleOfFive(baseQuestionPoints * 1.5);
+  const targetPenalty = Math.min(rawHalf, rawBaseMultiplier);
+  const giftedPoints = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
   let recipientTeamId: string | undefined = undefined;
   let recipientTeamName: string | undefined = undefined;
 
@@ -271,9 +298,13 @@ export function resolveBombOutcome({
     recipientTeamName = chosen.name;
   }
 
+  const penaltyReason = rawHalf <= rawBaseMultiplier
+    ? `50% điểm đội (-${giftedPoints}đ)`
+    : `1.5 lần điểm gốc câu hỏi (-${giftedPoints}đ)`;
+
   const penaltyText = recipientTeamName
-    ? `Bị trừ 50% điểm (-${giftedPoints}đ) và chuyển tặng toàn bộ cho Đội ${recipientTeamName}!`
-    : `Bị trừ 50% điểm (-${giftedPoints}đ)!`;
+    ? `Bị phạt theo phương án thấp hơn: ${penaltyReason} và chuyển tặng toàn bộ cho Đội ${recipientTeamName}!`
+    : `Bị phạt theo phương án thấp hơn: ${penaltyReason}!`;
 
   return {
     penalty: giftedPoints,
@@ -284,7 +315,7 @@ export function resolveBombOutcome({
     bombExploded: {
       type: "CHARITY",
       title: "Bom Từ Thiện 🎁",
-      description: storyDescription || "Lòng tốt bất đắc dĩ! Bị trừ 50% số điểm của đội và chuyển tặng toàn bộ cho đội đang dẫn đầu!",
+      description: storyDescription || "Lòng tốt bất đắc dĩ! Bị trừ theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng toàn bộ cho đội đang dẫn đầu!",
       penaltyText,
       donorTeamId: team.id,
       donorTeamName: team.name,
@@ -637,6 +668,109 @@ export function generateMemoryPairsTiles(
 }
 
 /**
+ * Tạo 10 thẻ (5 cặp) cho MEMORY_PAIRS trong Chế độ Sinh Tử (khi trả lời sai):
+ * - Chính xác 20% = 1 cặp Thoát Hiểm An Toàn 🕊️ (2 lá)
+ * - Chính xác 80% = 4 cặp Bẫy / Bom 💀 (8 lá: Bẫy trừ gốc, Bom Khói, Bom Hắc Ám, Bom Từ Thiện)
+ * - Tuyệt đối 0% cặp cộng điểm
+ */
+export function generateSurvivalMemoryPairsTiles(
+  basePoints: number = 20,
+  options?: {
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
+): MysteryTile[] {
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+
+  const pairs: Array<{
+    pairKey: string;
+    icon: string;
+    type: MysteryTileType;
+    storyTitle: string;
+    storyDescription: string;
+    effectType: MysteryTileEffectType;
+    deltaPoints: number;
+  }> = [
+    // 1. Cặp Thoát Hiểm (20% - 1 cặp)
+    {
+      pairKey: "PAIR_ESCAPE",
+      icon: "🕊️",
+      type: "ESCAPE_SAFE",
+      storyTitle: "🕊️ CẶP THOÁT HIỂM AN TOÀN!",
+      storyDescription: "Kỳ tích xuất hiện! Ghép trúng cặp Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+    },
+    // 2. Cặp Bẫy Trừ Gốc
+    {
+      pairKey: "PAIR_TRAP_BASE",
+      icon: "⚠️",
+      type: "BOMB_MINOR",
+      storyTitle: "⚠️ CẶP BẪY TRỪ ĐIỂM GỐC!",
+      storyDescription: `Ghép trúng bẫy tử thần: Bị trừ ${pPenalty} điểm gốc câu hỏi!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+    },
+    // 3. Cặp Bom Khói (Trừ 50% điểm gốc)
+    {
+      pairKey: "PAIR_BOMB_SMOKE",
+      icon: "💨",
+      type: "BOMB_SMOKE",
+      storyTitle: "💨 CẶP BOM KHÓI SINH TỬ!",
+      storyDescription: `Ghép trúng bẫy khói: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty,
+    },
+    // 4. Cặp Bom Hắc Ám
+    {
+      pairKey: "PAIR_BOMB_DARK",
+      icon: "🌑",
+      type: "BOMB_DARK",
+      storyTitle: "🌑 CẶP BOM HẮC ÁM!",
+      storyDescription: "Ghép trúng kíp nổ hắc ám: Rút cạn điểm số chia đều cho các đối thủ!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+    },
+    // 5. Cặp Bom Từ Thiện
+    {
+      pairKey: "PAIR_BOMB_CHARITY",
+      icon: "🎁",
+      type: "BOMB_CHARITY",
+      storyTitle: "🎁 CẶP BOM TỪ THIỆN!",
+      storyDescription: "Ghép trúng bom từ thiện: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+    },
+  ];
+
+  const tileItems: Omit<MysteryTile, "id" | "label">[] = [];
+  pairs.forEach((p) => {
+    for (let c = 0; c < 2; c++) {
+      tileItems.push({
+        icon: p.icon,
+        isOpened: false,
+        type: p.type,
+        storyTitle: p.storyTitle,
+        storyDescription: p.storyDescription,
+        effectType: p.effectType,
+        deltaPoints: p.deltaPoints,
+        pairKey: p.pairKey,
+        isPeeked: false,
+      });
+    }
+  });
+
+  const shuffled = tileItems.sort(() => Math.random() - 0.5);
+  return shuffled.map((item, idx) => ({
+    ...item,
+    id: idx + 1,
+    label: `Thẻ #${idx + 1}`,
+    isOpened: false,
+  }));
+}
+
+/**
  * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (3 doors).
  */
 /**
@@ -765,6 +899,104 @@ export function generateOneShotDoorsTiles(
       bombDoorType: d.bombDoorType,
     };
   });
+}
+
+/**
+ * Tạo 5 cánh cửa cho Chế độ Sinh Tử (khi trả lời sai):
+ * - Chính xác 20% = 1 Cửa Thoát Hiểm An Toàn (Giữ điểm, bảo toàn tim)
+ * - Chính xác 80% = 4 Cửa Bẫy / Bom (Bẫy trừ điểm gốc, Bom Khói -50% gốc, Bom Hắc Ám, Bom Từ Thiện)
+ * - Tuyệt đối 0% cửa cộng điểm
+ */
+export function generateSurvivalOneShotDoorsTiles(
+  basePoints: number = 20,
+  options?: {
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  }
+): MysteryTile[] {
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+
+  const doors: Array<{
+    icon: string;
+    type: MysteryTileType;
+    storyTitle: string;
+    storyDescription: string;
+    effectType: MysteryTileEffectType;
+    deltaPoints: number;
+    isBasePenalty?: boolean;
+    isBombDoor?: boolean;
+    bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
+  }> = [
+    // 1. Cửa Thoát Hiểm An Toàn (20% - 1 cửa duy nhất)
+    {
+      icon: "🕊️",
+      type: "ESCAPE_SAFE",
+      storyTitle: "🕊️ CỬA THOÁT HIỂM AN TOÀN!",
+      storyDescription: "May mắn tuyệt đỉnh! Bạn đã mở đúng Cửa Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+    },
+    // 2. Cửa Bẫy Trừ Điểm Gốc
+    {
+      icon: "⚠️",
+      type: "BOMB_MINOR",
+      storyTitle: "⚠️ CỬA BẪY TRỪ ĐIỂM GỐC!",
+      storyDescription: `Dính bẫy phạt sinh tử: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      isBasePenalty: true,
+    },
+    // 3. Cửa Bom Khói (Trừ 50% điểm gốc)
+    {
+      icon: "💨",
+      type: "BOMB_SMOKE",
+      storyTitle: "💨 CỬA BOM KHÓI SINH TỬ!",
+      storyDescription: `Khói mù bao phủ: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty,
+      isBombDoor: true,
+      bombDoorType: "BOMB_SMOKE",
+    },
+    // 4. Cửa Bom Hắc Ám (Chia điểm đối thủ)
+    {
+      icon: "🌑",
+      type: "BOMB_DARK",
+      storyTitle: "🌑 CỬA BOM HẮC ÁM!",
+      storyDescription: "Năng lượng hắc ám bùng phát: Rút cạn điểm số chia đều cho các đội đối thủ!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+      isBombDoor: true,
+      bombDoorType: "BOMB_DARK",
+    },
+    // 5. Cửa Bom Từ Thiện (Tặng Top 1)
+    {
+      icon: "🎁",
+      type: "BOMB_CHARITY",
+      storyTitle: "🎁 CỬA BOM TỪ THIỆN!",
+      storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+      isBombDoor: true,
+      bombDoorType: "BOMB_CHARITY",
+    },
+  ];
+
+  const shuffled = [...doors].sort(() => Math.random() - 0.5);
+
+  return shuffled.map((d, idx) => ({
+    id: idx + 1,
+    label: `Cửa #${idx + 1}`,
+    icon: d.icon,
+    isOpened: false,
+    type: d.type,
+    storyTitle: d.storyTitle,
+    storyDescription: d.storyDescription,
+    effectType: d.effectType,
+    deltaPoints: d.deltaPoints,
+    isPeeked: false,
+    bombDoorType: d.bombDoorType,
+  }));
 }
 
 /**
@@ -1048,6 +1280,103 @@ export function generateNextPushYourLuckCard({
 }
 
 /**
+ * Tạo lá bài cho PUSH_YOUR_LUCK trong Chế độ Sinh Tử (khi trả lời sai):
+ * - Chính xác 20% = Lá Thoát Hiểm An Toàn 🕊️ (Giữ điểm, bảo toàn tim)
+ * - Chính xác 80% = Lá Bẫy / Bom 💀 (Bẫy trừ gốc, Bom Khói, Bom Hắc Ám, Bom Từ Thiện)
+ * - Tuyệt đối 0% lá cộng điểm
+ */
+export function generateSurvivalPushYourLuckCard({
+  drawIndex = 1,
+  basePoints = 10,
+  teamScore = 0,
+  options,
+}: {
+  drawIndex?: number;
+  basePoints?: number;
+  teamScore?: number;
+  options?: {
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+  };
+}): MysteryTile {
+  const id = drawIndex;
+  const label = `Lá Sinh Tử #${drawIndex}`;
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+  const rand = Math.random();
+
+  // 20% Thoát Hiểm An Toàn
+  if (rand < 0.20) {
+    return {
+      id,
+      label,
+      icon: "🕊️",
+      isOpened: false,
+      type: "ESCAPE_SAFE",
+      storyTitle: "🕊️ LÁ THOÁT HIỂM AN TOÀN!",
+      storyDescription: "Thần may mắn mỉm cười! Lật trúng lá Thoát Hiểm ngoạn mục, bảo toàn nguyên vẹn điểm số và tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+    };
+  }
+
+  // 80% Bẫy / Bom (chia 4 loại đều nhau: 20% mỗi loại)
+  if (rand < 0.40) {
+    // Bẫy Trừ Gốc
+    return {
+      id,
+      label,
+      icon: "⚠️",
+      isOpened: false,
+      type: "TRAP",
+      storyTitle: "⚠️ LÁ BẪY TRỪ ĐIỂM GỐC!",
+      storyDescription: `Dính phải bẫy tử thần: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+    };
+  } else if (rand < 0.60) {
+    // Bom Khói (trừ 50% điểm gốc)
+    return {
+      id,
+      label,
+      icon: "💨",
+      isOpened: false,
+      type: "BOMB_SMOKE",
+      storyTitle: "💨 LÁ BOM KHÓI SINH TỬ!",
+      storyDescription: `Khói mù bao phủ: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty,
+    };
+  } else if (rand < 0.80) {
+    // Bom Hắc Ám
+    return {
+      id,
+      label,
+      icon: "🌑",
+      isOpened: false,
+      type: "BOMB_DARK",
+      storyTitle: "🌑 LÁ BOM HẮC ÁM!",
+      storyDescription: "Năng lượng bóng tối nuốt chửng: Rút cạn điểm số chia đều cho các đội đối thủ!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+    };
+  } else {
+    // Bom Từ Thiện
+    return {
+      id,
+      label,
+      icon: "🎁",
+      isOpened: false,
+      type: "BOMB_CHARITY",
+      storyTitle: "🎁 LÁ BOM TỪ THIỆN!",
+      storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+    };
+  }
+}
+
+/**
  * Generates initial tiles for Variant 3: PUSH_YOUR_LUCK (Endless Stacked Deck).
  * Starts with Card #1 face-down on top of the deck!
  */
@@ -1242,6 +1571,101 @@ export function generateMysteryStageForTurn({
     initialHeartsPerTeam: computedInitialHearts,
     teamHearts: resolvedTeamHearts,
   };
+}
+
+/**
+ * Khởi tạo bàn Minigame Sinh Tử (Survival Mode) khi đội trả lời SAI:
+ * - 80% Bẫy/Bom, 20% Thoát Hiểm, 0% Thưởng điểm
+ * - Toàn bộ Perk bị phong ấn / vô hiệu hóa
+ * - One-shot Survival (1 lượt mở quyết định)
+ */
+export function startSurvivalPenaltyMinigame({
+  state,
+  team,
+  allTeams = [],
+}: {
+  state: MysteryQuestState;
+  team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
+}): void {
+  const normType = normalizeMiniGameType(state.miniGameType);
+  const basePoints = state.baseQuestionPoints || 10;
+  const currentScore = team.score || 0;
+
+  state.isPenaltySurvivalMode = true;
+  state.survivalDilemmaPending = false;
+  state.phase = "PUSH_YOUR_LUCK";
+  state.potPoints = 0;
+  state.potMultiplier = 1;
+  state.promoPerk = undefined; // Vô hiệu hóa perks (A3)
+  state.hasShield = false;
+  state.cardsFlippedCount = 0;
+  state.lastFlippedTile = undefined;
+  state.bombExploded = undefined;
+  state.turnFinishedReason = undefined;
+  state.storyResult = undefined;
+
+  switch (normType) {
+    case "ONE_SHOT_DOORS": {
+      state.tiles = generateSurvivalOneShotDoorsTiles(basePoints, {
+        teams: allTeams,
+        currentTeamId: team.id,
+      });
+      state.oneShotState = {
+        chosenTileId: undefined,
+        selectedDoorIds: [],
+        penaltyDoorsCount: undefined,
+        hasBombDetected: false,
+        phase: "SELECTING",
+        revealedSafeDoorIds: [],
+        chosenFinalDoorId: undefined,
+        allRevealed: false,
+        peekAvailable: false,
+        peekActivated: false,
+        hasSwapped: false,
+      };
+      break;
+    }
+    case "PUSH_YOUR_LUCK": {
+      state.tiles = [
+        generateSurvivalPushYourLuckCard({
+          drawIndex: 1,
+          basePoints,
+          teamScore: currentScore,
+          options: { teams: allTeams, currentTeamId: team.id },
+        }),
+      ];
+      break;
+    }
+    case "MEMORY_PAIRS": {
+      state.tiles = generateSurvivalMemoryPairsTiles(basePoints, {
+        teams: allTeams,
+        currentTeamId: team.id,
+      });
+      state.memoryPairsState = {
+        firstFlippedTileId: null,
+        secondFlippedTileId: null,
+        thirdFlippedTileId: null,
+        keptBombTileIds: [],
+        isBombRescueActive: false,
+        activePenaltyPairKey: null,
+        attemptsUsed: 0,
+        maxAttempts: 1,
+        matchedPairKey: null,
+        isMismatchResolving: false,
+        round: 1,
+      };
+      break;
+    }
+    case "TAROT_DESTINY": {
+      state.tiles = [];
+      state.tarotState = {
+        isWheelSpinning: false,
+        isDrawn: false,
+      };
+      break;
+    }
+  }
 }
 
 /**
@@ -1645,6 +2069,99 @@ export function handleFlipCard({
         : { ...t }
     );
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE) - ONE-SHOT SURVIVAL:
+    // ─────────────────────────────────────────────────────────────────────────
+    if (state.isPenaltySurvivalMode) {
+      state.tiles.forEach((t) => { t.isOpened = true; });
+
+      if (firstTile && firstTile.pairKey === tile.pairKey) {
+        if (firstTile.pairKey === "PAIR_ESCAPE" || firstTile.type === "ESCAPE_SAFE") {
+          state.potPoints = 0;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_ESCAPE";
+          const oldScore = team.score || 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#10b981",
+            rewardText: "🕊️ Ghép trúng Cặp Thoát Hiểm An Toàn! Bảo toàn nguyên vẹn điểm số và tim!",
+            scoreDelta: 0,
+            oldScore,
+            newScore: oldScore,
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
+        } else {
+          let bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" = "BOMB_SMOKE";
+          if (firstTile.pairKey === "PAIR_BOMB_CHARITY" || firstTile.type === "BOMB_CHARITY") bombType = "BOMB_CHARITY";
+          else if (firstTile.pairKey === "PAIR_BOMB_DARK" || firstTile.type === "BOMB_DARK") bombType = "BOMB_DARK";
+
+          const outcome = resolveBombOutcome({
+            bombType,
+            team,
+            allTeams,
+            storyDescription: `Ghép trúng ${firstTile.storyTitle}!`,
+            baseQuestionPoints: state.baseQuestionPoints,
+            isSurvivalPenalty: true,
+          });
+
+          state.bombExploded = outcome.bombExploded;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_FAILED";
+          state.potPoints = 0;
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - outcome.penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+            scoreDelta: -outcome.penalty,
+            oldScore,
+            newScore,
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: true,
+            scorePenalty: outcome.penalty,
+            finalScoreDelta: -outcome.penalty,
+            giftedPoints: outcome.giftedPoints,
+            recipientTeamId: outcome.recipientTeamId,
+            recipientTeamName: outcome.recipientTeamName,
+            darkBombRecipients: outcome.darkBombRecipients,
+          };
+        }
+      } else {
+        const basePts = state.baseQuestionPoints || 10;
+        const penalty = Math.min(team.score || 0, basePts);
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `💀 Ghép cặp thất bại trong Chế độ Sinh Tử! Bẫy phạt kích hoạt trừ -${penalty} điểm gốc câu hỏi!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore,
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
+        };
+      }
+    }
+
     // TH 2.1: Đang trong lượt giải cứu (Card 1 đã kích hoạt giải cứu với 1 lá đã mở trước đó)
     // -> Giữ nguyên, mở khóa chờ lật tiếp lá thứ 3!
     if (memState.isBombRescueActive) {
@@ -1879,6 +2396,93 @@ export function handleFlipCard({
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE) - ONE-SHOT SURVIVAL: Chọn 1 cửa duy nhất
+    // ─────────────────────────────────────────────────────────────────────────
+    if (state.isPenaltySurvivalMode) {
+      osState.chosenFinalDoorId = tileId;
+      osState.phase = "RESOLVED";
+      osState.allRevealed = true;
+      state.tiles.forEach((t) => { t.isOpened = true; });
+
+      if (tile.type === "ESCAPE_SAFE") {
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_ESCAPE";
+        const oldScore = team.score || 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#10b981",
+          rewardText: "🕊️ May mắn tuyệt đỉnh! Bạn đã chọn trúng CỬA THOÁT HIỂM AN TOÀN, bảo toàn nguyên vẹn điểm số và tim!",
+          scoreDelta: 0,
+          oldScore,
+          newScore: oldScore,
+        };
+        return { updatedState: { ...state, tiles: [...state.tiles] }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+      }
+
+      const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType) || tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY";
+      if (isRandomBomb) {
+        const bombType = (tile as any).bombDoorType || (tile.type === "BOMB_SMOKE" ? "BOMB_SMOKE" : tile.type === "BOMB_DARK" ? "BOMB_DARK" : tile.type === "BOMB_CHARITY" ? "BOMB_CHARITY" : "BOMB_CHARITY");
+        const outcome = resolveBombOutcome({
+          bombType,
+          team,
+          allTeams,
+          storyDescription: tile.storyDescription || "Mở trúng Cửa Bẫy Bom Sinh Tử!",
+          baseQuestionPoints: state.baseQuestionPoints,
+          isSurvivalPenalty: true,
+        });
+        state.potPoints = 0;
+        state.bombExploded = outcome.bombExploded;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - outcome.penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+          scoreDelta: -outcome.penalty,
+          oldScore,
+          newScore,
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: outcome.penalty,
+          finalScoreDelta: -outcome.penalty,
+          giftedPoints: outcome.giftedPoints,
+          recipientTeamId: outcome.recipientTeamId,
+          recipientTeamName: outcome.recipientTeamName,
+          darkBombRecipients: outcome.darkBombRecipients,
+        };
+      } else {
+        const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `⚠️ Dính Cửa Bẫy Trừ Điểm Gốc Sinh Tử! Bị trừ -${penalty} điểm!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore,
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
+        };
+      }
+    }
+
     // Giai đoạn 1: Chọn 3 trong 5 cửa để ĐỂ RA RIÊNG (vẫn úp mặt, chưa lật)
     if (osState.phase === "SELECTING" || !osState.phase) {
       // Cửa bị Mắt Thần khóa (Cửa bẫy trừ gốc) tuyệt đối không cho chọn!
@@ -1976,6 +2580,8 @@ export function handleFlipCard({
             team,
             allTeams,
             storyDescription: tile.storyDescription || "Mở trúng Cửa Bẫy Bom!",
+            baseQuestionPoints: state.baseQuestionPoints,
+            isSurvivalPenalty: state.isPenaltySurvivalMode,
           });
           state.potPoints = 0;
           state.bombExploded = outcome.bombExploded;
@@ -2327,6 +2933,54 @@ export function handleFlipCard({
   state.lastFlippedTile = tile;
   state.cardsFlippedCount++;
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE): Lá Thoát Hiểm hoặc Bẫy Phạt
+  // ─────────────────────────────────────────────────────────────────────────
+  if (tile.type === "ESCAPE_SAFE") {
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "SURVIVAL_ESCAPE";
+    const oldScore = team.score || 0;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#10b981",
+      rewardText: `🕊️ ${tile.storyTitle}: ${tile.storyDescription}`,
+      scoreDelta: 0,
+      oldScore,
+      newScore: oldScore,
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: false,
+      scorePenalty: 0,
+      finalScoreDelta: 0,
+    };
+  }
+
+  if (state.isPenaltySurvivalMode && (tile.type === "TRAP" || tile.effectType === "LOSE_POINTS")) {
+    const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "SURVIVAL_FAILED";
+    const oldScore = team.score || 0;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `⚠️ ${tile.storyTitle}: Dính bẫy phạt sinh tử (-${penalty}đ)!`,
+      scoreDelta: -penalty,
+      oldScore,
+      newScore: Math.max(0, oldScore - penalty),
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: true,
+      scorePenalty: penalty,
+      finalScoreDelta: -penalty,
+    };
+  }
+
   // Handle Bombs
   const isBombCard =
     tile.type === "BOMB_SMOKE" ||
@@ -2363,119 +3017,29 @@ export function handleFlipCard({
     }
 
     // Dính bom: Mất quyền lật ngay lập tức và chịu tác động của loại bom dính phải
+    const bombTypeMapped: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" =
+      tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR"
+        ? "BOMB_SMOKE"
+        : tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM"
+        ? "BOMB_DARK"
+        : "BOMB_CHARITY";
 
-    // Standard Bomb Penalties:
-    let penalty = 0;
-    let penaltyText = "";
-    let recipientTeamId: string | undefined = undefined;
-    let recipientTeamName: string | undefined = undefined;
-    let giftedPoints = 0;
-    let darkBombRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined = undefined;
+    const bombOutcome = resolveBombOutcome({
+      bombType: bombTypeMapped,
+      team,
+      allTeams,
+      storyDescription: tile.storyDescription,
+      baseQuestionPoints: state.baseQuestionPoints,
+      isSurvivalPenalty: state.isPenaltySurvivalMode,
+    });
 
-    const currentScore = team.score || 0;
-    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-    const X = allTeams.length;
-
-    if (tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR") {
-      // 1. Bom Khói (50%): Mất sạch điểm của câu này (tổng điểm không đổi)
-      penalty = 0;
-      penaltyText = "Mất sạch điểm của câu này. Tổng điểm của đội không đổi.";
-      state.bombExploded = {
-        type: "SMOKE",
-        title: "Bom Khói 💨",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: 0,
-      };
-    } else if (tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM") {
-      // 2. Bom Hắc Ám (35%): Mất một số điểm ngẫu nhiên, chia đều số này cho các đội còn lại
-      darkBombRecipients = [];
-
-      if (otherTeams.length === 0) {
-        // Solo mode / Sandbox 1 đội
-        penalty = currentScore < 5 ? currentScore : 5;
-        penaltyText = `Bị trừ ${penalty} điểm từ tổng điểm.`;
-      } else if (currentScore < 5 * X) {
-        const sortedOthers = [...otherTeams].sort((a, b) => {
-          const diff = (a.score || 0) - (b.score || 0);
-          if (diff !== 0) return diff;
-          return Math.random() - 0.5;
-        });
-        const numTeamsToReceive = Math.floor(currentScore / 5);
-        for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
-          darkBombRecipients.push({
-            teamId: sortedOthers[i].id,
-            teamName: sortedOthers[i].name,
-            points: 5,
-          });
-        }
-        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5đ)`).join(", ");
-        penaltyText = recNames
-          ? `Bị trừ toàn bộ ${penalty} điểm! Đã phân phát cho đội thấp điểm: ${recNames}`
-          : `Bị trừ toàn bộ ${penalty} điểm!`;
-      } else {
-        const maxM = Math.floor(currentScore / (5 * otherTeams.length));
-        const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
-        const pointsPerOtherTeam = 5 * m;
-        penalty = pointsPerOtherTeam * otherTeams.length;
-
-        for (const other of otherTeams) {
-          darkBombRecipients.push({
-            teamId: other.id,
-            teamName: other.name,
-            points: pointsPerOtherTeam,
-          });
-        }
-        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}đ)`).join(", ");
-        penaltyText = `Bị trừ ${penalty} điểm! Chia đều cho các đội còn lại: ${recNames}`;
-      }
-
-      state.bombExploded = {
-        type: "DARK",
-        title: "Bom Hắc Ám 🌑",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: penalty,
-        recipients: darkBombRecipients,
-      };
-    } else {
-      // 3. Bom Từ Thiện (15%): Mất 50% số điểm (làm tròn lên bội số của 5), tặng cho đội có điểm cao nhất
-      if (currentScore > 0) {
-        giftedPoints = Math.min(currentScore, Math.ceil((currentScore * 0.5) / 5) * 5);
-      } else {
-        giftedPoints = 0;
-      }
-      penalty = giftedPoints;
-
-      if (otherTeams.length > 0) {
-        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
-        const topTeams = otherTeams.filter((t) => (t.score || 0) === maxScore);
-        const chosen = topTeams[Math.floor(Math.random() * topTeams.length)];
-        recipientTeamId = chosen.id;
-        recipientTeamName = chosen.name;
-      }
-
-      penaltyText = recipientTeamName
-        ? `Bị trừ 50% điểm (-${giftedPoints}đ) và chuyển tặng toàn bộ cho Đội ${recipientTeamName}!`
-        : `Bị trừ 50% điểm (-${giftedPoints}đ)!`;
-
-      state.bombExploded = {
-        type: "CHARITY",
-        title: "Bom Từ Thiện 🎁",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: penalty,
-        recipientTeamId,
-        recipientTeamName,
-        giftedPoints,
-      };
-    }
+    const penalty = bombOutcome.penalty;
+    const penaltyText = bombOutcome.penaltyText;
+    const recipientTeamId = bombOutcome.recipientTeamId;
+    const recipientTeamName = bombOutcome.recipientTeamName;
+    const giftedPoints = bombOutcome.giftedPoints;
+    const darkBombRecipients = bombOutcome.darkBombRecipients;
+    state.bombExploded = bombOutcome.bombExploded;
 
     // SAFETY_NET_PROMO: Bảo lưu 50% quỹ điểm nếu có
     const hasSafetyNet = getPerkType(state.promoPerk) === "SAFETY_NET_PROMO";
@@ -2484,9 +3048,9 @@ export function handleFlipCard({
 
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "BOMB_HIT";
+    state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
 
-    const oldScore = currentScore;
+    const oldScore = team.score || 0;
     const newScore = Math.max(0, oldScore + finalDelta);
 
     const safetyNetMsg = savedPotPoints > 0
@@ -2873,6 +3437,10 @@ export function handleOneShotDoorsDecision({
   victimTeamId?: string;
   victimTeamName?: string;
   stolenPoints?: number;
+  recipientTeamId?: string;
+  recipientTeamName?: string;
+  giftedPoints?: number;
+  darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
 } {
   const osState = state.oneShotState || {
     selectedDoorIds: [],
@@ -3036,11 +3604,13 @@ export function handleOneShotDoorsDecision({
         team,
         allTeams,
         storyDescription: chosenTile.storyDescription || "Mở trúng Cửa Bẫy Bom!",
+        baseQuestionPoints: state.baseQuestionPoints,
+        isSurvivalPenalty: state.isPenaltySurvivalMode,
       });
       state.potPoints = 0;
       state.bombExploded = outcome.bombExploded;
       state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
+      state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
 
       const oldScore = team.score || 0;
       const newScore = Math.max(0, oldScore - outcome.penalty);
@@ -3060,9 +3630,10 @@ export function handleOneShotDoorsDecision({
         isBomb: true,
         scorePenalty: outcome.penalty,
         finalScoreDelta: -outcome.penalty,
-        victimTeamId: outcome.recipientTeamId,
-        victimTeamName: outcome.recipientTeamName,
-        stolenPoints: outcome.giftedPoints,
+        recipientTeamId: outcome.recipientTeamId,
+        recipientTeamName: outcome.recipientTeamName,
+        giftedPoints: outcome.giftedPoints,
+        darkBombRecipients: outcome.darkBombRecipients,
       };
     } else {
       // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi
@@ -3218,7 +3789,92 @@ export function handleAncientTarotDraw({
 
   let drawnCard: AncientTarotDrawnCard;
 
-  if (rand < 0.30) {
+  if (state.isPenaltySurvivalMode) {
+    // ─────────────────────────────────────────────────────────────────────────
+    // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE): 20% Thoát hiểm (THE_PEACE), 80% Bẫy/Phạt
+    // ─────────────────────────────────────────────────────────────────────────
+    if (rand < 0.20) {
+      // 🕊️ THOÁT HIỂM AN TOÀN (20%)
+      drawnCard = {
+        key: "THE_PEACE",
+        nameVi: "Bình Yên Thoát Nạn",
+        nameEn: "The Peace",
+        icon: "🕊️",
+        roman: "XXI",
+        group: "COMMON",
+        scoreDelta: 0,
+      };
+    } else if (rand < 0.40) {
+      // 🗡️ HIỆP SĨ (20%): -50% tổng điểm
+      const penalty = roundToMultipleOfFive(currentScore * 0.5);
+      drawnCard = {
+        key: "THE_KNIGHT",
+        nameVi: "Hiệp Sĩ",
+        nameEn: "The Knight",
+        icon: "🗡️",
+        roman: "XII",
+        group: "MUTATION",
+        scoreDelta: -penalty,
+      };
+    } else if (rand < 0.60) {
+      // 👑 HOÀNG ĐẾ (20%): Bom Hắc Ám
+      const darkOutcome = resolveBombOutcome({
+        bombType: "BOMB_DARK",
+        team,
+        allTeams,
+        storyDescription: "Hoàng Đế uy quyền hắc ám! Rút cạn điểm số chia đều cho các đối thủ!",
+        baseQuestionPoints: basePoints,
+        isSurvivalPenalty: true,
+      });
+      drawnCard = {
+        key: "THE_EMPEROR",
+        nameVi: "Hoàng Đế",
+        nameEn: "The Emperor",
+        icon: "👑",
+        roman: "IV",
+        group: "MUTATION",
+        scoreDelta: -darkOutcome.penalty,
+        darkBombRecipients: darkOutcome.darkBombRecipients,
+      };
+    } else if (rand < 0.80) {
+      // 💀 THẦN CHẾT (20%): Bom Từ Thiện (Tặng Top 1)
+      const rawHalf = roundToMultipleOfFive(currentScore * 0.5);
+      const rawBaseMultiplier = roundToMultipleOfFive(basePoints * 1.5);
+      const targetPenalty = Math.min(rawHalf, rawBaseMultiplier);
+      const gifted = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
+      let top1Team: MysteryTeamRef | undefined = undefined;
+      if (otherTeams.length > 0) {
+        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
+        const topCandidates = otherTeams.filter((t) => (t.score || 0) === maxScore);
+        top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+      }
+      drawnCard = {
+        key: "THE_DEATH",
+        nameVi: "Thần Chết (Tặng Điểm)",
+        nameEn: "Death",
+        icon: "💀",
+        roman: "XIII",
+        group: "CRITICAL",
+        deathSubtype: "GIFT_TOP1",
+        scoreDelta: -gifted,
+        giftedPoints: gifted,
+        victimTeamId: top1Team?.id,
+        victimTeamName: top1Team?.name,
+      };
+    } else {
+      // 🃏 KẺ KHỜ SINH TỬ (20%): Trừ 50% điểm gốc câu hỏi
+      const penalty = Math.min(currentScore, roundToMultipleOfFive(basePoints * 0.5));
+      drawnCard = {
+        key: "THE_FOOL",
+        nameVi: "Kẻ Khờ (Khói Độc Sinh Tử)",
+        nameEn: "The Fool",
+        icon: "🃏",
+        roman: "0",
+        group: "COMMON",
+        scoreDelta: -penalty,
+      };
+    }
+  } else if (rand < 0.30) {
     // ☀️ 1. MẶT TRỜI (30%): Điềm lành. Nhận trọn vẹn điểm câu hiện tại an toàn.
     drawnCard = {
       key: "THE_SUN",
@@ -3247,6 +3903,8 @@ export function handleAncientTarotDraw({
       team,
       allTeams,
       storyDescription: "Hoàng Đế uy quyền hắc ám! Rút cạn điểm số chia đều cho các đối thủ!",
+      baseQuestionPoints: basePoints,
+      isSurvivalPenalty: false,
     });
     drawnCard = {
       key: "THE_EMPEROR",
@@ -3281,8 +3939,11 @@ export function handleAncientTarotDraw({
     }
 
     if (subRand < 0.5) {
-      // Kịch bản Tặng điểm (5%): Trừ 50% tổng điểm tặng Top 1
-      const gifted = roundToMultipleOfFive(currentScore * 0.5);
+      // Kịch bản Tặng điểm: Ưu tiên mức phạt thấp hơn giữa 50% điểm đội và 1.5x điểm câu
+      const rawHalf = roundToMultipleOfFive(currentScore * 0.5);
+      const rawBaseMultiplier = roundToMultipleOfFive(basePoints * 1.5);
+      const targetPenalty = Math.min(rawHalf, rawBaseMultiplier);
+      const gifted = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
       drawnCard = {
         key: "THE_DEATH",
         nameVi: "Thần Chết (Tặng Điểm)",
@@ -3370,14 +4031,27 @@ export function handleAncientTarotDraw({
   let rewardText = "";
 
   switch (drawnCard.key) {
+    case "THE_PEACE":
+      finalScoreDelta = 0;
+      state.turnFinishedReason = "SURVIVAL_ESCAPE";
+      rewardText = "🕊️ BÌNH YÊN THOÁT NẠN: Thoát hiểm ngoạn mục! Bảo toàn nguyên vẹn điểm số và tim!";
+      break;
+
     case "THE_SUN":
       finalScoreDelta = basePoints;
       rewardText = `☀️ MẶT TRỜI QUANG MINH: Điềm lành tuyệt đối! Nhận trọn vẹn +${basePoints}đ an toàn!`;
       break;
 
     case "THE_FOOL":
-      finalScoreDelta = 0;
-      rewardText = `🃏 KẺ KHỜ: Điềm dữ! Mất toàn bộ điểm câu hiện tại (0đ). Tổng điểm giữ nguyên.`;
+      if (state.isPenaltySurvivalMode) {
+        scorePenalty = Math.abs(drawnCard.scoreDelta);
+        finalScoreDelta = -scorePenalty;
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        rewardText = `🃏 KẺ KHỜ (KHÓI ĐỘC SINH TỬ): Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${scorePenalty}đ)!`;
+      } else {
+        finalScoreDelta = 0;
+        rewardText = `🃏 KẺ KHỜ: Điềm dữ! Mất toàn bộ điểm câu hiện tại (0đ). Tổng điểm giữ nguyên.`;
+      }
       break;
 
     case "THE_EMPEROR":
@@ -3397,7 +4071,7 @@ export function handleAncientTarotDraw({
       if (drawnCard.deathSubtype === "GIFT_TOP1") {
         scorePenalty = Math.abs(drawnCard.scoreDelta);
         finalScoreDelta = -scorePenalty;
-        rewardText = `💀 THẦN CHẾT (HIẾN TẾ): Bị trừ 50% tổng điểm (-${scorePenalty}đ) chuyển tặng trọn gói cho Top 1 (${drawnCard.victimTeamName || "Đối thủ"})!`;
+        rewardText = `💀 THẦN CHẾT (HIẾN TẾ): Bị phạt theo phương án thấp hơn (-${scorePenalty}đ) chuyển tặng trọn gói cho Top 1 (${drawnCard.victimTeamName || "Đối thủ"})!`;
       } else {
         finalScoreDelta = drawnCard.stolenPoints || (basePoints * 2);
         rewardText = `💀 THẦN CHẾT (ĐOẠT MỆNH): Hút sạch +${finalScoreDelta}đ từ Top 1 (${drawnCard.victimTeamName || "Đối thủ"}) cộng thẳng vào điểm của bạn!`;
@@ -3482,10 +4156,43 @@ export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = [
 ];
 
 /**
- * Trả về danh sách 20 nan quạt có áp dụng hiệu ứng Perk (SUN_MAGNET_PROMO).
- * Nếu sở hữu Perk Nam Châm Thái Dương: Ô Kẻ Khờ (index 2) sẽ được chuyển hóa thành Mặt Trời Nam Châm!
+ * Danh sách 20 nan quạt trên Vòng Quay Tarot Chế Độ Sinh Tử:
+ * - Chính xác 20% = 4 ô Bình Yên Thoát Nạn 🕊️ (index 0, 5, 10, 15)
+ * - Chính xác 80% = 16 ô Bẫy / Phạt:
+ *   * 4 ô Hiệp Sĩ (20% - index 1, 6, 11, 16): -50% tổng điểm
+ *   * 4 ô Hoàng Đế (20% - index 2, 7, 12, 17): Bom Hắc Ám
+ *   * 4 ô Thần Chết Tặng (20% - index 3, 8, 13, 18): Bom Từ Thiện
+ *   * 4 ô Kẻ Khờ Sinh Tử (20% - index 4, 9, 14, 19): -50% điểm gốc câu hỏi
+ * - Tuyệt đối 0% ô cộng điểm (không có Mặt Trời, không có Thần Chết Cướp Điểm)
  */
-export function getEffectiveTarotWheelSegments(hasSunMagnet: boolean = false): TarotWheelSegment[] {
+export const TAROT_SURVIVAL_WHEEL_SEGMENTS: TarotWheelSegment[] = [
+  { index: 0, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 1, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 2, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 3, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 4, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 5, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 6, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 7, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 8, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 9, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 10, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 11, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 12, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 14, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 15, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 16, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 17, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 18, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 19, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+];
+
+/**
+ * Trả về danh sách 20 nan quạt có áp dụng hiệu ứng Perk (SUN_MAGNET_PROMO) hoặc Chế độ Sinh Tử.
+ */
+export function getEffectiveTarotWheelSegments(hasSunMagnet: boolean = false, isSurvivalMode: boolean = false): TarotWheelSegment[] {
+  if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
   return TAROT_WHEEL_SEGMENTS.map((seg) => {
     if (seg.index === 2) {
@@ -3514,10 +4221,12 @@ export function calculateTarotWheelSpin({
   powerPercent,
   currentAngle = 0,
   hasSunMagnet = false,
+  isSurvivalMode = false,
 }: {
   powerPercent: number;
   currentAngle?: number;
   hasSunMagnet?: boolean;
+  isSurvivalMode?: boolean;
 }): {
   targetAngle: number;
   spinDurationMs: number;
@@ -3541,7 +4250,7 @@ export function calculateTarotWheelSpin({
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - (targetAngle % 360)) % 360;
   const landedIndex = Math.floor(pointerAngle / 18) % 20;
-  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet);
+  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode);
   const landedSegment = effectiveSegments[landedIndex];
   const spinDurationMs = 4500 + Math.round((clampedPower / 100) * 1500);
 
@@ -3587,11 +4296,13 @@ export function handleAncientTarotSpinWheel({
   landedIndex: number;
 } {
   const currentAngle = state.tarotState?.targetAngle || 0;
-  const hasSunMagnet = getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
+  const isSurvivalMode = !!state.isPenaltySurvivalMode;
+  const hasSunMagnet = !isSurvivalMode && getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
     hasSunMagnet,
+    isSurvivalMode,
   });
 
   const basePoints = state.baseQuestionPoints || 10;
@@ -3601,6 +4312,18 @@ export function handleAncientTarotSpinWheel({
   let drawnCard: AncientTarotDrawnCard;
 
   switch (landedSegment.key) {
+    case "THE_PEACE":
+      drawnCard = {
+        key: "THE_PEACE",
+        nameVi: "Bình Yên Thoát Nạn",
+        nameEn: "The Peace",
+        icon: "🕊️",
+        roman: "XXI",
+        group: "COMMON",
+        scoreDelta: 0,
+      };
+      break;
+
     case "THE_SUN":
       drawnCard = {
         key: "THE_SUN",
@@ -3614,15 +4337,28 @@ export function handleAncientTarotSpinWheel({
       break;
 
     case "THE_FOOL":
-      drawnCard = {
-        key: "THE_FOOL",
-        nameVi: "Kẻ Khờ",
-        nameEn: "The Fool",
-        icon: "🃏",
-        roman: "0",
-        group: "COMMON",
-        scoreDelta: 0,
-      };
+      if (isSurvivalMode) {
+        const smokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+        drawnCard = {
+          key: "THE_FOOL",
+          nameVi: "Kẻ Khờ (Khói Độc Sinh Tử)",
+          nameEn: "The Fool",
+          icon: "🃏",
+          roman: "0",
+          group: "COMMON",
+          scoreDelta: -smokePenalty,
+        };
+      } else {
+        drawnCard = {
+          key: "THE_FOOL",
+          nameVi: "Kẻ Khờ",
+          nameEn: "The Fool",
+          icon: "🃏",
+          roman: "0",
+          group: "COMMON",
+          scoreDelta: 0,
+        };
+      }
       break;
 
     case "THE_EMPEROR": {
@@ -3673,7 +4409,10 @@ export function handleAncientTarotSpinWheel({
       }
 
       if (landedSegment.deathSubtype === "GIFT_TOP1") {
-        const gifted = roundToMultipleOfFive(currentScore * 0.5);
+        const halfScore = roundToMultipleOfFive(currentScore * 0.5);
+        const baseOneAndHalf = roundToMultipleOfFive(basePoints * 1.5);
+        const targetPenalty = Math.min(halfScore, baseOneAndHalf);
+        const gifted = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
         drawnCard = {
           key: "THE_DEATH",
           nameVi: "Thần Chết (Tặng Điểm)",
@@ -3714,7 +4453,7 @@ export function handleAncientTarotSpinWheel({
     drawnCard.key === "THE_KNIGHT" ||
     (drawnCard.key === "THE_DEATH" && drawnCard.deathSubtype === "GIFT_TOP1");
 
-  if (state.hasShield && isNegative) {
+  if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
@@ -3757,7 +4496,7 @@ export function handleAncientTarotSpinWheel({
 
   state.potPoints = 0;
   state.phase = "TURN_SUMMARY";
-  state.turnFinishedReason = "TAROT_WHEEL_SPUN";
+  state.turnFinishedReason = isSurvivalMode ? "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
   state.tarotState = {
     ...(state.tarotState || {}),
     isWheelSpinning: false,
@@ -3774,19 +4513,33 @@ export function handleAncientTarotSpinWheel({
   let rewardText = "";
 
   switch (drawnCard.key) {
+    case "THE_PEACE":
+      finalScoreDelta = 0;
+      state.turnFinishedReason = "SURVIVAL_ESCAPE";
+      rewardText = `🕊️ BÌNH YÊN THOÁT NẠN: May mắn thần kỳ! Bạn đã sống sót qua vòng quay Sinh Tử và bảo toàn nguyên vẹn số điểm!`;
+      break;
+
     case "THE_SUN":
       finalScoreDelta = basePoints;
       rewardText = `☀️ MẶT TRỜI QUANG MINH: Điềm lành tuyệt đối! Nhận trọn vẹn +${basePoints}đ an toàn!`;
       break;
 
     case "THE_FOOL":
-      finalScoreDelta = 0;
-      rewardText = `🃏 KẺ KHỜ: Điềm dữ! Mất toàn bộ điểm câu hiện tại (0đ). Tổng điểm giữ nguyên.`;
+      if (isSurvivalMode) {
+        scorePenalty = Math.abs(drawnCard.scoreDelta);
+        finalScoreDelta = -scorePenalty;
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        rewardText = `🃏 KẺ KHỜ (KHÓI ĐỘC SINH TỬ): Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${scorePenalty}đ)!`;
+      } else {
+        finalScoreDelta = 0;
+        rewardText = `🃏 KẺ KHỜ: Điềm dữ! Mất toàn bộ điểm câu hiện tại (0đ). Tổng điểm giữ nguyên.`;
+      }
       break;
 
     case "THE_EMPEROR":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       const recNames = (drawnCard.darkBombRecipients || []).map((r) => `${r.teamName} (+${r.points}đ)`).join(", ");
       rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ -${scorePenalty}đ chia đều cho đối thủ: ${recNames || "các đội khác"}!`;
       break;
@@ -3794,14 +4547,16 @@ export function handleAncientTarotSpinWheel({
     case "THE_KNIGHT":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       rewardText = `🗡️ HIỆP SĨ: Định mệnh trừng phạt xóa sổ 1/2 tổng điểm hiện có (-${scorePenalty}đ)!`;
       break;
 
     case "THE_DEATH":
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       if (drawnCard.deathSubtype === "GIFT_TOP1") {
         scorePenalty = Math.abs(drawnCard.scoreDelta);
         finalScoreDelta = -scorePenalty;
-        rewardText = `💀 THẦN CHẾT (HIẾN TẾ): Bị trừ 50% tổng điểm (-${scorePenalty}đ) chuyển tặng trọn gói cho Top 1 (${drawnCard.victimTeamName || "Đối thủ"})!`;
+        rewardText = `💀 THẦN CHẾT (HIẾN TẾ): Bị phạt theo phương án thấp hơn (-${scorePenalty}đ) chuyển tặng trọn gói cho Top 1 (${drawnCard.victimTeamName || "Đối thủ"})!`;
       } else {
         finalScoreDelta = drawnCard.stolenPoints || (basePoints * 2);
         rewardText = `💀 THẦN CHẾT (ĐOẠT MỆNH): Hút sạch +${finalScoreDelta}đ từ Top 1 (${drawnCard.victimTeamName || "Đối thủ"}) cộng thẳng vào điểm của bạn!`;

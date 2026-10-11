@@ -41,6 +41,7 @@ import {
   handleAncientTarotDraw,
   handleAncientTarotSpinWheel,
   roundToMultipleOfFive,
+  startSurvivalPenaltyMinigame,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -1853,49 +1854,73 @@ export default function AdminSandboxPage() {
               const currentTeamObj = updatedTeams.find((t) => t.id === curMystery.currentTurnTeamId);
               const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
               const currentHearts = teamHearts[curMystery.currentTurnTeamId] ?? currentTeamObj?.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
-              const oldScore = currentTeamObj?.score || 0;
-              let penaltyDelta = 0;
-              let rewardText = "";
+              const currentScore = currentTeamObj?.score || 0;
 
-              if (currentHearts > 0) {
-                teamHearts[curMystery.currentTurnTeamId] = currentHearts - 1;
-                rewardText = `💔 MC can thiệp: Không chính xác! Tiêu hao 1 ❤️ để bảo vệ tổng điểm! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
-              } else {
-                const halfPts = roundToMultipleOfFive(basePts / 2);
-                penaltyDelta = -Math.min(oldScore, halfPts);
-                rewardText = `💀 MC can thiệp: Hết Tim và không chính xác! Bị trừ ${Math.abs(penaltyDelta)}đ (${halfPts}đ)!`;
-              }
+              curMystery.baseQuestionPoints = basePts;
+              curMystery.potPoints = 0;
+              curMystery.potMultiplier = 1;
+              curMystery.turnFinishedReason = undefined;
 
-              if (penaltyDelta !== 0 && currentTeamObj) {
-                updatedTeams = updatedTeams.map((t) =>
-                  t.id === curMystery.currentTurnTeamId
-                    ? { ...t, score: Math.max(0, t.score + penaltyDelta), hearts: teamHearts[t.id] }
-                    : { ...t, hearts: teamHearts[t.id] ?? t.hearts }
-                );
-              } else {
+              // ĐỘI CHƯA CÓ ĐIỂM NÀO (score <= 0):
+              // Mặc định trừ tim (nếu còn) và TUYỆT ĐỐI KHÔNG ĐƯỢC CHƠI MINIGAME (vì chưa có điểm để trừ)
+              if (currentScore <= 0) {
+                let rewardText = "";
+                if (currentHearts > 0) {
+                  teamHearts[curMystery.currentTurnTeamId] = Math.max(0, currentHearts - 1);
+                  rewardText = `💔 MC can thiệp: Chưa có điểm tích lũy, tiêu hao 1 ❤️! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
+                } else {
+                  rewardText = `💀 MC can thiệp: Chưa có điểm tích lũy và đã hết tim, kết thúc lượt!`;
+                }
+
                 updatedTeams = updatedTeams.map((t) => ({
                   ...t,
                   hearts: teamHearts[t.id] ?? t.hearts,
                 }));
-              }
 
-              nextMystery = {
-                ...curMystery,
-                phase: "TURN_SUMMARY",
-                turnFinishedReason: "QUESTION_FAILED",
-                potPoints: 0,
-                decisionMade: undefined,
-                teamHearts,
-                storyResult: {
-                  teamId: curMystery.currentTurnTeamId,
-                  teamName: curMystery.currentTurnTeamName,
-                  teamColor: curMystery.currentTurnTeamColor,
-                  rewardText,
-                  scoreDelta: penaltyDelta,
-                  oldScore,
-                  newScore: Math.max(0, oldScore + penaltyDelta),
-                },
-              };
+                nextMystery = {
+                  ...curMystery,
+                  phase: "TURN_SUMMARY",
+                  turnFinishedReason: "QUESTION_FAILED",
+                  survivalDilemmaPending: false,
+                  isPenaltySurvivalMode: false,
+                  teamHearts,
+                  storyResult: {
+                    teamId: curMystery.currentTurnTeamId,
+                    teamName: curMystery.currentTurnTeamName,
+                    teamColor: curMystery.currentTurnTeamColor,
+                    rewardText,
+                    scoreDelta: 0,
+                    oldScore: 0,
+                    newScore: 0,
+                  },
+                };
+              } else {
+                // ĐỘI CÓ ĐIỂM (score > 0):
+                if (currentHearts > 0) {
+                  // Còn tim: Lựa chọn đánh đổi (Dilemma)
+                  nextMystery = {
+                    ...curMystery,
+                    phase: "DECISION_CHOICE",
+                    survivalDilemmaPending: true,
+                    survivalDilemmaChoice: undefined,
+                    isPenaltySurvivalMode: false,
+                    teamHearts,
+                  };
+                } else {
+                  // Đã hết tim: Bắt buộc vào thẳng Minigame Sinh Tử!
+                  const clonedState = {
+                    ...curMystery,
+                    survivalDilemmaPending: false,
+                    teamHearts,
+                  };
+                  startSurvivalPenaltyMinigame({
+                    state: clonedState,
+                    team: currentTeamObj!,
+                    allTeams: updatedTeams,
+                  });
+                  nextMystery = clonedState;
+                }
+              }
             }
           }
         }
@@ -2483,7 +2508,16 @@ export default function AdminSandboxPage() {
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, finalScoreDelta, victimTeamId, victimTeamName, stolenPoints } = handleMysteryDoorsDecision({
+        const {
+          updatedState,
+          finalScoreDelta,
+          victimTeamId,
+          victimTeamName,
+          stolenPoints,
+          recipientTeamId,
+          giftedPoints,
+          darkBombRecipients,
+        } = handleMysteryDoorsDecision({
           state: curMystery,
           team: activeTeam,
           allTeams: roomStateRef.current.teams,
@@ -2501,6 +2535,21 @@ export default function AdminSandboxPage() {
             return t;
           });
           addLog(`🗡️ [${activeTeam.name}] cướp thành công ${stolenPoints}đ từ [${victimTeamName || "Đội dẫn đầu"}] (Đạo Tặc 5đ)!`);
+        } else if (darkBombRecipients && darkBombRecipients.length > 0) {
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score + finalScoreDelta) };
+            const rec = darkBombRecipients.find((r) => r.teamId === t.id);
+            if (rec) return { ...t, score: t.score + (rec.points || 0) };
+            return t;
+          });
+        } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score + (finalScoreDelta || -giftedPoints)) };
+            if (t.id === recipientTeamId) return { ...t, score: t.score + giftedPoints };
+            return t;
+          });
+          const recipientTeam = roomStateRef.current.teams.find((t) => t.id === recipientTeamId);
+          addLog(`🎁 [${activeTeam.name}] dính Bom Từ Thiện: Chuyển ${giftedPoints}đ cho [${recipientTeam?.name || "Top 1"}]!`);
         } else if (finalScoreDelta !== 0) {
           updatedTeams = updatedTeams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + finalScoreDelta) } : t
@@ -2791,6 +2840,65 @@ export default function AdminSandboxPage() {
         setRoomState(nextRoomState);
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         addLog(`🎲 [${activeTeam.name}] CHỌN THỬ THÁCH MINIGAME: Quyết định chơi lớn!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_SURVIVAL_CHOICE" || e.data?.action === "mystery_survival_choice") {
+        const choice: "SACRIFICE_HEART" | "RISK_SURVIVAL" = e.data?.choice;
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:survival_choice" as any, { choice, code });
+          addLog(`💀 Thí sinh/MC chọn Sinh Tử: ${choice === "SACRIFICE_HEART" ? "Hy sinh 1 Tim để giữ điểm" : "Vào Minigame Sinh Tử"}`);
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = { ...roomStateRef.current.mysteryQuestState };
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
+        const currentHearts = teamHearts[activeTeam.id] ?? activeTeam.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
+
+        curMystery.survivalDilemmaPending = false;
+        curMystery.survivalDilemmaChoice = choice;
+
+        let updatedTeams = [...roomStateRef.current.teams];
+
+        if (choice === "SACRIFICE_HEART") {
+          teamHearts[activeTeam.id] = Math.max(0, currentHearts - 1);
+          curMystery.teamHearts = teamHearts;
+          curMystery.phase = "TURN_SUMMARY";
+          curMystery.turnFinishedReason = "QUESTION_FAILED";
+          curMystery.potPoints = 0;
+          curMystery.storyResult = {
+            teamId: activeTeam.id,
+            teamName: activeTeam.name,
+            teamColor: activeTeam.color,
+            rewardText: `💔 Đội chấp nhận hy sinh 1 ❤️ để bảo toàn toàn bộ điểm số! (Còn ${teamHearts[activeTeam.id]} ❤️)`,
+            scoreDelta: 0,
+            oldScore: activeTeam.score,
+            newScore: activeTeam.score,
+          };
+          updatedTeams = updatedTeams.map((t) => ({
+            ...t,
+            hearts: teamHearts[t.id] ?? t.hearts,
+          }));
+          addLog(`💔 [${activeTeam.name}] CHỌN HY SINH 1 TIM: Bảo toàn số điểm hiện tại! (Còn ${teamHearts[activeTeam.id]} ❤️)`);
+        } else if (choice === "RISK_SURVIVAL") {
+          startSurvivalPenaltyMinigame({
+            state: curMystery,
+            team: activeTeam,
+            allTeams: roomStateRef.current.teams,
+          });
+          addLog(`💀 [${activeTeam.name}] BƯỚC VÀO MINIGAME SINH TỬ: Đặt cược số điểm để bảo vệ Tim!`);
+        }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: curMystery,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: curMystery });
         return;
       }
       if (e.data?.type === "MYSTERY_DRAW_TAROT" || e.data?.action === "mystery_draw_tarot") {
@@ -4600,52 +4708,76 @@ export default function AdminSandboxPage() {
             const currentTeamObj = updatedTeams.find((t) => t.id === curMystery.currentTurnTeamId);
             const teamHearts = curMystery.teamHearts ? { ...curMystery.teamHearts } : {};
             const currentHearts = teamHearts[curMystery.currentTurnTeamId] ?? currentTeamObj?.hearts ?? curMystery.initialHeartsPerTeam ?? 0;
-            const oldScore = currentTeamObj?.score || 0;
+            const currentScore = currentTeamObj?.score || 0;
             const curQ = currentQuestion?.question;
             const rawQ = curQ || offlineQuestionsRef.current[offlineQIndexRef.current];
             const basePts = normalizeToThreeLevels(curQ?.points || rawQ?.points || 10);
-            let penaltyDelta = 0;
-            let rewardText = "";
 
-            if (currentHearts > 0) {
-              teamHearts[curMystery.currentTurnTeamId] = currentHearts - 1;
-              rewardText = `💔 Trả lời chưa chính xác! Tiêu hao 1 ❤️ để bảo vệ tổng điểm! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
-            } else {
-              const halfPts = roundToMultipleOfFive(basePts / 2);
-              penaltyDelta = -Math.min(oldScore, halfPts);
-              rewardText = `💀 Đã hết Tim và trả lời chưa chính xác! Bị trừ ${Math.abs(penaltyDelta)}đ (${halfPts}đ)!`;
-            }
+            curMystery.baseQuestionPoints = basePts;
+            curMystery.potPoints = 0;
+            curMystery.potMultiplier = 1;
+            curMystery.turnFinishedReason = undefined;
 
-            if (penaltyDelta !== 0 && currentTeamObj) {
-              updatedTeams = updatedTeams.map((t) =>
-                t.id === curMystery.currentTurnTeamId
-                  ? { ...t, score: Math.max(0, t.score + penaltyDelta), hearts: teamHearts[t.id] }
-                  : { ...t, hearts: teamHearts[t.id] ?? t.hearts }
-              );
-            } else {
+            // ĐỘI CHƯA CÓ ĐIỂM NÀO (score <= 0):
+            // Mặc định trừ tim (nếu còn) và TUYỆT ĐỐI KHÔNG ĐƯỢC CHƠI MINIGAME (vì chưa có điểm để trừ)
+            if (currentScore <= 0) {
+              let rewardText = "";
+              if (currentHearts > 0) {
+                teamHearts[curMystery.currentTurnTeamId] = Math.max(0, currentHearts - 1);
+                rewardText = `💔 Trả lời chưa chính xác! Chưa có điểm tích lũy, tiêu hao 1 ❤️! (Còn ${teamHearts[curMystery.currentTurnTeamId]} ❤️)`;
+              } else {
+                rewardText = `💀 Trả lời chưa chính xác! Chưa có điểm tích lũy và đã hết tim, kết thúc lượt!`;
+              }
+
               updatedTeams = updatedTeams.map((t) => ({
                 ...t,
                 hearts: teamHearts[t.id] ?? t.hearts,
               }));
-            }
 
-            nextMystery = {
-              ...curMystery,
-              phase: "TURN_SUMMARY",
-              turnFinishedReason: "QUESTION_FAILED",
-              potPoints: 0,
-              potMultiplier: 1,
-              teamHearts,
-              storyResult: {
-                teamId: curMystery.currentTurnTeamId,
-                teamName: curMystery.currentTurnTeamName,
-                teamColor: curMystery.currentTurnTeamColor,
-                rewardText,
-                scoreDelta: penaltyDelta,
-                oldScore,
-                newScore: Math.max(0, oldScore + penaltyDelta),
-              },
-            };
+              nextMystery = {
+                ...curMystery,
+                phase: "TURN_SUMMARY",
+                turnFinishedReason: "QUESTION_FAILED",
+                survivalDilemmaPending: false,
+                isPenaltySurvivalMode: false,
+                teamHearts,
+                storyResult: {
+                  teamId: curMystery.currentTurnTeamId,
+                  teamName: curMystery.currentTurnTeamName,
+                  teamColor: curMystery.currentTurnTeamColor,
+                  rewardText,
+                  scoreDelta: 0,
+                  oldScore: 0,
+                  newScore: 0,
+                },
+              };
+            } else {
+              // ĐỘI CÓ ĐIỂM (score > 0):
+              if (currentHearts > 0) {
+                // Còn tim: Lựa chọn đánh đổi (Dilemma)
+                nextMystery = {
+                  ...curMystery,
+                  phase: "DECISION_CHOICE",
+                  survivalDilemmaPending: true,
+                  survivalDilemmaChoice: undefined,
+                  isPenaltySurvivalMode: false,
+                  teamHearts,
+                };
+              } else {
+                // Đã hết tim: Bắt buộc vào thẳng Minigame Sinh Tử!
+                const clonedState = {
+                  ...curMystery,
+                  survivalDilemmaPending: false,
+                  teamHearts,
+                };
+                startSurvivalPenaltyMinigame({
+                  state: clonedState,
+                  team: currentTeamObj!,
+                  allTeams: updatedTeams,
+                });
+                nextMystery = clonedState;
+              }
+            }
           }
         }
 
@@ -7993,6 +8125,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent });
                         } else {
                           window.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent }, "*");
+                        }
+                      }}
+                      onSurvivalChoice={(choice) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:survival_choice" as any, { choice, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_SURVIVAL_CHOICE", action: "mystery_survival_choice", choice }, "*");
                         }
                       }}
                       onAdjustScore={(teamId, delta, setScore) => handleAdjustScore(teamId, delta, setScore)}

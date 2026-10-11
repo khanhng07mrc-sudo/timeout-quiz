@@ -54,6 +54,7 @@ import {
   handleAncientTarotSpinWheel,
   TAROT_WHEEL_SEGMENTS,
   roundToMultipleOfFive,
+  startSurvivalPenaltyMinigame,
 } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
@@ -4886,7 +4887,15 @@ export function registerSocketHandlers(io: IO) {
       swapAddedDoorId?: number
     ) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleOneShotDoorsDecision({
+      const {
+        updatedState,
+        finalScoreDelta,
+        victimTeamId,
+        stolenPoints,
+        recipientTeamId,
+        giftedPoints,
+        darkBombRecipients,
+      } = handleOneShotDoorsDecision({
         state: questState,
         team,
         allTeams,
@@ -4912,6 +4921,39 @@ export function registerSocketHandlers(io: IO) {
           io.to(`room:${room.code}`).emit("room:state", refreshedState);
         }).catch((err) => {
           console.error("[MysteryDoorsDecision] steal delta error:", err);
+        });
+      } else if (darkBombRecipients && darkBombRecipients.length > 0) {
+        (async () => {
+          const updates: Array<{ teamId: string; score: number; delta: number }> = [];
+          if (finalScoreDelta < 0) {
+            const donorDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+            updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+          }
+          for (const rec of darkBombRecipients) {
+            if (rec.points > 0) {
+              const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+              updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+            }
+          }
+          if (updates.length > 0) {
+            io.to(`room:${room.code}`).emit("game:score:update", updates);
+          }
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        })().catch(console.error);
+      } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(team.id, finalScoreDelta || -giftedPoints),
+          applyScoreDeltaToTeam(recipientTeamId, giftedPoints),
+        ]).then(async ([donorDelta, recipientDelta]) => {
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
+            { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta },
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] charity bomb delta error:", err);
         });
       } else if (finalScoreDelta !== 0) {
         applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
@@ -5184,6 +5226,85 @@ export function registerSocketHandlers(io: IO) {
       if (!questState || questState.phase !== "DECISION_CHOICE") return;
 
       await executeMysteryChooseAction(room, questState, action);
+    });
+
+    const executeMysterySurvivalChoice = async (
+      room: any,
+      questState: any,
+      choice: "SACRIFICE_HEART" | "RISK_SURVIVAL"
+    ) => {
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+
+      const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
+      const currentHearts = teamHearts[team.id] ?? questState.initialHeartsPerTeam ?? 0;
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
+
+      questState.survivalDilemmaPending = false;
+      questState.survivalDilemmaChoice = choice;
+
+      if (choice === "SACRIFICE_HEART") {
+        teamHearts[team.id] = Math.max(0, currentHearts - 1);
+        questState.teamHearts = teamHearts;
+        questState.phase = "TURN_SUMMARY";
+        questState.turnFinishedReason = "QUESTION_FAILED";
+        questState.potPoints = 0;
+        questState.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `💔 Đội chấp nhận hy sinh 1 ❤️ để bảo toàn toàn bộ điểm số! (Còn ${teamHearts[team.id]} ❤️)`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0,
+        };
+      } else if (choice === "RISK_SURVIVAL") {
+        questState.baseQuestionPoints = basePts;
+        startSurvivalPenaltyMinigame({
+          state: questState,
+          team,
+          allTeams,
+        });
+      }
+
+      roomMysteryQuests.set(room.id, questState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", questState);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+
+    socket.on("game:mystery:survival_choice", async ({ choice }: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL" }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true },
+      });
+      if (!player || !player.room || !player.teamId) return;
+
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.survivalDilemmaPending) return;
+
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Chưa đến lượt lựa chọn của đội bạn!");
+        return;
+      }
+
+      await executeMysterySurvivalChoice(room, questState, choice);
+    });
+
+    socket.on("admin:mystery:survival_choice", async ({ choice, code }: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL"; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.survivalDilemmaPending) return;
+
+      await executeMysterySurvivalChoice(room, questState, choice);
     });
 
     socket.on("game:mystery:flip_card", async ({ tileId }) => {
@@ -8912,9 +9033,13 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
 
       if (isCorrect) {
         questState.phase = "DECISION_CHOICE";
+        questState.survivalDilemmaPending = false;
+        questState.isPenaltySurvivalMode = false;
         questState.baseQuestionPoints = basePts;
         questState.potPoints = basePts;
         questState.potMultiplier = 1;
+        questState.turnFinishedReason = undefined;
+        questState.storyResult = undefined;
 
         // Đồng bộ toàn bộ tiles và minigame theo đúng thang điểm câu hỏi vừa trả lời
         const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
@@ -8928,49 +9053,61 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       } else {
-        // Mode Hành Trình Bí Ẩn: Lượt thi độc quyền từng đội
+        // Mode Hành Trình Bí Ẩn: Lượt thi độc quyền từng đội khi trả lời SAI
         const currentTeam = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
         const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
         const currentHearts = teamHearts[questState.currentTurnTeamId] ?? questState.initialHeartsPerTeam ?? 0;
+        const currentScore = currentTeam?.score || 0;
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
 
-        questState.phase = "TURN_SUMMARY";
-        questState.turnFinishedReason = "QUESTION_FAILED";
+        questState.baseQuestionPoints = basePts;
         questState.potPoints = 0;
         questState.potMultiplier = 1;
+        questState.turnFinishedReason = undefined;
 
-        let penaltyDelta = 0;
-        let rewardText = "";
-        const oldScore = currentTeam?.score || 0;
-
-        if (currentHearts > 0) {
-          // TH1: Nếu Đội CÒN TIM => Trừ ngay 1 Tim. Tổng điểm giữ nguyên. Kết thúc lượt chơi.
-          teamHearts[questState.currentTurnTeamId] = currentHearts - 1;
-          questState.teamHearts = teamHearts;
-          rewardText = `💔 Trả lời chưa chính xác! Tiêu hao 1 ❤️ để bảo vệ tổng điểm! (Còn ${teamHearts[questState.currentTurnTeamId]} ❤️)`;
-        } else {
-          // TH2: Nếu Đội ĐÃ HẾT TIM => Trừ thẳng một nửa số điểm của chính câu hỏi đó (questionBasePoints / 2) vào tổng điểm hiện có của Đội (Bảo vệ điểm không âm dưới 0).
-          // Toàn bộ các phép toán trừ một nửa điểm câu hỏi khi hết tim bắt buộc phải chạy qua hàm làm tròn Math.round(points / 5) * 5.
-          const halfPts = roundToMultipleOfFive(basePts / 2);
-          penaltyDelta = -Math.min(oldScore, halfPts);
-
-          if (penaltyDelta !== 0 && currentTeam) {
-            const deltaRes = await applyScoreDeltaToTeam(currentTeam.id, penaltyDelta);
-            io.to(`room:${roomCode}`).emit("game:score:update", [
-              { teamId: currentTeam.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-            ]);
+        // ĐỘI CHƯA CÓ ĐIỂM NÀO (score <= 0):
+        // Mặc định trừ tim (nếu còn) và TUYỆT ĐỐI KHÔNG ĐƯỢC CHƠI MINIGAME (vì chưa có điểm để trừ)
+        if (currentScore <= 0) {
+          questState.phase = "TURN_SUMMARY";
+          questState.turnFinishedReason = "QUESTION_FAILED";
+          questState.survivalDilemmaPending = false;
+          questState.isPenaltySurvivalMode = false;
+          let rewardText = "";
+          if (currentHearts > 0) {
+            teamHearts[questState.currentTurnTeamId] = Math.max(0, currentHearts - 1);
+            questState.teamHearts = teamHearts;
+            rewardText = `💔 Trả lời chưa chính xác! Chưa có điểm tích lũy, tiêu hao 1 ❤️! (Còn ${teamHearts[questState.currentTurnTeamId]} ❤️)`;
+          } else {
+            rewardText = `💀 Trả lời chưa chính xác! Chưa có điểm tích lũy và đã hết tim, kết thúc lượt!`;
           }
-          rewardText = `💀 Đã hết Tim và trả lời chưa chính xác! Bị trừ ${Math.abs(penaltyDelta)}đ (${halfPts}đ)!`;
+          questState.storyResult = {
+            teamId: questState.currentTurnTeamId,
+            teamName: questState.currentTurnTeamName,
+            teamColor: questState.currentTurnTeamColor,
+            rewardText,
+            scoreDelta: 0,
+            oldScore: 0,
+            newScore: 0,
+          };
+        } else {
+          // ĐỘI CÓ ĐIỂM (score > 0):
+          if (currentHearts > 0) {
+            // Còn tim: Đứng trước lựa chọn đánh đổi (Dilemma Choice)
+            questState.phase = "DECISION_CHOICE";
+            questState.survivalDilemmaPending = true;
+            questState.survivalDilemmaChoice = undefined;
+            questState.isPenaltySurvivalMode = false;
+          } else {
+            // Đã hết tim: Bắt buộc vào thẳng Minigame Sinh Tử!
+            questState.survivalDilemmaPending = false;
+            startSurvivalPenaltyMinigame({
+              state: questState,
+              team: currentTeam!,
+              allTeams,
+            });
+          }
         }
 
-        questState.storyResult = {
-          teamId: questState.currentTurnTeamId,
-          teamName: questState.currentTurnTeamName,
-          teamColor: questState.currentTurnTeamColor,
-          rewardText,
-          scoreDelta: penaltyDelta,
-          oldScore,
-          newScore: Math.max(0, oldScore + penaltyDelta),
-        };
         roomMysteryQuests.set(room.id, questState);
         io.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       }

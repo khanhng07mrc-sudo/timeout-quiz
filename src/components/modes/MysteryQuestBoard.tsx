@@ -33,6 +33,7 @@ interface Props {
   onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
   onDrawTarot?: () => void;
   onSpinTarotWheel?: (powerPercent: number) => void;
+  onSurvivalChoice?: (choice: "SACRIFICE_HEART" | "RISK_SURVIVAL") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
 }
 
@@ -58,6 +59,7 @@ export default function MysteryQuestBoard({
   onAdjustScore,
   onDrawTarot,
   onSpinTarotWheel,
+  onSurvivalChoice,
   teams = [],
 }: Props) {
   const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
@@ -116,6 +118,9 @@ export default function MysteryQuestBoard({
     tarotState,
     nextCardPeek,
     peekUsesRemaining,
+    isPenaltySurvivalMode,
+    survivalDilemmaPending,
+    survivalDilemmaChoice,
   } = mysteryState;
 
   // Sync optimistic set with actual opened tiles from server without redundant re-renders or flickering
@@ -483,8 +488,143 @@ export default function MysteryQuestBoard({
           </div>
         )}
 
-        {/* Phase: DECISION_CHOICE (Team chooses between Safe Base Points or Gamble Minigame) */}
+        {/* Phase: DECISION_CHOICE (Team chooses between Safe Base Points or Gamble Minigame OR Survival Dilemma) */}
         {phase === "DECISION_CHOICE" && (
+          survivalDilemmaPending ? (
+            /* ─────────────────────────────────────────────────────────────
+               SURVIVAL DILEMMA CHOICE (Trả lời sai, đội có điểm & còn tim)
+               ───────────────────────────────────────────────────────────── */
+            <div className="w-full max-w-4xl mx-auto space-y-2 sm:space-y-3 animate-slide-up">
+              <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-red-950/80 via-black/80 to-purple-950/80 border border-red-500/50 text-center backdrop-blur-md shadow-xl">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 animate-pulse">
+                  <span>💀</span> TRẢ LỜI CHƯA CHÍNH XÁC! LỰA CHỌN ĐÁNH ĐỔI SINH TỬ
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Lượt thi của Đội <span style={{ color: currentTurnTeamColor }}>{currentTurnTeamName}</span>
+                </h3>
+                {(() => {
+                  const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
+                  const currentHearts = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                  const currentScore = activeTeamObj?.score ?? 0;
+                  return (
+                    <p className="text-[11px] sm:text-xs text-white/80 mt-0.5 max-w-xl mx-auto line-clamp-2">
+                      Đội bạn đang có <strong className="text-amber-300">{currentScore} điểm</strong> và còn <strong className="text-rose-400">❤️ {currentHearts}</strong>. Hãy đưa ra quyết định sinh tử:
+                    </p>
+                  );
+                })()}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                {/* Phương Án 1: Hy sinh 1 Tim để An Toàn */}
+                {(() => {
+                  const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
+                  const currentHearts = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                  const currentScore = activeTeamObj?.score ?? 0;
+
+                  return (
+                    <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/80 via-black/80 to-slate-950/80 border-2 border-rose-500/60 hover:border-rose-400 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group transition-all">
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <div className="text-2xl sm:text-3xl">💔</div>
+                        <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wide">
+                          Phương Án 1: Hy Sinh 1 Tim
+                        </h4>
+                        <div className="py-0.5">
+                          <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
+                            Giữ {currentScore}đ
+                          </span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
+                          Tiêu hao <strong>1 ❤️</strong> để kết thúc lượt ngay bây giờ. Toàn bộ <strong>{currentScore} điểm</strong> được bảo toàn an toàn (Còn lại: <strong className="text-rose-400">❤️ {Math.max(0, currentHearts - 1)}</strong>).
+                        </p>
+                      </div>
+
+                      <div className="pt-2 sm:pt-3">
+                        {canInteractDecision ? (
+                          <button
+                            type="button"
+                            onClick={() => onSurvivalChoice?.("SACRIFICE_HEART")}
+                            className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-rose-950/60 border border-rose-400 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
+                          >
+                            💔 Hy Sinh 1 ❤️ (Bảo Toàn Điểm)
+                          </button>
+                        ) : (
+                          <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
+                            Đang đợi Đội {currentTurnTeamName}...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Phương Án 2: Minigame Sinh Tử */}
+                {(() => {
+                  const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
+                  const currentHearts = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
+
+                  return (
+                    <div className="p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-purple-950/90 via-black/80 to-red-950/90 border-2 border-purple-500/60 hover:border-purple-400 shadow-xl flex flex-col justify-between text-center relative overflow-hidden group transition-all">
+                      <div className="space-y-1 sm:space-y-1.5">
+                        <div className="text-2xl sm:text-3xl">💀</div>
+                        <h4 className="text-xs sm:text-sm font-black text-purple-300 uppercase tracking-wide">
+                          Phương Án 2: Minigame Sinh Tử
+                        </h4>
+                        <div className="py-0.5">
+                          <span className="text-xs sm:text-sm font-black font-mono text-amber-300">
+                            Giữ Nguyên ❤️ {currentHearts}
+                          </span>
+                        </div>
+                        <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
+                          Không mất tim, nhưng bước vào <strong>Minigame Sinh Tử</strong>: Tỷ lệ <span className="text-emerald-400 font-bold">20% Thoát Hiểm 🕊️</span> - <span className="text-rose-400 font-bold">80% Bẫy & Bom 💀</span> (0% thưởng, không perk)!
+                        </p>
+                      </div>
+
+                      <div className="pt-2 sm:pt-3">
+                        {canInteractDecision ? (
+                          <button
+                            type="button"
+                            onClick={() => onSurvivalChoice?.("RISK_SURVIVAL")}
+                            className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-purple-700 via-indigo-700 to-rose-700 hover:from-purple-600 hover:to-rose-600 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-purple-950/60 border border-purple-400 hover:scale-[1.02] active:scale-95 transition cursor-pointer animate-pulse"
+                          >
+                            💀 Đối Mặt Minigame Sinh Tử (Giữ ❤️)
+                          </button>
+                        ) : (
+                          <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
+                            Đang đợi Đội {currentTurnTeamName}...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Admin / MC override prompt for Survival Dilemma */}
+              {(isAdmin || isSandbox) && (
+                <div className="p-2 rounded-xl bg-black/60 border border-white/10 flex items-center justify-between gap-2 text-[11px] text-slate-300">
+                  <span className="font-bold flex items-center gap-1 truncate">
+                    <span>👑</span> Quyền Admin / MC:
+                  </span>
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => onSurvivalChoice?.("SACRIFICE_HEART")}
+                      className="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-bold cursor-pointer transition text-[11px]"
+                    >
+                      MC chọn Hy sinh 1 ❤️
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onSurvivalChoice?.("RISK_SURVIVAL")}
+                      className="px-2.5 py-1 rounded-lg bg-purple-700 hover:bg-purple-600 text-white font-bold cursor-pointer transition text-[11px]"
+                    >
+                      MC chọn Minigame Sinh Tử
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
           <div className="w-full max-w-4xl mx-auto space-y-2 sm:space-y-3 animate-slide-up">
             <div className="p-2.5 sm:p-3 rounded-xl bg-black/60 border border-amber-500/40 text-center backdrop-blur-md shadow-xl">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1">
@@ -702,11 +842,27 @@ export default function MysteryQuestBoard({
               </div>
             )}
           </div>
+          )
         )}
 
         {/* Phase: PUSH_YOUR_LUCK / MINIGAME_ACTIVE */}
         {phase === "PUSH_YOUR_LUCK" && (
           <div className="flex flex-col items-center justify-center text-center space-y-3">
+            {/* Survival Mode Banner */}
+            {isPenaltySurvivalMode && (
+              <div className="w-full max-w-2xl mx-auto p-2.5 rounded-2xl bg-gradient-to-r from-red-950/90 via-purple-950/90 to-red-950/90 border-2 border-red-500 shadow-2xl text-center space-y-1 animate-pulse">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/25 text-red-300 text-[10px] sm:text-xs font-black uppercase tracking-wider">
+                  <span>💀</span> CHẾ ĐỘ MINIGAME SINH TỬ <span>💀</span>
+                </div>
+                <div className="text-xs sm:text-sm font-bold text-white flex items-center justify-center gap-2 flex-wrap">
+                  <span className="text-emerald-400 font-black">🕊️ 20% Thoát Hiểm / Giữ Điểm</span>
+                  <span>•</span>
+                  <span className="text-rose-400 font-black">💀 80% Bẫy Phạt & Bom</span>
+                  <span>•</span>
+                  <span className="text-yellow-300 font-bold">🚫 Toàn bộ Perk bị phong ấn</span>
+                </div>
+              </div>
+            )}
             {/* VARIANT 1: MEMORY PAIRS HUD */}
             {miniGameType === "MEMORY_PAIRS" && (
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
@@ -1252,6 +1408,25 @@ export default function MysteryQuestBoard({
                 );
               }
 
+              if (isPenaltySurvivalMode) {
+                return (
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-purple-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                    <div className="text-3xl animate-pulse">💀🕊️</div>
+                    <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wider">
+                      CỬA SINH TỬ: CHỌN DUY NHẤT 1 CÁNH CỬA ĐỂ QUYẾT ĐỊNH VẬN MỆNH!
+                    </h4>
+                    <div className="px-3 py-1.5 rounded-xl bg-black/60 border border-rose-500/50 text-rose-200 text-xs font-bold flex items-center justify-center gap-2">
+                      <span className="text-emerald-400 font-bold">🕊️ 1 Cửa Thoát Hiểm (20%)</span>
+                      <span>•</span>
+                      <span className="text-rose-400 font-bold">💀 4 Cửa Bẫy & Bom (80%)</span>
+                    </div>
+                    <p className="text-[11px] text-white/80 max-w-md mx-auto">
+                      Bấm chọn 1 trong 5 cánh cửa bên dưới để mở ngay lập tức!
+                    </p>
+                  </div>
+                );
+              }
+
               return null;
             })()}
 
@@ -1262,15 +1437,21 @@ export default function MysteryQuestBoard({
               {tiles.map((tile) => {
                 const isSelected = Boolean(oneShotState?.selectedDoorIds?.includes(tile.id));
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
-                const isBomb = tile.type !== "REWARD";
+                const isBomb = tile.type !== "REWARD" && tile.type !== "ESCAPE_SAFE";
                 const isSteal = tile.effectType === "STEAL_POINTS";
+                const isEscapeSafe = tile.type === "ESCAPE_SAFE" || tile.effectType === "ESCAPE_SAFE";
                 const isStage2 = oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED";
                 const isPenaltyDecision = oneShotState?.phase === "PENALTY_DECISION";
 
-                const isCardOpened = tile.isOpened || (isStage2 && optimisticOpenedIds.has(tile.id));
+                const isCardOpened = tile.isOpened || ((isStage2 || isPenaltySurvivalMode) && optimisticOpenedIds.has(tile.id));
 
                 const handleDoorClick = () => {
                   if (!canInteract || tile.isOpened) return;
+
+                  if (isPenaltySurvivalMode) {
+                    handleTileClick(tile);
+                    return;
+                  }
 
                   if (isPenaltyDecision) {
                     if (swapStep === "SELECT_REMOVE") {
@@ -1315,15 +1496,21 @@ export default function MysteryQuestBoard({
                       onClick={handleDoorClick}
                       disabled={
                         !canInteract ||
-                        (isStage2 && !isSelected) ||
-                        (isPenaltyDecision && swapStep === "IDLE") ||
-                        (swapStep === "SELECT_REMOVE" && !isSelected) ||
-                        (swapStep === "SELECT_ADD" && (isSelected || tile.isPeeked)) ||
-                        (!isStage2 && !isPenaltyDecision && tile.isPeeked)
+                        (!isPenaltySurvivalMode && (
+                          (isStage2 && !isSelected) ||
+                          (isPenaltyDecision && swapStep === "IDLE") ||
+                          (swapStep === "SELECT_REMOVE" && !isSelected) ||
+                          (swapStep === "SELECT_ADD" && (isSelected || tile.isPeeked)) ||
+                          (!isStage2 && !isPenaltyDecision && tile.isPeeked)
+                        ))
                       }
                       style={{ clipPath: "url(#realisticDoorClip)" }}
                       className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-0.5 sm:p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
-                        isStage2
+                        isPenaltySurvivalMode
+                          ? canInteract
+                            ? "hover:scale-105 shadow-xl hover:shadow-rose-600/50 cursor-pointer group ring-1 ring-rose-500/40"
+                            : "opacity-60 cursor-default"
+                          : isStage2
                           ? isSelected
                             ? "scale-105 shadow-[0_0_35px_rgba(250,204,21,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-yellow-400"
                             : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
@@ -1499,7 +1686,9 @@ export default function MysteryQuestBoard({
                       <span className="text-[8px] sm:text-[10px] font-mono font-bold text-white/80">#{tile.id}</span>
                       <span
                         className={`text-[5.5px] sm:text-[7.5px] font-black uppercase px-1 py-0.2 rounded-full truncate ${
-                          isChosenFinal
+                          isEscapeSafe
+                            ? "bg-emerald-400 text-black font-extrabold ring-1 ring-white"
+                            : isChosenFinal
                             ? isSteal
                               ? "bg-rose-500 text-white font-extrabold ring-1 ring-white"
                               : isBomb
@@ -1514,7 +1703,9 @@ export default function MysteryQuestBoard({
                             : "bg-emerald-500/40 text-emerald-300"
                         }`}
                       >
-                        {isChosenFinal
+                        {isEscapeSafe
+                          ? "THOÁT HIỂM 🕊️"
+                          : isChosenFinal
                           ? isSteal
                             ? "CƯỚP 🗡️"
                             : isBomb
@@ -1532,7 +1723,7 @@ export default function MysteryQuestBoard({
 
                     {/* Prize Icon */}
                     <div className="text-2xl sm:text-4xl my-auto text-center drop-shadow-2xl z-10 animate-scale-in">
-                      {isBomb ? "💥" : tile.icon || "👑"}
+                      {isEscapeSafe ? "🕊️" : isBomb ? "💥" : tile.icon || "👑"}
                     </div>
 
                     {/* Bottom: Story title and Points delta */}
@@ -1542,10 +1733,12 @@ export default function MysteryQuestBoard({
                       </p>
                       <p
                         className={`text-[9px] sm:text-xs font-black font-mono mt-0.5 drop-shadow-md ${
-                          isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
+                          isEscapeSafe ? "text-emerald-300 font-bold" : isBomb ? "text-red-400" : isSteal ? "text-rose-300" : "text-amber-300"
                         }`}
                       >
-                        {isBomb
+                        {isEscapeSafe
+                          ? "0đ (Bảo Toàn Điểm)"
+                          : isBomb
                           ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                           : isSteal
                           ? `Cướp +${tile.deltaPoints}đ`
@@ -1566,9 +1759,17 @@ export default function MysteryQuestBoard({
           const isDrawn = Boolean(tarotState?.isDrawn && tarotState?.drawnCard);
           const drawnCard = tarotState?.drawnCard;
 
-          // Color & Glow scheme for the 5 Ancient Entities
+          // Color & Glow scheme for the Ancient Entities
           const getEntityVisuals = (cardKey?: string) => {
             switch (cardKey) {
+              case "THE_PEACE":
+                return {
+                  gradient: "from-emerald-950/40 via-teal-900/30 to-black/90",
+                  border: "border-emerald-400",
+                  glow: "rgba(52, 211, 153, 0.5)",
+                  tagColor: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+                  textColor: "text-emerald-300",
+                };
               case "THE_SUN":
                 return {
                   gradient: "from-amber-600/30 via-yellow-500/20 to-amber-950/80",
@@ -1626,14 +1827,16 @@ export default function MysteryQuestBoard({
 
                   {/* Header Title */}
                   {(() => {
-                    const hasSunMagnet = getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
+                    const hasSunMagnet = !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
                     return (
                       <div className="text-center z-10 space-y-1">
                         <h3 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest drop-shadow">
-                          🎡 VÒNG QUAY TAROT ĐỊNH MỆNH
+                          {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "🎡 VÒNG QUAY TAROT ĐỊNH MỆNH"}
                         </h3>
                         <p className="text-xs sm:text-sm text-purple-200 font-serif">
-                          20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%
+                          {isPenaltySurvivalMode
+                            ? "20 Nan Quạt Sinh Tử • 20% Thoát Nạn (Bình Yên) • 80% Bẫy Phạt"
+                            : "20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%"}
                         </p>
                         {hasSunMagnet && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-200 text-xs font-bold shadow-lg animate-pulse mt-1">
@@ -1678,7 +1881,7 @@ export default function MysteryQuestBoard({
                         </defs>
 
                         {/* 20 Segments (18 deg each) */}
-                        {getEffectiveTarotWheelSegments(getPerkType(promoPerk) === "SUN_MAGNET_PROMO").map((seg, i) => {
+                        {getEffectiveTarotWheelSegments(!isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO", Boolean(isPenaltySurvivalMode)).map((seg, i) => {
                           const theta1 = (i * 18 * Math.PI) / 180;
                           const theta2 = ((i + 1) * 18 * Math.PI) / 180;
                           const r = 168;
@@ -1837,7 +2040,9 @@ export default function MysteryQuestBoard({
                           )}
 
                           <p className="text-[10px] text-white/60">
-                            {getPerkType(promoPerk) === "SUN_MAGNET_PROMO"
+                            {isPenaltySurvivalMode
+                              ? "Tỷ lệ: 20% Thoát Hiểm (4 Bình Yên) | 80% Bẫy Sinh Tử (4 Khói Độc, 4 Hiệp Sĩ, 4 Hoàng Đế, 4 Thần Chết)"
+                              : getPerkType(promoPerk) === "SUN_MAGNET_PROMO"
                               ? "Tỷ lệ: Thường 50% (6 Sun, 4 Fool - Có Nam Châm Thái Dương) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"
                               : "Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"}
                           </p>
@@ -1851,7 +2056,11 @@ export default function MysteryQuestBoard({
                 <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/70 border-2 border-purple-500/50 backdrop-blur-xl shadow-2xl animate-fade-in relative overflow-hidden">
                   <div className="text-center mb-3">
                     <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
-                      {drawnCard?.group === "COMMON"
+                      {drawnCard?.key === "THE_PEACE"
+                        ? "🕊️ THOÁT NẠN SINH TỬ (20%)"
+                        : isPenaltySurvivalMode
+                        ? "💀 TRỪNG PHẠT SINH TỬ (80%)"
+                        : drawnCard?.group === "COMMON"
                         ? "✨ ĐỊNH MỆNH THƯỜNG (60%)"
                         : drawnCard?.group === "MUTATION"
                         ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN (30%)"
@@ -1887,11 +2096,18 @@ export default function MysteryQuestBoard({
                         {drawnCard?.nameVi}
                       </h3>
                       <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/60 border border-white/20">
+                        {drawnCard?.key === "THE_PEACE" && (
+                          <span className="text-emerald-400">0đ (Thoát Nạn Thành Công 🕊️)</span>
+                        )}
                         {drawnCard?.key === "THE_SUN" && (
                           <span className="text-emerald-400">+{drawnCard.scoreDelta}đ (An Toàn)</span>
                         )}
                         {drawnCard?.key === "THE_FOOL" && (
-                          <span className="text-rose-400">0đ (Mất điểm câu)</span>
+                          isPenaltySurvivalMode ? (
+                            <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Khói Độc -50%)</span>
+                          ) : (
+                            <span className="text-rose-400">0đ (Mất điểm câu)</span>
+                          )
                         )}
                         {drawnCard?.key === "THE_EMPEROR" && (
                           <span className="text-orange-400">-{drawnCard.scoreDelta}đ (Chia đều đối thủ)</span>

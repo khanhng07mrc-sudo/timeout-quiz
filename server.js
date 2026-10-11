@@ -896,12 +896,32 @@ function resolveBombOutcome({
   bombType,
   team,
   allTeams = [],
-  storyDescription
+  storyDescription,
+  baseQuestionPoints = 20,
+  isSurvivalPenalty = false
 }) {
   const currentScore = team.score || 0;
   const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
   const X = allTeams.length;
   if (bombType === "BOMB_SMOKE") {
+    if (isSurvivalPenalty) {
+      const penalty = Math.min(currentScore, roundToMultipleOfFive(baseQuestionPoints * 0.5));
+      const penaltyText3 = `Kh\xF3i m\xF9 bao ph\u1EE7! Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${penalty}\u0111)!`;
+      return {
+        penalty,
+        penaltyText: penaltyText3,
+        giftedPoints: 0,
+        bombExploded: {
+          type: "SMOKE",
+          title: "Bom Kh\xF3i \u{1F4A8}",
+          description: storyDescription || "Kh\xF3i m\xF9 bao ph\u1EE7! Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi.",
+          penaltyText: penaltyText3,
+          donorTeamId: team.id,
+          donorTeamName: team.name,
+          deductedPoints: penalty
+        }
+      };
+    }
     const penaltyText2 = "M\u1EA5t s\u1EA1ch \u0111i\u1EC3m c\u1EE7a c\xE2u n\xE0y. T\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i kh\xF4ng \u0111\u1ED5i.";
     return {
       penalty: 0,
@@ -974,8 +994,10 @@ function resolveBombOutcome({
       }
     };
   }
-  const rawHalf = currentScore * 0.5;
-  const giftedPoints = currentScore > 0 ? Math.min(currentScore, roundToMultipleOfFive(rawHalf)) : 0;
+  const rawHalf = roundToMultipleOfFive(currentScore * 0.5);
+  const rawBaseMultiplier = roundToMultipleOfFive(baseQuestionPoints * 1.5);
+  const targetPenalty = Math.min(rawHalf, rawBaseMultiplier);
+  const giftedPoints = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
   let recipientTeamId = void 0;
   let recipientTeamName = void 0;
   if (otherTeams.length > 0) {
@@ -985,7 +1007,8 @@ function resolveBombOutcome({
     recipientTeamId = chosen.id;
     recipientTeamName = chosen.name;
   }
-  const penaltyText = recipientTeamName ? `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111)!`;
+  const penaltyReason = rawHalf <= rawBaseMultiplier ? `50% \u0111i\u1EC3m \u0111\u1ED9i (-${giftedPoints}\u0111)` : `1.5 l\u1EA7n \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${giftedPoints}\u0111)`;
+  const penaltyText = recipientTeamName ? `B\u1ECB ph\u1EA1t theo ph\u01B0\u01A1ng \xE1n th\u1EA5p h\u01A1n: ${penaltyReason} v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB ph\u1EA1t theo ph\u01B0\u01A1ng \xE1n th\u1EA5p h\u01A1n: ${penaltyReason}!`;
   return {
     penalty: giftedPoints,
     penaltyText,
@@ -995,7 +1018,7 @@ function resolveBombOutcome({
     bombExploded: {
       type: "CHARITY",
       title: "Bom T\u1EEB Thi\u1EC7n \u{1F381}",
-      description: storyDescription || "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB 50% s\u1ED1 \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
+      description: storyDescription || "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
       penaltyText,
       donorTeamId: team.id,
       donorTeamName: team.name,
@@ -1239,6 +1262,85 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     label: `Th\u1EBB #${idx + 1}`
   }));
 }
+function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+  const pairs = [
+    // 1. Cặp Thoát Hiểm (20% - 1 cặp)
+    {
+      pairKey: "PAIR_ESCAPE",
+      icon: "\u{1F54A}\uFE0F",
+      type: "ESCAPE_SAFE",
+      storyTitle: "\u{1F54A}\uFE0F C\u1EB6P THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyDescription: "K\u1EF3 t\xEDch xu\u1EA5t hi\u1EC7n! Gh\xE9p tr\xFAng c\u1EB7p Tho\xE1t Hi\u1EC3m, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0
+    },
+    // 2. Cặp Bẫy Trừ Gốc
+    {
+      pairKey: "PAIR_TRAP_BASE",
+      icon: "\u26A0\uFE0F",
+      type: "BOMB_MINOR",
+      storyTitle: "\u26A0\uFE0F C\u1EB6P B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyDescription: `Gh\xE9p tr\xFAng b\u1EABy t\u1EED th\u1EA7n: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty
+    },
+    // 3. Cặp Bom Khói (Trừ 50% điểm gốc)
+    {
+      pairKey: "PAIR_BOMB_SMOKE",
+      icon: "\u{1F4A8}",
+      type: "BOMB_SMOKE",
+      storyTitle: "\u{1F4A8} C\u1EB6P BOM KH\xD3I SINH T\u1EEC!",
+      storyDescription: `Gh\xE9p tr\xFAng b\u1EABy kh\xF3i: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty
+    },
+    // 4. Cặp Bom Hắc Ám
+    {
+      pairKey: "PAIR_BOMB_DARK",
+      icon: "\u{1F311}",
+      type: "BOMB_DARK",
+      storyTitle: "\u{1F311} C\u1EB6P BOM H\u1EAEC \xC1M!",
+      storyDescription: "Gh\xE9p tr\xFAng k\xEDp n\u1ED5 h\u1EAFc \xE1m: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED1i th\u1EE7!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0
+    },
+    // 5. Cặp Bom Từ Thiện
+    {
+      pairKey: "PAIR_BOMB_CHARITY",
+      icon: "\u{1F381}",
+      type: "BOMB_CHARITY",
+      storyTitle: "\u{1F381} C\u1EB6P BOM T\u1EEA THI\u1EC6N!",
+      storyDescription: "Gh\xE9p tr\xFAng bom t\u1EEB thi\u1EC7n: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0
+    }
+  ];
+  const tileItems = [];
+  pairs.forEach((p) => {
+    for (let c = 0; c < 2; c++) {
+      tileItems.push({
+        icon: p.icon,
+        isOpened: false,
+        type: p.type,
+        storyTitle: p.storyTitle,
+        storyDescription: p.storyDescription,
+        effectType: p.effectType,
+        deltaPoints: p.deltaPoints,
+        pairKey: p.pairKey,
+        isPeeked: false
+      });
+    }
+  });
+  const shuffled = tileItems.sort(() => Math.random() - 0.5);
+  return shuffled.map((item, idx) => ({
+    ...item,
+    id: idx + 1,
+    label: `Th\u1EBB #${idx + 1}`,
+    isOpened: false
+  }));
+}
 function generateOneShotDoorsTiles(basePoints = 20, options) {
   const pHigh = basePoints * 2;
   const pSteal = basePoints;
@@ -1329,6 +1431,78 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
       bombDoorType: d.bombDoorType
     };
   });
+}
+function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+  const doors = [
+    // 1. Cửa Thoát Hiểm An Toàn (20% - 1 cửa duy nhất)
+    {
+      icon: "\u{1F54A}\uFE0F",
+      type: "ESCAPE_SAFE",
+      storyTitle: "\u{1F54A}\uFE0F C\u1EECA THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyDescription: "May m\u1EAFn tuy\u1EC7t \u0111\u1EC9nh! B\u1EA1n \u0111\xE3 m\u1EDF \u0111\xFAng C\u1EEDa Tho\xE1t Hi\u1EC3m, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0
+    },
+    // 2. Cửa Bẫy Trừ Điểm Gốc
+    {
+      icon: "\u26A0\uFE0F",
+      type: "BOMB_MINOR",
+      storyTitle: "\u26A0\uFE0F C\u1EECA B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyDescription: `D\xEDnh b\u1EABy ph\u1EA1t sinh t\u1EED: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      isBasePenalty: true
+    },
+    // 3. Cửa Bom Khói (Trừ 50% điểm gốc)
+    {
+      icon: "\u{1F4A8}",
+      type: "BOMB_SMOKE",
+      storyTitle: "\u{1F4A8} C\u1EECA BOM KH\xD3I SINH T\u1EEC!",
+      storyDescription: `Kh\xF3i m\xF9 bao ph\u1EE7: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty,
+      isBombDoor: true,
+      bombDoorType: "BOMB_SMOKE"
+    },
+    // 4. Cửa Bom Hắc Ám (Chia điểm đối thủ)
+    {
+      icon: "\u{1F311}",
+      type: "BOMB_DARK",
+      storyTitle: "\u{1F311} C\u1EECA BOM H\u1EAEC \xC1M!",
+      storyDescription: "N\u0103ng l\u01B0\u1EE3ng h\u1EAFc \xE1m b\xF9ng ph\xE1t: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+      isBombDoor: true,
+      bombDoorType: "BOMB_DARK"
+    },
+    // 5. Cửa Bom Từ Thiện (Tặng Top 1)
+    {
+      icon: "\u{1F381}",
+      type: "BOMB_CHARITY",
+      storyTitle: "\u{1F381} C\u1EECA BOM T\u1EEA THI\u1EC6N!",
+      storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0,
+      isBombDoor: true,
+      bombDoorType: "BOMB_CHARITY"
+    }
+  ];
+  const shuffled = [...doors].sort(() => Math.random() - 0.5);
+  return shuffled.map((d, idx) => ({
+    id: idx + 1,
+    label: `C\u1EEDa #${idx + 1}`,
+    icon: d.icon,
+    isOpened: false,
+    type: d.type,
+    storyTitle: d.storyTitle,
+    storyDescription: d.storyDescription,
+    effectType: d.effectType,
+    deltaPoints: d.deltaPoints,
+    isPeeked: false,
+    bombDoorType: d.bombDoorType
+  }));
 }
 function generateNextPushYourLuckCard({
   theme,
@@ -1454,6 +1628,80 @@ function generateNextPushYourLuckCard({
     effectType,
     deltaPoints: delta
   };
+}
+function generateSurvivalPushYourLuckCard({
+  drawIndex = 1,
+  basePoints = 10,
+  teamScore = 0,
+  options
+}) {
+  const id = drawIndex;
+  const label = `L\xE1 Sinh T\u1EED #${drawIndex}`;
+  const pPenalty = basePoints;
+  const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+  const rand = Math.random();
+  if (rand < 0.2) {
+    return {
+      id,
+      label,
+      icon: "\u{1F54A}\uFE0F",
+      isOpened: false,
+      type: "ESCAPE_SAFE",
+      storyTitle: "\u{1F54A}\uFE0F L\xC1 THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyDescription: "Th\u1EA7n may m\u1EAFn m\u1EC9m c\u01B0\u1EDDi! L\u1EADt tr\xFAng l\xE1 Tho\xE1t Hi\u1EC3m ngo\u1EA1n m\u1EE5c, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0
+    };
+  }
+  if (rand < 0.4) {
+    return {
+      id,
+      label,
+      icon: "\u26A0\uFE0F",
+      isOpened: false,
+      type: "TRAP",
+      storyTitle: "\u26A0\uFE0F L\xC1 B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyDescription: `D\xEDnh ph\u1EA3i b\u1EABy t\u1EED th\u1EA7n: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty
+    };
+  } else if (rand < 0.6) {
+    return {
+      id,
+      label,
+      icon: "\u{1F4A8}",
+      isOpened: false,
+      type: "BOMB_SMOKE",
+      storyTitle: "\u{1F4A8} L\xC1 BOM KH\xD3I SINH T\u1EEC!",
+      storyDescription: `Kh\xF3i m\xF9 bao ph\u1EE7: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pSmokePenalty
+    };
+  } else if (rand < 0.8) {
+    return {
+      id,
+      label,
+      icon: "\u{1F311}",
+      isOpened: false,
+      type: "BOMB_DARK",
+      storyTitle: "\u{1F311} L\xC1 BOM H\u1EAEC \xC1M!",
+      storyDescription: "N\u0103ng l\u01B0\u1EE3ng b\xF3ng t\u1ED1i nu\u1ED1t ch\u1EEDng: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0
+    };
+  } else {
+    return {
+      id,
+      label,
+      icon: "\u{1F381}",
+      isOpened: false,
+      type: "BOMB_CHARITY",
+      storyTitle: "\u{1F381} L\xC1 BOM T\u1EEA THI\u1EC6N!",
+      storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
+      effectType: "LOSE_POINTS",
+      deltaPoints: 0
+    };
+  }
 }
 function generatePushYourLuckTiles(theme, basePoints = 10, teamScore = 0, isDoublePromo = false, options) {
   const firstCard = generateNextPushYourLuckCard({
@@ -1604,6 +1852,88 @@ function generateMysteryStageForTurn({
     initialHeartsPerTeam: computedInitialHearts,
     teamHearts: resolvedTeamHearts
   };
+}
+function startSurvivalPenaltyMinigame({
+  state,
+  team,
+  allTeams = []
+}) {
+  const normType = normalizeMiniGameType(state.miniGameType);
+  const basePoints = state.baseQuestionPoints || 10;
+  const currentScore = team.score || 0;
+  state.isPenaltySurvivalMode = true;
+  state.survivalDilemmaPending = false;
+  state.phase = "PUSH_YOUR_LUCK";
+  state.potPoints = 0;
+  state.potMultiplier = 1;
+  state.promoPerk = void 0;
+  state.hasShield = false;
+  state.cardsFlippedCount = 0;
+  state.lastFlippedTile = void 0;
+  state.bombExploded = void 0;
+  state.turnFinishedReason = void 0;
+  state.storyResult = void 0;
+  switch (normType) {
+    case "ONE_SHOT_DOORS": {
+      state.tiles = generateSurvivalOneShotDoorsTiles(basePoints, {
+        teams: allTeams,
+        currentTeamId: team.id
+      });
+      state.oneShotState = {
+        chosenTileId: void 0,
+        selectedDoorIds: [],
+        penaltyDoorsCount: void 0,
+        hasBombDetected: false,
+        phase: "SELECTING",
+        revealedSafeDoorIds: [],
+        chosenFinalDoorId: void 0,
+        allRevealed: false,
+        peekAvailable: false,
+        peekActivated: false,
+        hasSwapped: false
+      };
+      break;
+    }
+    case "PUSH_YOUR_LUCK": {
+      state.tiles = [
+        generateSurvivalPushYourLuckCard({
+          drawIndex: 1,
+          basePoints,
+          teamScore: currentScore,
+          options: { teams: allTeams, currentTeamId: team.id }
+        })
+      ];
+      break;
+    }
+    case "MEMORY_PAIRS": {
+      state.tiles = generateSurvivalMemoryPairsTiles(basePoints, {
+        teams: allTeams,
+        currentTeamId: team.id
+      });
+      state.memoryPairsState = {
+        firstFlippedTileId: null,
+        secondFlippedTileId: null,
+        thirdFlippedTileId: null,
+        keptBombTileIds: [],
+        isBombRescueActive: false,
+        activePenaltyPairKey: null,
+        attemptsUsed: 0,
+        maxAttempts: 1,
+        matchedPairKey: null,
+        isMismatchResolving: false,
+        round: 1
+      };
+      break;
+    }
+    case "TAROT_DESTINY": {
+      state.tiles = [];
+      state.tarotState = {
+        isWheelSpinning: false,
+        isDrawn: false
+      };
+      break;
+    }
+  }
 }
 function handleFlipCard({
   state,
@@ -1884,6 +2214,94 @@ function handleFlipCard({
     state.tiles = state.tiles.map(
       (t) => Number(t.id) === numTileId || firstTile && Number(t.id) === Number(firstTile.id) ? { ...t, isOpened: true } : { ...t }
     );
+    if (state.isPenaltySurvivalMode) {
+      state.tiles.forEach((t) => {
+        t.isOpened = true;
+      });
+      if (firstTile && firstTile.pairKey === tile2.pairKey) {
+        if (firstTile.pairKey === "PAIR_ESCAPE" || firstTile.type === "ESCAPE_SAFE") {
+          state.potPoints = 0;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_ESCAPE";
+          const oldScore = team.score || 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#10b981",
+            rewardText: "\u{1F54A}\uFE0F Gh\xE9p tr\xFAng C\u1EB7p Tho\xE1t Hi\u1EC3m An To\xE0n! B\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
+            scoreDelta: 0,
+            oldScore,
+            newScore: oldScore
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0
+          };
+        } else {
+          let bombType = "BOMB_SMOKE";
+          if (firstTile.pairKey === "PAIR_BOMB_CHARITY" || firstTile.type === "BOMB_CHARITY") bombType = "BOMB_CHARITY";
+          else if (firstTile.pairKey === "PAIR_BOMB_DARK" || firstTile.type === "BOMB_DARK") bombType = "BOMB_DARK";
+          const outcome = resolveBombOutcome({
+            bombType,
+            team,
+            allTeams,
+            storyDescription: `Gh\xE9p tr\xFAng ${firstTile.storyTitle}!`,
+            baseQuestionPoints: state.baseQuestionPoints,
+            isSurvivalPenalty: true
+          });
+          state.bombExploded = outcome.bombExploded;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_FAILED";
+          state.potPoints = 0;
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - outcome.penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F4A5} ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+            scoreDelta: -outcome.penalty,
+            oldScore,
+            newScore
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: true,
+            scorePenalty: outcome.penalty,
+            finalScoreDelta: -outcome.penalty,
+            giftedPoints: outcome.giftedPoints,
+            recipientTeamId: outcome.recipientTeamId,
+            recipientTeamName: outcome.recipientTeamName,
+            darkBombRecipients: outcome.darkBombRecipients
+          };
+        }
+      } else {
+        const basePts = state.baseQuestionPoints || 10;
+        const penalty = Math.min(team.score || 0, basePts);
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F480} Gh\xE9p c\u1EB7p th\u1EA5t b\u1EA1i trong Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED! B\u1EABy ph\u1EA1t k\xEDch ho\u1EA1t tr\u1EEB -${penalty} \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
+        };
+      }
+    }
     if (memState.isBombRescueActive) {
       state.memoryPairsState = { ...memState };
       return {
@@ -2068,6 +2486,89 @@ function handleFlipCard({
     if (!tile2) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
+    if (state.isPenaltySurvivalMode) {
+      osState.chosenFinalDoorId = tileId;
+      osState.phase = "RESOLVED";
+      osState.allRevealed = true;
+      state.tiles.forEach((t) => {
+        t.isOpened = true;
+      });
+      if (tile2.type === "ESCAPE_SAFE") {
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_ESCAPE";
+        const oldScore = team.score || 0;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#10b981",
+          rewardText: "\u{1F54A}\uFE0F May m\u1EAFn tuy\u1EC7t \u0111\u1EC9nh! B\u1EA1n \u0111\xE3 ch\u1ECDn tr\xFAng C\u1EECA THO\xC1T HI\u1EC2M AN TO\xC0N, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
+          scoreDelta: 0,
+          oldScore,
+          newScore: oldScore
+        };
+        return { updatedState: { ...state, tiles: [...state.tiles] }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+      }
+      const isRandomBomb = tile2.type === "BOMB_MAJOR" || Boolean(tile2.bombDoorType) || tile2.type === "BOMB_SMOKE" || tile2.type === "BOMB_DARK" || tile2.type === "BOMB_CHARITY";
+      if (isRandomBomb) {
+        const bombType = tile2.bombDoorType || (tile2.type === "BOMB_SMOKE" ? "BOMB_SMOKE" : tile2.type === "BOMB_DARK" ? "BOMB_DARK" : tile2.type === "BOMB_CHARITY" ? "BOMB_CHARITY" : "BOMB_CHARITY");
+        const outcome = resolveBombOutcome({
+          bombType,
+          team,
+          allTeams,
+          storyDescription: tile2.storyDescription || "M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom Sinh T\u1EED!",
+          baseQuestionPoints: state.baseQuestionPoints,
+          isSurvivalPenalty: true
+        });
+        state.potPoints = 0;
+        state.bombExploded = outcome.bombExploded;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - outcome.penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F4A5} ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+          scoreDelta: -outcome.penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: outcome.penalty,
+          finalScoreDelta: -outcome.penalty,
+          giftedPoints: outcome.giftedPoints,
+          recipientTeamId: outcome.recipientTeamId,
+          recipientTeamName: outcome.recipientTeamName,
+          darkBombRecipients: outcome.darkBombRecipients
+        };
+      } else {
+        const penalty = Math.min(team.score || 0, Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10));
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u26A0\uFE0F D\xEDnh C\u1EEDa B\u1EABy Tr\u1EEB \u0110i\u1EC3m G\u1ED1c Sinh T\u1EED! B\u1ECB tr\u1EEB -${penalty} \u0111i\u1EC3m!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles] },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
+        };
+      }
+    }
     if (osState.phase === "SELECTING" || !osState.phase) {
       if (tile2.isPeeked) {
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
@@ -2137,7 +2638,9 @@ function handleFlipCard({
             bombType,
             team,
             allTeams,
-            storyDescription: tile2.storyDescription || "M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom!"
+            storyDescription: tile2.storyDescription || "M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom!",
+            baseQuestionPoints: state.baseQuestionPoints,
+            isSurvivalPenalty: state.isPenaltySurvivalMode
           });
           state.potPoints = 0;
           state.bombExploded = outcome.bombExploded;
@@ -2436,6 +2939,49 @@ function handleFlipCard({
   tile.isOpened = true;
   state.lastFlippedTile = tile;
   state.cardsFlippedCount++;
+  if (tile.type === "ESCAPE_SAFE") {
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "SURVIVAL_ESCAPE";
+    const oldScore = team.score || 0;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#10b981",
+      rewardText: `\u{1F54A}\uFE0F ${tile.storyTitle}: ${tile.storyDescription}`,
+      scoreDelta: 0,
+      oldScore,
+      newScore: oldScore
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: false,
+      scorePenalty: 0,
+      finalScoreDelta: 0
+    };
+  }
+  if (state.isPenaltySurvivalMode && (tile.type === "TRAP" || tile.effectType === "LOSE_POINTS")) {
+    const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "SURVIVAL_FAILED";
+    const oldScore = team.score || 0;
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText: `\u26A0\uFE0F ${tile.storyTitle}: D\xEDnh b\u1EABy ph\u1EA1t sinh t\u1EED (-${penalty}\u0111)!`,
+      scoreDelta: -penalty,
+      oldScore,
+      newScore: Math.max(0, oldScore - penalty)
+    };
+    return {
+      updatedState: { ...state },
+      isBomb: true,
+      scorePenalty: penalty,
+      finalScoreDelta: -penalty
+    };
+  }
   const isBombCard = tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY" || tile.type === "BOMB_MINOR" || tile.type === "BOMB_MAJOR" || tile.type === "BOMB_DOOM";
   if (isBombCard) {
     if (state.hasShield) {
@@ -2462,108 +3008,29 @@ function handleFlipCard({
         finalScoreDelta: basePoints
       };
     }
-    let penalty = 0;
-    let penaltyText = "";
-    let recipientTeamId = void 0;
-    let recipientTeamName = void 0;
-    let giftedPoints = 0;
-    let darkBombRecipients = void 0;
-    const currentScore = team.score || 0;
-    const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-    const X = allTeams.length;
-    if (tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR") {
-      penalty = 0;
-      penaltyText = "M\u1EA5t s\u1EA1ch \u0111i\u1EC3m c\u1EE7a c\xE2u n\xE0y. T\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i kh\xF4ng \u0111\u1ED5i.";
-      state.bombExploded = {
-        type: "SMOKE",
-        title: "Bom Kh\xF3i \u{1F4A8}",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: 0
-      };
-    } else if (tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM") {
-      darkBombRecipients = [];
-      if (otherTeams.length === 0) {
-        penalty = currentScore < 5 ? currentScore : 5;
-        penaltyText = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`;
-      } else if (currentScore < 5 * X) {
-        const sortedOthers = [...otherTeams].sort((a, b) => {
-          const diff = (a.score || 0) - (b.score || 0);
-          if (diff !== 0) return diff;
-          return Math.random() - 0.5;
-        });
-        const numTeamsToReceive = Math.floor(currentScore / 5);
-        for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
-          darkBombRecipients.push({
-            teamId: sortedOthers[i].id,
-            teamName: sortedOthers[i].name,
-            points: 5
-          });
-        }
-        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5\u0111)`).join(", ");
-        penaltyText = recNames ? `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m! \u0110\xE3 ph\xE2n ph\xE1t cho \u0111\u1ED9i th\u1EA5p \u0111i\u1EC3m: ${recNames}` : `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m!`;
-      } else {
-        const maxM = Math.floor(currentScore / (5 * otherTeams.length));
-        const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
-        const pointsPerOtherTeam = 5 * m;
-        penalty = pointsPerOtherTeam * otherTeams.length;
-        for (const other of otherTeams) {
-          darkBombRecipients.push({
-            teamId: other.id,
-            teamName: other.name,
-            points: pointsPerOtherTeam
-          });
-        }
-        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}\u0111)`).join(", ");
-        penaltyText = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m! Chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i c\xF2n l\u1EA1i: ${recNames}`;
-      }
-      state.bombExploded = {
-        type: "DARK",
-        title: "Bom H\u1EAFc \xC1m \u{1F311}",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: penalty,
-        recipients: darkBombRecipients
-      };
-    } else {
-      if (currentScore > 0) {
-        giftedPoints = Math.min(currentScore, Math.ceil(currentScore * 0.5 / 5) * 5);
-      } else {
-        giftedPoints = 0;
-      }
-      penalty = giftedPoints;
-      if (otherTeams.length > 0) {
-        const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
-        const topTeams = otherTeams.filter((t) => (t.score || 0) === maxScore);
-        const chosen = topTeams[Math.floor(Math.random() * topTeams.length)];
-        recipientTeamId = chosen.id;
-        recipientTeamName = chosen.name;
-      }
-      penaltyText = recipientTeamName ? `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111) v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0110\u1ED9i ${recipientTeamName}!` : `B\u1ECB tr\u1EEB 50% \u0111i\u1EC3m (-${giftedPoints}\u0111)!`;
-      state.bombExploded = {
-        type: "CHARITY",
-        title: "Bom T\u1EEB Thi\u1EC7n \u{1F381}",
-        description: tile.storyDescription,
-        penaltyText,
-        donorTeamId: team.id,
-        donorTeamName: team.name,
-        deductedPoints: penalty,
-        recipientTeamId,
-        recipientTeamName,
-        giftedPoints
-      };
-    }
+    const bombTypeMapped = tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR" ? "BOMB_SMOKE" : tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM" ? "BOMB_DARK" : "BOMB_CHARITY";
+    const bombOutcome = resolveBombOutcome({
+      bombType: bombTypeMapped,
+      team,
+      allTeams,
+      storyDescription: tile.storyDescription,
+      baseQuestionPoints: state.baseQuestionPoints,
+      isSurvivalPenalty: state.isPenaltySurvivalMode
+    });
+    const penalty = bombOutcome.penalty;
+    const penaltyText = bombOutcome.penaltyText;
+    const recipientTeamId = bombOutcome.recipientTeamId;
+    const recipientTeamName = bombOutcome.recipientTeamName;
+    const giftedPoints = bombOutcome.giftedPoints;
+    const darkBombRecipients = bombOutcome.darkBombRecipients;
+    state.bombExploded = bombOutcome.bombExploded;
     const hasSafetyNet = getPerkType(state.promoPerk) === "SAFETY_NET_PROMO";
     const savedPotPoints = hasSafetyNet && state.potPoints > 0 ? Math.ceil(state.potPoints * 0.5) : 0;
     const finalDelta = savedPotPoints - penalty;
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "BOMB_HIT";
-    const oldScore = currentScore;
+    state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
+    const oldScore = team.score || 0;
     const newScore = Math.max(0, oldScore + finalDelta);
     const safetyNetMsg = savedPotPoints > 0 ? ` \u{1F9F2} K\xE9t S\u1EAFt B\u1EA3o L\u01B0u \u0111\xE3 gi\u1EA3i c\u1EE9u: B\u1EA3o l\u01B0u an to\xE0n +${savedPotPoints}\u0111 t\u1EEB Qu\u1EF9 th\u01B0\u1EDFng!` : "";
     state.storyResult = {
@@ -2959,12 +3426,14 @@ function handleOneShotDoorsDecision({
         bombType,
         team,
         allTeams,
-        storyDescription: chosenTile.storyDescription || "M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom!"
+        storyDescription: chosenTile.storyDescription || "M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Bom!",
+        baseQuestionPoints: state.baseQuestionPoints,
+        isSurvivalPenalty: state.isPenaltySurvivalMode
       });
       state.potPoints = 0;
       state.bombExploded = outcome.bombExploded;
       state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
+      state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
       const oldScore = team.score || 0;
       const newScore = Math.max(0, oldScore - outcome.penalty);
       state.storyResult = {
@@ -2981,9 +3450,10 @@ function handleOneShotDoorsDecision({
         isBomb: true,
         scorePenalty: outcome.penalty,
         finalScoreDelta: -outcome.penalty,
-        victimTeamId: outcome.recipientTeamId,
-        victimTeamName: outcome.recipientTeamName,
-        stolenPoints: outcome.giftedPoints
+        recipientTeamId: outcome.recipientTeamId,
+        recipientTeamName: outcome.recipientTeamName,
+        giftedPoints: outcome.giftedPoints,
+        darkBombRecipients: outcome.darkBombRecipients
       };
     } else {
       const penalty = Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);
@@ -3107,7 +3577,30 @@ var TAROT_WHEEL_SEGMENTS = [
   { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
 ];
-function getEffectiveTarotWheelSegments(hasSunMagnet = false) {
+var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
+  { index: 0, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 1, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 2, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 3, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 4, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 5, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 6, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 7, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 9, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 10, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 11, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 14, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 15, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 16, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 17, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 18, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
+];
+function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false) {
+  if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
   return TAROT_WHEEL_SEGMENTS.map((seg) => {
     if (seg.index === 2) {
@@ -3131,7 +3624,8 @@ function getEffectiveTarotWheelSegments(hasSunMagnet = false) {
 function calculateTarotWheelSpin({
   powerPercent,
   currentAngle = 0,
-  hasSunMagnet = false
+  hasSunMagnet = false,
+  isSurvivalMode = false
 }) {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
   const baseTurns = 6;
@@ -3148,7 +3642,7 @@ function calculateTarotWheelSpin({
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - targetAngle % 360) % 360;
   const landedIndex = Math.floor(pointerAngle / 18) % 20;
-  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet);
+  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode);
   const landedSegment = effectiveSegments[landedIndex];
   const spinDurationMs = 4500 + Math.round(clampedPower / 100 * 1500);
   return {
@@ -3165,17 +3659,30 @@ function handleAncientTarotSpinWheel({
   powerPercent
 }) {
   const currentAngle = state.tarotState?.targetAngle || 0;
-  const hasSunMagnet = getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
+  const isSurvivalMode = !!state.isPenaltySurvivalMode;
+  const hasSunMagnet = !isSurvivalMode && getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
-    hasSunMagnet
+    hasSunMagnet,
+    isSurvivalMode
   });
   const basePoints = state.baseQuestionPoints || 10;
   const currentScore = team.score || 0;
   const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
   let drawnCard;
   switch (landedSegment.key) {
+    case "THE_PEACE":
+      drawnCard = {
+        key: "THE_PEACE",
+        nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n",
+        nameEn: "The Peace",
+        icon: "\u{1F54A}\uFE0F",
+        roman: "XXI",
+        group: "COMMON",
+        scoreDelta: 0
+      };
+      break;
     case "THE_SUN":
       drawnCard = {
         key: "THE_SUN",
@@ -3188,15 +3695,28 @@ function handleAncientTarotSpinWheel({
       };
       break;
     case "THE_FOOL":
-      drawnCard = {
-        key: "THE_FOOL",
-        nameVi: "K\u1EBB Kh\u1EDD",
-        nameEn: "The Fool",
-        icon: "\u{1F0CF}",
-        roman: "0",
-        group: "COMMON",
-        scoreDelta: 0
-      };
+      if (isSurvivalMode) {
+        const smokePenalty = roundToMultipleOfFive(basePoints * 0.5);
+        drawnCard = {
+          key: "THE_FOOL",
+          nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c Sinh T\u1EED)",
+          nameEn: "The Fool",
+          icon: "\u{1F0CF}",
+          roman: "0",
+          group: "COMMON",
+          scoreDelta: -smokePenalty
+        };
+      } else {
+        drawnCard = {
+          key: "THE_FOOL",
+          nameVi: "K\u1EBB Kh\u1EDD",
+          nameEn: "The Fool",
+          icon: "\u{1F0CF}",
+          roman: "0",
+          group: "COMMON",
+          scoreDelta: 0
+        };
+      }
       break;
     case "THE_EMPEROR": {
       const minPenalty = Math.min(currentScore, 5 * Math.max(1, otherTeams.length));
@@ -3243,7 +3763,10 @@ function handleAncientTarotSpinWheel({
         top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       }
       if (landedSegment.deathSubtype === "GIFT_TOP1") {
-        const gifted = roundToMultipleOfFive(currentScore * 0.5);
+        const halfScore = roundToMultipleOfFive(currentScore * 0.5);
+        const baseOneAndHalf = roundToMultipleOfFive(basePoints * 1.5);
+        const targetPenalty = Math.min(halfScore, baseOneAndHalf);
+        const gifted = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
         drawnCard = {
           key: "THE_DEATH",
           nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)",
@@ -3277,7 +3800,7 @@ function handleAncientTarotSpinWheel({
     }
   }
   const isNegative = drawnCard.key === "THE_FOOL" || drawnCard.key === "THE_EMPEROR" || drawnCard.key === "THE_KNIGHT" || drawnCard.key === "THE_DEATH" && drawnCard.deathSubtype === "GIFT_TOP1";
-  if (state.hasShield && isNegative) {
+  if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
@@ -3319,7 +3842,7 @@ function handleAncientTarotSpinWheel({
   }
   state.potPoints = 0;
   state.phase = "TURN_SUMMARY";
-  state.turnFinishedReason = "TAROT_WHEEL_SPUN";
+  state.turnFinishedReason = isSurvivalMode ? "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
   state.tarotState = {
     ...state.tarotState || {},
     isWheelSpinning: false,
@@ -3334,30 +3857,45 @@ function handleAncientTarotSpinWheel({
   let scorePenalty = 0;
   let rewardText = "";
   switch (drawnCard.key) {
+    case "THE_PEACE":
+      finalScoreDelta = 0;
+      state.turnFinishedReason = "SURVIVAL_ESCAPE";
+      rewardText = `\u{1F54A}\uFE0F B\xCCNH Y\xCAN THO\xC1T N\u1EA0N: May m\u1EAFn th\u1EA7n k\u1EF3! B\u1EA1n \u0111\xE3 s\u1ED1ng s\xF3t qua v\xF2ng quay Sinh T\u1EED v\xE0 b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n s\u1ED1 \u0111i\u1EC3m!`;
+      break;
     case "THE_SUN":
       finalScoreDelta = basePoints;
       rewardText = `\u2600\uFE0F M\u1EB6T TR\u1EDCI QUANG MINH: \u0110i\u1EC1m l\xE0nh tuy\u1EC7t \u0111\u1ED1i! Nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 an to\xE0n!`;
       break;
     case "THE_FOOL":
-      finalScoreDelta = 0;
-      rewardText = `\u{1F0CF} K\u1EBA KH\u1EDC: \u0110i\u1EC1m d\u1EEF! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i (0\u0111). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn.`;
+      if (isSurvivalMode) {
+        scorePenalty = Math.abs(drawnCard.scoreDelta);
+        finalScoreDelta = -scorePenalty;
+        state.turnFinishedReason = "SURVIVAL_FAILED";
+        rewardText = `\u{1F0CF} K\u1EBA KH\u1EDC (KH\xD3I \u0110\u1ED8C SINH T\u1EEC): Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${scorePenalty}\u0111)!`;
+      } else {
+        finalScoreDelta = 0;
+        rewardText = `\u{1F0CF} K\u1EBA KH\u1EDC: \u0110i\u1EC1m d\u1EEF! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i (0\u0111). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn.`;
+      }
       break;
     case "THE_EMPEROR":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       const recNames = (drawnCard.darkBombRecipients || []).map((r) => `${r.teamName} (+${r.points}\u0111)`).join(", ");
       rewardText = `\u{1F451} HO\xC0NG \u0110\u1EBE: Quy\u1EC1n l\u1EF1c h\u1EAFc \xE1m tr\u1EEB -${scorePenalty}\u0111 chia \u0111\u1EC1u cho \u0111\u1ED1i th\u1EE7: ${recNames || "c\xE1c \u0111\u1ED9i kh\xE1c"}!`;
       break;
     case "THE_KNIGHT":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       rewardText = `\u{1F5E1}\uFE0F HI\u1EC6P S\u0128: \u0110\u1ECBnh m\u1EC7nh tr\u1EEBng ph\u1EA1t x\xF3a s\u1ED5 1/2 t\u1ED5ng \u0111i\u1EC3m hi\u1EC7n c\xF3 (-${scorePenalty}\u0111)!`;
       break;
     case "THE_DEATH":
+      if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       if (drawnCard.deathSubtype === "GIFT_TOP1") {
         scorePenalty = Math.abs(drawnCard.scoreDelta);
         finalScoreDelta = -scorePenalty;
-        rewardText = `\u{1F480} TH\u1EA6N CH\u1EBET (HI\u1EBEN T\u1EBE): B\u1ECB tr\u1EEB 50% t\u1ED5ng \u0111i\u1EC3m (-${scorePenalty}\u0111) chuy\u1EC3n t\u1EB7ng tr\u1ECDn g\xF3i cho Top 1 (${drawnCard.victimTeamName || "\u0110\u1ED1i th\u1EE7"})!`;
+        rewardText = `\u{1F480} TH\u1EA6N CH\u1EBET (HI\u1EBEN T\u1EBE): B\u1ECB ph\u1EA1t theo ph\u01B0\u01A1ng \xE1n th\u1EA5p h\u01A1n (-${scorePenalty}\u0111) chuy\u1EC3n t\u1EB7ng tr\u1ECDn g\xF3i cho Top 1 (${drawnCard.victimTeamName || "\u0110\u1ED1i th\u1EE7"})!`;
       } else {
         finalScoreDelta = drawnCard.stolenPoints || basePoints * 2;
         rewardText = `\u{1F480} TH\u1EA6N CH\u1EBET (\u0110O\u1EA0T M\u1EC6NH): H\xFAt s\u1EA1ch +${finalScoreDelta}\u0111 t\u1EEB Top 1 (${drawnCard.victimTeamName || "\u0110\u1ED1i th\u1EE7"}) c\u1ED9ng th\u1EB3ng v\xE0o \u0111i\u1EC3m c\u1EE7a b\u1EA1n!`;
@@ -8066,7 +8604,15 @@ function registerSocketHandlers(io2) {
     };
     const executeMysteryDoorsDecision = async (room, questState, team, decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId) => {
       const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const { updatedState, finalScoreDelta, victimTeamId, stolenPoints } = handleOneShotDoorsDecision({
+      const {
+        updatedState,
+        finalScoreDelta,
+        victimTeamId,
+        stolenPoints,
+        recipientTeamId,
+        giftedPoints,
+        darkBombRecipients
+      } = handleOneShotDoorsDecision({
         state: questState,
         team,
         allTeams,
@@ -8090,6 +8636,39 @@ function registerSocketHandlers(io2) {
           io2.to(`room:${room.code}`).emit("room:state", refreshedState);
         }).catch((err) => {
           console.error("[MysteryDoorsDecision] steal delta error:", err);
+        });
+      } else if (darkBombRecipients && darkBombRecipients.length > 0) {
+        (async () => {
+          const updates = [];
+          if (finalScoreDelta < 0) {
+            const donorDelta = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+            updates.push({ teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta });
+          }
+          for (const rec of darkBombRecipients) {
+            if (rec.points > 0) {
+              const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+              updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+            }
+          }
+          if (updates.length > 0) {
+            io2.to(`room:${room.code}`).emit("game:score:update", updates);
+          }
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        })().catch(console.error);
+      } else if (recipientTeamId && giftedPoints && giftedPoints > 0) {
+        Promise.all([
+          applyScoreDeltaToTeam(team.id, finalScoreDelta || -giftedPoints),
+          applyScoreDeltaToTeam(recipientTeamId, giftedPoints)
+        ]).then(async ([donorDelta, recipientDelta]) => {
+          io2.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: team.id, score: donorDelta.newScore, delta: donorDelta.effectiveDelta },
+            { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta }
+          ]);
+          const refreshedState = await buildRoomState(room.id);
+          io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        }).catch((err) => {
+          console.error("[MysteryDoorsDecision] charity bomb delta error:", err);
         });
       } else if (finalScoreDelta !== 0) {
         applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
@@ -8310,6 +8889,68 @@ function registerSocketHandlers(io2) {
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.phase !== "DECISION_CHOICE") return;
       await executeMysteryChooseAction(room, questState, action);
+    });
+    const executeMysterySurvivalChoice = async (room, questState, choice) => {
+      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
+      if (!team) return;
+      const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
+      const currentHearts = teamHearts[team.id] ?? questState.initialHeartsPerTeam ?? 0;
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
+      questState.survivalDilemmaPending = false;
+      questState.survivalDilemmaChoice = choice;
+      if (choice === "SACRIFICE_HEART") {
+        teamHearts[team.id] = Math.max(0, currentHearts - 1);
+        questState.teamHearts = teamHearts;
+        questState.phase = "TURN_SUMMARY";
+        questState.turnFinishedReason = "QUESTION_FAILED";
+        questState.potPoints = 0;
+        questState.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: `\u{1F494} \u0110\u1ED9i ch\u1EA5p nh\u1EADn hy sinh 1 \u2764\uFE0F \u0111\u1EC3 b\u1EA3o to\xE0n to\xE0n b\u1ED9 \u0111i\u1EC3m s\u1ED1! (C\xF2n ${teamHearts[team.id]} \u2764\uFE0F)`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0
+        };
+      } else if (choice === "RISK_SURVIVAL") {
+        questState.baseQuestionPoints = basePts;
+        startSurvivalPenaltyMinigame({
+          state: questState,
+          team,
+          allTeams
+        });
+      }
+      roomMysteryQuests.set(room.id, questState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+    socket.on("game:mystery:survival_choice", async ({ choice }) => {
+      const playerId = playerSockets.get(socket.id);
+      if (!playerId) return;
+      const player = await prisma.player.findUnique({
+        where: { id: playerId },
+        include: { room: true }
+      });
+      if (!player || !player.room || !player.teamId) return;
+      const room = player.room;
+      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.survivalDilemmaPending) return;
+      if (questState.currentTurnTeamId !== player.teamId) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EF1a ch\u1ECDn c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        return;
+      }
+      await executeMysterySurvivalChoice(room, questState, choice);
+    });
+    socket.on("admin:mystery:survival_choice", async ({ choice, code }) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || !questState.survivalDilemmaPending) return;
+      await executeMysterySurvivalChoice(room, questState, choice);
     });
     socket.on("game:mystery:flip_card", async ({ tileId }) => {
       const playerId = playerSockets.get(socket.id);
@@ -11295,9 +11936,13 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
       }
       if (isCorrect) {
         questState.phase = "DECISION_CHOICE";
+        questState.survivalDilemmaPending = false;
+        questState.isPenaltySurvivalMode = false;
         questState.baseQuestionPoints = basePts;
         questState.potPoints = basePts;
         questState.potMultiplier = 1;
+        questState.turnFinishedReason = void 0;
+        questState.storyResult = void 0;
         const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
         synchronizeMysteryStageWithQuestionPoints({
           state: questState,
@@ -11311,37 +11956,49 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
         const currentTeam = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
         const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
         const currentHearts = teamHearts[questState.currentTurnTeamId] ?? questState.initialHeartsPerTeam ?? 0;
-        questState.phase = "TURN_SUMMARY";
-        questState.turnFinishedReason = "QUESTION_FAILED";
+        const currentScore = currentTeam?.score || 0;
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        questState.baseQuestionPoints = basePts;
         questState.potPoints = 0;
         questState.potMultiplier = 1;
-        let penaltyDelta = 0;
-        let rewardText = "";
-        const oldScore = currentTeam?.score || 0;
-        if (currentHearts > 0) {
-          teamHearts[questState.currentTurnTeamId] = currentHearts - 1;
-          questState.teamHearts = teamHearts;
-          rewardText = `\u{1F494} Tr\u1EA3 l\u1EDDi ch\u01B0a ch\xEDnh x\xE1c! Ti\xEAu hao 1 \u2764\uFE0F \u0111\u1EC3 b\u1EA3o v\u1EC7 t\u1ED5ng \u0111i\u1EC3m! (C\xF2n ${teamHearts[questState.currentTurnTeamId]} \u2764\uFE0F)`;
-        } else {
-          const halfPts = roundToMultipleOfFive(basePts / 2);
-          penaltyDelta = -Math.min(oldScore, halfPts);
-          if (penaltyDelta !== 0 && currentTeam) {
-            const deltaRes = await applyScoreDeltaToTeam(currentTeam.id, penaltyDelta);
-            io2.to(`room:${roomCode}`).emit("game:score:update", [
-              { teamId: currentTeam.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-            ]);
+        questState.turnFinishedReason = void 0;
+        if (currentScore <= 0) {
+          questState.phase = "TURN_SUMMARY";
+          questState.turnFinishedReason = "QUESTION_FAILED";
+          questState.survivalDilemmaPending = false;
+          questState.isPenaltySurvivalMode = false;
+          let rewardText = "";
+          if (currentHearts > 0) {
+            teamHearts[questState.currentTurnTeamId] = Math.max(0, currentHearts - 1);
+            questState.teamHearts = teamHearts;
+            rewardText = `\u{1F494} Tr\u1EA3 l\u1EDDi ch\u01B0a ch\xEDnh x\xE1c! Ch\u01B0a c\xF3 \u0111i\u1EC3m t\xEDch l\u0169y, ti\xEAu hao 1 \u2764\uFE0F! (C\xF2n ${teamHearts[questState.currentTurnTeamId]} \u2764\uFE0F)`;
+          } else {
+            rewardText = `\u{1F480} Tr\u1EA3 l\u1EDDi ch\u01B0a ch\xEDnh x\xE1c! Ch\u01B0a c\xF3 \u0111i\u1EC3m t\xEDch l\u0169y v\xE0 \u0111\xE3 h\u1EBFt tim, k\u1EBFt th\xFAc l\u01B0\u1EE3t!`;
           }
-          rewardText = `\u{1F480} \u0110\xE3 h\u1EBFt Tim v\xE0 tr\u1EA3 l\u1EDDi ch\u01B0a ch\xEDnh x\xE1c! B\u1ECB tr\u1EEB ${Math.abs(penaltyDelta)}\u0111 (${halfPts}\u0111)!`;
+          questState.storyResult = {
+            teamId: questState.currentTurnTeamId,
+            teamName: questState.currentTurnTeamName,
+            teamColor: questState.currentTurnTeamColor,
+            rewardText,
+            scoreDelta: 0,
+            oldScore: 0,
+            newScore: 0
+          };
+        } else {
+          if (currentHearts > 0) {
+            questState.phase = "DECISION_CHOICE";
+            questState.survivalDilemmaPending = true;
+            questState.survivalDilemmaChoice = void 0;
+            questState.isPenaltySurvivalMode = false;
+          } else {
+            questState.survivalDilemmaPending = false;
+            startSurvivalPenaltyMinigame({
+              state: questState,
+              team: currentTeam,
+              allTeams
+            });
+          }
         }
-        questState.storyResult = {
-          teamId: questState.currentTurnTeamId,
-          teamName: questState.currentTurnTeamName,
-          teamColor: questState.currentTurnTeamColor,
-          rewardText,
-          scoreDelta: penaltyDelta,
-          oldScore,
-          newScore: Math.max(0, oldScore + penaltyDelta)
-        };
         roomMysteryQuests.set(room.id, questState);
         io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
       }

@@ -870,10 +870,12 @@ export type MysteryTileEffectType =
   | "EXTRA_TURN"   // Nhận thêm 1 lượt chọn ô câu tiếp theo
   | "RARE_POWERUP" // Tặng 1 thẻ bài bổ trợ hiếm (Khiên / Đổi câu / 50-50)
   | "SAFE_SHIELD"  // Tặng Khiên bảo vệ
-  | "GIFT_POINTS"; // Tặng toàn bộ điểm đang có cho một đội khác
+  | "GIFT_POINTS"  // Tặng toàn bộ điểm đang có cho một đội khác
+  | "ESCAPE_SAFE"; // Thoát hiểm an toàn trong chế độ Sinh Tử
 
 export type MysteryTileType =
   | "REWARD"
+  | "ESCAPE_SAFE" // Ô/Lá thoát hiểm an toàn trong chế độ Sinh Tử
   | "TRAP"         // Thẻ bất lợi nhẹ (-5đ, -10đ Hũ hoặc Buộc dừng)
   | "BOMB_SMOKE"   // 1. Bom Khói (50%): Mất sạch điểm của câu này
   | "BOMB_DARK"    // 2. Bom Hắc Ám (35%): Mất điểm chia đều cho các đội còn lại
@@ -902,7 +904,7 @@ export interface MysteryTile {
   peekIcon?: string;  // Icon hiển thị hé lộ của Mắt Thần
 }
 
-export type AncientTarotCardKey = "THE_SUN" | "THE_FOOL" | "THE_EMPEROR" | "THE_KNIGHT" | "THE_DEATH" | "DEATH";
+export type AncientTarotCardKey = "THE_SUN" | "THE_FOOL" | "THE_EMPEROR" | "THE_KNIGHT" | "THE_DEATH" | "DEATH" | "THE_PEACE";
 export type TarotDeathSubtype = "GIFT" | "STEAL" | "GIFT_TOP1" | "STEAL_TOP1";
 
 export interface AncientTarotDrawnCard {
@@ -1009,7 +1011,13 @@ export interface MysteryQuestState {
     | "DOOR_CHOSEN"
     | "TAROT_DRAWN"
     | "TAROT_WHEEL_SPUN"
+    | "SURVIVAL_ESCAPE"
+    | "SURVIVAL_FAILED"
     | "MAX_ATTEMPTS";
+  // Trạng thái Chế độ Sinh Tử (khi trả lời sai)
+  isPenaltySurvivalMode?: boolean;
+  survivalDilemmaPending?: boolean;
+  survivalDilemmaChoice?: "SACRIFICE_HEART" | "RISK_SURVIVAL";
   storyResult?: {
     teamId: string;
     teamName: string;
@@ -1464,6 +1472,8 @@ export interface ClientToServerEvents {
   "admin:mystery:tarot_prophecy_decision": (payload: { choice: "KEEP" | "DISCARD"; code?: string }) => void;
   "admin:mystery:flip_manual": (payload: { tileId: number }) => void;
   "admin:mystery:cash_out_manual": () => void;
+  "game:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL" }) => void;
+  "admin:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL"; code?: string }) => void;
 }
 
 export type NextApiResponseWithSocket = NextApiResponse & {

@@ -55,6 +55,7 @@ export default function PlayPage() {
   const [buzzedBy, setBuzzedBy] = useState<{ playerName: string; teamId?: string; teamName?: string } | null>(null);
   const [lastPowerup, setLastPowerup] = useState<PowerupUsedPayload | null>(null);
   const [answered, setAnswered] = useState(false);
+  const [submittedAnswer, setSubmittedAnswer] = useState<string | string[] | null>(null);
   const [hiddenOptionIds, setHiddenOptionIds] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isStealPhase, setIsStealPhase] = useState(false);
@@ -448,6 +449,14 @@ export default function PlayPage() {
             setAnswered(false);
           }
         }
+        if (p.teamAnswers !== undefined) {
+          const curTid = myTeamIdRef.current || activeTeamId || selectedTeamId;
+          if (curTid && p.teamAnswers[curTid]) {
+            teamAnswersRef.current.set(curTid, p.teamAnswers[curTid]);
+            setSubmittedAnswer(p.teamAnswers[curTid]);
+            setAnswered(true);
+          }
+        }
       }
     };
     window.addEventListener("message", handlePostMessage);
@@ -661,6 +670,7 @@ export default function PlayPage() {
         teamAnswersRef.current.clear();
         setRevealPayload(null);
         setAnswered(false);
+        setSubmittedAnswer(null);
         setBuzzedBy(null);
         setHiddenOptionIds([]);
         setIsStealPhase(Boolean(q.isStealPhase));
@@ -855,6 +865,7 @@ export default function PlayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setAnswered(false);
+      setSubmittedAnswer(null);
       setBuzzedBy(null);
       setTimer(null);
       setHiddenOptionIds([]);
@@ -866,6 +877,21 @@ export default function PlayPage() {
 
     socket.on("game:answer:ack", (payload) => {
       setAnswered(true);
+    });
+
+    socket.on("game:answer:applied", (payload) => {
+      const currentTid = myTeamIdRef.current || selectedTeamId || activeTeamId;
+      const currentPid = playerIdRef.current;
+      if (
+        (payload.teamId && payload.teamId === currentTid) ||
+        (payload.playerId && payload.playerId === currentPid)
+      ) {
+        if (currentQuestionRef.current && payload.questionId === currentQuestionRef.current.question.id) {
+          if (payload.teamId) teamAnswersRef.current.set(payload.teamId, payload.answer);
+          setSubmittedAnswer(payload.answer);
+          setAnswered(true);
+        }
+      }
     });
 
     socket.on("game:score:update", (scores) => {
@@ -1061,6 +1087,7 @@ export default function PlayPage() {
   const handleAnswer = (answer: string | string[], explicitTeamId?: string) => {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
+    setSubmittedAnswer(answer);
     const targetTeamId = explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId || mePlayer?.teamId || roomState?.teams[0]?.id;
     if (targetTeamId) teamAnswersRef.current.set(targetTeamId, answer);
     if (socketRef.current?.connected) {
@@ -1753,8 +1780,8 @@ export default function PlayPage() {
               timer={timer}
               onAnswer={handleAnswer}
               onBuzz={handleBuzz}
-              answered={Boolean(effectiveTeamId && teamAnswersRef.current.has(effectiveTeamId))}
-              initialAnswer={(effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : null) || null}
+              answered={answered || Boolean(effectiveTeamId && teamAnswersRef.current.has(effectiveTeamId))}
+              initialAnswer={submittedAnswer || (effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : null) || null}
               revealPayload={revealPayload}
               roomStatus={roomState?.status ?? "PLAYING"}
               hiddenOptionIds={hiddenOptionIds}

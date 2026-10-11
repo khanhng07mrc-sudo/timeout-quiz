@@ -6415,8 +6415,8 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("room:state", roomState);
     });
 
-    socket.on("admin:timer:set", async ({ seconds }: { seconds: number }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:timer:set", async ({ seconds, code }: { seconds: number; code?: string }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
       const key = `${room.id}:timer`;
       if (roomRemainingTimes.has(key)) {
@@ -7640,6 +7640,14 @@ async function processAnswerSubmission({
     isUpdate,
   };
   io.to(`room:${room.code}:admin`).emit("game:answer:received", answerReceivedPayload);
+  if (isAdminOverride) {
+    io.to(`room:${room.code}`).emit("game:answer:applied", {
+      teamId: effectiveTeamId,
+      playerId,
+      questionId,
+      answer: normalizedAnswer,
+    });
+  }
   // Note: do NOT broadcast game:answer:received to the full room (player clients).
   // Only admins need to see live answer notifications. Broadcasting to players can
   // cause unintended cross-device state contamination.

@@ -2002,6 +2002,18 @@ export default function AdminSandboxPage() {
     const teamName = targetTeam?.name || teamId;
 
     setTeamSelectedAnswers((prev) => ({ ...prev, [teamId]: answerId }));
+    setShowDirectAnswerModal(false);
+
+    // Forward action to tester player iframe so mobile UI updates instantly
+    playerIframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "FORCE_TESTER_ACTION",
+        action: "answer",
+        answer: answerId,
+        teamId,
+      },
+      "*"
+    );
 
     if (isOfflineSandbox) {
       const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestionRef.current.question;
@@ -2015,9 +2027,9 @@ export default function AdminSandboxPage() {
         points: awarded,
       });
       offlineFinalizedActorsRef.current.add(teamId);
-      // MC nộp hộ là thủ công, không kích hoạt tự động công bố đáp án sớm
+      syncToIframes({ teamAnswers: { [teamId]: answerId } });
 
-      addLog(`🎙️ MC chọn đáp án [${answerId}] cho Đội [${teamName}] (${isCorrect ? "Đúng" : "Sai"})`);
+      addLog(`🎙️ MC đã nộp đáp án [${answerId}] cho Đội [${teamName}] (${isCorrect ? "Đúng" : "Sai"})`);
       return;
     }
 
@@ -2027,8 +2039,8 @@ export default function AdminSandboxPage() {
       answer: answerId,
       code,
     });
-    addLog(`🎙️ MC nộp đáp án [${answerId}] cho Đội [${teamName}]`);
-  }, [isOfflineSandbox, code, addLog]);
+    addLog(`🎙️ MC đã nộp đáp án [${answerId}] cho Đội [${teamName}]`);
+  }, [isOfflineSandbox, code, addLog, syncToIframes]);
 
   const handleToggleCards = useCallback((locked: boolean) => {
     setCardsLocked(locked);
@@ -4837,7 +4849,7 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    adminSocketRef.current?.emit("admin:timer:set", { seconds: 1 });
+    adminSocketRef.current?.emit("admin:timer:set", { seconds: 1, code });
     addLog("⚡ Admin tua nhanh: Đặt đếm ngược còn 1s!");
   };
 
@@ -4857,7 +4869,7 @@ export default function AdminSandboxPage() {
       return;
     }
 
-    adminSocketRef.current?.emit("admin:timer:stop_early");
+    adminSocketRef.current?.emit("admin:timer:stop_early", { code });
     addLog("Admin: Dừng thời gian sớm");
   };
 

@@ -1393,6 +1393,7 @@ export interface ServerToClientEvents {
   }) => void;
   "game:answer:ack": (payload: { questionId: string; answer: string | string[]; isUpdate: boolean; success: boolean }) => void;
   "game:answer:received": (payload: { teamId?: string; playerId?: string; playerName: string; teamName?: string; questionId: string; answer?: string | string[]; isUpdate: boolean }) => void;
+  "game:answer:applied": (payload: { teamId?: string; playerId?: string; questionId: string; answer: string | string[] }) => void;
   "game:elimination:round": (payload: {
     round?: number;
     cycleQuestions?: number;
@@ -1489,7 +1490,7 @@ export interface ClientToServerEvents {
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
   "admin:wager:set_bailout_limit": (payload: { limit: number }) => void;
-  "admin:timer:set": (payload: { seconds: number }) => void;
+  "admin:timer:set": (payload: { seconds: number; code?: string }) => void;
   "admin:timer:stop_early": (payload?: { code?: string }) => void;
   "game:answer:stop_early": (payload: { questionId: string; answer?: string | string[] }) => void;
   "game:answer:finalize": (payload: { questionId: string; answer?: string | string[]; teamId?: string }) => void;

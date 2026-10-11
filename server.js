@@ -10413,8 +10413,8 @@ function registerSocketHandlers(io2) {
       const roomState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", roomState);
     });
-    socket.on("admin:timer:set", async ({ seconds }) => {
-      const room = await getAdminRoom(socket);
+    socket.on("admin:timer:set", async ({ seconds, code }) => {
+      const room = await getAdminRoom(socket, code);
       if (!room) return;
       const key = `${room.id}:timer`;
       if (roomRemainingTimes.has(key)) {
@@ -11408,6 +11408,14 @@ async function processAnswerSubmission({
     isUpdate
   };
   io2.to(`room:${room.code}:admin`).emit("game:answer:received", answerReceivedPayload);
+  if (isAdminOverride) {
+    io2.to(`room:${room.code}`).emit("game:answer:applied", {
+      teamId: effectiveTeamId,
+      playerId,
+      questionId,
+      answer: normalizedAnswer
+    });
+  }
   if (isBouncebackSteal && !isAdminOverride) {
     stopQuestionTimer(room.id);
     const stealInfo = roomStealBuzzed.get(qKey);

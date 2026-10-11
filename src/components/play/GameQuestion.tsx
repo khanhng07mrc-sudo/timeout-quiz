@@ -106,9 +106,7 @@ export default function GameQuestion({
       setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
       setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
       setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
-      if (isSingleSubmit) {
-        setIsFinalizedLocally(true);
-      }
+      setIsFinalizedLocally(true);
     } else {
       setSelected([]);
       setEssayText("");

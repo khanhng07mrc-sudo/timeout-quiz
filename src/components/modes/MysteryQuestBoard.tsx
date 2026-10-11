@@ -81,6 +81,7 @@ export default function MysteryQuestBoard({
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
   const lastClickedTileIdRef = useRef<number | null>(null);
+  const pendingFlippedIdsRef = useRef<Set<number>>(new Set());
 
   if (!mysteryState) {
     return (
@@ -139,34 +140,34 @@ export default function MysteryQuestBoard({
 
     setOptimisticOpenedIds((prev) => {
       if (miniGameType === "MEMORY_PAIRS") {
-        // Khi không có lá bài nào đang trong lượt lật (firstFlippedTileId và secondFlippedTileId đều null):
-        // Đồng bộ 100% về serverOpened, đảm bảo sau khi mismatch 1.5s các lá bài úp lại sạch sẽ!
+        if (isPenaltySurvivalMode) {
+          return new Set([...serverOpened, ...pendingFlippedIdsRef.current, ...prev]);
+        }
+
+        // Khi lượt giải quyết mismatch kết thúc và cả hai lá đã úp lại trên server:
         if (
           !memoryPairsState?.firstFlippedTileId &&
           !memoryPairsState?.secondFlippedTileId &&
-          !lastClickedTileIdRef.current
+          !memoryPairsState?.isMismatchResolving
         ) {
-          return serverOpened;
-        }
-
-        // If mismatch is resolving, promptSecondChance, or turn finished: reset immediately
-        if (
-          memoryPairsState?.isMismatchResolving ||
-          memoryPairsState?.promptSecondChance ||
-          phase === "TURN_SUMMARY"
-        ) {
+          pendingFlippedIdsRef.current.clear();
           lastClickedTileIdRef.current = null;
           return serverOpened;
         }
 
-        // Khi đang có lá bài lật dở trong lượt (ví dụ lá 1 hoặc lá 2 vừa bấm):
-        // Giữ lại serverOpened cộng với lá đang lật dở để không bị flicker!
+        // Khi đang có lá bài lật dở trong lượt (ví dụ lá 1 hoặc lá 2 vừa bấm, hoặc đang giải quyết mismatch):
+        // Giữ lại serverOpened cộng với tất cả lá đang lật dở để triệt tiêu 100% hiện tượng chớp nháy!
         const currentAttemptIds = new Set<number>();
         if (memoryPairsState?.firstFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.firstFlippedTileId));
         if (memoryPairsState?.secondFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.secondFlippedTileId));
         if (lastClickedTileIdRef.current) currentAttemptIds.add(Number(lastClickedTileIdRef.current));
 
-        const merged = new Set([...serverOpened, ...currentAttemptIds]);
+        const merged = new Set([
+          ...serverOpened,
+          ...currentAttemptIds,
+          ...pendingFlippedIdsRef.current,
+          ...prev,
+        ]);
         if (merged.size === prev.size) {
           let same = true;
           for (const id of merged) {
@@ -211,6 +212,7 @@ export default function MysteryQuestBoard({
   }, [memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId]);
 
   useEffect(() => {
+    pendingFlippedIdsRef.current.clear();
     lastClickedTileIdRef.current = null;
     setOptimisticMatchedPairKey(null);
     setOptimisticOpenedIds(new Set());
@@ -309,15 +311,15 @@ export default function MysteryQuestBoard({
       }
 
       // Check if this click completes a matching pair optimistically
-      const priorFlippedId = memoryPairsState?.firstFlippedTileId || lastClickedTileIdRef.current;
+      const priorFlippedId = memoryPairsState?.firstFlippedTileId;
       if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
         const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
         if (first && first.pairKey && first.pairKey === tile.pairKey) {
           setOptimisticMatchedPairKey(tile.pairKey);
         }
-      } else if (!priorFlippedId) {
-        lastClickedTileIdRef.current = tile.id;
       }
+      lastClickedTileIdRef.current = tile.id;
+      pendingFlippedIdsRef.current.add(Number(tile.id));
 
       // Trong Lật Cặp, chỉ chặn click đúp vào đúng cùng một lá bài trong vòng 200ms
       if (flippingTileIdRef.current === tile.id) return;

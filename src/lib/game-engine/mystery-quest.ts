@@ -223,43 +223,51 @@ export function resolveBombOutcome({
     let penaltyText = "";
     const darkBombRecipients: Array<{ teamId: string; teamName: string; points: number }> = [];
 
-    if (otherTeams.length === 0) {
-      penalty = currentScore < 5 ? currentScore : 5;
-      penaltyText = `Bị trừ ${penalty} điểm từ tổng điểm.`;
-    } else if (currentScore < 5 * X) {
-      const sortedOthers = [...otherTeams].sort((a, b) => {
-        const diff = (a.score || 0) - (b.score || 0);
-        if (diff !== 0) return diff;
-        return Math.random() - 0.5;
-      });
-      const numTeamsToReceive = Math.floor(currentScore / 5);
-      for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
-        darkBombRecipients.push({
-          teamId: sortedOthers[i].id,
-          teamName: sortedOthers[i].name,
-          points: 5,
-        });
-      }
-      penalty = darkBombRecipients.reduce((sum, r) => sum + r.points, 0);
-      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5đ)`).join(", ");
-      penaltyText = recNames
-        ? `Bị trừ toàn bộ ${penalty} điểm! Đã phân phát cho đội thấp điểm: ${recNames}`
-        : `Bị trừ toàn bộ ${penalty} điểm!`;
-    } else {
-      const maxM = Math.floor(currentScore / (5 * otherTeams.length));
-      const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
-      const pointsPerOtherTeam = 5 * m;
-      penalty = pointsPerOtherTeam * otherTeams.length;
+    const numOpponents = otherTeams.length;
+    const threshold = 5 * numOpponents; // 5 * (số đội - 1)
 
+    if (numOpponents === 0) {
+      penalty = currentScore > 0 ? Math.min(currentScore, 5) : 0;
+      penaltyText = penalty > 0 ? `Bị trừ ${penalty} điểm từ tổng điểm.` : "Điểm hiện tại là 0 nên không bị trừ điểm.";
+    } else if (currentScore < threshold) {
+      // Trường hợp 1: Số điểm của đội mình nhỏ hơn 5 * (số đội - 1)
+      if (currentScore <= 0) {
+        penalty = 0;
+        penaltyText = "Điểm của bạn hiện tại là 0 nên không bị trừ điểm và không phân chia cho đối thủ.";
+      } else {
+        // Ưu tiên tặng cho đội có điểm thấp nhất (nếu hai đội bằng điểm thì chọn ngẫu nhiên)
+        const sortedOthers = [...otherTeams].sort((a, b) => {
+          const diff = (a.score || 0) - (b.score || 0);
+          if (diff !== 0) return diff;
+          return Math.random() - 0.5;
+        });
+
+        const numTeamsToReceive = Math.min(Math.floor(currentScore / 5), sortedOthers.length);
+        for (let i = 0; i < numTeamsToReceive; i++) {
+          darkBombRecipients.push({
+            teamId: sortedOthers[i].id,
+            teamName: sortedOthers[i].name,
+            points: 5,
+          });
+        }
+        penalty = darkBombRecipients.length * 5;
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5đ)`).join(", ");
+        penaltyText = recNames
+          ? `Bị trừ ${penalty} điểm! Đã phân phát cho đội thấp điểm nhất: ${recNames}`
+          : "Điểm không đủ 5đ để phân chia cho đối thủ.";
+      }
+    } else {
+      // Trường hợp 2: Số điểm >= 5 * (số đội - 1) -> Trừ 5 * (số đội - 1) (ví dụ trừ 15đ với 4 đội), mỗi đội còn lại nhận 5đ cố định
+      penalty = 5 * numOpponents;
       for (const other of otherTeams) {
         darkBombRecipients.push({
           teamId: other.id,
           teamName: other.name,
-          points: pointsPerOtherTeam,
+          points: 5,
         });
       }
-      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}đ)`).join(", ");
-      penaltyText = `Bị trừ ${penalty} điểm! Chia đều cho các đội còn lại: ${recNames}`;
+      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5đ)`).join(", ");
+      penaltyText = `Bị trừ ${penalty} điểm! Chia cho các đối thủ còn lại: ${recNames}`;
     }
 
     return {
@@ -3917,8 +3925,8 @@ export function handleAncientTarotDraw({
         scoreDelta: -penalty,
       };
     }
-  } else if (rand < 0.30) {
-    // ☀️ 1. MẶT TRỜI (30%): Điềm lành. Nhận trọn vẹn điểm câu hiện tại an toàn.
+  } else if (rand < 0.60) {
+    // ☀️ 1. MẶT TRỜI (60%): Điềm lành. Nhận trọn vẹn điểm câu hiện tại an toàn.
     drawnCard = {
       key: "THE_SUN",
       nameVi: "Mặt Trời",
@@ -3928,8 +3936,30 @@ export function handleAncientTarotDraw({
       group: "COMMON",
       scoreDelta: basePoints,
     };
-  } else if (rand < 0.60) {
-    // 🃏 2. KẺ KHỜ (30%): Điềm dữ. Mất sạch điểm tích lũy câu này.
+  } else if (rand < 0.70) {
+    // 💀 2. THẦN CHẾT CƯỚP ĐIỂM (10%): Cướp basePoints * 2 từ Top 1 đối thủ
+    let top1Team: MysteryTeamRef | undefined = undefined;
+    if (otherTeams.length > 0) {
+      const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
+      const topCandidates = otherTeams.filter((t) => (t.score || 0) === maxScore);
+      top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+    }
+    const stolen = basePoints * 2;
+    drawnCard = {
+      key: "THE_DEATH",
+      nameVi: "Thần Chết (Cướp Điểm)",
+      nameEn: "Death",
+      icon: "💀",
+      roman: "XIII",
+      group: "CRITICAL",
+      deathSubtype: "STEAL_TOP1",
+      scoreDelta: stolen,
+      stolenPoints: stolen,
+      victimTeamId: top1Team?.id,
+      victimTeamName: top1Team?.name,
+    };
+  } else if (rand < 0.85) {
+    // 🃏 3. KẺ KHỜ (15%): Điềm dữ. Mất sạch điểm tích lũy câu này.
     drawnCard = {
       key: "THE_FOOL",
       nameVi: "Kẻ Khờ",
@@ -3939,13 +3969,13 @@ export function handleAncientTarotDraw({
       group: "COMMON",
       scoreDelta: 0,
     };
-  } else if (rand < 0.75) {
-    // 👑 3. HOÀNG ĐẾ (15%): Quyền lực hắc ám. Trừ điểm tổng chia đều cho các đội còn lại.
+  } else if (rand < 0.95) {
+    // 👑 4. HOÀNG ĐẾ (10%): Quyền lực hắc ám. Trừ điểm tổng chia đều cho các đội còn lại.
     const darkOutcome = resolveBombOutcome({
       bombType: "BOMB_DARK",
       team,
       allTeams,
-      storyDescription: "Hoàng Đế uy quyền hắc ám! Rút cạn điểm số chia đều cho các đối thủ!",
+      storyDescription: "Hoàng Đế uy quyền hắc ám! Rút cạn điểm số phân chia cho các đối thủ!",
       baseQuestionPoints: basePoints,
       isSurvivalPenalty: false,
     });
@@ -3959,65 +3989,18 @@ export function handleAncientTarotDraw({
       scoreDelta: -darkOutcome.penalty,
       darkBombRecipients: darkOutcome.darkBombRecipients,
     };
-  } else if (rand < 0.90) {
-    // 🗡️ 4. HIỆP SĨ (15%): Định mệnh trừng phạt. Bị bay mất 1/2 tổng điểm hiện có (xóa sổ).
+  } else {
+    // 🗡️ 5. HIỆP SĨ (5%): Định mệnh trừng phạt. Bị bay mất 1/2 tổng điểm hiện có (xóa sổ).
     const penalty = roundToMultipleOfFive(currentScore * 0.5);
     drawnCard = {
       key: "THE_KNIGHT",
       nameVi: "Hiệp Sĩ",
       nameEn: "The Knight",
       icon: "🗡️",
-      roman: "XII",
+      roman: "VII",
       group: "MUTATION",
       scoreDelta: -penalty,
     };
-  } else {
-    // 💀 5. THẦN CHẾT (10%): Cú lật kèo định mệnh. 50% Tặng điểm / 50% Cướp điểm
-    const subRand = Math.random();
-    let top1Team: MysteryTeamRef | undefined = undefined;
-    if (otherTeams.length > 0) {
-      const maxScore = Math.max(...otherTeams.map((t) => t.score || 0));
-      const topCandidates = otherTeams.filter((t) => (t.score || 0) === maxScore);
-      top1Team = topCandidates[Math.floor(Math.random() * topCandidates.length)];
-    }
-
-    if (subRand < 0.5) {
-      // Kịch bản Tặng điểm: Ưu tiên mức phạt thấp hơn giữa 50% điểm đội và 1.5x điểm câu
-      const rawHalf = roundToMultipleOfFive(currentScore * 0.5);
-      const rawBaseMultiplier = roundToMultipleOfFive(basePoints * 1.5);
-      const targetPenalty = Math.min(rawHalf, rawBaseMultiplier);
-      const gifted = currentScore > 0 ? Math.min(currentScore, targetPenalty) : 0;
-      drawnCard = {
-        key: "THE_DEATH",
-        nameVi: "Thần Chết (Tặng Điểm)",
-        nameEn: "Death",
-        icon: "💀",
-        roman: "XIII",
-        group: "CRITICAL",
-        deathSubtype: "GIFT_TOP1",
-        scoreDelta: -gifted,
-        giftedPoints: gifted,
-        victimTeamId: top1Team?.id,
-        victimTeamName: top1Team?.name,
-      };
-    } else {
-      // Kịch bản Cướp điểm (5%): Cướp basePoints * 2 từ Top 1 đối thủ
-      const stolen = basePoints * 2;
-      const top1Score = top1Team?.score || 0;
-      drawnCard = {
-        key: "THE_DEATH",
-        nameVi: "Thần Chết (Cướp Điểm)",
-        nameEn: "Death",
-        icon: "💀",
-        roman: "XIII",
-        group: "CRITICAL",
-        deathSubtype: "STEAL_TOP1",
-        scoreDelta: stolen,
-        stolenPoints: stolen,
-        victimTeamId: top1Team?.id,
-        victimTeamName: top1Team?.name,
-      };
-    }
   }
 
   // Handle Shield absorption if negative card
@@ -4097,12 +4080,19 @@ export function handleAncientTarotDraw({
       }
       break;
 
-    case "THE_EMPEROR":
+    case "THE_EMPEROR": {
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
       const recNames = (drawnCard.darkBombRecipients || []).map((r) => `${r.teamName} (+${r.points}đ)`).join(", ");
-      rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ -${scorePenalty}đ chia đều cho đối thủ: ${recNames || "các đội khác"}!`;
+      if (scorePenalty > 0 && recNames) {
+        rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ ${scorePenalty}đ phân chia cho đối thủ: ${recNames}!`;
+      } else if (scorePenalty > 0) {
+        rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ ${scorePenalty}đ!`;
+      } else {
+        rewardText = `👑 HOÀNG ĐẾ: Điểm số hiện tại là 0đ nên không bị trừ điểm và không phân chia cho đối thủ!`;
+      }
       break;
+    }
 
     case "THE_KNIGHT":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
@@ -4170,32 +4160,31 @@ export function handleAncientTarotDraw({
 
 /**
  * Danh sách 20 nan quạt trên Vòng Quay Tarot Định Mệnh.
- * Tỷ lệ chuẩn xác tuyệt đối (50% - 35% - 15%):
- * - 50% Nhóm Thường (10 ô): 5 ô Mặt Trời (25%) + 5 ô Kẻ Khờ (25%)
- * - 35% Nhóm Đột Biến (7 ô): 4 ô Hoàng Đế (20%) + 3 ô Hiệp Sĩ (15%)
- * - 15% Nhóm Chí Mạng (3 ô): 2 ô Thần Chết Cướp (10%) + DUY NHẤT 1 ô Thần Chết Tặng (5%)
+ * Tỷ lệ cân bằng vàng theo yêu cầu người chơi (70% Có Lợi / 30% Rủi Ro):
+ * - 70% Có Lợi (14 ô): 11 ô Mặt Trời (55%) + 3 ô Thần Chết Cướp Điểm (15%)
+ * - 30% Rủi Ro (6 ô): 3 ô Kẻ Khờ (15%) + 2 ô Hoàng Đế (10%) + 1 ô Hiệp Sĩ (5%)
  */
 export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = [
   { index: 0, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 1, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 2, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 3, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 1, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 2, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
   { index: 4, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 5, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 6, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 7, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 8, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 6, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 7, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 8, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
   { index: 9, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 10, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 11, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 10, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 11, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 12, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 14, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 15, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 16, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 17, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 13, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 14, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 15, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 16, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 17, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 18, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 19, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 19, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
 ];
 
 /**
@@ -4238,7 +4227,7 @@ export function getEffectiveTarotWheelSegments(hasSunMagnet: boolean = false, is
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
   return TAROT_WHEEL_SEGMENTS.map((seg) => {
-    if (seg.index === 2) {
+    if (seg.index === 1) {
       return {
         ...seg,
         key: "THE_SUN" as const,
@@ -4405,16 +4394,14 @@ export function handleAncientTarotSpinWheel({
       break;
 
     case "THE_EMPEROR": {
-      const minPenalty = Math.min(currentScore, 5 * Math.max(1, otherTeams.length));
-      const rawPenalty = Math.max(minPenalty, roundToMultipleOfFive(basePoints * 1.5));
-      const penalty = Math.min(currentScore, rawPenalty);
-      const numRecipients = Math.max(1, otherTeams.length);
-      const perTeamRaw = Math.floor(penalty / numRecipients / 5) * 5;
-      const darkBombRecipients = otherTeams.map((ot) => ({
-        teamId: ot.id,
-        teamName: ot.name,
-        points: perTeamRaw,
-      }));
+      const darkOutcome = resolveBombOutcome({
+        bombType: "BOMB_DARK",
+        team,
+        allTeams,
+        storyDescription: "Hoàng Đế uy quyền hắc ám! Rút cạn điểm số phân chia cho các đối thủ!",
+        baseQuestionPoints: basePoints,
+        isSurvivalPenalty: false,
+      });
       drawnCard = {
         key: "THE_EMPEROR",
         nameVi: "Hoàng Đế",
@@ -4422,8 +4409,8 @@ export function handleAncientTarotSpinWheel({
         icon: "👑",
         roman: "IV",
         group: "MUTATION",
-        scoreDelta: -penalty,
-        darkBombRecipients,
+        scoreDelta: -darkOutcome.penalty,
+        darkBombRecipients: darkOutcome.darkBombRecipients,
       };
       break;
     }
@@ -4579,13 +4566,20 @@ export function handleAncientTarotSpinWheel({
       }
       break;
 
-    case "THE_EMPEROR":
+    case "THE_EMPEROR": {
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
       if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       const recNames = (drawnCard.darkBombRecipients || []).map((r) => `${r.teamName} (+${r.points}đ)`).join(", ");
-      rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ -${scorePenalty}đ chia đều cho đối thủ: ${recNames || "các đội khác"}!`;
+      if (scorePenalty > 0 && recNames) {
+        rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ ${scorePenalty}đ phân chia cho đối thủ: ${recNames}!`;
+      } else if (scorePenalty > 0) {
+        rewardText = `👑 HOÀNG ĐẾ: Quyền lực hắc ám trừ ${scorePenalty}đ!`;
+      } else {
+        rewardText = `👑 HOÀNG ĐẾ: Điểm số hiện tại là 0đ nên không bị trừ điểm và không phân chia cho đối thủ!`;
+      }
       break;
+    }
 
     case "THE_KNIGHT":
       scorePenalty = Math.abs(drawnCard.scoreDelta);

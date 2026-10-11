@@ -942,40 +942,44 @@ function resolveBombOutcome({
     let penalty = 0;
     let penaltyText2 = "";
     const darkBombRecipients = [];
-    if (otherTeams.length === 0) {
-      penalty = currentScore < 5 ? currentScore : 5;
-      penaltyText2 = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`;
-    } else if (currentScore < 5 * X) {
-      const sortedOthers = [...otherTeams].sort((a, b) => {
-        const diff = (a.score || 0) - (b.score || 0);
-        if (diff !== 0) return diff;
-        return Math.random() - 0.5;
-      });
-      const numTeamsToReceive = Math.floor(currentScore / 5);
-      for (let i = 0; i < Math.min(numTeamsToReceive, sortedOthers.length); i++) {
-        darkBombRecipients.push({
-          teamId: sortedOthers[i].id,
-          teamName: sortedOthers[i].name,
-          points: 5
+    const numOpponents = otherTeams.length;
+    const threshold = 5 * numOpponents;
+    if (numOpponents === 0) {
+      penalty = currentScore > 0 ? Math.min(currentScore, 5) : 0;
+      penaltyText2 = penalty > 0 ? `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.` : "\u0110i\u1EC3m hi\u1EC7n t\u1EA1i l\xE0 0 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m.";
+    } else if (currentScore < threshold) {
+      if (currentScore <= 0) {
+        penalty = 0;
+        penaltyText2 = "\u0110i\u1EC3m c\u1EE7a b\u1EA1n hi\u1EC7n t\u1EA1i l\xE0 0 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m v\xE0 kh\xF4ng ph\xE2n chia cho \u0111\u1ED1i th\u1EE7.";
+      } else {
+        const sortedOthers = [...otherTeams].sort((a, b) => {
+          const diff = (a.score || 0) - (b.score || 0);
+          if (diff !== 0) return diff;
+          return Math.random() - 0.5;
         });
+        const numTeamsToReceive = Math.min(Math.floor(currentScore / 5), sortedOthers.length);
+        for (let i = 0; i < numTeamsToReceive; i++) {
+          darkBombRecipients.push({
+            teamId: sortedOthers[i].id,
+            teamName: sortedOthers[i].name,
+            points: 5
+          });
+        }
+        penalty = darkBombRecipients.length * 5;
+        const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5\u0111)`).join(", ");
+        penaltyText2 = recNames ? `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m! \u0110\xE3 ph\xE2n ph\xE1t cho \u0111\u1ED9i th\u1EA5p \u0111i\u1EC3m nh\u1EA5t: ${recNames}` : "\u0110i\u1EC3m kh\xF4ng \u0111\u1EE7 5\u0111 \u0111\u1EC3 ph\xE2n chia cho \u0111\u1ED1i th\u1EE7.";
       }
-      penalty = darkBombRecipients.reduce((sum, r) => sum + r.points, 0);
-      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5\u0111)`).join(", ");
-      penaltyText2 = recNames ? `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m! \u0110\xE3 ph\xE2n ph\xE1t cho \u0111\u1ED9i th\u1EA5p \u0111i\u1EC3m: ${recNames}` : `B\u1ECB tr\u1EEB to\xE0n b\u1ED9 ${penalty} \u0111i\u1EC3m!`;
     } else {
-      const maxM = Math.floor(currentScore / (5 * otherTeams.length));
-      const m = Math.max(1, Math.min(3, Math.floor(Math.random() * maxM) + 1));
-      const pointsPerOtherTeam = 5 * m;
-      penalty = pointsPerOtherTeam * otherTeams.length;
+      penalty = 5 * numOpponents;
       for (const other of otherTeams) {
         darkBombRecipients.push({
           teamId: other.id,
           teamName: other.name,
-          points: pointsPerOtherTeam
+          points: 5
         });
       }
-      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+${pointsPerOtherTeam}\u0111)`).join(", ");
-      penaltyText2 = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m! Chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i c\xF2n l\u1EA1i: ${recNames}`;
+      const recNames = darkBombRecipients.map((r) => `${r.teamName} (+5\u0111)`).join(", ");
+      penaltyText2 = `B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m! Chia cho c\xE1c \u0111\u1ED1i th\u1EE7 c\xF2n l\u1EA1i: ${recNames}`;
     }
     return {
       penalty,
@@ -3590,25 +3594,25 @@ function handleOneShotDoorsDecision({
 }
 var TAROT_WHEEL_SEGMENTS = [
   { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 2, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 3, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 1, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 2, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
   { index: 4, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 5, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 6, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 7, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
+  { index: 6, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 7, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 8, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
   { index: 9, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 10, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 11, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 10, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 11, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 14, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 15, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 16, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 17, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 13, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 14, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 15, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 16, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 17, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
+  { index: 19, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" }
 ];
 var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
   { index: 0, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
@@ -3636,7 +3640,7 @@ function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = f
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
   return TAROT_WHEEL_SEGMENTS.map((seg) => {
-    if (seg.index === 2) {
+    if (seg.index === 1) {
       return {
         ...seg,
         key: "THE_SUN",
@@ -3752,16 +3756,14 @@ function handleAncientTarotSpinWheel({
       }
       break;
     case "THE_EMPEROR": {
-      const minPenalty = Math.min(currentScore, 5 * Math.max(1, otherTeams.length));
-      const rawPenalty = Math.max(minPenalty, roundToMultipleOfFive(basePoints * 1.5));
-      const penalty = Math.min(currentScore, rawPenalty);
-      const numRecipients = Math.max(1, otherTeams.length);
-      const perTeamRaw = Math.floor(penalty / numRecipients / 5) * 5;
-      const darkBombRecipients = otherTeams.map((ot) => ({
-        teamId: ot.id,
-        teamName: ot.name,
-        points: perTeamRaw
-      }));
+      const darkOutcome = resolveBombOutcome({
+        bombType: "BOMB_DARK",
+        team,
+        allTeams,
+        storyDescription: "Ho\xE0ng \u0110\u1EBF uy quy\u1EC1n h\u1EAFc \xE1m! R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 ph\xE2n chia cho c\xE1c \u0111\u1ED1i th\u1EE7!",
+        baseQuestionPoints: basePoints,
+        isSurvivalPenalty: false
+      });
       drawnCard = {
         key: "THE_EMPEROR",
         nameVi: "Ho\xE0ng \u0110\u1EBF",
@@ -3769,8 +3771,8 @@ function handleAncientTarotSpinWheel({
         icon: "\u{1F451}",
         roman: "IV",
         group: "MUTATION",
-        scoreDelta: -penalty,
-        darkBombRecipients
+        scoreDelta: -darkOutcome.penalty,
+        darkBombRecipients: darkOutcome.darkBombRecipients
       };
       break;
     }
@@ -3910,13 +3912,20 @@ function handleAncientTarotSpinWheel({
         rewardText = `\u{1F0CF} K\u1EBA KH\u1EDC: \u0110i\u1EC1m d\u1EEF! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i (0\u0111). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn.`;
       }
       break;
-    case "THE_EMPEROR":
+    case "THE_EMPEROR": {
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;
       if (isSurvivalMode) state.turnFinishedReason = "SURVIVAL_FAILED";
       const recNames = (drawnCard.darkBombRecipients || []).map((r) => `${r.teamName} (+${r.points}\u0111)`).join(", ");
-      rewardText = `\u{1F451} HO\xC0NG \u0110\u1EBE: Quy\u1EC1n l\u1EF1c h\u1EAFc \xE1m tr\u1EEB -${scorePenalty}\u0111 chia \u0111\u1EC1u cho \u0111\u1ED1i th\u1EE7: ${recNames || "c\xE1c \u0111\u1ED9i kh\xE1c"}!`;
+      if (scorePenalty > 0 && recNames) {
+        rewardText = `\u{1F451} HO\xC0NG \u0110\u1EBE: Quy\u1EC1n l\u1EF1c h\u1EAFc \xE1m tr\u1EEB ${scorePenalty}\u0111 ph\xE2n chia cho \u0111\u1ED1i th\u1EE7: ${recNames}!`;
+      } else if (scorePenalty > 0) {
+        rewardText = `\u{1F451} HO\xC0NG \u0110\u1EBE: Quy\u1EC1n l\u1EF1c h\u1EAFc \xE1m tr\u1EEB ${scorePenalty}\u0111!`;
+      } else {
+        rewardText = `\u{1F451} HO\xC0NG \u0110\u1EBE: \u0110i\u1EC3m s\u1ED1 hi\u1EC7n t\u1EA1i l\xE0 0\u0111 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m v\xE0 kh\xF4ng ph\xE2n chia cho \u0111\u1ED1i th\u1EE7!`;
+      }
       break;
+    }
     case "THE_KNIGHT":
       scorePenalty = Math.abs(drawnCard.scoreDelta);
       finalScoreDelta = -scorePenalty;

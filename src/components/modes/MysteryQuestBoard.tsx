@@ -2112,10 +2112,10 @@ export default function MysteryQuestBoard({
                           )
                         )}
                         {drawnCard?.key === "THE_EMPEROR" && (
-                          <span className="text-orange-400">-{drawnCard.scoreDelta}đ (Chia đều đối thủ)</span>
+                          <span className="text-orange-400">-{Math.abs(drawnCard.scoreDelta)}đ (Chia đối thủ)</span>
                         )}
                         {drawnCard?.key === "THE_KNIGHT" && (
-                          <span className="text-rose-400">-{drawnCard.scoreDelta}đ (Mất 1/2 tổng điểm)</span>
+                          <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Mất 1/2 tổng điểm)</span>
                         )}
                         {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "GIFT_TOP1" || (drawnCard.deathSubtype as any) === "GIFT") && (
                           <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
@@ -2727,7 +2727,7 @@ export default function MysteryQuestBoard({
                 if (t.id === currentTurnTeamId) {
                   if (dc.key === "THE_SUN") tarotDelta = dc.scoreDelta;
                   else if (dc.key === "THE_FOOL") tarotDelta = 0;
-                  else if (dc.key === "THE_EMPEROR" || dc.key === "THE_KNIGHT") tarotDelta = -dc.scoreDelta;
+                  else if (dc.key === "THE_EMPEROR" || dc.key === "THE_KNIGHT") tarotDelta = -Math.abs(dc.scoreDelta);
                   else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT")) tarotDelta = -Math.abs(dc.scoreDelta);
                   else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL")) tarotDelta = dc.stolenPoints || dc.scoreDelta;
                 } else {

@@ -1947,10 +1947,10 @@ export default function MysteryQuestBoard({
                         <h3 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest drop-shadow">
                           {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "🎡 VÒNG QUAY TAROT ĐỊNH MỆNH"}
                         </h3>
-                        <p className="text-xs sm:text-sm text-purple-200 font-serif">
+                        <p className="text-xs sm:text-sm text-purple-200/90 font-medium">
                           {isPenaltySurvivalMode
-                            ? "20 Nan Quạt Sinh Tử • 20% Thoát Nạn (Bình Yên) • 80% Bẫy Phạt"
-                            : "20 Nan Quạt Cổ Xưa • Cân Bằng Tỷ Lệ 50% - 35% - 15%"}
+                            ? "20 Nan Quạt Sinh Tử • 20% Thoát Nạn • 80% Bẫy Phạt"
+                            : "20 Nan Quạt Cổ Xưa • Tỷ Lệ Vàng 70% Có Lợi • 30% Rủi Ro"}
                         </p>
                         {hasSunMagnet && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-200 text-xs font-bold shadow-lg animate-pulse mt-1">
@@ -2157,8 +2157,8 @@ export default function MysteryQuestBoard({
                             {isPenaltySurvivalMode
                               ? "Tỷ lệ: 20% Thoát Hiểm (4 Bình Yên) | 80% Bẫy Sinh Tử (4 Khói Độc, 4 Hiệp Sĩ, 4 Hoàng Đế, 4 Thần Chết)"
                               : getPerkType(promoPerk) === "SUN_MAGNET_PROMO"
-                              ? "Tỷ lệ: Thường 50% (6 Sun, 4 Fool - Có Nam Châm Thái Dương) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"
-                              : "Tỷ lệ: Thường 50% (5 Sun, 5 Fool) | Đột biến 35% (4 Emperor, 3 Knight) | Chí mạng 15% (2 Steal, 1 Gift)"}
+                              ? "Tỷ lệ Vàng: 75% Có Lợi (9 Sun, 4 Death Cướp, 2 Emperor) | 25% Rủi Ro (3 Fool, 1 Death Tặng, 1 Emperor)"
+                              : "Tỷ lệ Vàng: 70% Có Lợi (14 Nan Thưởng & Cướp) | 30% Rủi Ro (6 Nan Bẫy & Chia Điểm)"}
                           </p>
                         </div>
                       </>

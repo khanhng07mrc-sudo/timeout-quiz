@@ -266,6 +266,7 @@ export default function DisplayPage() {
           } else {
             setMatchStarting((prev) => {
               const stableEndsAt = p.matchStarting.endsAt || prev?.endsAt || (Date.now() + getServerClockOffset() + p.matchStarting.seconds * 1000);
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.matchStarting.seconds) return prev;
               return { ...p.matchStarting, endsAt: stableEndsAt, total: p.matchStarting.total || prev?.total || 5 };
             });
           }
@@ -276,6 +277,7 @@ export default function DisplayPage() {
           } else {
             setQuestionPrepare((prev) => {
               const stableEndsAt = p.questionPrepare.endsAt || prev?.endsAt || (Date.now() + getServerClockOffset() + p.questionPrepare.seconds * 1000);
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.questionPrepare.seconds) return prev;
               return { ...p.questionPrepare, endsAt: stableEndsAt, total: p.questionPrepare.total || prev?.total || 3 };
             });
           }
@@ -993,7 +995,7 @@ export default function DisplayPage() {
             </div>
             <TournamentBracket tournamentState={roomState.tournamentState!} isDisplay={true} />
           </div>
-        ) : isMystery ? (
+        ) : isMystery && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE" ? (
           <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
             <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
           </div>
@@ -1948,7 +1950,7 @@ export default function DisplayPage() {
                   }}
                 />
               </div>
-            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState ? (
+            ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
               <div className="w-full max-w-5xl">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}

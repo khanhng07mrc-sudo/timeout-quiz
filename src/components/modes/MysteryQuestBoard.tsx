@@ -214,7 +214,7 @@ export default function MysteryQuestBoard({
     setOptimisticOpenedIds(new Set());
     setSwapStep("IDLE");
     setSwapRemovedId(null);
-  }, [currentTurnIndex, miniGameType]);
+  }, [currentTurnIndex, miniGameType, phase]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -1739,7 +1739,9 @@ export default function MysteryQuestBoard({
                         {isEscapeSafe
                           ? "0đ (Bảo Toàn Điểm)"
                           : isBomb
-                          ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
+                          ? (tile.type === "BOMB_SMOKE" || tile.pairKey === "PAIR_TRAP" || tile.deltaPoints === 0)
+                            ? "0đ (Mất câu)"
+                            : `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                           : isSteal
                           ? `Cướp +${tile.deltaPoints}đ`
                           : `+${tile.deltaPoints}đ`}
@@ -2242,7 +2244,9 @@ export default function MysteryQuestBoard({
                       }`}
                     >
                       {isBomb
-                        ? `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
+                        ? (tile.type === "BOMB_SMOKE" || tile.pairKey === "PAIR_TRAP" || tile.deltaPoints === 0)
+                          ? "0đ (Mất câu)"
+                          : `-${Math.abs(tile.deltaPoints || baseQuestionPoints || 10)}đ`
                         : isSteal
                         ? `Cướp +${tile.deltaPoints}đ`
                         : `+${tile.deltaPoints}đ`}

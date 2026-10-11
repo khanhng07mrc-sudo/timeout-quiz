@@ -1414,7 +1414,7 @@ export default function AdminRoomPage() {
           )}
 
           {/* MYSTERY_QUEST Mode Admin Panel */}
-          {roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && (
+          {roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" && (
             <div className="space-y-3">
               <MysteryQuestBoard
                 mysteryState={roomState.mysteryQuestState}

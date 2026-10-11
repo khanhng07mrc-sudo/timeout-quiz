@@ -55,6 +55,7 @@ import {
   TAROT_WHEEL_SEGMENTS,
   roundToMultipleOfFive,
   startSurvivalPenaltyMinigame,
+  getInitialMemoryPairsState,
 } from "./game-engine/mystery-quest";
 import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
@@ -2727,15 +2728,22 @@ export function registerSocketHandlers(io: IO) {
         if (questState) {
           primaryTeamId = questState.currentTurnTeamId;
           primaryTeamName = questState.currentTurnTeamName;
-          // Crucial fix: question launch resets phase to QUESTION_ACTIVE so question card displays cleanly
+          // Crucial fix: question launch resets phase to QUESTION_ACTIVE and clears all turn/minigame leftovers cleanly
           questState.phase = "QUESTION_ACTIVE";
           questState.baseQuestionPoints = q.points;
+          questState.cardsFlippedCount = 0;
           questState.potPoints = 0;
           questState.potMultiplier = 1;
           questState.bombExploded = undefined;
           questState.turnFinishedReason = undefined;
           questState.storyResult = undefined;
           questState.lastFlippedTile = undefined;
+          questState.decisionMade = undefined;
+          questState.pendingSteal = undefined;
+          questState.survivalDilemmaPending = false;
+          questState.survivalDilemmaChoice = undefined;
+          questState.isPenaltySurvivalMode = false;
+          questState.memoryPairsState = getInitialMemoryPairsState(questState.promoPerk);
 
           const teams = await prisma.team.findMany({ where: { roomId: room.id } });
           synchronizeMysteryStageWithQuestionPoints({
@@ -5171,6 +5179,7 @@ export function registerSocketHandlers(io: IO) {
 
       if (action === "PLAY_MINIGAME") {
         questState.decisionMade = "PLAY_MINIGAME";
+        questState.cardsFlippedCount = 0;
         let initialPot = basePts;
         if (getPerkType(questState.promoPerk) === "EXTRA_POT_PROMO") {
           initialPot += 5;
@@ -5179,6 +5188,9 @@ export function registerSocketHandlers(io: IO) {
         questState.potMultiplier = 1;
         questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
         questState.phase = "PUSH_YOUR_LUCK";
+        if (normalizeMiniGameType(questState.miniGameType) === "MEMORY_PAIRS") {
+          questState.memoryPairsState = getInitialMemoryPairsState(questState.promoPerk);
+        }
 
         const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
         synchronizeMysteryStageWithQuestionPoints({

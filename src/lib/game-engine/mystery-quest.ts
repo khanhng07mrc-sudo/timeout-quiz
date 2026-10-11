@@ -406,6 +406,24 @@ export function getPerkType(promo?: MysteryQuestState["promoPerk"]): MysteryProm
   return typeof promo === "string" ? promo : promo.type;
 }
 
+export function getInitialMemoryPairsState(promo?: MysteryQuestState["promoPerk"]): NonNullable<MysteryQuestState["memoryPairsState"]> {
+  const perkType = getPerkType(promo);
+  return {
+    firstFlippedTileId: null,
+    secondFlippedTileId: null,
+    thirdFlippedTileId: null,
+    keptBombTileIds: [],
+    isBombRescueActive: false,
+    activePenaltyPairKey: null,
+    attemptsUsed: 0,
+    maxAttempts: perkType === "EXTRA_ATTEMPT_PROMO" ? 5 : 4,
+    matchedPairKey: null,
+    isMismatchResolving: false,
+    round: 1,
+    promptSecondChance: false,
+  };
+}
+
 interface RewardTemplate {
   storyTitle: string;
   storyDescription: string;
@@ -1869,22 +1887,46 @@ export function handleFlipCard({
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
-      memState.thirdFlippedTileId = tile.id;
-      memState.attemptsUsed += 1;
-      state.lastFlippedTile = tile;
-
       const card1 = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
       const card2 = state.tiles.find((t) => Number(t.id) === Number(memState.secondFlippedTileId));
-      const card3 = tile;
 
-      // Đánh dấu mở cả 3 lá
-      state.tiles = state.tiles.map((t) =>
-        Number(t.id) === numTileId ||
-        (card1 && Number(t.id) === Number(card1.id)) ||
-        (card2 && Number(t.id) === Number(card2.id))
-          ? { ...t, isOpened: true }
-          : { ...t }
+      // SANITY CHECK BẢO VỆ PHÒNG THỦ:
+      // Xác minh xem card1 và card2 có thực sự tạo thành cặp phạt hợp lệ kích hoạt giải cứu bom hay không!
+      const k1 = getPenaltyKey(card1);
+      const k2 = getPenaltyKey(card2);
+      const hasPriorMatch1 = Boolean(k1 && previouslyKeptBombs.some((id) => Number(id) !== Number(card1?.id) && getPenaltyKey(state.tiles.find((t) => Number(t.id) === Number(id))) === k1));
+      const hasPriorMatch2 = Boolean(k2 && previouslyKeptBombs.some((id) => Number(id) !== Number(card2?.id) && getPenaltyKey(state.tiles.find((t) => Number(t.id) === Number(id))) === k2));
+      const isValidRescueContext = Boolean(
+        card1 && card2 && (
+          (k1 && k2 && k1 === k2) ||
+          hasPriorMatch1 ||
+          hasPriorMatch2
+        )
       );
+
+      if (!isValidRescueContext) {
+        // State bị desync / rác từ ván trước hoặc hai lá phạt khác loại: HỦY NGAY RESCUE ĐỂ TRÁNH NỔ BOM OAN!
+        memState.isBombRescueActive = false;
+        memState.activePenaltyPairKey = null;
+        memState.firstFlippedTileId = null;
+        memState.secondFlippedTileId = null;
+        memState.thirdFlippedTileId = null;
+        state.memoryPairsState = { ...memState };
+      } else {
+        memState.thirdFlippedTileId = tile.id;
+        memState.attemptsUsed += 1;
+        state.lastFlippedTile = tile;
+
+        const card3 = tile;
+
+        // Đánh dấu mở cả 3 lá
+        state.tiles = state.tiles.map((t) =>
+          Number(t.id) === numTileId ||
+          (card1 && Number(t.id) === Number(card1.id)) ||
+          (card2 && Number(t.id) === Number(card2.id))
+            ? { ...t, isOpened: true }
+            : { ...t }
+        );
 
       const oldPenaltyKey = (memState.activePenaltyPairKey || "PAIR_BOMB") as "PAIR_TRAP" | "PAIR_BOMB";
       const otherPenaltyKey: "PAIR_TRAP" | "PAIR_BOMB" = oldPenaltyKey === "PAIR_TRAP" ? "PAIR_BOMB" : "PAIR_TRAP";
@@ -2016,6 +2058,7 @@ export function handleFlipCard({
         return executePenalty({ penaltyKey: oldPenaltyKey });
       }
     }
+  }
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 1: Lật lá bài thứ 1 của lượt
@@ -4777,9 +4820,10 @@ export function synchronizeMysteryStageWithQuestionPoints({
 
   switch (normType) {
     case "MEMORY_PAIRS": {
-      // Nếu chưa lật lá nào thì generate lại bộ thẻ theo normPoints mới
-      if (!state.memoryPairsState?.firstFlippedTileId && state.cardsFlippedCount === 0) {
+      // Khi đang chuẩn bị câu hỏi hoặc chưa lật lá nào thì generate lại bộ thẻ theo normPoints mới và reset memoryPairsState
+      if (state.phase === "QUESTION_ACTIVE" || (!state.memoryPairsState?.firstFlippedTileId && state.cardsFlippedCount === 0)) {
         state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
+        state.memoryPairsState = getInitialMemoryPairsState(state.promoPerk);
         if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
           const safeTiles = state.tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
           const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
@@ -4799,20 +4843,40 @@ export function synchronizeMysteryStageWithQuestionPoints({
     }
 
     case "ONE_SHOT_DOORS": {
-      if (state.oneShotState?.phase === "SELECTING" && (!state.oneShotState.selectedDoorIds || state.oneShotState.selectedDoorIds.length === 0)) {
-        state.tiles = generateOneShotDoorsTiles(normPoints, roundOptions);
+      if (state.phase === "QUESTION_ACTIVE" || (state.oneShotState?.phase === "SELECTING" && (!state.oneShotState.selectedDoorIds || state.oneShotState.selectedDoorIds.length === 0))) {
+        state.tiles = generateOneShotDoorsTiles(normPoints, { ...roundOptions, promoPerk: state.promoPerk });
+        state.oneShotState = {
+          chosenTileId: undefined,
+          selectedDoorIds: [],
+          penaltyDoorsCount: undefined,
+          hasBombDetected: false,
+          phase: "SELECTING",
+          revealedSafeDoorIds: [],
+          chosenFinalDoorId: undefined,
+          allRevealed: false,
+          peekAvailable: getPerkType(state.promoPerk) === "PEEK_PROMO",
+          peekActivated: getPerkType(state.promoPerk) === "PEEK_PROMO",
+          hasSwapped: false,
+        };
       }
       break;
     }
 
     case "TAROT_DESTINY": {
       state.tiles = [];
+      if (state.phase === "QUESTION_ACTIVE") {
+        state.tarotState = {
+          isWheelSpinning: false,
+          isDrawn: false,
+          targetAngle: 0,
+        };
+      }
       break;
     }
 
     case "PUSH_YOUR_LUCK":
     default: {
-      if (state.cardsFlippedCount === 0) {
+      if (state.phase === "QUESTION_ACTIVE" || state.cardsFlippedCount === 0) {
         state.tiles = generatePushYourLuckTiles(
           theme || state.theme || "PIRATE",
           normPoints,

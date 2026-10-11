@@ -42,6 +42,7 @@ import {
   handleAncientTarotSpinWheel,
   roundToMultipleOfFive,
   startSurvivalPenaltyMinigame,
+  getInitialMemoryPairsState,
 } from "@/lib/game-engine/mystery-quest";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
 import { offlineStorage, DEFAULT_OFFLINE_BANK } from "@/lib/offline-storage";
@@ -2820,11 +2821,13 @@ export default function AdminSandboxPage() {
         const initialPot = basePts + (perkType === "EXTRA_POT_PROMO" ? 5 : 0);
         let updatedState: MysteryQuestState = {
           ...curMystery,
+          cardsFlippedCount: 0,
           baseQuestionPoints: basePts,
           potPoints: initialPot,
           hasShield: perkType === "SHIELD_PROMO",
           phase: "PUSH_YOUR_LUCK" as const,
           decisionMade: "PLAY_MINIGAME" as const,
+          memoryPairsState: getInitialMemoryPairsState(curMystery.promoPerk),
         };
         updatedState = synchronizeMysteryStageWithQuestionPoints({
           state: updatedState,
@@ -3715,9 +3718,18 @@ export default function AdminSandboxPage() {
           ...nextMystery,
           phase: "QUESTION_ACTIVE" as const,
           baseQuestionPoints: normPoints,
+          cardsFlippedCount: 0,
           potPoints: 0,
+          potMultiplier: 1,
           bombExploded: undefined,
           turnFinishedReason: undefined,
+          storyResult: undefined,
+          lastFlippedTile: undefined,
+          decisionMade: undefined,
+          pendingSteal: undefined,
+          isPenaltySurvivalMode: false,
+          survivalDilemmaPending: false,
+          memoryPairsState: getInitialMemoryPairsState(nextMystery.promoPerk),
         };
         nextMystery = synchronizeMysteryStageWithQuestionPoints({
           state: nextMystery,
@@ -4132,7 +4144,6 @@ export default function AdminSandboxPage() {
           if (rem > 0) {
             setMatchStarting((prev) => {
               if (prev?.seconds === rem) return prev;
-              syncToIframes({ matchStarting: { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal } });
               return { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal };
             });
           } else {
@@ -8031,7 +8042,7 @@ export default function AdminSandboxPage() {
                   </div>
                 )}
 
-                {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && (
+                {roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" && (
                   <div className="pt-3 border-t border-white/10 space-y-3">
                     <MysteryQuestBoard
                       mysteryState={roomState.mysteryQuestState}

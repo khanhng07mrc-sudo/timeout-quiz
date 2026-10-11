@@ -369,6 +369,7 @@ export default function PlayPage() {
           } else {
             setMatchStarting((prev) => {
               const stableEndsAt = p.matchStarting.endsAt || prev?.endsAt || (getServerTime() + p.matchStarting.seconds * 1000);
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.matchStarting.seconds) return prev;
               return { ...p.matchStarting, endsAt: stableEndsAt, total: p.matchStarting.total || prev?.total || 5 };
             });
           }
@@ -379,6 +380,7 @@ export default function PlayPage() {
           } else {
             setQuestionPrepare((prev) => {
               const stableEndsAt = p.questionPrepare.endsAt || prev?.endsAt || (getServerTime() + p.questionPrepare.seconds * 1000);
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.questionPrepare.seconds) return prev;
               return { ...p.questionPrepare, endsAt: stableEndsAt, total: p.questionPrepare.total || prev?.total || 3 };
             });
           }
@@ -1817,7 +1819,7 @@ export default function PlayPage() {
                   } : undefined}
                 />
               </div>
-            ) : roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState ? (
+            ) : roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
               <div className="w-full">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}

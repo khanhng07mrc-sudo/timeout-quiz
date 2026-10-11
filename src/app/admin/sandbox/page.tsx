@@ -2425,30 +2425,20 @@ export default function AdminSandboxPage() {
             if (!roomStateRef.current?.mysteryQuestState?.memoryPairsState) return;
             const cur = { ...roomStateRef.current.mysteryQuestState };
             const curMem = { ...cur.memoryPairsState! };
-            const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = curMem;
-            if (promptSecondChance) {
-              cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
-              curMem.firstFlippedTileId = null;
-              curMem.secondFlippedTileId = null;
-              curMem.thirdFlippedTileId = null;
-              curMem.keptBombTileIds = [];
-              curMem.isBombRescueActive = false;
-              curMem.isMismatchResolving = false;
-            } else {
-              const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
-              cur.tiles = cur.tiles.map((t) => {
-                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
-                if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
-                  return { ...t, isOpened: false };
-                }
-                return { ...t };
-              });
-              curMem.firstFlippedTileId = null;
-              curMem.secondFlippedTileId = null;
-              curMem.thirdFlippedTileId = null;
-              curMem.isBombRescueActive = false;
-              curMem.isMismatchResolving = false;
-            }
+            const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = curMem;
+            const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+            cur.tiles = cur.tiles.map((t) => {
+              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+              if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                return { ...t, isOpened: false };
+              }
+              return { ...t };
+            });
+            curMem.firstFlippedTileId = null;
+            curMem.secondFlippedTileId = null;
+            curMem.thirdFlippedTileId = null;
+            curMem.isBombRescueActive = false;
+            curMem.isMismatchResolving = false;
             cur.memoryPairsState = curMem;
             const updatedRState = { ...roomStateRef.current, mysteryQuestState: cur };
             roomStateRef.current = updatedRState;

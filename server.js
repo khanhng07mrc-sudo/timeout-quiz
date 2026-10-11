@@ -1804,18 +1804,23 @@ function generateMysteryStageForTurn({
   switch (miniGameType) {
     case "MEMORY_PAIRS":
       tiles = generateMemoryPairsTiles(effectiveBasePoints, roundOptions);
-      if (promoPerk === "PEEK_PROMO") {
-        const safeTiles = tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
-        const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
-        if (shuffledSafe.length >= 2) {
-          const first = shuffledSafe[0];
-          const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
-          first.isPeeked = true;
-          first.peekLabel = "AN TO\xC0N";
-          first.peekIcon = "\u2728";
-          second.isPeeked = true;
-          second.peekLabel = "AN TO\xC0N";
-          second.peekIcon = "\u2728";
+      if (getPerkType(promoPerk) === "PEEK_PROMO") {
+        const safeRewardTiles = tiles.filter(
+          (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
+        );
+        const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey)));
+        if (availablePairKeys.length > 0) {
+          const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
+          const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
+          if (matchingPair.length >= 2) {
+            const [first, second] = matchingPair;
+            first.isPeeked = true;
+            first.peekLabel = "C\u1EB6P AN TO\xC0N";
+            first.peekIcon = "\u2728";
+            second.isPeeked = true;
+            second.peekLabel = "C\u1EB6P AN TO\xC0N";
+            second.peekIcon = "\u2728";
+          }
         }
       }
       memoryPairsState = {
@@ -4284,17 +4289,22 @@ function synchronizeMysteryStageWithQuestionPoints({
         state.tiles = generateMemoryPairsTiles(normPoints, roundOptions);
         state.memoryPairsState = getInitialMemoryPairsState(state.promoPerk);
         if (getPerkType(state.promoPerk) === "PEEK_PROMO") {
-          const safeTiles = state.tiles.filter((t) => t.type === "REWARD" && t.pairKey !== "PAIR_BOMB");
-          const shuffledSafe = [...safeTiles].sort(() => Math.random() - 0.5);
-          if (shuffledSafe.length >= 2) {
-            const first = shuffledSafe[0];
-            const second = shuffledSafe.find((t) => t.pairKey !== first.pairKey) || shuffledSafe[1];
-            first.isPeeked = true;
-            first.peekLabel = "AN TO\xC0N";
-            first.peekIcon = "\u2728";
-            second.isPeeked = true;
-            second.peekLabel = "AN TO\xC0N";
-            second.peekIcon = "\u2728";
+          const safeRewardTiles = state.tiles.filter(
+            (t) => t.type === "REWARD" && t.pairKey && t.pairKey !== "PAIR_BOMB" && t.pairKey !== "PAIR_TRAP"
+          );
+          const availablePairKeys = Array.from(new Set(safeRewardTiles.map((t) => t.pairKey)));
+          if (availablePairKeys.length > 0) {
+            const chosenPairKey = availablePairKeys[Math.floor(Math.random() * availablePairKeys.length)];
+            const matchingPair = safeRewardTiles.filter((t) => t.pairKey === chosenPairKey);
+            if (matchingPair.length >= 2) {
+              const [first, second] = matchingPair;
+              first.isPeeked = true;
+              first.peekLabel = "C\u1EB6P AN TO\xC0N";
+              first.peekIcon = "\u2728";
+              second.isPeeked = true;
+              second.peekLabel = "C\u1EB6P AN TO\xC0N";
+              second.peekIcon = "\u2728";
+            }
           }
         }
       }
@@ -6344,7 +6354,10 @@ function registerSocketHandlers(io2) {
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id));
         } else if (effectiveRoomStatus === "PLAYING" && !isPreparing) {
-          if (roomRevealPayloads.has(room.id)) {
+          const isMysteryMinigame = room.mode === "MYSTERY_QUEST" && roomMysteryQuests.has(room.id) && roomMysteryQuests.get(room.id).phase !== "QUESTION_ACTIVE";
+          if (isMysteryMinigame) {
+            socket.emit("game:question:clear");
+          } else if (roomRevealPayloads.has(room.id)) {
             socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id));
           } else if (room.quizBank?.questions) {
             const activeQ = roomActiveQuestions.get(room.id);
@@ -6402,6 +6415,9 @@ function registerSocketHandlers(io2) {
           }
           if (roomTournaments.has(room.id)) {
             socket.emit("game:tournament:update", roomTournaments.get(room.id));
+          }
+          if (roomMysteryQuests.has(room.id)) {
+            socket.emit("game:mystery:update", roomMysteryQuests.get(room.id));
           }
           if (roomTieBreakers.has(room.id)) {
             socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
@@ -6485,8 +6501,11 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${code}`).emit("room:state", roomState);
         const isPreparing = roomPrepareStates.has(room.id);
         const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
+        const isMysteryMinigame = room.mode === "MYSTERY_QUEST" && roomMysteryQuests.has(room.id) && roomMysteryQuests.get(room.id).phase !== "QUESTION_ACTIVE";
         if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id));
+        } else if (isMysteryMinigame) {
+          socket.emit("game:question:clear");
         } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
           const activeQ = roomActiveQuestions.get(room.id);
           if (activeQ) {
@@ -6557,6 +6576,21 @@ function registerSocketHandlers(io2) {
           } else if (prep.type === "PREPARE" && prep.preparePayload) {
             socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
           }
+        }
+        if (roomDiceRaces.has(room.id)) {
+          socket.emit("game:dice:update", roomDiceRaces.get(room.id));
+        }
+        if (roomGridCaros.has(room.id)) {
+          socket.emit("game:grid:update", roomGridCaros.get(room.id));
+        }
+        if (roomWagers.has(room.id)) {
+          socket.emit("game:wager:update", roomWagers.get(room.id));
+        }
+        if (roomTournaments.has(room.id)) {
+          socket.emit("game:tournament:update", roomTournaments.get(room.id));
+        }
+        if (roomMysteryQuests.has(room.id)) {
+          socket.emit("game:mystery:update", roomMysteryQuests.get(room.id));
         }
         if (roomTieBreakers.has(room.id)) {
           socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
@@ -9088,30 +9122,20 @@ function registerSocketHandlers(io2) {
               const cur = roomMysteryQuests.get(room.id);
               if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
               if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
-              const { firstFlippedTileId, secondFlippedTileId, promptSecondChance, keptBombTileIds } = cur.memoryPairsState;
-              if (promptSecondChance) {
-                cur.tiles = shuffleMemoryPairsTiles(cur.tiles);
-                cur.memoryPairsState.firstFlippedTileId = null;
-                cur.memoryPairsState.secondFlippedTileId = null;
-                cur.memoryPairsState.thirdFlippedTileId = null;
-                cur.memoryPairsState.keptBombTileIds = [];
-                cur.memoryPairsState.isBombRescueActive = false;
-                cur.memoryPairsState.isMismatchResolving = false;
-              } else {
-                const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
-                cur.tiles = cur.tiles.map((t) => {
-                  const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
-                  if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
-                    return { ...t, isOpened: false };
-                  }
-                  return { ...t };
-                });
-                cur.memoryPairsState.firstFlippedTileId = null;
-                cur.memoryPairsState.secondFlippedTileId = null;
-                cur.memoryPairsState.thirdFlippedTileId = null;
-                cur.memoryPairsState.isBombRescueActive = false;
-                cur.memoryPairsState.isMismatchResolving = false;
-              }
+              const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
+              const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
+              cur.tiles = cur.tiles.map((t) => {
+                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+                if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
+                  return { ...t, isOpened: false };
+                }
+                return { ...t };
+              });
+              cur.memoryPairsState.firstFlippedTileId = null;
+              cur.memoryPairsState.secondFlippedTileId = null;
+              cur.memoryPairsState.thirdFlippedTileId = null;
+              cur.memoryPairsState.isBombRescueActive = false;
+              cur.memoryPairsState.isMismatchResolving = false;
               roomMysteryQuests.set(room.id, cur);
               io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
             });
@@ -12705,6 +12729,12 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
         }
         roomMysteryQuests.set(room.id, questState);
         io2.to(`room:${roomCode}`).emit("game:mystery:update", questState);
+        if (questState.phase !== "QUESTION_ACTIVE") {
+          stopQuestionTimer(room.id);
+          roomActiveQuestions.delete(room.id);
+          roomRevealPayloads.delete(room.id);
+          io2.to(`room:${roomCode}`).emit("game:question:clear");
+        }
       }
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${roomCode}`).emit("room:state", refreshedState);

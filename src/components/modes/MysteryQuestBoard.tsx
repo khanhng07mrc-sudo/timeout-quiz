@@ -2337,7 +2337,7 @@ export default function MysteryQuestBoard({
                         </span>
                         {tile.isPeeked && (
                           <span className="text-[7px] font-black text-emerald-300 px-1.5 py-0.2 rounded bg-emerald-950/90 border border-emerald-400 animate-pulse shadow-md">
-                            👁️ AN TOÀN ✨
+                            👁️ {tile.peekLabel ? tile.peekLabel : "CẶP AN TOÀN"} ✨
                           </span>
                         )}
                       </div>

@@ -99,6 +99,8 @@ export default function PlayPage() {
 
   const currentQuestionRef = useRef<QuestionState | null>(null);
   currentQuestionRef.current = currentQuestion;
+  const roomStateRef = useRef<RoomState | null>(null);
+  roomStateRef.current = roomState;
   const handleAnswerRef = useRef<(ans: string | string[], explicitTeamId?: string) => void>(() => {});
   const handleBuzzRef = useRef<() => void>(() => {});
   const handleSubmitWagerRef = useRef<(amt: number) => void>(() => {});
@@ -244,7 +246,21 @@ export default function PlayPage() {
                 playerName: "Bạn (Tester)",
                 playerId: teamPlayerId,
                 teamId,
-              }, () => {});
+              }, (result) => {
+                if (result?.success && result.roomState) {
+                  setRoomState(result.roomState);
+                  if (
+                    result.roomState.mode === "MYSTERY_QUEST" &&
+                    result.roomState.mysteryQuestState &&
+                    result.roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
+                  ) {
+                    setCurrentQuestion(null);
+                    setRevealPayload(null);
+                    setTimer(null);
+                    setAnswered(false);
+                  }
+                }
+              });
             } else {
               socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId });
             }
@@ -564,6 +580,16 @@ export default function PlayPage() {
         }
       }
       setRoomState(patchedState);
+      if (
+        patchedState?.mode === "MYSTERY_QUEST" &&
+        patchedState?.mysteryQuestState &&
+        patchedState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
+      ) {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setAnswered(false);
+      }
       const p = patchedState.players.find((pl) => pl.id === currentPid);
       if (p?.teamId) {
         myTeamIdRef.current = p.teamId;
@@ -611,6 +637,16 @@ export default function PlayPage() {
     });
 
     socket.on("game:question", (q) => {
+      const currentMystery = roomStateRef.current?.mysteryQuestState;
+      if (
+        roomStateRef.current?.mode === "MYSTERY_QUEST" &&
+        currentMystery &&
+        currentMystery.phase !== "QUESTION_ACTIVE"
+      ) {
+        console.warn("[play] Ignoring incoming game:question during MysteryQuest minigame phase:", currentMystery.phase);
+        return;
+      }
+
       const incomingQId = q?.question?.id ?? null;
       const isNewQuestion = incomingQId !== lastQuestionIdRef.current;
       lastQuestionIdRef.current = incomingQId;

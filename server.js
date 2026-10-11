@@ -4019,10 +4019,46 @@ function handlePushYourLuckUsePeek({
   state.peekUsesRemaining -= 1;
   const topCard = state.tiles.find((t) => !t.isOpened);
   if (topCard) {
+    let cleanTitle = (topCard.storyTitle || "").trim();
+    if (topCard.icon && cleanTitle.startsWith(topCard.icon)) {
+      cleanTitle = cleanTitle.slice(topCard.icon.length).trim();
+    }
+    cleanTitle = cleanTitle.replace(/^[\p{Extended_Pictographic}\p{Emoji}\uFE0F\u200D\s]+/u, "").trim() || topCard.storyTitle;
+    let pointBadge = "";
+    const isBomb = topCard.type !== "REWARD" && topCard.type !== "ESCAPE_SAFE";
+    if (topCard.type === "REWARD") {
+      if (topCard.effectType === "MULTIPLY_X2") {
+        pointBadge = "X2 H\u0168";
+      } else if (topCard.effectType === "STEAL_POINTS") {
+        pointBadge = topCard.deltaPoints ? `C\u01AF\u1EDAP +${topCard.deltaPoints}\u0111` : "C\u01AF\u1EDAP \u0110I\u1EC2M";
+      } else if (typeof topCard.deltaPoints === "number" && topCard.deltaPoints > 0) {
+        pointBadge = `+${topCard.deltaPoints}\u0111`;
+      } else {
+        pointBadge = "AN TO\xC0N";
+      }
+    } else if (topCard.type === "ESCAPE_SAFE") {
+      pointBadge = "THO\xC1T HI\u1EC2M";
+    } else if (topCard.type === "BOMB_SMOKE") {
+      pointBadge = "0\u0111 (M\u1EA4T H\u0168)";
+    } else if (topCard.type === "BOMB_DARK") {
+      pointBadge = "CHIA \u0110\u1ED0I TH\u1EE6";
+    } else if (topCard.type === "BOMB_CHARITY") {
+      pointBadge = "T\u1EB6NG TOP 1";
+    } else if (topCard.type === "TRAP") {
+      pointBadge = typeof topCard.deltaPoints === "number" && topCard.deltaPoints < 0 ? `-${Math.abs(topCard.deltaPoints)}\u0111` : "B\u1EAAY PH\u1EA0T";
+    } else {
+      pointBadge = typeof topCard.deltaPoints === "number" && topCard.deltaPoints < 0 ? `-${Math.abs(topCard.deltaPoints)}\u0111` : "B\u1EAAY BOM";
+    }
     state.nextCardPeek = {
       icon: topCard.icon,
-      storyTitle: topCard.storyTitle,
-      isBomb: topCard.type !== "REWARD"
+      storyTitle: cleanTitle,
+      cleanTitle,
+      isBomb,
+      deltaPoints: topCard.deltaPoints,
+      effectType: topCard.effectType,
+      type: topCard.type,
+      pointBadge,
+      storyDescription: topCard.storyDescription
     };
   }
   return { updatedState: { ...state } };

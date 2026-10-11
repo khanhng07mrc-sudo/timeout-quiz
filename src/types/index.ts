@@ -1080,7 +1080,13 @@ export interface MysteryQuestState {
   nextCardPeek?: {
     icon: string;
     storyTitle: string;
+    cleanTitle?: string;
     isBomb: boolean;
+    deltaPoints?: number;
+    effectType?: MysteryTileEffectType;
+    type?: MysteryTileType;
+    pointBadge?: string;
+    storyDescription?: string;
   };
 }
 

@@ -4723,10 +4723,55 @@ export function handlePushYourLuckUsePeek({
   state.peekUsesRemaining -= 1;
   const topCard = state.tiles.find((t) => !t.isOpened);
   if (topCard) {
+    // 1. Làm sạch tên lá bài: Loại bỏ icon bị lặp ở đầu (tránh 💎 💎 ...)
+    let cleanTitle = (topCard.storyTitle || "").trim();
+    if (topCard.icon && cleanTitle.startsWith(topCard.icon)) {
+      cleanTitle = cleanTitle.slice(topCard.icon.length).trim();
+    }
+    cleanTitle = cleanTitle.replace(/^[\p{Extended_Pictographic}\p{Emoji}\uFE0F\u200D\s]+/u, "").trim() || topCard.storyTitle;
+
+    // 2. Tính toán badge điểm số và hiệu ứng hiển thị rõ ràng:
+    let pointBadge = "";
+    const isBomb = topCard.type !== "REWARD" && topCard.type !== "ESCAPE_SAFE";
+
+    if (topCard.type === "REWARD") {
+      if (topCard.effectType === "MULTIPLY_X2") {
+        pointBadge = "X2 HŨ";
+      } else if (topCard.effectType === "STEAL_POINTS") {
+        pointBadge = topCard.deltaPoints ? `CƯỚP +${topCard.deltaPoints}đ` : "CƯỚP ĐIỂM";
+      } else if (typeof topCard.deltaPoints === "number" && topCard.deltaPoints > 0) {
+        pointBadge = `+${topCard.deltaPoints}đ`;
+      } else {
+        pointBadge = "AN TOÀN";
+      }
+    } else if (topCard.type === "ESCAPE_SAFE") {
+      pointBadge = "THOÁT HIỂM";
+    } else if (topCard.type === "BOMB_SMOKE") {
+      pointBadge = "0đ (MẤT HŨ)";
+    } else if (topCard.type === "BOMB_DARK") {
+      pointBadge = "CHIA ĐỐI THỦ";
+    } else if (topCard.type === "BOMB_CHARITY") {
+      pointBadge = "TẶNG TOP 1";
+    } else if (topCard.type === "TRAP") {
+      pointBadge = typeof topCard.deltaPoints === "number" && topCard.deltaPoints < 0
+        ? `-${Math.abs(topCard.deltaPoints)}đ`
+        : "BẪY PHẠT";
+    } else {
+      pointBadge = typeof topCard.deltaPoints === "number" && topCard.deltaPoints < 0
+        ? `-${Math.abs(topCard.deltaPoints)}đ`
+        : "BẪY BOM";
+    }
+
     state.nextCardPeek = {
       icon: topCard.icon,
-      storyTitle: topCard.storyTitle,
-      isBomb: topCard.type !== "REWARD",
+      storyTitle: cleanTitle,
+      cleanTitle,
+      isBomb,
+      deltaPoints: topCard.deltaPoints,
+      effectType: topCard.effectType,
+      type: topCard.type,
+      pointBadge,
+      storyDescription: topCard.storyDescription,
     };
   }
   return { updatedState: { ...state } };

@@ -2270,20 +2270,58 @@ export default function MysteryQuestBoard({
 
           return (
             <div className="flex flex-col items-center justify-center space-y-2 sm:space-y-2.5 max-w-lg mx-auto py-1">
-              {nextCardPeek && (
-                <div className="w-full max-w-md px-3 py-1.5 rounded-xl bg-cyan-950/80 border border-cyan-400 text-cyan-200 text-xs font-bold flex items-center justify-between shadow-lg animate-pulse">
-                  <span className="flex items-center gap-1.5 truncate">
-                    <span>👁️</span>
-                    <span>Mắt Thần Soi Đỉnh Bài:</span>
-                    <strong className="text-white truncate">{nextCardPeek.icon} {nextCardPeek.storyTitle}</strong>
-                  </span>
-                  <span className={`shrink-0 ml-1.5 px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                    nextCardPeek.isBomb ? "bg-red-500/40 text-red-300 border border-red-400" : "bg-emerald-500/40 text-emerald-300 border border-emerald-400"
-                  }`}>
-                    {nextCardPeek.isBomb ? "💥 BẪY BOM!" : "✨ AN TOÀN!"}
-                  </span>
-                </div>
-              )}
+              {nextCardPeek && (() => {
+                const displayTitle = (nextCardPeek.cleanTitle || nextCardPeek.storyTitle || "")
+                  .replace(new RegExp(`^${nextCardPeek.icon}\\s*`), "")
+                  .replace(/^[\p{Extended_Pictographic}\p{Emoji}\uFE0F\u200D\s]+/u, "")
+                  .trim() || nextCardPeek.storyTitle;
+
+                const displayBadge = nextCardPeek.pointBadge || (
+                  nextCardPeek.deltaPoints !== undefined && nextCardPeek.deltaPoints > 0
+                    ? `+${nextCardPeek.deltaPoints}đ`
+                    : nextCardPeek.isBomb
+                    ? "BẪY BOM"
+                    : "AN TOÀN"
+                );
+
+                return (
+                  <div className="w-full max-w-md px-3.5 py-2 rounded-xl bg-gradient-to-r from-cyan-950/95 via-slate-900/95 to-cyan-950/95 border-2 border-cyan-400 text-cyan-200 text-xs shadow-xl animate-pulse">
+                    {/* Hàng 1: Tiêu đề Mắt Thần + Badge Điểm Số Rõ Ràng + Badge An Toàn / Bẫy */}
+                    <div className="flex items-center justify-between gap-2 pb-1.5 border-b border-cyan-500/30">
+                      <div className="flex items-center gap-1.5 font-black text-cyan-300 text-[11px] uppercase tracking-wider">
+                        <span className="text-sm">👁️</span>
+                        <span>Mắt Thần Soi Đỉnh Bài</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {/* BADGE SỐ ĐIỂM NỔI BẬT */}
+                        <span className={`px-2 py-0.5 rounded-lg text-xs font-black font-mono shadow-md border ${
+                          nextCardPeek.isBomb
+                            ? "bg-red-500/30 text-red-200 border-red-400/70"
+                            : "bg-amber-400/25 text-amber-300 border-amber-300/80 shadow-amber-500/20"
+                        }`}>
+                          {displayBadge}
+                        </span>
+                        {/* BADGE AN TOÀN / BẪY BOM */}
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${
+                          nextCardPeek.isBomb
+                            ? "bg-red-600/40 text-red-100 border-red-400"
+                            : "bg-emerald-600/40 text-emerald-100 border-emerald-400"
+                        }`}>
+                          {nextCardPeek.isBomb ? "💥 BẪY BOM!" : "✨ AN TOÀN!"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hàng 2: Tên Lá Bài Soi Được - Không cắt ba chấm, không lặp icon */}
+                    <div className="flex items-center gap-2 pt-1 text-white font-extrabold text-xs sm:text-sm">
+                      <span className="text-base sm:text-lg leading-none shrink-0 drop-shadow">{nextCardPeek.icon}</span>
+                      <span className="leading-snug break-words flex-1 text-cyan-50 drop-shadow-sm">
+                        {displayTitle}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
               {(peekUsesRemaining ?? 0) > 0 && !nextCardPeek && (
                 <div className="w-full max-w-md px-3 py-1 rounded-xl bg-cyan-950/80 border border-cyan-400 text-cyan-200 text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-md">
                   <span>👁️ Mắt Thần Chủ Động:</span>
@@ -2340,14 +2378,31 @@ export default function MysteryQuestBoard({
                     >
                       <div className="w-full flex items-center justify-between text-[10px] font-mono font-bold text-amber-300">
                         <span>#{nextCardNum}</span>
-                        <span className="text-[8px] uppercase font-bold text-white/70 px-1 py-0.2 rounded bg-black/40 border border-white/10">
-                          Chồng bài
+                        <span className={`text-[8px] uppercase font-bold px-1 py-0.2 rounded border ${
+                          nextCardPeek
+                            ? "bg-cyan-500/30 text-cyan-200 border-cyan-400"
+                            : "text-white/70 bg-black/40 border-white/10"
+                        }`}>
+                          {nextCardPeek ? "👁️ Đã soi" : "Chồng bài"}
                         </span>
                       </div>
 
-                      <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
-                        🃏
-                      </div>
+                      {nextCardPeek ? (
+                        <div className="my-auto flex flex-col items-center justify-center animate-pulse">
+                          <span className="text-3xl sm:text-4xl drop-shadow-xl">{nextCardPeek.icon}</span>
+                          <span className={`mt-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-black border shadow-sm ${
+                            nextCardPeek.isBomb
+                              ? "bg-red-500/40 text-red-200 border-red-400"
+                              : "bg-amber-400/30 text-amber-200 border-amber-300"
+                          }`}>
+                            {nextCardPeek.pointBadge || (nextCardPeek.deltaPoints ? `+${nextCardPeek.deltaPoints}đ` : "✨")}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="text-2xl sm:text-3xl my-auto text-center drop-shadow-xl transition-transform duration-300 group-hover:scale-110 animate-pulse">
+                          🃏
+                        </div>
+                      )}
 
                       <div className="w-full text-center">
                         <span className="text-[11px] sm:text-xs font-black text-white block">

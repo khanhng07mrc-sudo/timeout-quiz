@@ -68,6 +68,8 @@ export default function MysteryQuestBoard({
   const [isDrawingAnimation, setIsDrawingAnimation] = useState<boolean>(false);
   const [isCashingOut, setIsCashingOut] = useState<boolean>(false);
   const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
+  const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
+  const [rulesModalTab, setRulesModalTab] = useState<MysteryMiniGameType>(mysteryState?.miniGameType || "PUSH_YOUR_LUCK");
   const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
   const [swapStep, setSwapStep] = useState<"IDLE" | "SELECT_REMOVE" | "SELECT_ADD">("IDLE");
   const [swapRemovedId, setSwapRemovedId] = useState<number | null>(null);
@@ -351,25 +353,89 @@ export default function MysteryQuestBoard({
     onFlipCard?.(tile.id);
   };
 
+  const MINIGAME_RULES: Record<string, {
+    title: string;
+    badge: string;
+    icon: string;
+    steps: Array<{ step: string; desc: string; icon: string }>;
+    rewardMechanic: string;
+    riskMechanic: string;
+    survivalMechanic: string;
+  }> = {
+    MEMORY_PAIRS: {
+      title: "🃏 LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)",
+      badge: "Memory Pairs",
+      icon: "🃏",
+      steps: [
+        { step: "1. Lật tìm cặp", desc: "Mỗi lượt chọn lật 2 thẻ bí mật để tìm biểu tượng giống nhau.", icon: "🎯" },
+        { step: "2. Bẫy giữ mở", desc: "Thẻ Bẫy Khói / Kíp Nổ bị giữ ngửa trên bàn. Ghép trúng cặp phạt kích hoạt lượt giải cứu (lá thứ 3).", icon: "💣" },
+        { step: "3. Nhận thưởng", desc: "Tối đa 4 lượt (5 lượt nếu có Perk). Ghép trúng cặp thưởng bất kỳ để nhận điểm và chốt lượt an toàn.", icon: "🏆" },
+      ],
+      rewardMechanic: "Nhân đôi x2, Cướp đối thủ, Kho Báu lớn, Tinh Tú may mắn (+10đ đến +60đ).",
+      riskMechanic: "Cặp Bẫy Khói (mất điểm câu hiện tại, giữ điểm tổng). Cặp Kíp Nổ (kích nổ Bom Hắc Ám / Bom Từ Thiện trừ điểm).",
+      survivalMechanic: "Khi vào Sinh Tử: 1 Cặp Thoát Hiểm duy nhất (20%) & 4 Cặp Bom/Bẫy (80%). Không có cặp cộng điểm.",
+    },
+    ONE_SHOT_DOORS: {
+      title: "🚪 5 CÁNH CỬA BÍ MẬT (2 GIAI ĐOẠN)",
+      badge: "5 Secret Doors",
+      icon: "🚪",
+      steps: [
+        { step: "1. Để ra riêng", desc: "Giai đoạn 1: Chọn 3 trong 5 cánh cửa tiềm năng (2 cửa còn lại bị loại bỏ).", icon: "🚪" },
+        { step: "2. Radar quét bẫy", desc: "Hệ thống báo số lượng bẫy trừ trong 3 cửa đã chọn. Được quyền đổi 1 cửa hoặc rút lui.", icon: "📡" },
+        { step: "3. Mở quyết định", desc: "Giai đoạn 2: Chọn mở 1 trong 3 cửa đã để ra riêng để chốt điểm!", icon: "✨" },
+      ],
+      rewardMechanic: "3 Cửa Thưởng: Đại Thưởng (+2x điểm), Cướp đối thủ (+1x) hoặc Kho Báu (+1.5x), May Mắn (+1x).",
+      riskMechanic: "2 Cửa Bẫy: Cửa Bẫy trừ điểm gốc (-1x) & Cửa Bom Ngẫu Nhiên (Khói / Hắc Ám / Từ Thiện).",
+      survivalMechanic: "Khi vào Sinh Tử: Mở trực tiếp 1 cửa. 1 Cửa Thoát Hiểm (20%) & 4 Cửa Bẫy/Bom (80%).",
+    },
+    PUSH_YOUR_LUCK: {
+      title: "📚 LẬT LIỀU TÍCH LŨY NÉ BOM (CHỒNG BÀI VÔ HẠN)",
+      badge: "Push Your Luck",
+      icon: "📚",
+      steps: [
+        { step: "1. Rút tích lũy", desc: "Lá đầu tiên 100% an toàn. Rút tiếp để tích lũy cộng dồn hoặc nhân đôi x2 điểm Hũ.", icon: "💰" },
+        { step: "2. Tỷ lệ bom tăng", desc: "Càng rút sâu nguy cơ dính Bom (Khói, Hắc Ám, Từ Thiện) càng tăng cao theo độ khó câu hỏi.", icon: "⚠️" },
+        { step: "3. Chốt điểm dừng", desc: "Bấm 'CHỐT ĐIỂM' bất kỳ lúc nào để bảo toàn toàn bộ điểm Hũ về tài khoản.", icon: "🛑" },
+      ],
+      rewardMechanic: "Cộng dồn điểm thưởng theo câu hỏi (+10đ đến +60đ), Cướp đối thủ, Động cơ Nhân đôi x2.",
+      riskMechanic: "Dính Bom sẽ mất sạch điểm Hũ của câu này. Bom Hắc Ám / Từ Thiện còn phạt trừ thêm điểm tổng.",
+      survivalMechanic: "Khi vào Sinh Tử: Rút 1 lá quyết định. 20% Thoát Hiểm an toàn & 80% Bẫy/Bom trừng phạt.",
+    },
+    TAROT_DESTINY: {
+      title: "🔮 BÀI TAROT & VÒNG QUAY ĐỊNH MỆNH",
+      badge: "Tarot Destiny",
+      icon: "🔮",
+      steps: [
+        { step: "1. Chọn phương thức", desc: "Quay Vòng Quay Định Mệnh 20 nan quạt hoặc Rút 1 trong 5 lá Tarot cổ đại.", icon: "🎡" },
+        { step: "2. Tỷ lệ vàng 70/30", desc: "70% có lợi (Mặt Trời an toàn, Thần Chết cướp điểm,...) và chỉ 30% rủi ro.", icon: "☀️" },
+        { step: "3. Khiên thần bảo hộ", desc: "Nếu đội có Khiên Thần, mọi hiệu ứng phạt xấu sẽ tự động được triệt tiêu 100%.", icon: "🛡️" },
+      ],
+      rewardMechanic: "Mặt Trời (+2x điểm), Hoàng Đế (+1.5x điểm), Kẻ Khờ (+1x + 10đ), Hiệp Sĩ (Cướp điểm).",
+      riskMechanic: "Lá Thần Chết (-điểm gốc). Trên Vòng Quay: Ô Bom Khói (0đ câu này), Ô Bom Hắc Ám (-chia đối thủ).",
+      survivalMechanic: "Khi vào Sinh Tử: 20% quay trúng Thoát Hiểm an toàn & 80% ô Bẫy/Bom phạt.",
+    },
+  };
+
   const getVariantLabel = () => {
     switch (miniGameType) {
       case "MEMORY_PAIRS":
-        return { title: "🃏 Lật Cặp Trùng Nhau", badge: "Memory Pair" };
+        return { title: "🃏 Lật Cặp Trùng Nhau", badge: "Memory Pair", key: "MEMORY_PAIRS" };
       case "ONE_SHOT_DOORS":
       case "DOORS":
       case "CHESTS":
-        return { title: "🚪 5 Cánh Cửa Bí Mật (2 Giai Đoạn)", badge: "5 Secret Doors" };
+        return { title: "🚪 5 Cánh Cửa Bí Mật (2 Giai Đoạn)", badge: "5 Secret Doors", key: "ONE_SHOT_DOORS" };
       case "TAROT_DESTINY":
       case "TAROT_CARDS":
-        return { title: "🔮 BÀI TAROT (Định Mệnh Chọn Lá)", badge: "Tarot" };
+        return { title: "🔮 BÀI TAROT (Định Mệnh Chọn Lá)", badge: "Tarot", key: "TAROT_DESTINY" };
       case "PUSH_YOUR_LUCK":
       case "RADAR_WINDOWS":
       default:
-        return { title: "💣 Lật Liều Tích Lũy Né Bom", badge: "Push-Your-Luck" };
+        return { title: "💣 Lật Liều Tích Lũy Né Bom", badge: "Push-Your-Luck", key: "PUSH_YOUR_LUCK" };
     }
   };
 
   const variantInfo = getVariantLabel();
+  const currentMiniGameRules = MINIGAME_RULES[variantInfo.key] || MINIGAME_RULES.PUSH_YOUR_LUCK;
 
   return (
     <div
@@ -410,8 +476,22 @@ export default function MysteryQuestBoard({
           </div>
         </div>
 
-        {/* Turn & Active Team Badge */}
-        <div className="flex items-center gap-2">
+        {/* Turn, Active Team Badge & Quick Rules Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          {/* Nút Phổ Biến Luật Chơi */}
+          <button
+            type="button"
+            onClick={() => {
+              setRulesModalTab(variantInfo.key as MysteryMiniGameType);
+              setShowRulesModal(true);
+            }}
+            className="px-2.5 py-1 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 border border-amber-400/50 shadow-md font-bold text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+            title="Xem hướng dẫn chi tiết luật chơi Minigame"
+          >
+            <span>📖</span>
+            <span className="hidden sm:inline">Luật Chơi</span>
+          </button>
+
           <div className="px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px] font-mono font-bold text-white/80">
             LƯỢT <span className="text-amber-400 font-black">{currentTurnIndex + 1}</span> / {totalTurns}
             <span className="mx-1.5 opacity-40">|</span>
@@ -469,6 +549,38 @@ export default function MysteryQuestBoard({
           })}
         </div>
       )}
+
+      {/* ── Quick Rules Banner (3 Bước Cốt Lõi) ── */}
+      <div className="relative z-10 my-2 p-2 sm:p-2.5 rounded-xl bg-black/50 border border-amber-400/30 backdrop-blur-md shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span className="text-sm">📖</span>
+          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300">
+            Luật Chơi Nhanh:
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 flex-1 text-[11px] text-white/90">
+          {currentMiniGameRules.steps.map((s, idx) => (
+            <div key={idx} className="flex items-start gap-1.5 p-1 sm:p-1.5 rounded-lg bg-white/5 border border-white/5">
+              <span className="text-amber-400 font-bold shrink-0">{s.icon}</span>
+              <div className="leading-tight">
+                <strong className="text-white block text-[10px] font-bold">{s.step}</strong>
+                <span className="text-white/75 text-[10px] line-clamp-2">{s.desc}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setRulesModalTab(variantInfo.key as MysteryMiniGameType);
+            setShowRulesModal(true);
+          }}
+          className="shrink-0 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/80 to-orange-500/80 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-[11px] border border-amber-300/50 shadow cursor-pointer active:scale-95 transition flex items-center justify-center gap-1"
+        >
+          <span>📜</span>
+          <span>Chi Tiết Luật</span>
+        </button>
+      </div>
 
       {/* ── Phase HUD / Alerts ── */}
       <div className="relative z-10 py-2 sm:py-2.5">
@@ -2112,10 +2224,14 @@ export default function MysteryQuestBoard({
                           )
                         )}
                         {drawnCard?.key === "THE_EMPEROR" && (
-                          <span className="text-orange-400">-{Math.abs(drawnCard.scoreDelta)}đ (Chia đối thủ)</span>
+                          <span className="text-orange-400">
+                            {Math.abs(drawnCard.scoreDelta) > 0 ? `-${Math.abs(drawnCard.scoreDelta)}đ (Chia đối thủ)` : "0đ (Không trừ)"}
+                          </span>
                         )}
                         {drawnCard?.key === "THE_KNIGHT" && (
-                          <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Mất 1/2 tổng điểm)</span>
+                          <span className="text-rose-400">
+                            {Math.abs(drawnCard.scoreDelta) > 0 ? `-${Math.abs(drawnCard.scoreDelta)}đ (Mất 1/2 tổng điểm)` : "0đ (Không trừ)"}
+                          </span>
                         )}
                         {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "GIFT_TOP1" || (drawnCard.deathSubtype as any) === "GIFT") && (
                           <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
@@ -2890,6 +3006,152 @@ export default function MysteryQuestBoard({
                 className="px-4 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-bold text-xs cursor-pointer"
               >
                 Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── Modal Chi Tiết Luật Chơi Minigame ── */}
+      {showRulesModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in">
+          <div className="w-full max-w-2xl bg-gradient-to-b from-slate-900 via-indigo-950/95 to-slate-950 border-2 border-amber-400/80 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📖</span>
+                <div>
+                  <h3 className="font-black text-sm sm:text-base uppercase tracking-wider text-amber-300">
+                    Cẩm Nang Luật Chơi Minigame
+                  </h3>
+                  <p className="text-[11px] text-white/60">
+                    Nắm vững cơ chế thưởng phạt để tối ưu hóa điểm số và tránh bẫy bom
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/70 hover:text-white cursor-pointer transition text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Minigame Tabs */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/10 shrink-0 overflow-x-auto">
+              {[
+                { key: "MEMORY_PAIRS", label: "🃏 Lật Cặp", icon: "🃏" },
+                { key: "ONE_SHOT_DOORS", label: "🚪 5 Cửa", icon: "🚪" },
+                { key: "PUSH_YOUR_LUCK", label: "📚 Lật Liều", icon: "📚" },
+                { key: "TAROT_DESTINY", label: "🔮 Tarot", icon: "🔮" },
+              ].map((tab) => {
+                const isActive = rulesModalTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setRulesModalTab(tab.key as MysteryMiniGameType)}
+                    className={`flex-1 min-w-[90px] py-1.5 px-2 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                      isActive
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-black shadow-lg shadow-amber-500/30 scale-[1.02]"
+                        : "text-white/70 hover:text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Tab Details (Scrollable) */}
+            {(() => {
+              const ruleData = MINIGAME_RULES[rulesModalTab] || MINIGAME_RULES.PUSH_YOUR_LUCK;
+              return (
+                <div className="space-y-3.5 overflow-y-auto pr-1 flex-1 text-left text-xs">
+                  {/* Minigame Title Banner */}
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2">
+                    <span className="font-black text-sm text-amber-200 flex items-center gap-2">
+                      <span className="text-xl">{ruleData.icon}</span>
+                      <span>{ruleData.title}</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                      {ruleData.badge}
+                    </span>
+                  </div>
+
+                  {/* 3 Core Steps */}
+                  <div className="space-y-2">
+                    <h4 className="font-black text-[11px] text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>🎯</span> QUY TRÌNH THỰC HIỆN (3 BƯỚC):
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {ruleData.steps.map((st, i) => (
+                        <div
+                          key={i}
+                          className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1 hover:border-amber-400/30 transition"
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-base">{st.icon}</span>
+                            <strong className="text-white font-bold text-xs">{st.step}</strong>
+                          </div>
+                          <p className="text-[11px] text-white/75 leading-relaxed">{st.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 4 Detail Boxes: Rewards, Risks, Survival, Protection */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {/* Rewards */}
+                    <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/30 space-y-1">
+                      <div className="flex items-center gap-1.5 text-emerald-300 font-black text-xs uppercase">
+                        <span>🎁</span> Cơ Cấu Thưởng
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed">{ruleData.rewardMechanic}</p>
+                    </div>
+
+                    {/* Risks */}
+                    <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 space-y-1">
+                      <div className="flex items-center gap-1.5 text-rose-300 font-black text-xs uppercase">
+                        <span>⚠️</span> Rủi Ro & Bẫy Bom
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed">{ruleData.riskMechanic}</p>
+                    </div>
+
+                    {/* Survival Mode */}
+                    <div className="p-3 rounded-xl bg-purple-950/40 border border-purple-500/30 space-y-1">
+                      <div className="flex items-center gap-1.5 text-purple-300 font-black text-xs uppercase">
+                        <span>💀</span> Chế Độ Sinh Tử (Khi Trả Lời Sai)
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed">{ruleData.survivalMechanic}</p>
+                    </div>
+
+                    {/* Shield & Protection */}
+                    <div className="p-3 rounded-xl bg-blue-950/40 border border-blue-500/30 space-y-1">
+                      <div className="flex items-center gap-1.5 text-blue-300 font-black text-xs uppercase">
+                        <span>🛡️</span> Khiên Thần & Bảo Hộ
+                      </div>
+                      <p className="text-[11px] text-white/80 leading-relaxed">
+                        Khi đội sở hữu Khiên Thần (SHIELD_PROMO), nếu dính phải bẫy bom bất kỳ sẽ tự động hấp thụ toàn bộ hình phạt và bảo toàn điểm gốc câu hỏi!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between pt-3 border-t border-white/10 shrink-0">
+              <span className="text-[11px] text-white/50 italic">
+                * Áp dụng đồng bộ cho cả trận thi đấu chính thức và chế độ Sandbox Studio.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRulesModal(false)}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-black text-xs shadow-lg shadow-amber-500/30 cursor-pointer active:scale-95 transition"
+              >
+                ✓ Đã Hiểu / Bắt Đầu Ngay
               </button>
             </div>
           </div>

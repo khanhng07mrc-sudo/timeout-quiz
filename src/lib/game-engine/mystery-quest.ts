@@ -441,54 +441,54 @@ interface RewardTemplate {
 
 const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   CASTLE: [
-    { storyTitle: "💎 Đại Hồng Ân Pháp Sư", storyDescription: "Pháp Sư truyền dạy bí kíp: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "⭐ Phép Nhân Đôi Tinh Tú", storyDescription: "Ánh sáng tinh tú soi rọi: Nhân đôi (x2) toàn bộ điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "🎭 Bàn Tay Đạo Tặc", storyDescription: "Áo tàng hình xuất kích: Cướp thêm 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "🛡️ Tấm Khiên Hộ Vệ Hoàng Gia", storyDescription: "Nhặt được khiên cổ hoàng gia: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "🃏 Cuộn Giấy Bí Truyền", storyDescription: "Giải mã cuộn giấy thông thái: Thưởng nóng +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "💰 Kho Vàng Cung Đình", storyDescription: "Mở đúng căn hầm hoàng gia: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "✨ Viên Pha Lê Ma Thuật", storyDescription: "Năng lượng dồi dào: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "👑 Vương Miện Cổ", storyDescription: "Tìm thấy vương miện bảo vật: +35 điểm quỹ!", deltaPoints: 35, effectType: "BONUS_POINTS" },
+    { storyTitle: "💎 Kho Báu +30đ", storyDescription: "Pháp Sư truyền dạy bí kíp: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Ánh sáng tinh tú soi rọi: Nhân đôi (x2) toàn bộ điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🎭 Cướp +20đ", storyDescription: "Áo tàng hình xuất kích: Cướp thêm 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "🛡️ Khiên +20đ", storyDescription: "Nhặt được khiên cổ hoàng gia: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "📜 Bí Truyền +25đ", storyDescription: "Giải mã cuộn giấy thông thái: Thưởng nóng +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "💰 Kho Vàng +25đ", storyDescription: "Mở đúng căn hầm hoàng gia: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "✨ Pha Lê +20đ", storyDescription: "Năng lượng dồi dào: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "👑 Vương Miện +35đ", storyDescription: "Tìm thấy vương miện bảo vật: +35 điểm quỹ!", deltaPoints: 35, effectType: "BONUS_POINTS" },
   ],
   PIRATE: [
-    { storyTitle: "👑 Kho Báu Của Râu Đen", storyDescription: "Hòm kim cương khổng lồ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "⚓ Gió Thuận Buồm Xuôi", storyDescription: "Vận may đại dương: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "🗡️ Đột Kích Hạm Đội", storyDescription: "Cướp bóc khoang thuyền: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "🦜 Chú Vẹt Thông Thái", storyDescription: "Chú vẹt chỉ đường tắt vào kho báu: Thưởng lớn +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "🍻 Tiệc Rượu Thủy Thủ", storyDescription: "Liên hoan tưng bừng: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "🧭 La Bàn Định Mệnh", storyDescription: "Tìm thấy hướng gió lành: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "🪙 Túi Tiền Vàng Cổ", storyDescription: "Nhặt được túi vàng nguyên vẹn: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "🛡️ Mộc Gỗ Hải Quân", storyDescription: "Nhặt được mộc gỗ quý báu: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "👑 Kho Báu +40đ", storyDescription: "Hòm kim cương khổng lồ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "⚓ Nhân Đôi x2", storyDescription: "Vận may đại dương: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🗡️ Cướp +25đ", storyDescription: "Cướp bóc khoang thuyền: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "🦜 Chỉ Đường +25đ", storyDescription: "Chú vẹt chỉ đường tắt vào kho báu: Thưởng lớn +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "🍻 Thưởng +20đ", storyDescription: "Liên hoan tưng bừng: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "🧭 La Bàn +25đ", storyDescription: "Tìm thấy hướng gió lành: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "🪙 Tiền Vàng +30đ", storyDescription: "Nhặt được túi vàng nguyên vẹn: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "🛡️ Khiên +20đ", storyDescription: "Nhặt được mộc gỗ quý báu: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
   ],
   FOREST: [
-    { storyTitle: "🌟 Đại Bảo Vật Rừng Xanh", storyDescription: "Nữ Hoàng Tiên ban tặng: Thưởng ngay +35 điểm quỹ!", deltaPoints: 35, effectType: "BONUS_POINTS" },
-    { storyTitle: "🌸 Trái Cây Thần Ngàn Năm", storyDescription: "Sinh lực tràn trề: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "🦊 Cáo Tinh Ranh", storyDescription: "Lẻn trộm túi tiền: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "🌿 Bùa Hộ Mệnh Của Tộc Elf", storyDescription: "Bùa chú rừng xanh hộ thể: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "🏹 Cung Tên Sấm Sét", storyDescription: "Bắn trúng hồng tâm kho báu: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "🍯 Mật Ong Rừng Khổng Lồ", storyDescription: "Ngọt ngào năng lượng: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "🦋 Tinh Linh Ánh Sáng", storyDescription: "Ánh sáng dẫn lối: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "💎 Ngọc Lục Bảo Rừng Già", storyDescription: "Viên ngọc ngàn năm: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "🌟 Kho Báu +35đ", storyDescription: "Nữ Hoàng Tiên ban tặng: Thưởng ngay +35 điểm quỹ!", deltaPoints: 35, effectType: "BONUS_POINTS" },
+    { storyTitle: "🌸 Nhân Đôi x2", storyDescription: "Sinh lực tràn trề: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🦊 Cướp +20đ", storyDescription: "Lẻn trộm túi tiền: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "🌿 Khiên +20đ", storyDescription: "Bùa chú rừng xanh hộ thể: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "🏹 Thưởng +30đ", storyDescription: "Bắn trúng hồng tâm kho báu: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "🍯 Mật Ong +25đ", storyDescription: "Ngọt ngào năng lượng: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "🦋 Tinh Linh +20đ", storyDescription: "Ánh sáng dẫn lối: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "💎 Lục Bảo +30đ", storyDescription: "Viên ngọc ngàn năm: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
   ],
   CYBER: [
-    { storyTitle: "⚡ Lõi Năng Lượng Lượng Tử", storyDescription: "Bùng nổ siêu năng lượng: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "🚀 Động Cơ Siêu Quang Tốc", storyDescription: "Gia tốc cực đại: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "🛰️ Đòn Tấn Công Cyber Siphon", storyDescription: "Chuyển luồng dữ liệu: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "🛡️ Lá Chắn Plasma", storyDescription: "Trường lực bảo vệ công nghệ: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "💾 Ổ Đĩa Dữ Liệu Tối Mật", storyDescription: "Giải mã dữ liệu tối mật: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "📡 Tín Hiệu Vệ Tinh", storyDescription: "Bắt trọn luồng sóng quý: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "🔋 Pin Nhiên Liệu Vĩnh Cửu", storyDescription: "Sạc đầy pin tàu: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "🤖 Siêu Chip AI Thế Hệ Mới", storyDescription: "Thuật toán xử lý thần tốc: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "⚡ Siêu Thưởng +40đ", storyDescription: "Bùng nổ siêu năng lượng: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Gia tốc cực đại: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🛰️ Cướp +25đ", storyDescription: "Chuyển luồng dữ liệu: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "🛡️ Lá Chắn +20đ", storyDescription: "Trường lực bảo vệ công nghệ: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "💾 Dữ Liệu +30đ", storyDescription: "Giải mã dữ liệu tối mật: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "📡 Vệ Tinh +25đ", storyDescription: "Bắt trọn luồng sóng quý: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "🔋 Năng Lượng +20đ", storyDescription: "Sạc đầy pin tàu: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "🤖 Siêu Chip +30đ", storyDescription: "Thuật toán xử lý thần tốc: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
   ],
   TEMPLE: [
-    { storyTitle: "👑 Vương Miện Pharaon", storyDescription: "Khai mở kho báu lăng mộ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "☀️ Ánh Sáng Thần Mặt Trời", storyDescription: "Thần Mặt Trời ban phước: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "🐍 Rắn Độc Cướp Cổ Vật", storyDescription: "Bẫy ngầm kích hoạt: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "🏺 Bình Cổ Hoàng Kim", storyDescription: "Cổ vật nguyên vẹn: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "📜 Bản Đồ Lối Thoát", storyDescription: "Sơ đồ mật đạo kim tự tháp: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "💎 Viên Hồng Ngọc Huyền Thoại", storyDescription: "Viên đá mắt thần: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "🛡️ Tấm Khiên Đồng Cổ", storyDescription: "Khiên chiến binh Ai Cập: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "🗝️ Chìa Khóa Lăng Mộ", storyDescription: "Chìa khóa mở cửa thông đạo: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "👑 Kho Báu +40đ", storyDescription: "Khai mở kho báu lăng mộ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "☀️ Nhân Đôi x2", storyDescription: "Thần Mặt Trời ban phước: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🐍 Cướp +20đ", storyDescription: "Bẫy ngầm kích hoạt: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "🏺 Cổ Vật +25đ", storyDescription: "Cổ vật nguyên vẹn: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "📜 Mật Đạo +30đ", storyDescription: "Sơ đồ mật đạo kim tự tháp: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "💎 Hồng Ngọc +30đ", storyDescription: "Viên đá mắt thần: +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "🛡️ Khiên +20đ", storyDescription: "Khiên chiến binh Ai Cập: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "🗝️ Chìa Khóa +20đ", storyDescription: "Chìa khóa mở cửa thông đạo: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
   ],
 };
 
@@ -603,8 +603,8 @@ export function generateMemoryPairsTiles(
         pairKey: "PAIR_STEAL",
         icon: "🗡️",
         type: "REWARD",
-        storyTitle: "🗡️ CẶP HẢI TẶC ĐOẠT BẢO!",
-        storyDescription: `Ghép trúng cặp hải tặc: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
+        storyTitle: `🗡️ Cướp +${pSteal}đ`,
+        storyDescription: `Ghép trúng cặp cướp: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
         effectType: "STEAL_POINTS",
         deltaPoints: pSteal,
       }
@@ -612,8 +612,8 @@ export function generateMemoryPairsTiles(
         pairKey: "PAIR_SHIELD",
         icon: "🛡️",
         type: "REWARD",
-        storyTitle: "🛡️ CẶP KHIÊN VÀNG HỘ THÂN!",
-        storyDescription: `Ghép trúng cặp khiên hoàng gia: Nhận an toàn +${pSteal} điểm thưởng!`,
+        storyTitle: `🛡️ Khiên +${pSteal}đ`,
+        storyDescription: `Ghép trúng cặp khiên: Nhận an toàn +${pSteal} điểm thưởng!`,
         effectType: "BONUS_POINTS",
         deltaPoints: pSteal,
       };
@@ -623,8 +623,8 @@ export function generateMemoryPairsTiles(
       pairKey: "PAIR_MULTIPLY",
       icon: "🚀",
       type: "REWARD",
-      storyTitle: "🚀 CẶP ĐỘNG CƠ NHÂN ĐÔI!",
-      storyDescription: `Kích hoạt năng lượng đột phá: Nhận nóng +${pBonusTop} điểm thưởng cực khủng!`,
+      storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
+      storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop,
     },
@@ -633,8 +633,8 @@ export function generateMemoryPairsTiles(
       pairKey: "PAIR_TREASURE",
       icon: "💎",
       type: "REWARD",
-      storyTitle: "💎 CẶP KHO BÁU HOÀNG KIM!",
-      storyDescription: `Tìm thấy cặp ngọc quý tương đồng: Nhận ngay +${pBonusHigh} điểm thưởng!`,
+      storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
+      storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusHigh,
     },
@@ -642,7 +642,7 @@ export function generateMemoryPairsTiles(
       pairKey: "PAIR_STAR",
       icon: "⭐",
       type: "REWARD",
-      storyTitle: "⭐ CẶP TINH TÚ DIỆU KỲ!",
+      storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
       storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusMed,
@@ -651,7 +651,7 @@ export function generateMemoryPairsTiles(
       pairKey: "PAIR_TRAP",
       icon: "💨",
       type: "BOMB_SMOKE",
-      storyTitle: "💨 CẶP BẪY KHÓI ĐỘC!",
+      storyTitle: "💨 Bẫy Khói 0đ",
       storyDescription: `Kích hoạt bẫy khói độc: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ)!`,
       effectType: "LOSE_POT_POINTS",
       deltaPoints: 0,
@@ -660,8 +660,8 @@ export function generateMemoryPairsTiles(
       pairKey: "PAIR_BOMB",
       icon: "💣",
       type: "BOMB_MAJOR",
-      storyTitle: "💣 CẶP KÍP NỔ HẮC ÁM!",
-      storyDescription: `Ghép trúng cặp kíp nổ liên hoàn: Kích nổ bom hắc ám hủy diệt tổng điểm!`,
+      storyTitle: `💣 Kíp Nổ -${pPenalty}đ`,
+      storyDescription: `Ghép trúng cặp kíp nổ: Kích nổ bom hắc ám hủy diệt tổng điểm!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
     },
@@ -723,7 +723,7 @@ export function generateSurvivalMemoryPairsTiles(
       pairKey: "PAIR_ESCAPE",
       icon: "🕊️",
       type: "ESCAPE_SAFE",
-      storyTitle: "🕊️ CẶP THOÁT HIỂM AN TOÀN!",
+      storyTitle: "🕊️ Thoát Hiểm",
       storyDescription: "Kỳ tích xuất hiện! Ghép trúng cặp Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
@@ -733,7 +733,7 @@ export function generateSurvivalMemoryPairsTiles(
       pairKey: "PAIR_TRAP_BASE",
       icon: "⚠️",
       type: "BOMB_MINOR",
-      storyTitle: "⚠️ CẶP BẪY TRỪ ĐIỂM GỐC!",
+      storyTitle: `⚠️ Bẫy Trừ -${pPenalty}đ`,
       storyDescription: `Ghép trúng bẫy tử thần: Bị trừ ${pPenalty} điểm gốc câu hỏi!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -743,7 +743,7 @@ export function generateSurvivalMemoryPairsTiles(
       pairKey: "PAIR_BOMB_SMOKE",
       icon: "💨",
       type: "BOMB_SMOKE",
-      storyTitle: "💨 CẶP BOM KHÓI SINH TỬ!",
+      storyTitle: `💨 Bom Khói -${pSmokePenalty}đ`,
       storyDescription: `Ghép trúng bẫy khói: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
@@ -753,7 +753,7 @@ export function generateSurvivalMemoryPairsTiles(
       pairKey: "PAIR_BOMB_DARK",
       icon: "🌑",
       type: "BOMB_DARK",
-      storyTitle: "🌑 CẶP BOM HẮC ÁM!",
+      storyTitle: "🌑 Bom Tối",
       storyDescription: "Ghép trúng kíp nổ hắc ám: Rút cạn điểm số chia đều cho các đối thủ!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -763,7 +763,7 @@ export function generateSurvivalMemoryPairsTiles(
       pairKey: "PAIR_BOMB_CHARITY",
       icon: "🎁",
       type: "BOMB_CHARITY",
-      storyTitle: "🎁 CẶP BOM TỪ THIỆN!",
+      storyTitle: "🎁 Bom Tặng",
       storyDescription: "Ghép trúng bom từ thiện: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -842,16 +842,16 @@ export function generateOneShotDoorsTiles(
     ? {
         icon: "🗡️",
         type: "REWARD",
-        storyTitle: "🗡️ CỬA ĐOẠT BẢO HẢI TẶC!",
-        storyDescription: `Kích hoạt cướp bóc đoạt bảo: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
+        storyTitle: `🗡️ Cướp +${pSteal}đ`,
+        storyDescription: `Kích hoạt cướp: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
         effectType: "STEAL_POINTS",
         deltaPoints: pSteal,
       }
     : {
         icon: "💎",
         type: "REWARD",
-        storyTitle: "💎 CỬA KHO BÁU HOÀNG KIM!",
-        storyDescription: `Mở ra kho báu hoàng kim: Nhận an toàn +${pTreasure} điểm thưởng siêu cấp!`,
+        storyTitle: `💎 Kho Báu +${pTreasure}đ`,
+        storyDescription: `Mở ra kho báu: Nhận an toàn +${pTreasure} điểm thưởng!`,
         effectType: "BONUS_POINTS",
         deltaPoints: pTreasure,
       };
@@ -865,7 +865,7 @@ export function generateOneShotDoorsTiles(
     {
       icon: "👑",
       type: "REWARD",
-      storyTitle: "👑 CỬA HOÀNG GIA ĐẠI THƯỞNG!",
+      storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
       storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pHigh,
@@ -876,7 +876,7 @@ export function generateOneShotDoorsTiles(
     {
       icon: "⭐",
       type: "REWARD",
-      storyTitle: "⭐ CỬA TINH TÚ MAY MẮN!",
+      storyTitle: `⭐ May Mắn +${pNormal}đ`,
       storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pNormal,
@@ -885,7 +885,7 @@ export function generateOneShotDoorsTiles(
     {
       icon: "⚠️",
       type: "BOMB_MINOR",
-      storyTitle: "⚠️ CỬA BẪY TRỪ ĐIỂM GỐC!",
+      storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
       storyDescription: `Dính bẫy phạt: Trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -895,7 +895,7 @@ export function generateOneShotDoorsTiles(
     {
       icon: "💣",
       type: "BOMB_MAJOR",
-      storyTitle: "💣 CỬA BẪY BOM MA THUẬT!",
+      storyTitle: "💣 Cửa Bom",
       storyDescription: "Dính bẫy ngầm ma thuật: Kích nổ bom bất ngờ mang hiệu ứng đặc biệt!",
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -920,7 +920,7 @@ export function generateOneShotDoorsTiles(
       effectType: d.effectType,
       deltaPoints: d.deltaPoints,
       isPeeked: isPeekedDoor,
-      peekLabel: isPeekedDoor ? `⚠️ MẮT THẦN: CỬA BẪY TRỪ GỐC (-${pPenalty}đ)` : undefined,
+      peekLabel: isPeekedDoor ? `⚠️ Cửa Bẫy -${pPenalty}đ` : undefined,
       peekIcon: isPeekedDoor ? "⚠️" : undefined,
       bombDoorType: d.bombDoorType,
     };
@@ -958,7 +958,7 @@ export function generateSurvivalOneShotDoorsTiles(
     {
       icon: "🕊️",
       type: "ESCAPE_SAFE",
-      storyTitle: "🕊️ CỬA THOÁT HIỂM AN TOÀN!",
+      storyTitle: "🕊️ Thoát Hiểm",
       storyDescription: "May mắn tuyệt đỉnh! Bạn đã mở đúng Cửa Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
@@ -967,7 +967,7 @@ export function generateSurvivalOneShotDoorsTiles(
     {
       icon: "⚠️",
       type: "BOMB_MINOR",
-      storyTitle: "⚠️ CỬA BẪY TRỪ ĐIỂM GỐC!",
+      storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
       storyDescription: `Dính bẫy phạt sinh tử: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -977,7 +977,7 @@ export function generateSurvivalOneShotDoorsTiles(
     {
       icon: "💨",
       type: "BOMB_SMOKE",
-      storyTitle: "💨 CỬA BOM KHÓI SINH TỬ!",
+      storyTitle: `💨 Bom Khói -${pSmokePenalty}đ`,
       storyDescription: `Khói mù bao phủ: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
@@ -988,7 +988,7 @@ export function generateSurvivalOneShotDoorsTiles(
     {
       icon: "🌑",
       type: "BOMB_DARK",
-      storyTitle: "🌑 CỬA BOM HẮC ÁM!",
+      storyTitle: "🌑 Bom Tối",
       storyDescription: "Năng lượng hắc ám bùng phát: Rút cạn điểm số chia đều cho các đội đối thủ!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -999,7 +999,7 @@ export function generateSurvivalOneShotDoorsTiles(
     {
       icon: "🎁",
       type: "BOMB_CHARITY",
-      storyTitle: "🎁 CỬA BOM TỪ THIỆN!",
+      storyTitle: "🎁 Bom Tặng",
       storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -1063,8 +1063,8 @@ export function generateTarotDestinyTiles(
         tarotName: "Hiệp Sĩ Đạo Tặc (The Knight)",
         icon: "🗡️",
         type: "REWARD",
-        storyTitle: "🗡️ HIỆP SĨ ĐỘT KÍCH",
-        storyDescription: `Thanh gươm công lý cướp phá: Cướp +${pKnight}đ từ một đối thủ đủ điều kiện!`,
+        storyTitle: `🗡️ Cướp +${pKnight}đ`,
+        storyDescription: `Thanh gươm công lý: Cướp +${pKnight}đ từ một đối thủ đủ điều kiện!`,
         effectType: "STEAL_POINTS",
         deltaPoints: pKnight,
       }
@@ -1072,8 +1072,8 @@ export function generateTarotDestinyTiles(
         tarotName: "Ngôi Sao Hy Vọng (The Star)",
         icon: "⭐",
         type: "REWARD",
-        storyTitle: "⭐ NGÔI SAO HY VỌNG",
-        storyDescription: `Ánh sao may mắn rạng ngời: Nhận nóng +${pKnight} điểm thưởng vinh quang!`,
+        storyTitle: `⭐ Ngôi Sao +${pKnight}đ`,
+        storyDescription: `Ánh sao may mắn: Nhận nóng +${pKnight} điểm thưởng!`,
         effectType: "BONUS_POINTS",
         deltaPoints: pKnight,
       };
@@ -1083,8 +1083,8 @@ export function generateTarotDestinyTiles(
       tarotName: "Mặt Trời (The Sun)",
       icon: "☀️",
       type: "REWARD",
-      storyTitle: "☀️ MẶT TRỜI QUANG MINH",
-      storyDescription: `Ánh dương thần thánh chiếu rọi: Đại hồng ân ban tặng +${pSun} điểm thưởng!`,
+      storyTitle: `☀️ Mặt Trời +${pSun}đ`,
+      storyDescription: `Ánh dương soi rọi: Ban tặng +${pSun} điểm thưởng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pSun,
     },
@@ -1092,8 +1092,8 @@ export function generateTarotDestinyTiles(
       tarotName: "Hoàng Đế (The Emperor)",
       icon: "👑",
       type: "REWARD",
-      storyTitle: "👑 HOÀNG ĐẾ VƯƠNG QUYỀN",
-      storyDescription: `Vương miện uy quyền tối thượng: Thưởng nóng +${pEmperor} điểm danh dự!`,
+      storyTitle: `👑 Hoàng Đế +${pEmperor}đ`,
+      storyDescription: `Vương miện uy quyền: Thưởng nóng +${pEmperor} điểm danh dự!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pEmperor,
     },
@@ -1101,8 +1101,8 @@ export function generateTarotDestinyTiles(
       tarotName: "Kẻ Khờ (The Fool)",
       icon: "🃏",
       type: "REWARD",
-      storyTitle: "🃏 KẺ KHỜ PHI THƯỜNG",
-      storyDescription: `Vận may bất ngờ của kẻ khờ: Đột phá năng lượng (+${pFool}đ)!`,
+      storyTitle: `🃏 Kẻ Khờ +${pFool}đ`,
+      storyDescription: `Vận may bất ngờ: Đột phá năng lượng (+${pFool}đ)!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pFool,
     },
@@ -1110,8 +1110,8 @@ export function generateTarotDestinyTiles(
       tarotName: "Thần Chết (Death)",
       icon: "💀",
       type: "BOMB_MAJOR",
-      storyTitle: "💀 THẦN CHẾT ĐOẠT MỆNH",
-      storyDescription: `Lưỡi hái định mệnh buông xuống: Bị phạt trừ ${pDeath} điểm từ tổng điểm!`,
+      storyTitle: `💀 Thần Chết -${pDeath}đ`,
+      storyDescription: `Lưỡi hái định mệnh: Bị phạt trừ ${pDeath} điểm từ tổng điểm!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pDeath,
     },
@@ -1192,7 +1192,7 @@ export function generateNextPushYourLuckCard({
         icon: "💨",
         isOpened: false,
         type: "BOMB_SMOKE",
-        storyTitle: "💨 BOM KHÓI NỔ TUNG!",
+        storyTitle: "💨 Bom Khói 0đ",
         storyDescription: "Khói mù bao phủ! Mất toàn bộ điểm tích lũy của câu này. Vì điểm đội hiện tại là 0 nên không bị trừ thêm!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
@@ -1208,7 +1208,7 @@ export function generateNextPushYourLuckCard({
         icon: "💨",
         isOpened: false,
         type: "BOMB_SMOKE",
-        storyTitle: "💨 BOM KHÓI NỔ TUNG!",
+        storyTitle: "💨 Bom Khói 0đ",
         storyDescription: "Khói mù bao phủ! Mất toàn bộ điểm tích lũy ở câu hiện tại (0 điểm nhận được). Tổng điểm giữ nguyên!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
@@ -1221,7 +1221,7 @@ export function generateNextPushYourLuckCard({
         icon: "🌑",
         isOpened: false,
         type: "BOMB_DARK",
-        storyTitle: "🌑 BOM HẮC ÁM PHÁT NỔ!",
+        storyTitle: "🌑 Bom Tối",
         storyDescription: "Năng lượng bóng tối bùng phát! Điểm số của bạn bị rút cạn và phân chia đều cho các đội đối thủ!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
@@ -1234,7 +1234,7 @@ export function generateNextPushYourLuckCard({
         icon: "🎁",
         isOpened: false,
         type: "BOMB_CHARITY",
-        storyTitle: "🎁 BOM TỪ THIỆN HIẾN TẾ!",
+        storyTitle: "🎁 Bom Tặng",
         storyDescription: "Lòng tốt bất đắc dĩ! Bị trừ 50% số điểm của đội và chuyển tặng toàn bộ cho đội đang dẫn đầu!",
         effectType: "GIFT_POINTS",
         deltaPoints: 0,
@@ -1261,6 +1261,11 @@ export function generateNextPushYourLuckCard({
     }
   }
 
+  let storyTitle = template.storyTitle;
+  if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
+    storyTitle = storyTitle.replace(/\+\d+đ/g, `+${delta}đ`);
+  }
+
   let storyDescription = template.storyDescription;
   if (template.effectType === "BONUS_POINTS") {
     storyDescription = storyDescription.replace(/\+\d+\s*(điểm|đ)/g, `+${delta} $1`);
@@ -1278,11 +1283,12 @@ export function generateNextPushYourLuckCard({
     if (!canSteal) {
       effectType = "BONUS_POINTS";
       template = {
-        storyTitle: "💎 KHO BÁU HOÀNG KIM!",
+        storyTitle: `💎 Kho Báu +${delta}đ`,
         storyDescription: `Mở khóa kho báu hoàng kim: Nhận an toàn +${delta} điểm vào quỹ!`,
         deltaPoints: delta,
         effectType: "BONUS_POINTS",
       };
+      storyTitle = template.storyTitle;
       storyDescription = template.storyDescription;
     }
   }
@@ -1290,6 +1296,7 @@ export function generateNextPushYourLuckCard({
   if (isDoublePromo && Math.random() < 0.35) {
     effectType = "MULTIPLY_X2";
     delta = 0;
+    storyTitle = "🚀 Nhân Đôi x2";
   }
 
   return {
@@ -1298,7 +1305,7 @@ export function generateNextPushYourLuckCard({
     icon: effectType === "MULTIPLY_X2" ? "🚀" : effectType === "STEAL_POINTS" ? "🎭" : "💎",
     isOpened: false,
     type: "REWARD",
-    storyTitle: template.storyTitle,
+    storyTitle,
     storyDescription,
     effectType,
     deltaPoints: delta,
@@ -1339,7 +1346,7 @@ export function generateSurvivalPushYourLuckCard({
       icon: "🕊️",
       isOpened: false,
       type: "ESCAPE_SAFE",
-      storyTitle: "🕊️ LÁ THOÁT HIỂM AN TOÀN!",
+      storyTitle: "🕊️ Thoát Hiểm",
       storyDescription: "Thần may mắn mỉm cười! Lật trúng lá Thoát Hiểm ngoạn mục, bảo toàn nguyên vẹn điểm số và tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
@@ -1355,7 +1362,7 @@ export function generateSurvivalPushYourLuckCard({
       icon: "⚠️",
       isOpened: false,
       type: "TRAP",
-      storyTitle: "⚠️ LÁ BẪY TRỪ ĐIỂM GỐC!",
+      storyTitle: `⚠️ Bẫy Trừ -${pPenalty}đ`,
       storyDescription: `Dính phải bẫy tử thần: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -1368,7 +1375,7 @@ export function generateSurvivalPushYourLuckCard({
       icon: "💨",
       isOpened: false,
       type: "BOMB_SMOKE",
-      storyTitle: "💨 LÁ BOM KHÓI SINH TỬ!",
+      storyTitle: `💨 Bom Khói -${pSmokePenalty}đ`,
       storyDescription: `Khói mù bao phủ: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
@@ -1381,7 +1388,7 @@ export function generateSurvivalPushYourLuckCard({
       icon: "🌑",
       isOpened: false,
       type: "BOMB_DARK",
-      storyTitle: "🌑 LÁ BOM HẮC ÁM!",
+      storyTitle: "🌑 Bom Tối",
       storyDescription: "Năng lượng bóng tối nuốt chửng: Rút cạn điểm số chia đều cho các đội đối thủ!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -1394,7 +1401,7 @@ export function generateSurvivalPushYourLuckCard({
       icon: "🎁",
       isOpened: false,
       type: "BOMB_CHARITY",
-      storyTitle: "🎁 LÁ BOM TỪ THIỆN!",
+      storyTitle: "🎁 Bom Tặng",
       storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -1849,13 +1856,16 @@ export function handleFlipCard({
           finalScoreDelta: 0,
         };
       } else {
-        // Cặp Kíp Nổ Hắc Ám: Kích nổ theo Ma trận bom MEMORY_PAIRS (80% Khói / 15% Hắc Ám / 5% Từ Thiện)
-        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0);
+        // Cặp Kíp Nổ Hắc Ám: Chắc chắn kích nổ Bom Hắc Ám (hoặc Bom Từ Thiện nếu điểm cao)! Tuyệt đối KHÔNG là Bom Khói vì Bẫy Khói đã có cặp riêng!
+        const bombType: "BOMB_DARK" | "BOMB_CHARITY" =
+          (team.score || 0) >= 30 && Math.random() < 0.2 ? "BOMB_CHARITY" : "BOMB_DARK";
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
           storyDescription: `${cancelPrefix}Ghép trúng Cặp Kíp Nổ Hắc Ám!`,
+          baseQuestionPoints: state.baseQuestionPoints,
+          isSurvivalPenalty: false,
         });
         state.bombExploded = outcome.bombExploded;
         state.phase = "TURN_SUMMARY";

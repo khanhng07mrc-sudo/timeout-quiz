@@ -1097,54 +1097,54 @@ function getInitialMemoryPairsState(promo) {
 }
 var REWARD_TEMPLATES = {
   CASTLE: [
-    { storyTitle: "\u{1F48E} \u0110\u1EA1i H\u1ED3ng \xC2n Ph\xE1p S\u01B0", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2B50 Ph\xE9p Nh\xE2n \u0110\xF4i Tinh T\xFA", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) to\xE0n b\u1ED9 \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "\u{1F3AD} B\xE0n Tay \u0110\u1EA1o T\u1EB7c", storyDescription: "\xC1o t\xE0ng h\xECnh xu\u1EA5t k\xEDch: C\u01B0\u1EDBp th\xEAm 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn H\u1ED9 V\u1EC7 Ho\xE0ng Gia", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn c\u1ED5 ho\xE0ng gia: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F0CF} Cu\u1ED9n Gi\u1EA5y B\xED Truy\u1EC1n", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y th\xF4ng th\xE1i: Th\u01B0\u1EDFng n\xF3ng +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F4B0} Kho V\xE0ng Cung \u0110\xECnh", storyDescription: "M\u1EDF \u0111\xFAng c\u0103n h\u1EA7m ho\xE0ng gia: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2728 Vi\xEAn Pha L\xEA Ma Thu\u1EADt", storyDescription: "N\u0103ng l\u01B0\u1EE3ng d\u1ED3i d\xE0o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n C\u1ED5", storyDescription: "T\xECm th\u1EA5y v\u01B0\u01A1ng mi\u1EC7n b\u1EA3o v\u1EADt: +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" }
+    { storyTitle: "\u{1F48E} Kho B\xE1u +30\u0111", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) to\xE0n b\u1ED9 \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F3AD} C\u01B0\u1EDBp +20\u0111", storyDescription: "\xC1o t\xE0ng h\xECnh xu\u1EA5t k\xEDch: C\u01B0\u1EDBp th\xEAm 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn +20\u0111", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn c\u1ED5 ho\xE0ng gia: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4DC} B\xED Truy\u1EC1n +25\u0111", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y th\xF4ng th\xE1i: Th\u01B0\u1EDFng n\xF3ng +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4B0} Kho V\xE0ng +25\u0111", storyDescription: "M\u1EDF \u0111\xFAng c\u0103n h\u1EA7m ho\xE0ng gia: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2728 Pha L\xEA +20\u0111", storyDescription: "N\u0103ng l\u01B0\u1EE3ng d\u1ED3i d\xE0o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n +35\u0111", storyDescription: "T\xECm th\u1EA5y v\u01B0\u01A1ng mi\u1EC7n b\u1EA3o v\u1EADt: +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" }
   ],
   PIRATE: [
-    { storyTitle: "\u{1F451} Kho B\xE1u C\u1EE7a R\xE2u \u0110en", storyDescription: "H\xF2m kim c\u01B0\u01A1ng kh\u1ED5ng l\u1ED3: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2693 Gi\xF3 Thu\u1EADn Bu\u1ED3m Xu\xF4i", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "\u{1F5E1}\uFE0F \u0110\u1ED9t K\xEDch H\u1EA1m \u0110\u1ED9i", storyDescription: "C\u01B0\u1EDBp b\xF3c khoang thuy\u1EC1n: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F99C} Ch\xFA V\u1EB9t Th\xF4ng Th\xE1i", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt v\xE0o kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F37B} Ti\u1EC7c R\u01B0\u1EE3u Th\u1EE7y Th\u1EE7", storyDescription: "Li\xEAn hoan t\u01B0ng b\u1EEBng: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F9ED} La B\xE0n \u0110\u1ECBnh M\u1EC7nh", storyDescription: "T\xECm th\u1EA5y h\u01B0\u1EDBng gi\xF3 l\xE0nh: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1FA99} T\xFAi Ti\u1EC1n V\xE0ng C\u1ED5", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c t\xFAi v\xE0ng nguy\xEAn v\u1EB9n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F M\u1ED9c G\u1ED7 H\u1EA3i Qu\xE2n", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c m\u1ED9c g\u1ED7 qu\xFD b\xE1u: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
+    { storyTitle: "\u{1F451} Kho B\xE1u +40\u0111", storyDescription: "H\xF2m kim c\u01B0\u01A1ng kh\u1ED5ng l\u1ED3: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2693 Nh\xE2n \u0110\xF4i x2", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F5E1}\uFE0F C\u01B0\u1EDBp +25\u0111", storyDescription: "C\u01B0\u1EDBp b\xF3c khoang thuy\u1EC1n: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F99C} Ch\u1EC9 \u0110\u01B0\u1EDDng +25\u0111", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt v\xE0o kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F37B} Th\u01B0\u1EDFng +20\u0111", storyDescription: "Li\xEAn hoan t\u01B0ng b\u1EEBng: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F9ED} La B\xE0n +25\u0111", storyDescription: "T\xECm th\u1EA5y h\u01B0\u1EDBng gi\xF3 l\xE0nh: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1FA99} Ti\u1EC1n V\xE0ng +30\u0111", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c t\xFAi v\xE0ng nguy\xEAn v\u1EB9n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn +20\u0111", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c m\u1ED9c g\u1ED7 qu\xFD b\xE1u: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ],
   FOREST: [
-    { storyTitle: "\u{1F31F} \u0110\u1EA1i B\u1EA3o V\u1EADt R\u1EEBng Xanh", storyDescription: "N\u1EEF Ho\xE0ng Ti\xEAn ban t\u1EB7ng: Th\u01B0\u1EDFng ngay +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F338} Tr\xE1i C\xE2y Th\u1EA7n Ng\xE0n N\u0103m", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "\u{1F98A} C\xE1o Tinh Ranh", storyDescription: "L\u1EBBn tr\u1ED9m t\xFAi ti\u1EC1n: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F33F} B\xF9a H\u1ED9 M\u1EC7nh C\u1EE7a T\u1ED9c Elf", storyDescription: "B\xF9a ch\xFA r\u1EEBng xanh h\u1ED9 th\u1EC3: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F3F9} Cung T\xEAn S\u1EA5m S\xE9t", storyDescription: "B\u1EAFn tr\xFAng h\u1ED3ng t\xE2m kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F36F} M\u1EADt Ong R\u1EEBng Kh\u1ED5ng L\u1ED3", storyDescription: "Ng\u1ECDt ng\xE0o n\u0103ng l\u01B0\u1EE3ng: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F98B} Tinh Linh \xC1nh S\xE1ng", storyDescription: "\xC1nh s\xE1ng d\u1EABn l\u1ED1i: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F48E} Ng\u1ECDc L\u1EE5c B\u1EA3o R\u1EEBng Gi\xE0", storyDescription: "Vi\xEAn ng\u1ECDc ng\xE0n n\u0103m: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
+    { storyTitle: "\u{1F31F} Kho B\xE1u +35\u0111", storyDescription: "N\u1EEF Ho\xE0ng Ti\xEAn ban t\u1EB7ng: Th\u01B0\u1EDFng ngay +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F338} Nh\xE2n \u0110\xF4i x2", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F98A} C\u01B0\u1EDBp +20\u0111", storyDescription: "L\u1EBBn tr\u1ED9m t\xFAi ti\u1EC1n: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F33F} Khi\xEAn +20\u0111", storyDescription: "B\xF9a ch\xFA r\u1EEBng xanh h\u1ED9 th\u1EC3: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F3F9} Th\u01B0\u1EDFng +30\u0111", storyDescription: "B\u1EAFn tr\xFAng h\u1ED3ng t\xE2m kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F36F} M\u1EADt Ong +25\u0111", storyDescription: "Ng\u1ECDt ng\xE0o n\u0103ng l\u01B0\u1EE3ng: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F98B} Tinh Linh +20\u0111", storyDescription: "\xC1nh s\xE1ng d\u1EABn l\u1ED1i: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F48E} L\u1EE5c B\u1EA3o +30\u0111", storyDescription: "Vi\xEAn ng\u1ECDc ng\xE0n n\u0103m: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
   ],
   CYBER: [
-    { storyTitle: "\u26A1 L\xF5i N\u0103ng L\u01B0\u1EE3ng L\u01B0\u1EE3ng T\u1EED", storyDescription: "B\xF9ng n\u1ED5 si\xEAu n\u0103ng l\u01B0\u1EE3ng: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F680} \u0110\u1ED9ng C\u01A1 Si\xEAu Quang T\u1ED1c", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "\u{1F6F0}\uFE0F \u0110\xF2n T\u1EA5n C\xF4ng Cyber Siphon", storyDescription: "Chuy\u1EC3n lu\u1ED3ng d\u1EEF li\u1EC7u: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn Plasma", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7 c\xF4ng ngh\u1EC7: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F4BE} \u1ED4 \u0110\u0129a D\u1EEF Li\u1EC7u T\u1ED1i M\u1EADt", storyDescription: "Gi\u1EA3i m\xE3 d\u1EEF li\u1EC7u t\u1ED1i m\u1EADt: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F4E1} T\xEDn Hi\u1EC7u V\u1EC7 Tinh", storyDescription: "B\u1EAFt tr\u1ECDn lu\u1ED3ng s\xF3ng qu\xFD: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F50B} Pin Nhi\xEAn Li\u1EC7u V\u0129nh C\u1EEDu", storyDescription: "S\u1EA1c \u0111\u1EA7y pin t\xE0u: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F916} Si\xEAu Chip AI Th\u1EBF H\u1EC7 M\u1EDBi", storyDescription: "Thu\u1EADt to\xE1n x\u1EED l\xFD th\u1EA7n t\u1ED1c: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
+    { storyTitle: "\u26A1 Si\xEAu Th\u01B0\u1EDFng +40\u0111", storyDescription: "B\xF9ng n\u1ED5 si\xEAu n\u0103ng l\u01B0\u1EE3ng: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F6F0}\uFE0F C\u01B0\u1EDBp +25\u0111", storyDescription: "Chuy\u1EC3n lu\u1ED3ng d\u1EEF li\u1EC7u: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn +20\u0111", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7 c\xF4ng ngh\u1EC7: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4BE} D\u1EEF Li\u1EC7u +30\u0111", storyDescription: "Gi\u1EA3i m\xE3 d\u1EEF li\u1EC7u t\u1ED1i m\u1EADt: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4E1} V\u1EC7 Tinh +25\u0111", storyDescription: "B\u1EAFt tr\u1ECDn lu\u1ED3ng s\xF3ng qu\xFD: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F50B} N\u0103ng L\u01B0\u1EE3ng +20\u0111", storyDescription: "S\u1EA1c \u0111\u1EA7y pin t\xE0u: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F916} Si\xEAu Chip +30\u0111", storyDescription: "Thu\u1EADt to\xE1n x\u1EED l\xFD th\u1EA7n t\u1ED1c: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" }
   ],
   TEMPLE: [
-    { storyTitle: "\u{1F451} V\u01B0\u01A1ng Mi\u1EC7n Pharaon", storyDescription: "Khai m\u1EDF kho b\xE1u l\u0103ng m\u1ED9: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2600\uFE0F \xC1nh S\xE1ng Th\u1EA7n M\u1EB7t Tr\u1EDDi", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
-    { storyTitle: "\u{1F40D} R\u1EAFn \u0110\u1ED9c C\u01B0\u1EDBp C\u1ED5 V\u1EADt", storyDescription: "B\u1EABy ng\u1EA7m k\xEDch ho\u1EA1t: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
-    { storyTitle: "\u{1F3FA} B\xECnh C\u1ED5 Ho\xE0ng Kim", storyDescription: "C\u1ED5 v\u1EADt nguy\xEAn v\u1EB9n: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F4DC} B\u1EA3n \u0110\u1ED3 L\u1ED1i Tho\xE1t", storyDescription: "S\u01A1 \u0111\u1ED3 m\u1EADt \u0111\u1EA1o kim t\u1EF1 th\xE1p: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F48E} Vi\xEAn H\u1ED3ng Ng\u1ECDc Huy\u1EC1n Tho\u1EA1i", storyDescription: "Vi\xEAn \u0111\xE1 m\u1EAFt th\u1EA7n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F6E1}\uFE0F T\u1EA5m Khi\xEAn \u0110\u1ED3ng C\u1ED5", storyDescription: "Khi\xEAn chi\u1EBFn binh Ai C\u1EADp: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a L\u0103ng M\u1ED9", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
+    { storyTitle: "\u{1F451} Kho B\xE1u +40\u0111", storyDescription: "Khai m\u1EDF kho b\xE1u l\u0103ng m\u1ED9: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u2600\uFE0F Nh\xE2n \u0110\xF4i x2", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F40D} C\u01B0\u1EDBp +20\u0111", storyDescription: "B\u1EABy ng\u1EA7m k\xEDch ho\u1EA1t: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
+    { storyTitle: "\u{1F3FA} C\u1ED5 V\u1EADt +25\u0111", storyDescription: "C\u1ED5 v\u1EADt nguy\xEAn v\u1EB9n: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F4DC} M\u1EADt \u0110\u1EA1o +30\u0111", storyDescription: "S\u01A1 \u0111\u1ED3 m\u1EADt \u0111\u1EA1o kim t\u1EF1 th\xE1p: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F48E} H\u1ED3ng Ng\u1ECDc +30\u0111", storyDescription: "Vi\xEAn \u0111\xE1 m\u1EAFt th\u1EA7n: +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn +20\u0111", storyDescription: "Khi\xEAn chi\u1EBFn binh Ai C\u1EADp: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
+    { storyTitle: "\u{1F5DD}\uFE0F Ch\xECa Kh\xF3a +20\u0111", storyDescription: "Ch\xECa kh\xF3a m\u1EDF c\u1EEDa th\xF4ng \u0111\u1EA1o: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" }
   ]
 };
 function calculateCappedSteal({
@@ -1200,16 +1200,16 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     pairKey: "PAIR_STEAL",
     icon: "\u{1F5E1}\uFE0F",
     type: "REWARD",
-    storyTitle: "\u{1F5E1}\uFE0F C\u1EB6P H\u1EA2I T\u1EB6C \u0110O\u1EA0T B\u1EA2O!",
-    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p h\u1EA3i t\u1EB7c: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    storyTitle: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp +${pSteal}\u0111`,
+    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p c\u01B0\u1EDBp: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
     effectType: "STEAL_POINTS",
     deltaPoints: pSteal
   } : {
     pairKey: "PAIR_SHIELD",
     icon: "\u{1F6E1}\uFE0F",
     type: "REWARD",
-    storyTitle: "\u{1F6E1}\uFE0F C\u1EB6P KHI\xCAN V\xC0NG H\u1ED8 TH\xC2N!",
-    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p khi\xEAn ho\xE0ng gia: Nh\u1EADn an to\xE0n +${pSteal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    storyTitle: `\u{1F6E1}\uFE0F Khi\xEAn +${pSteal}\u0111`,
+    storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p khi\xEAn: Nh\u1EADn an to\xE0n +${pSteal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
     effectType: "BONUS_POINTS",
     deltaPoints: pSteal
   };
@@ -1218,8 +1218,8 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_MULTIPLY",
       icon: "\u{1F680}",
       type: "REWARD",
-      storyTitle: "\u{1F680} C\u1EB6P \u0110\u1ED8NG C\u01A0 NH\xC2N \u0110\xD4I!",
-      storyDescription: `K\xEDch ho\u1EA1t n\u0103ng l\u01B0\u1EE3ng \u0111\u1ED9t ph\xE1: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c kh\u1EE7ng!`,
+      storyTitle: `\u{1F680} Nh\xE2n \u0110\xF4i +${pBonusTop}\u0111`,
+      storyDescription: `K\xEDch ho\u1EA1t nh\xE2n \u0111\xF4i: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "MULTIPLY_X2",
       deltaPoints: pBonusTop
     },
@@ -1228,8 +1228,8 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_TREASURE",
       icon: "\u{1F48E}",
       type: "REWARD",
-      storyTitle: "\u{1F48E} C\u1EB6P KHO B\xC1U HO\xC0NG KIM!",
-      storyDescription: `T\xECm th\u1EA5y c\u1EB7p ng\u1ECDc qu\xFD t\u01B0\u01A1ng \u0111\u1ED3ng: Nh\u1EADn ngay +${pBonusHigh} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      storyTitle: `\u{1F48E} Kho B\xE1u +${pBonusHigh}\u0111`,
+      storyDescription: `T\xECm th\u1EA5y c\u1EB7p ng\u1ECDc qu\xFD: Nh\u1EADn ngay +${pBonusHigh} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusHigh
     },
@@ -1237,7 +1237,7 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_STAR",
       icon: "\u2B50",
       type: "REWARD",
-      storyTitle: "\u2B50 C\u1EB6P TINH T\xDA DI\u1EC6U K\u1EF2!",
+      storyTitle: `\u2B50 May M\u1EAFn +${pBonusMed}\u0111`,
       storyDescription: `T\xECm th\u1EA5y c\u1EB7p sao may m\u1EAFn: Nh\u1EADn an to\xE0n +${pBonusMed} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pBonusMed
@@ -1246,7 +1246,7 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_TRAP",
       icon: "\u{1F4A8}",
       type: "BOMB_SMOKE",
-      storyTitle: "\u{1F4A8} C\u1EB6P B\u1EAAY KH\xD3I \u0110\u1ED8C!",
+      storyTitle: "\u{1F4A8} B\u1EABy Kh\xF3i 0\u0111",
       storyDescription: `K\xEDch ho\u1EA1t b\u1EABy kh\xF3i \u0111\u1ED9c: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u h\u1ECFi n\xE0y (0\u0111)!`,
       effectType: "LOSE_POT_POINTS",
       deltaPoints: 0
@@ -1255,8 +1255,8 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_BOMB",
       icon: "\u{1F4A3}",
       type: "BOMB_MAJOR",
-      storyTitle: "\u{1F4A3} C\u1EB6P K\xCDP N\u1ED4 H\u1EAEC \xC1M!",
-      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 li\xEAn ho\xE0n: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m h\u1EE7y di\u1EC7t t\u1ED5ng \u0111i\u1EC3m!`,
+      storyTitle: `\u{1F4A3} K\xEDp N\u1ED5 -${pPenalty}\u0111`,
+      storyDescription: `Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5: K\xEDch n\u1ED5 bom h\u1EAFc \xE1m h\u1EE7y di\u1EC7t t\u1ED5ng \u0111i\u1EC3m!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty
     }
@@ -1292,7 +1292,7 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_ESCAPE",
       icon: "\u{1F54A}\uFE0F",
       type: "ESCAPE_SAFE",
-      storyTitle: "\u{1F54A}\uFE0F C\u1EB6P THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyTitle: "\u{1F54A}\uFE0F Tho\xE1t Hi\u1EC3m",
       storyDescription: "K\u1EF3 t\xEDch xu\u1EA5t hi\u1EC7n! Gh\xE9p tr\xFAng c\u1EB7p Tho\xE1t Hi\u1EC3m, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0
@@ -1302,7 +1302,7 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_TRAP_BASE",
       icon: "\u26A0\uFE0F",
       type: "BOMB_MINOR",
-      storyTitle: "\u26A0\uFE0F C\u1EB6P B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyTitle: `\u26A0\uFE0F B\u1EABy Tr\u1EEB -${pPenalty}\u0111`,
       storyDescription: `Gh\xE9p tr\xFAng b\u1EABy t\u1EED th\u1EA7n: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty
@@ -1312,7 +1312,7 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_BOMB_SMOKE",
       icon: "\u{1F4A8}",
       type: "BOMB_SMOKE",
-      storyTitle: "\u{1F4A8} C\u1EB6P BOM KH\xD3I SINH T\u1EEC!",
+      storyTitle: `\u{1F4A8} Bom Kh\xF3i -${pSmokePenalty}\u0111`,
       storyDescription: `Gh\xE9p tr\xFAng b\u1EABy kh\xF3i: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty
@@ -1322,7 +1322,7 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_BOMB_DARK",
       icon: "\u{1F311}",
       type: "BOMB_DARK",
-      storyTitle: "\u{1F311} C\u1EB6P BOM H\u1EAEC \xC1M!",
+      storyTitle: "\u{1F311} Bom T\u1ED1i",
       storyDescription: "Gh\xE9p tr\xFAng k\xEDp n\u1ED5 h\u1EAFc \xE1m: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED1i th\u1EE7!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0
@@ -1332,7 +1332,7 @@ function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
       pairKey: "PAIR_BOMB_CHARITY",
       icon: "\u{1F381}",
       type: "BOMB_CHARITY",
-      storyTitle: "\u{1F381} C\u1EB6P BOM T\u1EEA THI\u1EC6N!",
+      storyTitle: "\u{1F381} Bom T\u1EB7ng",
       storyDescription: "Gh\xE9p tr\xFAng bom t\u1EEB thi\u1EC7n: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0
@@ -1375,15 +1375,15 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
   const stealOrBonusDoor = canSteal ? {
     icon: "\u{1F5E1}\uFE0F",
     type: "REWARD",
-    storyTitle: "\u{1F5E1}\uFE0F C\u1EECA \u0110O\u1EA0T B\u1EA2O H\u1EA2I T\u1EB6C!",
-    storyDescription: `K\xEDch ho\u1EA1t c\u01B0\u1EDBp b\xF3c \u0111o\u1EA1t b\u1EA3o: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
+    storyTitle: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp +${pSteal}\u0111`,
+    storyDescription: `K\xEDch ho\u1EA1t c\u01B0\u1EDBp: C\u01B0\u1EDBp +${pSteal}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
     effectType: "STEAL_POINTS",
     deltaPoints: pSteal
   } : {
     icon: "\u{1F48E}",
     type: "REWARD",
-    storyTitle: "\u{1F48E} C\u1EECA KHO B\xC1U HO\xC0NG KIM!",
-    storyDescription: `M\u1EDF ra kho b\xE1u ho\xE0ng kim: Nh\u1EADn an to\xE0n +${pTreasure} \u0111i\u1EC3m th\u01B0\u1EDFng si\xEAu c\u1EA5p!`,
+    storyTitle: `\u{1F48E} Kho B\xE1u +${pTreasure}\u0111`,
+    storyDescription: `M\u1EDF ra kho b\xE1u: Nh\u1EADn an to\xE0n +${pTreasure} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
     effectType: "BONUS_POINTS",
     deltaPoints: pTreasure
   };
@@ -1394,7 +1394,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F451}",
       type: "REWARD",
-      storyTitle: "\u{1F451} C\u1EECA HO\xC0NG GIA \u0110\u1EA0I TH\u01AF\u1EDENG!",
+      storyTitle: `\u{1F451} \u0110\u1EA1i Th\u01B0\u1EDFng +${pHigh}\u0111`,
       storyDescription: `M\u1EDF \u0111\xFAng c\xE1nh c\u1EEDa vinh quang: Nh\u1EADn ngay +${pHigh} \u0111i\u1EC3m th\u01B0\u1EDFng si\xEAu c\u1EA5p!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pHigh
@@ -1405,7 +1405,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u2B50",
       type: "REWARD",
-      storyTitle: "\u2B50 C\u1EECA TINH T\xDA MAY M\u1EAEN!",
+      storyTitle: `\u2B50 May M\u1EAFn +${pNormal}\u0111`,
       storyDescription: `M\u1EDF tr\xFAng c\xE1nh c\u1EEDa may m\u1EAFn: Nh\u1EADn an to\xE0n +${pNormal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
       effectType: "BONUS_POINTS",
       deltaPoints: pNormal
@@ -1414,7 +1414,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u26A0\uFE0F",
       type: "BOMB_MINOR",
-      storyTitle: "\u26A0\uFE0F C\u1EECA B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyTitle: `\u26A0\uFE0F C\u1EEDa B\u1EABy -${pPenalty}\u0111`,
       storyDescription: `D\xEDnh b\u1EABy ph\u1EA1t: Tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -1424,7 +1424,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F4A3}",
       type: "BOMB_MAJOR",
-      storyTitle: "\u{1F4A3} C\u1EECA B\u1EAAY BOM MA THU\u1EACT!",
+      storyTitle: "\u{1F4A3} C\u1EEDa Bom",
       storyDescription: "D\xEDnh b\u1EABy ng\u1EA7m ma thu\u1EADt: K\xEDch n\u1ED5 bom b\u1EA5t ng\u1EDD mang hi\u1EC7u \u1EE9ng \u0111\u1EB7c bi\u1EC7t!",
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -1447,7 +1447,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
       effectType: d.effectType,
       deltaPoints: d.deltaPoints,
       isPeeked: isPeekedDoor,
-      peekLabel: isPeekedDoor ? `\u26A0\uFE0F M\u1EAET TH\u1EA6N: C\u1EECA B\u1EAAY TR\u1EEA G\u1ED0C (-${pPenalty}\u0111)` : void 0,
+      peekLabel: isPeekedDoor ? `\u26A0\uFE0F C\u1EEDa B\u1EABy -${pPenalty}\u0111` : void 0,
       peekIcon: isPeekedDoor ? "\u26A0\uFE0F" : void 0,
       bombDoorType: d.bombDoorType
     };
@@ -1461,7 +1461,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F54A}\uFE0F",
       type: "ESCAPE_SAFE",
-      storyTitle: "\u{1F54A}\uFE0F C\u1EECA THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyTitle: "\u{1F54A}\uFE0F Tho\xE1t Hi\u1EC3m",
       storyDescription: "May m\u1EAFn tuy\u1EC7t \u0111\u1EC9nh! B\u1EA1n \u0111\xE3 m\u1EDF \u0111\xFAng C\u1EEDa Tho\xE1t Hi\u1EC3m, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0
@@ -1470,7 +1470,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u26A0\uFE0F",
       type: "BOMB_MINOR",
-      storyTitle: "\u26A0\uFE0F C\u1EECA B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyTitle: `\u26A0\uFE0F C\u1EEDa B\u1EABy -${pPenalty}\u0111`,
       storyDescription: `D\xEDnh b\u1EABy ph\u1EA1t sinh t\u1EED: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
@@ -1480,7 +1480,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F4A8}",
       type: "BOMB_SMOKE",
-      storyTitle: "\u{1F4A8} C\u1EECA BOM KH\xD3I SINH T\u1EEC!",
+      storyTitle: `\u{1F4A8} Bom Kh\xF3i -${pSmokePenalty}\u0111`,
       storyDescription: `Kh\xF3i m\xF9 bao ph\u1EE7: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
@@ -1491,7 +1491,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F311}",
       type: "BOMB_DARK",
-      storyTitle: "\u{1F311} C\u1EECA BOM H\u1EAEC \xC1M!",
+      storyTitle: "\u{1F311} Bom T\u1ED1i",
       storyDescription: "N\u0103ng l\u01B0\u1EE3ng h\u1EAFc \xE1m b\xF9ng ph\xE1t: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -1502,7 +1502,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
     {
       icon: "\u{1F381}",
       type: "BOMB_CHARITY",
-      storyTitle: "\u{1F381} C\u1EECA BOM T\u1EEA THI\u1EC6N!",
+      storyTitle: "\u{1F381} Bom T\u1EB7ng",
       storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0,
@@ -1554,7 +1554,7 @@ function generateNextPushYourLuckCard({
         icon: "\u{1F4A8}",
         isOpened: false,
         type: "BOMB_SMOKE",
-        storyTitle: "\u{1F4A8} BOM KH\xD3I N\u1ED4 TUNG!",
+        storyTitle: "\u{1F4A8} Bom Kh\xF3i 0\u0111",
         storyDescription: "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u n\xE0y. V\xEC \u0111i\u1EC3m \u0111\u1ED9i hi\u1EC7n t\u1EA1i l\xE0 0 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB th\xEAm!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
@@ -1568,7 +1568,7 @@ function generateNextPushYourLuckCard({
         icon: "\u{1F4A8}",
         isOpened: false,
         type: "BOMB_SMOKE",
-        storyTitle: "\u{1F4A8} BOM KH\xD3I N\u1ED4 TUNG!",
+        storyTitle: "\u{1F4A8} Bom Kh\xF3i 0\u0111",
         storyDescription: "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y \u1EDF c\xE2u hi\u1EC7n t\u1EA1i (0 \u0111i\u1EC3m nh\u1EADn \u0111\u01B0\u1EE3c). T\u1ED5ng \u0111i\u1EC3m gi\u1EEF nguy\xEAn!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
@@ -1580,7 +1580,7 @@ function generateNextPushYourLuckCard({
         icon: "\u{1F311}",
         isOpened: false,
         type: "BOMB_DARK",
-        storyTitle: "\u{1F311} BOM H\u1EAEC \xC1M PH\xC1T N\u1ED4!",
+        storyTitle: "\u{1F311} Bom T\u1ED1i",
         storyDescription: "N\u0103ng l\u01B0\u1EE3ng b\xF3ng t\u1ED1i b\xF9ng ph\xE1t! \u0110i\u1EC3m s\u1ED1 c\u1EE7a b\u1EA1n b\u1ECB r\xFAt c\u1EA1n v\xE0 ph\xE2n chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
@@ -1592,7 +1592,7 @@ function generateNextPushYourLuckCard({
         icon: "\u{1F381}",
         isOpened: false,
         type: "BOMB_CHARITY",
-        storyTitle: "\u{1F381} BOM T\u1EEA THI\u1EC6N HI\u1EBEN T\u1EBE!",
+        storyTitle: "\u{1F381} Bom T\u1EB7ng",
         storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129! B\u1ECB tr\u1EEB 50% s\u1ED1 \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i v\xE0 chuy\u1EC3n t\u1EB7ng to\xE0n b\u1ED9 cho \u0111\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u!",
         effectType: "GIFT_POINTS",
         deltaPoints: 0
@@ -1611,6 +1611,10 @@ function generateNextPushYourLuckCard({
       delta = [30, 35, 45, 60][Math.floor(Math.random() * 4)];
     }
   }
+  let storyTitle = template.storyTitle;
+  if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
+    storyTitle = storyTitle.replace(/\+\d+đ/g, `+${delta}\u0111`);
+  }
   let storyDescription = template.storyDescription;
   if (template.effectType === "BONUS_POINTS") {
     storyDescription = storyDescription.replace(/\+\d+\s*(điểm|đ)/g, `+${delta} $1`);
@@ -1626,17 +1630,19 @@ function generateNextPushYourLuckCard({
     if (!canSteal) {
       effectType = "BONUS_POINTS";
       template = {
-        storyTitle: "\u{1F48E} KHO B\xC1U HO\xC0NG KIM!",
+        storyTitle: `\u{1F48E} Kho B\xE1u +${delta}\u0111`,
         storyDescription: `M\u1EDF kh\xF3a kho b\xE1u ho\xE0ng kim: Nh\u1EADn an to\xE0n +${delta} \u0111i\u1EC3m v\xE0o qu\u1EF9!`,
         deltaPoints: delta,
         effectType: "BONUS_POINTS"
       };
+      storyTitle = template.storyTitle;
       storyDescription = template.storyDescription;
     }
   }
   if (isDoublePromo && Math.random() < 0.35) {
     effectType = "MULTIPLY_X2";
     delta = 0;
+    storyTitle = "\u{1F680} Nh\xE2n \u0110\xF4i x2";
   }
   return {
     id,
@@ -1644,7 +1650,7 @@ function generateNextPushYourLuckCard({
     icon: effectType === "MULTIPLY_X2" ? "\u{1F680}" : effectType === "STEAL_POINTS" ? "\u{1F3AD}" : "\u{1F48E}",
     isOpened: false,
     type: "REWARD",
-    storyTitle: template.storyTitle,
+    storyTitle,
     storyDescription,
     effectType,
     deltaPoints: delta
@@ -1668,7 +1674,7 @@ function generateSurvivalPushYourLuckCard({
       icon: "\u{1F54A}\uFE0F",
       isOpened: false,
       type: "ESCAPE_SAFE",
-      storyTitle: "\u{1F54A}\uFE0F L\xC1 THO\xC1T HI\u1EC2M AN TO\xC0N!",
+      storyTitle: "\u{1F54A}\uFE0F Tho\xE1t Hi\u1EC3m",
       storyDescription: "Th\u1EA7n may m\u1EAFn m\u1EC9m c\u01B0\u1EDDi! L\u1EADt tr\xFAng l\xE1 Tho\xE1t Hi\u1EC3m ngo\u1EA1n m\u1EE5c, b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n \u0111i\u1EC3m s\u1ED1 v\xE0 tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0
@@ -1681,7 +1687,7 @@ function generateSurvivalPushYourLuckCard({
       icon: "\u26A0\uFE0F",
       isOpened: false,
       type: "TRAP",
-      storyTitle: "\u26A0\uFE0F L\xC1 B\u1EAAY TR\u1EEA \u0110I\u1EC2M G\u1ED0C!",
+      storyTitle: `\u26A0\uFE0F B\u1EABy Tr\u1EEB -${pPenalty}\u0111`,
       storyDescription: `D\xEDnh ph\u1EA3i b\u1EABy t\u1EED th\u1EA7n: B\u1ECB tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty
@@ -1693,7 +1699,7 @@ function generateSurvivalPushYourLuckCard({
       icon: "\u{1F4A8}",
       isOpened: false,
       type: "BOMB_SMOKE",
-      storyTitle: "\u{1F4A8} L\xC1 BOM KH\xD3I SINH T\u1EEC!",
+      storyTitle: `\u{1F4A8} Bom Kh\xF3i -${pSmokePenalty}\u0111`,
       storyDescription: `Kh\xF3i m\xF9 bao ph\u1EE7: Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${pSmokePenalty}\u0111)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty
@@ -1705,7 +1711,7 @@ function generateSurvivalPushYourLuckCard({
       icon: "\u{1F311}",
       isOpened: false,
       type: "BOMB_DARK",
-      storyTitle: "\u{1F311} L\xC1 BOM H\u1EAEC \xC1M!",
+      storyTitle: "\u{1F311} Bom T\u1ED1i",
       storyDescription: "N\u0103ng l\u01B0\u1EE3ng b\xF3ng t\u1ED1i nu\u1ED1t ch\u1EEDng: R\xFAt c\u1EA1n \u0111i\u1EC3m s\u1ED1 chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED9i \u0111\u1ED1i th\u1EE7!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0
@@ -1717,7 +1723,7 @@ function generateSurvivalPushYourLuckCard({
       icon: "\u{1F381}",
       isOpened: false,
       type: "BOMB_CHARITY",
-      storyTitle: "\u{1F381} L\xC1 BOM T\u1EEA THI\u1EC6N!",
+      storyTitle: "\u{1F381} Bom T\u1EB7ng",
       storyDescription: "L\xF2ng t\u1ED1t b\u1EA5t \u0111\u1EAFc d\u0129: Ph\u1EA1t theo m\u1EE9c th\u1EA5p h\u01A1n gi\u1EEFa 50% \u0111i\u1EC3m \u0111\u1ED9i v\xE0 1.5x \u0111i\u1EC3m c\xE2u, chuy\u1EC3n t\u1EB7ng cho Top 1!",
       effectType: "LOSE_POINTS",
       deltaPoints: 0
@@ -2057,12 +2063,14 @@ function handleFlipCard({
           finalScoreDelta: 0
         };
       } else {
-        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0);
+        const bombType = (team.score || 0) >= 30 && Math.random() < 0.2 ? "BOMB_CHARITY" : "BOMB_DARK";
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
-          storyDescription: `${cancelPrefix}Gh\xE9p tr\xFAng C\u1EB7p K\xEDp N\u1ED5 H\u1EAFc \xC1m!`
+          storyDescription: `${cancelPrefix}Gh\xE9p tr\xFAng C\u1EB7p K\xEDp N\u1ED5 H\u1EAFc \xC1m!`,
+          baseQuestionPoints: state.baseQuestionPoints,
+          isSurvivalPenalty: false
         });
         state.bombExploded = outcome.bombExploded;
         state.phase = "TURN_SUMMARY";

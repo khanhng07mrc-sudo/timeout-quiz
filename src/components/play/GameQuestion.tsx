@@ -131,7 +131,7 @@ export default function GameQuestion({
       } else {
         setDragOrder(q.options ? q.options.map((o) => o.id) : []);
       }
-      setIsFinalizedLocally(true);
+      setIsFinalizedLocally(Boolean(isSingleSubmit));
     } else {
       setSelected([]);
       setEssayText("");

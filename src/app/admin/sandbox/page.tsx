@@ -2452,7 +2452,6 @@ export default function AdminSandboxPage() {
             curMem.firstFlippedTileId = null;
             curMem.secondFlippedTileId = null;
             curMem.thirdFlippedTileId = null;
-            curMem.isBombRescueActive = false;
             curMem.isMismatchResolving = false;
             cur.memoryPairsState = curMem;
             const updatedRState = { ...roomStateRef.current, mysteryQuestState: cur };

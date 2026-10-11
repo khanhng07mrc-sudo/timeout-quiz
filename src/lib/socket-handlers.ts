@@ -4826,7 +4826,6 @@ export function registerSocketHandlers(io: IO) {
               cur.memoryPairsState.firstFlippedTileId = null;
               cur.memoryPairsState.secondFlippedTileId = null;
               cur.memoryPairsState.thirdFlippedTileId = null;
-              cur.memoryPairsState.isBombRescueActive = false;
               cur.memoryPairsState.isMismatchResolving = false;
               roomMysteryQuests.set(room.id, cur);
               io.to(`room:${room.code}`).emit("game:mystery:update", cur);

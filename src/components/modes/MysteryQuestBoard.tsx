@@ -1629,9 +1629,9 @@ export default function MysteryQuestBoard({
 
             <div className="grid grid-cols-5 gap-1 sm:gap-2.5 max-w-4xl mx-auto py-2">
               {tiles.map((tile) => {
-                const effectiveSelectedDoorIds = (oneShotState?.selectedDoorIds && oneShotState.selectedDoorIds.length > 0)
-                  ? oneShotState.selectedDoorIds
-                  : optimisticSelectedDoorIds;
+                const effectiveSelectedDoorIds = optimisticSelectedDoorIds.length > 0
+                  ? optimisticSelectedDoorIds
+                  : (oneShotState?.selectedDoorIds || []);
                 const isSelected = Boolean(effectiveSelectedDoorIds.includes(tile.id));
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
                 const isBomb = tile.type !== "REWARD" && tile.type !== "ESCAPE_SAFE";
@@ -2368,7 +2368,12 @@ export default function MysteryQuestBoard({
                 const isEscapeSafe = tile.type === "ESCAPE_SAFE" || tile.pairKey === "PAIR_ESCAPE";
                 const isBomb = !isEscapeSafe && tile.type !== "REWARD";
 
-                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id);
+                const isKeptPenalty = Boolean((memoryPairsState?.keptBombTileIds || []).map(Number).includes(Number(tile.id)));
+                const isCurrentFlipped =
+                  Number(memoryPairsState?.firstFlippedTileId) === Number(tile.id) ||
+                  Number(memoryPairsState?.secondFlippedTileId) === Number(tile.id) ||
+                  Number(memoryPairsState?.thirdFlippedTileId) === Number(tile.id);
+                const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id) || isKeptPenalty || isCurrentFlipped;
                 if (!isCardOpened) {
                   return (
                     <button

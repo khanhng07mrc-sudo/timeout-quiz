@@ -259,15 +259,21 @@ export default function MysteryQuestBoard({
     }
     const interval = setInterval(() => {
       setWheelPower((prev) => {
-        if (prev >= 100) {
-          setIsPowerIncreasing(false);
-          return 97;
+        if (isPowerIncreasing) {
+          const next = prev + 3;
+          if (next >= 100) {
+            setIsPowerIncreasing(false);
+            return 100;
+          }
+          return next;
+        } else {
+          const next = prev - 3;
+          if (next <= 5) {
+            setIsPowerIncreasing(true);
+            return 5;
+          }
+          return next;
         }
-        if (prev <= 5) {
-          setIsPowerIncreasing(true);
-          return 8;
-        }
-        return isPowerIncreasing ? prev + 3 : prev - 3;
       });
     }, 35);
     return () => clearInterval(interval);
@@ -2092,12 +2098,12 @@ export default function MysteryQuestBoard({
 
                   {/* ── Ping-pong Power Gauge ── */}
                   {(() => {
-                    const effectivePower = lockedPower ?? wheelPower;
+                    const effectivePower = Math.min(100, Math.max(0, lockedPower ?? wheelPower));
                     const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
 
                     const handleTriggerSpin = () => {
                       if (isSpinningActive) return;
-                      const powerToLock = wheelPower;
+                      const powerToLock = Math.min(100, Math.max(0, wheelPower));
                       setLockedPower(powerToLock);
                       setIsWheelSpinningOptimistic(true);
                       if (onSpinTarotWheel) {

@@ -3537,9 +3537,10 @@ export function registerSocketHandlers(io: IO) {
           }
         };
 
+        const remainingWarmupDelay = Math.max(0, startEndsAt - Date.now());
         const timer = setTimeout(() => {
           launchWarmupToFirstQuestion();
-        }, 5000);
+        }, remainingWarmupDelay);
 
         const targetStartingQuestions = getTargetTotalQuestions(
           room.mode,
@@ -3552,7 +3553,7 @@ export function registerSocketHandlers(io: IO) {
           type: "STARTING",
           questionIndex: 0,
           totalQuestions: targetStartingQuestions,
-          targetTimestamp: Date.now() + 5000,
+          targetTimestamp: startEndsAt,
           timer,
           skipCallback: launchWarmupToFirstQuestion,
         });

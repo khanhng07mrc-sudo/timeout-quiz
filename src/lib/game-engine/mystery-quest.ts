@@ -4576,9 +4576,9 @@ export function handleAncientTarotDraw({
 
 /**
  * Danh sách 22 nan quạt Major Arcana (0 – XXI) với phân bổ cố định chuẩn cân bằng:
- * - 6 lá +1x Điểm gốc (I Magician, II High Priestess, V Hierophant, VI Lovers, IX Hermit, XIV Temperance)
+ * - 4 lá +1x Điểm gốc (I Magician, II High Priestess, V Hierophant, IX Hermit)
  * - 4 lá +1.5x Điểm gốc (III Empress, IV Emperor, VIII Strength, XX Judgement)
- * - 2 lá +2x Điểm gốc (XIX The Sun, XXI The World)
+ * - 4 lá +2x Điểm gốc (VI Lovers, XIV Temperance, XIX The Sun, XXI The World)
  * - 1 lá Ngẫu nhiên x1/x1.5/x2 (X Wheel of Fortune)
  * - 2 lá Đánh cược quay thêm (XVII The Star, XVIII The Moon)
  * - 2 lá Cướp 2x Điểm gốc từ đối thủ (VII The Chariot, XIII Death)
@@ -4780,9 +4780,9 @@ export function calculateTarotWheelSpin({
 /**
  * Helper tính toán hiệu ứng và điểm số của lá bài Tarot 22 Major Arcana:
  * - Phân bổ chuẩn 22 lá:
- *   + 6 lá +1x Điểm gốc (I Magician, II Priestess, V Hierophant, VI Lovers, IX Hermit, XIV Temperance)
+ *   + 4 lá +1x Điểm gốc (I Magician, II Priestess, V Hierophant, IX Hermit)
  *   + 4 lá +1.5x Điểm gốc (III Empress, IV Emperor, VIII Strength, XX Judgement)
- *   + 2 lá +2x Điểm gốc (XIX Sun, XXI World)
+ *   + 4 lá +2x Điểm gốc (VI Lovers, XIV Temperance, XIX Sun, XXI World)
  *   + 1 lá Ngẫu nhiên x1/x1.5/x2 (X Wheel of Fortune)
  *   + 2 lá Đánh cược quay thêm (XVII Star, XVIII Moon)
  *   + 2 lá Cướp 2x Điểm gốc từ đối thủ (VII Chariot, XIII Death)
@@ -5799,7 +5799,7 @@ export function handlePushYourLuckUsePeek({
 
     if (topCard.type === "REWARD") {
       if (topCard.effectType === "MULTIPLY_X2") {
-        pointBadge = "X2 HŨ";
+        pointBadge = "X2 GỐC";
       } else if (topCard.effectType === "STEAL_POINTS") {
         pointBadge = topCard.deltaPoints ? `CƯỚP +${topCard.deltaPoints}đ` : "CƯỚP ĐIỂM";
       } else if (typeof topCard.deltaPoints === "number" && topCard.deltaPoints > 0) {

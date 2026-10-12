@@ -2076,6 +2076,8 @@ export default function MysteryQuestBoard({
                 };
               case "THE_SUN":
               case "THE_WORLD":
+              case "THE_LOVERS":
+              case "TEMPERANCE":
                 return {
                   gradient: "from-amber-600/30 via-yellow-500/20 to-amber-950/80",
                   border: "border-amber-400",

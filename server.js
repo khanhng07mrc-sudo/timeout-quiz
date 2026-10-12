@@ -5024,7 +5024,7 @@ function handlePushYourLuckUsePeek({
     const isBomb = topCard.type !== "REWARD" && topCard.type !== "ESCAPE_SAFE";
     if (topCard.type === "REWARD") {
       if (topCard.effectType === "MULTIPLY_X2") {
-        pointBadge = "X2 H\u0168";
+        pointBadge = "X2 G\u1ED0C";
       } else if (topCard.effectType === "STEAL_POINTS") {
         pointBadge = topCard.deltaPoints ? `C\u01AF\u1EDAP +${topCard.deltaPoints}\u0111` : "C\u01AF\u1EDAP \u0110I\u1EC2M";
       } else if (typeof topCard.deltaPoints === "number" && topCard.deltaPoints > 0) {

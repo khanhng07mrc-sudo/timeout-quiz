@@ -33,6 +33,8 @@ interface Props {
   onAdjustScore?: (teamId: string, delta?: number, setScore?: number) => void;
   onDrawTarot?: () => void;
   onSpinTarotWheel?: (powerPercent: number) => void;
+  onTarotReveal?: () => void;
+  onTarotGambleDecision?: (spinAgain: boolean, powerPercent?: number) => void;
   onSurvivalChoice?: (choice: "SACRIFICE_HEART" | "RISK_SURVIVAL") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
 }
@@ -59,6 +61,8 @@ export default function MysteryQuestBoard({
   onAdjustScore,
   onDrawTarot,
   onSpinTarotWheel,
+  onTarotReveal,
+  onTarotGambleDecision,
   onSurvivalChoice,
   teams = [],
 }: Props) {
@@ -1959,7 +1963,7 @@ export default function MysteryQuestBoard({
           const isDrawn = Boolean(tarotState?.isDrawn && tarotState?.drawnCard);
           const drawnCard = tarotState?.drawnCard;
 
-          // Color & Glow scheme for the Ancient Entities
+          // Color & Glow scheme for the 22 Major Arcana Entities
           const getEntityVisuals = (cardKey?: string) => {
             switch (cardKey) {
               case "THE_PEACE":
@@ -1975,15 +1979,44 @@ export default function MysteryQuestBoard({
                   gradient: "from-amber-600/30 via-yellow-500/20 to-amber-950/80",
                   border: "border-amber-400",
                   glow: "rgba(251, 191, 36, 0.6)",
-                  tagColor: "bg-emerald-500/20 text-emerald-300 border-emerald-400/40",
+                  tagColor: "bg-amber-500/20 text-amber-300 border-amber-400/40",
                   textColor: "text-amber-300",
                 };
+              case "THE_STAR":
+              case "THE_MOON":
+                return {
+                  gradient: "from-fuchsia-950/40 via-purple-900/30 to-black/90",
+                  border: "border-fuchsia-400",
+                  glow: "rgba(232, 121, 249, 0.6)",
+                  tagColor: "bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-400/40",
+                  textColor: "text-fuchsia-300",
+                };
+              case "WHEEL_OF_FORTUNE":
+                return {
+                  gradient: "from-teal-950/40 via-cyan-900/30 to-black/90",
+                  border: "border-cyan-400",
+                  glow: "rgba(6, 182, 212, 0.6)",
+                  tagColor: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40",
+                  textColor: "text-cyan-300",
+                };
+              case "STRENGTH":
+              case "JUDGEMENT":
+              case "THE_WORLD":
+                return {
+                  gradient: "from-blue-950/40 via-sky-900/30 to-black/90",
+                  border: "border-sky-400",
+                  glow: "rgba(56, 189, 248, 0.6)",
+                  tagColor: "bg-sky-500/20 text-sky-300 border-sky-400/40",
+                  textColor: "text-sky-300",
+                };
               case "THE_FOOL":
+              case "THE_HERMIT":
+              case "THE_HANGED_MAN":
                 return {
                   gradient: "from-purple-950/40 via-violet-900/30 to-black/90",
                   border: "border-purple-500",
                   glow: "rgba(168, 85, 247, 0.5)",
-                  tagColor: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+                  tagColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
                   textColor: "text-purple-300",
                 };
               case "THE_EMPEROR":
@@ -1994,23 +2027,34 @@ export default function MysteryQuestBoard({
                   tagColor: "bg-orange-500/20 text-orange-300 border-orange-400/40",
                   textColor: "text-orange-300",
                 };
+              case "THE_CHARIOT":
+              case "THE_TOWER":
               case "THE_KNIGHT":
                 return {
-                  gradient: "from-blue-950/40 via-indigo-950/30 to-black/90",
+                  gradient: "from-indigo-950/40 via-blue-950/30 to-black/90",
                   border: "border-indigo-400",
                   glow: "rgba(99, 102, 241, 0.5)",
-                  tagColor: "bg-rose-500/20 text-rose-300 border-rose-400/40",
+                  tagColor: "bg-indigo-500/20 text-indigo-300 border-indigo-400/40",
                   textColor: "text-indigo-300",
                 };
+              case "JUSTICE":
               case "THE_DEATH":
+              case "THE_DEVIL":
               case "DEATH":
-              default:
                 return {
                   gradient: "from-rose-950/50 via-red-950/40 to-black/95",
                   border: "border-rose-500",
                   glow: "rgba(244, 63, 94, 0.6)",
                   tagColor: "bg-red-500/20 text-red-300 border-red-500/40",
                   textColor: "text-rose-400",
+                };
+              default:
+                return {
+                  gradient: "from-amber-950/30 via-yellow-900/20 to-black/90",
+                  border: "border-amber-400",
+                  glow: "rgba(245, 158, 11, 0.5)",
+                  tagColor: "bg-amber-500/20 text-amber-300 border-amber-400/40",
+                  textColor: "text-amber-300",
                 };
             }
           };
@@ -2036,19 +2080,19 @@ export default function MysteryQuestBoard({
                         <p className="text-xs sm:text-sm text-purple-200/90 font-medium">
                           {isPenaltySurvivalMode
                             ? "20 Nan Quạt Sinh Tử • 20% Thoát Nạn • 80% Bẫy Phạt"
-                            : "20 Nan Quạt Cổ Xưa • Tỷ Lệ Vàng 70% Có Lợi • 30% Rủi Ro"}
+                            : "22 Nan Quạt Cổ Xưa • 22 Lá Major Arcana"}
                         </p>
                         {hasSunMagnet && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-200 text-xs font-bold shadow-lg animate-pulse mt-1">
                             <span>☀️</span>
-                            <span>Nam Châm Thái Dương: Nan số II đã hóa thành Mặt Trời (+{baseQuestionPoints || 10}đ)!</span>
+                            <span>Nam Châm Thái Dương: Nan Mặt Trời đã được cường hóa (+{baseQuestionPoints || 10}đ)!</span>
                           </div>
                         )}
                       </div>
                     );
                   })()}
 
-                  {/* ── SVG 20-Segment Wheel with 12 o'clock pointer ── */}
+                  {/* ── SVG 22-Segment Wheel with 12 o'clock pointer ── */}
                   <div className="relative w-80 h-80 sm:w-96 sm:h-96 md:w-[440px] md:h-[440px] lg:w-[460px] lg:h-[460px] mx-auto my-2 sm:my-3 flex items-center justify-center z-10">
                     {/* Pointer Needle at 12 o'clock (pointing down) */}
                     <div className={`absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
@@ -2080,7 +2124,7 @@ export default function MysteryQuestBoard({
                           </radialGradient>
                         </defs>
 
-                        {/* 20 Segments (18 deg each) */}
+                        {/* 22 Segments (360/22 deg each in normal, 18 deg in survival) */}
                         {(() => {
                           const currentTurnTeam = teams?.find((t) => t.id === currentTurnTeamId);
                           const activeRiskTier = currentTurnTeam && teams
@@ -2091,9 +2135,11 @@ export default function MysteryQuestBoard({
                             Boolean(isPenaltySurvivalMode),
                             { riskTier: activeRiskTier, currentRound, teamScore: currentTurnTeam?.score }
                           );
-                        })().map((seg, i) => {
-                          const theta1 = (i * 18 * Math.PI) / 180;
-                          const theta2 = ((i + 1) * 18 * Math.PI) / 180;
+                        })().map((seg, i, arr) => {
+                          const segCount = arr.length;
+                          const degPerSeg = 360 / segCount;
+                          const theta1 = (i * degPerSeg * Math.PI) / 180;
+                          const theta2 = ((i + 1) * degPerSeg * Math.PI) / 180;
                           const r = 168;
                           const cx = 170;
                           const cy = 170;
@@ -2101,7 +2147,7 @@ export default function MysteryQuestBoard({
                           const y1 = cy - r * Math.cos(theta1);
                           const x2 = cx + r * Math.sin(theta2);
                           const y2 = cy - r * Math.cos(theta2);
-                          const midDeg = (i + 0.5) * 18;
+                          const midDeg = (i + 0.5) * degPerSeg;
 
                           return (
                             <g key={seg.index}>
@@ -2116,7 +2162,7 @@ export default function MysteryQuestBoard({
                                   x={cx}
                                   y={cy - 124}
                                   textAnchor="middle"
-                                  fontSize="16.5"
+                                  fontSize={segCount === 22 ? "14.5" : "16.5"}
                                   dominantBaseline="central"
                                   className="select-none pointer-events-none drop-shadow-md"
                                 >
@@ -2126,7 +2172,7 @@ export default function MysteryQuestBoard({
                                   x={cx}
                                   y={cy - 96}
                                   textAnchor="middle"
-                                  fontSize="10"
+                                  fontSize={segCount === 22 ? "8.5" : "10"}
                                   fontWeight="900"
                                   fill={seg.isMagnetized ? "#fef08a" : seg.textColor}
                                   dominantBaseline="central"
@@ -2271,10 +2317,10 @@ export default function MysteryQuestBoard({
                         : isPenaltySurvivalMode
                         ? "💀 TRỪNG PHẠT SINH TỬ (80%)"
                         : drawnCard?.group === "COMMON"
-                        ? "✨ ĐỊNH MỆNH THƯỜNG (60%)"
+                        ? "✨ ĐỊNH MỆNH THƯỜNG"
                         : drawnCard?.group === "MUTATION"
-                        ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN (30%)"
-                        : "💀 ĐỊNH MỆNH CHÍ MẠNG (10%)"}
+                        ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN"
+                        : "💀 ĐỊNH MỆNH CHÍ MẠNG"}
                     </span>
                   </div>
 
@@ -2305,39 +2351,138 @@ export default function MysteryQuestBoard({
                       <h3 className={`text-lg sm:text-xl font-black uppercase tracking-wider ${cardVisual.textColor}`}>
                         {drawnCard?.nameVi}
                       </h3>
-                      <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/60 border border-white/20">
-                        {drawnCard?.key === "THE_PEACE" && (
-                          <span className="text-emerald-400">0đ (Thoát Nạn Thành Công 🕊️)</span>
-                        )}
-                        {drawnCard?.key === "THE_SUN" && (
-                          <span className="text-emerald-400">+{drawnCard.scoreDelta}đ (An Toàn)</span>
-                        )}
-                        {drawnCard?.key === "THE_FOOL" && (
-                          isPenaltySurvivalMode ? (
-                            <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Khói Độc -50%)</span>
-                          ) : (
-                            <span className="text-rose-400">0đ (Mất điểm câu)</span>
-                          )
-                        )}
-                        {drawnCard?.key === "THE_EMPEROR" && (
-                          <span className="text-orange-400">
-                            {Math.abs(drawnCard.scoreDelta) > 0 ? `-${Math.abs(drawnCard.scoreDelta)}đ (Chia đối thủ)` : "0đ (Không trừ)"}
-                          </span>
-                        )}
-                        {drawnCard?.key === "THE_KNIGHT" && (
-                          <span className="text-rose-400">
-                            {Math.abs(drawnCard.scoreDelta) > 0 ? `-${Math.abs(drawnCard.scoreDelta)}đ (Mất 1/2 tổng điểm)` : "0đ (Không trừ)"}
-                          </span>
-                        )}
-                        {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "GIFT_TOP1" || (drawnCard.deathSubtype as any) === "GIFT") && (
-                          <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
-                        )}
-                        {drawnCard && (drawnCard.key === "THE_DEATH" || (drawnCard.key as any) === "DEATH") && (drawnCard.deathSubtype === "STEAL_TOP1" || (drawnCard.deathSubtype as any) === "STEAL") && (
-                          <span className="text-emerald-400">+{drawnCard.stolenPoints || drawnCard.scoreDelta}đ ➔ Cướp từ {drawnCard.victimTeamName || "Top 1"}</span>
-                        )}
-                      </div>
+                      {tarotState?.isRevealPending ? (
+                        <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-black shadow-lg bg-purple-950/80 border border-purple-400 text-purple-200 animate-pulse">
+                          <span>🔮 ĐANG CHỜ LẬT BÀI...</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/60 border border-white/20">
+                          {drawnCard?.key === "THE_PEACE" && (
+                            <span className="text-emerald-400">0đ (Thoát Nạn Thành Công 🕊️)</span>
+                          )}
+                          {drawnCard && (drawnCard.key === "THE_STAR" || drawnCard.key === "THE_MOON") && (
+                            <span className="text-fuchsia-300">⭐ Cánh Cổng May Rủi (Quay Thêm)</span>
+                          )}
+                          {drawnCard && (drawnCard.key === "THE_FOOL" || drawnCard.key === "THE_HERMIT" || drawnCard.key === "THE_HANGED_MAN") && (
+                            isPenaltySurvivalMode && drawnCard.key === "THE_FOOL" ? (
+                              <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Khói Độc -50%)</span>
+                            ) : (
+                              <span className="text-purple-300">±0đ (Bảo toàn điểm)</span>
+                            )
+                          )}
+                          {drawnCard?.key === "THE_EMPEROR" && (
+                            <span className="text-orange-400">
+                              {drawnCard.scoreDelta > 0 ? `+${drawnCard.scoreDelta}đ (Chia sẻ toàn đội 👑)` : "0đ"}
+                            </span>
+                          )}
+                          {drawnCard && (drawnCard.key === "THE_CHARIOT" || drawnCard.key === "THE_TOWER" || drawnCard.key === "THE_KNIGHT") && (
+                            <span className="text-indigo-300">
+                              +{drawnCard.scoreDelta}đ (Khóa chân Top 1 ⚡)
+                            </span>
+                          )}
+                          {drawnCard && (drawnCard.key === "JUSTICE" || drawnCard.key === "THE_DEATH" || drawnCard.key === "THE_DEVIL" || (drawnCard.key as any) === "DEATH") && (
+                            drawnCard.deathSubtype === "STEAL_TOP1" || (drawnCard.deathSubtype as any) === "STEAL" ? (
+                              <span className="text-emerald-400">+{drawnCard.stolenPoints || drawnCard.scoreDelta}đ ➔ Cướp từ {drawnCard.victimTeamName || "Top 1"}</span>
+                            ) : (
+                              <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
+                            )
+                          )}
+                          {drawnCard && (drawnCard.key === "THE_SUN" || drawnCard.key === "STRENGTH" || drawnCard.key === "JUDGEMENT" || drawnCard.key === "THE_WORLD" || drawnCard.key === "WHEEL_OF_FORTUNE" || drawnCard.key === "THE_MAGICIAN" || drawnCard.key === "THE_HIGH_PRIESTESS" || drawnCard.key === "THE_EMPRESS" || drawnCard.key === "THE_HIEROPHANT" || drawnCard.key === "THE_LOVERS" || drawnCard.key === "TEMPERANCE") && (
+                            <span className="text-emerald-400">+{drawnCard.scoreDelta}đ (Điềm Lành)</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* ── Reveal Button when isRevealPending ── */}
+                  {tarotState?.isRevealPending && (
+                    <div className="mt-3 text-center space-y-2 z-10 w-full max-w-xs">
+                      {canInteract ? (
+                        <button
+                          type="button"
+                          onClick={() => onTarotReveal?.()}
+                          className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white font-black text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(234,179,8,0.5)] border-2 border-amber-300 hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pulse"
+                        >
+                          ✨ LẬT BÀI ĐỊNH MỆNH
+                        </button>
+                      ) : (
+                        <div className="py-2.5 px-4 rounded-xl bg-black/60 border border-white/10 text-xs text-slate-300 italic">
+                          Đang chờ Đội {currentTurnTeamName} lật bài...
+                        </div>
+                      )}
+
+                      {(isAdmin || isSandbox) && (
+                        <button
+                          type="button"
+                          onClick={() => onTarotReveal?.()}
+                          className="w-full py-1.5 px-3 rounded-xl bg-purple-900/50 hover:bg-purple-900/80 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
+                        >
+                          ⚡ Admin Lật Bài Hộ
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Gamble Options when isGambling (after reveal) ── */}
+                  {!tarotState?.isRevealPending && tarotState?.isGambling && (
+                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/70 border-2 border-fuchsia-500/60 backdrop-blur-md shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-black text-fuchsia-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                          <span>⭐</span>
+                          <span>CƠ HỘI ĐÁNH CƯỢC ĐỊNH MỆNH</span>
+                          <span>⭐</span>
+                        </h4>
+                        <p className="text-xs text-purple-200/90 font-medium">
+                          Bạn có muốn <strong>Quay Thêm</strong>? Nếu trúng lá xấu (Thần Chết/Hiệp Sĩ), vận xui sẽ được <strong>ĐẢO NGƯỢC</strong> thành may mắn (+{baseQuestionPoints || 10}đ)! Hoặc dừng lại bảo toàn (±0đ).
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-3 pt-1">
+                        {canInteract ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => onTarotGambleDecision?.(true, lockedPower ?? wheelPower)}
+                              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-300 hover:scale-105 active:scale-95 transition cursor-pointer"
+                            >
+                              🎲 QUAY THÊM!
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onTarotGambleDecision?.(false)}
+                              className="flex-1 py-2.5 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-slate-200 font-black text-xs uppercase tracking-wider border border-white/20 hover:scale-105 active:scale-95 transition cursor-pointer"
+                            >
+                              🛑 DỪNG LẠI (±0đ)
+                            </button>
+                          </>
+                        ) : (
+                          <div className="py-2 px-3 text-xs text-slate-300 italic">
+                            Đang đợi Đội {currentTurnTeamName} quyết định cược...
+                          </div>
+                        )}
+                      </div>
+
+                      {(isAdmin || isSandbox) && (
+                        <div className="flex gap-2 justify-center pt-2 border-t border-white/10">
+                          <button
+                            type="button"
+                            onClick={() => onTarotGambleDecision?.(true, 50)}
+                            className="py-1 px-3 rounded-lg bg-fuchsia-900/40 hover:bg-fuchsia-900/70 border border-fuchsia-400/40 text-fuchsia-200 text-[11px] font-bold transition cursor-pointer"
+                          >
+                            ⚡ Admin Quay Thêm
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onTarotGambleDecision?.(false)}
+                            className="py-1 px-3 rounded-lg bg-slate-800/60 hover:bg-slate-700/60 border border-slate-500/40 text-slate-300 text-[11px] font-bold transition cursor-pointer"
+                          >
+                            ⚡ Admin Dừng Lại
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

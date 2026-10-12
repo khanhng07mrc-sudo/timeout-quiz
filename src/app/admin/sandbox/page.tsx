@@ -40,6 +40,7 @@ import {
   synchronizeMysteryStageWithQuestionPoints,
   handleAncientTarotDraw,
   handleAncientTarotSpinWheel,
+  handleAncientTarotGambleDecision,
   roundToMultipleOfFive,
   startSurvivalPenaltyMinigame,
   getInitialMemoryPairsState,
@@ -3036,6 +3037,94 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
           addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Trúng [${landedSegment.nameVi}]!`);
         }, spinDurationMs + 200);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_TAROT_REVEAL" || e.data?.action === "mystery_tarot_reveal") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_reveal" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const updatedTarot = { ...curMystery.tarotState, isRevealPending: false };
+        const updatedMystery = { ...curMystery, tarotState: updatedTarot };
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          mysteryQuestState: updatedMystery,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedMystery });
+        addLog(`🔮 Đã lật bài Tarot: ${updatedTarot.drawnCard?.nameVi || ""} (Lá ${updatedTarot.drawnCard?.roman || ""})!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_TAROT_GAMBLE_DECISION" || e.data?.action === "mystery_tarot_gamble_decision") {
+        const spinAgain = Boolean(e.data?.spinAgain);
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
+        if (!activeTeam) return;
+
+        const { updatedState, scoreDeltas, drawnCard, landedSegment, targetAngle, spinDurationMs, landedIndex } = handleAncientTarotGambleDecision({
+          state: curMystery,
+          team: activeTeam,
+          allTeams: roomStateRef.current.teams,
+          spinAgain,
+        });
+
+        if (spinAgain && targetAngle !== undefined && landedSegment) {
+          const spinningMystery: MysteryQuestState = {
+            ...curMystery,
+            tarotState: {
+              ...curMystery.tarotState,
+              isWheelSpinning: true,
+              targetAngle,
+              spinDurationMs: spinDurationMs || 3000,
+              selectedSegmentIndex: landedIndex,
+              drawnCard,
+              isDrawn: false,
+              isRevealPending: true,
+            },
+          };
+          const spinningRoomState = { ...roomStateRef.current, mysteryQuestState: spinningMystery };
+          roomStateRef.current = spinningRoomState;
+          setRoomState(spinningRoomState);
+          syncToIframes({ roomState: spinningRoomState, mysteryQuestState: spinningMystery });
+
+          setTimeout(() => {
+            if (!roomStateRef.current) return;
+            let updatedTeams = [...roomStateRef.current.teams];
+            for (const item of scoreDeltas) {
+              if (item.delta !== 0) {
+                updatedTeams = updatedTeams.map((t) =>
+                  t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+                );
+              }
+            }
+            const nextRoomState = {
+              ...roomStateRef.current,
+              teams: updatedTeams,
+              mysteryQuestState: updatedState,
+            };
+            roomStateRef.current = nextRoomState;
+            setRoomState(nextRoomState);
+            syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+            addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Trúng [${landedSegment.nameVi}]!`);
+          }, (spinDurationMs || 3000) + 200);
+        } else {
+          const nextRoomState = {
+            ...roomStateRef.current,
+            mysteryQuestState: updatedState,
+          };
+          roomStateRef.current = nextRoomState;
+          setRoomState(nextRoomState);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
+          addLog(`🛑 [${activeTeam.name}] DỪNG LẠI (±0 điểm)!`);
+        }
         return;
       }
       if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {

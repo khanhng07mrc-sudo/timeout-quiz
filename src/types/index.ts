@@ -923,7 +923,32 @@ export interface MysteryTile {
   peekIcon?: string;  // Icon hiển thị hé lộ của Mắt Thần
 }
 
-export type AncientTarotCardKey = "THE_SUN" | "THE_FOOL" | "THE_EMPEROR" | "THE_KNIGHT" | "THE_DEATH" | "DEATH" | "THE_PEACE";
+export type AncientTarotCardKey =
+  | "THE_FOOL"
+  | "THE_MAGICIAN"
+  | "THE_HIGH_PRIESTESS"
+  | "THE_EMPRESS"
+  | "THE_EMPEROR"
+  | "THE_HIEROPHANT"
+  | "THE_LOVERS"
+  | "THE_CHARIOT"
+  | "STRENGTH"
+  | "THE_HERMIT"
+  | "WHEEL_OF_FORTUNE"
+  | "JUSTICE"
+  | "THE_HANGED_MAN"
+  | "THE_DEATH"
+  | "TEMPERANCE"
+  | "THE_DEVIL"
+  | "THE_TOWER"
+  | "THE_STAR"
+  | "THE_MOON"
+  | "THE_SUN"
+  | "JUDGEMENT"
+  | "THE_WORLD"
+  | "DEATH"
+  | "THE_PEACE"
+  | "THE_KNIGHT";
 export type TarotDeathSubtype = "GIFT" | "STEAL" | "GIFT_TOP1" | "STEAL_TOP1";
 
 export interface AncientTarotDrawnCard {
@@ -955,6 +980,8 @@ export interface TarotWheelSegment {
   borderColor: string;
   textColor: string;
   isMagnetized?: boolean;
+  isRevealPending?: boolean;
+  maskedEffect?: string;
 }
 
 export type TeamRiskTier = "UNDERDOG" | "NEUTRAL" | "DOMINANT";
@@ -1099,6 +1126,14 @@ export interface MysteryQuestState {
     spinDurationMs?: number;
     selectedSegmentIndex?: number;
     spinTimeoutSeconds?: number;
+    isRevealPending?: boolean; // true after wheel stops, before user reveals
+    isGambling?: boolean;
+    gamblingSpinCount?: number;
+  };
+  tarotGambleState?: {
+    isGambling: boolean;
+    triggerCardKey: AncientTarotCardKey; // THE_STAR or THE_MOON
+    spinCount: number; // how many extra spins taken
   };
   peekUsesRemaining?: number;    // Số lượt sử dụng Mắt Thần còn lại (cho PUSH_YOUR_LUCK)
   nextCardPeek?: {
@@ -1556,6 +1591,12 @@ export interface ClientToServerEvents {
   "admin:mystery:cash_out_manual": () => void;
   "game:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL" }) => void;
   "admin:mystery:survival_choice": (payload: { choice: "SACRIFICE_HEART" | "RISK_SURVIVAL"; code?: string }) => void;
+  "ancient-tarot-reveal": (payload?: { code?: string }) => void;
+  "game:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
+  "admin:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
+  "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; code?: string }) => void;
+  "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; code?: string }) => void;
+  "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; code?: string }) => void;
   // Tie-Breaker Client Events
   "tie_breaker:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "tie_breaker:answer": (payload: { optionId: string }) => void;

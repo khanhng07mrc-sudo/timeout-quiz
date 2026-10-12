@@ -3210,9 +3210,10 @@ function handleFlipCard({
             isBomb: true,
             scorePenalty: outcome.penalty,
             finalScoreDelta: -outcome.penalty,
-            victimTeamId: outcome.recipientTeamId,
-            victimTeamName: outcome.recipientTeamName,
-            stolenPoints: outcome.giftedPoints
+            recipientTeamId: outcome.recipientTeamId,
+            recipientTeamName: outcome.recipientTeamName,
+            giftedPoints: outcome.giftedPoints,
+            darkBombRecipients: outcome.darkBombRecipients
           };
         } else {
           const penalty = tile2.deltaPoints !== void 0 ? Math.abs(tile2.deltaPoints) : riskTier === "UNDERDOG" ? 0 : state.baseQuestionPoints || 10;

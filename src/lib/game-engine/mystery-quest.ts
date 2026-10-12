@@ -3251,9 +3251,10 @@ export function handleFlipCard({
             isBomb: true,
             scorePenalty: outcome.penalty,
             finalScoreDelta: -outcome.penalty,
-            victimTeamId: outcome.recipientTeamId,
-            victimTeamName: outcome.recipientTeamName,
-            stolenPoints: outcome.giftedPoints,
+            recipientTeamId: outcome.recipientTeamId,
+            recipientTeamName: outcome.recipientTeamName,
+            giftedPoints: outcome.giftedPoints,
+            darkBombRecipients: outcome.darkBombRecipients,
           };
         } else {
           // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu UNDERDOG thì 0đ phạt)

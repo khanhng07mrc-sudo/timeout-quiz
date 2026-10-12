@@ -799,15 +799,26 @@ export function generateMemoryPairsTiles(
         deltaPoints: pSteal,
       };
 
+  // Cặp Kíp Nổ / Bom: Tinh chỉnh theo bối cảnh đội (UNDERDOG / DOMINANT / NEUTRAL)
   const bombPairDef: PairDef = riskTier === "UNDERDOG"
     ? {
         pairKey: "PAIR_BOMB",
         icon: "💨",
         type: "BOMB_SMOKE",
         storyTitle: "💨 Kíp Nổ Khói 0đ",
-        storyDescription: "May mắn thoát hiểm! Kíp nổ hắc ám chỉ giải phóng khói mù (0đ phạt tổng điểm)!",
+        storyDescription: "May mắn thoát hiểm! Kíp nổ chỉ giải phóng khói mù (0đ phạt tổng điểm)!",
         effectType: "LOSE_POT_POINTS",
         deltaPoints: 0,
+      }
+    : riskTier === "DOMINANT"
+    ? {
+        pairKey: "PAIR_BOMB",
+        icon: "🌑",
+        type: "BOMB_DARK",
+        storyTitle: `🌑 Kíp Nổ Hắc Ám -${pPenalty}đ`,
+        storyDescription: "Ghép trúng cặp kíp nổ hắc ám: Rút điểm chia đều cho các đối thủ!",
+        effectType: "LOSE_POINTS",
+        deltaPoints: -pPenalty,
       }
     : {
         pairKey: "PAIR_BOMB",
@@ -819,46 +830,104 @@ export function generateMemoryPairsTiles(
         deltaPoints: -pPenalty,
       };
 
-  const pairs: PairDef[] = [
-    {
-      pairKey: "PAIR_MULTIPLY",
-      icon: "🚀",
-      type: "REWARD",
-      storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
-      storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
-      effectType: "MULTIPLY_X2",
-      deltaPoints: pBonusTop,
-    },
-    stealOrBonusPair,
-    {
-      pairKey: "PAIR_TREASURE",
-      icon: "💎",
-      type: "REWARD",
-      storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
-      storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pBonusHigh,
-    },
-    {
-      pairKey: "PAIR_STAR",
-      icon: "⭐",
-      type: "REWARD",
-      storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
-      storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pBonusMed,
-    },
-    {
-      pairKey: "PAIR_TRAP",
-      icon: "💨",
-      type: "BOMB_SMOKE",
-      storyTitle: "💨 Bẫy Khói 0đ",
-      storyDescription: `Kích hoạt bẫy khói độc: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ)!`,
-      effectType: "LOSE_POT_POINTS",
-      deltaPoints: 0,
-    },
-    bombPairDef,
-  ];
+  // Cặp Ngọc May Mắn (Thưởng tích cực dùng ở Round 1 để thay thế 1 cặp tiêu cực, bảo đảm tiêu cực < 20%)
+  const luckyGemPair: PairDef = {
+    pairKey: "PAIR_LUCKY_GEM",
+    icon: "🔮",
+    type: "REWARD",
+    storyTitle: `🔮 Ngọc Thần +${pBonusMed}đ`,
+    storyDescription: `Tìm thấy cặp ngọc thần phước lành: Nhận an toàn +${pBonusMed} điểm thưởng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pBonusMed,
+  };
+
+  // Danh sách 6 cặp thẻ (12 lá):
+  // - Round 1: 5 cặp tích cực + 1 cặp tiêu cực = 10 lá tích cực / 2 lá tiêu cực (2/12 = 16.7% < 20% tiêu cực!)
+  // - Round 2+: 4 cặp tích cực + 2 cặp tiêu cực = 8 lá tích cực / 4 lá tiêu cực (4/12 = 33.3% mức gốc, kèm tinh chỉnh loại bom)
+  const pairs: PairDef[] = currentRound <= 1
+    ? [
+        {
+          pairKey: "PAIR_MULTIPLY",
+          icon: "🚀",
+          type: "REWARD",
+          storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
+          storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
+          effectType: "MULTIPLY_X2",
+          deltaPoints: pBonusTop,
+        },
+        stealOrBonusPair,
+        {
+          pairKey: "PAIR_TREASURE",
+          icon: "💎",
+          type: "REWARD",
+          storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
+          storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pBonusHigh,
+        },
+        {
+          pairKey: "PAIR_STAR",
+          icon: "⭐",
+          type: "REWARD",
+          storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
+          storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pBonusMed,
+        },
+        luckyGemPair,
+        // Cặp tiêu cực duy nhất ở Round 1 (2/12 lá)
+        riskTier === "UNDERDOG"
+          ? {
+              pairKey: "PAIR_TRAP",
+              icon: "💨",
+              type: "BOMB_SMOKE",
+              storyTitle: "💨 Bẫy Khói 0đ",
+              storyDescription: "Kích hoạt bẫy khói: Mất điểm tích lũy câu này (0đ), bảo toàn tổng điểm!",
+              effectType: "LOSE_POT_POINTS",
+              deltaPoints: 0,
+            }
+          : bombPairDef,
+      ]
+    : [
+        {
+          pairKey: "PAIR_MULTIPLY",
+          icon: "🚀",
+          type: "REWARD",
+          storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
+          storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
+          effectType: "MULTIPLY_X2",
+          deltaPoints: pBonusTop,
+        },
+        stealOrBonusPair,
+        {
+          pairKey: "PAIR_TREASURE",
+          icon: "💎",
+          type: "REWARD",
+          storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
+          storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pBonusHigh,
+        },
+        {
+          pairKey: "PAIR_STAR",
+          icon: "⭐",
+          type: "REWARD",
+          storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
+          storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pBonusMed,
+        },
+        {
+          pairKey: "PAIR_TRAP",
+          icon: "💨",
+          type: "BOMB_SMOKE",
+          storyTitle: "💨 Bẫy Khói 0đ",
+          storyDescription: `Kích hoạt bẫy khói độc: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ)!`,
+          effectType: "LOSE_POT_POINTS",
+          deltaPoints: 0,
+        },
+        bombPairDef,
+      ];
 
   const tileItems: Omit<MysteryTile, "id" | "label">[] = [];
   pairs.forEach((p) => {
@@ -1060,49 +1129,105 @@ export function generateOneShotDoorsTiles(
     riskTier,
   });
 
-  const doors: DoorDef[] = [
-    // 1. Cửa Hoàng Gia (+2x basePoints)
-    {
-      icon: "👑",
-      type: "REWARD",
-      storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
-      storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pHigh,
-    },
-    // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
-    stealOrBonusDoor,
-    // 3. Cửa Tinh Tú (+1x basePoints)
-    {
-      icon: "⭐",
-      type: "REWARD",
-      storyTitle: `⭐ May Mắn +${pNormal}đ`,
-      storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pNormal,
-    },
-    // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints)
-    {
-      icon: "⚠️",
-      type: "BOMB_MINOR",
-      storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
-      storyDescription: `Dính bẫy phạt: Trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pPenalty,
-      isBasePenalty: true,
-    },
-    // 5. Cửa Bẫy Bom Ngẫu Nhiên (Ẩn danh lúc chưa mở, random 1 trong 3 loại bom)
-    {
-      icon: "💣",
-      type: "BOMB_MAJOR",
-      storyTitle: "💣 Cửa Bom",
-      storyDescription: "Dính bẫy ngầm ma thuật: Kích nổ bom bất ngờ mang hiệu ứng đặc biệt!",
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pPenalty,
-      isBombDoor: true,
-      bombDoorType: selectedBombType,
-    },
-  ];
+  // Cửa Khiên Thần May Mắn: Thưởng an toàn thay thế Cửa Bẫy ở Round 1 để bảo đảm chỉ 1/5 cửa tiêu cực (20%)
+  const luckyShieldDoor: DoorDef = {
+    icon: "🛡️",
+    type: "REWARD",
+    storyTitle: `🛡️ Khiên Thần +${pNormal}đ`,
+    storyDescription: `Mở trúng cánh cửa phước lành: Nhận an toàn +${pNormal} điểm thưởng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pNormal,
+  };
+
+  // Cửa Bẫy Trừ Gốc: Ở Round 2+, đội Yếu Thế (UNDERDOG) được bảo toàn điểm số (0đ phạt)
+  const baseTrapDoor: DoorDef = riskTier === "UNDERDOG"
+    ? {
+        icon: "💨",
+        type: "BOMB_SMOKE",
+        storyTitle: "💨 Cửa Khói Thoát Hiểm 0đ",
+        storyDescription: "May mắn thoát hiểm! Cửa bẫy chỉ giải phóng khói mù (0đ phạt tổng điểm)!",
+        effectType: "LOSE_POT_POINTS",
+        deltaPoints: 0,
+        isBasePenalty: true,
+      }
+    : {
+        icon: "⚠️",
+        type: "BOMB_MINOR",
+        storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
+        storyDescription: `Dính bẫy phạt: Trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
+        effectType: "LOSE_POINTS",
+        deltaPoints: -pPenalty,
+        isBasePenalty: true,
+      };
+
+  // Cửa Bom Duy Nhất / Ngẫu Nhiên: Đội UNDERDOG luôn được hưởng Bom Khói 0đ
+  const bombDoorDef: DoorDef = {
+    icon: "💣",
+    type: "BOMB_MAJOR",
+    storyTitle: "💣 Cửa Bom",
+    storyDescription: "Dính bẫy ngầm ma thuật: Kích nổ bom bất ngờ mang hiệu ứng đặc biệt!",
+    effectType: "LOSE_POINTS",
+    deltaPoints: riskTier === "UNDERDOG" ? 0 : -pPenalty,
+    isBombDoor: true,
+    bombDoorType: selectedBombType,
+  };
+
+  // Danh sách 5 cánh cửa:
+  // - Round 1: 4 cửa tích cực + 1 cửa tiêu cực = 1/5 = 20% tiêu cực (đúng quy chuẩn < 20%)
+  // - Round 2+: 3 cửa tích cực + 2 cửa tiêu cực = 2/5 = 40% tiêu cực (mức gốc, kèm tinh chỉnh thế trận)
+  const doors: DoorDef[] = currentRound <= 1
+    ? [
+        // 1. Cửa Hoàng Gia (+2x basePoints)
+        {
+          icon: "👑",
+          type: "REWARD",
+          storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
+          storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pHigh,
+        },
+        // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
+        stealOrBonusDoor,
+        // 3. Cửa Tinh Tú (+1x basePoints)
+        {
+          icon: "⭐",
+          type: "REWARD",
+          storyTitle: `⭐ May Mắn +${pNormal}đ`,
+          storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pNormal,
+        },
+        // 4. Cửa Khiên Thần May Mắn (Tích cực ở Round 1)
+        luckyShieldDoor,
+        // 5. Cửa Tiêu Cực duy nhất ở Round 1 (1/5 cửa = 20%)
+        bombDoorDef,
+      ]
+    : [
+        // 1. Cửa Hoàng Gia (+2x basePoints)
+        {
+          icon: "👑",
+          type: "REWARD",
+          storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
+          storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pHigh,
+        },
+        // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
+        stealOrBonusDoor,
+        // 3. Cửa Tinh Tú (+1x basePoints)
+        {
+          icon: "⭐",
+          type: "REWARD",
+          storyTitle: `⭐ May Mắn +${pNormal}đ`,
+          storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
+          effectType: "BONUS_POINTS",
+          deltaPoints: pNormal,
+        },
+        // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints hoặc Thoát hiểm nếu UNDERDOG)
+        baseTrapDoor,
+        // 5. Cửa Bẫy Bom Ngẫu Nhiên
+        bombDoorDef,
+      ];
 
   const shuffled = [...doors].sort(() => Math.random() - 0.5);
   const hasPeekPerk = options?.promoPerk && getPerkType(options.promoPerk) === "PEEK_PROMO";
@@ -1380,26 +1505,36 @@ export function generateNextPushYourLuckCard({
   const riskTier = options?.riskTier ?? "NEUTRAL";
   const currentRound = options?.currentRound ?? 1;
 
-  // Card 1 is GUARANTEED SAFE reward card to reward player for taking the minigame challenge!
-  // From Card 2 onwards, risk-reward bomb chance kicks in:
+  // LẬT LIỀU: 5 LƯỢT BỐC ĐẦU TIÊN CÓ TỶ LỆ TRÚNG BÀI CỘNG VƯỢT TRỘI, TỶ LỆ BOM < 20%
+  // - Lá 1: An toàn tuyệt đối 100% (0% bom)
+  // - Lá 2 -> 5: Bom khống chế dưới 20% (Underdog: 5%, Neutral: 10%, Dominant: 15%)
+  // - Từ Lá 6 trở đi: Về mức gốc và lũy tiến rủi ro theo bối cảnh thế trận
   let bombChance: number;
   if (drawIndex <= 1) {
     bombChance = 0;
-  } else if (riskTier === "UNDERDOG") {
-    // Đội yếu thế / chuỗi xui: Giảm sâu xác suất bom chỉ còn 10%
-    bombChance = 0.10;
-  } else if (riskTier === "DOMINANT") {
-    // Đội dẫn đầu áp đảo: Tăng nhẹ thử thách
-    bombChance = basePoints <= 10 ? 0.40 : basePoints <= 20 ? 0.35 : 0.30;
-  } else if (basePoints <= 10) {
-    // 10đ: Higher risk
-    bombChance = 0.35;
-  } else if (basePoints <= 20) {
-    // 20đ: Balanced
-    bombChance = 0.25;
+  } else if (drawIndex <= 5) {
+    // 5 lượt bốc đầu tiên: Tỷ lệ bom thấp nghiêm ngặt (< 20%)
+    if (riskTier === "UNDERDOG") {
+      bombChance = 0.05;
+    } else if (riskTier === "DOMINANT") {
+      bombChance = 0.15;
+    } else {
+      bombChance = 0.10;
+    }
   } else {
-    // 30đ: High stakes, lower bomb risk to reward hard questions
-    bombChance = 0.20;
+    // Từ lá thứ 6 trở đi: Trở về tỷ lệ gốc và lũy tiến rủi ro (+3% đến +6% mỗi lá)
+    const extraDraws = drawIndex - 5;
+    if (riskTier === "UNDERDOG") {
+      bombChance = Math.min(0.30, 0.15 + extraDraws * 0.03);
+    } else if (riskTier === "DOMINANT") {
+      bombChance = Math.min(0.65, 0.35 + extraDraws * 0.06);
+    } else if (basePoints <= 10) {
+      bombChance = Math.min(0.55, 0.30 + extraDraws * 0.05);
+    } else if (basePoints <= 20) {
+      bombChance = Math.min(0.50, 0.25 + extraDraws * 0.05);
+    } else {
+      bombChance = Math.min(0.45, 0.20 + extraDraws * 0.04);
+    }
   }
 
   const isBomb = Math.random() < bombChance;
@@ -1407,8 +1542,8 @@ export function generateNextPushYourLuckCard({
   const label = `Lá #${drawIndex}`;
 
   if (isBomb) {
-    // If team has 0 points, ANY bomb downgrades to Smoke bomb
-    if (teamScore <= 0) {
+    // Nếu ở 5 lá đầu lỡ trúng bom hoặc team có 0đ -> Luôn hạ xuống Bom Khói 0đ (không trừ điểm tổng)
+    if (drawIndex <= 5 || teamScore <= 0) {
       return {
         id,
         label,
@@ -1416,7 +1551,7 @@ export function generateNextPushYourLuckCard({
         isOpened: false,
         type: "BOMB_SMOKE",
         storyTitle: "💨 Bom Khói 0đ",
-        storyDescription: "Khói mù bao phủ! Mất toàn bộ điểm tích lũy của câu này. Vì điểm đội hiện tại là 0 nên không bị trừ thêm!",
+        storyDescription: "Khói mù bao phủ! Mất toàn bộ điểm tích lũy của câu này. Tổng điểm tài khoản được bảo toàn!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0,
       };
@@ -1982,8 +2117,14 @@ export function handleFlipCard({
   stolenPoints?: number;
 } {
   const normType = normalizeMiniGameType(state.miniGameType);
-
-  // ═══════════════════════════════════════════════════════════════════════════
+  const currentRound = state.currentRound || 1;
+  const consecutiveBombs = state.consecutiveBombsByTeam?.[team.id] ?? 0;
+  const riskTier = evaluateTeamRiskTier({
+    team,
+    allTeams,
+    consecutiveBombs,
+    currentRound,
+  });
   // VARIANT 1: MEMORY_PAIRS (Lật cặp trùng nhau)
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "MEMORY_PAIRS") {
@@ -2382,14 +2523,16 @@ export function handleFlipCard({
           finalScoreDelta: 0,
         };
       } else {
-        // Cặp Kíp Nổ Hắc Ám: Chắc chắn kích nổ Bom Hắc Ám (hoặc Bom Từ Thiện nếu điểm cao)! Tuyệt đối KHÔNG là Bom Khói vì Bẫy Khói đã có cặp riêng!
-        const bombType: "BOMB_DARK" | "BOMB_CHARITY" =
-          (team.score || 0) >= 30 && Math.random() < 0.2 ? "BOMB_CHARITY" : "BOMB_DARK";
+        // Cặp Kíp Nổ / Bom: Tinh chỉnh loại bom phù hợp theo Round & Bối cảnh từng đội (UNDERDOG / DOMINANT / NEUTRAL)
+        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, {
+          currentRound,
+          riskTier,
+        });
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
-          storyDescription: `${cancelPrefix}Ghép trúng Cặp Kíp Nổ Hắc Ám!`,
+          storyDescription: `${cancelPrefix}Ghép trúng Cặp Kíp Nổ!`,
           baseQuestionPoints: state.baseQuestionPoints,
           isSurvivalPenalty: false,
         });
@@ -3073,7 +3216,10 @@ export function handleFlipCard({
         const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType);
 
         if (isRandomBomb) {
-          const bombType = (tile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
+          const bombType = (tile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0, {
+            currentRound,
+            riskTier,
+          });
           const outcome = resolveBombOutcome({
             bombType,
             team,
@@ -3110,14 +3256,18 @@ export function handleFlipCard({
             stolenPoints: outcome.giftedPoints,
           };
         } else {
-          // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi
-          const penalty = Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
+          // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu UNDERDOG thì 0đ phạt)
+          const penalty = tile.deltaPoints !== undefined
+            ? Math.abs(tile.deltaPoints)
+            : (riskTier === "UNDERDOG" ? 0 : (state.baseQuestionPoints || 10));
           state.potPoints = 0;
           state.bombExploded = {
-            type: "MINOR",
+            type: penalty === 0 ? "SMOKE" : "MINOR",
             title: tile.storyTitle,
             description: tile.storyDescription,
-            penaltyText: `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
+            penaltyText: penalty === 0
+              ? "May mắn né phạt! Điểm số được bảo toàn nguyên vẹn."
+              : `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
           };
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "BOMB_HIT";
@@ -3129,7 +3279,9 @@ export function handleFlipCard({
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
+            rewardText: penalty === 0
+              ? "💨 Mở trúng Cửa Khói! May mắn né bẫy phạt, bảo toàn tổng điểm (0đ)!"
+              : `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
             scoreDelta: -penalty,
             oldScore,
             newScore,
@@ -3420,9 +3572,10 @@ export function handleFlipCard({
       teamScore: team.score || 0,
       isDoublePromo: false,
       options: {
-        currentRound: state.currentRound,
+        currentRound,
         teams: allTeams,
         currentTeamId: team.id,
+        riskTier,
       },
     });
     state.tiles.push(tile);
@@ -4425,37 +4578,43 @@ export function handleAncientTarotDraw({
     }
   } else {
     // ─────────────────────────────────────────────────────────────────────────
-    // CHẾ ĐỘ THƯỜNG: Tỷ lệ gốc (25% Sun, 25% Emperor, 20% Knight, 15% Fool, 15% Death)
-    // Tự động biến thiên thích ứng theo thế trận (UNDERDOG / DOMINANT / Perk)
+    // CHẾ ĐỘ THƯỜNG: Tỷ lệ lũy tiến theo Round & Thích ứng theo thế trận
+    // - Round 1: 85% Tích cực (55% Sun, 30% Death Steal), 15% Rủi ro (10% Fool, 5% Emperor, 0% Knight)
+    // - Round 2: 70% Tích cực (45% Sun, 25% Death Steal), 30% Rủi ro (15% Fool, 10% Emperor, 5% Knight)
+    // - Round 3+: 60% Tích cực (35% Sun, 25% Death Steal), 40% Rủi ro (15% Fool, 15% Emperor, 10% Knight)
+    // - UNDERDOG: Tích cực +10% (Sun +5%, Death +5%), Knight = 0%
+    // - DOMINANT: Tích cực -10% (Sun -5%, Death -5%), Emperor +5%, Knight +5%
     // ─────────────────────────────────────────────────────────────────────────
+    const currentRound = state.currentRound || 1;
     const riskTier = evaluateTeamRiskTier({
       team,
       allTeams,
-      currentRound: state.currentRound || 1,
+      currentRound,
     });
     const hasSunMagnet = getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
 
-    let probSun = 0.25;
-    let probDeath = 0.15;
-    let probFool = 0.15;
-    let probEmperor = 0.25;
-    // Knight là phần còn lại (0.20)
+    let probSun = currentRound <= 1 ? 0.55 : currentRound === 2 ? 0.45 : 0.35;
+    let probDeath = currentRound <= 1 ? 0.30 : 0.25;
+    let probFool = currentRound <= 1 ? 0.10 : 0.15;
+    let probEmperor = currentRound <= 1 ? 0.05 : currentRound === 2 ? 0.10 : 0.15;
+    let probKnight = currentRound <= 1 ? 0.00 : currentRound === 2 ? 0.05 : 0.10;
 
     if (riskTier === "UNDERDOG") {
-      probSun = 0.35;
-      probDeath = 0.20;
-      probFool = 0.15;
-      probEmperor = 0.15;
-      // Knight: 0.15
+      probSun += 0.05;
+      probDeath += 0.05;
+      probKnight = 0; // Đội yếu thế không bao giờ dính lá xóa 1/2 điểm
+      probEmperor = Math.max(0.02, probEmperor - 0.05);
+      probFool = Math.max(0.05, 1 - (probSun + probDeath + probEmperor));
     } else if (riskTier === "DOMINANT") {
-      probSun = 0.20;
-      probDeath = 0.10;
-      probFool = 0.15;
-      probEmperor = 0.30;
-      // Knight: 0.25
-    } else if (hasSunMagnet) {
-      probSun = 0.30;
-      probEmperor = 0.20;
+      probSun = Math.max(0.15, probSun - 0.05);
+      probDeath = Math.max(0.10, probDeath - 0.05);
+      probEmperor += 0.05;
+      probKnight += 0.05;
+    }
+
+    if (hasSunMagnet) {
+      probSun += 0.05;
+      probEmperor = Math.max(0, probEmperor - 0.05);
     }
 
     const tSun = probSun;
@@ -4698,14 +4857,75 @@ export function handleAncientTarotDraw({
 }
 
 /**
- * Danh sách 20 nan quạt trên Vòng Quay Tarot Định Mệnh.
- * Tỷ lệ cân bằng kịch tính theo yêu cầu:
- * - ☀️ Mặt Trời (Sun): 5 ô (25%)
- * - 👑 Hoàng Đế (Emperor): 5 ô (25%)
- * - 🗡️ Hiệp Sĩ (Knight): 4 ô (20%)
+ * Danh sách 20 nan quạt Round 1 (85% Tích cực, 15% Rủi ro):
+ * - ☀️ Mặt Trời (Sun): 11 ô (55%)
+ * - 💀 Thần Chết Cướp Điểm (Death - Steal): 6 ô (30%)
+ * - 🃏 Kẻ Khờ (Fool): 2 ô (10%)
+ * - 👑 Hoàng Đế (Emperor): 1 ô (5%)
+ * - 🗡️ Hiệp Sĩ (Knight): 0 ô (0%)
+ */
+export const TAROT_WHEEL_SEGMENTS_ROUND_1: TarotWheelSegment[] = [
+  { index: 0, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 1, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 4, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 5, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 6, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 8, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 9, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 10, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 11, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 12, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 13, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 14, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 16, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 17, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 18, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 19, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+];
+
+/**
+ * Danh sách 20 nan quạt Round 2 (70% Tích cực, 30% Rủi ro):
+ * - ☀️ Mặt Trời (Sun): 9 ô (45%)
+ * - 💀 Thần Chết Cướp Điểm (Death - Steal): 5 ô (25%)
  * - 🃏 Kẻ Khờ (Fool): 3 ô (15%)
- * - 💀 Thần Chết Cướp Điểm (Death - Steal): 3 ô (15%)
- * Tổng cộng: 20 ô (100%), xếp đan xen đối xứng hoàn hảo trên vòng tròn 360 độ.
+ * - 👑 Hoàng Đế (Emperor): 2 ô (10%)
+ * - 🗡️ Hiệp Sĩ (Knight): 1 ô (5%)
+ */
+export const TAROT_WHEEL_SEGMENTS_ROUND_2: TarotWheelSegment[] = [
+  { index: 0, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 1, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 4, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 5, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 6, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 8, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 9, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 10, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 11, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 12, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 14, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 16, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 17, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 18, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 19, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+];
+
+/**
+ * Danh sách 20 nan quạt trên Vòng Quay Tarot Định Mệnh (Mức gốc Round 3+):
+ * - ☀️ Mặt Trời (Sun): 7 ô (35%)
+ * - 💀 Thần Chết Cướp Điểm (Death - Steal): 5 ô (25%)
+ * - 🃏 Kẻ Khờ (Fool): 3 ô (15%)
+ * - 👑 Hoàng Đế (Emperor): 3 ô (15%)
+ * - 🗡️ Hiệp Sĩ (Knight): 2 ô (10%)
+ * Tổng cộng: 20 ô (100%), 60% Tích cực, 40% Rủi ro.
  */
 export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = [
   { index: 0, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
@@ -4715,18 +4935,18 @@ export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = [
   { index: 4, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 5, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 6, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 7, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 8, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 8, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 9, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
   { index: 10, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
   { index: 11, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
   { index: 12, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 14, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 15, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 16, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 14, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 16, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 17, key: "THE_FOOL", nameVi: "Kẻ Khờ (The Fool)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 18, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 18, key: "THE_SUN", nameVi: "Mặt Trời (The Sun)", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 19, key: "THE_DEATH", nameVi: "Thần Chết (Cướp Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
 ];
 
@@ -4779,7 +4999,14 @@ export function getEffectiveTarotWheelSegments(
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
 
   const riskTier = options?.riskTier ?? "NEUTRAL";
-  let segments = [...TAROT_WHEEL_SEGMENTS];
+  const currentRound = options?.currentRound ?? 1;
+  const baseSegments =
+    currentRound <= 1
+      ? TAROT_WHEEL_SEGMENTS_ROUND_1
+      : currentRound === 2
+      ? TAROT_WHEEL_SEGMENTS_ROUND_2
+      : TAROT_WHEEL_SEGMENTS;
+  let segments = [...baseSegments];
 
   // 1. Áp dụng Perk Nam Châm Mặt Trời (SUN_MAGNET_PROMO): Ô index 1 (Hoàng Đế) -> Mặt Trời Nam Châm (+5% Mặt Trời)
   if (hasSunMagnet) {

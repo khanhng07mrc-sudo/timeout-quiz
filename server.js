@@ -1336,9 +1336,17 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     icon: "\u{1F4A8}",
     type: "BOMB_SMOKE",
     storyTitle: "\u{1F4A8} K\xEDp N\u1ED5 Kh\xF3i 0\u0111",
-    storyDescription: "May m\u1EAFn tho\xE1t hi\u1EC3m! K\xEDp n\u1ED5 h\u1EAFc \xE1m ch\u1EC9 gi\u1EA3i ph\xF3ng kh\xF3i m\xF9 (0\u0111 ph\u1EA1t t\u1ED5ng \u0111i\u1EC3m)!",
+    storyDescription: "May m\u1EAFn tho\xE1t hi\u1EC3m! K\xEDp n\u1ED5 ch\u1EC9 gi\u1EA3i ph\xF3ng kh\xF3i m\xF9 (0\u0111 ph\u1EA1t t\u1ED5ng \u0111i\u1EC3m)!",
     effectType: "LOSE_POT_POINTS",
     deltaPoints: 0
+  } : riskTier === "DOMINANT" ? {
+    pairKey: "PAIR_BOMB",
+    icon: "\u{1F311}",
+    type: "BOMB_DARK",
+    storyTitle: `\u{1F311} K\xEDp N\u1ED5 H\u1EAFc \xC1m -${pPenalty}\u0111`,
+    storyDescription: "Gh\xE9p tr\xFAng c\u1EB7p k\xEDp n\u1ED5 h\u1EAFc \xE1m: R\xFAt \u0111i\u1EC3m chia \u0111\u1EC1u cho c\xE1c \u0111\u1ED1i th\u1EE7!",
+    effectType: "LOSE_POINTS",
+    deltaPoints: -pPenalty
   } : {
     pairKey: "PAIR_BOMB",
     icon: "\u{1F4A3}",
@@ -1348,7 +1356,56 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     effectType: "LOSE_POINTS",
     deltaPoints: -pPenalty
   };
-  const pairs = [
+  const luckyGemPair = {
+    pairKey: "PAIR_LUCKY_GEM",
+    icon: "\u{1F52E}",
+    type: "REWARD",
+    storyTitle: `\u{1F52E} Ng\u1ECDc Th\u1EA7n +${pBonusMed}\u0111`,
+    storyDescription: `T\xECm th\u1EA5y c\u1EB7p ng\u1ECDc th\u1EA7n ph\u01B0\u1EDBc l\xE0nh: Nh\u1EADn an to\xE0n +${pBonusMed} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pBonusMed
+  };
+  const pairs = currentRound <= 1 ? [
+    {
+      pairKey: "PAIR_MULTIPLY",
+      icon: "\u{1F680}",
+      type: "REWARD",
+      storyTitle: `\u{1F680} Nh\xE2n \u0110\xF4i +${pBonusTop}\u0111`,
+      storyDescription: `K\xEDch ho\u1EA1t nh\xE2n \u0111\xF4i: Nh\u1EADn n\xF3ng +${pBonusTop} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      effectType: "MULTIPLY_X2",
+      deltaPoints: pBonusTop
+    },
+    stealOrBonusPair,
+    {
+      pairKey: "PAIR_TREASURE",
+      icon: "\u{1F48E}",
+      type: "REWARD",
+      storyTitle: `\u{1F48E} Kho B\xE1u +${pBonusHigh}\u0111`,
+      storyDescription: `T\xECm th\u1EA5y c\u1EB7p ng\u1ECDc qu\xFD: Nh\u1EADn ngay +${pBonusHigh} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pBonusHigh
+    },
+    {
+      pairKey: "PAIR_STAR",
+      icon: "\u2B50",
+      type: "REWARD",
+      storyTitle: `\u2B50 May M\u1EAFn +${pBonusMed}\u0111`,
+      storyDescription: `T\xECm th\u1EA5y c\u1EB7p sao may m\u1EAFn: Nh\u1EADn an to\xE0n +${pBonusMed} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pBonusMed
+    },
+    luckyGemPair,
+    // Cặp tiêu cực duy nhất ở Round 1 (2/12 lá)
+    riskTier === "UNDERDOG" ? {
+      pairKey: "PAIR_TRAP",
+      icon: "\u{1F4A8}",
+      type: "BOMB_SMOKE",
+      storyTitle: "\u{1F4A8} B\u1EABy Kh\xF3i 0\u0111",
+      storyDescription: "K\xEDch ho\u1EA1t b\u1EABy kh\xF3i: M\u1EA5t \u0111i\u1EC3m t\xEDch l\u0169y c\xE2u n\xE0y (0\u0111), b\u1EA3o to\xE0n t\u1ED5ng \u0111i\u1EC3m!",
+      effectType: "LOSE_POT_POINTS",
+      deltaPoints: 0
+    } : bombPairDef
+  ] : [
     {
       pairKey: "PAIR_MULTIPLY",
       icon: "\u{1F680}",
@@ -1521,7 +1578,42 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     currentRound,
     riskTier
   });
-  const doors = [
+  const luckyShieldDoor = {
+    icon: "\u{1F6E1}\uFE0F",
+    type: "REWARD",
+    storyTitle: `\u{1F6E1}\uFE0F Khi\xEAn Th\u1EA7n +${pNormal}\u0111`,
+    storyDescription: `M\u1EDF tr\xFAng c\xE1nh c\u1EEDa ph\u01B0\u1EDBc l\xE0nh: Nh\u1EADn an to\xE0n +${pNormal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+    effectType: "BONUS_POINTS",
+    deltaPoints: pNormal
+  };
+  const baseTrapDoor = riskTier === "UNDERDOG" ? {
+    icon: "\u{1F4A8}",
+    type: "BOMB_SMOKE",
+    storyTitle: "\u{1F4A8} C\u1EEDa Kh\xF3i Tho\xE1t Hi\u1EC3m 0\u0111",
+    storyDescription: "May m\u1EAFn tho\xE1t hi\u1EC3m! C\u1EEDa b\u1EABy ch\u1EC9 gi\u1EA3i ph\xF3ng kh\xF3i m\xF9 (0\u0111 ph\u1EA1t t\u1ED5ng \u0111i\u1EC3m)!",
+    effectType: "LOSE_POT_POINTS",
+    deltaPoints: 0,
+    isBasePenalty: true
+  } : {
+    icon: "\u26A0\uFE0F",
+    type: "BOMB_MINOR",
+    storyTitle: `\u26A0\uFE0F C\u1EEDa B\u1EABy -${pPenalty}\u0111`,
+    storyDescription: `D\xEDnh b\u1EABy ph\u1EA1t: Tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
+    effectType: "LOSE_POINTS",
+    deltaPoints: -pPenalty,
+    isBasePenalty: true
+  };
+  const bombDoorDef = {
+    icon: "\u{1F4A3}",
+    type: "BOMB_MAJOR",
+    storyTitle: "\u{1F4A3} C\u1EEDa Bom",
+    storyDescription: "D\xEDnh b\u1EABy ng\u1EA7m ma thu\u1EADt: K\xEDch n\u1ED5 bom b\u1EA5t ng\u1EDD mang hi\u1EC7u \u1EE9ng \u0111\u1EB7c bi\u1EC7t!",
+    effectType: "LOSE_POINTS",
+    deltaPoints: riskTier === "UNDERDOG" ? 0 : -pPenalty,
+    isBombDoor: true,
+    bombDoorType: selectedBombType
+  };
+  const doors = currentRound <= 1 ? [
     // 1. Cửa Hoàng Gia (+2x basePoints)
     {
       icon: "\u{1F451}",
@@ -1542,27 +1634,35 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
       effectType: "BONUS_POINTS",
       deltaPoints: pNormal
     },
-    // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints)
+    // 4. Cửa Khiên Thần May Mắn (Tích cực ở Round 1)
+    luckyShieldDoor,
+    // 5. Cửa Tiêu Cực duy nhất ở Round 1 (1/5 cửa = 20%)
+    bombDoorDef
+  ] : [
+    // 1. Cửa Hoàng Gia (+2x basePoints)
     {
-      icon: "\u26A0\uFE0F",
-      type: "BOMB_MINOR",
-      storyTitle: `\u26A0\uFE0F C\u1EEDa B\u1EABy -${pPenalty}\u0111`,
-      storyDescription: `D\xEDnh b\u1EABy ph\u1EA1t: Tr\u1EEB ${pPenalty} \u0111i\u1EC3m (\u0111\xFAng b\u1EB1ng \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi)!`,
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pPenalty,
-      isBasePenalty: true
+      icon: "\u{1F451}",
+      type: "REWARD",
+      storyTitle: `\u{1F451} \u0110\u1EA1i Th\u01B0\u1EDFng +${pHigh}\u0111`,
+      storyDescription: `M\u1EDF \u0111\xFAng c\xE1nh c\u1EEDa vinh quang: Nh\u1EADn ngay +${pHigh} \u0111i\u1EC3m th\u01B0\u1EDFng si\xEAu c\u1EA5p!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pHigh
     },
-    // 5. Cửa Bẫy Bom Ngẫu Nhiên (Ẩn danh lúc chưa mở, random 1 trong 3 loại bom)
+    // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
+    stealOrBonusDoor,
+    // 3. Cửa Tinh Tú (+1x basePoints)
     {
-      icon: "\u{1F4A3}",
-      type: "BOMB_MAJOR",
-      storyTitle: "\u{1F4A3} C\u1EEDa Bom",
-      storyDescription: "D\xEDnh b\u1EABy ng\u1EA7m ma thu\u1EADt: K\xEDch n\u1ED5 bom b\u1EA5t ng\u1EDD mang hi\u1EC7u \u1EE9ng \u0111\u1EB7c bi\u1EC7t!",
-      effectType: "LOSE_POINTS",
-      deltaPoints: -pPenalty,
-      isBombDoor: true,
-      bombDoorType: selectedBombType
-    }
+      icon: "\u2B50",
+      type: "REWARD",
+      storyTitle: `\u2B50 May M\u1EAFn +${pNormal}\u0111`,
+      storyDescription: `M\u1EDF tr\xFAng c\xE1nh c\u1EEDa may m\u1EAFn: Nh\u1EADn an to\xE0n +${pNormal} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
+      effectType: "BONUS_POINTS",
+      deltaPoints: pNormal
+    },
+    // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints hoặc Thoát hiểm nếu UNDERDOG)
+    baseTrapDoor,
+    // 5. Cửa Bẫy Bom Ngẫu Nhiên
+    bombDoorDef
   ];
   const shuffled = [...doors].sort(() => Math.random() - 0.5);
   const hasPeekPerk = options?.promoPerk && getPerkType(options.promoPerk) === "PEEK_PROMO";
@@ -1760,22 +1860,33 @@ function generateNextPushYourLuckCard({
   let bombChance;
   if (drawIndex <= 1) {
     bombChance = 0;
-  } else if (riskTier === "UNDERDOG") {
-    bombChance = 0.1;
-  } else if (riskTier === "DOMINANT") {
-    bombChance = basePoints <= 10 ? 0.4 : basePoints <= 20 ? 0.35 : 0.3;
-  } else if (basePoints <= 10) {
-    bombChance = 0.35;
-  } else if (basePoints <= 20) {
-    bombChance = 0.25;
+  } else if (drawIndex <= 5) {
+    if (riskTier === "UNDERDOG") {
+      bombChance = 0.05;
+    } else if (riskTier === "DOMINANT") {
+      bombChance = 0.15;
+    } else {
+      bombChance = 0.1;
+    }
   } else {
-    bombChance = 0.2;
+    const extraDraws = drawIndex - 5;
+    if (riskTier === "UNDERDOG") {
+      bombChance = Math.min(0.3, 0.15 + extraDraws * 0.03);
+    } else if (riskTier === "DOMINANT") {
+      bombChance = Math.min(0.65, 0.35 + extraDraws * 0.06);
+    } else if (basePoints <= 10) {
+      bombChance = Math.min(0.55, 0.3 + extraDraws * 0.05);
+    } else if (basePoints <= 20) {
+      bombChance = Math.min(0.5, 0.25 + extraDraws * 0.05);
+    } else {
+      bombChance = Math.min(0.45, 0.2 + extraDraws * 0.04);
+    }
   }
   const isBomb = Math.random() < bombChance;
   const id = drawIndex;
   const label = `L\xE1 #${drawIndex}`;
   if (isBomb) {
-    if (teamScore <= 0) {
+    if (drawIndex <= 5 || teamScore <= 0) {
       return {
         id,
         label,
@@ -1783,7 +1894,7 @@ function generateNextPushYourLuckCard({
         isOpened: false,
         type: "BOMB_SMOKE",
         storyTitle: "\u{1F4A8} Bom Kh\xF3i 0\u0111",
-        storyDescription: "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u n\xE0y. V\xEC \u0111i\u1EC3m \u0111\u1ED9i hi\u1EC7n t\u1EA1i l\xE0 0 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB th\xEAm!",
+        storyDescription: "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u n\xE0y. T\u1ED5ng \u0111i\u1EC3m t\xE0i kho\u1EA3n \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n!",
         effectType: "LOSE_POINTS",
         deltaPoints: 0
       };
@@ -2217,6 +2328,14 @@ function handleFlipCard({
   allTeams
 }) {
   const normType = normalizeMiniGameType(state.miniGameType);
+  const currentRound = state.currentRound || 1;
+  const consecutiveBombs = state.consecutiveBombsByTeam?.[team.id] ?? 0;
+  const riskTier = evaluateTeamRiskTier({
+    team,
+    allTeams,
+    consecutiveBombs,
+    currentRound
+  });
   if (normType === "MEMORY_PAIRS") {
     const memState = state.memoryPairsState || {
       firstFlippedTileId: null,
@@ -2526,12 +2645,15 @@ function handleFlipCard({
           finalScoreDelta: 0
         };
       } else {
-        const bombType = (team.score || 0) >= 30 && Math.random() < 0.2 ? "BOMB_CHARITY" : "BOMB_DARK";
+        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, {
+          currentRound,
+          riskTier
+        });
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
-          storyDescription: `${cancelPrefix}Gh\xE9p tr\xFAng C\u1EB7p K\xEDp N\u1ED5 H\u1EAFc \xC1m!`,
+          storyDescription: `${cancelPrefix}Gh\xE9p tr\xFAng C\u1EB7p K\xEDp N\u1ED5!`,
           baseQuestionPoints: state.baseQuestionPoints,
           isSurvivalPenalty: false
         });
@@ -2765,9 +2887,9 @@ function handleFlipCard({
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
         memState.isMismatchResolving = true;
         const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-        const currentRound = memState.round || 1;
+        const currentRound2 = memState.round || 1;
         if (isRoundOver) {
-          if (currentRound === 1) {
+          if (currentRound2 === 1) {
             memState.promptSecondChance = true;
             state.memoryPairsState = { ...memState };
             return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
@@ -2785,9 +2907,9 @@ function handleFlipCard({
       memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, penaltyTile.id]));
       memState.isMismatchResolving = true;
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-      const currentRound = memState.round || 1;
+      const currentRound2 = memState.round || 1;
       if (isRoundOver) {
-        if (currentRound === 1) {
+        if (currentRound2 === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
@@ -2878,9 +3000,9 @@ function handleFlipCard({
     } else {
       memState.isMismatchResolving = true;
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-      const currentRound = memState.round || 1;
+      const currentRound2 = memState.round || 1;
       if (isRoundOver) {
-        if (currentRound === 1) {
+        if (currentRound2 === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
@@ -3056,7 +3178,10 @@ function handleFlipCard({
         }
         const isRandomBomb = tile2.type === "BOMB_MAJOR" || Boolean(tile2.bombDoorType);
         if (isRandomBomb) {
-          const bombType = tile2.bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
+          const bombType = tile2.bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0, {
+            currentRound,
+            riskTier
+          });
           const outcome = resolveBombOutcome({
             bombType,
             team,
@@ -3090,13 +3215,13 @@ function handleFlipCard({
             stolenPoints: outcome.giftedPoints
           };
         } else {
-          const penalty = Math.abs(tile2.deltaPoints || state.baseQuestionPoints || 10);
+          const penalty = tile2.deltaPoints !== void 0 ? Math.abs(tile2.deltaPoints) : riskTier === "UNDERDOG" ? 0 : state.baseQuestionPoints || 10;
           state.potPoints = 0;
           state.bombExploded = {
-            type: "MINOR",
+            type: penalty === 0 ? "SMOKE" : "MINOR",
             title: tile2.storyTitle,
             description: tile2.storyDescription,
-            penaltyText: `M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Tr\u1EEB G\u1ED1c! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+            penaltyText: penalty === 0 ? "May m\u1EAFn n\xE9 ph\u1EA1t! \u0110i\u1EC3m s\u1ED1 \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n." : `M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Tr\u1EEB G\u1ED1c! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
           };
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "BOMB_HIT";
@@ -3106,7 +3231,7 @@ function handleFlipCard({
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F4A5} M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Tr\u1EEB G\u1ED1c! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
+            rewardText: penalty === 0 ? "\u{1F4A8} M\u1EDF tr\xFAng C\u1EEDa Kh\xF3i! May m\u1EAFn n\xE9 b\u1EABy ph\u1EA1t, b\u1EA3o to\xE0n t\u1ED5ng \u0111i\u1EC3m (0\u0111)!" : `\u{1F4A5} M\u1EDF tr\xFAng C\u1EEDa B\u1EABy Tr\u1EEB G\u1ED1c! B\u1ECB tr\u1EEB ${penalty} \u0111i\u1EC3m!`,
             scoreDelta: -penalty,
             oldScore,
             newScore
@@ -3352,9 +3477,10 @@ function handleFlipCard({
       teamScore: team.score || 0,
       isDoublePromo: false,
       options: {
-        currentRound: state.currentRound,
+        currentRound,
         teams: allTeams,
-        currentTeamId: team.id
+        currentTeamId: team.id,
+        riskTier
       }
     });
     state.tiles.push(tile);
@@ -4014,6 +4140,50 @@ function handleOneShotDoorsDecision({
     };
   }
 }
+var TAROT_WHEEL_SEGMENTS_ROUND_1 = [
+  { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 4, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 5, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 6, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 8, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 9, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 10, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 11, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 12, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 13, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 14, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 16, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 17, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 19, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" }
+];
+var TAROT_WHEEL_SEGMENTS_ROUND_2 = [
+  { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 3, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 4, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 5, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 6, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 8, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 9, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 10, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 11, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 12, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 14, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 16, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 17, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 18, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 19, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" }
+];
 var TAROT_WHEEL_SEGMENTS = [
   { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
@@ -4022,18 +4192,18 @@ var TAROT_WHEEL_SEGMENTS = [
   { index: 4, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 5, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 6, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 7, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 8, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 7, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 9, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
   { index: 10, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
   { index: 11, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
   { index: 12, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 14, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 15, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 16, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 14, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 15, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 16, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
   { index: 17, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 18, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
   { index: 19, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" }
 ];
 var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
@@ -4061,7 +4231,9 @@ var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
 function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false, options) {
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   const riskTier = options?.riskTier ?? "NEUTRAL";
-  let segments = [...TAROT_WHEEL_SEGMENTS];
+  const currentRound = options?.currentRound ?? 1;
+  const baseSegments = currentRound <= 1 ? TAROT_WHEEL_SEGMENTS_ROUND_1 : currentRound === 2 ? TAROT_WHEEL_SEGMENTS_ROUND_2 : TAROT_WHEEL_SEGMENTS;
+  let segments = [...baseSegments];
   if (hasSunMagnet) {
     segments = segments.map((seg) => {
       if (seg.index === 1) {

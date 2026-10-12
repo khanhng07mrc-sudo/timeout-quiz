@@ -1026,7 +1026,7 @@ export default function DisplayPage() {
             <TournamentBracket tournamentState={roomState.tournamentState!} isDisplay={true} />
           </div>
         ) : isMystery && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE" ? (
-          <div className="w-full max-w-5xl mx-auto flex-1 flex flex-col justify-center animate-slide-up">
+          <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start md:justify-center overflow-y-auto animate-slide-up">
             <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
           </div>
         ) : (
@@ -1932,7 +1932,7 @@ export default function DisplayPage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-2 overflow-hidden w-full">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-start md:justify-center p-2 overflow-y-auto w-full">
             {/* If user switched to Board view while question is active, show Return button */}
             {currentQuestion && displayModeTab === "BOARD" && (
               <div className="w-full flex justify-end pb-1 shrink-0">
@@ -1981,7 +1981,7 @@ export default function DisplayPage() {
                 />
               </div>
             ) : roomState.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState && roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE" ? (
-              <div className="w-full max-w-5xl">
+              <div className="w-full max-w-6xl my-auto">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}
                   isDisplay={true}

@@ -595,37 +595,39 @@ export default function MysteryQuestBoard({
         </div>
       )}
 
-      {/* ── Quick Rules Banner (3 Bước Cốt Lõi) ── */}
-      <div className="relative z-10 my-2 p-2 sm:p-2.5 rounded-xl bg-black/50 border border-amber-400/30 backdrop-blur-md shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-sm">📖</span>
-          <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300">
-            Luật Chơi Nhanh:
-          </span>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 flex-1 text-[11px] text-white/90">
-          {currentMiniGameRules.steps.map((s, idx) => (
-            <div key={idx} className="flex items-start gap-1.5 p-1 sm:p-1.5 rounded-lg bg-white/5 border border-white/5">
-              <span className="text-amber-400 font-bold shrink-0">{s.icon}</span>
-              <div className="leading-tight">
-                <strong className="text-white block text-[10px] font-bold">{s.step}</strong>
-                <span className="text-white/75 text-[10px] line-clamp-2">{s.desc}</span>
+      {/* ── Quick Rules Banner (3 Bước Cốt Lõi) - Ẩn trên màn hình Hội trường (Display) để tối ưu hiển thị ── */}
+      {!isDisplay && (
+        <div className="relative z-10 my-2 p-2 sm:p-2.5 rounded-xl bg-black/50 border border-amber-400/30 backdrop-blur-md shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className="text-sm">📖</span>
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300">
+              Luật Chơi Nhanh:
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 sm:gap-2 flex-1 text-[11px] text-white/90">
+            {currentMiniGameRules.steps.map((s, idx) => (
+              <div key={idx} className="flex items-start gap-1.5 p-1 sm:p-1.5 rounded-lg bg-white/5 border border-white/5">
+                <span className="text-amber-400 font-bold shrink-0">{s.icon}</span>
+                <div className="leading-tight">
+                  <strong className="text-white block text-[10px] font-bold">{s.step}</strong>
+                  <span className="text-white/75 text-[10px] line-clamp-2">{s.desc}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setRulesModalTab(variantInfo.key as MysteryMiniGameType);
+              setShowRulesModal(true);
+            }}
+            className="shrink-0 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/80 to-orange-500/80 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-[11px] border border-amber-300/50 shadow cursor-pointer active:scale-95 transition flex items-center justify-center gap-1"
+          >
+            <span>📜</span>
+            <span>Chi Tiết Luật</span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            setRulesModalTab(variantInfo.key as MysteryMiniGameType);
-            setShowRulesModal(true);
-          }}
-          className="shrink-0 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/80 to-orange-500/80 hover:from-amber-400 hover:to-orange-400 text-white font-extrabold text-[11px] border border-amber-300/50 shadow cursor-pointer active:scale-95 transition flex items-center justify-center gap-1"
-        >
-          <span>📜</span>
-          <span>Chi Tiết Luật</span>
-        </button>
-      </div>
+      )}
 
       {/* ── Phase HUD / Alerts ── */}
       <div className="relative z-10 py-2 sm:py-2.5">
@@ -2261,8 +2263,8 @@ export default function MysteryQuestBoard({
                 </div>
               ) : (
                 /* ── Trạng thái ĐÃ RÚT: Hiển thị 1 Thực Thể Cổ Xưa được chọn ── */
-                <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/70 border-2 border-purple-500/50 backdrop-blur-xl shadow-2xl animate-fade-in relative overflow-hidden">
-                  <div className="text-center mb-3">
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-2.5 sm:p-3.5" : "p-4 sm:p-6"} rounded-3xl bg-black/70 border-2 border-purple-500/50 backdrop-blur-xl shadow-2xl animate-fade-in relative overflow-hidden`}>
+                  <div className="text-center mb-2 sm:mb-3">
                     <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
                       {drawnCard?.key === "THE_PEACE"
                         ? "🕊️ THOÁT NẠN SINH TỬ (20%)"
@@ -2278,7 +2280,7 @@ export default function MysteryQuestBoard({
 
                   {/* Main Drawn Card Artwork */}
                   <div
-                    className={`relative w-48 h-72 sm:w-56 sm:h-80 rounded-2xl p-4 flex flex-col items-center justify-between border-2 shadow-2xl bg-gradient-to-b ${cardVisual.gradient} ${cardVisual.border} transition-all duration-500`}
+                    className={`relative ${isDisplay ? "w-40 h-56 sm:w-44 sm:h-64 p-3" : "w-48 h-72 sm:w-56 sm:h-80 p-4"} rounded-2xl flex flex-col items-center justify-between border-2 shadow-2xl bg-gradient-to-b ${cardVisual.gradient} ${cardVisual.border} transition-all duration-500`}
                     style={{ boxShadow: `0 0 35px ${cardVisual.glow}, 0 0 10px rgba(255,255,255,0.2)` }}
                   >
                     {/* Roman Numeral & English name */}
@@ -2293,7 +2295,7 @@ export default function MysteryQuestBoard({
 
                     {/* Central Entity Icon Artwork */}
                     <div className="my-auto flex flex-col items-center justify-center">
-                      <span className="text-6xl sm:text-7xl drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] animate-bounce-in">
+                      <span className={`${isDisplay ? "text-5xl sm:text-6xl" : "text-6xl sm:text-7xl"} drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] animate-bounce-in`}>
                         {drawnCard?.icon}
                       </span>
                     </div>

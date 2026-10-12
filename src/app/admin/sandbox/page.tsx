@@ -2501,12 +2501,19 @@ export default function AdminSandboxPage() {
         let updatedTeams = [...roomStateRef.current.teams];
         if (finalScoreDelta > 0) {
           updatedTeams = updatedTeams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+            t.id === activeTeam.id
+              ? {
+                  ...t,
+                  score: t.score + finalScoreDelta,
+                  hearts: updatedState.teamHearts?.[t.id] ?? t.hearts,
+                }
+              : { ...t, hearts: updatedState.teamHearts?.[t.id] ?? t.hearts }
           );
-          addLog(`💰 [${activeTeam.name}] dừng lại an toàn nhận +${finalScoreDelta}đ từ câu hỏi!`);
+          const remainingHearts = updatedState.teamHearts?.[activeTeam.id] ?? activeTeam.hearts ?? 0;
+          addLog(`💰 [${activeTeam.name}] dừng lại an toàn nhận +${finalScoreDelta}đ từ câu hỏi (Tiêu hao 1 ❤️, còn ${remainingHearts} ❤️)!`);
           soundManager.playCorrect();
         } else if (e.data.choice === "PLAY_ROUND_2") {
-          addLog(`🔥 [${activeTeam.name}] quyết định chơi tiếp Vòng 2 (3 lượt mới né bom)!`);
+          addLog(`🔥 [${activeTeam.name}] quyết định chơi tiếp Vòng 2 (4 lượt mới né bom)! Đã randomize lại vị trí toàn bộ bài!`);
         }
 
         const nextRoomState: RoomState = {

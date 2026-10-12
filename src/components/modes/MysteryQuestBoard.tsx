@@ -178,7 +178,6 @@ export default function MysteryQuestBoard({
           ...kept,
           ...currentAttemptIds,
           ...pendingFlippedIdsRef.current,
-          ...prev,
         ]);
         if (merged.size === prev.size) {
           let same = true;
@@ -231,7 +230,7 @@ export default function MysteryQuestBoard({
     setOptimisticSelectedDoorIds([]);
     setSwapStep("IDLE");
     setSwapRemovedId(null);
-  }, [currentTurnIndex, miniGameType, phase]);
+  }, [currentTurnIndex, miniGameType, phase, memoryPairsState?.round]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -317,7 +316,7 @@ export default function MysteryQuestBoard({
       if (memoryPairsState?.promptSecondChance) return;
       if (memoryPairsState?.matchedPairKey || optimisticMatchedPairKey) return;
       if (
-        (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 3) &&
+        (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 4) &&
         !memoryPairsState?.isBombRescueActive
       ) {
         return;
@@ -1091,7 +1090,7 @@ export default function MysteryQuestBoard({
                 <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
                   Bạn chưa ghép được cặp nào trong Vòng 1. Không bị mất điểm!
                   <br />
-                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 4 lượt tiếp theo</strong> (nhưng nếu trượt cả 4 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ)</strong>!
+                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 4 lượt tiếp theo</strong> (nhưng nếu trượt cả 4 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ, tiêu hao 1 ❤️)</strong>!
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
@@ -1100,7 +1099,7 @@ export default function MysteryQuestBoard({
                     disabled={!canInteract}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
-                    💰 DỪNG LẠI & NHẬN +{baseQuestionPoints || 10}Đ CÂU HỎI
+                    💰 DỪNG LẠI & NHẬN +{baseQuestionPoints || 10}Đ CÂU HỎI (-1 ❤️)
                   </button>
                   <button
                     type="button"
@@ -1108,7 +1107,7 @@ export default function MysteryQuestBoard({
                     disabled={!canInteract}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
-                    🔥 CHƠI TIẾP VÒNG 2 (3 LƯỢT TIẾP THEO)
+                    🔥 CHƠI TIẾP VÒNG 2 (4 LƯỢT TIẾP THEO)
                   </button>
                 </div>
               </div>

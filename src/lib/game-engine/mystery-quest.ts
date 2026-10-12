@@ -725,12 +725,22 @@ export function calculateCappedSteal({
  * Helper to shuffle memory pairs tiles face down and re-index.
  */
 export function shuffleMemoryPairsTiles(tiles: MysteryTile[]): MysteryTile[] {
-  const shuffled = [...tiles].map((t) => ({ ...t, isOpened: false })).sort(() => Math.random() - 0.5);
-  return shuffled.map((item, idx) => ({
+  const cloned = tiles.map((t) => ({
+    ...t,
+    isOpened: false,
+    isMatched: false,
+  }));
+  // Fisher-Yates shuffle algorithm: True unbiased randomization
+  for (let i = cloned.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+  }
+  return cloned.map((item, idx) => ({
     ...item,
     id: idx + 1,
     label: `Thẻ #${idx + 1}`,
     isOpened: false,
+    isMatched: false,
   }));
 }
 
@@ -3772,6 +3782,14 @@ export function handleMemoryPairsSecondChanceDecision({
   }
 
   if (choice === "CASH_OUT") {
+    // Trừ 1 Tim của đội khi chọn dừng lại nhận điểm câu hỏi sau vòng 1 thất bại
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 2;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
+
     const award = state.baseQuestionPoints || 10;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "PAIR_MATCHED";
@@ -3781,12 +3799,13 @@ export function handleMemoryPairsSecondChanceDecision({
 
     const oldScore = team.score || 0;
     const newScore = oldScore + award;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
 
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `💰 Bảo toàn an toàn! Nhận trọn vẹn +${award} điểm của câu hỏi!`,
+      rewardText: `🛡️ Dừng lại bảo toàn! Tiêu hao 1 ❤️ để nhận trọn vẹn +${award} điểm câu hỏi (Còn ${remainingHearts} ❤️)!`,
       scoreDelta: award,
       oldScore,
       newScore,
@@ -3797,17 +3816,21 @@ export function handleMemoryPairsSecondChanceDecision({
       finalScoreDelta: award,
     };
   } else {
-    // Chơi tiếp Vòng 2: 3 lượt mới
+    // Chơi tiếp Vòng 2: 4 lượt mới, reset sạch cache và randomize lại toàn bộ bàn cờ từ đầu
     memState.round = 2;
+    memState.maxAttempts = 4;
     memState.attemptsUsed = 0;
     memState.promptSecondChance = false;
     memState.firstFlippedTileId = null;
     memState.secondFlippedTileId = null;
     memState.thirdFlippedTileId = null;
-    memState.keptBombTileIds = [];
+    memState.keptBombTileIds = []; // Xóa sạch lá phạt của Vòng 1 để không bị dính cache sang Vòng 2
     memState.isBombRescueActive = false;
+    memState.activePenaltyPairKey = null;
     memState.isMismatchResolving = false;
-    // Đảm bảo tất cả các thẻ úp lại và đã được xáo trộn
+    memState.matchedPairKey = null;
+
+    // Đảm bảo tất cả các thẻ úp lại và đã được xáo trộn ngẫu nhiên hoàn toàn
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
     state.memoryPairsState = { ...memState };
 

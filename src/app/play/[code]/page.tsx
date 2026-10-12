@@ -1783,24 +1783,24 @@ export default function PlayPage() {
                 }
               }}
               onSpinTarotWheel={(powerPercent) => {
-                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                  socketRef.current.emit("game:mystery:spin_tarot_wheel", { powerPercent });
-                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
+                } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:spin_tarot_wheel" as any, { powerPercent, code });
                 }
               }}
               onTarotReveal={() => {
-                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                  socketRef.current.emit("game:mystery:ancient_tarot_reveal");
-                } else if (typeof window !== "undefined" && window.self !== window.top) {
+                if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal", teamId: effectiveTeamId }, "*");
+                } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:ancient_tarot_reveal" as any, { code });
                 }
               }}
-              onTarotGambleDecision={(spinAgain) => {
-                if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                  socketRef.current.emit("game:mystery:ancient_tarot_gamble_decision", { spinAgain });
-                } else if (typeof window !== "undefined" && window.self !== window.top) {
-                  window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_DECISION", action: "mystery_tarot_gamble_decision", spinAgain, teamId: effectiveTeamId }, "*");
+              onTarotGambleDecision={(spinAgain, powerPercent) => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_DECISION", action: "mystery_tarot_gamble_decision", spinAgain, powerPercent, teamId: effectiveTeamId }, "*");
+                } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, powerPercent, code });
                 }
               }}
               onSurvivalChoice={(choice) => {
@@ -2077,10 +2077,24 @@ export default function PlayPage() {
                     }
                   }}
                   onSpinTarotWheel={(powerPercent) => {
-                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                      socketRef.current.emit("game:mystery:spin_tarot_wheel", { powerPercent });
-                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent, teamId: effectiveTeamId }, "*");
+                    } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:spin_tarot_wheel" as any, { powerPercent, code });
+                    }
+                  }}
+                  onTarotReveal={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal", teamId: effectiveTeamId }, "*");
+                    } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:ancient_tarot_reveal" as any, { code });
+                    }
+                  }}
+                  onTarotGambleDecision={(spinAgain, powerPercent) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_DECISION", action: "mystery_tarot_gamble_decision", spinAgain, powerPercent, teamId: effectiveTeamId }, "*");
+                    } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, powerPercent, code });
                     }
                   }}
                   onSurvivalChoice={(choice) => {

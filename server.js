@@ -2359,6 +2359,7 @@ function handleFlipCard({
     if (!tile2 || tile2.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
+    state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
     if (state.isPenaltySurvivalMode) {
       const isEscapeTile = (t) => Boolean(t && (t.pairKey === "PAIR_ESCAPE" || t.type === "ESCAPE_SAFE"));
       const executeSurvivalEscape = () => {
@@ -4142,50 +4143,50 @@ function handleOneShotDoorsDecision({
   }
 }
 var MAJOR_ARCANA_WHEEL_SEGMENTS = [
-  { index: 0, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 1, key: "THE_MAGICIAN", nameVi: "Ph\xE1p S\u01B0", nameEn: "The Magician", icon: "\u{1FA84}", roman: "I", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 2, key: "THE_HIGH_PRIESTESS", nameVi: "N\u1EEF T\u01B0 T\u1EBF", nameEn: "The High Priestess", icon: "\u{1F319}", roman: "II", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 3, key: "THE_EMPRESS", nameVi: "N\u1EEF Ho\xE0ng", nameEn: "The Empress", icon: "\u{1F338}", roman: "III", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 4, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 5, key: "THE_HIEROPHANT", nameVi: "Gi\xE1o Ho\xE0ng", nameEn: "The Hierophant", icon: "\u26EA", roman: "V", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 6, key: "THE_LOVERS", nameVi: "Ng\u01B0\u1EDDi T\xECnh", nameEn: "The Lovers", icon: "\u{1F49E}", roman: "VI", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 7, key: "THE_CHARIOT", nameVi: "Chi\u1EBFn Xa", nameEn: "The Chariot", icon: "\u{1F3C7}", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 8, key: "STRENGTH", nameVi: "S\u1EE9c M\u1EA1nh", nameEn: "Strength", icon: "\u{1F4AA}", roman: "VIII", group: "COMMON", bgColor: "#1e3a8a", borderColor: "#3b82f6", textColor: "#bfdbfe" },
-  { index: 9, key: "THE_HERMIT", nameVi: "\u1EA8n S\u0129", nameEn: "The Hermit", icon: "\u{1F526}", roman: "IX", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 10, key: "WHEEL_OF_FORTUNE", nameVi: "B\xE1nh Xe Fortune", nameEn: "Wheel of Fortune", icon: "\u{1F3A1}", roman: "X", group: "COMMON", bgColor: "#0f766e", borderColor: "#14b8a6", textColor: "#ccfbf1" },
-  { index: 11, key: "JUSTICE", nameVi: "C\xF4ng L\xFD", nameEn: "Justice", icon: "\u2696\uFE0F", roman: "XI", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 12, key: "THE_HANGED_MAN", nameVi: "Ng\u01B0\u1EDDi Treo Ng\u01B0\u1EE3c", nameEn: "The Hanged Man", icon: "\u{1F643}", roman: "XII", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 14, key: "TEMPERANCE", nameVi: "\u0110i\u1EC1u \u0110\u1ED9", nameEn: "Temperance", icon: "\u{1F3FA}", roman: "XIV", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 15, key: "THE_DEVIL", nameVi: "\xC1c Qu\u1EF7", nameEn: "The Devil", icon: "\u{1F608}", roman: "XV", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 16, key: "THE_TOWER", nameVi: "Th\xE1p S\xE9t", nameEn: "The Tower", icon: "\u26A1", roman: "XVI", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 17, key: "THE_STAR", nameVi: "Ng\xF4i Sao", nameEn: "The Star", icon: "\u2B50", roman: "XVII", group: "COMMON", bgColor: "#701a75", borderColor: "#e879f9", textColor: "#fae8ff" },
-  { index: 18, key: "THE_MOON", nameVi: "M\u1EB7t Tr\u0103ng", nameEn: "The Moon", icon: "\u{1F311}", roman: "XVIII", group: "COMMON", bgColor: "#701a75", borderColor: "#e879f9", textColor: "#fae8ff" },
-  { index: 19, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#b45309", borderColor: "#fde047", textColor: "#ffffff" },
-  { index: 20, key: "JUDGEMENT", nameVi: "Ph\xE1n Xuy\u1EBFt", nameEn: "Judgement", icon: "\u{1F4EF}", roman: "XX", group: "COMMON", bgColor: "#1e3a8a", borderColor: "#3b82f6", textColor: "#bfdbfe" },
-  { index: 21, key: "THE_WORLD", nameVi: "Th\u1EBF Gi\u1EDBi", nameEn: "The World", icon: "\u{1F30D}", roman: "XXI", group: "COMMON", bgColor: "#065f46", borderColor: "#10b981", textColor: "#a7f3d0" }
+  { index: 0, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 1, key: "THE_MAGICIAN", nameVi: "Ph\xE1p S\u01B0", nameEn: "The Magician", icon: "\u{1FA84}", roman: "I", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 2, key: "THE_HIGH_PRIESTESS", nameVi: "N\u1EEF T\u01B0 T\u1EBF", nameEn: "The High Priestess", icon: "\u{1F319}", roman: "II", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 3, key: "THE_EMPRESS", nameVi: "N\u1EEF Ho\xE0ng", nameEn: "The Empress", icon: "\u{1F338}", roman: "III", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 4, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 5, key: "THE_HIEROPHANT", nameVi: "Gi\xE1o Ho\xE0ng", nameEn: "The Hierophant", icon: "\u26EA", roman: "V", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 6, key: "THE_LOVERS", nameVi: "Ng\u01B0\u1EDDi T\xECnh", nameEn: "The Lovers", icon: "\u{1F49E}", roman: "VI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 7, key: "THE_CHARIOT", nameVi: "Chi\u1EBFn Xa", nameEn: "The Chariot", icon: "\u{1F3C7}", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 8, key: "STRENGTH", nameVi: "S\u1EE9c M\u1EA1nh", nameEn: "Strength", icon: "\u{1F4AA}", roman: "VIII", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 9, key: "THE_HERMIT", nameVi: "\u1EA8n S\u0129", nameEn: "The Hermit", icon: "\u{1F526}", roman: "IX", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 10, key: "WHEEL_OF_FORTUNE", nameVi: "B\xE1nh Xe V\u1EADn M\u1EC7nh", nameEn: "Wheel of Fortune", icon: "\u{1F3A1}", roman: "X", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 11, key: "JUSTICE", nameVi: "C\xF4ng L\xFD", nameEn: "Justice", icon: "\u2696\uFE0F", roman: "XI", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 12, key: "THE_HANGED_MAN", nameVi: "Ng\u01B0\u1EDDi Treo Ng\u01B0\u1EE3c", nameEn: "The Hanged Man", icon: "\u{1F643}", roman: "XII", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 14, key: "TEMPERANCE", nameVi: "\u0110i\u1EC1u \u0110\u1ED9", nameEn: "Temperance", icon: "\u{1F3FA}", roman: "XIV", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 15, key: "THE_DEVIL", nameVi: "\xC1c Qu\u1EF7", nameEn: "The Devil", icon: "\u{1F608}", roman: "XV", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 16, key: "THE_TOWER", nameVi: "Th\xE1p S\xE9t", nameEn: "The Tower", icon: "\u26A1", roman: "XVI", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 17, key: "THE_STAR", nameVi: "Ng\xF4i Sao", nameEn: "The Star", icon: "\u2B50", roman: "XVII", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 18, key: "THE_MOON", nameVi: "M\u1EB7t Tr\u0103ng", nameEn: "The Moon", icon: "\u{1F311}", roman: "XVIII", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 19, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#fde68a" },
+  { index: 20, key: "JUDGEMENT", nameVi: "Ph\xE1n Quy\u1EBFt", nameEn: "Judgement", icon: "\u{1F4EF}", roman: "XX", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#e0e7ff" },
+  { index: 21, key: "THE_WORLD", nameVi: "Th\u1EBF Gi\u1EDBi", nameEn: "The World", icon: "\u{1F30D}", roman: "XXI", group: "COMMON", bgColor: "#110926", borderColor: "#b45309", textColor: "#f5d0fe" }
 ];
 var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
-  { index: 0, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 1, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 2, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 3, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 4, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 5, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 6, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 7, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 9, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 10, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 11, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 14, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 15, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 16, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 17, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 18, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
+  { index: 0, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 1, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 2, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 3, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 4, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 5, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 6, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 7, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 8, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 9, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 10, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 11, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 14, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 15, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 16, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 17, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 18, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" }
 ];
 function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false, options) {
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
@@ -4697,7 +4698,7 @@ function handleAncientTarotSpinWheel({
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
     state.potPoints = 0;
-    state.phase = "TURN_SUMMARY";
+    state.phase = "PUSH_YOUR_LUCK";
     state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotState = {
       ...state.tarotState || {},
@@ -4737,8 +4738,8 @@ function handleAncientTarotSpinWheel({
     };
   }
   state.potPoints = 0;
+  state.phase = "PUSH_YOUR_LUCK";
   if (!isGambleTrigger) {
-    state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = isSurvivalMode ? drawnCard.key === "THE_PEACE" ? "SURVIVAL_ESCAPE" : "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
   }
   state.tarotState = {
@@ -4853,8 +4854,8 @@ function handleAncientTarotGambleDecision({
   });
   const { drawnCard, finalScoreDelta, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isGambleAgain = Boolean(isGambleTrigger);
+  state.phase = "PUSH_YOUR_LUCK";
   if (!isGambleAgain) {
-    state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotGambleState = void 0;
   } else {
@@ -10142,8 +10143,8 @@ function registerSocketHandlers(io2) {
           allTeams
         });
         roomMysteryQuests.set(room.id, updatedState);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
         if (normMiniType === "ONE_SHOT_DOORS" && (updatedState.oneShotState?.phase === "SELECTING" || (updatedState.oneShotState?.selectedDoorIds?.length || 0) < 3)) {
-          io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
           return;
         }
         if (updatedState.phase === "STEAL_TARGET_SELECT") {
@@ -10537,62 +10538,67 @@ function registerSocketHandlers(io2) {
       }
     }
     const executeMysteryChooseAction = async (room, questState, action) => {
-      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
-      if (!team) return;
-      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
-      const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
-      const currentHearts = teamHearts[team.id] ?? questState.initialHeartsPerTeam ?? 0;
-      if (action === "TAKE_BASE_POINTS") {
-        if (currentHearts <= 0) {
-          action = "PLAY_MINIGAME";
-        } else {
-          teamHearts[team.id] = Math.max(0, currentHearts - 1);
-          questState.teamHearts = teamHearts;
-          const deltaRes = await applyScoreDeltaToTeam(team.id, basePts);
-          io2.to(`room:${room.code}`).emit("game:score:update", [
-            { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
-          ]);
-          questState.phase = "TURN_SUMMARY";
-          questState.turnFinishedReason = "TOOK_BASE_POINTS";
-          questState.decisionMade = "TAKE_BASE_POINTS";
-          questState.potPoints = 0;
-          questState.storyResult = {
-            teamId: team.id,
-            teamName: team.name,
-            teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F \u0110\u1ED9i \u0111\xE3 d\xF9ng 1 \u2764\uFE0F \u0111\u1EC3 ch\u1ED1t an to\xE0n +${basePts} \u0111i\u1EC3m t\u1EEB c\xE2u h\u1ECFi! (C\xF2n ${teamHearts[team.id]} \u2764\uFE0F)`,
-            scoreDelta: basePts,
-            oldScore: team.score || 0,
-            newScore: (team.score || 0) + basePts
-          };
+      await enqueueMysteryAction(room.id, async () => {
+        const activeQuest = roomMysteryQuests.get(room.id) || questState;
+        if (!activeQuest || activeQuest.phase !== "DECISION_CHOICE") return;
+        const team = await prisma.team.findUnique({ where: { id: activeQuest.currentTurnTeamId } });
+        if (!team) return;
+        const basePts = normalizeToThreeLevels(activeQuest.baseQuestionPoints || 10);
+        const teamHearts = activeQuest.teamHearts ? { ...activeQuest.teamHearts } : {};
+        const currentHearts = teamHearts[team.id] ?? activeQuest.initialHeartsPerTeam ?? 0;
+        let chosenAction = action;
+        if (chosenAction === "TAKE_BASE_POINTS") {
+          if (currentHearts <= 0) {
+            chosenAction = "PLAY_MINIGAME";
+          } else {
+            teamHearts[team.id] = Math.max(0, currentHearts - 1);
+            activeQuest.teamHearts = teamHearts;
+            const deltaRes = await applyScoreDeltaToTeam(team.id, basePts);
+            io2.to(`room:${room.code}`).emit("game:score:update", [
+              { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
+            ]);
+            activeQuest.phase = "TURN_SUMMARY";
+            activeQuest.turnFinishedReason = "TOOK_BASE_POINTS";
+            activeQuest.decisionMade = "TAKE_BASE_POINTS";
+            activeQuest.potPoints = 0;
+            activeQuest.storyResult = {
+              teamId: team.id,
+              teamName: team.name,
+              teamColor: team.color || "#ef4444",
+              rewardText: `\u{1F6E1}\uFE0F \u0110\u1ED9i \u0111\xE3 d\xF9ng 1 \u2764\uFE0F \u0111\u1EC3 ch\u1ED1t an to\xE0n +${basePts} \u0111i\u1EC3m t\u1EEB c\xE2u h\u1ECFi! (C\xF2n ${teamHearts[team.id]} \u2764\uFE0F)`,
+              scoreDelta: basePts,
+              oldScore: team.score || 0,
+              newScore: (team.score || 0) + basePts
+            };
+          }
         }
-      }
-      if (action === "PLAY_MINIGAME") {
-        questState.decisionMade = "PLAY_MINIGAME";
-        questState.cardsFlippedCount = 0;
-        let initialPot = basePts;
-        if (getPerkType(questState.promoPerk) === "EXTRA_POT_PROMO") {
-          initialPot += 5;
+        if (chosenAction === "PLAY_MINIGAME") {
+          activeQuest.decisionMade = "PLAY_MINIGAME";
+          activeQuest.cardsFlippedCount = 0;
+          let initialPot = basePts;
+          if (getPerkType(activeQuest.promoPerk) === "EXTRA_POT_PROMO") {
+            initialPot += 5;
+          }
+          activeQuest.potPoints = initialPot;
+          activeQuest.potMultiplier = 1;
+          activeQuest.hasShield = getPerkType(activeQuest.promoPerk) === "SHIELD_PROMO";
+          activeQuest.phase = "PUSH_YOUR_LUCK";
+          if (normalizeMiniGameType(activeQuest.miniGameType) === "MEMORY_PAIRS") {
+            activeQuest.memoryPairsState = getInitialMemoryPairsState(activeQuest.promoPerk);
+          }
+          const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+          synchronizeMysteryStageWithQuestionPoints({
+            state: activeQuest,
+            questionPoints: basePts,
+            theme: activeQuest.theme,
+            teams: allTeams
+          });
         }
-        questState.potPoints = initialPot;
-        questState.potMultiplier = 1;
-        questState.hasShield = getPerkType(questState.promoPerk) === "SHIELD_PROMO";
-        questState.phase = "PUSH_YOUR_LUCK";
-        if (normalizeMiniGameType(questState.miniGameType) === "MEMORY_PAIRS") {
-          questState.memoryPairsState = getInitialMemoryPairsState(questState.promoPerk);
-        }
-        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-        synchronizeMysteryStageWithQuestionPoints({
-          state: questState,
-          questionPoints: basePts,
-          theme: questState.theme,
-          teams: allTeams
-        });
-      }
-      roomMysteryQuests.set(room.id, questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        roomMysteryQuests.set(room.id, activeQuest);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", activeQuest);
+        const refreshedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      });
     };
     socket.on("game:mystery:choose_action", async ({ action }) => {
       const playerId = playerSockets.get(socket.id);
@@ -10620,41 +10626,45 @@ function registerSocketHandlers(io2) {
       await executeMysteryChooseAction(room, questState, action);
     });
     const executeMysterySurvivalChoice = async (room, questState, choice) => {
-      const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
-      if (!team) return;
-      const teamHearts = questState.teamHearts ? { ...questState.teamHearts } : {};
-      const currentHearts = teamHearts[team.id] ?? questState.initialHeartsPerTeam ?? 0;
-      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const basePts = normalizeToThreeLevels(questState.baseQuestionPoints || 10);
-      questState.survivalDilemmaPending = false;
-      questState.survivalDilemmaChoice = choice;
-      if (choice === "SACRIFICE_HEART") {
-        teamHearts[team.id] = Math.max(0, currentHearts - 1);
-        questState.teamHearts = teamHearts;
-        questState.phase = "TURN_SUMMARY";
-        questState.turnFinishedReason = "QUESTION_FAILED";
-        questState.potPoints = 0;
-        questState.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F494} \u0110\u1ED9i ch\u1EA5p nh\u1EADn hy sinh 1 \u2764\uFE0F \u0111\u1EC3 b\u1EA3o to\xE0n to\xE0n b\u1ED9 \u0111i\u1EC3m s\u1ED1! (C\xF2n ${teamHearts[team.id]} \u2764\uFE0F)`,
-          scoreDelta: 0,
-          oldScore: team.score || 0,
-          newScore: team.score || 0
-        };
-      } else if (choice === "RISK_SURVIVAL") {
-        questState.baseQuestionPoints = basePts;
-        startSurvivalPenaltyMinigame({
-          state: questState,
-          team,
-          allTeams
-        });
-      }
-      roomMysteryQuests.set(room.id, questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
-      const refreshedState = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      await enqueueMysteryAction(room.id, async () => {
+        const activeQuest = roomMysteryQuests.get(room.id) || questState;
+        if (!activeQuest || !activeQuest.survivalDilemmaPending) return;
+        const team = await prisma.team.findUnique({ where: { id: activeQuest.currentTurnTeamId } });
+        if (!team) return;
+        const teamHearts = activeQuest.teamHearts ? { ...activeQuest.teamHearts } : {};
+        const currentHearts = teamHearts[team.id] ?? activeQuest.initialHeartsPerTeam ?? 0;
+        const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+        const basePts = normalizeToThreeLevels(activeQuest.baseQuestionPoints || 10);
+        activeQuest.survivalDilemmaPending = false;
+        activeQuest.survivalDilemmaChoice = choice;
+        if (choice === "SACRIFICE_HEART") {
+          teamHearts[team.id] = Math.max(0, currentHearts - 1);
+          activeQuest.teamHearts = teamHearts;
+          activeQuest.phase = "TURN_SUMMARY";
+          activeQuest.turnFinishedReason = "QUESTION_FAILED";
+          activeQuest.potPoints = 0;
+          activeQuest.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `\u{1F494} \u0110\u1ED9i ch\u1EA5p nh\u1EADn hy sinh 1 \u2764\uFE0F \u0111\u1EC3 b\u1EA3o to\xE0n to\xE0n b\u1ED9 \u0111i\u1EC3m s\u1ED1! (C\xF2n ${teamHearts[team.id]} \u2764\uFE0F)`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0
+          };
+        } else if (choice === "RISK_SURVIVAL") {
+          activeQuest.baseQuestionPoints = basePts;
+          startSurvivalPenaltyMinigame({
+            state: activeQuest,
+            team,
+            allTeams
+          });
+        }
+        roomMysteryQuests.set(room.id, activeQuest);
+        io2.to(`room:${room.code}`).emit("game:mystery:update", activeQuest);
+        const refreshedState = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+      });
     };
     socket.on("game:mystery:survival_choice", async ({ choice }) => {
       const playerId = playerSockets.get(socket.id);
@@ -10935,8 +10945,14 @@ function registerSocketHandlers(io2) {
         allTeams,
         powerPercent
       });
+      if (!result.isGambleTrigger && result.scoreDeltas.length > 0) {
+        roomTarotPendingScores.set(room.id, result.scoreDeltas);
+      } else {
+        roomTarotPendingScores.delete(room.id);
+      }
       const spinningState = {
         ...result.updatedState,
+        phase: "PUSH_YOUR_LUCK",
         tarotState: {
           ...result.updatedState.tarotState,
           isWheelSpinning: true,
@@ -10945,7 +10961,8 @@ function registerSocketHandlers(io2) {
           spinDurationMs: result.spinDurationMs,
           selectedSegmentIndex: result.landedIndex,
           drawnCard: result.drawnCard,
-          isDrawn: false
+          isDrawn: false,
+          isRevealPending: false
         }
       };
       roomMysteryQuests.set(room.id, spinningState);
@@ -10953,13 +10970,9 @@ function registerSocketHandlers(io2) {
       setTimeout(async () => {
         const curQuest = roomMysteryQuests.get(room.id);
         if (!curQuest) return;
-        if (!result.isGambleTrigger && result.scoreDeltas.length > 0) {
-          roomTarotPendingScores.set(room.id, result.scoreDeltas);
-        } else {
-          roomTarotPendingScores.delete(room.id);
-        }
         const settledState = {
           ...result.updatedState,
+          phase: "PUSH_YOUR_LUCK",
           tarotState: {
             ...result.updatedState.tarotState,
             isWheelSpinning: false,
@@ -10982,7 +10995,7 @@ function registerSocketHandlers(io2) {
     const executeMysteryTarotReveal = async (room, questState) => {
       if (!questState.tarotState || !questState.tarotState.isRevealPending) return;
       const drawnCard = questState.tarotState.drawnCard;
-      const isGamble = drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON";
+      const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
       if (!isGamble) {
         const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
@@ -11001,8 +11014,12 @@ function registerSocketHandlers(io2) {
           io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
         }
       }
+      const nextPhase = isGamble ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY";
+      const nextFinishedReason = isGamble ? questState.turnFinishedReason : questState.isPenaltySurvivalMode ? drawnCard?.key === "THE_PEACE" ? "SURVIVAL_ESCAPE" : "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
       const revealedState = {
         ...questState,
+        phase: nextPhase,
+        turnFinishedReason: nextFinishedReason,
         tarotState: {
           ...questState.tarotState,
           isRevealPending: false,
@@ -11014,7 +11031,9 @@ function registerSocketHandlers(io2) {
             triggerCardKey: drawnCard?.key || "THE_STAR",
             spinCount: questState.tarotGambleState?.spinCount || 0
           }
-        } : {}
+        } : {
+          tarotGambleState: void 0
+        }
       };
       roomMysteryQuests.set(room.id, revealedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", revealedState);
@@ -11052,8 +11071,14 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("room:state", refreshedState);
         return;
       }
+      if (!gambleResult.isGambleAgain && gambleResult.scoreDeltas.length > 0) {
+        roomTarotPendingScores.set(room.id, gambleResult.scoreDeltas);
+      } else {
+        roomTarotPendingScores.delete(room.id);
+      }
       const spinningGambleState = {
         ...gambleResult.updatedState,
+        phase: "PUSH_YOUR_LUCK",
         tarotState: {
           ...gambleResult.updatedState.tarotState,
           isWheelSpinning: true,
@@ -11073,13 +11098,9 @@ function registerSocketHandlers(io2) {
       setTimeout(async () => {
         const curQuest = roomMysteryQuests.get(room.id);
         if (!curQuest) return;
-        if (!gambleResult.isGambleAgain && gambleResult.scoreDeltas.length > 0) {
-          roomTarotPendingScores.set(room.id, gambleResult.scoreDeltas);
-        } else {
-          roomTarotPendingScores.delete(room.id);
-        }
         const settledGambleState = {
           ...gambleResult.updatedState,
+          phase: "PUSH_YOUR_LUCK",
           tarotState: {
             ...gambleResult.updatedState.tarotState,
             isWheelSpinning: false,
@@ -11102,23 +11123,31 @@ function registerSocketHandlers(io2) {
     const executeMysteryDrawTarot = async (room, questState, team) => {
       await executeMysterySpinTarotWheel(room, questState, team, 50);
     };
-    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent = 50 } = {}) => {
+    socket.on("game:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code } = {}) => {
       const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room || !player.teamId) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      let room = null;
+      let playerTeamId = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) {
+          room = player.room;
+          playerTeamId = player.teamId;
+        }
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (playerTeamId && !code && questState.currentTurnTeamId !== playerTeamId) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quay c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      await executeMysterySpinTarotWheel(room, questState, player.teamId, powerPercent);
+      await executeMysterySpinTarotWheel(room, questState, questState.currentTurnTeamId, powerPercent);
     });
     socket.on("admin:mystery:spin_tarot_wheel", async ({ powerPercent = 50, code } = {}) => {
       const room = await getAdminRoom(socket, code);
@@ -11127,30 +11156,38 @@ function registerSocketHandlers(io2) {
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
       await executeMysterySpinTarotWheel(room, questState, questState.currentTurnTeamId, powerPercent);
     });
-    socket.on("ancient-tarot-reveal", async () => {
+    socket.on("ancient-tarot-reveal", async ({ code } = {}) => {
       const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
       await executeMysteryTarotReveal(room, questState);
     });
-    socket.on("game:mystery:ancient_tarot_reveal", async () => {
+    socket.on("game:mystery:ancient_tarot_reveal", async ({ code } = {}) => {
       const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
       await executeMysteryTarotReveal(room, questState);
@@ -11162,41 +11199,41 @@ function registerSocketHandlers(io2) {
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
       await executeMysteryTarotReveal(room, questState);
     });
-    socket.on("ancient-tarot-gamble-decision", async ({ spinAgain = false, powerPercent = 50 } = {}) => {
+    socket.on("ancient-tarot-gamble-decision", async ({ spinAgain = false, powerPercent = 50, code } = {}) => {
       const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room || !player.teamId) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
-        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
-        return;
-      }
-      await executeMysteryTarotGambleDecision(room, questState, player.teamId, spinAgain, powerPercent);
+      await executeMysteryTarotGambleDecision(room, questState, questState.currentTurnTeamId, spinAgain, powerPercent);
     });
-    socket.on("game:mystery:ancient_tarot_gamble_decision", async ({ spinAgain = false, powerPercent = 50 } = {}) => {
+    socket.on("game:mystery:ancient_tarot_gamble_decision", async ({ spinAgain = false, powerPercent = 50, code } = {}) => {
       const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      const player = await prisma.player.findUnique({
-        where: { id: playerId },
-        include: { room: true }
-      });
-      if (!player || !player.room || !player.teamId) return;
-      const room = player.room;
-      if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
-        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
-        return;
-      }
-      await executeMysteryTarotGambleDecision(room, questState, player.teamId, spinAgain, powerPercent);
+      await executeMysteryTarotGambleDecision(room, questState, questState.currentTurnTeamId, spinAgain, powerPercent);
     });
     socket.on("admin:mystery:ancient_tarot_gamble_decision", async ({ spinAgain = false, powerPercent = 50, code } = {}) => {
       const room = await getAdminRoom(socket, code);

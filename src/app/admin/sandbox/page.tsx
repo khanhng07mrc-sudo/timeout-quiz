@@ -3018,24 +3018,20 @@ export default function AdminSandboxPage() {
 
         setTimeout(() => {
           if (!roomStateRef.current) return;
-          let updatedTeams = [...roomStateRef.current.teams];
-          for (const item of scoreDeltas) {
-            if (item.delta !== 0) {
-              updatedTeams = updatedTeams.map((t) =>
-                t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
-              );
-            }
-          }
+          const settledMystery: MysteryQuestState = {
+            ...updatedState,
+            phase: "PUSH_YOUR_LUCK",
+          };
+          (settledMystery as any)._pendingScoreDeltas = scoreDeltas;
 
           const nextRoomState: RoomState = {
             ...roomStateRef.current,
-            teams: updatedTeams,
-            mysteryQuestState: updatedState,
+            mysteryQuestState: settledMystery,
           };
           roomStateRef.current = nextRoomState;
           setRoomState(nextRoomState);
-          syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-          addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Trúng [${landedSegment.nameVi}]!`);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
+          addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
         }, spinDurationMs + 200);
         return;
       }
@@ -3046,10 +3042,43 @@ export default function AdminSandboxPage() {
         }
         if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
         const curMystery = roomStateRef.current.mysteryQuestState;
-        const updatedTarot = { ...curMystery.tarotState, isRevealPending: false };
-        const updatedMystery = { ...curMystery, tarotState: updatedTarot };
+        const drawnCard = curMystery.tarotState?.drawnCard;
+        const isGamble = !curMystery.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
+        const pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
+
+        let updatedTeams = [...roomStateRef.current.teams];
+        if (!isGamble && pendingDeltas.length > 0) {
+          for (const item of pendingDeltas) {
+            if (item.delta !== 0) {
+              updatedTeams = updatedTeams.map((t) =>
+                t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+              );
+            }
+          }
+        }
+
+        const updatedTarot = {
+          ...curMystery.tarotState,
+          isRevealPending: false,
+          isGambling: isGamble,
+        };
+        const updatedMystery: MysteryQuestState = {
+          ...curMystery,
+          phase: isGamble ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY",
+          turnFinishedReason: isGamble
+            ? curMystery.turnFinishedReason
+            : curMystery.isPenaltySurvivalMode
+            ? drawnCard?.key === "THE_PEACE"
+              ? "SURVIVAL_ESCAPE"
+              : "SURVIVAL_FAILED"
+            : "TAROT_WHEEL_SPUN",
+          tarotState: updatedTarot,
+        };
+        delete (updatedMystery as any)._pendingScoreDeltas;
+
         const nextRoomState: RoomState = {
           ...roomStateRef.current,
+          teams: updatedTeams,
           mysteryQuestState: updatedMystery,
         };
         roomStateRef.current = nextRoomState;
@@ -3060,8 +3089,9 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type === "MYSTERY_TAROT_GAMBLE_DECISION" || e.data?.action === "mystery_tarot_gamble_decision") {
         const spinAgain = Boolean(e.data?.spinAgain);
+        const powerPercent = typeof e.data?.powerPercent === "number" ? e.data.powerPercent : 50;
         if (!isOfflineSandbox) {
-          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, code });
+          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, powerPercent, code });
           return;
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
@@ -3074,11 +3104,13 @@ export default function AdminSandboxPage() {
           team: activeTeam,
           allTeams: roomStateRef.current.teams,
           spinAgain,
+          powerPercent,
         });
 
         if (spinAgain && targetAngle !== undefined && landedSegment) {
           const spinningMystery: MysteryQuestState = {
             ...curMystery,
+            phase: "PUSH_YOUR_LUCK",
             tarotState: {
               ...curMystery.tarotState,
               isWheelSpinning: true,
@@ -3087,7 +3119,8 @@ export default function AdminSandboxPage() {
               selectedSegmentIndex: landedIndex,
               drawnCard,
               isDrawn: false,
-              isRevealPending: true,
+              isRevealPending: false,
+              isGambling: false,
             },
           };
           const spinningRoomState = { ...roomStateRef.current, mysteryQuestState: spinningMystery };
@@ -3097,23 +3130,19 @@ export default function AdminSandboxPage() {
 
           setTimeout(() => {
             if (!roomStateRef.current) return;
-            let updatedTeams = [...roomStateRef.current.teams];
-            for (const item of scoreDeltas) {
-              if (item.delta !== 0) {
-                updatedTeams = updatedTeams.map((t) =>
-                  t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
-                );
-              }
-            }
+            const settledMystery: MysteryQuestState = {
+              ...updatedState,
+              phase: "PUSH_YOUR_LUCK",
+            };
+            (settledMystery as any)._pendingScoreDeltas = scoreDeltas;
             const nextRoomState = {
               ...roomStateRef.current,
-              teams: updatedTeams,
-              mysteryQuestState: updatedState,
+              mysteryQuestState: settledMystery,
             };
             roomStateRef.current = nextRoomState;
             setRoomState(nextRoomState);
-            syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-            addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Trúng [${landedSegment.nameVi}]!`);
+            syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
+            addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
           }, (spinDurationMs || 3000) + 200);
         } else {
           const nextRoomState = {
@@ -8264,6 +8293,20 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent });
                         } else {
                           window.postMessage({ type: "MYSTERY_SPIN_TAROT_WHEEL", action: "mystery_spin_tarot_wheel", powerPercent }, "*");
+                        }
+                      }}
+                      onTarotReveal={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_reveal" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
+                        }
+                      }}
+                      onTarotGambleDecision={(spinAgain, powerPercent) => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_decision" as any, { spinAgain, powerPercent, code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_GAMBLE_DECISION", action: "mystery_tarot_gamble_decision", spinAgain, powerPercent }, "*");
                         }
                       }}
                       onSurvivalChoice={(choice) => {

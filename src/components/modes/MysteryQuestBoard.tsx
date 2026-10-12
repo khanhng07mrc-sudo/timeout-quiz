@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
 import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments, evaluateTeamRiskTier } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
+import { TarotArcanaSvgIcon, renderTarotArcanaVectorNodes, getPureArcanaNameVi } from "./TarotArcanaIcons";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
 
 interface Props {
@@ -87,6 +88,7 @@ export default function MysteryQuestBoard({
   const flippingTileIdRef = useRef<number | null>(null);
   const lastClickedTileIdRef = useRef<number | null>(null);
   const pendingFlippedIdsRef = useRef<Set<number>>(new Set());
+  const prevServerActiveFlipRef = useRef<boolean>(false);
 
   if (!mysteryState) {
     return (
@@ -156,21 +158,25 @@ export default function MysteryQuestBoard({
           return new Set([...serverOpened, ...pendingFlippedIdsRef.current, ...prev]);
         }
 
-        // Khi lượt giải quyết mismatch kết thúc và cả hai lá đã úp lại trên server:
-        if (
-          !memoryPairsState?.firstFlippedTileId &&
-          !memoryPairsState?.secondFlippedTileId &&
-          !memoryPairsState?.isMismatchResolving &&
-          !memoryPairsState?.isBombRescueActive
-        ) {
+        const serverHasActiveFlip = Boolean(
+          memoryPairsState?.firstFlippedTileId ||
+          memoryPairsState?.secondFlippedTileId ||
+          memoryPairsState?.isMismatchResolving ||
+          memoryPairsState?.isBombRescueActive
+        );
+
+        // Chỉ xóa danh sách lật tạm khi server thực sự chuyển từ trạng thái ĐANG LẬT sang ĐÃ ÚP LẠI (sau khi giải quyết mismatch xong).
+        // Nếu người chơi vừa bấm lá đầu tiên và gói tin room:state trễ từ choose_action gửi về (khi serverHasActiveFlip vẫn = false),
+        // tuyệt đối giữ nguyên pendingFlippedIdsRef để lá bài đầu tiên không bao giờ bị chớp nháy đóng-mở!
+        if (prevServerActiveFlipRef.current && !serverHasActiveFlip) {
+          prevServerActiveFlipRef.current = false;
           pendingFlippedIdsRef.current.clear();
           lastClickedTileIdRef.current = null;
           const kept = new Set((memoryPairsState?.keptBombTileIds || []).map(Number));
           return new Set([...serverOpened, ...kept]);
         }
+        prevServerActiveFlipRef.current = serverHasActiveFlip;
 
-        // Khi đang có lá bài lật dở trong lượt (ví dụ lá 1 hoặc lá 2 vừa bấm, hoặc đang giải quyết mismatch):
-        // Giữ lại serverOpened cộng với tất cả lá đang lật dở để triệt tiêu 100% hiện tượng chớp nháy!
         const currentAttemptIds = new Set<number>();
         if (memoryPairsState?.firstFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.firstFlippedTileId));
         if (memoryPairsState?.secondFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.secondFlippedTileId));
@@ -227,6 +233,7 @@ export default function MysteryQuestBoard({
   }, [memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId]);
 
   useEffect(() => {
+    prevServerActiveFlipRef.current = false;
     pendingFlippedIdsRef.current.clear();
     lastClickedTileIdRef.current = null;
     setOptimisticMatchedPairKey(null);
@@ -234,7 +241,7 @@ export default function MysteryQuestBoard({
     setOptimisticSelectedDoorIds([]);
     setSwapStep("IDLE");
     setSwapRemovedId(null);
-  }, [currentTurnIndex, miniGameType, phase, memoryPairsState?.round]);
+  }, [currentTurnIndex, miniGameType, phase, memoryPairsState?.round ?? 1]);
 
   useEffect(() => {
     setIsCashingOut(false);
@@ -451,17 +458,17 @@ export default function MysteryQuestBoard({
       survivalMechanic: "Khi vào Sinh Tử: Rút 1 lá quyết định. 20% Thoát Hiểm an toàn & 80% Bẫy/Bom trừng phạt.",
     },
     TAROT_DESTINY: {
-      title: "🔮 BÀI TAROT & VÒNG QUAY ĐỊNH MỆNH",
-      badge: "Tarot Destiny",
+      title: "🔮 VÒNG QUAY TAROT 22 MAJOR ARCANA",
+      badge: "Tarot 22 Arcana",
       icon: "🔮",
       steps: [
-        { step: "1. Chọn phương thức", desc: "Quay Vòng Quay Định Mệnh 20 nan quạt hoặc Rút 1 trong 5 lá Tarot cổ đại.", icon: "🎡" },
-        { step: "2. Cơ cấu tỷ lệ gốc", desc: "Tỷ lệ chuẩn: ☀️ Mặt Trời 25%, 👑 Hoàng Đế 25%, 🗡️ Hiệp Sĩ 20%, 🃏 Kẻ Khờ 15%, 💀 Thần Chết Cướp Điểm 15%.", icon: "⚖️" },
-        { step: "3. Thích ứng động", desc: "Tự động biến thiên theo thế trận: Trợ lực đội yếu thế (+10% cơ hội lật kèo, giảm phạt), tăng kịch tính chia điểm cho đội dẫn đầu.", icon: "🔄" },
+        { step: "1. Chốt lực quay", desc: "Canh thanh lực dao động Ping-pong để xoay vòng quay 22 Ấn Cổ Major Arcana (0 – XXI).", icon: "🎡" },
+        { step: "2. Lật bài định mệnh", desc: "Mặt vòng quay ẩn giấu toàn bộ hiệu ứng cộng/trừ. Bấm 'Lật Bài Định Mệnh' để khai mở quẻ bài!", icon: "✨" },
+        { step: "3. Đánh cược & Lật kèo", desc: "Trúng Ngôi Sao / Mặt Trăng mở Cánh Cổng Quay Thêm (đảo ngược lá xấu thành thưởng).", icon: "🔄" },
       ],
-      rewardMechanic: "Mặt Trời (+1x điểm), Thần Chết Cướp Điểm (Cướp +2x điểm Top 1), Kẻ Khờ (An toàn hòa 0đ).",
-      riskMechanic: "Hoàng Đế (Bom Hắc Ám chia điểm đối thủ), Hiệp Sĩ (Trừ 50% điểm).",
-      survivalMechanic: "Khi vào Sinh Tử: 20% quay trúng Thoát Hiểm an toàn & 80% ô Bẫy/Bom phạt.",
+      rewardMechanic: "Điềm Lành (+1x đến +2x điểm), Thần Chết / Công Lý / Ác Quỷ (Cướp +2x điểm Top 1), Cỗ Xe / Tòa Tháp (Khóa chân Top 1).",
+      riskMechanic: "Hoàng Đế (Chia sẻ +1x điểm toàn đội), Kẻ Khờ / Ẩn Sĩ / Người Treo Ngược (Bảo toàn ±0đ).",
+      survivalMechanic: "Khi vào Sinh Tử: 20% quay trúng Ấn Bình Yên thoát hiểm & 80% Ấn Bẫy/Phạt.",
     },
   };
 
@@ -1370,7 +1377,7 @@ export default function MysteryQuestBoard({
                   {storyResult?.rewardText || "Nhận thưởng thành công từ cánh cửa đã chọn!"}
                 </p>
               </div>
-            ) : turnFinishedReason === "TAROT_DRAWN" ? (
+            ) : (turnFinishedReason === "TAROT_DRAWN" || turnFinishedReason === "TAROT_WHEEL_SPUN") ? (
               <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-purple-950/90 to-black/90 border-2 border-purple-400 shadow-2xl space-y-1.5">
                 <div className="text-3xl sm:text-4xl animate-bounce">🔮</div>
                 <h3 className="text-lg sm:text-xl font-black text-purple-300">QUẺ BÀI ĐỊNH MỆNH ĐÃ KHAI MỞ!</h3>
@@ -2060,50 +2067,61 @@ export default function MysteryQuestBoard({
           };
 
           const cardVisual = getEntityVisuals(drawnCard?.key);
+          const isPendingReveal = Boolean(tarotState?.isRevealPending);
+          const canActOnTarot = Boolean(isMyTurn || isAdmin || isSandbox);
 
           return (
-            <div className="max-w-2xl mx-auto py-2">
+            <div className="max-w-2xl mx-auto py-1.5">
               {!isDrawn ? (
-                /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 20 Nan Quạt ── */
-                <div className="flex flex-col items-center justify-center p-4 sm:p-6 rounded-3xl bg-black/60 border-2 border-purple-500/40 backdrop-blur-xl shadow-2xl relative overflow-hidden group space-y-3">
-                  {/* Glowing background aura */}
-                  <div className="absolute inset-0 bg-radial from-purple-600/20 via-transparent to-transparent opacity-75 pointer-events-none animate-pulse" />
+                /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 22 Major Arcana ── */
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4 space-y-2" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 backdrop-blur-xl shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
+                  {/* Mystical Starfield & Astral Nebula Aura */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(139,92,246,0.22),rgba(15,10,35,0.6)_55%,transparent_80%)] pointer-events-none" />
+                  <div className="absolute inset-0 opacity-35 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px), radial-gradient(#e0e7ff 0.6px, transparent 0.6px)", backgroundSize: "36px 36px, 24px 24px", backgroundPosition: "0 0, 14px 18px" }} />
 
                   {/* Header Title */}
                   {(() => {
                     const hasSunMagnet = !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
                     return (
-                      <div className="text-center z-10 space-y-1">
-                        <h3 className="text-base sm:text-lg md:text-xl font-black text-amber-300 uppercase tracking-widest drop-shadow">
-                          {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "🎡 VÒNG QUAY TAROT ĐỊNH MỆNH"}
+                      <div className="text-center z-10 space-y-0.5">
+                        <h3 className={`${isDisplay ? "text-sm sm:text-base md:text-lg" : "text-base sm:text-lg md:text-xl"} font-black text-amber-200 uppercase tracking-[0.18em] drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]`}>
+                          {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "✦ VÒNG QUAY TAROT ĐỊNH MỆNH ✦"}
                         </h3>
-                        <p className="text-xs sm:text-sm text-purple-200/90 font-medium">
+                        <p className="text-[11px] sm:text-xs text-purple-200/80 font-medium tracking-wider">
                           {isPenaltySurvivalMode
-                            ? "20 Nan Quạt Sinh Tử • 20% Thoát Nạn • 80% Bẫy Phạt"
-                            : "22 Nan Quạt Cổ Xưa • 22 Lá Major Arcana"}
+                            ? "20 Ấn Cổ Sinh Tử • Ẩn Giấu Thoát Nạn & Bẫy Phạt"
+                            : "22 Ấn Cổ Major Arcana • Phúc Họa Ẩn Giấu Sau Mặt Bài"}
                         </p>
                         {hasSunMagnet && (
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/25 border border-amber-400 text-amber-200 text-xs font-bold shadow-lg animate-pulse mt-1">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/80 text-amber-200 text-[11px] font-bold shadow-lg animate-pulse mt-1">
                             <span>☀️</span>
-                            <span>Nam Châm Thái Dương: Nan Mặt Trời đã được cường hóa (+{baseQuestionPoints || 10}đ)!</span>
+                            <span>Nam Châm Thái Dương: Ấn Mặt Trời đã được cường hóa (+{baseQuestionPoints || 10}đ)!</span>
                           </div>
                         )}
                       </div>
                     );
                   })()}
 
-                  {/* ── SVG 22-Segment Wheel with 12 o'clock pointer ── */}
-                  <div className="relative w-80 h-80 sm:w-96 sm:h-96 md:w-[440px] md:h-[440px] lg:w-[460px] lg:h-[460px] mx-auto my-2 sm:my-3 flex items-center justify-center z-10">
-                    {/* Pointer Needle at 12 o'clock (pointing down) */}
-                    <div className={`absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_12px_rgba(0,0,0,0.9)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
-                      <svg width="42" height="42" viewBox="0 0 32 32">
-                        <polygon points="6,2 26,2 16,26" fill="#ef4444" stroke="#fef08a" strokeWidth="2.5" />
-                        <circle cx="16" cy="8" r="3.5" fill="#fef08a" />
+                  {/* ── SVG 22-Segment Esoteric Tarot Wheel with 12 o'clock Astral Pointer ── */}
+                  <div className={`relative ${isDisplay ? "w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-[340px] lg:h-[340px] my-1" : "w-80 h-80 sm:w-96 sm:h-96 md:w-[420px] md:h-[420px] my-2"} mx-auto flex items-center justify-center z-10`}>
+                    {/* Ornate Astral Gold-Violet Pointer Needle at 12 o'clock */}
+                    <div className={`absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
+                      <svg width="44" height="44" viewBox="0 0 40 40">
+                        <defs>
+                          <linearGradient id="astralPointerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#fef08a" />
+                            <stop offset="55%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#9333ea" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M20 35 L9 8 L20 14 L31 8 Z" fill="url(#astralPointerGrad)" stroke="#fef08a" strokeWidth="1.8" strokeLinejoin="round" />
+                        <circle cx="20" cy="11" r="3.5" fill="#1e1b4b" stroke="#fef08a" strokeWidth="1.6" />
+                        <circle cx="20" cy="11" r="1.3" fill="#fef08a" />
                       </svg>
                     </div>
 
-                    {/* Outer Glowing Border Ring */}
-                    <div className="absolute inset-0 rounded-full border-4 sm:border-[5px] border-amber-400/90 shadow-[0_0_35px_rgba(168,85,247,0.6)] pointer-events-none z-20" />
+                    {/* Outer Glowing Celestial Ring */}
+                    <div className="absolute inset-0 rounded-full border-[3px] sm:border-4 border-amber-300/75 shadow-[0_0_40px_rgba(139,92,246,0.65),inset_0_0_25px_rgba(251,191,36,0.25)] pointer-events-none z-20" />
 
                     {/* Spinning Wheel */}
                     <div
@@ -2117,11 +2135,14 @@ export default function MysteryQuestBoard({
                     >
                       <svg viewBox="0 0 340 340" className="w-full h-full select-none">
                         <defs>
-                          <radialGradient id="hubGradient" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="#fbbf24" />
-                            <stop offset="70%" stopColor="#b45309" />
-                            <stop offset="100%" stopColor="#451a03" />
+                          <radialGradient id="hubObsidianGrad" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="#1e1b4b" />
+                            <stop offset="65%" stopColor="#0f0720" />
+                            <stop offset="100%" stopColor="#05030a" />
                           </radialGradient>
+                          <filter id="arcanaSymbolGlow" x="-25%" y="-25%" width="150%" height="150%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor="#fde68a" floodOpacity="0.6" />
+                          </filter>
                         </defs>
 
                         {/* 22 Segments (360/22 deg each in normal, 18 deg in survival) */}
@@ -2148,50 +2169,66 @@ export default function MysteryQuestBoard({
                           const x2 = cx + r * Math.sin(theta2);
                           const y2 = cy - r * Math.cos(theta2);
                           const midDeg = (i + 0.5) * degPerSeg;
+                          const symbolColor = seg.isMagnetized ? "#fef08a" : seg.textColor;
 
                           return (
                             <g key={seg.index}>
                               <path
                                 d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                                fill={seg.isMagnetized ? "#b45309" : seg.bgColor}
+                                fill={seg.isMagnetized ? "#3b1d06" : seg.bgColor}
                                 stroke={seg.isMagnetized ? "#fef08a" : seg.borderColor}
-                                strokeWidth={seg.isMagnetized ? "2.5" : "1.2"}
+                                strokeWidth={seg.isMagnetized ? "2" : "1.1"}
                               />
+                              {/* Subtle inner astrological arc dot */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
-                                <text
-                                  x={cx}
-                                  y={cy - 124}
-                                  textAnchor="middle"
-                                  fontSize={segCount === 22 ? "14.5" : "16.5"}
-                                  dominantBaseline="central"
-                                  className="select-none pointer-events-none drop-shadow-md"
+                                <circle cx={cx} cy={cy - 157} r="1.1" fill={symbolColor} opacity="0.65" />
+                                {/* Esoteric Vector Line-Art SVG Icon */}
+                                <svg
+                                  x={cx - 8.5}
+                                  y={cy - 142}
+                                  width="17"
+                                  height="17"
+                                  viewBox="0 0 32 32"
+                                  filter="url(#arcanaSymbolGlow)"
                                 >
-                                  {seg.icon}
-                                </text>
+                                  {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
+                                </svg>
+                                {/* Roman Numeral */}
                                 <text
                                   x={cx}
-                                  y={cy - 96}
+                                  y={cy - 104}
                                   textAnchor="middle"
-                                  fontSize={segCount === 22 ? "8.5" : "10"}
+                                  fontSize={segCount === 22 ? "7.8" : "9"}
                                   fontWeight="900"
-                                  fill={seg.isMagnetized ? "#fef08a" : seg.textColor}
+                                  fill={symbolColor}
                                   dominantBaseline="central"
-                                  className="font-serif select-none pointer-events-none"
+                                  className="font-serif select-none pointer-events-none tracking-tighter"
                                 >
                                   {seg.roman}
                                 </text>
+                                <circle cx={cx} cy={cy - 88} r="0.9" fill={symbolColor} opacity="0.4" />
                               </g>
                             </g>
                           );
                         })}
 
-                        {/* Center Hub */}
-                        <circle cx="170" cy="170" r="34" fill="#09090b" stroke="#f59e0b" strokeWidth="3" />
-                        <circle cx="170" cy="170" r="27" fill="url(#hubGradient)" />
-                        <circle cx="170" cy="170" r="14" fill="#09090b" stroke="#fde047" strokeWidth="1.5" />
-                        <text x="170" y="175" textAnchor="middle" fontSize="16" dominantBaseline="central">
-                          🔮
-                        </text>
+                        {/* Outer & Inner Sacred Geometry Rings */}
+                        <circle cx="170" cy="170" r="162" fill="none" stroke="#fde68a" strokeWidth="0.6" strokeDasharray="2 4" opacity="0.45" />
+                        <circle cx="170" cy="170" r="82" fill="none" stroke="#c084fc" strokeWidth="0.7" strokeDasharray="3 3" opacity="0.35" />
+
+                        {/* Center Hub: Intertwined Crescent Moon & Radiant Sun */}
+                        <circle cx="170" cy="170" r="38" fill="#05030a" stroke="#fde68a" strokeWidth="2.2" />
+                        <circle cx="170" cy="170" r="33" fill="url(#hubObsidianGrad)" stroke="#a855f7" strokeWidth="1" strokeDasharray="2 2" />
+                        {/* 8-Pointed Celestial Star & Sun/Moon Emblem */}
+                        <g transform="translate(154, 154)">
+                          <svg width="32" height="32" viewBox="0 0 32 32">
+                            <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.2" opacity="0.55" />
+                            <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#c084fc" strokeWidth="0.9" opacity="0.4" />
+                            <circle cx="16" cy="16" r="7.5" fill="#090514" stroke="#fde68a" strokeWidth="1.5" />
+                            <path d="M17.5 10.5 A5.5 5.5 0 1 0 17.5 21.5 A4.2 4.2 0 1 1 17.5 10.5 Z" fill="#fde68a" />
+                            <circle cx="19.5" cy="16" r="1.6" fill="#f5d0fe" />
+                          </svg>
+                        </g>
                       </svg>
                     </div>
                   </div>
@@ -2217,18 +2254,18 @@ export default function MysteryQuestBoard({
 
                     return (
                       <>
-                        <div className="w-full max-w-sm mx-auto space-y-1.5 px-2 z-10">
+                        <div className="w-full max-w-sm mx-auto space-y-1 px-2 z-10">
                           <div className="flex items-center justify-between text-xs font-black">
-                            <span className="text-purple-300 uppercase tracking-wider text-[11px] flex items-center gap-1">
-                              ⚡ LỰC QUAY DAO ĐỘNG:
+                            <span className="text-purple-200 uppercase tracking-wider text-[11px] flex items-center gap-1">
+                              ⚡ LỰC QUAY ĐỊNH MỆNH:
                             </span>
                             <span
                               className={`font-mono text-xs px-2 py-0.5 rounded font-black border transition-colors ${
                                 effectivePower > 75
-                                  ? "bg-rose-500/30 text-rose-300 border-rose-400"
+                                  ? "bg-fuchsia-500/30 text-fuchsia-200 border-fuchsia-400"
                                   : effectivePower > 40
-                                  ? "bg-amber-500/30 text-amber-300 border-amber-400"
-                                  : "bg-emerald-500/30 text-emerald-300 border-emerald-400"
+                                  ? "bg-amber-500/30 text-amber-200 border-amber-400"
+                                  : "bg-indigo-500/30 text-indigo-200 border-indigo-400"
                               }`}
                             >
                               {effectivePower}%
@@ -2236,8 +2273,8 @@ export default function MysteryQuestBoard({
                           </div>
 
                           {/* Gauge track */}
-                          <div className="w-full h-4 rounded-full bg-black/80 border border-white/20 p-0.5 relative overflow-hidden shadow-inner">
-                            <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-30 text-[8px] font-mono font-bold text-white items-center">
+                          <div className="w-full h-3.5 rounded-full bg-[#05030a] border border-purple-400/30 p-0.5 relative overflow-hidden shadow-inner">
+                            <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-35 text-[8px] font-mono font-bold text-amber-100 items-center">
                               <span>0</span>
                               <span>25</span>
                               <span>50</span>
@@ -2246,61 +2283,60 @@ export default function MysteryQuestBoard({
                             </div>
                             <div
                               style={{ width: `${effectivePower}%` }}
-                              className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-emerald-500 via-yellow-400 via-orange-500 to-rose-600 shadow-[0_0_12px_rgba(245,158,11,0.6)]"
+                              className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-indigo-600 via-purple-500 to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.65)]"
                             />
                           </div>
 
-                          {/* Free-timing info without 20s countdown */}
-                          <div className="flex items-center justify-between text-[11px] text-white/70 pt-0.5">
-                            <span className="flex items-center gap-1 font-sans">
-                              <span>🎯</span>
-                              <span className="text-amber-300 font-medium">Chủ động chốt lực khi sẵn sàng</span>
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              {isSpinningActive ? "Đã khóa lực" : "Dao động Ping-pong"}
-                            </span>
-                          </div>
+                          {!isDisplay && (
+                            <div className="flex items-center justify-between text-[10px] text-white/70 pt-0.5">
+                              <span className="flex items-center gap-1 font-sans">
+                                <span>✦</span>
+                                <span className="text-amber-200/90 font-medium">Chủ động chốt lực khi sẵn sàng</span>
+                              </span>
+                              <span className="text-[10px] text-purple-300/70 font-mono">
+                                {isSpinningActive ? "Đã khóa lực" : "Dao động Ping-pong"}
+                              </span>
+                            </div>
+                          )}
                         </div>
 
                         {/* ── Spin Action Buttons ── */}
-                        <div className="text-center space-y-2 z-10 w-full max-w-sm pt-1">
-                          {canInteract ? (
+                        <div className="text-center space-y-1.5 z-10 w-full max-w-sm pt-0.5">
+                          {canActOnTarot && !isDisplay ? (
                             <button
                               type="button"
                               onClick={handleTriggerSpin}
                               disabled={isSpinningActive}
-                              className={`w-full py-3 px-6 rounded-2xl font-black text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
+                              className={`w-full py-2.5 sm:py-3 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
                                 isSpinningActive
                                   ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
-                                  : "bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 hover:from-purple-500 hover:to-amber-400 text-white border-amber-300/90 shadow-purple-900/60 hover:scale-[1.02] active:scale-95"
+                                  : "bg-gradient-to-r from-[#2e1065] via-[#7e22ce] to-[#d97706] hover:from-[#3b0764] hover:to-[#f59e0b] text-amber-100 border-amber-300/90 shadow-[0_0_25px_rgba(147,51,234,0.55)] hover:scale-[1.02] active:scale-95"
                               }`}
                             >
-                              {isSpinningActive ? "🌀 ĐANG QUAY VÒNG ĐỊNH MỆNH..." : `🎯 CHỐT LỰC & QUAY (${effectivePower}%)`}
+                              {isSpinningActive ? "🌀 ĐANG XOAY VÒNG TAROT..." : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
                             </button>
                           ) : (
-                            <div className="py-2.5 px-4 rounded-xl bg-black/50 border border-white/10 text-xs text-slate-300 italic text-center">
+                            <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
                               {isSpinningActive
-                                ? "🌀 Vòng quay định mệnh đang xoay..."
+                                ? "🌀 Vòng quay Major Arcana đang xoay..."
                                 : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
                             </div>
                           )}
 
-                          {(isAdmin || isSandbox) && !isSpinningActive && (
+                          {(isAdmin || isSandbox) && !isSpinningActive && !isDisplay && (
                             <button
                               type="button"
                               onClick={handleTriggerSpin}
-                              className="w-full py-1.5 px-3 rounded-xl bg-purple-900/40 hover:bg-purple-900/70 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
+                              className="w-full py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
                             >
                               ⚡ Admin Quay Hộ ({effectivePower}%)
                             </button>
                           )}
 
-                          <p className="text-[10px] text-white/60">
+                          <p className="text-[10px] text-purple-200/60 tracking-wide">
                             {isPenaltySurvivalMode
-                              ? "Tỷ lệ: 20% Thoát Hiểm (4 Bình Yên) | 80% Bẫy Sinh Tử (4 Khói Độc, 4 Hiệp Sĩ, 4 Hoàng Đế, 4 Thần Chết)"
-                              : getPerkType(promoPerk) === "SUN_MAGNET_PROMO"
-                              ? "Tỷ lệ Vàng: 75% Có Lợi (9 Sun, 4 Death Cướp, 2 Emperor) | 25% Rủi Ro (3 Fool, 1 Death Tặng, 1 Emperor)"
-                              : "Tỷ lệ Vàng: 70% Có Lợi (14 Nan Thưởng & Cướp) | 30% Rủi Ro (6 Nan Bẫy & Chia Điểm)"}
+                              ? "20 Ấn Sinh Tử: Ẩn giấu cơ hội Thoát Nạn Hòa Bình giữa các Ấn Phạt Cổ Xưa"
+                              : "22 Lá Major Arcana (0 – XXI): Điềm Lành, Đột Biến, Đánh Cược & Đoạt Mệnh ẩn sau mỗi ấn cổ"}
                           </p>
                         </div>
                       </>
@@ -2308,55 +2344,84 @@ export default function MysteryQuestBoard({
                   })()}
                 </div>
               ) : (
-                /* ── Trạng thái ĐÃ RÚT: Hiển thị 1 Thực Thể Cổ Xưa được chọn ── */
-                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-2.5 sm:p-3.5" : "p-4 sm:p-6"} rounded-3xl bg-black/70 border-2 border-purple-500/50 backdrop-blur-xl shadow-2xl animate-fade-in relative overflow-hidden`}>
-                  <div className="text-center mb-2 sm:mb-3">
-                    <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
-                      {drawnCard?.key === "THE_PEACE"
-                        ? "🕊️ THOÁT NẠN SINH TỬ (20%)"
-                        : isPenaltySurvivalMode
-                        ? "💀 TRỪNG PHẠT SINH TỬ (80%)"
-                        : drawnCard?.group === "COMMON"
-                        ? "✨ ĐỊNH MỆNH THƯỜNG"
-                        : drawnCard?.group === "MUTATION"
-                        ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN"
-                        : "💀 ĐỊNH MỆNH CHÍ MẠNG"}
-                    </span>
+                /* ── Trạng thái ĐÃ DỪNG KIM: Hiển thị Lá Bài Tarot Cổ Xưa (Suspense Hoặc Đã Mở) ── */
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4" : "p-4 sm:p-6"} rounded-3xl bg-gradient-to-b from-[#070410]/95 via-[#110924]/95 to-[#050309]/98 border-2 border-purple-500/50 backdrop-blur-xl shadow-[0_0_55px_rgba(88,28,135,0.5)] animate-fade-in relative overflow-hidden`}>
+                  {/* Ambient constellation backdrop */}
+                  <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px)", backgroundSize: "28px 28px" }} />
+
+                  <div className="text-center mb-2 sm:mb-3 z-10">
+                    {isPendingReveal ? (
+                      <span className="inline-block px-3.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] border bg-purple-950/80 text-amber-200 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse">
+                        ✦ ẤN CHỨNG MAJOR ARCANA • CHỜ KHAI MỞ ✦
+                      </span>
+                    ) : (
+                      <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
+                        {drawnCard?.key === "THE_PEACE"
+                          ? "🕊️ THOÁT NẠN SINH TỬ (20%)"
+                          : isPenaltySurvivalMode
+                          ? "💀 TRỪNG PHẠT SINH TỬ (80%)"
+                          : drawnCard?.group === "COMMON"
+                          ? "✨ ĐỊNH MỆNH THƯỜNG"
+                          : drawnCard?.group === "MUTATION"
+                          ? "⚡ ĐỊNH MỆNH ĐỘT BIẾN"
+                          : "💀 ĐỊNH MỆNH CHÍ MẠNG"}
+                      </span>
+                    )}
                   </div>
 
                   {/* Main Drawn Card Artwork */}
                   <div
-                    className={`relative ${isDisplay ? "w-40 h-56 sm:w-44 sm:h-64 p-3" : "w-48 h-72 sm:w-56 sm:h-80 p-4"} rounded-2xl flex flex-col items-center justify-between border-2 shadow-2xl bg-gradient-to-b ${cardVisual.gradient} ${cardVisual.border} transition-all duration-500`}
-                    style={{ boxShadow: `0 0 35px ${cardVisual.glow}, 0 0 10px rgba(255,255,255,0.2)` }}
+                    onClick={() => {
+                      if (isPendingReveal && canActOnTarot) {
+                        onTarotReveal?.();
+                      }
+                    }}
+                    className={`relative z-10 ${isDisplay ? "w-44 h-64 sm:w-48 sm:h-72 p-3.5" : "w-52 h-76 sm:w-60 sm:h-84 p-4"} rounded-2xl flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-500 ${
+                      isPendingReveal
+                        ? `bg-gradient-to-b from-[#0d071e] via-[#170e30] to-[#06040c] border-amber-400/85 ${canActOnTarot ? "cursor-pointer hover:scale-[1.03] hover:border-amber-300" : ""}`
+                        : `bg-gradient-to-b ${cardVisual.gradient} ${cardVisual.border}`
+                    }`}
+                    style={{
+                      boxShadow: isPendingReveal
+                        ? "0 0 40px rgba(168, 85, 247, 0.55), 0 0 15px rgba(251, 191, 36, 0.35), inset 0 0 25px rgba(251, 191, 36, 0.12)"
+                        : `0 0 38px ${cardVisual.glow}, 0 0 12px rgba(255,255,255,0.2)`,
+                    }}
                   >
+                    {/* Inner Classic Tarot Frame Border */}
+                    <div className="absolute inset-2 rounded-xl border border-amber-300/25 pointer-events-none" />
+
                     {/* Roman Numeral & English name */}
-                    <div className="w-full flex items-center justify-between border-b border-white/15 pb-1">
-                      <span className="font-serif font-black text-sm text-amber-300 tracking-wider">
+                    <div className="w-full flex items-center justify-between border-b border-amber-300/20 pb-1.5 px-1 z-10">
+                      <span className="font-serif font-black text-sm sm:text-base text-amber-300 tracking-wider drop-shadow">
                         {drawnCard?.roman}
                       </span>
-                      <span className="text-[10px] font-bold text-white/90 tracking-wider uppercase">
+                      <span className="text-[10px] font-bold text-amber-100/90 tracking-widest uppercase">
                         {drawnCard?.nameEn}
                       </span>
                     </div>
 
-                    {/* Central Entity Icon Artwork */}
-                    <div className="my-auto flex flex-col items-center justify-center">
-                      <span className={`${isDisplay ? "text-5xl sm:text-6xl" : "text-6xl sm:text-7xl"} drop-shadow-[0_0_20px_rgba(255,255,255,0.4)] animate-bounce-in`}>
-                        {drawnCard?.icon}
-                      </span>
+                    {/* Central Esoteric Vector Line-Art Emblem */}
+                    <div className="my-auto flex flex-col items-center justify-center relative py-2 z-10">
+                      <div className="absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-amber-300/20 animate-pulse pointer-events-none" />
+                      <div className="absolute w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-purple-500/10 blur-md pointer-events-none" />
+                      <TarotArcanaSvgIcon
+                        cardKey={drawnCard?.key || "THE_FOOL"}
+                        strokeColor="#fde68a"
+                        className={`${isDisplay ? "w-20 h-20 sm:w-24 sm:h-24" : "w-24 h-24 sm:w-28 sm:h-28"} animate-bounce-in`}
+                      />
                     </div>
 
-                    {/* Footer: Card Name and Concise Delta */}
-                    <div className="w-full text-center space-y-1">
-                      <h3 className={`text-lg sm:text-xl font-black uppercase tracking-wider ${cardVisual.textColor}`}>
-                        {drawnCard?.nameVi}
+                    {/* Footer: Card Name and Suspense / Revealed Delta */}
+                    <div className="w-full text-center space-y-1.5 z-10">
+                      <h3 className={`text-base sm:text-lg font-black uppercase tracking-wider ${isPendingReveal ? "text-amber-200 drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]" : cardVisual.textColor}`}>
+                        {isPendingReveal ? getPureArcanaNameVi(drawnCard?.nameVi) : drawnCard?.nameVi}
                       </h3>
-                      {tarotState?.isRevealPending ? (
-                        <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full text-xs font-black shadow-lg bg-purple-950/80 border border-purple-400 text-purple-200 animate-pulse">
-                          <span>🔮 ĐANG CHỜ LẬT BÀI...</span>
+                      {isPendingReveal ? (
+                        <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full text-[11px] font-black shadow-lg bg-[#1a0f35]/90 border border-amber-400/70 text-amber-200 animate-pulse">
+                          <span>✦ {canActOnTarot && !isDisplay ? "BẤM ĐỂ LẬT BÀI" : "CHỜ KHAI MỞ ĐỊNH MỆNH"} ✦</span>
                         </div>
                       ) : (
-                        <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/60 border border-white/20">
+                        <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/75 border border-white/25">
                           {drawnCard?.key === "THE_PEACE" && (
                             <span className="text-emerald-400">0đ (Thoát Nạn Thành Công 🕊️)</span>
                           )}
@@ -2396,27 +2461,27 @@ export default function MysteryQuestBoard({
                   </div>
 
                   {/* ── Reveal Button when isRevealPending ── */}
-                  {tarotState?.isRevealPending && (
-                    <div className="mt-3 text-center space-y-2 z-10 w-full max-w-xs">
-                      {canInteract ? (
+                  {isPendingReveal && (
+                    <div className="mt-3.5 text-center space-y-2 z-10 w-full max-w-xs">
+                      {canActOnTarot && !isDisplay ? (
                         <button
                           type="button"
                           onClick={() => onTarotReveal?.()}
-                          className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-pink-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-white font-black text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(234,179,8,0.5)] border-2 border-amber-300 hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pulse"
+                          className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-fuchsia-600 to-purple-700 hover:from-amber-400 hover:to-purple-600 text-white font-black text-sm uppercase tracking-wider shadow-[0_0_30px_rgba(234,179,8,0.55)] border-2 border-amber-300 hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pulse"
                         >
-                          ✨ LẬT BÀI ĐỊNH MỆNH
+                          ✨ LẬT BÀI ĐỊNH MỆNH ✨
                         </button>
                       ) : (
-                        <div className="py-2.5 px-4 rounded-xl bg-black/60 border border-white/10 text-xs text-slate-300 italic">
-                          Đang chờ Đội {currentTurnTeamName} lật bài...
+                        <div className="py-2.5 px-4 rounded-xl bg-black/60 border border-purple-400/25 text-xs text-purple-200/85 italic">
+                          Đang chờ Đội {currentTurnTeamName} lật mở ấn chứng...
                         </div>
                       )}
 
-                      {(isAdmin || isSandbox) && (
+                      {(isAdmin || isSandbox) && !isDisplay && (
                         <button
                           type="button"
                           onClick={() => onTarotReveal?.()}
-                          className="w-full py-1.5 px-3 rounded-xl bg-purple-900/50 hover:bg-purple-900/80 border border-purple-400/50 text-purple-200 text-xs font-bold transition cursor-pointer"
+                          className="w-full py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
                         >
                           ⚡ Admin Lật Bài Hộ
                         </button>
@@ -2425,13 +2490,13 @@ export default function MysteryQuestBoard({
                   )}
 
                   {/* ── Gamble Options when isGambling (after reveal) ── */}
-                  {!tarotState?.isRevealPending && tarotState?.isGambling && (
-                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/70 border-2 border-fuchsia-500/60 backdrop-blur-md shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
+                  {!isPendingReveal && tarotState?.isGambling && (
+                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/75 border-2 border-fuchsia-500/60 backdrop-blur-md shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
                       <div className="space-y-1">
                         <h4 className="text-sm font-black text-fuchsia-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                          <span>⭐</span>
-                          <span>CƠ HỘI ĐÁNH CƯỢC ĐỊNH MỆNH</span>
-                          <span>⭐</span>
+                          <span>✦</span>
+                          <span>CÁNH CỔNG ĐÁNH CƯỢC ĐỊNH MỆNH</span>
+                          <span>✦</span>
                         </h4>
                         <p className="text-xs text-purple-200/90 font-medium">
                           Bạn có muốn <strong>Quay Thêm</strong>? Nếu trúng lá xấu (Thần Chết/Hiệp Sĩ), vận xui sẽ được <strong>ĐẢO NGƯỢC</strong> thành may mắn (+{baseQuestionPoints || 10}đ)! Hoặc dừng lại bảo toàn (±0đ).
@@ -2439,7 +2504,7 @@ export default function MysteryQuestBoard({
                       </div>
 
                       <div className="flex items-center justify-center gap-3 pt-1">
-                        {canInteract ? (
+                        {canActOnTarot && !isDisplay ? (
                           <>
                             <button
                               type="button"
@@ -2463,7 +2528,7 @@ export default function MysteryQuestBoard({
                         )}
                       </div>
 
-                      {(isAdmin || isSandbox) && (
+                      {(isAdmin || isSandbox) && !isDisplay && (
                         <div className="flex gap-2 justify-center pt-2 border-t border-white/10">
                           <button
                             type="button"

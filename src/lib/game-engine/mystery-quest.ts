@@ -2158,6 +2158,7 @@ export function handleFlipCard({
     if (!tile || tile.isOpened) {
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
+    state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
 
     // ═════════════════════════════════════════════════════════════════════════
     // CHẾ ĐỘ SINH TỬ (SURVIVAL PENALTY MODE) - LẬT CẶP KHI TRẢ LỜI SAI:
@@ -4588,28 +4589,28 @@ export function handleAncientTarotDraw({
  * - 🗡️ Hiệp Sĩ (Knight): 0 ô (0%)
  */
 export const MAJOR_ARCANA_WHEEL_SEGMENTS: TarotWheelSegment[] = [
-  { index: 0, key: "THE_FOOL", nameVi: "Kẻ Khờ", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 1, key: "THE_MAGICIAN", nameVi: "Pháp Sư", nameEn: "The Magician", icon: "🪄", roman: "I", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 2, key: "THE_HIGH_PRIESTESS", nameVi: "Nữ Tư Tế", nameEn: "The High Priestess", icon: "🌙", roman: "II", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 3, key: "THE_EMPRESS", nameVi: "Nữ Hoàng", nameEn: "The Empress", icon: "🌸", roman: "III", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 4, key: "THE_EMPEROR", nameVi: "Hoàng Đế", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 5, key: "THE_HIEROPHANT", nameVi: "Giáo Hoàng", nameEn: "The Hierophant", icon: "⛪", roman: "V", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 6, key: "THE_LOVERS", nameVi: "Người Tình", nameEn: "The Lovers", icon: "💞", roman: "VI", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 7, key: "THE_CHARIOT", nameVi: "Chiến Xa", nameEn: "The Chariot", icon: "🏇", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 8, key: "STRENGTH", nameVi: "Sức Mạnh", nameEn: "Strength", icon: "💪", roman: "VIII", group: "COMMON", bgColor: "#1e3a8a", borderColor: "#3b82f6", textColor: "#bfdbfe" },
-  { index: 9, key: "THE_HERMIT", nameVi: "Ẩn Sĩ", nameEn: "The Hermit", icon: "🔦", roman: "IX", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 10, key: "WHEEL_OF_FORTUNE", nameVi: "Bánh Xe Fortune", nameEn: "Wheel of Fortune", icon: "🎡", roman: "X", group: "COMMON", bgColor: "#0f766e", borderColor: "#14b8a6", textColor: "#ccfbf1" },
-  { index: 11, key: "JUSTICE", nameVi: "Công Lý", nameEn: "Justice", icon: "⚖️", roman: "XI", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 12, key: "THE_HANGED_MAN", nameVi: "Người Treo Ngược", nameEn: "The Hanged Man", icon: "🙃", roman: "XII", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 14, key: "TEMPERANCE", nameVi: "Điều Độ", nameEn: "Temperance", icon: "🏺", roman: "XIV", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 15, key: "THE_DEVIL", nameVi: "Ác Quỷ", nameEn: "The Devil", icon: "😈", roman: "XV", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 16, key: "THE_TOWER", nameVi: "Tháp Sét", nameEn: "The Tower", icon: "⚡", roman: "XVI", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 17, key: "THE_STAR", nameVi: "Ngôi Sao", nameEn: "The Star", icon: "⭐", roman: "XVII", group: "COMMON", bgColor: "#701a75", borderColor: "#e879f9", textColor: "#fae8ff" },
-  { index: 18, key: "THE_MOON", nameVi: "Mặt Trăng", nameEn: "The Moon", icon: "🌑", roman: "XVIII", group: "COMMON", bgColor: "#701a75", borderColor: "#e879f9", textColor: "#fae8ff" },
-  { index: 19, key: "THE_SUN", nameVi: "Mặt Trời", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#b45309", borderColor: "#fde047", textColor: "#ffffff" },
-  { index: 20, key: "JUDGEMENT", nameVi: "Phán Xuyết", nameEn: "Judgement", icon: "📯", roman: "XX", group: "COMMON", bgColor: "#1e3a8a", borderColor: "#3b82f6", textColor: "#bfdbfe" },
-  { index: 21, key: "THE_WORLD", nameVi: "Thế Giới", nameEn: "The World", icon: "🌍", roman: "XXI", group: "COMMON", bgColor: "#065f46", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 0, key: "THE_FOOL", nameVi: "Kẻ Khờ", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 1, key: "THE_MAGICIAN", nameVi: "Pháp Sư", nameEn: "The Magician", icon: "🪄", roman: "I", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 2, key: "THE_HIGH_PRIESTESS", nameVi: "Nữ Tư Tế", nameEn: "The High Priestess", icon: "🌙", roman: "II", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 3, key: "THE_EMPRESS", nameVi: "Nữ Hoàng", nameEn: "The Empress", icon: "🌸", roman: "III", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 4, key: "THE_EMPEROR", nameVi: "Hoàng Đế", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 5, key: "THE_HIEROPHANT", nameVi: "Giáo Hoàng", nameEn: "The Hierophant", icon: "⛪", roman: "V", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 6, key: "THE_LOVERS", nameVi: "Người Tình", nameEn: "The Lovers", icon: "💞", roman: "VI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 7, key: "THE_CHARIOT", nameVi: "Chiến Xa", nameEn: "The Chariot", icon: "🏇", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 8, key: "STRENGTH", nameVi: "Sức Mạnh", nameEn: "Strength", icon: "💪", roman: "VIII", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 9, key: "THE_HERMIT", nameVi: "Ẩn Sĩ", nameEn: "The Hermit", icon: "🔦", roman: "IX", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 10, key: "WHEEL_OF_FORTUNE", nameVi: "Bánh Xe Vận Mệnh", nameEn: "Wheel of Fortune", icon: "🎡", roman: "X", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 11, key: "JUSTICE", nameVi: "Công Lý", nameEn: "Justice", icon: "⚖️", roman: "XI", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 12, key: "THE_HANGED_MAN", nameVi: "Người Treo Ngược", nameEn: "The Hanged Man", icon: "🙃", roman: "XII", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 14, key: "TEMPERANCE", nameVi: "Điều Độ", nameEn: "Temperance", icon: "🏺", roman: "XIV", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 15, key: "THE_DEVIL", nameVi: "Ác Quỷ", nameEn: "The Devil", icon: "😈", roman: "XV", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 16, key: "THE_TOWER", nameVi: "Tháp Sét", nameEn: "The Tower", icon: "⚡", roman: "XVI", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 17, key: "THE_STAR", nameVi: "Ngôi Sao", nameEn: "The Star", icon: "⭐", roman: "XVII", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 18, key: "THE_MOON", nameVi: "Mặt Trăng", nameEn: "The Moon", icon: "🌑", roman: "XVIII", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 19, key: "THE_SUN", nameVi: "Mặt Trời", nameEn: "The Sun", icon: "☀️", roman: "XIX", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#fde68a" },
+  { index: 20, key: "JUDGEMENT", nameVi: "Phán Quyết", nameEn: "Judgement", icon: "📯", roman: "XX", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#e0e7ff" },
+  { index: 21, key: "THE_WORLD", nameVi: "Thế Giới", nameEn: "The World", icon: "🌍", roman: "XXI", group: "COMMON", bgColor: "#110926", borderColor: "#b45309", textColor: "#f5d0fe" },
 ];
 
 export const TAROT_WHEEL_SEGMENTS: TarotWheelSegment[] = MAJOR_ARCANA_WHEEL_SEGMENTS;
@@ -4627,26 +4628,26 @@ export const TAROT_WHEEL_SEGMENTS_ROUND_2: TarotWheelSegment[] = MAJOR_ARCANA_WH
  * - Tuyệt đối 0% ô cộng điểm (không có Mặt Trời, không có Thần Chết Cướp Điểm)
  */
 export const TAROT_SURVIVAL_WHEEL_SEGMENTS: TarotWheelSegment[] = [
-  { index: 0, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 1, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 2, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 3, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 4, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 5, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 6, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 7, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 8, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 9, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 10, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 11, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 12, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 14, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 15, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 16, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 17, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 18, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
-  { index: 19, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 0, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 1, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 2, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 3, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 4, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 5, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 6, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 7, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 8, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 9, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 10, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 11, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 12, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 14, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 15, key: "THE_PEACE", nameVi: "Bình Yên Thoát Nạn", nameEn: "The Peace", icon: "🕊️", roman: "XXI", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 16, key: "THE_KNIGHT", nameVi: "Hiệp Sĩ (The Knight)", nameEn: "The Knight", icon: "🗡️", roman: "VII", group: "MUTATION", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
+  { index: 17, key: "THE_EMPEROR", nameVi: "Hoàng Đế (The Emperor)", nameEn: "The Emperor", icon: "👑", roman: "IV", group: "MUTATION", bgColor: "#0b1124", borderColor: "#4338ca", textColor: "#f5d0fe" },
+  { index: 18, key: "THE_DEATH", nameVi: "Thần Chết (Tặng Điểm)", nameEn: "Death", icon: "💀", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
+  { index: 19, key: "THE_FOOL", nameVi: "Kẻ Khờ (Khói Độc)", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" },
 ];
 
 /**
@@ -5301,7 +5302,8 @@ export function handleAncientTarotSpinWheel({
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
     state.potPoints = 0;
-    state.phase = "TURN_SUMMARY";
+    // Giữ phase = "PUSH_YOUR_LUCK" trong khi chờ người chơi bấm Lật Bài Định Mệnh (isRevealPending: true)
+    state.phase = "PUSH_YOUR_LUCK";
     state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotState = {
       ...(state.tarotState || {}),
@@ -5342,8 +5344,9 @@ export function handleAncientTarotSpinWheel({
   }
 
   state.potPoints = 0;
+  // Giữ phase = "PUSH_YOUR_LUCK" cho tới khi người chơi bấm Lật Bài Định Mệnh
+  state.phase = "PUSH_YOUR_LUCK";
   if (!isGambleTrigger) {
-    state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = isSurvivalMode ? (drawnCard.key === "THE_PEACE" ? "SURVIVAL_ESCAPE" : "SURVIVAL_FAILED") : "TAROT_WHEEL_SPUN";
   }
 
@@ -5495,8 +5498,9 @@ export function handleAncientTarotGambleDecision({
   const { drawnCard, finalScoreDelta, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isGambleAgain = Boolean(isGambleTrigger);
 
+  // Giữ phase = "PUSH_YOUR_LUCK" cho tới khi người chơi bấm Lật Bài Định Mệnh
+  state.phase = "PUSH_YOUR_LUCK";
   if (!isGambleAgain) {
-    state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotGambleState = undefined;
   } else {

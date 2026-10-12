@@ -263,9 +263,9 @@ export default function GameQuestion({
       return true;
     }
 
-    // 6. TOURNAMENT:
+    // 6. TOURNAMENT: Cả 2 đội thi đấu 1v1 (chính thức) và các đội khán giả (trả lời thử +10đ Tiên Tri) đều được nộp bài!
     if (roomMode === "TOURNAMENT") {
-      return isTournamentCompetitor;
+      return true;
     }
 
     // 7. MYSTERY_QUEST: Chỉ duy nhất đội đang làm lượt mới được trả lời!
@@ -468,7 +468,7 @@ export default function GameQuestion({
                   GÓC KHÁN GIẢ: DỰ ĐOÁN & CỔ VŨ
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Dự đoán đúng đội chiến thắng để nhận +10 Điểm Tiên Tri!
+                  Dự đoán đúng đội chiến thắng nhận +15đ · Trả lời thử câu hỏi nhận +10đ Tiên Tri!
                 </p>
               </div>
             </div>
@@ -498,7 +498,7 @@ export default function GameQuestion({
                 >
                   <span className="text-base font-black truncate max-w-[140px]">{tournamentMatch.team1Name || "Đội 1"}</span>
                   <span className="text-[10px] text-cyan-300">
-                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team1Id ? "✓ Đã dự đoán" : "Chọn thắng (+10đ)"}
+                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team1Id ? "✓ Đã dự đoán" : "Chọn thắng (+15đ)"}
                   </span>
                 </button>
 
@@ -514,7 +514,7 @@ export default function GameQuestion({
                 >
                   <span className="text-base font-black truncate max-w-[140px]">{tournamentMatch.team2Name || "Đội 2"}</span>
                   <span className="text-[10px] text-pink-300">
-                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team2Id ? "✓ Đã dự đoán" : "Chọn thắng (+10đ)"}
+                    {tournamentMatch.predictions?.[myTeamId || ""] === tournamentMatch.team2Id ? "✓ Đã dự đoán" : "Chọn thắng (+15đ)"}
                   </span>
                 </button>
               </div>
@@ -901,12 +901,14 @@ export default function GameQuestion({
               <span className="text-xs uppercase text-yellow-300 tracking-wider">🏆 Trận đối đầu 1v1: </span>
               <span className="font-bold text-foreground">{question.primaryTeamName ?? "Đang thi đấu"}</span>
             </div>
-            {isPrimaryTeam ? (
+            {isTournamentCompetitor ? (
               <span className="px-2.5 py-1 rounded-full bg-yellow-500/20 text-yellow-300 text-xs font-bold border border-yellow-500/30">
-                Trận của bạn!
+                ⚡ Trận của đội bạn (Đua tốc độ nhận điểm %)!
               </span>
             ) : (
-              <span className="text-xs text-muted-foreground">Khán giả</span>
+              <span className="px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 text-xs font-bold border border-cyan-500/30">
+                🔮 Khán giả: Trả lời thử (+10đ Tiên Tri)
+              </span>
             )}
           </div>
         </div>

@@ -755,7 +755,46 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
     return matches;
   }
 
-  if (teamCount <= 4) {
+  if (teamCount === 3) {
+    // 3 đội: Hạt giống 1 (teams[0]) nhận vé Đặc Cách (BYE) vào thẳng trận Chung kết!
+    // Bán kết: Hạt giống 2 (teams[1]) đối đầu Hạt giống 3 (teams[2]).
+    matches.push(
+      {
+        id: "SF-1",
+        roundIndex: 0,
+        roundName: "Bán kết",
+        matchIndex: 0,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "FINAL",
+        roundIndex: 1,
+        roundName: "Chung kết",
+        matchIndex: 1,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      }
+    );
+    return matches;
+  }
+
+  if (teamCount === 4) {
     matches.push(
       {
         id: "SF-1",
@@ -765,9 +804,9 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
         team1Id: teams[0]?.id,
         team1Name: teams[0]?.name,
         team1Color: teams[0]?.color,
-        team2Id: teams[3]?.id || teams[1]?.id,
-        team2Name: teams[3]?.name || teams[1]?.name,
-        team2Color: teams[3]?.color || teams[1]?.color,
+        team2Id: teams[3]?.id,
+        team2Name: teams[3]?.name,
+        team2Color: teams[3]?.color,
         team1Score: 0,
         team2Score: 0,
         status: "IN_PROGRESS",
@@ -806,10 +845,158 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
     return matches;
   }
 
-  // 8 teams: QF (4) -> SF (2) -> Final (1)
-  for (let i = 0; i < 4; i++) {
-    const t1 = teams[i * 2];
-    const t2 = teams[i * 2 + 1];
+  if (teamCount === 5) {
+    // 5 đội: Hạt giống 1, 2, 3 nhận vé BYE vào Bán kết. Hạt giống 4 vs 5 đá Tứ kết tranh vé còn lại.
+    matches.push(
+      {
+        id: "QF-1",
+        roundIndex: 0,
+        roundName: "Vòng loại Tứ kết",
+        matchIndex: 0,
+        team1Id: teams[3]?.id,
+        team1Name: teams[3]?.name,
+        team1Color: teams[3]?.color,
+        team2Id: teams[4]?.id,
+        team2Name: teams[4]?.name,
+        team2Color: teams[4]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-1",
+        roundIndex: 1,
+        roundName: "Bán kết 1",
+        matchIndex: 1,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-2",
+        roundIndex: 1,
+        roundName: "Bán kết 2",
+        matchIndex: 2,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "FINAL",
+        roundIndex: 2,
+        roundName: "Chung kết",
+        matchIndex: 3,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      }
+    );
+    return matches;
+  }
+
+  if (teamCount === 6) {
+    // 6 đội: Hạt giống 1, 2 vào thẳng Bán kết. 4 đội còn lại chia 2 cặp Tứ kết.
+    matches.push(
+      {
+        id: "QF-1",
+        roundIndex: 0,
+        roundName: "Tứ kết 1",
+        matchIndex: 0,
+        team1Id: teams[2]?.id,
+        team1Name: teams[2]?.name,
+        team1Color: teams[2]?.color,
+        team2Id: teams[5]?.id,
+        team2Name: teams[5]?.name,
+        team2Color: teams[5]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "QF-2",
+        roundIndex: 0,
+        roundName: "Tứ kết 2",
+        matchIndex: 1,
+        team1Id: teams[3]?.id,
+        team1Name: teams[3]?.name,
+        team1Color: teams[3]?.color,
+        team2Id: teams[4]?.id,
+        team2Name: teams[4]?.name,
+        team2Color: teams[4]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-1",
+        roundIndex: 1,
+        roundName: "Bán kết 1",
+        matchIndex: 2,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-2",
+        roundIndex: 1,
+        roundName: "Bán kết 2",
+        matchIndex: 3,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "FINAL",
+        roundIndex: 2,
+        roundName: "Chung kết",
+        matchIndex: 4,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      }
+    );
+    return matches;
+  }
+
+  // 7 hoặc 8+ đội
+  const isSeven = teamCount === 7;
+  const qfCount = isSeven ? 3 : 4;
+  for (let i = 0; i < qfCount; i++) {
+    const t1 = isSeven ? teams[i + 1] : teams[i * 2];
+    const t2 = isSeven ? teams[6 - i] : teams[i * 2 + 1];
     matches.push({
       id: `QF-${i + 1}`,
       roundIndex: 0,
@@ -828,12 +1015,16 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
       totalQuestionsInMatch: questionsPerMatch,
     });
   }
+
   matches.push(
     {
       id: "SF-1",
       roundIndex: 1,
       roundName: "Bán kết 1",
-      matchIndex: 4,
+      matchIndex: qfCount,
+      team1Id: isSeven ? teams[0]?.id : undefined,
+      team1Name: isSeven ? teams[0]?.name : undefined,
+      team1Color: isSeven ? teams[0]?.color : undefined,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -844,7 +1035,7 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
       id: "SF-2",
       roundIndex: 1,
       roundName: "Bán kết 2",
-      matchIndex: 5,
+      matchIndex: qfCount + 1,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -855,7 +1046,7 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
       id: "FINAL",
       roundIndex: 2,
       roundName: "Chung kết",
-      matchIndex: 6,
+      matchIndex: qfCount + 2,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -6375,6 +6566,8 @@ export function registerSocketHandlers(io: IO) {
       if (nextPending) {
         nextPending.status = "IN_PROGRESS";
         tournament.currentMatchId = nextPending.id;
+        tournament.activeRecapMatchId = undefined;
+        tournament.recapCountdownSeconds = undefined;
         io.to(`room:${room.code}`).emit("game:tournament:update", tournament);
       }
     });
@@ -7628,21 +7821,8 @@ async function processAnswerSubmission({
       return;
     }
   } else if (room.mode === "TOURNAMENT") {
-    const tournament = roomTournaments.get(room.id);
-    const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
-    const isMatchActor = currentMatch && (
-      actorId === currentMatch.team1Id ||
-      actorId === currentMatch.team2Id ||
-      effectiveTeamId === currentMatch.team1Id ||
-      effectiveTeamId === currentMatch.team2Id
-    );
-    if (currentMatch && !isMatchActor && !isAdminOverride) {
-      if (socket) {
-        socket.emit("error", "Chỉ 2 đội trong trận đối đầu hiện tại mới được trả lời!");
-        if (tournament) socket.emit("game:tournament:update", tournament);
-      }
-      return;
-    }
+    // Trong TOURNAMENT mode: 2 đội đối đầu 1v1 trả lời tính điểm trận đấu chính thức.
+    // Các đội khán giả/chờ lượt/bị loại được phép trả lời thử để tích lũy +10 Điểm Tiên Tri (Oracle Points)!
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
     const isGridActor = gridState && (actorId === gridState.currentTurnTeamId || effectiveTeamId === gridState.currentTurnTeamId);
@@ -8341,29 +8521,81 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
   const team1HasHuman = team1Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
   const team2HasHuman = team2Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
 
+  const timeLimitSec = question.timeLimit || 20;
+  const qStartedAt = roomQuestionStartedAt.get(roomId) || Date.now();
+
+  // 1. Tính điểm % thời gian cho Đội 1 (Time-decay Speed Scoring: 50% - 100%)
   if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id && (isSandboxRoom || team1HasHuman)) {
-    currentMatch.team1Score += question.points;
-    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, question.points);
+    const spentMs = t1Ans.timeSpent || (t1Ans.submittedAt ? t1Ans.submittedAt.getTime() - qStartedAt : 2000);
+    const remainingSec = Math.max(0, (timeLimitSec * 1000 - spentMs) / 1000);
+    const speedFactor = 0.5 + 0.5 * (remainingSec / timeLimitSec);
+
+    const activeCards1 = roomQuestionTeamCards.get(qKey)?.get(currentMatch.team1Id) || [];
+    const mult1 = activeCards1.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE") ? 2 : 1;
+
+    const earnedPoints = Math.round(question.points * Math.min(1, Math.max(0.5, speedFactor)) * mult1);
+    currentMatch.team1Score += earnedPoints;
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, earnedPoints);
     scoreUpdates.push({ teamId: currentMatch.team1Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
 
+  // 2. Tính điểm % thời gian cho Đội 2 (Time-decay Speed Scoring: 50% - 100%)
   if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id && (isSandboxRoom || team2HasHuman)) {
-    currentMatch.team2Score += question.points;
-    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, question.points);
+    const spentMs = t2Ans.timeSpent || (t2Ans.submittedAt ? t2Ans.submittedAt.getTime() - qStartedAt : 2000);
+    const remainingSec = Math.max(0, (timeLimitSec * 1000 - spentMs) / 1000);
+    const speedFactor = 0.5 + 0.5 * (remainingSec / timeLimitSec);
+
+    const activeCards2 = roomQuestionTeamCards.get(qKey)?.get(currentMatch.team2Id) || [];
+    const mult2 = activeCards2.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE") ? 2 : 1;
+
+    const earnedPoints = Math.round(question.points * Math.min(1, Math.max(0.5, speedFactor)) * mult2);
+    currentMatch.team2Score += earnedPoints;
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, earnedPoints);
     scoreUpdates.push({ teamId: currentMatch.team2Id, score: tRes.newScore, delta: tRes.effectiveDelta });
+  }
+
+  // 3. Chấm điểm Trả Lời Thử cho Khán Giả (+10 Điểm Tiên Tri cho mỗi câu đúng)
+  const spectatorAnswers = await prisma.answer.findMany({
+    where: {
+      roomId,
+      questionId,
+      teamId: { notIn: [currentMatch.team1Id, currentMatch.team2Id].filter(Boolean) as string[] },
+    },
+    orderBy: { submittedAt: "desc" },
+  });
+
+  let oracleUpdated = false;
+  tournament.oracleScores = tournament.oracleScores || {};
+  for (const sAns of spectatorAnswers) {
+    if (sAns.isCorrect && sAns.teamId) {
+      tournament.oracleScores[sAns.teamId] = (tournament.oracleScores[sAns.teamId] || 0) + 10;
+      oracleUpdated = true;
+    }
   }
 
   currentMatch.currentQuestionInMatch++;
 
+  // 4. Kiểm tra hoàn thành trận đấu hoặc Sudden Death
   if (currentMatch.currentQuestionInMatch >= currentMatch.totalQuestionsInMatch) {
     if (currentMatch.team1Score === currentMatch.team2Score && currentMatch.team1Id && currentMatch.team2Id) {
-      // Sudden Death: Hai đội hòa điểm ở vòng knockout, tự động thêm 1 câu hỏi phụ trực tiếp giữa 2 đội
+      // Sudden Death: Hai đội hòa điểm ở vòng knockout -> tự động thêm 1 câu hỏi phụ 1v1
       currentMatch.totalQuestionsInMatch += 1;
+      currentMatch.isTieBreaker = true;
     } else {
       currentMatch.status = "COMPLETED";
+      currentMatch.isTieBreaker = false;
       const winnerId = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
       const winnerName = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
       currentMatch.winnerTeamId = winnerId;
+
+      currentMatch.recap = {
+        team1Score: currentMatch.team1Score,
+        team2Score: currentMatch.team2Score,
+        winnerId,
+        winnerName: winnerName || "?",
+      };
+      tournament.activeRecapMatchId = currentMatch.id;
+      tournament.recapCountdownSeconds = 8;
 
       if (currentMatch.id === "FINAL") {
         tournament.championTeamId = winnerId;
@@ -8376,30 +8608,29 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
           if (!nextMatch.team1Id) {
             nextMatch.team1Id = winnerId;
             nextMatch.team1Name = winnerName;
+            nextMatch.team1Color = winnerId === currentMatch.team1Id ? currentMatch.team1Color : currentMatch.team2Color;
           } else if (!nextMatch.team2Id) {
             nextMatch.team2Id = winnerId;
             nextMatch.team2Name = winnerName;
+            nextMatch.team2Color = winnerId === currentMatch.team1Id ? currentMatch.team1Color : currentMatch.team2Color;
           }
-        }
-
-        const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
-        if (nextPending) {
-          nextPending.status = "IN_PROGRESS";
-          tournament.currentMatchId = nextPending.id;
         }
       }
 
-      // Award Oracle Points (+10 points) for spectators who correctly predicted the winner
+      // Trao +15 Điểm Tiên Tri cho Khán Giả dự đoán đúng Đội Vô Địch/Thắng Trận
       if (currentMatch.predictions && winnerId) {
-        tournament.oracleScores = tournament.oracleScores || {};
         for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
           if (predWinnerId === winnerId) {
-            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 15;
+            oracleUpdated = true;
           }
         }
-        io.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
       }
     }
+  }
+
+  if (oracleUpdated) {
+    io.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
   }
 
   if (scoreUpdates.length > 0) {

@@ -146,23 +146,26 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
   },
   TOURNAMENT: {
     mode: "TOURNAMENT",
-    nameVi: "Đấu loại trực tiếp 1v1 (Tournament)",
+    nameVi: "Đấu loại trực tiếp 1v1 (Tournament Speed Duel)",
     emoji: "🏆",
-    taglineVi: "3 mức điểm 10/20/30 & Nhánh Tứ kết - Bán kết - Chung kết",
-    summaryVi: "Giải đấu cây nhánh đối kháng trực tiếp 1v1 với 3 mức điểm 10, 20, 30 điểm phân bổ đều 33%. Hai đội chạm trán nhau trong một số câu hỏi nhất định, đội thắng giành vé vào vòng trong.",
+    taglineVi: "Đối kháng tốc độ 1v1, Sudden Death & Đường đua Tiên Tri Khán Giả",
+    summaryVi: "Giải đấu cây nhánh đối kháng 1v1 đỉnh cao. Cả 2 đội cùng trả lời đồng thời và nhận điểm theo % thời gian còn lại (đúng càng nhanh điểm càng cao). Khán giả và các đội chưa đến lượt tham gia dự đoán và trả lời thử để tranh cúp Đại Tiên Tri.",
     mechanicsVi: [
-      "3 mức điểm cố định: 10, 20, 30 điểm phân bổ đều mỗi mức 33%.",
-      "Hệ thống tự động xếp nhánh thi đấu (Tứ kết, Bán kết, Chung kết).",
-      "Mỗi trận đấu gồm M câu hỏi (mặc định 3 câu). Chỉ 2 đội trong cặp đấu mới có quyền trả lời và ghi điểm trận.",
-      "Các đội chưa đến lượt sẽ theo dõi diễn biến trận đấu trực tiếp trên màn hình.",
-      "Đội ghi nhiều điểm hơn sau M câu sẽ bước tiếp vào vòng sau; đội thua bị loại.",
+      "Đối đầu đồng thời có xét tốc độ: Cả 2 đội cùng quan sát và trả lời câu hỏi trong thời gian đếm ngược.",
+      "Tính điểm theo % thời gian còn lại: Đội trả lời đúng nhận từ 50% đến 100% điểm gốc tùy theo tốc độ (trả lời càng nhanh điểm càng cao). Trả lời sai nhận 0 điểm.",
+      "Đấu trọn vẹn số câu quy định: Mỗi trận gồm N câu hỏi (mặc định 3 câu). Đội có tổng điểm trận cao hơn sẽ giành vé đi tiếp.",
+      "Sudden Death (Bàn thắng vàng): Nếu hòa điểm sau N câu, tự động kích hoạt câu hỏi phụ 1v1 phân định thắng thua ngay.",
+      "Vòng Sơ Loại Xếp Hạng (Seeding): Nếu số đội lẻ (3, 5, 6, 7 đội), các đội cùng thi đấu 2 câu khởi động để chọn và xếp hạt giống vào cây nhánh chuẩn.",
+      "Đường đua kép Khán Giả: Đội ngồi ngoài được dự đoán đội thắng (+15đ), cổ vũ, và trả lời thử trên điện thoại (+10đ) để đua top 'Đại Tiên Tri'.",
+      "Thẻ bổ trợ công bằng (Fair-play): Chỉ cho phép thẻ hỗ trợ bản thân (50/50, TIME_PLUS, SKIP, SCORE_X2); cấm hoàn toàn các thẻ quấy phá đối thủ.",
     ],
     scoringVi: [
-      "Điểm số trong trận quyết định người chiến thắng của cặp đấu.",
-      "Đội chiến thắng trận Chung kết sẽ đăng quang Ngôi Vô Địch 👑.",
+      "Điểm trận 1v1: Tính theo % thời gian còn lại [Điểm gốc × (0.5 + 0.5 × t_còn / t_tổng)].",
+      "Điểm Tiên Tri (Khán giả): +15đ khi dự đoán đúng đội thắng trận, +10đ khi trả lời thử câu hỏi chính xác.",
+      "Đội chiến thắng trận Chung kết đăng quang Ngôi Vô Địch 👑; Khán giả điểm cao nhất nhận Cúp Đại Tiên Tri 🔮.",
     ],
     tipsVi: [
-      "Nắm chắc điểm từng câu trong cặp đấu 1v1 vì khoảng cách chỉ 1 câu đúng có thể định đoạt số phận trận đấu!",
+      "Ưu tiên độ chính xác kết hợp tốc độ bấm bài nhanh để tối đa hóa điểm % thời gian trong cặp đấu 1v1!",
     ],
   },
   GRID_CARO: {
@@ -671,8 +674,10 @@ export interface TournamentMatch {
   status: "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
   currentQuestionInMatch: number;
   totalQuestionsInMatch: number;
+  isTieBreaker?: boolean;
   predictions?: Record<string, string>; // teamId -> predictedWinnerId
   cheers?: { countA: number; countB: number };
+  recap?: { team1Score: number; team2Score: number; winnerId?: string; winnerName?: string };
 }
 
 export interface TournamentState {
@@ -681,8 +686,13 @@ export interface TournamentState {
   questionsPerMatch: number;
   championTeamId?: string;
   championTeamName?: string;
-  oracleScores?: Record<string, number>; // teamId -> prediction points (+10 each correct)
+  oracleScores?: Record<string, number>; // teamId -> prediction points (+15 predict, +10 answer)
   cheers?: { countA: number; countB: number };
+  isSeedingRound?: boolean;
+  seedingTotalQuestions?: number;
+  currentSeedingQuestion?: number;
+  activeRecapMatchId?: string;
+  recapCountdownSeconds?: number;
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────

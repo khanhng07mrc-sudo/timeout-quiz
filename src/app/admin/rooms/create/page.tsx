@@ -1036,13 +1036,13 @@ export default function CreateRoomPage() {
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Mỗi cặp đối đầu sẽ tranh tài trong {tournamentQuestionsPerMatch} câu hỏi, đội ghi nhiều điểm hơn sẽ đi tiếp vào vòng sau.
+                    Mỗi cặp đối đầu tranh tài trong {tournamentQuestionsPerMatch} câu hỏi với cơ chế tính điểm % thời gian (đúng nhanh hơn được nhiều điểm hơn). Đội nhiều điểm hơn sẽ đi tiếp.
                   </p>
                 </div>
                 <div className="p-3 rounded-lg bg-[#151728]/80 border border-border flex flex-col justify-center">
-                  <p className="text-xs font-bold text-foreground">Sơ đồ nhánh đấu tự động</p>
+                  <p className="text-xs font-bold text-foreground">Sơ đồ nhánh đấu & Đường đua Tiên Tri</p>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Hệ thống sẽ tự sinh nhánh đấu (Tứ kết, Bán kết, Chung kết) dựa theo số lượng đội tham gia. Các đội khác sẽ theo dõi trận đấu trực tiếp.
+                    Hệ thống tự động xếp nhánh đấu (Tứ kết, Bán kết, Chung kết) và xử lý đặc cách (BYE) khi số đội lẻ. Các đội ngồi ngoài tham gia dự đoán (+15đ) và trả lời thử (+10đ) để đua cúp Đại Tiên Tri.
                   </p>
                 </div>
               </div>

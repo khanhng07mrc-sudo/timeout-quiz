@@ -1380,14 +1380,20 @@ export default function AdminRoomPage() {
                     onClick={() => emit("admin:tournament:advance")}
                     className="px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-black font-bold text-xs shadow transition-all active:scale-95"
                   >
-                    ➡️ Trận tiếp theo
+                    ➡️ Bắt đầu trận tiếp theo
                   </button>
                 )}
               </div>
               {roomState.tournamentState && (
-                <div className="text-xs text-muted-foreground flex flex-wrap gap-3">
+                <div className="text-xs text-muted-foreground flex flex-wrap gap-3 items-center">
                   <span>Trận đang đấu: <strong>{roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team1Name ?? "?"}</strong> vs <strong>{roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team2Name ?? "?"}</strong></span>
                   <span>Điểm trận: {roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team1Score ?? 0} - {roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.team2Score ?? 0}</span>
+                  {roomState.tournamentState.matches.find((m) => m.id === roomState.tournamentState?.currentMatchId)?.isTieBreaker && (
+                    <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold border border-amber-500/40 animate-pulse">⚡ Đang Sudden Death!</span>
+                  )}
+                  {roomState.tournamentState.activeRecapMatchId && (
+                    <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-300 font-bold border border-green-500/40">🏁 Đã xong trận - Bấm nút để tiếp tục</span>
+                  )}
                 </div>
               )}
             </div>

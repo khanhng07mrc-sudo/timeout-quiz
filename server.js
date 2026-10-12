@@ -4690,8 +4690,9 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   BUZZ: ["FREEZE", "SCORE_X2", "DOUBLE", "STEAL", "SHIELD", "PENALTY", "SKIP", "TIME_PLUS"],
   // ELIMINATION: Sinh tồn -> SHIELD (Safe pass cứu nguy 1 lần nếu chót bảng vòng hiện tại), DOUBLE, SCORE_X2, FREEZE, SKIP, TIME_PLUS.
   ELIMINATION: ["SHIELD", "DOUBLE", "SCORE_X2", "FREEZE", "SKIP", "TIME_PLUS"],
-  // TOURNAMENT: 1v1 đối kháng trực diện -> ATTACK (Ép trả lời 10s), STEAL (Cướp lượt), PENALTY (Gấp đôi phạt), SHIELD (Kháng công), DOUBLE, SCORE_X2, FREEZE, SKIP, TIME_PLUS.
-  TOURNAMENT: ["ATTACK", "STEAL", "PENALTY", "SHIELD", "DOUBLE", "SCORE_X2", "FREEZE", "SKIP", "TIME_PLUS"],
+  // TOURNAMENT: 1v1 đối kháng công bằng -> Chỉ cho phép thẻ hỗ trợ bản thân: FIFTY_FIFTY (50/50), TIME_PLUS (+5s), SKIP (Đổi câu), SCORE_X2, DOUBLE (Nhân đôi điểm).
+  // Nghiêm cấm các thẻ tấn công quấy phá đối thủ (FREEZE, ATTACK, PENALTY, STEAL).
+  TOURNAMENT: ["FIFTY_FIFTY", "TIME_PLUS", "SKIP", "SCORE_X2", "DOUBLE"],
   // GRID_CARO: Bàn cờ chiến thuật -> DOUBLE, SCORE_X2, FREEZE, SHIELD, SKIP, TIME_PLUS.
   GRID_CARO: ["DOUBLE", "SCORE_X2", "FREEZE", "SHIELD", "SKIP", "TIME_PLUS"],
   // DICE_RACE: Nước rút (+2 bước), Bứt phá (+1 bước), Thêm giờ, 50/50, Đổi câu.
@@ -6040,7 +6041,43 @@ function buildTournamentMatches(teams, questionsPerMatch) {
     });
     return matches;
   }
-  if (teamCount <= 4) {
+  if (teamCount === 3) {
+    matches.push(
+      {
+        id: "SF-1",
+        roundIndex: 0,
+        roundName: "B\xE1n k\u1EBFt",
+        matchIndex: 0,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "FINAL",
+        roundIndex: 1,
+        roundName: "Chung k\u1EBFt",
+        matchIndex: 1,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      }
+    );
+    return matches;
+  }
+  if (teamCount === 4) {
     matches.push(
       {
         id: "SF-1",
@@ -6050,9 +6087,9 @@ function buildTournamentMatches(teams, questionsPerMatch) {
         team1Id: teams[0]?.id,
         team1Name: teams[0]?.name,
         team1Color: teams[0]?.color,
-        team2Id: teams[3]?.id || teams[1]?.id,
-        team2Name: teams[3]?.name || teams[1]?.name,
-        team2Color: teams[3]?.color || teams[1]?.color,
+        team2Id: teams[3]?.id,
+        team2Name: teams[3]?.name,
+        team2Color: teams[3]?.color,
         team1Score: 0,
         team2Score: 0,
         status: "IN_PROGRESS",
@@ -6090,9 +6127,153 @@ function buildTournamentMatches(teams, questionsPerMatch) {
     );
     return matches;
   }
-  for (let i = 0; i < 4; i++) {
-    const t1 = teams[i * 2];
-    const t2 = teams[i * 2 + 1];
+  if (teamCount === 5) {
+    matches.push(
+      {
+        id: "QF-1",
+        roundIndex: 0,
+        roundName: "V\xF2ng lo\u1EA1i T\u1EE9 k\u1EBFt",
+        matchIndex: 0,
+        team1Id: teams[3]?.id,
+        team1Name: teams[3]?.name,
+        team1Color: teams[3]?.color,
+        team2Id: teams[4]?.id,
+        team2Name: teams[4]?.name,
+        team2Color: teams[4]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "SF-1",
+        roundIndex: 1,
+        roundName: "B\xE1n k\u1EBFt 1",
+        matchIndex: 1,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "SF-2",
+        roundIndex: 1,
+        roundName: "B\xE1n k\u1EBFt 2",
+        matchIndex: 2,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "FINAL",
+        roundIndex: 2,
+        roundName: "Chung k\u1EBFt",
+        matchIndex: 3,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      }
+    );
+    return matches;
+  }
+  if (teamCount === 6) {
+    matches.push(
+      {
+        id: "QF-1",
+        roundIndex: 0,
+        roundName: "T\u1EE9 k\u1EBFt 1",
+        matchIndex: 0,
+        team1Id: teams[2]?.id,
+        team1Name: teams[2]?.name,
+        team1Color: teams[2]?.color,
+        team2Id: teams[5]?.id,
+        team2Name: teams[5]?.name,
+        team2Color: teams[5]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "QF-2",
+        roundIndex: 0,
+        roundName: "T\u1EE9 k\u1EBFt 2",
+        matchIndex: 1,
+        team1Id: teams[3]?.id,
+        team1Name: teams[3]?.name,
+        team1Color: teams[3]?.color,
+        team2Id: teams[4]?.id,
+        team2Name: teams[4]?.name,
+        team2Color: teams[4]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "SF-1",
+        roundIndex: 1,
+        roundName: "B\xE1n k\u1EBFt 1",
+        matchIndex: 2,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "SF-2",
+        roundIndex: 1,
+        roundName: "B\xE1n k\u1EBFt 2",
+        matchIndex: 3,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      },
+      {
+        id: "FINAL",
+        roundIndex: 2,
+        roundName: "Chung k\u1EBFt",
+        matchIndex: 4,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING",
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch
+      }
+    );
+    return matches;
+  }
+  const isSeven = teamCount === 7;
+  const qfCount = isSeven ? 3 : 4;
+  for (let i = 0; i < qfCount; i++) {
+    const t1 = isSeven ? teams[i + 1] : teams[i * 2];
+    const t2 = isSeven ? teams[6 - i] : teams[i * 2 + 1];
     matches.push({
       id: `QF-${i + 1}`,
       roundIndex: 0,
@@ -6116,7 +6297,10 @@ function buildTournamentMatches(teams, questionsPerMatch) {
       id: "SF-1",
       roundIndex: 1,
       roundName: "B\xE1n k\u1EBFt 1",
-      matchIndex: 4,
+      matchIndex: qfCount,
+      team1Id: isSeven ? teams[0]?.id : void 0,
+      team1Name: isSeven ? teams[0]?.name : void 0,
+      team1Color: isSeven ? teams[0]?.color : void 0,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -6127,7 +6311,7 @@ function buildTournamentMatches(teams, questionsPerMatch) {
       id: "SF-2",
       roundIndex: 1,
       roundName: "B\xE1n k\u1EBFt 2",
-      matchIndex: 5,
+      matchIndex: qfCount + 1,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -6138,7 +6322,7 @@ function buildTournamentMatches(teams, questionsPerMatch) {
       id: "FINAL",
       roundIndex: 2,
       roundName: "Chung k\u1EBFt",
-      matchIndex: 6,
+      matchIndex: qfCount + 2,
       team1Score: 0,
       team2Score: 0,
       status: "UPCOMING",
@@ -10715,6 +10899,8 @@ function registerSocketHandlers(io2) {
       if (nextPending) {
         nextPending.status = "IN_PROGRESS";
         tournament.currentMatchId = nextPending.id;
+        tournament.activeRecapMatchId = void 0;
+        tournament.recapCountdownSeconds = void 0;
         io2.to(`room:${room.code}`).emit("game:tournament:update", tournament);
       }
     });
@@ -11753,16 +11939,6 @@ async function processAnswerSubmission({
       return;
     }
   } else if (room.mode === "TOURNAMENT") {
-    const tournament = roomTournaments.get(room.id);
-    const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
-    const isMatchActor = currentMatch && (actorId === currentMatch.team1Id || actorId === currentMatch.team2Id || effectiveTeamId === currentMatch.team1Id || effectiveTeamId === currentMatch.team2Id);
-    if (currentMatch && !isMatchActor && !isAdminOverride) {
-      if (socket) {
-        socket.emit("error", "Ch\u1EC9 2 \u0111\u1ED9i trong tr\u1EADn \u0111\u1ED1i \u0111\u1EA7u hi\u1EC7n t\u1EA1i m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
-        if (tournament) socket.emit("game:tournament:update", tournament);
-      }
-      return;
-    }
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
     const isGridActor = gridState && (actorId === gridState.currentTurnTeamId || effectiveTeamId === gridState.currentTurnTeamId);
@@ -12320,25 +12496,65 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   const team2Obj = room.teams.find((t) => t.id === currentMatch.team2Id);
   const team1HasHuman = team1Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
   const team2HasHuman = team2Obj?.players?.some((p) => !isPlayerBot(p)) ?? true;
+  const timeLimitSec = question.timeLimit || 20;
+  const qStartedAt = roomQuestionStartedAt.get(roomId) || Date.now();
   if (t1Ans && t1Ans.isCorrect && currentMatch.team1Id && (isSandboxRoom || team1HasHuman)) {
-    currentMatch.team1Score += question.points;
-    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, question.points);
+    const spentMs = t1Ans.timeSpent || (t1Ans.submittedAt ? t1Ans.submittedAt.getTime() - qStartedAt : 2e3);
+    const remainingSec = Math.max(0, (timeLimitSec * 1e3 - spentMs) / 1e3);
+    const speedFactor = 0.5 + 0.5 * (remainingSec / timeLimitSec);
+    const activeCards1 = roomQuestionTeamCards.get(qKey)?.get(currentMatch.team1Id) || [];
+    const mult1 = activeCards1.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE") ? 2 : 1;
+    const earnedPoints = Math.round(question.points * Math.min(1, Math.max(0.5, speedFactor)) * mult1);
+    currentMatch.team1Score += earnedPoints;
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team1Id, earnedPoints);
     scoreUpdates.push({ teamId: currentMatch.team1Id, score: tRes.newScore, delta: tRes.effectiveDelta });
   }
   if (t2Ans && t2Ans.isCorrect && currentMatch.team2Id && (isSandboxRoom || team2HasHuman)) {
-    currentMatch.team2Score += question.points;
-    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, question.points);
+    const spentMs = t2Ans.timeSpent || (t2Ans.submittedAt ? t2Ans.submittedAt.getTime() - qStartedAt : 2e3);
+    const remainingSec = Math.max(0, (timeLimitSec * 1e3 - spentMs) / 1e3);
+    const speedFactor = 0.5 + 0.5 * (remainingSec / timeLimitSec);
+    const activeCards2 = roomQuestionTeamCards.get(qKey)?.get(currentMatch.team2Id) || [];
+    const mult2 = activeCards2.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE") ? 2 : 1;
+    const earnedPoints = Math.round(question.points * Math.min(1, Math.max(0.5, speedFactor)) * mult2);
+    currentMatch.team2Score += earnedPoints;
+    const tRes = await applyScoreDeltaToTeam(currentMatch.team2Id, earnedPoints);
     scoreUpdates.push({ teamId: currentMatch.team2Id, score: tRes.newScore, delta: tRes.effectiveDelta });
+  }
+  const spectatorAnswers = await prisma.answer.findMany({
+    where: {
+      roomId,
+      questionId,
+      teamId: { notIn: [currentMatch.team1Id, currentMatch.team2Id].filter(Boolean) }
+    },
+    orderBy: { submittedAt: "desc" }
+  });
+  let oracleUpdated = false;
+  tournament.oracleScores = tournament.oracleScores || {};
+  for (const sAns of spectatorAnswers) {
+    if (sAns.isCorrect && sAns.teamId) {
+      tournament.oracleScores[sAns.teamId] = (tournament.oracleScores[sAns.teamId] || 0) + 10;
+      oracleUpdated = true;
+    }
   }
   currentMatch.currentQuestionInMatch++;
   if (currentMatch.currentQuestionInMatch >= currentMatch.totalQuestionsInMatch) {
     if (currentMatch.team1Score === currentMatch.team2Score && currentMatch.team1Id && currentMatch.team2Id) {
       currentMatch.totalQuestionsInMatch += 1;
+      currentMatch.isTieBreaker = true;
     } else {
       currentMatch.status = "COMPLETED";
+      currentMatch.isTieBreaker = false;
       const winnerId = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
       const winnerName = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
       currentMatch.winnerTeamId = winnerId;
+      currentMatch.recap = {
+        team1Score: currentMatch.team1Score,
+        team2Score: currentMatch.team2Score,
+        winnerId,
+        winnerName: winnerName || "?"
+      };
+      tournament.activeRecapMatchId = currentMatch.id;
+      tournament.recapCountdownSeconds = 8;
       if (currentMatch.id === "FINAL") {
         tournament.championTeamId = winnerId;
         tournament.championTeamName = winnerName;
@@ -12350,27 +12566,26 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
           if (!nextMatch.team1Id) {
             nextMatch.team1Id = winnerId;
             nextMatch.team1Name = winnerName;
+            nextMatch.team1Color = winnerId === currentMatch.team1Id ? currentMatch.team1Color : currentMatch.team2Color;
           } else if (!nextMatch.team2Id) {
             nextMatch.team2Id = winnerId;
             nextMatch.team2Name = winnerName;
+            nextMatch.team2Color = winnerId === currentMatch.team1Id ? currentMatch.team1Color : currentMatch.team2Color;
           }
-        }
-        const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
-        if (nextPending) {
-          nextPending.status = "IN_PROGRESS";
-          tournament.currentMatchId = nextPending.id;
         }
       }
       if (currentMatch.predictions && winnerId) {
-        tournament.oracleScores = tournament.oracleScores || {};
         for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
           if (predWinnerId === winnerId) {
-            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 15;
+            oracleUpdated = true;
           }
         }
-        io2.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
       }
     }
+  }
+  if (oracleUpdated) {
+    io2.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
   }
   if (scoreUpdates.length > 0) {
     io2.to(`room:${roomCode}`).emit("game:score:update", scoreUpdates);

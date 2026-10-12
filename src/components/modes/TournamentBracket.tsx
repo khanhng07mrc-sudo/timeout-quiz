@@ -43,7 +43,7 @@ export default function TournamentBracket({
               Bảng Đấu Loại Trực Tiếp 1v1
             </h3>
             <p className="text-xs text-muted-foreground">
-              Mỗi trận đấu {tournamentState.questionsPerMatch} câu hỏi · Đội thắng đi tiếp
+              Mỗi trận đấu {tournamentState.questionsPerMatch} câu hỏi · Đua tốc độ nhận điểm % thời gian · Đội thắng đi tiếp
             </p>
           </div>
         </div>
@@ -89,7 +89,7 @@ export default function TournamentBracket({
                         <span>Trận #{match.matchIndex + 1}</span>
                         {isCurrent && (
                           <span className="px-2 py-0.5 rounded-full bg-yellow-500 text-black font-black animate-pulse">
-                            ĐANG ĐẤU ({match.currentQuestionInMatch}/{match.totalQuestionsInMatch})
+                            {match.isTieBreaker ? "⚡ SUDDEN DEATH" : `ĐANG ĐẤU (${match.currentQuestionInMatch}/${match.totalQuestionsInMatch})`}
                           </span>
                         )}
                         {match.status === "COMPLETED" && (

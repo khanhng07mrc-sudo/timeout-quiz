@@ -29,6 +29,7 @@ import {
   syncClockWithServer,
   calculateAuthoritativeTimer,
   calibrateClockFromPacket,
+  getServerClockOffset,
 } from "@/lib/clock-sync";
 
 export default function AdminRoomPage() {
@@ -73,7 +74,7 @@ export default function AdminRoomPage() {
   } | null>(null);
   const [showMcCheatSheet, setShowMcCheatSheet] = useState(true);
 
-  const [matchStarting, setMatchStarting] = useState<{ seconds: number } | null>(null);
+  const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const matchStartingRef = useRef(false);
   useEffect(() => {
     matchStartingRef.current = Boolean(matchStarting);
@@ -144,41 +145,65 @@ export default function AdminRoomPage() {
     }
   };
 
-  // Local ticker for match warmup countdown (5s)
+  // Authoritative ticker for match warmup countdown (5s)
+  const lastMatchTickRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!matchStarting) return;
+    if (!matchStarting) {
+      lastMatchTickRef.current = null;
+      return;
+    }
+    const endsAt = matchStarting.endsAt || (Date.now() + getServerClockOffset() + matchStarting.seconds * 1000);
+    const total = matchStarting.total || 5;
     const interval = setInterval(() => {
+      const now = Date.now() + getServerClockOffset();
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const remaining = Math.min(total, rawRem);
       setMatchStarting((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return null;
+        if (!prev) return null;
+        const safeSeconds = Math.min(prev.seconds, remaining);
+        if (lastMatchTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
+          lastMatchTickRef.current = safeSeconds;
+          soundManager.playCountdownTick(safeSeconds);
         }
-        const next = prev.seconds - 1;
-        if (next >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(next);
-        }
-        return { seconds: next };
+        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: safeSeconds, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
     return () => clearInterval(interval);
-  }, [Boolean(matchStarting)]);
+  }, [matchStarting?.endsAt]);
 
-  // Local ticker for question preparation countdown (3s)
+  // Authoritative ticker for question preparation countdown (3s)
+  const lastPrepareTickRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!questionPrepare) return;
+    if (!questionPrepare) {
+      lastPrepareTickRef.current = null;
+      return;
+    }
+    const endsAt = questionPrepare.endsAt || (Date.now() + getServerClockOffset() + questionPrepare.seconds * 1000);
+    const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
+      const now = Date.now() + getServerClockOffset();
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const remaining = Math.min(total, rawRem);
       setQuestionPrepare((prev) => {
-        if (!prev || prev.seconds <= 1) {
-          return prev ? { ...prev, seconds: 0 } : null;
+        if (!prev) return null;
+        const safeSeconds = Math.min(prev.seconds, remaining);
+        if (lastPrepareTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
+          lastPrepareTickRef.current = safeSeconds;
+          soundManager.playCountdownTick(safeSeconds);
         }
-        const next = prev.seconds - 1;
-        if (next >= 0 && soundEnabledRef.current) {
-          soundManager.playCountdownTick(next);
-        }
-        return { ...prev, seconds: next };
+        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: safeSeconds, endsAt, total };
       });
-    }, 1000);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 100);
     return () => clearInterval(interval);
-  }, [Boolean(questionPrepare)]);
+  }, [questionPrepare?.endsAt]);
 
   // Authoritative local countdown ticker for 0s lag across screens
   useEffect(() => {
@@ -296,7 +321,13 @@ export default function AdminRoomPage() {
 
     socket.on("game:starting", (p) => {
       matchStartingRef.current = true;
-      setMatchStarting({ seconds: p.seconds });
+      const incomingEndsAt = p.endsAt || (Date.now() + getServerClockOffset() + p.seconds * 1000);
+      const total = p.total || p.seconds || 5;
+      setMatchStarting((prev) => {
+        const stableEndsAt = prev?.endsAt || incomingEndsAt;
+        const safeSeconds = prev && prev.endsAt === stableEndsAt ? Math.min(prev.seconds, p.seconds) : p.seconds;
+        return { seconds: safeSeconds, endsAt: stableEndsAt, total };
+      });
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
@@ -310,7 +341,13 @@ export default function AdminRoomPage() {
 
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
-      setQuestionPrepare(p);
+      const incomingEndsAt = p.endsAt || (Date.now() + getServerClockOffset() + p.seconds * 1000);
+      const total = p.total || p.seconds || 3;
+      setQuestionPrepare((prev) => {
+        const stableEndsAt = prev?.endsAt || incomingEndsAt;
+        const safeSeconds = prev && prev.endsAt === stableEndsAt ? Math.min(prev.seconds, p.seconds) : p.seconds;
+        return { ...p, seconds: safeSeconds, endsAt: stableEndsAt, total };
+      });
       setIntermission(null);
       setCurrentQuestion(null);
       setAdminQuestionData(null);
@@ -583,7 +620,8 @@ export default function AdminRoomPage() {
   const handleAdminNextClick = () => {
     if (roomState?.status === "LOBBY") {
       matchStartingRef.current = true;
-      setMatchStarting({ seconds: 5 });
+      const now = Date.now() + getServerClockOffset();
+      setMatchStarting({ seconds: 5, endsAt: now + 5000, total: 5 });
       soundManager.stopMusic(0);
     }
     emit("admin:next", { code });

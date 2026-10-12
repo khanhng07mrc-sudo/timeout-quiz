@@ -359,19 +359,41 @@ export default function AdminSandboxPage() {
   const handleAdminNextRef = useRef<() => void>(() => {});
   const launchOfflineQuestionRef = useRef<(idx: number) => void>(() => {});
 
+  // Authoritative ticker for match warmup countdown (5s)
+  useEffect(() => {
+    if (!matchStarting?.endsAt) return;
+    const interval = setInterval(() => {
+      const endsAt = matchStarting.endsAt!;
+      const total = matchStarting.total || 5;
+      const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      const remaining = Math.min(total, rawRem);
+      setMatchStarting((prev) => {
+        if (!prev) return null;
+        const rem = Math.min(prev.seconds, remaining);
+        if (rem <= 0) return null;
+        if (prev.seconds === rem && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: rem, endsAt, total };
+      });
+    }, 100);
+    return () => clearInterval(interval);
+  }, [matchStarting?.endsAt]);
+
   // Authoritative ticker for question preparation countdown (3s)
   useEffect(() => {
     if (!questionPrepare?.endsAt) return;
     const interval = setInterval(() => {
-      const rawRem = Math.max(0, Math.ceil((questionPrepare.endsAt! - Date.now()) / 1000));
+      const endsAt = questionPrepare.endsAt!;
+      const total = questionPrepare.total || 3;
+      const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
+      const remaining = Math.min(total, rawRem);
       setQuestionPrepare((prev) => {
         if (!prev) return null;
-        const rem = Math.min(prev.seconds, Math.min(3, rawRem));
+        const rem = Math.min(prev.seconds, remaining);
         if (rem <= 0) return null;
-        if (prev.seconds === rem) return prev;
-        return { ...prev, seconds: rem };
+        if (prev.seconds === rem && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: rem, endsAt, total };
       });
-    }, 200);
+    }, 100);
     return () => clearInterval(interval);
   }, [questionPrepare?.endsAt]);
 
@@ -4145,16 +4167,18 @@ export default function AdminSandboxPage() {
           offlineWarmupIntervalRef.current = null;
         }
         offlineWarmupIntervalRef.current = setInterval(() => {
-          const rem = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
+          const rawRem = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
+          const rem = Math.min(warmupTotal, rawRem);
           if (rem > 0) {
             setMatchStarting((prev) => {
-              if (prev?.seconds === rem) return prev;
-              return { seconds: rem, endsAt: warmupEndsAt, total: warmupTotal };
+              const safeSeconds = prev ? Math.min(prev.seconds, rem) : rem;
+              if (prev?.seconds === safeSeconds && prev?.endsAt === warmupEndsAt) return prev;
+              return { seconds: safeSeconds, endsAt: warmupEndsAt, total: warmupTotal };
             });
           } else {
             proceedAfterWarmup();
           }
-        }, 200);
+        }, 100);
         return;
       }
 

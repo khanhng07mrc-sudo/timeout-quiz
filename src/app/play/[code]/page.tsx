@@ -124,15 +124,19 @@ export default function PlayPage() {
     const endsAt = matchStarting.endsAt || (getServerTime() + matchStarting.seconds * 1000);
     const total = matchStarting.total || 5;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
-      if (lastMatchTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
-        lastMatchTickRef.current = remaining;
-        soundManager.playCountdownTick(remaining);
-      }
+      const now = getServerTime();
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
+      const remaining = Math.min(total, rawRem);
       setMatchStarting((prev) => {
         if (!prev) return null;
-        if (prev.seconds === remaining && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: remaining, endsAt, total };
+        // Strictly monotonic non-increasing: NEVER allow seconds to jump upwards (e.g. 4 -> 5 or 3 -> 4)
+        const safeSeconds = Math.min(prev.seconds, remaining);
+        if (lastMatchTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
+          lastMatchTickRef.current = safeSeconds;
+          soundManager.playCountdownTick(safeSeconds);
+        }
+        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: safeSeconds, endsAt, total };
       });
       if (remaining <= 0) {
         clearInterval(interval);
@@ -151,16 +155,19 @@ export default function PlayPage() {
     const endsAt = questionPrepare.endsAt || (getServerTime() + questionPrepare.seconds * 1000);
     const total = questionPrepare.total || 3;
     const interval = setInterval(() => {
-      const rawRem = Math.max(0, Math.ceil((endsAt - getServerTime()) / 1000));
+      const now = getServerTime();
+      const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
       const remaining = Math.min(total, rawRem);
-      if (lastPrepareTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
-        lastPrepareTickRef.current = remaining;
-        soundManager.playCountdownTick(remaining);
-      }
       setQuestionPrepare((prev) => {
         if (!prev) return null;
-        if (prev.seconds === remaining && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: remaining, endsAt, total };
+        // Strictly monotonic non-increasing: NEVER jump upwards
+        const safeSeconds = Math.min(prev.seconds, remaining);
+        if (lastPrepareTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
+          lastPrepareTickRef.current = safeSeconds;
+          soundManager.playCountdownTick(safeSeconds);
+        }
+        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
+        return { ...prev, seconds: safeSeconds, endsAt, total };
       });
       if (remaining <= 0) {
         clearInterval(interval);
@@ -391,9 +398,10 @@ export default function PlayPage() {
             setMatchStarting(null);
           } else {
             setMatchStarting((prev) => {
-              const stableEndsAt = p.matchStarting.endsAt || prev?.endsAt || (getServerTime() + p.matchStarting.seconds * 1000);
-              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.matchStarting.seconds) return prev;
-              return { ...p.matchStarting, endsAt: stableEndsAt, total: p.matchStarting.total || prev?.total || 5 };
+              const stableEndsAt = prev?.endsAt || p.matchStarting.endsAt || (getServerTime() + p.matchStarting.seconds * 1000);
+              const safeSeconds = prev ? Math.min(prev.seconds, p.matchStarting.seconds) : p.matchStarting.seconds;
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === safeSeconds) return prev;
+              return { ...p.matchStarting, seconds: safeSeconds, endsAt: stableEndsAt, total: p.matchStarting.total || prev?.total || 5 };
             });
           }
         }
@@ -402,9 +410,10 @@ export default function PlayPage() {
             setQuestionPrepare(null);
           } else {
             setQuestionPrepare((prev) => {
-              const stableEndsAt = p.questionPrepare.endsAt || prev?.endsAt || (getServerTime() + p.questionPrepare.seconds * 1000);
-              if (prev && prev.endsAt === stableEndsAt && prev.seconds === p.questionPrepare.seconds) return prev;
-              return { ...p.questionPrepare, endsAt: stableEndsAt, total: p.questionPrepare.total || prev?.total || 3 };
+              const stableEndsAt = prev?.endsAt || p.questionPrepare.endsAt || (getServerTime() + p.questionPrepare.seconds * 1000);
+              const safeSeconds = prev ? Math.min(prev.seconds, p.questionPrepare.seconds) : p.questionPrepare.seconds;
+              if (prev && prev.endsAt === stableEndsAt && prev.seconds === safeSeconds) return prev;
+              return { ...p.questionPrepare, seconds: safeSeconds, endsAt: stableEndsAt, total: p.questionPrepare.total || prev?.total || 3 };
             });
           }
         }
@@ -614,8 +623,13 @@ export default function PlayPage() {
     });
 
     socket.on("game:starting", (p) => {
-      const endsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
-      setMatchStarting({ seconds: p.seconds, endsAt, total: p.total || p.seconds });
+      const incomingEndsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
+      const total = p.total || p.seconds || 5;
+      setMatchStarting((prev) => {
+        const stableEndsAt = prev?.endsAt || incomingEndsAt;
+        const safeSeconds = prev && prev.endsAt === stableEndsAt ? Math.min(prev.seconds, p.seconds) : p.seconds;
+        return { seconds: safeSeconds, endsAt: stableEndsAt, total };
+      });
       setQuestionPrepare(null);
       setIntermission(null);
       setCurrentQuestion(null);
@@ -628,8 +642,13 @@ export default function PlayPage() {
 
     socket.on("game:prepare", (p) => {
       setMatchStarting(null);
-      const endsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
-      setQuestionPrepare({ ...p, endsAt, total: p.total || p.seconds });
+      const incomingEndsAt = p.endsAt || (getServerTime() + p.seconds * 1000);
+      const total = p.total || p.seconds || 3;
+      setQuestionPrepare((prev) => {
+        const stableEndsAt = prev?.endsAt || incomingEndsAt;
+        const safeSeconds = prev && prev.endsAt === stableEndsAt ? Math.min(prev.seconds, p.seconds) : p.seconds;
+        return { ...p, seconds: safeSeconds, endsAt: stableEndsAt, total };
+      });
       setIntermission(null);
       setCurrentQuestion(null);
       setRevealPayload(null);

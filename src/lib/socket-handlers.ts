@@ -1264,6 +1264,33 @@ globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
 async function getAdminRoom(socket: Sock, payloadCode?: string) {
   let roomId = adminSockets.get(socket.id);
 
+  // If payloadCode is explicitly provided and differs from the cached room for this socket, switch to payloadCode
+  if (roomId && payloadCode) {
+    const existingCached = roomCache.get(roomId);
+    if (existingCached && existingCached.code !== payloadCode) {
+      roomId = undefined;
+    }
+  }
+
+  if (!roomId && payloadCode) {
+    const rByPayload = await prisma.room.findUnique({
+      where: { code: payloadCode },
+      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+    });
+    if (rByPayload) {
+      roomId = rByPayload.id;
+      adminSockets.set(socket.id, roomId);
+      socket.join(`room:${payloadCode}`);
+      socket.join(`room:${payloadCode}:admin`);
+      roomCache.set(roomId, rByPayload);
+      if (rByPayload.quizBank?.questions) {
+        roomQuestionsCache.set(roomId, rByPayload.quizBank.questions);
+      }
+      restoreGameStateSnapshot(rByPayload);
+      return rByPayload;
+    }
+  }
+
   if (!roomId) {
     for (const roomName of socket.rooms) {
       if (roomName.startsWith("room:") && roomName.endsWith(":admin")) {
@@ -1280,6 +1307,7 @@ async function getAdminRoom(socket: Sock, payloadCode?: string) {
             if (rByCode.quizBank?.questions) {
               roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
             }
+            restoreGameStateSnapshot(rByCode);
             return rByCode;
           }
         }
@@ -1866,11 +1894,15 @@ export function registerSocketHandlers(io: IO) {
         }
 
         // Verify Host Authorization:
-        // 1. Check if token in handshake/auth is valid Admin Master Passcode
+        // 1. Check if token in handshake/auth is valid Admin/User Token
         const authHeader = (socket.handshake.auth?.token as string) || (socket.handshake.headers["authorization"] as string);
         const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
-        // 2. Check if hostKey matches room.hostKey
-        const isHostKeyValid = room.hostKey ? (hostKey === room.hostKey) : true;
+        // 2. Check if hostKey matches room.hostKey or if room is a Sandbox room
+        const isSandboxRoom =
+          room.name?.startsWith("[Sandbox]") ||
+          Boolean((room.config as any)?.isSandbox) ||
+          room.code?.startsWith("sb_");
+        const isHostKeyValid = isSandboxRoom || !room.hostKey ? true : (hostKey === room.hostKey);
 
         if (!isAdminTokenValid && !isHostKeyValid) {
           return callback?.({
@@ -1906,7 +1938,9 @@ export function registerSocketHandlers(io: IO) {
           roomMysteryQuests.has(room.id) &&
           roomMysteryQuests.get(room.id)!.phase !== "QUESTION_ACTIVE";
 
-        if (roomIntermissions.has(room.id)) {
+        if (effectiveRoomStatus === "LOBBY") {
+          socket.emit("game:question:clear");
+        } else if (roomIntermissions.has(room.id)) {
           socket.emit("game:intermission", roomIntermissions.get(room.id)!);
         } else if (isMysteryMinigame) {
           socket.emit("game:question:clear");
@@ -4926,7 +4960,7 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("admin:question:get_data", async ({ code }: { code?: string } = {}) => {
       const room = await getAdminRoom(socket, code);
-      if (!room) return;
+      if (!room || room.status === "LOBBY") return;
       const activeQ = roomActiveQuestions.get(room.id);
       const rawQuestions = room.quizBank?.questions ?? [];
       const q = (activeQ ? rawQuestions.find((item: any) => item.id === activeQ.question.id) : null) || rawQuestions[room.currentQuestion];

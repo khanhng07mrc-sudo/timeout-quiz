@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateRoomCode, generateInviteUrl, generateCardDeck, shuffleArray } from "@/lib/utils";
+import { generateHostKey, getCurrentUserFromRequest } from "@/lib/security";
 import { GameMode } from "@/types";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
@@ -179,13 +180,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const hostKey = generateHostKey();
+    const currentUser = getCurrentUserFromRequest(req);
+    let effectiveHostId = host.id;
+    if (currentUser?.userId && currentUser.userId !== "master-admin") {
+      const existingUser = await prisma.user.findUnique({ where: { id: currentUser.userId } });
+      if (existingUser) {
+        effectiveHostId = existingUser.id;
+      }
+    }
+
     let room;
     try {
       room = await prisma.room.create({
         data: {
           code,
           name: `[Sandbox] ${mode} - 4 Đội Test`,
-          hostId: host.id,
+          hostId: effectiveHostId,
+          hostKey,
           quizBankId: quizBank?.id || null,
           mode,
           teamMode: "TEAM",
@@ -201,7 +213,8 @@ export async function POST(req: NextRequest) {
           data: {
             code,
             name: `[Sandbox] ${mode} - 4 Đội Test`,
-            hostId: host.id,
+            hostId: effectiveHostId,
+            hostKey,
             quizBankId: quizBank?.id || null,
             mode,
             teamMode: "TEAM",
@@ -285,6 +298,8 @@ export async function POST(req: NextRequest) {
       success: true,
       code: room.code,
       roomId: room.id,
+      name: room.name,
+      hostKey,
       mode: room.mode,
       quizBankTitle: quizBank?.title || "Mặc định",
       teams: createdTeams,

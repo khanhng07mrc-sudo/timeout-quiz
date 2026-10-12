@@ -648,30 +648,114 @@ export default function AdminSandboxPage() {
     });
   }, [botAutoEnabled, addLog]);
 
-  // ── Session Storage & URL Sync Helpers ─────────────────────────────────────
-  const saveSandboxSession = useCallback((codeStr: string, isOffline: boolean, mode?: GameMode, bankId?: string) => {
+  // ── Local Storage & Session Storage Sync Helpers ───────────────────────────
+  const [localSandboxRooms, setLocalSandboxRooms] = useState<
+    { code: string; name: string; mode: GameMode; isOffline?: boolean; createdAt: string; hostKey?: string }[]
+  >([]);
+
+  const syncLocalSandboxRoomsState = useCallback(() => {
     if (typeof window === "undefined") return;
     try {
-      sessionStorage.setItem("sandbox_current_code", codeStr);
-      if (isOffline) {
-        sessionStorage.setItem("sandbox_is_offline", "1");
-        if (mode) sessionStorage.setItem("sandbox_offline_mode", mode);
-        if (bankId) sessionStorage.setItem("sandbox_offline_bank", bankId);
-      } else {
+      const raw = localStorage.getItem("sandbox_local_rooms");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setLocalSandboxRooms(parsed);
+          return;
+        }
+      }
+      setLocalSandboxRooms([]);
+    } catch {
+      setLocalSandboxRooms([]);
+    }
+  }, []);
+
+  const saveSandboxSession = useCallback(
+    (codeStr: string, isOffline: boolean, mode?: GameMode, bankId?: string, hostKey?: string, roomName?: string) => {
+      if (typeof window === "undefined") return;
+      try {
+        sessionStorage.setItem("sandbox_current_code", codeStr);
+        localStorage.setItem("sandbox_current_code", codeStr);
+        if (hostKey) {
+          localStorage.setItem(`host_key_${codeStr}`, hostKey);
+        }
+        if (isOffline) {
+          sessionStorage.setItem("sandbox_is_offline", "1");
+          localStorage.setItem("sandbox_is_offline", "1");
+          if (mode) {
+            sessionStorage.setItem("sandbox_offline_mode", mode);
+            localStorage.setItem("sandbox_offline_mode", mode);
+          }
+          if (bankId) {
+            sessionStorage.setItem("sandbox_offline_bank", bankId);
+            localStorage.setItem("sandbox_offline_bank", bankId);
+          }
+        } else {
+          sessionStorage.removeItem("sandbox_is_offline");
+          sessionStorage.removeItem("sandbox_offline_mode");
+          sessionStorage.removeItem("sandbox_offline_bank");
+          localStorage.removeItem("sandbox_is_offline");
+          localStorage.removeItem("sandbox_offline_mode");
+          localStorage.removeItem("sandbox_offline_bank");
+        }
+
+        // Persist room entry in localStorage sandbox_local_rooms
+        const rawList = localStorage.getItem("sandbox_local_rooms");
+        const existingList: any[] = rawList ? JSON.parse(rawList) : [];
+        const safeList = Array.isArray(existingList) ? existingList : [];
+        const effectiveMode = mode || "CLASSIC";
+        const entry = {
+          code: codeStr,
+          name: roomName || `[Sandbox] ${effectiveMode} - 4 Đội Test`,
+          mode: effectiveMode,
+          isOffline,
+          createdAt: new Date().toISOString(),
+          hostKey: hostKey || localStorage.getItem(`host_key_${codeStr}`) || "",
+        };
+        const updatedList = [entry, ...safeList.filter((item) => item?.code !== codeStr)].slice(0, 20);
+        localStorage.setItem("sandbox_local_rooms", JSON.stringify(updatedList));
+        setLocalSandboxRooms(updatedList);
+
+        const url = new URL(window.location.href);
+        url.searchParams.set("code", codeStr);
+        if (isOffline) {
+          url.searchParams.set("offline", "1");
+          if (mode) url.searchParams.set("mode", mode);
+        } else {
+          url.searchParams.delete("offline");
+          url.searchParams.delete("mode");
+        }
+        window.history.replaceState(null, "", url.toString());
+      } catch {}
+    },
+    []
+  );
+
+  const removeSandboxRoomFromLocal = useCallback((targetCode: string) => {
+    if (typeof window === "undefined" || !targetCode) return;
+    try {
+      localStorage.removeItem(`host_key_${targetCode}`);
+      if (sessionStorage.getItem("sandbox_current_code") === targetCode) {
+        sessionStorage.removeItem("sandbox_current_code");
         sessionStorage.removeItem("sandbox_is_offline");
         sessionStorage.removeItem("sandbox_offline_mode");
         sessionStorage.removeItem("sandbox_offline_bank");
       }
-      const url = new URL(window.location.href);
-      url.searchParams.set("code", codeStr);
-      if (isOffline) {
-        url.searchParams.set("offline", "1");
-        if (mode) url.searchParams.set("mode", mode);
-      } else {
-        url.searchParams.delete("offline");
-        url.searchParams.delete("mode");
+      if (localStorage.getItem("sandbox_current_code") === targetCode) {
+        localStorage.removeItem("sandbox_current_code");
+        localStorage.removeItem("sandbox_is_offline");
+        localStorage.removeItem("sandbox_offline_mode");
+        localStorage.removeItem("sandbox_offline_bank");
       }
-      window.history.replaceState(null, "", url.toString());
+      const rawList = localStorage.getItem("sandbox_local_rooms");
+      if (rawList) {
+        const parsed = JSON.parse(rawList);
+        if (Array.isArray(parsed)) {
+          const next = parsed.filter((item) => item?.code !== targetCode);
+          localStorage.setItem("sandbox_local_rooms", JSON.stringify(next));
+          setLocalSandboxRooms(next);
+        }
+      }
     } catch {}
   }, []);
 
@@ -682,6 +766,10 @@ export default function AdminSandboxPage() {
       sessionStorage.removeItem("sandbox_is_offline");
       sessionStorage.removeItem("sandbox_offline_mode");
       sessionStorage.removeItem("sandbox_offline_bank");
+      localStorage.removeItem("sandbox_current_code");
+      localStorage.removeItem("sandbox_is_offline");
+      localStorage.removeItem("sandbox_offline_mode");
+      localStorage.removeItem("sandbox_offline_bank");
       const url = new URL(window.location.href);
       url.searchParams.delete("code");
       url.searchParams.delete("offline");
@@ -695,9 +783,21 @@ export default function AdminSandboxPage() {
   const connectAdminSocket = useCallback((roomCode: string) => {
     initialTeamOrderRef.current = [];
     setActiveTeamIndex(0);
+    setCurrentQuestion(null);
+    setRevealPayload(null);
+    setTimer(null);
+    setMatchStarting(null);
+    setQuestionPrepare(null);
+    setIntermission(null);
+    setAdminQuestionData(null);
+    adminQuestionDataRef.current = null;
+
     if (adminSocketRef.current) {
       adminSocketRef.current.disconnect();
+      adminSocketRef.current = null;
     }
+    botSocketsRef.current.forEach((s) => s.disconnect());
+    botSocketsRef.current.clear();
 
     const adminToken = typeof window !== "undefined"
       ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token"))
@@ -718,16 +818,36 @@ export default function AdminSandboxPage() {
         if (res?.success && res.roomState) {
           setRoomState(res.roomState);
           setSelectedMode(res.roomState.mode);
+          if (res.roomState.status === "LOBBY") {
+            setCurrentQuestion(null);
+            setRevealPayload(null);
+            setTimer(null);
+            setMatchStarting(null);
+            setQuestionPrepare(null);
+            setIntermission(null);
+            setAdminQuestionData(null);
+            adminQuestionDataRef.current = null;
+          }
           if (res.hostKey) {
             localStorage.setItem(`host_key_${roomCode}`, res.hostKey);
           }
-          saveSandboxSession(roomCode, false);
+          saveSandboxSession(
+            roomCode,
+            false,
+            res.roomState.mode,
+            undefined,
+            res.hostKey || storedHostKey,
+            res.roomState.name
+          );
           addLog(`Admin Socket đã gắn vào phòng: ${roomCode}`);
           initBotSockets(roomCode, res.roomState.teams);
-          sock.emit("admin:question:get_data", { code: roomCode });
+          if (res.roomState.status === "PLAYING") {
+            sock.emit("admin:question:get_data", { code: roomCode });
+          }
         } else {
           addLog(`⚠️ Không thể gắn vào phòng ${roomCode}: ${res?.error || "Lỗi tham gia"}`);
           if (res?.error && typeof res.error === "string" && res.error.includes("không tồn tại")) {
+            removeSandboxRoomFromLocal(roomCode);
             clearSandboxSession();
             setCode("");
             setRoomState(null);
@@ -741,12 +861,29 @@ export default function AdminSandboxPage() {
       sock.emit("admin:join", { code: roomCode, hostKey: storedHostKey } as any, (res: any) => {
         if (res?.success && res.roomState) {
           setRoomState(res.roomState);
-          sock.emit("admin:question:get_data", { code: roomCode });
+          if (res.roomState.status === "PLAYING") {
+            sock.emit("admin:question:get_data", { code: roomCode });
+          }
         }
       });
     });
 
-    sock.on("room:state", (state) => setRoomState(state));
+    sock.on("room:state", (state) => {
+      setRoomState(state);
+      if (state?.status === "LOBBY") {
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setMatchStarting(null);
+        setQuestionPrepare(null);
+        setIntermission(null);
+      }
+    });
+    sock.on("game:question:clear" as any, () => {
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+    });
     sock.on("admin:question:data", (data: any) => {
       setAdminQuestionData(data);
       adminQuestionDataRef.current = data;
@@ -1309,15 +1446,25 @@ export default function AdminSandboxPage() {
     restoredRef.current = true;
     if (typeof window === "undefined") return;
 
+    syncLocalSandboxRoomsState();
+
     const searchParams = new URLSearchParams(window.location.search);
     const urlCode = searchParams.get("code");
     const urlOffline = searchParams.get("offline") === "1";
     const urlMode = searchParams.get("mode") as GameMode | null;
 
-    const storedCode = sessionStorage.getItem("sandbox_current_code");
-    const storedOffline = sessionStorage.getItem("sandbox_is_offline") === "1";
-    const storedMode = sessionStorage.getItem("sandbox_offline_mode") as GameMode | null;
-    const storedBank = sessionStorage.getItem("sandbox_offline_bank") || "";
+    const storedCode =
+      sessionStorage.getItem("sandbox_current_code") ||
+      localStorage.getItem("sandbox_current_code");
+    const storedOffline =
+      sessionStorage.getItem("sandbox_is_offline") === "1" ||
+      localStorage.getItem("sandbox_is_offline") === "1";
+    const storedMode = (sessionStorage.getItem("sandbox_offline_mode") ||
+      localStorage.getItem("sandbox_offline_mode")) as GameMode | null;
+    const storedBank =
+      sessionStorage.getItem("sandbox_offline_bank") ||
+      localStorage.getItem("sandbox_offline_bank") ||
+      "";
 
     // Only restore offline mode if explicitly requested in URL (e.g. ?offline=1 or ?code=OFFLINE)
     const isExplicitlyOffline = urlOffline || (urlCode === "OFFLINE" || (urlCode?.startsWith("OFFLINE") ?? false));
@@ -1329,7 +1476,7 @@ export default function AdminSandboxPage() {
       setIsOfflineSandbox(true);
       startOfflineSandbox(modeToUse, bankToUse);
     } else {
-      const candidateCode = (urlCode || storedCode || "").trim();
+      const candidateCode = (urlCode || (!storedOffline ? storedCode : "") || "").trim();
       if (candidateCode && candidateCode.length === 6 && candidateCode !== "OFFLINE") {
         // Validate with server first before mounting iframes to prevent flashing dead room UI
         fetch(`/api/rooms/${candidateCode}/validate`)
@@ -1338,9 +1485,10 @@ export default function AdminSandboxPage() {
             if (data?.room && data.room.status !== "FINISHED") {
               setCode(candidateCode);
               setIsOfflineSandbox(false);
-              saveSandboxSession(candidateCode, false);
+              saveSandboxSession(candidateCode, false, data.room.mode, undefined, undefined, data.room.name);
               connectAdminSocket(candidateCode);
             } else {
+              removeSandboxRoomFromLocal(candidateCode);
               clearSandboxSession();
               setCode("");
               setIsOfflineSandbox(false);
@@ -1361,7 +1509,7 @@ export default function AdminSandboxPage() {
         setRoomState(null);
       }
     }
-  }, [connectAdminSocket, startOfflineSandbox, saveSandboxSession, clearSandboxSession]);
+  }, [connectAdminSocket, startOfflineSandbox, saveSandboxSession, clearSandboxSession, removeSandboxRoomFromLocal, syncLocalSandboxRoomsState]);
 
   const checkOfflineEarlyCompletion = () => {
     if (!currentQuestionRef.current) return;
@@ -3647,9 +3795,16 @@ export default function AdminSandboxPage() {
     }
 
     try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")
+          : null;
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
       const res = await fetch("/api/sandbox/create", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           mode: modeToUse,
           quizBankId: selectedBankId,
@@ -3657,9 +3812,20 @@ export default function AdminSandboxPage() {
       });
       const data = await res.json();
       if (data.success && data.code) {
+        if (data.hostKey) {
+          localStorage.setItem(`host_key_${data.code}`, data.hostKey);
+        }
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setMatchStarting(null);
+        setQuestionPrepare(null);
+        setIntermission(null);
+        setAdminQuestionData(null);
+        adminQuestionDataRef.current = null;
         setCode(data.code);
         setIsOfflineSandbox(false);
-        saveSandboxSession(data.code, false);
+        saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
         connectAdminSocket(data.code);
         addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
         setTimeout(() => setIsLaunchingAnim(false), 500);
@@ -3689,12 +3855,90 @@ export default function AdminSandboxPage() {
     e.preventDefault();
     if (inputCode.trim().length === 6) {
       const clean = inputCode.trim();
+      setCurrentQuestion(null);
+      setRevealPayload(null);
+      setTimer(null);
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+      setIntermission(null);
+      setAdminQuestionData(null);
+      adminQuestionDataRef.current = null;
       setCode(clean);
       setIsOfflineSandbox(false);
-      saveSandboxSession(clean, false);
+      saveSandboxSession(clean, false, selectedMode);
       connectAdminSocket(clean);
     }
   };
+
+  const handleExitSandboxRoom = useCallback(() => {
+    if (adminSocketRef.current) {
+      adminSocketRef.current.disconnect();
+      adminSocketRef.current = null;
+    }
+    botSocketsRef.current.forEach((s) => s.disconnect());
+    botSocketsRef.current.clear();
+    clearSandboxSession();
+    setCode("");
+    setRoomState(null);
+    setCurrentQuestion(null);
+    setRevealPayload(null);
+    setTimer(null);
+    setMatchStarting(null);
+    setQuestionPrepare(null);
+    setIntermission(null);
+    setAdminQuestionData(null);
+    adminQuestionDataRef.current = null;
+    setIsOfflineSandbox(false);
+    syncLocalSandboxRoomsState();
+  }, [clearSandboxSession, syncLocalSandboxRoomsState]);
+
+  const handleDeleteSandboxRoom = useCallback(
+    async (targetCode?: string, skipConfirm?: boolean) => {
+      const codeToDelete = (targetCode || code || "").trim();
+      if (!codeToDelete) return;
+      if (!skipConfirm && !window.confirm(`Xóa hoàn toàn phòng Sandbox "${codeToDelete}" khỏi máy và máy chủ?`)) {
+        return;
+      }
+
+      if (codeToDelete !== "OFFLINE" && !codeToDelete.startsWith("OFFLINE")) {
+        try {
+          const token =
+            typeof window !== "undefined"
+              ? localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")
+              : null;
+          const hostKey =
+            typeof window !== "undefined" ? localStorage.getItem(`host_key_${codeToDelete}`) : null;
+          const headers: Record<string, string> = {};
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+          if (hostKey) headers["x-host-key"] = hostKey;
+          await fetch(`/api/rooms/${codeToDelete}`, { method: "DELETE", headers });
+        } catch {}
+      }
+
+      removeSandboxRoomFromLocal(codeToDelete);
+      if (codeToDelete === code) {
+        handleExitSandboxRoom();
+      } else {
+        syncLocalSandboxRoomsState();
+      }
+      addLog(`🗑️ Đã xóa phòng Sandbox: ${codeToDelete}`);
+    },
+    [code, removeSandboxRoomFromLocal, handleExitSandboxRoom, syncLocalSandboxRoomsState, addLog]
+  );
+
+  const handleDeleteAllLocalSandboxRooms = useCallback(async () => {
+    if (localSandboxRooms.length === 0) return;
+    if (!window.confirm(`Xóa toàn bộ ${localSandboxRooms.length} phòng Sandbox đã lưu trên máy (và trên máy chủ)?`)) {
+      return;
+    }
+    for (const r of localSandboxRooms) {
+      await handleDeleteSandboxRoom(r.code, true);
+    }
+    try {
+      localStorage.removeItem("sandbox_local_rooms");
+      setLocalSandboxRooms([]);
+    } catch {}
+  }, [localSandboxRooms, handleDeleteSandboxRoom]);
 
   // ── Host Actions ──────────────────────────────────────────────────────────
   const replenishOfflineTeamPowerups = () => {
@@ -7165,17 +7409,22 @@ export default function AdminSandboxPage() {
                   )}
                 </div>
 
-                {/* Exit */}
+                {/* Delete Room */}
                 <button
                   type="button"
-                  onClick={() => {
-                    clearSandboxSession();
-                    setCode("");
-                    setRoomState(null);
-                    setCurrentQuestion(null);
-                    setIsOfflineSandbox(false);
-                  }}
-                  className="px-2.5 py-1 rounded-lg glass hover:bg-red-500/20 text-red-400 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+                  onClick={() => handleDeleteSandboxRoom(code)}
+                  title="Xóa hoàn toàn phòng Sandbox này khỏi máy và máy chủ"
+                  className="px-2.5 py-1 rounded-lg glass border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/25 text-rose-300 text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
+                >
+                  🗑️ Xóa phòng
+                </button>
+
+                {/* Exit / Switch Room */}
+                <button
+                  type="button"
+                  onClick={handleExitSandboxRoom}
+                  title="Thoát khỏi phòng hiện tại để chọn hoặc tạo phòng khác"
+                  className="px-2.5 py-1 rounded-lg glass hover:bg-white/10 text-slate-300 hover:text-white text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer"
                 >
                   ✕ Đổi phòng
                 </button>
@@ -7265,6 +7514,64 @@ export default function AdminSandboxPage() {
               </button>
             </div>
           </div>
+
+          {/* ── Locally Saved Sandbox Rooms Bar ── */}
+          {localSandboxRooms.length > 0 && (
+            <div className="max-w-5xl mx-auto glass rounded-2xl p-3 sm:p-4 border border-cyan-500/25 bg-[#121629]/85 space-y-2.5">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">💾</span>
+                  <span className="text-xs font-bold text-cyan-300">
+                    Phòng Sandbox đang lưu trên máy ({localSandboxRooms.length})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDeleteAllLocalSandboxRooms}
+                  className="px-2.5 py-1 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/35 text-rose-300 text-[11px] font-bold transition cursor-pointer"
+                >
+                  🧹 Xóa tất cả ({localSandboxRooms.length})
+                </button>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                {localSandboxRooms.map((item) => (
+                  <div
+                    key={item.code}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-xs"
+                  >
+                    <span className="font-mono font-black text-cyan-300">{item.code}</span>
+                    <span className="text-slate-300 font-semibold">{item.mode}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (item.isOffline || item.code === "OFFLINE") {
+                          setSelectedMode(item.mode || "CLASSIC");
+                          setIsOfflineSandbox(true);
+                          startOfflineSandbox(item.mode || "CLASSIC", selectedBankId);
+                        } else {
+                          setCode(item.code);
+                          setIsOfflineSandbox(false);
+                          saveSandboxSession(item.code, false, item.mode, undefined, item.hostKey, item.name);
+                          connectAdminSocket(item.code);
+                        }
+                      }}
+                      className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold text-[11px] transition cursor-pointer"
+                    >
+                      ▶ Mở
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSandboxRoom(item.code)}
+                      className="px-2 py-0.5 rounded-md bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-[11px] transition cursor-pointer"
+                      title="Xóa phòng này"
+                    >
+                      🗑️ Xóa
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Visual Mode Cards Grid (9 Modes) ── */}
           <div className="max-w-5xl mx-auto pb-4">

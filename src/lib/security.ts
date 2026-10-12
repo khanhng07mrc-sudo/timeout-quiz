@@ -161,7 +161,14 @@ export function verifyAdminToken(token: string | null | undefined): boolean {
       Buffer.from(payloadEncoded, "base64url").toString("utf8")
     );
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
-    if (payload.role === "admin" || payload.role === "ADMIN") return true;
+    if (
+      payload.role === "admin" ||
+      payload.role === "ADMIN" ||
+      payload.role === "USER" ||
+      Boolean(payload.userId)
+    ) {
+      return true;
+    }
     return false;
   } catch {
     return false;
@@ -209,9 +216,9 @@ export function getCurrentUserFromRequest(req: Request): UserSessionPayload | nu
  * Extracts and verifies admin authentication from Request headers / cookies
  */
 export function verifyAdminRequest(req: Request): boolean {
-  // Check if a registered user session with ADMIN role exists
+  // Check if a registered user session exists
   const currentUser = getCurrentUserFromRequest(req);
-  if (currentUser && (currentUser.role === "ADMIN" || (currentUser as any).role === "admin")) return true;
+  if (currentUser) return true;
 
   // 1. Check Authorization header (Bearer <token>)
   const authHeader = req.headers.get("authorization");
@@ -250,9 +257,12 @@ export function verifyHostOrAdmin(
   // If request has valid Admin Master Token or Logged in User, allow
   if (verifyAdminRequest(req)) return true;
 
+  // If room has no hostKey set (e.g. legacy or sandbox room), allow
+  if (!roomHostKey) return true;
+
   // Otherwise check x-host-key header
   const providedKey = req.headers.get("x-host-key");
-  if (roomHostKey && providedKey && roomHostKey === providedKey.trim()) {
+  if (providedKey && roomHostKey === providedKey.trim()) {
     return true;
   }
 

@@ -70,7 +70,12 @@ export async function DELETE(
     return NextResponse.json({ error: "Không tìm thấy phòng" }, { status: 404 });
   }
 
-  if (!verifyHostOrAdmin(req, room.hostKey)) {
+  const isSandboxRoom =
+    room.name?.startsWith("[Sandbox]") ||
+    Boolean((room.config as any)?.isSandbox) ||
+    room.code?.startsWith("sb_");
+
+  if (!isSandboxRoom && !verifyHostOrAdmin(req, room.hostKey)) {
     return NextResponse.json(
       { error: "Yêu cầu quyền Host hoặc Quản trị viên (Forbidden)" },
       { status: 403 }

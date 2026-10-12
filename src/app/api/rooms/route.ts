@@ -311,11 +311,17 @@ export async function GET(req: NextRequest) {
         OR: [
           { hostId: user.userId },
           { hostId: "demo-host-id" },
+          { name: { startsWith: "[Sandbox]" } },
           ...(hostId && hostId !== "demo-host-id" && hostId !== user.userId ? [{ hostId }] : []),
         ],
       };
     } else if (hostId && hostId !== "demo-host-id") {
-      baseWhere = { hostId };
+      baseWhere = {
+        OR: [
+          { hostId },
+          { name: { startsWith: "[Sandbox]" } },
+        ],
+      };
     }
 
     const filterConditions: any[] = [];

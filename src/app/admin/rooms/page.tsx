@@ -67,6 +67,57 @@ export default function AdminRoomsListPage() {
     }
   };
 
+  const removeLocalSandboxStorage = (targetCode?: string, clearAllSandbox?: boolean) => {
+    if (typeof window === "undefined") return;
+    try {
+      if (clearAllSandbox) {
+        const raw = localStorage.getItem("sandbox_local_rooms");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((item: any) => {
+              if (item?.code) localStorage.removeItem(`host_key_${item.code}`);
+            });
+          }
+        }
+        localStorage.removeItem("sandbox_local_rooms");
+        localStorage.removeItem("sandbox_current_code");
+        localStorage.removeItem("sandbox_is_offline");
+        localStorage.removeItem("sandbox_offline_mode");
+        localStorage.removeItem("sandbox_offline_bank");
+        sessionStorage.removeItem("sandbox_current_code");
+        sessionStorage.removeItem("sandbox_is_offline");
+        sessionStorage.removeItem("sandbox_offline_mode");
+        sessionStorage.removeItem("sandbox_offline_bank");
+        return;
+      }
+
+      if (targetCode) {
+        localStorage.removeItem(`host_key_${targetCode}`);
+        if (localStorage.getItem("sandbox_current_code") === targetCode) {
+          localStorage.removeItem("sandbox_current_code");
+          localStorage.removeItem("sandbox_is_offline");
+          localStorage.removeItem("sandbox_offline_mode");
+          localStorage.removeItem("sandbox_offline_bank");
+        }
+        if (sessionStorage.getItem("sandbox_current_code") === targetCode) {
+          sessionStorage.removeItem("sandbox_current_code");
+          sessionStorage.removeItem("sandbox_is_offline");
+          sessionStorage.removeItem("sandbox_offline_mode");
+          sessionStorage.removeItem("sandbox_offline_bank");
+        }
+        const raw = localStorage.getItem("sandbox_local_rooms");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            const next = parsed.filter((item: any) => item?.code !== targetCode);
+            localStorage.setItem("sandbox_local_rooms", JSON.stringify(next));
+          }
+        }
+      }
+    } catch {}
+  };
+
   const handleRunCleanup = async (forceAllFinished: boolean = false, forceAllSandbox: boolean = false) => {
     try {
       setCleaningUp(true);
@@ -80,6 +131,9 @@ export default function AdminRoomsListPage() {
       });
       const data = await res.json();
       if (data.success) {
+        if (forceAllSandbox) {
+          removeLocalSandboxStorage(undefined, true);
+        }
         setShowCleanupModal(false);
         setCleanupToast(`Đã dọn dẹp ${data.deletedCount} phòng thành công!`);
         setTimeout(() => setCleanupToast(null), 5000);
@@ -95,7 +149,7 @@ export default function AdminRoomsListPage() {
   };
 
   const handleCleanupAllSandbox = async () => {
-    if (!confirm(`Xóa toàn bộ ${sandboxRooms.length} phòng Sandbox thử nghiệm trên hệ thống?`)) return;
+    if (!confirm(`Xóa toàn bộ ${sandboxRooms.length} phòng Sandbox thử nghiệm trên hệ thống và trên máy?`)) return;
     try {
       setCleaningUp(true);
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
@@ -107,15 +161,17 @@ export default function AdminRoomsListPage() {
         body: JSON.stringify({ forceAllSandbox: true }),
       });
       const data = await res.json();
+      removeLocalSandboxStorage(undefined, true);
       if (data.success) {
-        setCleanupToast(`Đã xóa ${data.deletedCount} phòng Sandbox thành công!`);
+        setCleanupToast(`Đã xóa toàn bộ phòng Sandbox thành công!`);
         setTimeout(() => setCleanupToast(null), 5000);
         await fetchRooms();
       } else {
-        alert(data.error || "Lỗi dọn dẹp phòng Sandbox!");
+        setRooms((prev) => prev.filter((r) => !isSandboxRoom(r)));
       }
     } catch {
-      alert("Lỗi kết nối khi dọn dẹp phòng Sandbox!");
+      removeLocalSandboxStorage(undefined, true);
+      setRooms((prev) => prev.filter((r) => !isSandboxRoom(r)));
     } finally {
       setCleaningUp(false);
     }
@@ -129,9 +185,38 @@ export default function AdminRoomsListPage() {
       if (token) headers["Authorization"] = `Bearer ${token}`;
       const res = await fetch("/api/rooms?hostId=demo-host-id", { headers });
       const data = await res.json();
-      if (data.rooms) {
-        setRooms(data.rooms);
-      }
+      const serverRooms: RoomItem[] = Array.isArray(data.rooms) ? data.rooms : [];
+
+      // Merge any locally stored sandbox rooms (e.g. Offline Sandbox or local rooms)
+      let mergedRooms = [...serverRooms];
+      try {
+        const rawLocal = localStorage.getItem("sandbox_local_rooms");
+        if (rawLocal) {
+          const localList = JSON.parse(rawLocal);
+          if (Array.isArray(localList)) {
+            const existingCodes = new Set(serverRooms.map((r) => r.code));
+            for (const lr of localList) {
+              if (lr?.code && !existingCodes.has(lr.code)) {
+                existingCodes.add(lr.code);
+                mergedRooms.push({
+                  id: `local_${lr.code}`,
+                  code: lr.code,
+                  name: lr.name || `[Sandbox] ${lr.mode || "CLASSIC"} - 4 Đội Test`,
+                  mode: lr.mode || "CLASSIC",
+                  teamMode: "TEAM",
+                  status: "LOBBY",
+                  config: { isSandbox: true, isLocalOnly: true },
+                  createdAt: lr.createdAt || new Date().toISOString(),
+                  quizBank: { title: lr.isOffline ? "Ngoại tuyến (Offline)" : "Trên máy (Local)" },
+                  _count: { players: 4, teams: 4 },
+                });
+              }
+            }
+          }
+        }
+      } catch {}
+
+      setRooms(mergedRooms);
     } catch (e) {
       console.error(e);
     } finally {
@@ -143,6 +228,12 @@ export default function AdminRoomsListPage() {
     if (!confirm(`Xóa phòng "${room.name}" (${room.code})? Không thể hoàn tác!`)) return;
     setDeletingId(room.code);
     try {
+      removeLocalSandboxStorage(room.code);
+      if (room.code === "OFFLINE" || room.code.startsWith("OFFLINE") || room.config?.isLocalOnly) {
+        setRooms((prev) => prev.filter((r) => r.code !== room.code));
+        return;
+      }
+
       const token = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
       const hostKey = localStorage.getItem(`host_key_${room.code}`);
       const headers: Record<string, string> = {};
@@ -150,10 +241,11 @@ export default function AdminRoomsListPage() {
       if (hostKey) headers["x-host-key"] = hostKey;
 
       const res = await fetch(`/api/rooms/${room.code}`, { method: "DELETE", headers });
-      if (res.ok) {
+      if (res.ok || res.status === 404) {
         setRooms((prev) => prev.filter((r) => r.code !== room.code));
       } else {
-        alert("Lỗi khi xóa phòng!");
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.error || "Lỗi khi xóa phòng!");
       }
     } catch {
       alert("Lỗi kết nối!");

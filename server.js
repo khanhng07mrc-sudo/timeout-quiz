@@ -880,7 +880,8 @@ function roundToMultipleOfFive(points) {
 function evaluateTeamRiskTier({
   team,
   allTeams = [],
-  consecutiveBombs = 0
+  consecutiveBombs = 0,
+  currentRound = 1
 }) {
   const activeTeams = (allTeams || []).filter((t) => !t.isEliminated);
   if (activeTeams.length <= 1) return "NEUTRAL";
@@ -898,7 +899,7 @@ function evaluateTeamRiskTier({
   if (team.id === bottom.id && (top1.score || 0) - myScore >= 25) {
     return "UNDERDOG";
   }
-  if (team.id === top1.id && top2 && myScore - (top2.score || 0) >= 25) {
+  if (currentRound > 1 && team.id === top1.id && top2 && myScore - (top2.score || 0) >= 25) {
     return "DOMINANT";
   }
   return "NEUTRAL";
@@ -1285,12 +1286,21 @@ function calculateCappedSteal({
   };
 }
 function shuffleMemoryPairsTiles(tiles) {
-  const shuffled = [...tiles].map((t) => ({ ...t, isOpened: false })).sort(() => Math.random() - 0.5);
-  return shuffled.map((item, idx) => ({
+  const cloned = tiles.map((t) => ({
+    ...t,
+    isOpened: false,
+    isMatched: false
+  }));
+  for (let i = cloned.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cloned[i], cloned[j]] = [cloned[j], cloned[i]];
+  }
+  return cloned.map((item, idx) => ({
     ...item,
     id: idx + 1,
     label: `Th\u1EBB #${idx + 1}`,
-    isOpened: false
+    isOpened: false,
+    isMatched: false
   }));
 }
 function generateMemoryPairsTiles(basePoints = 20, options) {
@@ -2688,6 +2698,7 @@ function handleFlipCard({
       );
       const tilePenaltyKey = getPenaltyKey(tile2);
       if (tilePenaltyKey) {
+        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
         const matchingPriorBomb = state.tiles.find(
           (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === tilePenaltyKey
         );
@@ -2722,6 +2733,7 @@ function handleFlipCard({
     }
     const secondTilePenaltyKey = getPenaltyKey(tile2);
     if (secondTilePenaltyKey) {
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
       const matchingPriorBomb = state.tiles.find(
         (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === secondTilePenaltyKey
       );
@@ -2739,6 +2751,7 @@ function handleFlipCard({
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
+        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
         memState.isBombRescueActive = true;
         memState.activePenaltyPairKey = firstTilePenaltyKey;
         state.memoryPairsState = { ...memState };
@@ -3615,6 +3628,12 @@ function handleMemoryPairsSecondChanceDecision({
     return { updatedState: state, finalScoreDelta: 0 };
   }
   if (choice === "CASH_OUT") {
+    const heartsRecord = { ...state.teamHearts || {} };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 2;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
     const award = state.baseQuestionPoints || 10;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "PAIR_MATCHED";
@@ -3623,11 +3642,12 @@ function handleMemoryPairsSecondChanceDecision({
     state.memoryPairsState = { ...memState };
     const oldScore = team.score || 0;
     const newScore = oldScore + award;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `\u{1F4B0} B\u1EA3o to\xE0n an to\xE0n! Nh\u1EADn tr\u1ECDn v\u1EB9n +${award} \u0111i\u1EC3m c\u1EE7a c\xE2u h\u1ECFi!`,
+      rewardText: `\u{1F6E1}\uFE0F D\u1EEBng l\u1EA1i b\u1EA3o to\xE0n! Ti\xEAu hao 1 \u2764\uFE0F \u0111\u1EC3 nh\u1EADn tr\u1ECDn v\u1EB9n +${award} \u0111i\u1EC3m c\xE2u h\u1ECFi (C\xF2n ${remainingHearts} \u2764\uFE0F)!`,
       scoreDelta: award,
       oldScore,
       newScore
@@ -3638,6 +3658,7 @@ function handleMemoryPairsSecondChanceDecision({
     };
   } else {
     memState.round = 2;
+    memState.maxAttempts = 4;
     memState.attemptsUsed = 0;
     memState.promptSecondChance = false;
     memState.firstFlippedTileId = null;
@@ -3645,7 +3666,9 @@ function handleMemoryPairsSecondChanceDecision({
     memState.thirdFlippedTileId = null;
     memState.keptBombTileIds = [];
     memState.isBombRescueActive = false;
+    memState.activePenaltyPairKey = null;
     memState.isMismatchResolving = false;
+    memState.matchedPairKey = null;
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
     state.memoryPairsState = { ...memState };
     return {
@@ -3993,25 +4016,25 @@ function handleOneShotDoorsDecision({
 }
 var TAROT_WHEEL_SEGMENTS = [
   { index: 0, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 1, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 2, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 3, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 4, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 5, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 6, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 7, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 8, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
-  { index: 9, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 10, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 11, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 12, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
-  { index: 13, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 14, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
-  { index: 15, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 16, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
-  { index: 17, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 18, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
-  { index: 19, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" }
+  { index: 1, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 2, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 3, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 4, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 5, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 6, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 7, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 8, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 9, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 10, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 11, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 12, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 13, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
+  { index: 14, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 15, key: "THE_KNIGHT", nameVi: "Hi\u1EC7p S\u0129 (The Knight)", nameEn: "The Knight", icon: "\u{1F5E1}\uFE0F", roman: "VII", group: "MUTATION", bgColor: "#1e1b4b", borderColor: "#6366f1", textColor: "#c7d2fe" },
+  { index: 16, key: "THE_SUN", nameVi: "M\u1EB7t Tr\u1EDDi (The Sun)", nameEn: "The Sun", icon: "\u2600\uFE0F", roman: "XIX", group: "COMMON", bgColor: "#78350f", borderColor: "#f59e0b", textColor: "#fef08a" },
+  { index: 17, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (The Fool)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" },
+  { index: 18, key: "THE_EMPEROR", nameVi: "Ho\xE0ng \u0110\u1EBF (The Emperor)", nameEn: "The Emperor", icon: "\u{1F451}", roman: "IV", group: "MUTATION", bgColor: "#7c2d12", borderColor: "#f97316", textColor: "#fed7aa" },
+  { index: 19, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (C\u01B0\u1EDBp \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "STEAL_TOP1", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" }
 ];
 var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
   { index: 0, key: "THE_PEACE", nameVi: "B\xECnh Y\xEAn Tho\xE1t N\u1EA1n", nameEn: "The Peace", icon: "\u{1F54A}\uFE0F", roman: "XXI", group: "COMMON", bgColor: "#064e3b", borderColor: "#10b981", textColor: "#a7f3d0" },
@@ -4035,33 +4058,90 @@ var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
   { index: 18, key: "THE_DEATH", nameVi: "Th\u1EA7n Ch\u1EBFt (T\u1EB7ng \u0110i\u1EC3m)", nameEn: "Death", icon: "\u{1F480}", roman: "XIII", group: "CRITICAL", deathSubtype: "GIFT_TOP1", bgColor: "#881337", borderColor: "#f43f5e", textColor: "#fecdd3" },
   { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#4c1d95", borderColor: "#a855f7", textColor: "#f3e8ff" }
 ];
-function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false) {
+function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false, options) {
   if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
-  if (!hasSunMagnet) return TAROT_WHEEL_SEGMENTS;
-  return TAROT_WHEEL_SEGMENTS.map((seg) => {
-    if (seg.index === 1) {
-      return {
-        ...seg,
-        key: "THE_SUN",
-        nameVi: "M\u1EB7t Tr\u1EDDi (Nam Ch\xE2m)",
-        nameEn: "The Sun (Magnet)",
-        icon: "\u2600\uFE0F",
-        roman: "XIX",
-        group: "COMMON",
-        bgColor: "#92400e",
-        borderColor: "#fde047",
-        textColor: "#ffffff",
-        isMagnetized: true
-      };
-    }
-    return seg;
-  });
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  let segments = [...TAROT_WHEEL_SEGMENTS];
+  if (hasSunMagnet) {
+    segments = segments.map((seg) => {
+      if (seg.index === 1) {
+        return {
+          ...seg,
+          key: "THE_SUN",
+          nameVi: "M\u1EB7t Tr\u1EDDi (Nam Ch\xE2m)",
+          nameEn: "The Sun (Magnet)",
+          icon: "\u2600\uFE0F",
+          roman: "XIX",
+          group: "COMMON",
+          bgColor: "#92400e",
+          borderColor: "#fde047",
+          textColor: "#ffffff",
+          isMagnetized: true
+        };
+      }
+      return seg;
+    });
+  }
+  if (riskTier === "UNDERDOG") {
+    segments = segments.map((seg) => {
+      if (seg.index === 6) {
+        return {
+          ...seg,
+          key: "THE_SUN",
+          nameVi: "M\u1EB7t Tr\u1EDDi (Tr\u1EE3 L\u1EF1c)",
+          nameEn: "The Sun (Aid)",
+          icon: "\u2600\uFE0F",
+          roman: "XIX",
+          group: "COMMON",
+          bgColor: "#78350f",
+          borderColor: "#f59e0b",
+          textColor: "#fef08a"
+        };
+      }
+      if (seg.index === 11) {
+        return {
+          ...seg,
+          key: "THE_DEATH",
+          nameVi: "Th\u1EA7n Ch\u1EBFt (L\u1EADt K\xE8o)",
+          nameEn: "Death (Reversal)",
+          icon: "\u{1F480}",
+          roman: "XIII",
+          group: "CRITICAL",
+          deathSubtype: "STEAL_TOP1",
+          bgColor: "#064e3b",
+          borderColor: "#10b981",
+          textColor: "#a7f3d0"
+        };
+      }
+      return seg;
+    });
+  } else if (riskTier === "DOMINANT") {
+    segments = segments.map((seg) => {
+      if (seg.index === 9) {
+        return {
+          ...seg,
+          key: "THE_EMPEROR",
+          nameVi: "Ho\xE0ng \u0110\u1EBF (Chia \u0110i\u1EC3m)",
+          nameEn: "The Emperor (Share)",
+          icon: "\u{1F451}",
+          roman: "IV",
+          group: "MUTATION",
+          bgColor: "#7c2d12",
+          borderColor: "#f97316",
+          textColor: "#fed7aa"
+        };
+      }
+      return seg;
+    });
+  }
+  return segments;
 }
 function calculateTarotWheelSpin({
   powerPercent,
   currentAngle = 0,
   hasSunMagnet = false,
-  isSurvivalMode = false
+  isSurvivalMode = false,
+  options
 }) {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
   const baseTurns = 6;
@@ -4078,7 +4158,7 @@ function calculateTarotWheelSpin({
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - targetAngle % 360) % 360;
   const landedIndex = Math.floor(pointerAngle / 18) % 20;
-  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode);
+  const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode, options);
   const landedSegment = effectiveSegments[landedIndex];
   const spinDurationMs = 4500 + Math.round(clampedPower / 100 * 1500);
   return {
@@ -4097,11 +4177,17 @@ function handleAncientTarotSpinWheel({
   const currentAngle = state.tarotState?.targetAngle || 0;
   const isSurvivalMode = !!state.isPenaltySurvivalMode;
   const hasSunMagnet = !isSurvivalMode && getPerkType(state.promoPerk) === "SUN_MAGNET_PROMO";
+  const riskTier = evaluateTeamRiskTier({
+    team,
+    allTeams,
+    currentRound: state.currentRound || 1
+  });
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
     hasSunMagnet,
-    isSurvivalMode
+    isSurvivalMode,
+    options: { riskTier, currentRound: state.currentRound || 1, teamScore: team.score || 0 }
   });
   const basePoints = state.baseQuestionPoints || 10;
   const currentScore = team.score || 0;
@@ -4978,7 +5064,7 @@ function verifyAdminToken(token) {
       Buffer.from(payloadEncoded, "base64url").toString("utf8")
     );
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
-    if (payload.role === "admin" || payload.role === "ADMIN" || payload.userId) return true;
+    if (payload.role === "admin" || payload.role === "ADMIN") return true;
     return false;
   } catch {
     return false;
@@ -5512,6 +5598,8 @@ var roomFinalizedActors = /* @__PURE__ */ new Map();
 var roomSubmittedActors = /* @__PURE__ */ new Map();
 var roomTeamImmunity = /* @__PURE__ */ new Map();
 var roomSharedPowerupUsedInQuestion = /* @__PURE__ */ new Map();
+var inFlightPowerupCards = /* @__PURE__ */ new Set();
+var inFlightAdminActions = /* @__PURE__ */ new Set();
 var roomGoldQuestions = /* @__PURE__ */ new Map();
 var roomEliminationGhostStats = /* @__PURE__ */ new Map();
 function selectGoldQuestions(questions) {
@@ -6099,17 +6187,27 @@ function cleanupRoomInMemory(roomId) {
         roomBuzzDelayTimers.delete(key);
       }
     }
+    const prep = roomPrepareStates.get(roomId);
+    if (prep?.timer) clearTimeout(prep.timer);
+    roomPrepareStates.delete(roomId);
+    const interTimer = roomIntermissionTimers.get(roomId);
+    if (interTimer) {
+      clearTimeout(interTimer);
+      roomIntermissionTimers.delete(roomId);
+    }
+    roomIntermissions.delete(roomId);
     roomActiveQuestions.delete(roomId);
     roomRevealPayloads.delete(roomId);
     roomRemainingTimes.delete(roomId);
     roomTimerEndsAt.delete(roomId);
-    roomPrepareStates.delete(roomId);
     roomTournaments.delete(roomId);
     roomGridCaros.delete(roomId);
     roomDiceRaces.delete(roomId);
     roomWagers.delete(roomId);
+    roomMysteryQuests.delete(roomId);
+    roomTotalActorsCache.delete(roomId);
+    roomSharedPowerupUsedInQuestion.delete(roomId);
     roomUsedQuestions.delete(roomId);
-    roomIntermissions.delete(roomId);
     roomCache.delete(roomId);
     roomQuestionsCache.delete(roomId);
     roomGoldQuestions.delete(roomId);
@@ -6197,6 +6295,28 @@ function cleanupRoomInMemory(roomId) {
     for (const key of roomStealEndsAt.keys()) {
       if (key.startsWith(prefix)) roomStealEndsAt.delete(key);
     }
+    for (const key of roomTeamImmunity.keys()) {
+      if (key.startsWith(prefix)) roomTeamImmunity.delete(key);
+    }
+    for (const [pId, timer] of pendingDisconnects.entries()) {
+      const session = playerSessions.get(pId);
+      if (session?.roomId === roomId) {
+        clearTimeout(timer);
+        pendingDisconnects.delete(pId);
+        playerStreakMap.delete(pId);
+        if (session.teamId) teamStreakMap.delete(session.teamId);
+        playerSessions.delete(pId);
+      }
+    }
+    for (const [sockId, session] of socketPlayerSessions.entries()) {
+      if (session.roomId === roomId) {
+        playerSockets.delete(sockId);
+        socketPlayerSessions.delete(sockId);
+      }
+    }
+    for (const key of inFlightAdminActions) {
+      if (key.startsWith(prefix)) inFlightAdminActions.delete(key);
+    }
     roomQuestionStartedAt.delete(roomId);
     cleanupTieBreaker(roomId);
   } catch (err) {
@@ -6207,21 +6327,6 @@ var globalForSockets = globalThis;
 globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
 async function getAdminRoom(socket, payloadCode) {
   let roomId = adminSockets.get(socket.id);
-  if (!roomId && payloadCode) {
-    const rByCode = await prisma.room.findUnique({
-      where: { code: payloadCode },
-      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-    });
-    if (rByCode) {
-      roomId = rByCode.id;
-      adminSockets.set(socket.id, roomId);
-      roomCache.set(roomId, rByCode);
-      if (rByCode.quizBank?.questions) {
-        roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
-      }
-      return rByCode;
-    }
-  }
   if (!roomId) {
     for (const roomName of socket.rooms) {
       if (roomName.startsWith("room:") && roomName.endsWith(":admin")) {
@@ -6246,6 +6351,9 @@ async function getAdminRoom(socket, payloadCode) {
   }
   if (!roomId) return null;
   const cached = roomCache.get(roomId);
+  if (cached && payloadCode && cached.code !== payloadCode) {
+    return null;
+  }
   if (cached) {
     if (!cached.quizBank?.questions?.length) {
       const qCached = roomQuestionsCache.get(roomId);
@@ -6321,8 +6429,14 @@ function registerSocketHandlers(io2) {
   const resolveBuzzArbitrationWinner = async (roomId, roomCode, questionId, mode, candidates) => {
     if (!candidates || candidates.length === 0) return;
     const qKey = `${roomId}:${questionId}`;
+    const openedAt = (mode === "BUZZ" ? roomBuzzWindowOpenedAt.get(qKey) : roomStealOpenedAt.get(qKey)) || Date.now();
+    for (const c of candidates) {
+      if (typeof c.clientBuzzedAt !== "number" || c.clientBuzzedAt < openedAt - 150 || c.clientBuzzedAt > c.receivedAt + 150) {
+        c.clientBuzzedAt = c.receivedAt;
+      }
+    }
     candidates.sort((a, b) => {
-      if (a.clientBuzzedAt !== b.clientBuzzedAt) {
+      if (Math.abs(a.clientBuzzedAt - b.clientBuzzedAt) > 25) {
         return a.clientBuzzedAt - b.clientBuzzedAt;
       }
       return a.receivedAt - b.receivedAt;
@@ -6471,9 +6585,6 @@ function registerSocketHandlers(io2) {
         if (!cleanedName || cleanedName.length === 0) {
           return callback({ success: false, error: "T\xEAn ng\u01B0\u1EDDi ch\u01A1i kh\xF4ng h\u1EE3p l\u1EC7 (kh\xF4ng ch\u1EE9a m\xE3 \u0111\u1ED9c ho\u1EB7c r\u1ED7ng)" });
         }
-        if (room.players.length >= MAX_PLAYERS_PER_ROOM && !playerId) {
-          return callback({ success: false, error: `Ph\xF2ng thi \u0111\xE3 \u0111\u1EA1t gi\u1EDBi h\u1EA1n t\u1ED1i \u0111a (${MAX_PLAYERS_PER_ROOM} ng\u01B0\u1EDDi tham gia)` });
-        }
         let player = null;
         if (playerId) {
           const existingById = await prisma.player.findFirst({
@@ -6543,6 +6654,9 @@ function registerSocketHandlers(io2) {
           }
         }
         if (!player) {
+          if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
+            return callback({ success: false, error: `Ph\xF2ng thi \u0111\xE3 \u0111\u1EA1t gi\u1EDBi h\u1EA1n t\u1ED1i \u0111a (${MAX_PLAYERS_PER_ROOM} ng\u01B0\u1EDDi tham gia)` });
+          }
           if (room.status === "LOBBY") {
             await prisma.player.deleteMany({
               where: {
@@ -6989,57 +7103,68 @@ function registerSocketHandlers(io2) {
       }
     });
     socket.on("game:answer:submit", async ({ questionId, answer, teamId, playerId: clientPlayerId, clientAnsweredAt }) => {
-      if (!checkActionDebounce(socket.id, 150)) return;
-      let playerId = clientPlayerId || playerSockets.get(socket.id);
-      if (!playerId) {
-        const dbPlayer = await prisma.player.findFirst({
-          where: { socketId: socket.id },
-          include: { room: true }
-        }).catch(() => null);
-        if (dbPlayer) {
-          playerId = dbPlayer.id;
-          playerSockets.set(socket.id, dbPlayer.id);
+      try {
+        if (!checkActionDebounce(socket.id, 150)) return;
+        let playerId = playerSockets.get(socket.id);
+        if (!playerId) {
+          const dbPlayer = await prisma.player.findFirst({
+            where: { socketId: socket.id },
+            include: { room: true }
+          }).catch(() => null);
+          if (dbPlayer) {
+            playerId = dbPlayer.id;
+            playerSockets.set(socket.id, dbPlayer.id);
+          }
         }
-      }
-      if (!playerId) return;
-      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
-      if (!session || !session.teamId) {
-        const player = await prisma.player.findFirst({
-          where: {
-            OR: [
-              { id: playerId },
-              { socketId: socket.id }
-            ]
-          },
-          include: { room: true, team: true }
+        if (clientPlayerId && playerId && clientPlayerId !== playerId) {
+          console.warn(`[Security] G\xF3i tin n\u1ED9p b\xE0i m\u1EA1o danh t\u1EEB socket ${socket.id}: khai ${clientPlayerId}, th\u1EF1c t\u1EBF ${playerId}`);
+          return;
+        }
+        if (!playerId) return;
+        let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+        if (!session || !session.teamId) {
+          const player = await prisma.player.findFirst({
+            where: {
+              OR: [
+                { id: playerId },
+                { socketId: socket.id }
+              ]
+            },
+            include: { room: true, team: true }
+          });
+          if (!player || !player.room) return;
+          session = {
+            playerId: player.id,
+            playerName: player.name,
+            roomId: player.room.id,
+            roomCode: player.room.code,
+            teamId: player.teamId || void 0,
+            teamName: player.team?.name ?? player.name,
+            roomMode: player.room.mode,
+            teamMode: player.room.teamMode
+          };
+          socketPlayerSessions.set(socket.id, session);
+          playerSessions.set(player.id, session);
+        }
+        const submissionTeamId = session.teamId;
+        if (teamId && submissionTeamId && teamId !== submissionTeamId) {
+          console.warn(`[Security] G\xF3i tin n\u1ED9p b\xE0i m\u1EA1o danh \u0111\u1ED9i t\u1EEB socket ${socket.id}: khai team ${teamId}, th\u1EF1c t\u1EBF ${submissionTeamId}`);
+          return;
+        }
+        await processAnswerSubmission({
+          io: io2,
+          roomId: session.roomId,
+          questionId,
+          playerId,
+          teamId: submissionTeamId,
+          answer,
+          clientAnsweredAt,
+          isAdminOverride: false,
+          socket
         });
-        if (!player || !player.room) return;
-        const effTeamId = teamId || player.teamId || session?.teamId || void 0;
-        session = {
-          playerId: player.id,
-          playerName: player.name,
-          roomId: player.room.id,
-          roomCode: player.room.code,
-          teamId: effTeamId,
-          teamName: player.team?.name ?? session?.teamName ?? player.name,
-          roomMode: player.room.mode,
-          teamMode: player.room.teamMode
-        };
-        socketPlayerSessions.set(socket.id, session);
-        playerSessions.set(player.id, session);
+      } catch (err) {
+        console.error("[game:answer:submit] L\u1ED7i x\u1EED l\xFD n\u1ED9p b\xE0i:", err);
       }
-      const submissionTeamId = teamId || session.teamId || void 0;
-      await processAnswerSubmission({
-        io: io2,
-        roomId: session.roomId,
-        questionId,
-        playerId,
-        teamId: submissionTeamId,
-        answer,
-        clientAnsweredAt,
-        isAdminOverride: false,
-        socket
-      });
     });
     socket.on("admin:submit:answer", async ({ questionId, teamId, playerId, answer, code }) => {
       const room = await getAdminRoom(socket, code);
@@ -7131,21 +7256,28 @@ function registerSocketHandlers(io2) {
         const isUnlocked = roomBuzzUnlocked.get(qKey) ?? false;
         if (!isUnlocked) {
           socket.emit("error", "Chu\xF4ng \u0111ang b\u1ECB kh\xF3a! Vui l\xF2ng ch\u1EDD m\u1EDF chu\xF4ng.");
+          socket.emit("game:buzz:closed");
           return;
         }
-        if (roomBuzzFirst.has(qKey)) return;
+        if (roomBuzzFirst.has(qKey)) {
+          socket.emit("error", "\u0110\xE3 c\xF3 \u0111\u1ED9i gi\xE0nh quy\u1EC1n b\u1EA5m chu\xF4ng!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
         const teamId = session.teamId ?? session.playerId;
         const teamName = session.teamName ?? session.playerName;
         const maxAttempts = activeQ.buzzMaxAttempts ?? 3;
         const attempts = roomBuzzAttemptOrder.get(qKey) || [];
         if (attempts.length >= maxAttempts) {
           socket.emit("error", `\u0110\xE3 h\u1EBFt ${maxAttempts} l\u01B0\u1EE3t b\u1EA5m chu\xF4ng cho c\xE2u h\u1ECFi n\xE0y!`);
+          socket.emit("game:buzz:closed");
           return;
         }
         const disqSet = roomBuzzDisqualified.get(qKey);
         const alreadyBuzzed = attempts.some((a) => a.teamId === teamId) || Boolean(disqSet && disqSet.has(teamId));
         if (alreadyBuzzed) {
           socket.emit("error", "M\u1ED7i \u0111\u1ED9i ch\u1EC9 \u0111\u01B0\u1EE3c b\u1EA5m chu\xF4ng t\u1ED1i \u0111a 1 l\u1EA7n cho m\u1ED7i c\xE2u h\u1ECFi!");
+          socket.emit("game:buzz:closed");
           return;
         }
         roomBuzzUnlocked.set(qKey, false);
@@ -7169,13 +7301,22 @@ function registerSocketHandlers(io2) {
         await resolveBuzzArbitrationWinner(session.roomId, session.roomCode, questionId, "BUZZ", [winnerCandidate]);
       } else if (mode === "BOUNCEBACK") {
         const isSteal = roomStealPhase.get(qKey) ?? false;
-        if (!isSteal) return;
+        if (!isSteal) {
+          socket.emit("error", "Ch\u01B0a m\u1EDF l\u01B0\u1EE3t c\u01B0\u1EDBp \u0111i\u1EC3m!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
         const primary = roomPrimaryTeams.get(qKey);
         if (session.teamId && primary && session.teamId === primary.teamId) {
           socket.emit("error", "\u0110\u1ED9i c\u1EE7a b\u1EA1n l\xE0 \u0111\u1ED9i tr\u1EA3 l\u1EDDi ch\xEDnh, kh\xF4ng th\u1EC3 c\u01B0\u1EDBp l\u01B0\u1EE3t c\xE2u n\xE0y!");
+          socket.emit("game:buzz:closed");
           return;
         }
-        if (roomStealBuzzed.has(qKey)) return;
+        if (roomStealBuzzed.has(qKey)) {
+          socket.emit("error", "\u0110\xE3 c\xF3 \u0111\u1ED9i c\u01B0\u1EDBp chu\xF4ng tr\u01B0\u1EDBc!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
         const teamId = session.teamId ?? session.playerId;
         const teamName = session.teamName ?? session.playerName;
         if (roomStealTimer.has(qKey)) {
@@ -7414,162 +7555,199 @@ function registerSocketHandlers(io2) {
           return;
         }
       }
-      const card = await prisma.powerupCard.findUnique({ where: { id: cardId } });
-      if (!card || card.used) {
-        socket.emit("error", "Th\u1EBB n\xE0y \u0111\xE3 \u0111\u01B0\u1EE3c d\xF9ng ho\u1EB7c kh\xF4ng h\u1EE3p l\u1EC7!");
+      if (inFlightPowerupCards.has(cardId)) {
+        socket.emit("error", "Th\u1EBB n\xE0y \u0111ang \u0111\u01B0\u1EE3c x\u1EED l\xFD, vui l\xF2ng kh\xF4ng b\u1EA5m li\xEAn t\u1EE5c!");
         return;
       }
-      if (card.ownerType === "TEAM" && card.teamId !== player.teamId) {
-        socket.emit("error", "Th\u1EBB n\xE0y kh\xF4ng thu\u1ED9c v\u1EC1 \u0111\u1ED9i c\u1EE7a b\u1EA1n!");
-        return;
-      }
-      if (room.teamMode === "TEAM" && qKey) {
-        let teamCardsMap = roomQuestionTeamCards.get(qKey);
-        if (!teamCardsMap) {
-          teamCardsMap = /* @__PURE__ */ new Map();
-          roomQuestionTeamCards.set(qKey, teamCardsMap);
-        }
-        const existingCards = teamCardsMap.get(player.teamId) || [];
-        if (existingCards.some((c) => c.type === card.type)) {
-          socket.emit("error", `\u0110\u1ED9i c\u1EE7a b\u1EA1n \u0111\xE3 k\xEDch ho\u1EA1t th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} \u1EDF c\xE2u h\u1ECFi n\xE0y r\u1ED3i!`);
+      inFlightPowerupCards.add(cardId);
+      try {
+        const card = await prisma.powerupCard.findUnique({ where: { id: cardId } });
+        if (!card || card.used) {
+          socket.emit("error", "Th\u1EBB n\xE0y \u0111\xE3 \u0111\u01B0\u1EE3c d\xF9ng ho\u1EB7c kh\xF4ng h\u1EE3p l\u1EC7!");
           return;
         }
-        if (card.type === "SHIELD" && existingCards.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE")) {
-          socket.emit("error", "Kh\xF4ng th\u1EC3 v\u1EEBa d\xF9ng Khi\xEAn B\u1EA3o V\u1EC7 v\u1EEBa d\xF9ng Ng\xF4i Sao Hy V\u1ECDng (x2 \u0111i\u1EC3m) trong c\xF9ng m\u1ED9t c\xE2u!");
+        if (card.ownerType === "TEAM" && card.teamId !== player.teamId) {
+          socket.emit("error", "Th\u1EBB n\xE0y kh\xF4ng thu\u1ED9c v\u1EC1 \u0111\u1ED9i c\u1EE7a b\u1EA1n!");
           return;
         }
-        if ((card.type === "SCORE_X2" || card.type === "DOUBLE") && existingCards.some((c) => c.type === "SHIELD")) {
-          socket.emit("error", "Kh\xF4ng th\u1EC3 v\u1EEBa d\xF9ng Ng\xF4i Sao Hy V\u1ECDng (x2 \u0111i\u1EC3m) v\u1EEBa d\xF9ng Khi\xEAn B\u1EA3o V\u1EC7 trong c\xF9ng m\u1ED9t c\xE2u!");
+        if (room.teamMode === "TEAM" && qKey) {
+          let teamCardsMap = roomQuestionTeamCards.get(qKey);
+          if (!teamCardsMap) {
+            teamCardsMap = /* @__PURE__ */ new Map();
+            roomQuestionTeamCards.set(qKey, teamCardsMap);
+          }
+          const existingCards = teamCardsMap.get(player.teamId) || [];
+          if (existingCards.some((c) => c.type === card.type)) {
+            socket.emit("error", `\u0110\u1ED9i c\u1EE7a b\u1EA1n \u0111\xE3 k\xEDch ho\u1EA1t th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} \u1EDF c\xE2u h\u1ECFi n\xE0y r\u1ED3i!`);
+            return;
+          }
+          if (card.type === "SHIELD" && existingCards.some((c) => c.type === "SCORE_X2" || c.type === "DOUBLE")) {
+            socket.emit("error", "Kh\xF4ng th\u1EC3 v\u1EEBa d\xF9ng Khi\xEAn B\u1EA3o V\u1EC7 v\u1EEBa d\xF9ng Ng\xF4i Sao Hy V\u1ECDng (x2 \u0111i\u1EC3m) trong c\xF9ng m\u1ED9t c\xE2u!");
+            return;
+          }
+          if ((card.type === "SCORE_X2" || card.type === "DOUBLE") && existingCards.some((c) => c.type === "SHIELD")) {
+            socket.emit("error", "Kh\xF4ng th\u1EC3 v\u1EEBa d\xF9ng Ng\xF4i Sao Hy V\u1ECDng (x2 \u0111i\u1EC3m) v\u1EEBa d\xF9ng Khi\xEAn B\u1EA3o V\u1EC7 trong c\xF9ng m\u1ED9t c\xE2u!");
+            return;
+          }
+        }
+        if (!isPowerupAllowedForMode(room.mode, card.type)) {
+          socket.emit("error", `Th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
           return;
         }
-      }
-      if (!isPowerupAllowedForMode(room.mode, card.type)) {
-        socket.emit("error", `Th\u1EBB ${CARD_METADATA[card.type]?.nameVi || card.type} kh\xF4ng \u0111\u01B0\u1EE3c ph\xE9p s\u1EED d\u1EE5ng trong ch\u1EBF \u0111\u1ED9 ${room.mode}!`);
-        return;
-      }
-      if (isSharedPowerup(card.type)) {
-        if (roomSharedPowerupUsedInQuestion.get(room.id)) {
-          socket.emit("error", "M\u1ED9t \u0111\u1ED9i kh\xE1c \u0111\xE3 k\xEDch ho\u1EA1t th\u1EBB d\xF9ng chung trong c\xE2u h\u1ECFi n\xE0y r\u1ED3i! M\u1ED7i c\xE2u ch\u1EC9 \u0111\u01B0\u1EE3c d\xF9ng t\u1ED1i \u0111a 1 th\u1EBB d\xF9ng chung.");
-          return;
+        if (isSharedPowerup(card.type)) {
+          if (roomSharedPowerupUsedInQuestion.get(room.id)) {
+            socket.emit("error", "M\u1ED9t \u0111\u1ED9i kh\xE1c \u0111\xE3 k\xEDch ho\u1EA1t th\u1EBB d\xF9ng chung trong c\xE2u h\u1ECFi n\xE0y r\u1ED3i! M\u1ED7i c\xE2u ch\u1EC9 \u0111\u01B0\u1EE3c d\xF9ng t\u1ED1i \u0111a 1 th\u1EBB d\xF9ng chung.");
+            return;
+          }
         }
-      }
-      if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
-        const immunityKey = `${room.id}:${targetTeamId}`;
-        const immuneUntilQ = roomTeamImmunity.get(immunityKey);
-        if (immuneUntilQ !== void 0 && immuneUntilQ >= room.currentQuestion) {
-          socket.emit("error", "\u0110\u1ED9i n\xE0y v\u1EEBa b\u1ECB t\u1EA5n c\xF4ng v\xE0 \u0111ang \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t Khi\xEAn mi\u1EC5n nhi\u1EC5m b\u1EA3o h\u1ED9 trong c\xE2u h\u1ECFi n\xE0y!");
-          return;
+        if (card.type === "SKIP") {
+          const questions = room.quizBank?.questions ?? [];
+          const nextQ = getNextUniqueQuestion(room.id, questions);
+          if (!nextQ) {
+            socket.emit("error", "Kh\xF4ng c\xF2n c\xE2u h\u1ECFi d\u1EF1 ph\xF2ng \u0111\u1EC3 \u0111\u1ED5i!");
+            return;
+          }
         }
-        roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
-      }
-      await prisma.powerupCard.update({
-        where: { id: cardId },
-        data: { used: true, usedAt: /* @__PURE__ */ new Date(), usedByTeamId: player.teamId }
-      });
-      if (room.teamMode === "TEAM" && qKey) {
-        const teamCardsMap = roomQuestionTeamCards.get(qKey);
-        const currentList = teamCardsMap.get(player.teamId) || [];
-        currentList.push({
+        if ((card.type === "ATTACK" || card.type === "FREEZE" || card.type === "PENALTY") && targetTeamId) {
+          const immunityKey = `${room.id}:${targetTeamId}`;
+          const immuneUntilQ = roomTeamImmunity.get(immunityKey);
+          if (immuneUntilQ !== void 0 && immuneUntilQ >= room.currentQuestion) {
+            socket.emit("error", "\u0110\u1ED9i n\xE0y v\u1EEBa b\u1ECB t\u1EA5n c\xF4ng v\xE0 \u0111ang \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t Khi\xEAn mi\u1EC5n nhi\u1EC5m b\u1EA3o h\u1ED9 trong c\xE2u h\u1ECFi n\xE0y!");
+            return;
+          }
+          roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
+        }
+        await prisma.powerupCard.update({
+          where: { id: cardId },
+          data: { used: true, usedAt: /* @__PURE__ */ new Date(), usedByTeamId: player.teamId }
+        });
+        if (room.teamMode === "TEAM" && qKey) {
+          const teamCardsMap = roomQuestionTeamCards.get(qKey);
+          const currentList = teamCardsMap.get(player.teamId) || [];
+          currentList.push({
+            cardId,
+            type: card.type,
+            usedByPlayerId: player.id,
+            usedByPlayerName: player.name,
+            teamId: player.teamId,
+            targetTeamId,
+            appliedAt: Date.now()
+          });
+          teamCardsMap.set(player.teamId, currentList);
+        }
+        if (card.type === "FIFTY_FIFTY" && currentQ) {
+          const options = currentQ.options;
+          if (options && options.length > 2) {
+            const wrongOpts = options.filter((o) => !o.isCorrect);
+            const shuffledWrong = shuffleArray(wrongOpts).slice(0, 2);
+            const hiddenIds = shuffledWrong.map((o) => o.id);
+            let fMap = roomFiftyFifty.get(qKey);
+            if (!fMap) {
+              fMap = /* @__PURE__ */ new Map();
+              roomFiftyFifty.set(qKey, fMap);
+            }
+            fMap.set(player.teamId, hiddenIds);
+            io2.to(`room:${room.code}`).emit("game:fifty_fifty:applied", {
+              teamId: player.teamId,
+              hiddenOptionIds: hiddenIds
+            });
+          }
+        } else if (card.type === "FREEZE" && targetTeamId && qKey) {
+          let fSet = roomFrozenTeams.get(qKey);
+          if (!fSet) {
+            fSet = /* @__PURE__ */ new Set();
+            roomFrozenTeams.set(qKey, fSet);
+          }
+          fSet.add(targetTeamId);
+        } else if (card.type === "TIME_PLUS") {
+          const tKey = `${room.id}:timer`;
+          const curRem2 = roomRemainingTimes.get(tKey);
+          if (curRem2 !== void 0) {
+            const nextRem = curRem2 + 15;
+            roomRemainingTimes.set(tKey, nextRem);
+            const curEndsAt = roomTimerEndsAt.get(room.id) ?? Date.now() + curRem2 * 1e3;
+            const newEndsAt = curEndsAt + 15e3;
+            roomTimerEndsAt.set(room.id, newEndsAt);
+            io2.to(`room:${room.code}`).emit("game:timer", {
+              remaining: nextRem,
+              total: (currentQ?.timeLimit ?? 30) + 15,
+              endsAt: newEndsAt,
+              serverTime: Date.now()
+            });
+          }
+        } else if (card.type === "STEAL") {
+          const teams = await prisma.team.findMany({
+            where: { roomId: room.id },
+            orderBy: { score: "desc" }
+          });
+          const leader = teams[0];
+          if (leader && leader.id !== player.teamId) {
+            const myTeam = teams.find((t) => t.id === player.teamId);
+            const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
+            if (amount > 0 && player.teamId) {
+              const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
+              const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
+              io2.to(`room:${room.code}`).emit("game:score:update", [
+                { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
+                { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta }
+              ]);
+            }
+          }
+        } else if (card.type === "SKIP") {
+          const questions = room.quizBank?.questions ?? [];
+          const nextQ = getNextUniqueQuestion(room.id, questions);
+          if (nextQ) {
+            stopQuestionTimer(room.id);
+            roomActiveQuestions.delete(room.id);
+            roomRevealPayloads.delete(room.id);
+            room.currentQuestion = nextQ.index;
+            roomCache.set(room.id, room);
+            await prisma.room.update({
+              where: { id: room.id },
+              data: { currentQuestion: nextQ.index }
+            }).catch(console.error);
+            await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
+          }
+        }
+        await prisma.gameLog.create({
+          data: {
+            roomId: room.id,
+            event: "powerup_used",
+            payload: { cardId, type: card.type, usedByPlayerName: player.name, usedByTeamId: player.teamId, targetTeamId }
+          }
+        });
+        io2.to(`room:${room.code}`).emit("game:powerup:used", {
           cardId,
           type: card.type,
-          usedByPlayerId: player.id,
-          usedByPlayerName: player.name,
-          teamId: player.teamId,
-          targetTeamId,
-          appliedAt: Date.now()
-        });
-        teamCardsMap.set(player.teamId, currentList);
-      }
-      if (card.type === "FIFTY_FIFTY" && currentQ) {
-        const options = currentQ.options;
-        if (options && options.length > 2) {
-          const wrongOpts = options.filter((o) => !o.isCorrect);
-          const shuffledWrong = shuffleArray(wrongOpts).slice(0, 2);
-          const hiddenIds = shuffledWrong.map((o) => o.id);
-          let fMap = roomFiftyFifty.get(qKey);
-          if (!fMap) {
-            fMap = /* @__PURE__ */ new Map();
-            roomFiftyFifty.set(qKey, fMap);
-          }
-          fMap.set(player.teamId, hiddenIds);
-          io2.to(`room:${room.code}`).emit("game:fifty_fifty:applied", {
-            teamId: player.teamId,
-            hiddenOptionIds: hiddenIds
-          });
-        }
-      } else if (card.type === "FREEZE" && targetTeamId && qKey) {
-        let fSet = roomFrozenTeams.get(qKey);
-        if (!fSet) {
-          fSet = /* @__PURE__ */ new Set();
-          roomFrozenTeams.set(qKey, fSet);
-        }
-        fSet.add(targetTeamId);
-      } else if (card.type === "TIME_PLUS") {
-        const tKey = `${room.id}:timer`;
-        const curRem2 = roomRemainingTimes.get(tKey);
-        if (curRem2 !== void 0) {
-          const nextRem = curRem2 + 15;
-          roomRemainingTimes.set(tKey, nextRem);
-          const curEndsAt = roomTimerEndsAt.get(room.id) ?? Date.now() + curRem2 * 1e3;
-          const newEndsAt = curEndsAt + 15e3;
-          roomTimerEndsAt.set(room.id, newEndsAt);
-          io2.to(`room:${room.code}`).emit("game:timer", {
-            remaining: nextRem,
-            total: (currentQ?.timeLimit ?? 30) + 15,
-            endsAt: newEndsAt,
-            serverTime: Date.now()
-          });
-        }
-      } else if (card.type === "STEAL") {
-        const teams = await prisma.team.findMany({
-          where: { roomId: room.id },
-          orderBy: { score: "desc" }
-        });
-        const leader = teams[0];
-        if (leader && leader.id !== player.teamId) {
-          const myTeam = teams.find((t) => t.id === player.teamId);
-          const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
-          if (amount > 0 && player.teamId) {
-            const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
-            const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
-            io2.to(`room:${room.code}`).emit("game:score:update", [
-              { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
-              { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta }
-            ]);
-          }
-        }
-      }
-      await prisma.gameLog.create({
-        data: {
-          roomId: room.id,
-          event: "powerup_used",
-          payload: { cardId, type: card.type, usedByPlayerName: player.name, usedByTeamId: player.teamId, targetTeamId }
-        }
-      });
-      io2.to(`room:${room.code}`).emit("game:powerup:used", {
-        cardId,
-        type: card.type,
-        usedByTeamId: player.teamId,
-        usedByName: `${player.name} (${player.team.name})`,
-        targetTeamId,
-        targetTeamName: void 0,
-        effect: `${CARD_METADATA[card.type]?.nameVi || card.type} \u0111\xE3 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t cho to\xE0n \u0111\u1ED9i!`
-      });
-      if (isSharedPowerup(card.type)) {
-        roomSharedPowerupUsedInQuestion.set(room.id, true);
-        const activeQ = roomActiveQuestions.get(room.id);
-        if (activeQ) {
-          activeQ.hasSharedPowerupUsed = true;
-        }
-        io2.to(`room:${room.code}`).emit("game:powerup:shared_locked", {
-          cardType: card.type,
           usedByTeamId: player.teamId,
-          usedByTeamName: player.team.name,
-          questionIndex: room.currentQuestion
+          usedByName: `${player.name} (${player.team.name})`,
+          targetTeamId,
+          targetTeamName: void 0,
+          effect: `${CARD_METADATA[card.type]?.nameVi || card.type} \u0111\xE3 \u0111\u01B0\u1EE3c k\xEDch ho\u1EA1t cho to\xE0n \u0111\u1ED9i!`
         });
+        if (isSharedPowerup(card.type)) {
+          roomSharedPowerupUsedInQuestion.set(room.id, true);
+          const activeQ = roomActiveQuestions.get(room.id);
+          if (activeQ) {
+            activeQ.hasSharedPowerupUsed = true;
+          }
+          io2.to(`room:${room.code}`).emit("game:powerup:shared_locked", {
+            cardType: card.type,
+            usedByTeamId: player.teamId,
+            usedByTeamName: player.team.name,
+            questionIndex: room.currentQuestion
+          });
+        }
+        const state = await buildRoomState(room.id);
+        io2.to(`room:${room.code}`).emit("room:state", state);
+      } catch (err) {
+        console.error("[game:powerup:use] Error:", err);
+        socket.emit("error", "L\u1ED7i x\u1EED l\xFD s\u1EED d\u1EE5ng th\u1EBB b\u1ED5 tr\u1EE3!");
+        const state = await buildRoomState(player.room.id).catch(() => null);
+        if (state) socket.emit("room:state", state);
+      } finally {
+        inFlightPowerupCards.delete(cardId);
       }
-      const state = await buildRoomState(room.id);
-      io2.to(`room:${room.code}`).emit("room:state", state);
     });
     async function startQuestionPrepareAndLaunch(room, questions, questionIndex, specificQ) {
       stopQuestionTimer(room.id);
@@ -8067,6 +8245,10 @@ function registerSocketHandlers(io2) {
         console.warn(`[admin:next] Unable to find admin room for socket ${socket.id}, payload:`, payload);
         return;
       }
+      const actionKey = `${room.id}:next`;
+      if (inFlightAdminActions.has(actionKey)) return;
+      inFlightAdminActions.add(actionKey);
+      setTimeout(() => inFlightAdminActions.delete(actionKey), 800);
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
         if (prep) {
@@ -8322,9 +8504,10 @@ function registerSocketHandlers(io2) {
             console.error("[launchWarmupToFirstQuestion] Error:", err);
           }
         };
+        const remainingWarmupDelay = Math.max(0, startEndsAt - Date.now());
         const timer = setTimeout(() => {
           launchWarmupToFirstQuestion();
-        }, 5e3);
+        }, remainingWarmupDelay);
         const targetStartingQuestions = getTargetTotalQuestions(
           room.mode,
           config2,
@@ -8335,7 +8518,7 @@ function registerSocketHandlers(io2) {
           type: "STARTING",
           questionIndex: 0,
           totalQuestions: targetStartingQuestions,
-          targetTimestamp: Date.now() + 5e3,
+          targetTimestamp: startEndsAt,
           timer,
           skipCallback: launchWarmupToFirstQuestion
         });
@@ -8468,18 +8651,68 @@ function registerSocketHandlers(io2) {
     socket.on("admin:pause", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
+      const timerKey = `${room.id}:timer`;
+      if (roomTimers.has(timerKey)) {
+        clearInterval(roomTimers.get(timerKey));
+        roomTimers.delete(timerKey);
+      }
+      roomTimerEndsAt.delete(room.id);
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
-        if (prep?.timer) clearTimeout(prep.timer);
+        if (prep) {
+          if (prep.timer) {
+            clearTimeout(prep.timer);
+            prep.timer = void 0;
+          }
+          prep.remainingMs = Math.max(500, prep.targetTimestamp - Date.now());
+        }
       }
-      await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } });
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id));
+        roomIntermissionTimers.delete(room.id);
+      }
+      room.status = "PAUSED";
+      roomCache.set(room.id, room);
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } }).catch(console.error);
       io2.to(`room:${room.code}`).emit("game:paused");
+      const state = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", state);
     });
     socket.on("admin:resume", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
-      await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } });
+      room.status = "PLAYING";
+      roomCache.set(room.id, room);
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } }).catch(console.error);
+      if (roomPrepareStates.has(room.id)) {
+        const prep = roomPrepareStates.get(room.id);
+        const remainingMs = prep.remainingMs || 3e3;
+        prep.targetTimestamp = Date.now() + remainingMs;
+        prep.remainingMs = void 0;
+        prep.timer = setTimeout(() => {
+          if (prep.skipCallback) {
+            prep.skipCallback();
+          }
+        }, remainingMs);
+        const remainingSec = Math.max(1, Math.ceil(remainingMs / 1e3));
+        if (prep.type === "STARTING") {
+          io2.to(`room:${room.code}`).emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.totalQuestions || 5 });
+        } else if (prep.type === "PREPARE" && prep.preparePayload) {
+          io2.to(`room:${room.code}`).emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp });
+        }
+      } else {
+        const timerKey = `${room.id}:timer`;
+        const activeQ = roomActiveQuestions.get(room.id);
+        const qKey = activeQ ? `${room.id}:${activeQ.question.id}` : null;
+        if (activeQ && qKey && !roomQuestionProcessed.has(qKey)) {
+          const remainingSec = Math.max(1, roomRemainingTimes.get(timerKey) ?? activeQ.question.timeLimit ?? 15);
+          startQuestionTimer(io2, room.code, room.id, activeQ.question.id, remainingSec);
+          io2.to(`room:${room.code}`).emit("game:timer:started");
+        }
+      }
       io2.to(`room:${room.code}`).emit("game:resumed");
+      const state = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", state);
     });
     socket.on("admin:reveal", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
@@ -8831,9 +9064,15 @@ function registerSocketHandlers(io2) {
     });
     async function handleGridCellSelect(room, cellId) {
       const gridState = roomGridCaros.get(room.id);
-      if (!gridState || gridState.selectedCellId || roomPrepareStates.has(room.id)) return;
+      if (!gridState || gridState.selectedCellId || roomPrepareStates.has(room.id)) {
+        if (gridState) io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        return;
+      }
       const cell = gridState.cells.find((c) => c.id === cellId);
-      if (!cell || cell.isCompleted) return;
+      if (!cell || cell.isCompleted) {
+        io2.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        return;
+      }
       const autoAdvanceKey = `${room.id}:auto_advance`;
       if (roomGridTimers.has(autoAdvanceKey)) {
         clearInterval(roomGridTimers.get(autoAdvanceKey));
@@ -8897,6 +9136,9 @@ function registerSocketHandlers(io2) {
       if (!gridState) return;
       if (gridState.currentTurnTeamId === player.teamId) {
         await handleGridCellSelect(player.room, cellId);
+      } else {
+        socket.emit("error", "Ch\u01B0a t\u1EDBi l\u01B0\u1EE3t ch\u1ECDn \xF4 c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        socket.emit("game:grid:update", gridState);
       }
     });
     async function executeDiceRoll(room, diceState, teamId) {
@@ -8938,6 +9180,7 @@ function registerSocketHandlers(io2) {
         await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
         const leaderboard = await buildLeaderboard(room.id);
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        setTimeout(() => cleanupRoomInMemory(room.id), 5e3);
         return;
       }
       if (grantAnotherRoll) {
@@ -8973,10 +9216,12 @@ function registerSocketHandlers(io2) {
       const diceState = roomDiceRaces.get(room.id);
       if (!diceState || !diceState.canRollDice) {
         socket.emit("error", "Ch\u01B0a \u0111\u01B0\u1EE3c ph\xE9p gieo x\xFAc x\u1EAFc ho\u1EB7c b\u1EA1n ch\u01B0a tr\u1EA3 l\u1EDDi \u0111\xFAng c\xE2u h\u1ECFi!");
+        if (diceState) socket.emit("game:dice:update", diceState);
         return;
       }
       if (diceState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Ch\u01B0a t\u1EDBi l\u01B0\u1EE3t tung x\xFAc x\u1EAFc c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
+        socket.emit("game:dice:update", diceState);
         return;
       }
       if (roomActiveQuestions.has(room.id)) {
@@ -9003,19 +9248,23 @@ function registerSocketHandlers(io2) {
       if (!team) return;
       if (wagerState.previousQuestionWagerTeamId && team.id === wagerState.previousQuestionWagerTeamId) {
         socket.emit("error", "\u0110\u1ED9i b\u1EA1n \u0111\xE3 \u0111\u1EB7t c\u01B0\u1EE3c \u1EDF c\xE2u h\u1ECFi tr\u01B0\u1EDBc! Theo lu\u1EADt c\xF4ng b\u1EB1ng, \u0111\u1ED9i b\u1EA1n t\u1EA1m ngh\u1EC9 c\u01B0\u1EE3c c\xE2u n\xE0y \u0111\u1EC3 nh\u01B0\u1EDDng c\xE1c \u0111\u1ED9i kh\xE1c.");
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
       if (wagerState.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
         socket.emit("error", "\u0110\u1ED9i b\u1EA1n v\u1EEBa \u0111\u1EB7t c\u01B0\u1EE3c! Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c 2 l\u1EA7n li\xEAn ti\u1EBFp, vui l\xF2ng ch\u1EDD \u0111\u1ED9i kh\xE1c c\u01B0\u1EE3c tr\u01B0\u1EDBc.");
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       if (amount > team.score) {
         socket.emit("error", `Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c s\u1ED1 \u0111i\u1EC3m (${amount}\u0111) v\u01B0\u1EE3t qu\xE1 \u0111i\u1EC3m hi\u1EC7n t\u1EA1i c\u1EE7a \u0111\u1ED9i b\u1EA1n (${team.score}\u0111)!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       if (wagerState.maxBetCap && amount > wagerState.maxBetCap) {
         socket.emit("error", `Kh\xF4ng \u0111\u01B0\u1EE3c c\u01B0\u1EE3c s\u1ED1 \u0111i\u1EC3m (${amount}\u0111) v\u01B0\u1EE3t qu\xE1 tr\u1EA7n c\u01B0\u1EE3c t\u1ED1i \u0111a (${wagerState.maxBetCap}\u0111) c\u1EE7a c\xE2u h\u1ECFi n\xE0y!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       const currentHighest = wagerState.currentHighestWager || 0;
@@ -9024,10 +9273,12 @@ function registerSocketHandlers(io2) {
       const isValidStep = (amount - currentHighest) % 5 === 0;
       if (amount < minOption || amount > maxOption || !isValidStep) {
         socket.emit("error", `M\u1EE9c c\u01B0\u1EE3c kh\xF4ng h\u1EE3p l\u1EC7. Vui l\xF2ng ch\u1ECDn 1 trong 12 \xF4 c\u01B0\u1EE3c t\u1EEB ${minOption}\u0111 \u0111\u1EBFn ${maxOption}\u0111.`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       if (team.score < minOption) {
         socket.emit("error", `M\u1EE9c c\u01B0\u1EE3c t\u1ED1i thi\u1EC3u (${minOption}\u0111) \u0111\xE3 v\u01B0\u1EE3t qu\xE1 \u0111i\u1EC3m \u0111\u1ED9i b\u1EA1n (${team.score}\u0111). \u0110\u1ED9i b\u1EA1n \u0111\xE3 m\u1EA5t quy\u1EC1n c\u01B0\u1EE3c trong c\xE2u h\u1ECFi n\xE0y!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
       wagerState.currentHighestWager = amount;
@@ -9248,9 +9499,15 @@ function registerSocketHandlers(io2) {
             return;
           }
           roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
+        } else if (normMiniType === "ONE_SHOT_DOORS" && (questState?.oneShotState?.phase === "SELECTING" || !questState?.oneShotState?.phase)) {
+          const lastTileFlip = roomMysteryTileCooldown.get(`${room.id}:${tileId}`) || 0;
+          if (now - lastTileFlip < 80) {
+            return;
+          }
+          roomMysteryTileCooldown.set(`${room.id}:${tileId}`, now);
         } else {
           const lastFlipTime = roomMysteryFlipCooldown.get(room.id) || 0;
-          if (now - lastFlipTime < 450) {
+          if (now - lastFlipTime < 250) {
             return;
           }
           roomMysteryFlipCooldown.set(room.id, now);
@@ -9276,6 +9533,10 @@ function registerSocketHandlers(io2) {
           allTeams
         });
         roomMysteryQuests.set(room.id, updatedState);
+        if (normMiniType === "ONE_SHOT_DOORS" && (updatedState.oneShotState?.phase === "SELECTING" || (updatedState.oneShotState?.selectedDoorIds?.length || 0) < 3)) {
+          io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
+          return;
+        }
         if (updatedState.phase === "STEAL_TARGET_SELECT") {
         } else if (victimTeamId && stolenPoints && stolenPoints > 0) {
           const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
@@ -9359,6 +9620,7 @@ function registerSocketHandlers(io2) {
               const cur = roomMysteryQuests.get(room.id);
               if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
               if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
+              if (cur.memoryPairsState.isBombRescueActive) return;
               const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
               const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
               cur.tiles = cur.tiles.map((t) => {
@@ -9371,7 +9633,6 @@ function registerSocketHandlers(io2) {
               cur.memoryPairsState.firstFlippedTileId = null;
               cur.memoryPairsState.secondFlippedTileId = null;
               cur.memoryPairsState.thirdFlippedTileId = null;
-              cur.memoryPairsState.isBombRescueActive = false;
               cur.memoryPairsState.isMismatchResolving = false;
               roomMysteryQuests.set(room.id, cur);
               io2.to(`room:${room.code}`).emit("game:mystery:update", cur);
@@ -10948,6 +11209,7 @@ function registerSocketHandlers(io2) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5e3);
         }
       });
     });
@@ -10968,6 +11230,7 @@ function registerSocketHandlers(io2) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5e3);
         }
       });
     });
@@ -10988,6 +11251,7 @@ function registerSocketHandlers(io2) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5e3);
         }
       });
     });
@@ -11002,6 +11266,7 @@ function registerSocketHandlers(io2) {
         await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } }).catch(console.error);
         const leaderboard = await buildLeaderboard(room.id);
         io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        setTimeout(() => cleanupRoomInMemory(room.id), 5e3);
       };
       if (payload?.action === "NEXT_QUESTION") {
         launchTieBreakerQuestion({ io: io2, roomId: room.id, qIndex: tieState.questionIndex + 1, onGameEnd });
@@ -11051,31 +11316,38 @@ function registerSocketHandlers(io2) {
       const existingTimer = pendingDisconnects.get(playerId);
       if (existingTimer) clearTimeout(existingTimer);
       const timer = setTimeout(async () => {
-        pendingDisconnects.delete(playerId);
-        let reconnectedSocketId = null;
-        for (const [sockId, pId] of playerSockets.entries()) {
-          if (pId === playerId && io2.sockets.sockets.has(sockId)) {
-            reconnectedSocketId = sockId;
-            break;
+        try {
+          pendingDisconnects.delete(playerId);
+          let reconnectedSocketId = null;
+          for (const [sockId, pId] of playerSockets.entries()) {
+            if (pId === playerId && io2.sockets.sockets.has(sockId)) {
+              reconnectedSocketId = sockId;
+              break;
+            }
           }
-        }
-        if (reconnectedSocketId) {
+          if (reconnectedSocketId) {
+            await prisma.player.update({
+              where: { id: playerId },
+              data: { socketId: reconnectedSocketId }
+            }).catch(() => {
+            });
+            return;
+          }
           await prisma.player.update({
             where: { id: playerId },
-            data: { socketId: reconnectedSocketId }
+            data: { socketId: null }
           }).catch(() => {
           });
-          return;
-        }
-        await prisma.player.update({
-          where: { id: playerId },
-          data: { socketId: null }
-        }).catch(() => {
-        });
-        if (player.room) {
-          io2.to(`room:${player.room.code}`).emit("player:left", playerId);
-          const state = await buildRoomState(player.room.id);
-          io2.to(`room:${player.room.code}`).emit("room:state", state);
+          if (player.room) {
+            const roomExists = await prisma.room.findUnique({ where: { id: player.room.id }, select: { id: true } });
+            if (roomExists) {
+              io2.to(`room:${player.room.code}`).emit("player:left", playerId);
+              const state = await buildRoomState(player.room.id);
+              io2.to(`room:${player.room.code}`).emit("room:state", state);
+            }
+          }
+        } catch (err) {
+          console.error(`[pendingDisconnects] Error in grace period callback for player ${playerId}:`, err);
         }
       }, 3e4);
       pendingDisconnects.set(playerId, timer);
@@ -11317,6 +11589,18 @@ async function processAnswerSubmission({
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!question) return;
   const qKey = `${room.id}:${questionId}`;
+  if (roomQuestionProcessed.has(qKey) && !isAdminOverride) {
+    if (socket) {
+      socket.emit("error", "C\xE2u h\u1ECFi \u0111\xE3 \u0111\u01B0\u1EE3c c\xF4ng b\u1ED1 k\u1EBFt qu\u1EA3!");
+      const reveal = roomRevealPayloads.get(room.id);
+      if (reveal) {
+        socket.emit("game:answer:reveal", reveal);
+      } else {
+        socket.emit("game:question:clear");
+      }
+    }
+    return;
+  }
   const activeQ = roomActiveQuestions.get(room.id);
   const isSandboxRoom = Boolean(
     room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id) || socket?.handshake?.query?.sandbox === "1"
@@ -11337,22 +11621,36 @@ async function processAnswerSubmission({
       });
       startQuestionTimer(io2, room.code, room.id, question.id, effLimit);
     } else {
-      if (socket) socket.emit("error", "Ch\u01B0a \u0111\u1EBFn gi\u1EDD tr\u1EA3 l\u1EDDi! H\xE3y ch\u1EDD Admin b\u1EA5m B\u1EAFt \u0111\u1EA7u t\xEDnh gi\u1EDD.");
+      if (socket) {
+        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn gi\u1EDD tr\u1EA3 l\u1EDDi! H\xE3y ch\u1EDD Admin b\u1EA5m B\u1EAFt \u0111\u1EA7u t\xEDnh gi\u1EDD.");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   }
-  if (activeQ?.isExpired && !isAdminOverride) {
-    const endsAt = activeQ.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
-    const isWithinGrace = typeof clientAnsweredAt === "number" && endsAt > 0 && clientAnsweredAt <= endsAt + 1500;
-    if (!isWithinGrace) {
-      if (socket) socket.emit("error", "\u0110\xE3 h\u1EBFt th\u1EDDi gian tr\u1EA3 l\u1EDDi c\xE2u h\u1ECFi!");
+  const nowArrival = Date.now();
+  const endsAtAuthoritative = activeQ?.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
+  if (endsAtAuthoritative > 0 && !isAdminOverride) {
+    if (nowArrival > endsAtAuthoritative + 1500) {
+      if (socket) {
+        socket.emit("error", "\u0110\xE3 h\u1EBFt th\u1EDDi gian tr\u1EA3 l\u1EDDi c\xE2u h\u1ECFi!");
+        socket.emit("game:timer", {
+          remaining: 0,
+          total: activeQ?.question?.timeLimit ?? 15,
+          endsAt: endsAtAuthoritative,
+          serverTime: Date.now()
+        });
+      }
       return;
     }
   }
   if (teamId) {
     const frozenSet = roomFrozenTeams.get(qKey);
     if (frozenSet && frozenSet.has(teamId)) {
-      if (socket) socket.emit("error", "\u0110\u1ED9i c\u1EE7a b\u1EA1n \u0111ang b\u1ECB \u0111\xF3ng b\u0103ng \u1EDF c\xE2u n\xE0y n\xEAn kh\xF4ng th\u1EC3 n\u1ED9p \u0111\xE1p \xE1n!");
+      if (socket) {
+        socket.emit("error", "\u0110\u1ED9i c\u1EE7a b\u1EA1n \u0111ang b\u1ECB \u0111\xF3ng b\u0103ng \u1EDF c\xE2u n\xE0y n\xEAn kh\xF4ng th\u1EC3 n\u1ED9p \u0111\xE1p \xE1n!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   }
@@ -11421,25 +11719,37 @@ async function processAnswerSubmission({
     if (stealInfo) {
       const isStealActor = effectiveTeamId && effectiveTeamId === stealInfo.teamId || actorId && actorId === stealInfo.teamId || playerId && (playerId === stealInfo.playerId || playerId === stealInfo.teamId);
       if (!isAdminOverride && !isStealActor) {
-        if (socket) socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i c\u01B0\u1EDBp chu\xF4ng m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+        if (socket) {
+          socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i c\u01B0\u1EDBp chu\xF4ng m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+          if (activeQ) socket.emit("game:question", activeQ);
+        }
         return;
       }
     } else if (primary) {
       const isPrimaryActor = effectiveTeamId && effectiveTeamId === primary.teamId || actorId && actorId === primary.teamId || playerId && playerId === primary.teamId;
       if (!isAdminOverride && !isPrimaryActor) {
-        if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i ch\xEDnh!");
+        if (socket) {
+          socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i ch\xEDnh!");
+          if (activeQ) socket.emit("game:question", activeQ);
+        }
         return;
       }
     }
   } else if (room.mode === "BUZZ") {
     const buzz = roomBuzzFirst.get(qKey);
     if (!buzz && !isAdminOverride) {
-      if (socket) socket.emit("error", "Ch\u01B0a c\xF3 \u0111\u1ED9i n\xE0o b\u1EA5m chu\xF4ng!");
+      if (socket) {
+        socket.emit("error", "Ch\u01B0a c\xF3 \u0111\u1ED9i n\xE0o b\u1EA5m chu\xF4ng!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
     const isBuzzActor = buzz ? effectiveTeamId && effectiveTeamId === buzz.teamId || actorId && actorId === buzz.teamId || playerId && (playerId === buzz.playerId || playerId === buzz.teamId) : false;
     if (!isAdminOverride && !isBuzzActor) {
-      if (socket) socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i b\u1EA5m chu\xF4ng \u0111\u1EA7u ti\xEAn m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+      if (socket) {
+        socket.emit("error", "Ch\u1EC9 \u0111\u1ED9i b\u1EA5m chu\xF4ng \u0111\u1EA7u ti\xEAn m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   } else if (room.mode === "TOURNAMENT") {
@@ -11447,32 +11757,47 @@ async function processAnswerSubmission({
     const currentMatch = tournament?.matches.find((m) => m.id === tournament.currentMatchId);
     const isMatchActor = currentMatch && (actorId === currentMatch.team1Id || actorId === currentMatch.team2Id || effectiveTeamId === currentMatch.team1Id || effectiveTeamId === currentMatch.team2Id);
     if (currentMatch && !isMatchActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Ch\u1EC9 2 \u0111\u1ED9i trong tr\u1EADn \u0111\u1ED1i \u0111\u1EA7u hi\u1EC7n t\u1EA1i m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+      if (socket) {
+        socket.emit("error", "Ch\u1EC9 2 \u0111\u1ED9i trong tr\u1EADn \u0111\u1ED1i \u0111\u1EA7u hi\u1EC7n t\u1EA1i m\u1EDBi \u0111\u01B0\u1EE3c tr\u1EA3 l\u1EDDi!");
+        if (tournament) socket.emit("game:tournament:update", tournament);
+      }
       return;
     }
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
     const isGridActor = gridState && (actorId === gridState.currentTurnTeamId || effectiveTeamId === gridState.currentTurnTeamId);
     if (gridState && !isGridActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
+      if (socket) {
+        socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
+        socket.emit("game:grid:update", gridState);
+      }
       return;
     }
   } else if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
     const isDiceActor = diceState && (actorId === diceState.currentTurnTeamId || effectiveTeamId === diceState.currentTurnTeamId);
     if (diceState && !isDiceActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
+      if (socket) {
+        socket.emit("error", "Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t c\u1EE7a \u0111\u1ED9i kh\xE1c!");
+        socket.emit("game:dice:update", diceState);
+      }
       return;
     }
   } else if (room.mode === "MYSTERY_QUEST") {
     const questState = roomMysteryQuests.get(room.id);
     if (questState && questState.phase !== "QUESTION_ACTIVE" && !isAdminOverride) {
-      if (socket) socket.emit("error", "Tr\xF2 ch\u01A1i \u0111ang \u1EDF giai \u0111o\u1EA1n L\u1EADt b\xE0i b\xED \u1EA9n, kh\xF4ng nh\u1EADn \u0111\xE1p \xE1n c\xE2u h\u1ECFi!");
+      if (socket) {
+        socket.emit("error", "Tr\xF2 ch\u01A1i \u0111ang \u1EDF giai \u0111o\u1EA1n L\u1EADt b\xE0i b\xED \u1EA9n, kh\xF4ng nh\u1EADn \u0111\xE1p \xE1n c\xE2u h\u1ECFi!");
+        socket.emit("game:mystery:update", questState);
+      }
       return;
     }
     const isMysteryActor = questState && (actorId === questState.currentTurnTeamId || effectiveTeamId === questState.currentTurnTeamId);
     if (questState && !isMysteryActor && !isAdminOverride) {
-      if (socket) socket.emit("error", `Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t thi \u0111\u1EA5u c\u1EE7a ${questState.currentTurnTeamName}! \u0110\u1ED9i b\u1EA1n vui l\xF2ng ch\xFA \xFD theo d\xF5i.`);
+      if (socket) {
+        socket.emit("error", `Hi\u1EC7n \u0111ang l\xE0 l\u01B0\u1EE3t thi \u0111\u1EA5u c\u1EE7a ${questState.currentTurnTeamName}! \u0110\u1ED9i b\u1EA1n vui l\xF2ng ch\xFA \xFD theo d\xF5i.`);
+        socket.emit("game:mystery:update", questState);
+      }
       return;
     }
   } else if (room.mode === "ELIMINATION" && !isAdminOverride) {
@@ -11488,9 +11813,12 @@ async function processAnswerSubmission({
       qStartedAt = now;
     }
   }
-  let timeSpent = Math.max(100, now - qStartedAt);
-  if (typeof clientAnsweredAt === "number" && clientAnsweredAt >= qStartedAt - 500 && clientAnsweredAt <= now + 500) {
-    timeSpent = Math.max(100, clientAnsweredAt - qStartedAt);
+  let timeSpent = Math.max(300, now - qStartedAt);
+  if (typeof clientAnsweredAt === "number" && clientAnsweredAt >= qStartedAt && clientAnsweredAt <= now + 200) {
+    const claimedTime = clientAnsweredAt - qStartedAt;
+    if (claimedTime >= 300 && now - clientAnsweredAt <= 2e3) {
+      timeSpent = claimedTime;
+    }
   }
   const maxAllowedLimitMs = (activeQ?.timeLimit || question?.timeLimit || 30) * 1e3;
   timeSpent = Math.min(timeSpent, maxAllowedLimitMs);
@@ -12004,40 +12332,44 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   }
   currentMatch.currentQuestionInMatch++;
   if (currentMatch.currentQuestionInMatch >= currentMatch.totalQuestionsInMatch) {
-    currentMatch.status = "COMPLETED";
-    const winnerId = currentMatch.team1Score >= currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
-    const winnerName = currentMatch.team1Score >= currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
-    currentMatch.winnerTeamId = winnerId;
-    if (currentMatch.id === "FINAL") {
-      tournament.championTeamId = winnerId;
-      tournament.championTeamName = winnerName;
+    if (currentMatch.team1Score === currentMatch.team2Score && currentMatch.team1Id && currentMatch.team2Id) {
+      currentMatch.totalQuestionsInMatch += 1;
     } else {
-      const nextMatch = tournament.matches.find(
-        (m) => m.roundIndex === currentMatch.roundIndex + 1 && (!m.team1Id || !m.team2Id)
-      );
-      if (nextMatch) {
-        if (!nextMatch.team1Id) {
-          nextMatch.team1Id = winnerId;
-          nextMatch.team1Name = winnerName;
-        } else if (!nextMatch.team2Id) {
-          nextMatch.team2Id = winnerId;
-          nextMatch.team2Name = winnerName;
+      currentMatch.status = "COMPLETED";
+      const winnerId = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
+      const winnerName = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
+      currentMatch.winnerTeamId = winnerId;
+      if (currentMatch.id === "FINAL") {
+        tournament.championTeamId = winnerId;
+        tournament.championTeamName = winnerName;
+      } else {
+        const nextMatch = tournament.matches.find(
+          (m) => m.roundIndex === currentMatch.roundIndex + 1 && (!m.team1Id || !m.team2Id)
+        );
+        if (nextMatch) {
+          if (!nextMatch.team1Id) {
+            nextMatch.team1Id = winnerId;
+            nextMatch.team1Name = winnerName;
+          } else if (!nextMatch.team2Id) {
+            nextMatch.team2Id = winnerId;
+            nextMatch.team2Name = winnerName;
+          }
+        }
+        const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
+        if (nextPending) {
+          nextPending.status = "IN_PROGRESS";
+          tournament.currentMatchId = nextPending.id;
         }
       }
-      const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
-      if (nextPending) {
-        nextPending.status = "IN_PROGRESS";
-        tournament.currentMatchId = nextPending.id;
-      }
-    }
-    if (currentMatch.predictions && winnerId) {
-      tournament.oracleScores = tournament.oracleScores || {};
-      for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
-        if (predWinnerId === winnerId) {
-          tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+      if (currentMatch.predictions && winnerId) {
+        tournament.oracleScores = tournament.oracleScores || {};
+        for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
+          if (predWinnerId === winnerId) {
+            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+          }
         }
+        io2.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
       }
-      io2.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
     }
   }
   if (scoreUpdates.length > 0) {
@@ -12054,7 +12386,10 @@ async function advanceGridToBoard(io2, roomId, roomCode) {
     roomGridTimers.delete(autoAdvanceKey);
   }
   const gridState = roomGridCaros.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { orderBy: { createdAt: "asc" } } }
+  });
   if (!gridState || !room) return;
   gridState.autoAdvanceSeconds = void 0;
   gridState.selectedCellId = void 0;
@@ -12328,6 +12663,7 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
       });
       const leaderboard = await buildLeaderboard(roomId);
       io2.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+      setTimeout(() => cleanupRoomInMemory(roomId), 5e3);
     }
   }
 }
@@ -12871,6 +13207,7 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
             await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() } });
             const leaderboard = await buildLeaderboard(room.id);
             io2.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+            setTimeout(() => cleanupRoomInMemory(room.id), 5e3);
             return;
           }
         }
@@ -13722,6 +14059,7 @@ async function safelyFinishGame({
       }).catch(console.error);
       const finalLb = await buildLeaderboard(room.id);
       io2.to(`room:${room.code}`).emit("game:ended", { leaderboard: finalLb });
+      setTimeout(() => cleanupRoomInMemory(room.id), 5e3);
     }
   });
   if (!shouldEnd) {
@@ -13734,6 +14072,7 @@ async function safelyFinishGame({
     data: { status: "FINISHED", endedAt: /* @__PURE__ */ new Date() }
   }).catch(console.error);
   io2.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+  setTimeout(() => cleanupRoomInMemory(room.id), 5e3);
   return true;
 }
 
@@ -13851,6 +14190,12 @@ async function ensureDatabaseSchema() {
     console.warn("[DB] Note on enum sync:", err);
   }
 }
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[Process Safety] Unhandled Promise Rejection:", reason);
+});
+process.on("uncaughtException", (error) => {
+  console.error("[Process Safety] Uncaught Exception:", error);
+});
 var dev = process.env.NODE_ENV !== "production";
 var hostname = process.env.HOSTNAME || "0.0.0.0";
 var port = parseInt(process.env.PORT ?? "3000", 10);

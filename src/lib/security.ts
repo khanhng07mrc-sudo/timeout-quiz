@@ -20,8 +20,7 @@ export function isValidMasterPassword(password: string | null | undefined): bool
   if (!password) return false;
   const p = password.trim();
   const current = getAdminMasterPassword();
-  const valid = [current, "Quizorra@Admin2026", "quizorra@admin2026", "BrainClash@Admin2026", "brainclash@admin2026"];
-  return valid.includes(p);
+  return p === current;
 }
 
 /**
@@ -162,7 +161,7 @@ export function verifyAdminToken(token: string | null | undefined): boolean {
       Buffer.from(payloadEncoded, "base64url").toString("utf8")
     );
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return false;
-    if (payload.role === "admin" || payload.role === "ADMIN" || payload.userId) return true;
+    if (payload.role === "admin" || payload.role === "ADMIN") return true;
     return false;
   } catch {
     return false;
@@ -210,8 +209,9 @@ export function getCurrentUserFromRequest(req: Request): UserSessionPayload | nu
  * Extracts and verifies admin authentication from Request headers / cookies
  */
 export function verifyAdminRequest(req: Request): boolean {
-  // Check if a registered user session exists
-  if (getCurrentUserFromRequest(req)) return true;
+  // Check if a registered user session with ADMIN role exists
+  const currentUser = getCurrentUserFromRequest(req);
+  if (currentUser && (currentUser.role === "ADMIN" || (currentUser as any).role === "admin")) return true;
 
   // 1. Check Authorization header (Bearer <token>)
   const authHeader = req.headers.get("authorization");

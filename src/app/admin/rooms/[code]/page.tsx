@@ -84,6 +84,8 @@ export default function AdminRoomPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
   const soundEnabledRef = useRef(false);
+  const [isNextLoading, setIsNextLoading] = useState(false);
+  const lastNextClickRef = useRef<number>(0);
 
   // Security & Host Key
   const [currentHostKey, setCurrentHostKey] = useState<string>("");
@@ -265,7 +267,7 @@ export default function AdminRoomPage() {
 
     const adminToken = localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       auth: { token: adminToken },
     });
     socketRef.current = socket;
@@ -618,10 +620,16 @@ export default function AdminRoomPage() {
   };
 
   const handleAdminNextClick = () => {
+    const now = Date.now();
+    if (now - lastNextClickRef.current < 1000 || isNextLoading) return;
+    lastNextClickRef.current = now;
+    setIsNextLoading(true);
+    setTimeout(() => setIsNextLoading(false), 1000);
+
     if (roomState?.status === "LOBBY") {
       matchStartingRef.current = true;
-      const now = Date.now() + getServerClockOffset();
-      setMatchStarting({ seconds: 5, endsAt: now + 5000, total: 5 });
+      const serverNow = Date.now() + getServerClockOffset();
+      setMatchStarting({ seconds: 5, endsAt: serverNow + 5000, total: 5 });
       soundManager.stopMusic(0);
     }
     emit("admin:next", { code });
@@ -1945,7 +1953,7 @@ export default function AdminRoomPage() {
             {roomState?.mode === "GRID_CARO" && roomState?.status !== "LOBBY" ? null : (
               <button
                 onClick={handleAdminNextClick}
-                disabled={gameEnded}
+                disabled={gameEnded || isNextLoading}
                 className={`py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50 col-span-2 shadow inline-flex items-center justify-center gap-2 whitespace-nowrap ${
                   intermission
                     ? "ring-2 ring-cyan-400 animate-pulse text-base font-black bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500"
@@ -2477,7 +2485,7 @@ export default function AdminRoomPage() {
       <div className="fixed bottom-0 left-0 right-0 p-3 bg-[#0f0f1a]/95 backdrop-blur-md border-t border-border flex items-center gap-2 z-40 lg:hidden shadow-2xl">
         <button
           onClick={handleAdminNextClick}
-          disabled={gameEnded}
+          disabled={gameEnded || isNextLoading}
           className="flex-1 py-3 px-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold text-xs sm:text-sm text-white shadow active:scale-95 disabled:opacity-50 truncate inline-flex items-center justify-center gap-1.5"
         >
           <SystemIcon name={roomState?.status === "LOBBY" ? "play" : "next"} className="w-3.5 h-3.5 shrink-0" />

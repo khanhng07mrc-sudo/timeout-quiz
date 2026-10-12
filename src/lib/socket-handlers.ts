@@ -95,6 +95,7 @@ interface RoomPrepareState {
   timer?: NodeJS.Timeout;
   skipCallback?: () => void;
   preparePayload?: GamePreparePayload;
+  remainingMs?: number;
 }
 
 let globalIO: IO | undefined;
@@ -188,6 +189,8 @@ const roomFinalizedActors = new Map<string, Set<string>>(); // qKey -> set of ac
 const roomSubmittedActors = new Map<string, Set<string>>(); // qKey -> set of actors who submitted at least once
 const roomTeamImmunity = new Map<string, number>(); // roomId:teamId -> immuneUntilQuestionIndex
 const roomSharedPowerupUsedInQuestion = new Map<string, boolean>(); // roomId -> whether a shared powerup (TIME_PLUS, SKIP) was used in current question
+const inFlightPowerupCards = new Set<string>(); // cardId -> lock in-flight card use requests to prevent double spending
+const inFlightAdminActions = new Set<string>(); // actionKey -> lock in-flight admin actions (e.g. admin:next) to prevent race conditions
 
 // Classic Gold Rush Questions (Double Points)
 const roomGoldQuestions = new Map<string, Set<string>>(); // roomId -> Set(questionId)
@@ -914,18 +917,30 @@ export function cleanupRoomInMemory(roomId: string) {
       }
     }
 
-    // 4. Delete room-level entries
+    // 4. Delete room-level entries and cancel zombie timers
+    const prep = roomPrepareStates.get(roomId);
+    if (prep?.timer) clearTimeout(prep.timer);
+    roomPrepareStates.delete(roomId);
+
+    const interTimer = roomIntermissionTimers.get(roomId);
+    if (interTimer) {
+      clearTimeout(interTimer);
+      roomIntermissionTimers.delete(roomId);
+    }
+    roomIntermissions.delete(roomId);
+
     roomActiveQuestions.delete(roomId);
     roomRevealPayloads.delete(roomId);
     roomRemainingTimes.delete(roomId);
     roomTimerEndsAt.delete(roomId);
-    roomPrepareStates.delete(roomId);
     roomTournaments.delete(roomId);
     roomGridCaros.delete(roomId);
     roomDiceRaces.delete(roomId);
     roomWagers.delete(roomId);
+    roomMysteryQuests.delete(roomId);
+    roomTotalActorsCache.delete(roomId);
+    roomSharedPowerupUsedInQuestion.delete(roomId);
     roomUsedQuestions.delete(roomId);
-    roomIntermissions.delete(roomId);
     roomCache.delete(roomId);
     roomQuestionsCache.delete(roomId);
     roomGoldQuestions.delete(roomId);
@@ -1015,6 +1030,31 @@ export function cleanupRoomInMemory(roomId: string) {
     for (const key of roomStealEndsAt.keys()) {
       if (key.startsWith(prefix)) roomStealEndsAt.delete(key);
     }
+    for (const key of roomTeamImmunity.keys()) {
+      if (key.startsWith(prefix)) roomTeamImmunity.delete(key);
+    }
+
+    // 6. Clean up player sessions, streak maps & pending disconnect timers for this room
+    for (const [pId, timer] of pendingDisconnects.entries()) {
+      const session = playerSessions.get(pId);
+      if (session?.roomId === roomId) {
+        clearTimeout(timer);
+        pendingDisconnects.delete(pId);
+        playerStreakMap.delete(pId);
+        if (session.teamId) teamStreakMap.delete(session.teamId);
+        playerSessions.delete(pId);
+      }
+    }
+    for (const [sockId, session] of socketPlayerSessions.entries()) {
+      if (session.roomId === roomId) {
+        playerSockets.delete(sockId);
+        socketPlayerSessions.delete(sockId);
+      }
+    }
+
+    for (const key of inFlightAdminActions) {
+      if (key.startsWith(prefix)) inFlightAdminActions.delete(key);
+    }
     roomQuestionStartedAt.delete(roomId);
     cleanupTieBreaker(roomId);
   } catch (err) {
@@ -1030,22 +1070,6 @@ globalForSockets.cleanupRoomInMemory = cleanupRoomInMemory;
 
 async function getAdminRoom(socket: Sock, payloadCode?: string) {
   let roomId = adminSockets.get(socket.id);
-
-  if (!roomId && payloadCode) {
-    const rByCode = await prisma.room.findUnique({
-      where: { code: payloadCode },
-      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
-    });
-    if (rByCode) {
-      roomId = rByCode.id;
-      adminSockets.set(socket.id, roomId);
-      roomCache.set(roomId, rByCode);
-      if (rByCode.quizBank?.questions) {
-        roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
-      }
-      return rByCode;
-    }
-  }
 
   if (!roomId) {
     for (const roomName of socket.rooms) {
@@ -1073,6 +1097,9 @@ async function getAdminRoom(socket: Sock, payloadCode?: string) {
   if (!roomId) return null;
 
   const cached = roomCache.get(roomId);
+  if (cached && payloadCode && cached.code !== payloadCode) {
+    return null;
+  }
   if (cached) {
     if (!cached.quizBank?.questions?.length) {
       const qCached = roomQuestionsCache.get(roomId);
@@ -1168,9 +1195,22 @@ export function registerSocketHandlers(io: IO) {
     if (!candidates || candidates.length === 0) return;
     const qKey = `${roomId}:${questionId}`;
 
+    const openedAt = (mode === "BUZZ" ? roomBuzzWindowOpenedAt.get(qKey) : roomStealOpenedAt.get(qKey)) || Date.now();
+
+    // Security: Sanitize clientBuzzedAt để chống hack timestamp (clientBuzzedAt: 1)
+    for (const c of candidates) {
+      if (
+        typeof c.clientBuzzedAt !== "number" ||
+        c.clientBuzzedAt < openedAt - 150 ||
+        c.clientBuzzedAt > c.receivedAt + 150
+      ) {
+        c.clientBuzzedAt = c.receivedAt;
+      }
+    }
+
     // Sort candidates by clientBuzzedAt ascending; tiebreak by receivedAt
     candidates.sort((a, b) => {
-      if (a.clientBuzzedAt !== b.clientBuzzedAt) {
+      if (Math.abs(a.clientBuzzedAt - b.clientBuzzedAt) > 25) {
         return a.clientBuzzedAt - b.clientBuzzedAt;
       }
       return a.receivedAt - b.receivedAt;
@@ -1353,11 +1393,6 @@ export function registerSocketHandlers(io: IO) {
           return callback({ success: false, error: "Tên người chơi không hợp lệ (không chứa mã độc hoặc rỗng)" });
         }
 
-        // Capacity check
-        if (room.players.length >= MAX_PLAYERS_PER_ROOM && !playerId) {
-          return callback({ success: false, error: `Phòng thi đã đạt giới hạn tối đa (${MAX_PLAYERS_PER_ROOM} người tham gia)` });
-        }
-
         let player: any = null;
 
         // 1. Try reconnecting via persistent playerId
@@ -1441,8 +1476,11 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
-        // 3. Otherwise, create a new player record
+        // 3. Otherwise, check capacity before creating a new player record
         if (!player) {
+          if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
+            return callback({ success: false, error: `Phòng thi đã đạt giới hạn tối đa (${MAX_PLAYERS_PER_ROOM} người tham gia)` });
+          }
           // Clean up any old disconnected duplicates in lobby before creating
           if (room.status === "LOBBY") {
             await prisma.player.deleteMany({
@@ -1958,61 +1996,75 @@ export function registerSocketHandlers(io: IO) {
 
     // ── Submit Answer (Player Device) ─────────────────────────────────────────
     socket.on("game:answer:submit", async ({ questionId, answer, teamId, playerId: clientPlayerId, clientAnsweredAt }: any) => {
-      if (!checkActionDebounce(socket.id, 150)) return;
+      try {
+        if (!checkActionDebounce(socket.id, 150)) return;
 
-      let playerId = clientPlayerId || playerSockets.get(socket.id);
-      if (!playerId) {
-        const dbPlayer = await prisma.player.findFirst({
-          where: { socketId: socket.id },
-          include: { room: true },
-        }).catch(() => null);
-        if (dbPlayer) {
-          playerId = dbPlayer.id;
-          playerSockets.set(socket.id, dbPlayer.id);
+        // Security: Ràng buộc định danh chặt chẽ với socket (chống packet spoofing / mạo danh)
+        let playerId = playerSockets.get(socket.id);
+        if (!playerId) {
+          const dbPlayer = await prisma.player.findFirst({
+            where: { socketId: socket.id },
+            include: { room: true },
+          }).catch(() => null);
+          if (dbPlayer) {
+            playerId = dbPlayer.id;
+            playerSockets.set(socket.id, dbPlayer.id);
+          }
         }
-      }
-      if (!playerId) return;
+        // Nếu client cố tình gửi clientPlayerId khác với ID thật của socket: Từ chối gói tin
+        if (clientPlayerId && playerId && clientPlayerId !== playerId) {
+          console.warn(`[Security] Gói tin nộp bài mạo danh từ socket ${socket.id}: khai ${clientPlayerId}, thực tế ${playerId}`);
+          return;
+        }
+        if (!playerId) return;
 
-      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
-      if (!session || !session.teamId) {
-        const player = await prisma.player.findFirst({
-          where: {
-            OR: [
-              { id: playerId },
-              { socketId: socket.id },
-            ],
-          },
-          include: { room: true, team: true },
+        let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+        if (!session || !session.teamId) {
+          const player = await prisma.player.findFirst({
+            where: {
+              OR: [
+                { id: playerId },
+                { socketId: socket.id },
+              ],
+            },
+            include: { room: true, team: true },
+          });
+          if (!player || !player.room) return;
+          session = {
+            playerId: player.id,
+            playerName: player.name,
+            roomId: player.room.id,
+            roomCode: player.room.code,
+            teamId: player.teamId || undefined,
+            teamName: player.team?.name ?? player.name,
+            roomMode: player.room.mode as any,
+            teamMode: player.room.teamMode as any,
+          };
+          socketPlayerSessions.set(socket.id, session);
+          playerSessions.set(player.id, session);
+        }
+
+        // Chống nộp bài thay đội khác: Chỉ chấp nhận nộp cho chính đội của socket
+        const submissionTeamId = session.teamId;
+        if (teamId && submissionTeamId && teamId !== submissionTeamId) {
+          console.warn(`[Security] Gói tin nộp bài mạo danh đội từ socket ${socket.id}: khai team ${teamId}, thực tế ${submissionTeamId}`);
+          return;
+        }
+
+        await processAnswerSubmission({
+          io,
+          roomId: session.roomId,
+          questionId,
+          playerId,
+          teamId: submissionTeamId,
+          answer,
+          clientAnsweredAt,
+          isAdminOverride: false,
+          socket,
         });
-        if (!player || !player.room) return;
-        const effTeamId = teamId || player.teamId || session?.teamId || undefined;
-        session = {
-          playerId: player.id,
-          playerName: player.name,
-          roomId: player.room.id,
-          roomCode: player.room.code,
-          teamId: effTeamId,
-          teamName: player.team?.name ?? session?.teamName ?? player.name,
-          roomMode: player.room.mode as any,
-          teamMode: player.room.teamMode as any,
-        };
-        socketPlayerSessions.set(socket.id, session);
-        playerSessions.set(player.id, session);
+      } catch (err) {
+        console.error("[game:answer:submit] Lỗi xử lý nộp bài:", err);
       }
-
-      const submissionTeamId = teamId || session.teamId || undefined;
-
-      await processAnswerSubmission({
-        io,
-        roomId: session.roomId,
-        questionId,
-        playerId,
-        teamId: submissionTeamId,
-        answer,
-        clientAnsweredAt,
-        isAdminOverride: false,
-        socket,
-      });
     });
 
     // ── Admin Submit Answer (MC Mode / Override / After Timeout) ──────────────
@@ -2123,11 +2175,16 @@ export function registerSocketHandlers(io: IO) {
         const isUnlocked = roomBuzzUnlocked.get(qKey) ?? false;
         if (!isUnlocked) {
           socket.emit("error", "Chuông đang bị khóa! Vui lòng chờ mở chuông.");
+          socket.emit("game:buzz:closed");
           return;
         }
 
         // Only accept if no team is currently in answering mode
-        if (roomBuzzFirst.has(qKey)) return;
+        if (roomBuzzFirst.has(qKey)) {
+          socket.emit("error", "Đã có đội giành quyền bấm chuông!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
 
         const teamId = session.teamId ?? session.playerId;
         const teamName = session.teamName ?? session.playerName;
@@ -2136,6 +2193,7 @@ export function registerSocketHandlers(io: IO) {
 
         if (attempts.length >= maxAttempts) {
           socket.emit("error", `Đã hết ${maxAttempts} lượt bấm chuông cho câu hỏi này!`);
+          socket.emit("game:buzz:closed");
           return;
         }
 
@@ -2144,6 +2202,7 @@ export function registerSocketHandlers(io: IO) {
         const alreadyBuzzed = attempts.some((a) => a.teamId === teamId) || Boolean(disqSet && disqSet.has(teamId));
         if (alreadyBuzzed) {
           socket.emit("error", "Mỗi đội chỉ được bấm chuông tối đa 1 lần cho mỗi câu hỏi!");
+          socket.emit("game:buzz:closed");
           return;
         }
 
@@ -2174,17 +2233,26 @@ export function registerSocketHandlers(io: IO) {
 
       } else if (mode === "BOUNCEBACK") {
         const isSteal = roomStealPhase.get(qKey) ?? false;
-        if (!isSteal) return;
+        if (!isSteal) {
+          socket.emit("error", "Chưa mở lượt cướp điểm!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
 
         // Primary team cannot steal their own question!
         const primary = roomPrimaryTeams.get(qKey);
         if (session.teamId && primary && session.teamId === primary.teamId) {
           socket.emit("error", "Đội của bạn là đội trả lời chính, không thể cướp lượt câu này!");
+          socket.emit("game:buzz:closed");
           return;
         }
 
         // Only first steal buzz wins
-        if (roomStealBuzzed.has(qKey)) return;
+        if (roomStealBuzzed.has(qKey)) {
+          socket.emit("error", "Đã có đội cướp chuông trước!");
+          socket.emit("game:buzz:closed");
+          return;
+        }
 
         const teamId = session.teamId ?? session.playerId;
         const teamName = session.teamName ?? session.playerName;
@@ -2486,12 +2554,19 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      // Fetch card from DB first (needed for type checks below)
-      const card = await prisma.powerupCard.findUnique({ where: { id: cardId } });
-      if (!card || card.used) {
-        socket.emit("error", "Thẻ này đã được dùng hoặc không hợp lệ!");
+      if (inFlightPowerupCards.has(cardId)) {
+        socket.emit("error", "Thẻ này đang được xử lý, vui lòng không bấm liên tục!");
         return;
       }
+      inFlightPowerupCards.add(cardId);
+
+      try {
+        // Fetch card from DB first (needed for type checks below)
+        const card = await prisma.powerupCard.findUnique({ where: { id: cardId } });
+        if (!card || card.used) {
+          socket.emit("error", "Thẻ này đã được dùng hoặc không hợp lệ!");
+          return;
+        }
       if (card.ownerType === "TEAM" && card.teamId !== player.teamId) {
         socket.emit("error", "Thẻ này không thuộc về đội của bạn!");
         return;
@@ -2529,6 +2604,15 @@ export function registerSocketHandlers(io: IO) {
       if (isSharedPowerup(card.type as CardType)) {
         if (roomSharedPowerupUsedInQuestion.get(room.id)) {
           socket.emit("error", "Một đội khác đã kích hoạt thẻ dùng chung trong câu hỏi này rồi! Mỗi câu chỉ được dùng tối đa 1 thẻ dùng chung.");
+          return;
+        }
+      }
+
+      if (card.type === "SKIP") {
+        const questions = room.quizBank?.questions ?? [];
+        const nextQ = getNextUniqueQuestion(room.id, questions);
+        if (!nextQ) {
+          socket.emit("error", "Không còn câu hỏi dự phòng để đổi!");
           return;
         }
       }
@@ -2626,6 +2710,22 @@ export function registerSocketHandlers(io: IO) {
             ]);
           }
         }
+      } else if (card.type === "SKIP") {
+        const questions = room.quizBank?.questions ?? [];
+        const nextQ = getNextUniqueQuestion(room.id, questions);
+        if (nextQ) {
+          stopQuestionTimer(room.id);
+          roomActiveQuestions.delete(room.id);
+          roomRevealPayloads.delete(room.id);
+          room.currentQuestion = nextQ.index;
+          roomCache.set(room.id, room);
+          await prisma.room.update({
+            where: { id: room.id },
+            data: { currentQuestion: nextQ.index },
+          }).catch(console.error);
+
+          await startQuestionPrepareAndLaunch(room, questions, nextQ.index, nextQ.question);
+        }
       }
 
       await prisma.gameLog.create({
@@ -2662,7 +2762,15 @@ export function registerSocketHandlers(io: IO) {
 
       const state = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", state);
-    });
+    } catch (err) {
+      console.error("[game:powerup:use] Error:", err);
+      socket.emit("error", "Lỗi xử lý sử dụng thẻ bổ trợ!");
+      const state = await buildRoomState(player.room.id).catch(() => null);
+      if (state) socket.emit("room:state", state);
+    } finally {
+      inFlightPowerupCards.delete(cardId);
+    }
+  });
 
     async function startQuestionPrepareAndLaunch(
       room: any,
@@ -3242,6 +3350,11 @@ export function registerSocketHandlers(io: IO) {
         return;
       }
 
+      const actionKey = `${room.id}:next`;
+      if (inFlightAdminActions.has(actionKey)) return;
+      inFlightAdminActions.add(actionKey);
+      setTimeout(() => inFlightAdminActions.delete(actionKey), 800);
+
       // Fast-skip if preparation/countdown is already active
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
@@ -3713,19 +3826,79 @@ export function registerSocketHandlers(io: IO) {
     socket.on("admin:pause", async (payload?: { code?: string }) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
+
+      const timerKey = `${room.id}:timer`;
+      if (roomTimers.has(timerKey)) {
+        clearInterval(roomTimers.get(timerKey)!);
+        roomTimers.delete(timerKey);
+      }
+      roomTimerEndsAt.delete(room.id);
+
       if (roomPrepareStates.has(room.id)) {
         const prep = roomPrepareStates.get(room.id);
-        if (prep?.timer) clearTimeout(prep.timer);
+        if (prep) {
+          if (prep.timer) {
+            clearTimeout(prep.timer);
+            prep.timer = undefined;
+          }
+          prep.remainingMs = Math.max(500, prep.targetTimestamp - Date.now());
+        }
       }
-      await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } });
+
+      if (roomIntermissionTimers.has(room.id)) {
+        clearTimeout(roomIntermissionTimers.get(room.id)!);
+        roomIntermissionTimers.delete(room.id);
+      }
+
+      room.status = "PAUSED";
+      roomCache.set(room.id, room);
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PAUSED" } }).catch(console.error);
       io.to(`room:${room.code}`).emit("game:paused");
+      const state = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", state);
     });
 
     socket.on("admin:resume", async (payload?: { code?: string }) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room) return;
-      await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } });
+
+      room.status = "PLAYING";
+      roomCache.set(room.id, room);
+      await prisma.room.update({ where: { id: room.id }, data: { status: "PLAYING" } }).catch(console.error);
+
+      // 1. Resume preparation if it was paused
+      if (roomPrepareStates.has(room.id)) {
+        const prep = roomPrepareStates.get(room.id)!;
+        const remainingMs = prep.remainingMs || 3000;
+        prep.targetTimestamp = Date.now() + remainingMs;
+        prep.remainingMs = undefined;
+        prep.timer = setTimeout(() => {
+          if (prep.skipCallback) {
+            prep.skipCallback();
+          }
+        }, remainingMs);
+
+        const remainingSec = Math.max(1, Math.ceil(remainingMs / 1000));
+        if (prep.type === "STARTING") {
+          io.to(`room:${room.code}`).emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.totalQuestions || 5 });
+        } else if (prep.type === "PREPARE" && prep.preparePayload) {
+          io.to(`room:${room.code}`).emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp });
+        }
+      } else {
+        // 2. Resume active question timer if in progress and not revealed
+        const timerKey = `${room.id}:timer`;
+        const activeQ = roomActiveQuestions.get(room.id);
+        const qKey = activeQ ? `${room.id}:${activeQ.question.id}` : null;
+        if (activeQ && qKey && !roomQuestionProcessed.has(qKey)) {
+          const remainingSec = Math.max(1, roomRemainingTimes.get(timerKey) ?? activeQ.question.timeLimit ?? 15);
+          startQuestionTimer(io, room.code, room.id, activeQ.question.id, remainingSec);
+          io.to(`room:${room.code}`).emit("game:timer:started");
+        }
+      }
+
       io.to(`room:${room.code}`).emit("game:resumed");
+      const state = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", state);
     });
 
     socket.on("admin:reveal", async (payload?: { code?: string }) => {
@@ -4141,10 +4314,16 @@ export function registerSocketHandlers(io: IO) {
     // ── Grid Caro Events ──────────────────────────────────────────────────────
     async function handleGridCellSelect(room: any, cellId: number) {
       const gridState = roomGridCaros.get(room.id);
-      if (!gridState || gridState.selectedCellId || roomPrepareStates.has(room.id)) return;
+      if (!gridState || gridState.selectedCellId || roomPrepareStates.has(room.id)) {
+        if (gridState) io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        return;
+      }
 
       const cell = gridState.cells.find((c) => c.id === cellId);
-      if (!cell || cell.isCompleted) return;
+      if (!cell || cell.isCompleted) {
+        io.to(`room:${room.code}`).emit("game:grid:update", gridState);
+        return;
+      }
 
       const autoAdvanceKey = `${room.id}:auto_advance`;
       if (roomGridTimers.has(autoAdvanceKey)) {
@@ -4224,6 +4403,9 @@ export function registerSocketHandlers(io: IO) {
       // In Sandbox mode, bot on current turn can select:
       if (gridState.currentTurnTeamId === player.teamId) {
         await handleGridCellSelect(player.room, cellId);
+      } else {
+        socket.emit("error", "Chưa tới lượt chọn ô của đội bạn!");
+        socket.emit("game:grid:update", gridState);
       }
     });
 
@@ -4280,6 +4462,7 @@ export function registerSocketHandlers(io: IO) {
         await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
         const leaderboard = await buildLeaderboard(room.id);
         io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        setTimeout(() => cleanupRoomInMemory(room.id), 5000);
         return;
       }
 
@@ -4323,11 +4506,13 @@ export function registerSocketHandlers(io: IO) {
       const diceState = roomDiceRaces.get(room.id);
       if (!diceState || !diceState.canRollDice) {
         socket.emit("error", "Chưa được phép gieo xúc xắc hoặc bạn chưa trả lời đúng câu hỏi!");
+        if (diceState) socket.emit("game:dice:update", diceState);
         return;
       }
 
       if (diceState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa tới lượt tung xúc xắc của đội bạn!");
+        socket.emit("game:dice:update", diceState);
         return;
       }
 
@@ -4364,6 +4549,7 @@ export function registerSocketHandlers(io: IO) {
       // 0. "Và để đảm bảo công bằng, một đội không được cược 2 câu liên tiếp"
       if (wagerState.previousQuestionWagerTeamId && team.id === wagerState.previousQuestionWagerTeamId) {
         socket.emit("error", "Đội bạn đã đặt cược ở câu hỏi trước! Theo luật công bằng, đội bạn tạm nghỉ cược câu này để nhường các đội khác.");
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
@@ -4372,18 +4558,21 @@ export function registerSocketHandlers(io: IO) {
       const isAutoAssignedFirstBid = wagerState.autoAssignedTeamId === team.id;
       if (wagerState.lastWagerTeamId === team.id && !isAutoAssignedFirstBid) {
         socket.emit("error", "Đội bạn vừa đặt cược! Không được cược 2 lần liên tiếp, vui lòng chờ đội khác cược trước.");
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
       // 2. "mỗi đội không được cược số điểm vượt quá điểm hiện tại của đội"
       if (amount > team.score) {
         socket.emit("error", `Không được cược số điểm (${amount}đ) vượt quá điểm hiện tại của đội bạn (${team.score}đ)!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
       // 2b. Kiểm tra trần cược tối đa theo hệ số điểm câu hỏi (maxBetCap)
       if (wagerState.maxBetCap && amount > wagerState.maxBetCap) {
         socket.emit("error", `Không được cược số điểm (${amount}đ) vượt quá trần cược tối đa (${wagerState.maxBetCap}đ) của câu hỏi này!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
@@ -4395,12 +4584,14 @@ export function registerSocketHandlers(io: IO) {
 
       if (amount < minOption || amount > maxOption || !isValidStep) {
         socket.emit("error", `Mức cược không hợp lệ. Vui lòng chọn 1 trong 12 ô cược từ ${minOption}đ đến ${maxOption}đ.`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
       // 4. "khi số điểm cược hiện lên đã vượt quá điểm đội mình, đội mình sẽ mất quyền cược trong câu hỏi đó"
       if (team.score < minOption) {
         socket.emit("error", `Mức cược tối thiểu (${minOption}đ) đã vượt quá điểm đội bạn (${team.score}đ). Đội bạn đã mất quyền cược trong câu hỏi này!`);
+        socket.emit("game:wager:update", wagerState);
         return;
       }
 
@@ -6747,6 +6938,7 @@ export function registerSocketHandlers(io: IO) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5000);
         },
       });
     });
@@ -6769,6 +6961,7 @@ export function registerSocketHandlers(io: IO) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5000);
         },
       });
     });
@@ -6791,6 +6984,7 @@ export function registerSocketHandlers(io: IO) {
           await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
           const leaderboard = await buildLeaderboard(room.id);
           io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+          setTimeout(() => cleanupRoomInMemory(currentRoomId), 5000);
         },
       });
     });
@@ -6808,6 +7002,7 @@ export function registerSocketHandlers(io: IO) {
         await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } }).catch(console.error);
         const leaderboard = await buildLeaderboard(room.id);
         io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+        setTimeout(() => cleanupRoomInMemory(room.id), 5000);
       };
 
       if (payload?.action === "NEXT_QUESTION") {
@@ -6868,35 +7063,42 @@ export function registerSocketHandlers(io: IO) {
       if (existingTimer) clearTimeout(existingTimer);
 
       const timer = setTimeout(async () => {
-        pendingDisconnects.delete(playerId);
+        try {
+          pendingDisconnects.delete(playerId);
 
-        // Check if player reconnected during the grace period
-        let reconnectedSocketId: string | null = null;
-        for (const [sockId, pId] of playerSockets.entries()) {
-          if (pId === playerId && io.sockets.sockets.has(sockId)) {
-            reconnectedSocketId = sockId;
-            break;
+          // Check if player reconnected during the grace period
+          let reconnectedSocketId: string | null = null;
+          for (const [sockId, pId] of playerSockets.entries()) {
+            if (pId === playerId && io.sockets.sockets.has(sockId)) {
+              reconnectedSocketId = sockId;
+              break;
+            }
           }
-        }
 
-        if (reconnectedSocketId) {
+          if (reconnectedSocketId) {
+            await prisma.player.update({
+              where: { id: playerId },
+              data: { socketId: reconnectedSocketId },
+            }).catch(() => {});
+            return;
+          }
+
+          // Truly disconnected/offline
           await prisma.player.update({
             where: { id: playerId },
-            data: { socketId: reconnectedSocketId },
+            data: { socketId: null },
           }).catch(() => {});
-          return;
-        }
 
-        // Truly disconnected/offline
-        await prisma.player.update({
-          where: { id: playerId },
-          data: { socketId: null },
-        }).catch(() => {});
-
-        if (player.room) {
-          io.to(`room:${player.room.code}`).emit("player:left", playerId);
-          const state = await buildRoomState(player.room.id);
-          io.to(`room:${player.room.code}`).emit("room:state", state);
+          if (player.room) {
+            const roomExists = await prisma.room.findUnique({ where: { id: player.room.id }, select: { id: true } });
+            if (roomExists) {
+              io.to(`room:${player.room.code}`).emit("player:left", playerId);
+              const state = await buildRoomState(player.room.id);
+              io.to(`room:${player.room.code}`).emit("room:state", state);
+            }
+          }
+        } catch (err) {
+          console.error(`[pendingDisconnects] Error in grace period callback for player ${playerId}:`, err);
         }
       }, 30000);
 
@@ -7235,6 +7437,20 @@ async function processAnswerSubmission({
   if (!question) return;
   const qKey = `${room.id}:${questionId}`;
 
+  // Security: Không nhận bài nộp nếu câu hỏi đã được chốt và công bố đáp án
+  if (roomQuestionProcessed.has(qKey) && !isAdminOverride) {
+    if (socket) {
+      socket.emit("error", "Câu hỏi đã được công bố kết quả!");
+      const reveal = roomRevealPayloads.get(room.id);
+      if (reveal) {
+        socket.emit("game:answer:reveal", reveal);
+      } else {
+        socket.emit("game:question:clear");
+      }
+    }
+    return;
+  }
+
   const activeQ = roomActiveQuestions.get(room.id);
   const isSandboxRoom = Boolean(
     room.name?.startsWith("[Sandbox]") ||
@@ -7260,15 +7476,28 @@ async function processAnswerSubmission({
       });
       startQuestionTimer(io, room.code, room.id, question.id, effLimit);
     } else {
-      if (socket) socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
+      if (socket) {
+        socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   }
-  if (activeQ?.isExpired && !isAdminOverride) {
-    const endsAt = activeQ.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
-    const isWithinGrace = typeof clientAnsweredAt === "number" && endsAt > 0 && clientAnsweredAt <= (endsAt + 1500);
-    if (!isWithinGrace) {
-      if (socket) socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
+
+  // Security: Kiểm tra thời gian hết giờ căn cứ Authoritative trên Server Time (bù trễ mạng 1500ms)
+  const nowArrival = Date.now();
+  const endsAtAuthoritative = activeQ?.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
+  if (endsAtAuthoritative > 0 && !isAdminOverride) {
+    if (nowArrival > endsAtAuthoritative + 1500) {
+      if (socket) {
+        socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
+        socket.emit("game:timer", {
+          remaining: 0,
+          total: activeQ?.question?.timeLimit ?? 15,
+          endsAt: endsAtAuthoritative,
+          serverTime: Date.now(),
+        });
+      }
       return;
     }
   }
@@ -7277,7 +7506,10 @@ async function processAnswerSubmission({
   if (teamId) {
     const frozenSet = roomFrozenTeams.get(qKey);
     if (frozenSet && frozenSet.has(teamId)) {
-      if (socket) socket.emit("error", "Đội của bạn đang bị đóng băng ở câu này nên không thể nộp đáp án!");
+      if (socket) {
+        socket.emit("error", "Đội của bạn đang bị đóng băng ở câu này nên không thể nộp đáp án!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   }
@@ -7358,7 +7590,10 @@ async function processAnswerSubmission({
                            (actorId && actorId === stealInfo.teamId) ||
                            (playerId && (playerId === stealInfo.playerId || playerId === stealInfo.teamId));
       if (!isAdminOverride && !isStealActor) {
-        if (socket) socket.emit("error", "Chỉ đội cướp chuông mới được trả lời!");
+        if (socket) {
+          socket.emit("error", "Chỉ đội cướp chuông mới được trả lời!");
+          if (activeQ) socket.emit("game:question", activeQ);
+        }
         return;
       }
     } else if (primary) {
@@ -7366,21 +7601,30 @@ async function processAnswerSubmission({
                              (actorId && actorId === primary.teamId) ||
                              (playerId && playerId === primary.teamId);
       if (!isAdminOverride && !isPrimaryActor) {
-        if (socket) socket.emit("error", "Hiện đang là lượt của đội chính!");
+        if (socket) {
+          socket.emit("error", "Hiện đang là lượt của đội chính!");
+          if (activeQ) socket.emit("game:question", activeQ);
+        }
         return;
       }
     }
   } else if (room.mode === "BUZZ") {
     const buzz = roomBuzzFirst.get(qKey);
     if (!buzz && !isAdminOverride) {
-      if (socket) socket.emit("error", "Chưa có đội nào bấm chuông!");
+      if (socket) {
+        socket.emit("error", "Chưa có đội nào bấm chuông!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
     const isBuzzActor = buzz ? ((effectiveTeamId && effectiveTeamId === buzz.teamId) ||
                         (actorId && actorId === buzz.teamId) ||
                         (playerId && (playerId === buzz.playerId || playerId === buzz.teamId))) : false;
     if (!isAdminOverride && !isBuzzActor) {
-      if (socket) socket.emit("error", "Chỉ đội bấm chuông đầu tiên mới được trả lời!");
+      if (socket) {
+        socket.emit("error", "Chỉ đội bấm chuông đầu tiên mới được trả lời!");
+        if (activeQ) socket.emit("game:question", activeQ);
+      }
       return;
     }
   } else if (room.mode === "TOURNAMENT") {
@@ -7393,32 +7637,47 @@ async function processAnswerSubmission({
       effectiveTeamId === currentMatch.team2Id
     );
     if (currentMatch && !isMatchActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Chỉ 2 đội trong trận đối đầu hiện tại mới được trả lời!");
+      if (socket) {
+        socket.emit("error", "Chỉ 2 đội trong trận đối đầu hiện tại mới được trả lời!");
+        if (tournament) socket.emit("game:tournament:update", tournament);
+      }
       return;
     }
   } else if (room.mode === "GRID_CARO") {
     const gridState = roomGridCaros.get(room.id);
     const isGridActor = gridState && (actorId === gridState.currentTurnTeamId || effectiveTeamId === gridState.currentTurnTeamId);
     if (gridState && !isGridActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Hiện đang là lượt của đội khác!");
+      if (socket) {
+        socket.emit("error", "Hiện đang là lượt của đội khác!");
+        socket.emit("game:grid:update", gridState);
+      }
       return;
     }
   } else if (room.mode === "DICE_RACE") {
     const diceState = roomDiceRaces.get(room.id);
     const isDiceActor = diceState && (actorId === diceState.currentTurnTeamId || effectiveTeamId === diceState.currentTurnTeamId);
     if (diceState && !isDiceActor && !isAdminOverride) {
-      if (socket) socket.emit("error", "Hiện đang là lượt của đội khác!");
+      if (socket) {
+        socket.emit("error", "Hiện đang là lượt của đội khác!");
+        socket.emit("game:dice:update", diceState);
+      }
       return;
     }
   } else if (room.mode === "MYSTERY_QUEST") {
     const questState = roomMysteryQuests.get(room.id);
     if (questState && questState.phase !== "QUESTION_ACTIVE" && !isAdminOverride) {
-      if (socket) socket.emit("error", "Trò chơi đang ở giai đoạn Lật bài bí ẩn, không nhận đáp án câu hỏi!");
+      if (socket) {
+        socket.emit("error", "Trò chơi đang ở giai đoạn Lật bài bí ẩn, không nhận đáp án câu hỏi!");
+        socket.emit("game:mystery:update", questState);
+      }
       return;
     }
     const isMysteryActor = questState && (actorId === questState.currentTurnTeamId || effectiveTeamId === questState.currentTurnTeamId);
     if (questState && !isMysteryActor && !isAdminOverride) {
-      if (socket) socket.emit("error", `Hiện đang là lượt thi đấu của ${questState.currentTurnTeamName}! Đội bạn vui lòng chú ý theo dõi.`);
+      if (socket) {
+        socket.emit("error", `Hiện đang là lượt thi đấu của ${questState.currentTurnTeamName}! Đội bạn vui lòng chú ý theo dõi.`);
+        socket.emit("game:mystery:update", questState);
+      }
       return;
     }
   } else if (room.mode === "ELIMINATION" && !isAdminOverride) {
@@ -7437,13 +7696,17 @@ async function processAnswerSubmission({
     }
   }
 
-  let timeSpent = Math.max(100, now - qStartedAt);
+  let timeSpent = Math.max(300, now - qStartedAt);
   if (
     typeof clientAnsweredAt === "number" &&
-    clientAnsweredAt >= qStartedAt - 500 &&
-    clientAnsweredAt <= now + 500
+    clientAnsweredAt >= qStartedAt &&
+    clientAnsweredAt <= now + 200
   ) {
-    timeSpent = Math.max(100, clientAnsweredAt - qStartedAt);
+    const claimedTime = clientAnsweredAt - qStartedAt;
+    // Chỉ chấp nhận clientAnsweredAt nếu hợp lý (tối thiểu 300ms và không lệch quá 2000ms so với server arrival)
+    if (claimedTime >= 300 && (now - clientAnsweredAt) <= 2000) {
+      timeSpent = claimedTime;
+    }
   }
   const maxAllowedLimitMs = ((activeQ?.timeLimit || question?.timeLimit || 30) * 1000);
   timeSpent = Math.min(timeSpent, maxAllowedLimitMs);
@@ -8093,44 +8356,49 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
   currentMatch.currentQuestionInMatch++;
 
   if (currentMatch.currentQuestionInMatch >= currentMatch.totalQuestionsInMatch) {
-    currentMatch.status = "COMPLETED";
-    const winnerId = currentMatch.team1Score >= currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
-    const winnerName = currentMatch.team1Score >= currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
-    currentMatch.winnerTeamId = winnerId;
-
-    if (currentMatch.id === "FINAL") {
-      tournament.championTeamId = winnerId;
-      tournament.championTeamName = winnerName;
+    if (currentMatch.team1Score === currentMatch.team2Score && currentMatch.team1Id && currentMatch.team2Id) {
+      // Sudden Death: Hai đội hòa điểm ở vòng knockout, tự động thêm 1 câu hỏi phụ trực tiếp giữa 2 đội
+      currentMatch.totalQuestionsInMatch += 1;
     } else {
-      const nextMatch = tournament.matches.find(
-        (m) => m.roundIndex === currentMatch.roundIndex + 1 && (!m.team1Id || !m.team2Id)
-      );
-      if (nextMatch) {
-        if (!nextMatch.team1Id) {
-          nextMatch.team1Id = winnerId;
-          nextMatch.team1Name = winnerName;
-        } else if (!nextMatch.team2Id) {
-          nextMatch.team2Id = winnerId;
-          nextMatch.team2Name = winnerName;
+      currentMatch.status = "COMPLETED";
+      const winnerId = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Id : currentMatch.team2Id;
+      const winnerName = currentMatch.team1Score > currentMatch.team2Score ? currentMatch.team1Name : currentMatch.team2Name;
+      currentMatch.winnerTeamId = winnerId;
+
+      if (currentMatch.id === "FINAL") {
+        tournament.championTeamId = winnerId;
+        tournament.championTeamName = winnerName;
+      } else {
+        const nextMatch = tournament.matches.find(
+          (m) => m.roundIndex === currentMatch.roundIndex + 1 && (!m.team1Id || !m.team2Id)
+        );
+        if (nextMatch) {
+          if (!nextMatch.team1Id) {
+            nextMatch.team1Id = winnerId;
+            nextMatch.team1Name = winnerName;
+          } else if (!nextMatch.team2Id) {
+            nextMatch.team2Id = winnerId;
+            nextMatch.team2Name = winnerName;
+          }
+        }
+
+        const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
+        if (nextPending) {
+          nextPending.status = "IN_PROGRESS";
+          tournament.currentMatchId = nextPending.id;
         }
       }
 
-      const nextPending = tournament.matches.find((m) => m.status === "UPCOMING" && m.team1Id && m.team2Id);
-      if (nextPending) {
-        nextPending.status = "IN_PROGRESS";
-        tournament.currentMatchId = nextPending.id;
-      }
-    }
-
-    // Award Oracle Points (+10 points) for spectators who correctly predicted the winner
-    if (currentMatch.predictions && winnerId) {
-      tournament.oracleScores = tournament.oracleScores || {};
-      for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
-        if (predWinnerId === winnerId) {
-          tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+      // Award Oracle Points (+10 points) for spectators who correctly predicted the winner
+      if (currentMatch.predictions && winnerId) {
+        tournament.oracleScores = tournament.oracleScores || {};
+        for (const [predTeamId, predWinnerId] of Object.entries(currentMatch.predictions)) {
+          if (predWinnerId === winnerId) {
+            tournament.oracleScores[predTeamId] = (tournament.oracleScores[predTeamId] || 0) + 10;
+          }
         }
+        io.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
       }
-      io.to(`room:${roomCode}`).emit("tournament:oracle:update", { oracleScores: tournament.oracleScores });
     }
   }
 
@@ -8150,7 +8418,10 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
   }
 
   const gridState = roomGridCaros.get(roomId);
-  const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+  const room = await prisma.room.findUnique({
+    where: { id: roomId },
+    include: { teams: { orderBy: { createdAt: "asc" } } },
+  });
   if (!gridState || !room) return;
 
   gridState.autoAdvanceSeconds = undefined;
@@ -8500,6 +8771,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
       });
       const leaderboard = await buildLeaderboard(roomId);
       io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+      setTimeout(() => cleanupRoomInMemory(roomId), 5000);
     }
   }
 }
@@ -9175,6 +9447,7 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
             await prisma.room.update({ where: { id: room.id }, data: { status: "FINISHED", endedAt: new Date() } });
             const leaderboard = await buildLeaderboard(room.id);
             io.to(`room:${roomCode}`).emit("game:ended", { leaderboard });
+            setTimeout(() => cleanupRoomInMemory(room.id), 5000);
             return;
           }
         }
@@ -10206,6 +10479,7 @@ async function safelyFinishGame({
       }).catch(console.error);
       const finalLb = await buildLeaderboard(room.id);
       io.to(`room:${room.code}`).emit("game:ended", { leaderboard: finalLb });
+      setTimeout(() => cleanupRoomInMemory(room.id), 5000);
     },
   });
 
@@ -10220,5 +10494,6 @@ async function safelyFinishGame({
     data: { status: "FINISHED", endedAt: new Date() },
   }).catch(console.error);
   io.to(`room:${room.code}`).emit("game:ended", { leaderboard });
+  setTimeout(() => cleanupRoomInMemory(room.id), 5000);
   return true;
 }

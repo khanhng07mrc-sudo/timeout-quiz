@@ -21,6 +21,15 @@ async function ensureDatabaseSchema() {
   }
 }
 
+// Global process safety handlers: Prevent unexpected async errors from crashing the Node.js server
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("[Process Safety] Unhandled Promise Rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("[Process Safety] Uncaught Exception:", error);
+});
+
 const dev = process.env.NODE_ENV !== "production";
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 const port = parseInt(process.env.PORT ?? "3000", 10);

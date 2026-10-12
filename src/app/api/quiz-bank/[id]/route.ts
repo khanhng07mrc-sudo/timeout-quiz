@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
 
+import { getCurrentUserFromRequest } from "@/lib/security";
+
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -16,6 +18,29 @@ export async function GET(
   });
 
   if (!bank) return NextResponse.json({ error: "Không tìm thấy bộ đề" }, { status: 404 });
+
+  const user = getCurrentUserFromRequest(req);
+  const isAdmin = verifyAdminRequest(req);
+  const isOwner = user && bank.ownerId === user.userId;
+
+  // Nếu không phải Admin hoặc chủ sở hữu:
+  if (!isAdmin && !isOwner) {
+    if (!bank.isPublic) {
+      return NextResponse.json({ error: "Bộ đề này được đặt riêng tư (Forbidden)" }, { status: 403 });
+    }
+    // Bộ đề công khai nhưng thí sinh/khách không được xem trước đáp án:
+    const safeQuestions = bank.questions.map((q: any) => {
+      const { answer: _ans, explanation: _exp, ...safe } = q;
+      return safe;
+    });
+    return NextResponse.json({
+      bank: {
+        ...bank,
+        questions: safeQuestions,
+      },
+    });
+  }
+
   return NextResponse.json({ bank });
 }
 

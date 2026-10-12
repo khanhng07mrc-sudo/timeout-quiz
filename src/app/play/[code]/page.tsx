@@ -485,10 +485,10 @@ export default function PlayPage() {
     }
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       query: isSandboxRef.current ? { sandbox: "1" } : {},
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
@@ -528,12 +528,27 @@ export default function PlayPage() {
             setSelectedTeamId(p.teamId);
           }
         } else {
-          // Lỗi kết nối hoặc join phòng tạm thời
-          setErrorMessage(result.error ?? "Không thể vào phòng thi");
-          setIsReconnecting(true);
+          const err = result.error ?? "Không thể vào phòng thi";
+          setErrorMessage(err);
 
-          // TUYỆT ĐỐI KHÔNG REDIRECT VỀ /play KHI MẠNG LAG!
-          // Tự động thử lại sau 2.5s
+          // Security & Stability: Nếu phòng vĩnh viễn không tồn tại hoặc đã kết thúc/đã đầy, dừng retry để tránh DDoS server
+          const isFatalRoomError =
+            err.includes("không tồn tại") ||
+            err.includes("Không tìm thấy phòng") ||
+            err.includes("đã kết thúc") ||
+            err.includes("đạt giới hạn");
+
+          if (isFatalRoomError) {
+            setIsReconnecting(false);
+            if (retryJoinTimerRef.current) {
+              clearTimeout(retryJoinTimerRef.current);
+              retryJoinTimerRef.current = null;
+            }
+            return;
+          }
+
+          setIsReconnecting(true);
+          // Tự động thử lại sau 2.5s chỉ đối với lỗi mạng tạm thời
           retryJoinTimerRef.current = setTimeout(() => {
             if (socketRef.current?.connected) {
               joinRoom();
@@ -558,8 +573,14 @@ export default function PlayPage() {
 
     socket.on("disconnect", (reason) => {
       setConnected(false);
+      // Chống Ping-Pong Reconnect War: Nếu server chủ động đá (trùng tab hoặc vi phạm), không tự reconnect
+      if (reason === "io server disconnect") {
+        setIsReconnecting(false);
+        setErrorMessage("Bạn đã đăng nhập ở một tab hoặc thiết bị khác, hoặc phiên đã đóng.");
+        return;
+      }
       setIsReconnecting(true);
-      if (reason === "io server disconnect" || reason === "transport close") {
+      if (reason === "transport close") {
         setTimeout(() => {
           if (!socket.connected) socket.connect();
         }, 1000);

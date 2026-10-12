@@ -327,7 +327,7 @@ export default function DisplayPage() {
     window.addEventListener("message", handlePostMessage);
 
     const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io({
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
     });
     socketRef.current = socket;
 

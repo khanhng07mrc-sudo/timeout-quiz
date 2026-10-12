@@ -1177,9 +1177,10 @@ export interface ActiveBoost {
 }
 
 export interface QuestionState {
-  question: Omit<Question, "answer" | "pairs" | "options"> & {
+  question: Omit<Question, "answer" | "options"> & {
     options?: Omit<Option, "isCorrect">[];
     visibleOptionIds?: string[]; // after 50/50 applied
+    pairs?: MatchPair[];
   };
   timeLimit: number;
   startedAt: number;

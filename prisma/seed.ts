@@ -64,6 +64,7 @@ async function main() {
             type: q.type,
             content: q.content,
             options: q.options || undefined,
+            pairs: q.pairs || undefined,
             answer: q.answer || null,
             points: normalizedPts,
             timeLimit: normalizedPts <= 10 ? 15 : normalizedPts <= 20 ? 20 : normalizedPts <= 30 ? 30 : 60,

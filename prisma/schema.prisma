@@ -140,6 +140,7 @@ model Question {
   content    String       @db.Text
   options    Json?
   answer     String?      @db.Text
+  pairs      Json?
   pairsLeft  Json?
   pairsRight Json?
   points     Int          @default(10)

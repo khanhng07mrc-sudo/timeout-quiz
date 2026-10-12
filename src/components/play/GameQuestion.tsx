@@ -94,19 +94,35 @@ export default function GameQuestion({
   const [fillText, setFillText] = useState(() => {
     return typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "";
   });
-  // MATCHING state: user maps left item index/id -> right option id
+  // MATCHING state: user maps left item index/id -> right option id / targetId
   const [matchingPairs, setMatchingPairs] = useState<Record<string, string>>(() => {
-    if (initialAnswer && typeof initialAnswer === "object" && !Array.isArray(initialAnswer)) {
-      return initialAnswer as Record<string, string>;
+    if (initialAnswer) {
+      if (typeof initialAnswer === "object" && !Array.isArray(initialAnswer)) {
+        return initialAnswer as Record<string, string>;
+      }
+      if (Array.isArray(initialAnswer) && typeof initialAnswer[0] === "object" && initialAnswer[0] !== null) {
+        return initialAnswer[0] as Record<string, string>;
+      }
     }
     return {};
   });
-  // DRAG_DROP state: ordered list of option IDs
+  // DRAG_DROP state: ordered list of option IDs (scrambled initially if unanswered)
   const [dragOrder, setDragOrder] = useState<string[]>(() => {
     if (Array.isArray(initialAnswer) && q.type === "DRAG_DROP") {
-      return initialAnswer;
+      const clean = Array.isArray(initialAnswer[0]) ? initialAnswer[0] : initialAnswer;
+      return clean.map(String);
     }
-    return q.options ? q.options.map((o) => o.id) : [];
+    const ids = q.options ? q.options.map((o) => o.id) : [];
+    if (ids.length <= 1) return ids;
+    const shuffled = [...ids];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    if (shuffled.every((v, i) => v === ids[i])) {
+      [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+    }
+    return shuffled;
   });
   const [selectedMatchLeft, setSelectedMatchLeft] = useState<string | null>(null);
   const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
@@ -123,13 +139,31 @@ export default function GameQuestion({
       setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
       if (typeof initialAnswer === "object" && !Array.isArray(initialAnswer)) {
         setMatchingPairs(initialAnswer as Record<string, string>);
+      } else if (Array.isArray(initialAnswer) && typeof initialAnswer[0] === "object" && initialAnswer[0] !== null) {
+        setMatchingPairs(initialAnswer[0] as Record<string, string>);
       } else {
         setMatchingPairs({});
       }
       if (Array.isArray(initialAnswer) && q.type === "DRAG_DROP") {
-        setDragOrder(initialAnswer);
+        const clean = Array.isArray(initialAnswer[0]) ? initialAnswer[0] : initialAnswer;
+        setDragOrder(clean.map(String));
+      } else if (q.type === "DRAG_DROP") {
+        const ids = q.options ? q.options.map((o) => o.id) : [];
+        if (ids.length <= 1) {
+          setDragOrder(ids);
+        } else {
+          const shuffled = [...ids];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          if (shuffled.every((v, i) => v === ids[i])) {
+            [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+          }
+          setDragOrder(shuffled);
+        }
       } else {
-        setDragOrder(q.options ? q.options.map((o) => o.id) : []);
+        setDragOrder([]);
       }
       setIsFinalizedLocally(Boolean(isSingleSubmit));
     } else {
@@ -137,7 +171,24 @@ export default function GameQuestion({
       setEssayText("");
       setFillText("");
       setMatchingPairs({});
-      setDragOrder(q.options ? q.options.map((o) => o.id) : []);
+      if (q.type === "DRAG_DROP") {
+        const ids = q.options ? q.options.map((o) => o.id) : [];
+        if (ids.length <= 1) {
+          setDragOrder(ids);
+        } else {
+          const shuffled = [...ids];
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+          }
+          if (shuffled.every((v, i) => v === ids[i])) {
+            [shuffled[0], shuffled[1]] = [shuffled[1], shuffled[0]];
+          }
+          setDragOrder(shuffled);
+        }
+      } else {
+        setDragOrder([]);
+      }
       setIsFinalizedLocally(false);
     }
     setSelectedMatchLeft(null);
@@ -184,6 +235,11 @@ export default function GameQuestion({
   // Mode permissions (supports both TEAM and INDIVIDUAL mode)
   const isMcMode = (question.answerMethod ?? answerMethod) === "MC";
   const myActorId = myTeamId || playerId;
+  const isSandboxTester = Boolean(
+    playerId?.startsWith("p_sb_") ||
+    playerId?.startsWith("sb_") ||
+    (typeof window !== "undefined" && window.location.pathname.includes("sandbox"))
+  );
 
   const isDisqualifiedFromBuzz = Boolean(
     myActorId &&
@@ -229,10 +285,12 @@ export default function GameQuestion({
     if (isSpectator && !(roomMode === "ELIMINATION" && isGhost)) return false;
     if (isFinalizedLocally) return false;
     if (isSingleSubmit && answered) return false;
-    if (!!revealPayload || roomStatus === "PAUSED" || isMcMode) return false;
+    if (!!revealPayload || roomStatus === "PAUSED") return false;
+    // MATCHING và DRAG_DROP không bị khóa bởi isMcMode
+    if (q.type !== "MATCHING" && q.type !== "DRAG_DROP" && isMcMode) return false;
     if (question.bouncebackSelectPhase) return false;
     if (question.bouncebackAwaitingJudgment) return false;
-    if (question.timerPending) return false;
+    if (question.timerPending && !isSandboxTester) return false;
     if (timer && timerDisplayRemaining <= 0) return false;
 
     // 1. BOUNCEBACK:
@@ -270,6 +328,7 @@ export default function GameQuestion({
 
     // 7. MYSTERY_QUEST: Chỉ duy nhất đội đang làm lượt mới được trả lời!
     if (roomMode === "MYSTERY_QUEST") {
+      if (isSandboxTester) return true;
       return isPrimaryTeam;
     }
 
@@ -297,7 +356,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitMulti = () => {
-    if (selected.length > 0 && canAnswerThisQuestion()) {
+    if (selected.length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -310,7 +369,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitEssay = () => {
-    if (essayText.trim() && canAnswerThisQuestion()) {
+    if (essayText.trim() && (canAnswerThisQuestion() || isSandboxTester)) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -323,7 +382,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitFill = () => {
-    if (fillText.trim() && canAnswerThisQuestion()) {
+    if (fillText.trim() && (canAnswerThisQuestion() || isSandboxTester)) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -336,7 +395,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitMatching = () => {
-    if (Object.keys(matchingPairs).length > 0 && canAnswerThisQuestion()) {
+    if (Object.keys(matchingPairs).length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -349,7 +408,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitDragOrder = () => {
-    if (dragOrder.length > 0 && canAnswerThisQuestion()) {
+    if (dragOrder.length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -1169,36 +1228,36 @@ export default function GameQuestion({
       ) : q.type === "MATCHING" ? (
         <div className="flex flex-col gap-3">
           <p className="text-xs text-muted-foreground italic">
-            💡 Hướng dẫn: Nhấn chọn 1 mục ở cột trái, sau đó nhấn chọn 1 mục ở cột phải để ghép cặp.
+            💡 Hướng dẫn: Nhấn chọn 1 mục ở cột A, sau đó nhấn chọn 1 mục ở cột B để ghép cặp.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Cột Trái (Left items hoặc Câu hỏi con) */}
+            {/* Cột Trái (Left items hoặc Mục cần ghép) */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-amber-300">Cột A: Mục cần ghép</span>
               {(((q as any).pairs && (q as any).pairs.length > 0)
-                ? (q as any).pairs.map((p: any, idx: number) => ({ id: `L_${idx}`, text: p.left }))
+                ? (q as any).pairs.map((p: any, idx: number) => ({ id: p.id || `L_${idx}`, text: p.left }))
                 : (q.options || []).map((o, idx) => ({ id: `L_${idx}`, text: o.text.split(" - ")[0] || o.text }))
               ).map((item: { id: string; text: string }, idx: number) => {
-                const matchedRightId = matchingPairs[item.id];
+                const matchedTargetId = matchingPairs[item.id];
                 const isSelectedLeft = selectedMatchLeft === item.id;
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    disabled={!canAnswerThisQuestion()}
+                    disabled={isFinalizedLocally || Boolean(revealPayload)}
                     onClick={() => setSelectedMatchLeft(isSelectedLeft ? null : item.id)}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between ${
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                       isSelectedLeft
                         ? "border-amber-400 bg-amber-500/20 shadow-md ring-2 ring-amber-400/40"
-                        : matchedRightId
+                        : matchedTargetId
                         ? "border-green-500/60 bg-green-500/15 text-green-200"
                         : "border-border hover:border-amber-400/50 bg-black/20"
                     }`}
                   >
                     <span>{idx + 1}. {item.text}</span>
-                    {matchedRightId && (
+                    {matchedTargetId && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/30 text-green-300 font-mono">
-                        → Ghép {matchedRightId}
+                        ✓ Đã ghép
                       </span>
                     )}
                   </button>
@@ -1209,29 +1268,53 @@ export default function GameQuestion({
             {/* Cột Phải (Right items) */}
             <div className="flex flex-col gap-2">
               <span className="text-xs font-bold text-cyan-300">Cột B: Đáp án tương ứng</span>
-              {(((q as any).pairs && (q as any).pairs.length > 0)
-                ? (q as any).pairs.map((p: any, idx: number) => ({ id: `R_${idx}`, label: String.fromCharCode(65 + idx), text: p.right }))
-                : (q.options || []).map((o, idx) => ({ id: o.id, label: o.id || String.fromCharCode(65 + idx), text: o.text.split(" - ")[1] || o.text }))
-              ).map((opt: { id: string; label: string; text: string }) => {
-                const isPairedWithCurrent = selectedMatchLeft && matchingPairs[selectedMatchLeft] === opt.label;
+              {(() => {
+                const rawPairs = (q as any).pairs;
+                if (rawPairs && rawPairs.length > 0) {
+                  const items = rawPairs.map((p: any, idx: number) => ({
+                    id: p.id || `R_${idx}`,
+                    targetId: p.id || `L_${idx}`,
+                    text: p.right,
+                  }));
+                  // Xáo trộn vị trí hiển thị Cột B để tăng tính thử thách
+                  const scrambled = [...items];
+                  const seed = (q.id || "").split("").reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+                  for (let i = scrambled.length - 1; i > 0; i--) {
+                    const j = (seed + i * 13) % (i + 1);
+                    [scrambled[i], scrambled[j]] = [scrambled[j], scrambled[i]];
+                  }
+                  return scrambled.map((opt, idx) => ({
+                    ...opt,
+                    label: String.fromCharCode(65 + idx),
+                  }));
+                }
+                return (q.options || []).map((o, idx) => ({
+                  id: o.id,
+                  targetId: o.id,
+                  label: o.id || String.fromCharCode(65 + idx),
+                  text: o.text.split(" - ")[1] || o.text,
+                }));
+              })().map((opt: { id: string; targetId: string; label: string; text: string }) => {
+                const isPairedWithCurrent = selectedMatchLeft && matchingPairs[selectedMatchLeft] === opt.targetId;
+                const isPairedWithAny = Object.values(matchingPairs).includes(opt.targetId);
                 return (
                   <button
                     key={opt.id}
                     type="button"
-                    disabled={!canAnswerThisQuestion()}
+                    disabled={isFinalizedLocally || Boolean(revealPayload)}
                     onClick={() => {
                       if (!selectedMatchLeft) return;
-                      const next = { ...matchingPairs, [selectedMatchLeft]: opt.label };
+                      const next = { ...matchingPairs, [selectedMatchLeft]: opt.targetId };
                       setMatchingPairs(next);
                       setSelectedMatchLeft(null);
                     }}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between ${
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
                       isPairedWithCurrent
                         ? "border-cyan-400 bg-cyan-500/20 ring-2 ring-cyan-400/40"
-                        : Object.values(matchingPairs).includes(opt.label)
+                        : isPairedWithAny
                         ? "border-purple-500/60 bg-purple-500/15 text-purple-200"
                         : selectedMatchLeft
-                        ? "border-cyan-500/40 hover:border-cyan-300 bg-cyan-950/20 cursor-pointer animate-pulse"
+                        ? "border-cyan-500/40 hover:border-cyan-300 bg-cyan-950/20 animate-pulse"
                         : "border-border bg-black/20"
                     }`}
                   >
@@ -1242,20 +1325,20 @@ export default function GameQuestion({
             </div>
           </div>
 
-          {canAnswerThisQuestion() && !revealPayload && (
+          {!revealPayload && !isFinalizedLocally && (
             <div className="flex gap-2 mt-2">
               <button
                 type="button"
                 onClick={() => setMatchingPairs({})}
-                className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300"
+                className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300 cursor-pointer"
               >
                 Đặt lại
               </button>
               <button
                 type="button"
                 onClick={handleSubmitMatching}
-                disabled={Object.keys(matchingPairs).length === 0}
-                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm disabled:opacity-50 transition"
+                disabled={Object.keys(matchingPairs).length === 0 || (!canAnswerThisQuestion() && !isSandboxTester)}
+                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm disabled:opacity-50 transition cursor-pointer"
               >
                 {answered ? `✓ Cập nhật ghép cặp (${Object.keys(matchingPairs).length} cặp)` : `Xác nhận ghép cặp (${Object.keys(matchingPairs).length} cặp)`}
               </button>
@@ -1279,7 +1362,7 @@ export default function GameQuestion({
                     {idx + 1}
                   </span>
                   <span className="flex-1 text-xs sm:text-sm font-semibold">{opt.text}</span>
-                  {canAnswerThisQuestion() && !revealPayload && (
+                  {!revealPayload && !isFinalizedLocally && (
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
@@ -1291,7 +1374,7 @@ export default function GameQuestion({
                           next[idx] = temp;
                           setDragOrder(next);
                         }}
-                        className="w-7 h-7 rounded-lg glass hover:bg-white/20 disabled:opacity-20 flex items-center justify-center text-xs font-bold"
+                        className="w-7 h-7 rounded-lg glass hover:bg-white/20 disabled:opacity-20 flex items-center justify-center text-xs font-bold cursor-pointer"
                         title="Di chuyển lên"
                       >
                         ⬆️
@@ -1306,7 +1389,7 @@ export default function GameQuestion({
                           next[idx] = temp;
                           setDragOrder(next);
                         }}
-                        className="w-7 h-7 rounded-lg glass hover:bg-white/20 disabled:opacity-20 flex items-center justify-center text-xs font-bold"
+                        className="w-7 h-7 rounded-lg glass hover:bg-white/20 disabled:opacity-20 flex items-center justify-center text-xs font-bold cursor-pointer"
                         title="Di chuyển xuống"
                       >
                         ⬇️
@@ -1318,12 +1401,12 @@ export default function GameQuestion({
             })}
           </div>
 
-          {canAnswerThisQuestion() && !revealPayload && (
+          {!revealPayload && !isFinalizedLocally && (
             <button
               type="button"
               onClick={handleSubmitDragOrder}
-              disabled={dragOrder.length === 0}
-              className="mt-2 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50"
+              disabled={dragOrder.length === 0 || (!canAnswerThisQuestion() && !isSandboxTester)}
+              className="mt-2 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50 cursor-pointer"
             >
               {answered ? "✓ Cập nhật thứ tự sắp xếp" : "Xác nhận thứ tự sắp xếp"}
             </button>

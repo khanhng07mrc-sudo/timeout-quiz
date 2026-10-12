@@ -1184,7 +1184,7 @@ function getInitialMemoryPairsState(promo) {
 var REWARD_TEMPLATES = {
   CASTLE: [
     { storyTitle: "\u{1F48E} Kho B\xE1u +30\u0111", storyDescription: "Ph\xE1p S\u01B0 truy\u1EC1n d\u1EA1y b\xED k\xEDp: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) to\xE0n b\u1ED9 \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "\xC1nh s\xE1ng tinh t\xFA soi r\u1ECDi: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F3AD} C\u01B0\u1EDBp +20\u0111", storyDescription: "\xC1o t\xE0ng h\xECnh xu\u1EA5t k\xEDch: C\u01B0\u1EDBp th\xEAm 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F6E1}\uFE0F Khi\xEAn +20\u0111", storyDescription: "Nh\u1EB7t \u0111\u01B0\u1EE3c khi\xEAn c\u1ED5 ho\xE0ng gia: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F4DC} B\xED Truy\u1EC1n +25\u0111", storyDescription: "Gi\u1EA3i m\xE3 cu\u1ED9n gi\u1EA5y th\xF4ng th\xE1i: Th\u01B0\u1EDFng n\xF3ng +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
@@ -1194,7 +1194,7 @@ var REWARD_TEMPLATES = {
   ],
   PIRATE: [
     { storyTitle: "\u{1F451} Kho B\xE1u +40\u0111", storyDescription: "H\xF2m kim c\u01B0\u01A1ng kh\u1ED5ng l\u1ED3: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2693 Nh\xE2n \u0110\xF4i x2", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u2693 Nh\xE2n \u0110\xF4i x2", storyDescription: "V\u1EADn may \u0111\u1EA1i d\u01B0\u01A1ng: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F5E1}\uFE0F C\u01B0\u1EDBp +25\u0111", storyDescription: "C\u01B0\u1EDBp b\xF3c khoang thuy\u1EC1n: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F99C} Ch\u1EC9 \u0110\u01B0\u1EDDng +25\u0111", storyDescription: "Ch\xFA v\u1EB9t ch\u1EC9 \u0111\u01B0\u1EDDng t\u1EAFt v\xE0o kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F37B} Th\u01B0\u1EDFng +20\u0111", storyDescription: "Li\xEAn hoan t\u01B0ng b\u1EEBng: +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
@@ -1204,7 +1204,7 @@ var REWARD_TEMPLATES = {
   ],
   FOREST: [
     { storyTitle: "\u{1F31F} Kho B\xE1u +35\u0111", storyDescription: "N\u1EEF Ho\xE0ng Ti\xEAn ban t\u1EB7ng: Th\u01B0\u1EDFng ngay +35 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 35, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F338} Nh\xE2n \u0110\xF4i x2", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F338} Nh\xE2n \u0110\xF4i x2", storyDescription: "Sinh l\u1EF1c tr\xE0n tr\u1EC1: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F98A} C\u01B0\u1EDBp +20\u0111", storyDescription: "L\u1EBBn tr\u1ED9m t\xFAi ti\u1EC1n: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F33F} Khi\xEAn +20\u0111", storyDescription: "B\xF9a ch\xFA r\u1EEBng xanh h\u1ED9 th\u1EC3: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F3F9} Th\u01B0\u1EDFng +30\u0111", storyDescription: "B\u1EAFn tr\xFAng h\u1ED3ng t\xE2m kho b\xE1u: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -1214,7 +1214,7 @@ var REWARD_TEMPLATES = {
   ],
   CYBER: [
     { storyTitle: "\u26A1 Si\xEAu Th\u01B0\u1EDFng +40\u0111", storyDescription: "B\xF9ng n\u1ED5 si\xEAu n\u0103ng l\u01B0\u1EE3ng: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u{1F680} Nh\xE2n \u0110\xF4i x2", storyDescription: "Gia t\u1ED1c c\u1EF1c \u0111\u1EA1i: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F6F0}\uFE0F C\u01B0\u1EDBp +25\u0111", storyDescription: "Chuy\u1EC3n lu\u1ED3ng d\u1EEF li\u1EC7u: C\u01B0\u1EDBp 25\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F6E1}\uFE0F L\xE1 Ch\u1EAFn +20\u0111", storyDescription: "Tr\u01B0\u1EDDng l\u1EF1c b\u1EA3o v\u1EC7 c\xF4ng ngh\u1EC7: Th\u01B0\u1EDFng an to\xE0n +20 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F4BE} D\u1EEF Li\u1EC7u +30\u0111", storyDescription: "Gi\u1EA3i m\xE3 d\u1EEF li\u1EC7u t\u1ED1i m\u1EADt: Th\u01B0\u1EDFng n\xF3ng +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -1224,7 +1224,7 @@ var REWARD_TEMPLATES = {
   ],
   TEMPLE: [
     { storyTitle: "\u{1F451} Kho B\xE1u +40\u0111", storyDescription: "Khai m\u1EDF kho b\xE1u l\u0103ng m\u1ED9: Th\u01B0\u1EDFng l\u1EDBn +40 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "\u2600\uFE0F Nh\xE2n \u0110\xF4i x2", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m trong qu\u1EF9!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "\u2600\uFE0F Nh\xE2n \u0110\xF4i x2", storyDescription: "Th\u1EA7n M\u1EB7t Tr\u1EDDi ban ph\u01B0\u1EDBc: Nh\xE2n \u0111\xF4i (x2) \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "\u{1F40D} C\u01B0\u1EDBp +20\u0111", storyDescription: "B\u1EABy ng\u1EA7m k\xEDch ho\u1EA1t: C\u01B0\u1EDBp 20\u0111 v\xE0o qu\u1EF9 th\u01B0\u1EDFng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "\u{1F3FA} C\u1ED5 V\u1EADt +25\u0111", storyDescription: "C\u1ED5 v\u1EADt nguy\xEAn v\u1EB9n: +25 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "\u{1F4DC} M\u1EADt \u0110\u1EA1o +30\u0111", storyDescription: "S\u01A1 \u0111\u1ED3 m\u1EADt \u0111\u1EA1o kim t\u1EF1 th\xE1p: Th\u01B0\u1EDFng l\u1EDBn +30 \u0111i\u1EC3m qu\u1EF9!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -2536,14 +2536,7 @@ function handleFlipCard({
         if (isEscapeTile(firstTile2)) {
           return executeSurvivalEscape();
         } else {
-          memState.activePenaltyPairKey = firstTile2.pairKey;
-          memState.isBombRescueActive = true;
-          state.memoryPairsState = { ...memState };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: false,
-            scorePenalty: 0
-          };
+          return executeSurvivalPenalty(firstTile2.pairKey || "PAIR_BOMB_DARK");
         }
       }
       const priorMatchingSecond = state.tiles.find(
@@ -2874,15 +2867,7 @@ function handleFlipCard({
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
-        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = firstTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0
-        };
+        return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
         memState.attemptsUsed += 1;
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
@@ -3608,8 +3593,9 @@ function handleFlipCard({
   const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
   const extraPotBonus = hasExtraPot ? 5 : 0;
   if (tile.effectType === "MULTIPLY_X2") {
-    state.potMultiplier *= 2;
-    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : (20 + extraPotBonus) * state.potMultiplier;
+    const basePts = state.baseQuestionPoints || 20;
+    state.potMultiplier = 2;
+    state.potPoints = basePts * 2 + extraPotBonus;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
     const eligibleTeams = (allTeams || []).filter(
@@ -4197,13 +4183,13 @@ function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = f
     if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
       return {
         ...seg,
-        maskedEffect: "SUN_SMALL"
+        maskedEffect: "NEUTRAL"
       };
     }
     if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
       return {
         ...seg,
-        maskedEffect: "SUN_SMALL"
+        maskedEffect: "NEUTRAL"
       };
     }
     if ((riskTier === "UNDERDOG" || teamScore <= 0) && (seg.index === 12 || seg.index === 15)) {
@@ -4411,8 +4397,9 @@ function resolveWheelCardEffect({
   }
   const seg = MAJOR_ARCANA_WHEEL_SEGMENTS.find((s) => s.key === cardKey) || MAJOR_ARCANA_WHEEL_SEGMENTS[0];
   const isNeutral = cardKey === "THE_FOOL" || cardKey === "JUSTICE";
+  const isSunSmall = cardKey === "THE_MAGICIAN" || cardKey === "THE_HIGH_PRIESTESS" || cardKey === "THE_HIEROPHANT" || cardKey === "THE_HERMIT";
   const isSunMedium = cardKey === "THE_EMPRESS" || cardKey === "THE_EMPEROR" || cardKey === "STRENGTH" || cardKey === "JUDGEMENT";
-  const isSunLarge = cardKey === "THE_SUN" || cardKey === "THE_WORLD";
+  const isSunLarge = cardKey === "THE_LOVERS" || cardKey === "TEMPERANCE" || cardKey === "THE_SUN" || cardKey === "THE_WORLD";
   const isSunRandom = cardKey === "WHEEL_OF_FORTUNE";
   const isGamble = cardKey === "THE_STAR" || cardKey === "THE_MOON";
   const isSteal2x = cardKey === "THE_CHARIOT" || cardKey === "THE_DEATH" || cardKey === "DEATH";
@@ -4422,6 +4409,8 @@ function resolveWheelCardEffect({
   let effectiveEffectType = "SUN_SMALL";
   if (isNeutral) {
     effectiveEffectType = "NEUTRAL";
+  } else if (isSunSmall) {
+    effectiveEffectType = "SUN_SMALL";
   } else if (isSunMedium) {
     effectiveEffectType = "SUN_MEDIUM";
   } else if (isSunLarge) {
@@ -4442,17 +4431,12 @@ function resolveWheelCardEffect({
     effectiveEffectType = "SUN_SMALL";
   }
   let dynamicReason = null;
-  if (isGambleSpin) {
-    if (effectiveEffectType === "BOMB_DARK" || effectiveEffectType === "BOMB_TRAP" || effectiveEffectType === "BOMB_CHARITY") {
-      effectiveEffectType = "SUN_SMALL";
-      dynamicReason = "GAMBLE_REVERSED";
-    }
-  } else {
+  if (!isGambleSpin) {
     if (currentRound <= 1 && (effectiveEffectType === "BOMB_DARK" || effectiveEffectType === "BOMB_CHARITY")) {
-      effectiveEffectType = "SUN_SMALL";
+      effectiveEffectType = "NEUTRAL";
       dynamicReason = "ROUND_SEALED";
     } else if (currentRound === 2 && effectiveEffectType === "BOMB_CHARITY" && riskTier !== "DOMINANT") {
-      effectiveEffectType = "SUN_SMALL";
+      effectiveEffectType = "NEUTRAL";
       dynamicReason = "ROUND_SEALED";
     }
     if ((riskTier === "UNDERDOG" || currentScore <= 0) && (effectiveEffectType === "BOMB_DARK" || effectiveEffectType === "BOMB_CHARITY")) {
@@ -4466,7 +4450,12 @@ function resolveWheelCardEffect({
   }
   switch (effectiveEffectType) {
     case "NEUTRAL": {
-      const rewardText = dynamicReason === "UNDERDOG_PROTECTED" ? `\u{1F6E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): B\u1EA3o H\u1ED9 K\u1EBB Y\u1EBFu! \u0110\u1ECBnh m\u1EC7nh n\u01B0\u01A1ng tay, h\xF3a gi\u1EA3i ki\u1EBFp n\u1EA1n chia \u0111i\u1EC3m v\xE0 b\u1EA3o to\xE0n s\u1ED1 \u0111i\u1EC3m (\xB10\u0111)!` : `\u{1F0CF} ${seg.nameVi} (${seg.nameEn}): \u0110i\u1EC1m t\u0129nh gi\u1EEF m\xECnh! B\u1EA3o to\xE0n nguy\xEAn v\u1EB9n s\u1ED1 \u0111i\u1EC3m (\xB10\u0111).`;
+      let rewardText = `\u{1F0CF} ${seg.nameVi} (${seg.nameEn}): \u0110i\u1EC1m t\u0129nh gi\u1EEF m\xECnh! B\u1EA3o to\xE0n nguy\xEAn v\u1EB9n s\u1ED1 \u0111i\u1EC3m (\xB10\u0111).`;
+      if (dynamicReason === "ROUND_SEALED") {
+        rewardText = `\u{1F6E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): C\xE1n C\xE2n \u0110\u1ECBnh M\u1EC7nh! \u1EA4n ph\u1EA1t \u0111\u01B0\u1EE3c phong \u1EA5n \u0111\u1EA7u tr\u1EADn, tho\xE1t n\u1EA1n b\u1EA3o to\xE0n s\u1ED1 \u0111i\u1EC3m (\xB10\u0111)!`;
+      } else if (dynamicReason === "UNDERDOG_PROTECTED") {
+        rewardText = `\u{1F6E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): B\u1EA3o H\u1ED9 K\u1EBB Y\u1EBFu! \u0110\u1ECBnh m\u1EC7nh n\u01B0\u01A1ng tay, h\xF3a gi\u1EA3i ki\u1EBFp n\u1EA1n v\xE0 b\u1EA3o to\xE0n s\u1ED1 \u0111i\u1EC3m (\xB10\u0111)!`;
+      }
       return {
         drawnCard: {
           key: cardKey,
@@ -4486,11 +4475,7 @@ function resolveWheelCardEffect({
     }
     case "SUN_SMALL": {
       let rewardText = `\u2728 ${seg.nameVi} (${seg.nameEn}): \u0110i\u1EC1m l\xE0nh soi chi\u1EBFu! Nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 (x1) an to\xE0n!`;
-      if (dynamicReason === "GAMBLE_REVERSED") {
-        rewardText = `\u{1F31F} ${seg.nameVi}: V\u1EADn May \u0110\u1EA3o Ng\u01B0\u1EE3c! L\xE1 b\xE0i d\u1EEF \u0111\xE3 h\xF3a th\xE0nh ph\u01B0\u1EDBc l\xE0nh, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111!`;
-      } else if (dynamicReason === "ROUND_SEALED") {
-        rewardText = `\u2728 ${seg.nameVi}: C\xE1n C\xE2n \u0110\u1ECBnh M\u1EC7nh! \u1EA4n ph\u1EA1t \u0111\u01B0\u1EE3c phong \u1EA5n \u0111\u1EA7u tr\u1EADn, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 an to\xE0n!`;
-      } else if (dynamicReason === "DOMINANT_CAPPED") {
+      if (dynamicReason === "DOMINANT_CAPPED") {
         rewardText = `\u2696\uFE0F ${seg.nameVi}: C\xE1n C\xE2n \u0110\u1ECBnh M\u1EC7nh! \u0110\u1ED9i \u0111ang d\u1EABn \u0111\u1EA7u nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${basePoints}\u0111 thay v\xEC c\u01B0\u1EDBp \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i y\u1EBFu h\u01A1n!`;
       }
       return {
@@ -12622,13 +12607,32 @@ function evaluateAnswerCorrectness(question, submittedAnswer) {
     const submitted = ansArray[0] || "";
     isAutoCorrect = matchFillBlankText(expected, submitted);
   } else if (question.type === "MATCHING") {
-    if (question.pairs && question.pairs.length > 0) {
-      let allMatched = true;
-      const subObj = typeof ansArray[0] === "object" && ansArray[0] !== null ? ansArray[0] : typeof question.rawSubmission === "object" ? question.rawSubmission : {};
-      for (let i = 0; i < question.pairs.length; i++) {
+    const rawPairs = question.pairs || [];
+    if (rawPairs.length > 0) {
+      let subObj = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subObj = submittedAnswer;
+      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
+        subObj = ansArray[0];
+      } else if (typeof ansArray[0] === "string") {
+        try {
+          const parsed = JSON.parse(ansArray[0]);
+          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
+            subObj = parsed;
+          }
+        } catch {
+        }
+      } else if (typeof question.rawSubmission === "object") {
+        subObj = question.rawSubmission;
+      }
+      let allMatched = Object.keys(subObj).length >= rawPairs.length;
+      for (let i = 0; i < rawPairs.length; i++) {
+        const pair = rawPairs[i];
+        const pairId = pair.id || `p${i + 1}`;
         const expectedRight = String.fromCharCode(65 + i);
-        const userRight = subObj[`L_${i}`] || subObj[String(i)] || subObj[question.pairs[i].left];
-        if (userRight !== expectedRight) {
+        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
+        const isMatch = userVal === pairId || userVal === expectedRight || userVal === pair.right || normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
+        if (!isMatch) {
           allMatched = false;
           break;
         }
@@ -12639,8 +12643,23 @@ function evaluateAnswerCorrectness(question, submittedAnswer) {
     }
   } else if (question.type === "DRAG_DROP") {
     const correctOrder = options.map((o) => o.id);
-    const submittedOrder = Array.isArray(ansArray) ? ansArray : [];
-    isAutoCorrect = correctOrder.length === submittedOrder.length && correctOrder.every((id, idx) => id === submittedOrder[idx]);
+    let submittedOrder = [];
+    if (Array.isArray(submittedAnswer)) {
+      submittedOrder = submittedAnswer;
+    } else if (Array.isArray(ansArray[0])) {
+      submittedOrder = ansArray[0];
+    } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+      try {
+        const parsed = JSON.parse(ansArray[0]);
+        if (Array.isArray(parsed)) submittedOrder = parsed;
+      } catch {
+        submittedOrder = ansArray;
+      }
+    } else {
+      submittedOrder = ansArray;
+    }
+    const cleanSubmitted = submittedOrder.map((x) => typeof x === "string" ? x : String(x?.id || x));
+    isAutoCorrect = correctOrder.length === cleanSubmitted.length && correctOrder.every((id, idx) => id === cleanSubmitted[idx]);
   }
   return { isAutoCorrect, answerText };
 }
@@ -14599,6 +14618,7 @@ function buildQuestionState(q, extra) {
       type: q.type,
       content: q.content,
       options: options?.map(({ id, text }) => ({ id, text })),
+      pairs: q.pairs || q.pairsLeft || void 0,
       timeLimit: q.timeLimit,
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,

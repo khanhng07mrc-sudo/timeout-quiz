@@ -8046,17 +8046,37 @@ function evaluateAnswerCorrectness(
     const submitted = ansArray[0] || "";
     isAutoCorrect = matchFillBlankText(expected, submitted);
   } else if (question.type === "MATCHING") {
-    // Expected pairs can come from question.pairs or options
-    // Submitted answer can be an object map (Record<string, string>) or array of pairs
-    if (question.pairs && question.pairs.length > 0) {
-      let allMatched = true;
-      const subObj: Record<string, string> = (typeof ansArray[0] === "object" && ansArray[0] !== null)
-        ? (ansArray[0] as any)
-        : (typeof (question as any).rawSubmission === "object" ? (question as any).rawSubmission : {});
-      for (let i = 0; i < question.pairs.length; i++) {
+    // Expected pairs can come from question.pairs
+    const rawPairs = (question.pairs as any[]) || [];
+    if (rawPairs.length > 0) {
+      let subObj: Record<string, string> = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subObj = submittedAnswer as any;
+      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
+        subObj = ansArray[0] as any;
+      } else if (typeof ansArray[0] === "string") {
+        try {
+          const parsed = JSON.parse(ansArray[0]);
+          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
+            subObj = parsed;
+          }
+        } catch {}
+      } else if (typeof (question as any).rawSubmission === "object") {
+        subObj = (question as any).rawSubmission;
+      }
+
+      let allMatched = Object.keys(subObj).length >= rawPairs.length;
+      for (let i = 0; i < rawPairs.length; i++) {
+        const pair = rawPairs[i];
+        const pairId = pair.id || `p${i + 1}`;
         const expectedRight = String.fromCharCode(65 + i);
-        const userRight = subObj[`L_${i}`] || subObj[String(i)] || subObj[question.pairs[i].left];
-        if (userRight !== expectedRight) {
+        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
+        const isMatch =
+          userVal === pairId ||
+          userVal === expectedRight ||
+          userVal === pair.right ||
+          normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
+        if (!isMatch) {
           allMatched = false;
           break;
         }
@@ -8066,11 +8086,27 @@ function evaluateAnswerCorrectness(
       isAutoCorrect = false;
     }
   } else if (question.type === "DRAG_DROP") {
-    // Expected order: correct options in order or question.options sorted
+    // Expected order: correct options in order from question.options
     const correctOrder = options.map((o: any) => o.id);
-    const submittedOrder = Array.isArray(ansArray) ? ansArray : [];
-    isAutoCorrect = correctOrder.length === submittedOrder.length &&
-      correctOrder.every((id: string, idx: number) => id === submittedOrder[idx]);
+    let submittedOrder: string[] = [];
+    if (Array.isArray(submittedAnswer)) {
+      submittedOrder = submittedAnswer;
+    } else if (Array.isArray(ansArray[0])) {
+      submittedOrder = ansArray[0];
+    } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+      try {
+        const parsed = JSON.parse(ansArray[0]);
+        if (Array.isArray(parsed)) submittedOrder = parsed;
+      } catch {
+        submittedOrder = ansArray;
+      }
+    } else {
+      submittedOrder = ansArray;
+    }
+    const cleanSubmitted = submittedOrder.map((x: any) => (typeof x === "string" ? x : String(x?.id || x)));
+    isAutoCorrect =
+      correctOrder.length === cleanSubmitted.length &&
+      correctOrder.every((id: string, idx: number) => id === cleanSubmitted[idx]);
   }
 
   return { isAutoCorrect, answerText };
@@ -10522,6 +10558,7 @@ function buildQuestionState(
       type: q.type,
       content: q.content,
       options: options?.map(({ id, text }: any) => ({ id, text })),
+      pairs: (q as any).pairs || (q as any).pairsLeft || undefined,
       timeLimit: q.timeLimit,
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,

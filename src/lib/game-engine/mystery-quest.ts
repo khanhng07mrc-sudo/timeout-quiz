@@ -572,7 +572,7 @@ interface RewardTemplate {
 const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   CASTLE: [
     { storyTitle: "💎 Kho Báu +30đ", storyDescription: "Pháp Sư truyền dạy bí kíp: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
-    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Ánh sáng tinh tú soi rọi: Nhân đôi (x2) toàn bộ điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Ánh sáng tinh tú soi rọi: Nhân đôi (x2) điểm gốc câu hỏi vào quỹ thưởng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "🎭 Cướp +20đ", storyDescription: "Áo tàng hình xuất kích: Cướp thêm 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "🛡️ Khiên +20đ", storyDescription: "Nhặt được khiên cổ hoàng gia: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "📜 Bí Truyền +25đ", storyDescription: "Giải mã cuộn giấy thông thái: Thưởng nóng +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
@@ -582,7 +582,7 @@ const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   ],
   PIRATE: [
     { storyTitle: "👑 Kho Báu +40đ", storyDescription: "Hòm kim cương khổng lồ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "⚓ Nhân Đôi x2", storyDescription: "Vận may đại dương: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "⚓ Nhân Đôi x2", storyDescription: "Vận may đại dương: Nhân đôi (x2) điểm gốc câu hỏi vào quỹ thưởng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "🗡️ Cướp +25đ", storyDescription: "Cướp bóc khoang thuyền: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
     { storyTitle: "🦜 Chỉ Đường +25đ", storyDescription: "Chú vẹt chỉ đường tắt vào kho báu: Thưởng lớn +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "🍻 Thưởng +20đ", storyDescription: "Liên hoan tưng bừng: +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
@@ -592,7 +592,7 @@ const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   ],
   FOREST: [
     { storyTitle: "🌟 Kho Báu +35đ", storyDescription: "Nữ Hoàng Tiên ban tặng: Thưởng ngay +35 điểm quỹ!", deltaPoints: 35, effectType: "BONUS_POINTS" },
-    { storyTitle: "🌸 Nhân Đôi x2", storyDescription: "Sinh lực tràn trề: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🌸 Nhân Đôi x2", storyDescription: "Sinh lực tràn trề: Nhân đôi (x2) điểm gốc câu hỏi vào quỹ thưởng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "🦊 Cướp +20đ", storyDescription: "Lẻn trộm túi tiền: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "🌿 Khiên +20đ", storyDescription: "Bùa chú rừng xanh hộ thể: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "🏹 Thưởng +30đ", storyDescription: "Bắn trúng hồng tâm kho báu: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -602,7 +602,7 @@ const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   ],
   CYBER: [
     { storyTitle: "⚡ Siêu Thưởng +40đ", storyDescription: "Bùng nổ siêu năng lượng: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Gia tốc cực đại: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "🚀 Nhân Đôi x2", storyDescription: "Gia tốc cực đại: Nhân đôi (x2) điểm gốc câu hỏi vào quỹ thưởng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "🛰️ Cướp +25đ", storyDescription: "Chuyển luồng dữ liệu: Cướp 25đ vào quỹ thưởng!", deltaPoints: 25, effectType: "STEAL_POINTS" },
     { storyTitle: "🛡️ Lá Chắn +20đ", storyDescription: "Trường lực bảo vệ công nghệ: Thưởng an toàn +20 điểm quỹ!", deltaPoints: 20, effectType: "BONUS_POINTS" },
     { storyTitle: "💾 Dữ Liệu +30đ", storyDescription: "Giải mã dữ liệu tối mật: Thưởng nóng +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -612,7 +612,7 @@ const REWARD_TEMPLATES: Record<MysteryTheme, RewardTemplate[]> = {
   ],
   TEMPLE: [
     { storyTitle: "👑 Kho Báu +40đ", storyDescription: "Khai mở kho báu lăng mộ: Thưởng lớn +40 điểm quỹ!", deltaPoints: 40, effectType: "BONUS_POINTS" },
-    { storyTitle: "☀️ Nhân Đôi x2", storyDescription: "Thần Mặt Trời ban phước: Nhân đôi (x2) điểm trong quỹ!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
+    { storyTitle: "☀️ Nhân Đôi x2", storyDescription: "Thần Mặt Trời ban phước: Nhân đôi (x2) điểm gốc câu hỏi vào quỹ thưởng!", deltaPoints: 0, effectType: "MULTIPLY_X2" },
     { storyTitle: "🐍 Cướp +20đ", storyDescription: "Bẫy ngầm kích hoạt: Cướp 20đ vào quỹ thưởng!", deltaPoints: 20, effectType: "STEAL_POINTS" },
     { storyTitle: "🏺 Cổ Vật +25đ", storyDescription: "Cổ vật nguyên vẹn: +25 điểm quỹ!", deltaPoints: 25, effectType: "BONUS_POINTS" },
     { storyTitle: "📜 Mật Đạo +30đ", storyDescription: "Sơ đồ mật đạo kim tự tháp: Thưởng lớn +30 điểm quỹ!", deltaPoints: 30, effectType: "BONUS_POINTS" },
@@ -2388,16 +2388,9 @@ export function handleFlipCard({
           // Ghép trúng cặp Thoát Hiểm!
           return executeSurvivalEscape();
         } else {
-          // Ghép trúng 2 lá tiêu cực cùng loại!
-          // Kích hoạt giải cứu để lượt sau lật 2 lá đổi hình phạt!
-          memState.activePenaltyPairKey = firstTile.pairKey;
-          memState.isBombRescueActive = true;
-          state.memoryPairsState = { ...memState };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: false,
-            scorePenalty: 0,
-          };
+          // Ghép trúng 2 lá tiêu cực cùng loại trong cùng một lượt!
+          // QUY TẮC MỚI: Đã lật đúng 2 lá trừ cùng loại trong cùng một lượt thì không hỏi lá thứ 3/lượt giải cứu nữa mà thực thi ngay!
+          return executeSurvivalPenalty(firstTile.pairKey || "PAIR_BOMB_DARK");
         }
       }
 
@@ -2839,17 +2832,9 @@ export function handleFlipCard({
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
-        // Cả 2 lá TRÙNG CÙNG MỘT CẶP PHẠT trong cùng lượt!
-        // Kích hoạt giải cứu, giữ mở cả 2 lá phạt và mở khóa chờ lật tiếp lá thứ 3!
-        memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, firstTile!.id, tile.id]));
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = firstTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0,
-        };
+        // Cả 2 lá TRÙNG CÙNG MỘT CẶP PHẠT trong cùng một lượt!
+        // QUY TẮC MỚI: một khi trong cùng một lượt mà đã lật đúng 2 lá trừ cùng loại thì không hỏi lá thứ 3 nữa mà thực thi ngay!
+        return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
         // Hai lá phạt THUỘC 2 LOẠI KHÁC NHAU (1 Bẫy Khói + 1 Kíp Nổ Hắc Ám)!
         // Theo luật: "lá bom/bẫy thứ hai phải trùng khớp lá đã lật trước đó thì mới kích hoạt cơ chế, còn nếu nó là hai lá thuộc loại phạt khác nhau, thì chưa áp dụng"
@@ -3740,8 +3725,10 @@ export function handleFlipCard({
 
   // Safe Reward Card
   if (tile.effectType === "MULTIPLY_X2") {
-    state.potMultiplier *= 2;
-    state.potPoints = state.potPoints > 0 ? state.potPoints * 2 : (20 + extraPotBonus) * state.potMultiplier;
+    // Chỉ nhân đôi điểm gốc câu hỏi, không nhân đôi điểm số trước đó đã cầm nữa để tránh mất công bằng
+    const basePts = state.baseQuestionPoints || 20;
+    state.potMultiplier = 2;
+    state.potPoints = (basePts * 2) + extraPotBonus;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
     const eligibleTeams = (allTeams || []).filter(
@@ -4682,18 +4669,18 @@ export function getEffectiveTarotWheelSegments(
   const teamScore = options?.teamScore ?? 0;
 
   let segments = MAJOR_ARCANA_WHEEL_SEGMENTS.map((seg) => {
-    // 1. Vòng 1: Phong ấn Bom Hắc Ám (15 - XV Devil) & Bom Từ Thiện (12 - XII Hanged Man) thành +1x Điểm gốc
+    // 1. Vòng 1: Phong ấn Bom Hắc Ám (15 - XV Devil) & Bom Từ Thiện (12 - XII Hanged Man) thành ±0đ (NEUTRAL)
     if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
       return {
         ...seg,
-        maskedEffect: "SUN_SMALL",
+        maskedEffect: "NEUTRAL",
       };
     }
     // 2. Vòng 2: Mở khóa Bom Hắc Ám (15), chỉ còn Bom Từ Thiện (12) phong ấn (trừ khi đội DOMINANT thì chịu đủ 3 Bom)
     if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
       return {
         ...seg,
-        maskedEffect: "SUN_SMALL",
+        maskedEffect: "NEUTRAL",
       };
     }
     // 3. Đội yếu thế (UNDERDOG / 0đ): Giảm nhẹ Bom Hắc Ám (15) & Bom Từ Thiện (12) thành ±0đ
@@ -4975,14 +4962,23 @@ export function resolveWheelCardEffect({
     MAJOR_ARCANA_WHEEL_SEGMENTS.find((s) => s.key === cardKey) ||
     MAJOR_ARCANA_WHEEL_SEGMENTS[0];
 
-  // 10 nhóm hiệu ứng cố định chuẩn 22 lá Major Arcana:
+  // 10 nhóm hiệu ứng cố định chuẩn 22 lá Major Arcana (4 lá +1x, 4 lá +1.5x, 4 lá +2x):
   const isNeutral = cardKey === "THE_FOOL" || cardKey === "JUSTICE"; // 2 lá ±0đ
+  const isSunSmall =
+    cardKey === "THE_MAGICIAN" ||
+    cardKey === "THE_HIGH_PRIESTESS" ||
+    cardKey === "THE_HIEROPHANT" ||
+    cardKey === "THE_HERMIT"; // 4 lá +1x
   const isSunMedium =
     cardKey === "THE_EMPRESS" ||
     cardKey === "THE_EMPEROR" ||
     cardKey === "STRENGTH" ||
     cardKey === "JUDGEMENT"; // 4 lá +1.5x
-  const isSunLarge = cardKey === "THE_SUN" || cardKey === "THE_WORLD"; // 2 lá +2x
+  const isSunLarge =
+    cardKey === "THE_LOVERS" ||
+    cardKey === "TEMPERANCE" ||
+    cardKey === "THE_SUN" ||
+    cardKey === "THE_WORLD"; // 4 lá +2x
   const isSunRandom = cardKey === "WHEEL_OF_FORTUNE"; // 1 lá Ngẫu nhiên x1/x1.5/x2
   const isGamble = cardKey === "THE_STAR" || cardKey === "THE_MOON"; // 2 lá Đánh cược quay thêm
   const isSteal2x = cardKey === "THE_CHARIOT" || cardKey === "THE_DEATH" || cardKey === "DEATH"; // 2 lá Cướp 2x
@@ -5002,10 +4998,12 @@ export function resolveWheelCardEffect({
     | "BOMB_TRAP"
     | "BOMB_CHARITY";
 
-  let effectiveEffectType: EffectiveTarotEffect = "SUN_SMALL"; // 6 lá +1x: I Magician, II Priestess, V Hierophant, VI Lovers, IX Hermit, XIV Temperance
+  let effectiveEffectType: EffectiveTarotEffect = "SUN_SMALL";
 
   if (isNeutral) {
     effectiveEffectType = "NEUTRAL";
+  } else if (isSunSmall) {
+    effectiveEffectType = "SUN_SMALL";
   } else if (isSunMedium) {
     effectiveEffectType = "SUN_MEDIUM";
   } else if (isSunLarge) {
@@ -5026,35 +5024,26 @@ export function resolveWheelCardEffect({
     effectiveEffectType = "SUN_SMALL";
   }
 
-  // ── 3 TẦNG CÂN BẰNG ĐỘNG (Round 1/2/3+ & Tình hình đội UNDERDOG/DOMINANT) & ĐẢO NGƯỢC GAMBLE ──
-  let dynamicReason: "GAMBLE_REVERSED" | "ROUND_SEALED" | "UNDERDOG_PROTECTED" | "DOMINANT_CAPPED" | null = null;
+  // ── 3 TẦNG CÂN BẰNG ĐỘNG (Round 1/2/3+ & Tình hình đội UNDERDOG/DOMINANT) ──
+  // TUYỆT ĐỐI: Lá trừ không bao giờ được cộng điểm! Khi phong ấn/bảo vệ thì chỉ giảm thành ±0đ (NEUTRAL).
+  let dynamicReason: "ROUND_SEALED" | "UNDERDOG_PROTECTED" | "DOMINANT_CAPPED" | null = null;
 
-  if (isGambleSpin) {
-    // Trong lượt Quay Thêm Đánh Cược: Mọi lá Bom tiêu cực đều đảo ngược thành +1x Điểm gốc
-    if (
-      effectiveEffectType === "BOMB_DARK" ||
-      effectiveEffectType === "BOMB_TRAP" ||
-      effectiveEffectType === "BOMB_CHARITY"
-    ) {
-      effectiveEffectType = "SUN_SMALL";
-      dynamicReason = "GAMBLE_REVERSED";
-    }
-  } else {
-    // Tầng 1: Vòng 1 phong ấn Bom Hắc Ám (XV Devil) & Bom Từ Thiện (XII Hanged Man) thành +1x Điểm gốc
+  if (!isGambleSpin) {
+    // Tầng 1: Vòng 1 phong ấn Bom Hắc Ám (XV Devil) & Bom Từ Thiện (XII Hanged Man) thành ±0đ (NEUTRAL)
     if (
       currentRound <= 1 &&
       (effectiveEffectType === "BOMB_DARK" || effectiveEffectType === "BOMB_CHARITY")
     ) {
-      effectiveEffectType = "SUN_SMALL";
+      effectiveEffectType = "NEUTRAL";
       dynamicReason = "ROUND_SEALED";
     }
-    // Tầng 2: Vòng 2 mở khóa Bom Hắc Ám, giữ phong ấn Bom Từ Thiện (trừ khi đội đang DOMINANT thì chịu đủ 3 Bom)
+    // Tầng 2: Vòng 2 mở khóa Bom Hắc Ám, giữ phong ấn Bom Từ Thiện thành ±0đ (NEUTRAL) (trừ khi đội đang DOMINANT)
     else if (
       currentRound === 2 &&
       effectiveEffectType === "BOMB_CHARITY" &&
       riskTier !== "DOMINANT"
     ) {
-      effectiveEffectType = "SUN_SMALL";
+      effectiveEffectType = "NEUTRAL";
       dynamicReason = "ROUND_SEALED";
     }
 
@@ -5076,10 +5065,12 @@ export function resolveWheelCardEffect({
 
   switch (effectiveEffectType) {
     case "NEUTRAL": {
-      const rewardText =
-        dynamicReason === "UNDERDOG_PROTECTED"
-          ? `🛡️ ${seg.nameVi} (${seg.nameEn}): Bảo Hộ Kẻ Yếu! Định mệnh nương tay, hóa giải kiếp nạn chia điểm và bảo toàn số điểm (±0đ)!`
-          : `🃏 ${seg.nameVi} (${seg.nameEn}): Điềm tĩnh giữ mình! Bảo toàn nguyên vẹn số điểm (±0đ).`;
+      let rewardText = `🃏 ${seg.nameVi} (${seg.nameEn}): Điềm tĩnh giữ mình! Bảo toàn nguyên vẹn số điểm (±0đ).`;
+      if (dynamicReason === "ROUND_SEALED") {
+        rewardText = `🛡️ ${seg.nameVi} (${seg.nameEn}): Cán Cân Định Mệnh! Ấn phạt được phong ấn đầu trận, thoát nạn bảo toàn số điểm (±0đ)!`;
+      } else if (dynamicReason === "UNDERDOG_PROTECTED") {
+        rewardText = `🛡️ ${seg.nameVi} (${seg.nameEn}): Bảo Hộ Kẻ Yếu! Định mệnh nương tay, hóa giải kiếp nạn và bảo toàn số điểm (±0đ)!`;
+      }
 
       return {
         drawnCard: {
@@ -5101,11 +5092,7 @@ export function resolveWheelCardEffect({
 
     case "SUN_SMALL": {
       let rewardText = `✨ ${seg.nameVi} (${seg.nameEn}): Điềm lành soi chiếu! Nhận trọn vẹn +${basePoints}đ (x1) an toàn!`;
-      if (dynamicReason === "GAMBLE_REVERSED") {
-        rewardText = `🌟 ${seg.nameVi}: Vận May Đảo Ngược! Lá bài dữ đã hóa thành phước lành, nhận trọn vẹn +${basePoints}đ!`;
-      } else if (dynamicReason === "ROUND_SEALED") {
-        rewardText = `✨ ${seg.nameVi}: Cán Cân Định Mệnh! Ấn phạt được phong ấn đầu trận, nhận trọn vẹn +${basePoints}đ an toàn!`;
-      } else if (dynamicReason === "DOMINANT_CAPPED") {
+      if (dynamicReason === "DOMINANT_CAPPED") {
         rewardText = `⚖️ ${seg.nameVi}: Cán Cân Định Mệnh! Đội đang dẫn đầu nhận thưởng an toàn +${basePoints}đ thay vì cướp điểm của đội yếu hơn!`;
       }
 

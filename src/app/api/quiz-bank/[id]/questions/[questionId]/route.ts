@@ -30,6 +30,7 @@ export async function PATCH(
       ...(body.type && { type: body.type }),
       ...(body.content && { content: sanitizeInput(body.content, 2000) }),
       ...(body.options !== undefined && { options: body.options }),
+      ...(body.pairs !== undefined && { pairs: body.pairs }),
       ...(body.answer !== undefined && { answer: body.answer ? sanitizeInput(body.answer, 500) : null }),
       ...(body.points !== undefined && { points: normalizeToThreeLevels(Number(body.points) || 10) }),
       ...(body.timeLimit !== undefined && { timeLimit: Math.min(300, Math.max(5, Number(body.timeLimit) || 30)) }),

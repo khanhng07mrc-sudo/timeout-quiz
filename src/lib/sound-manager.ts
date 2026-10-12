@@ -684,6 +684,111 @@ class SoundManager {
   public playTimeout() {
     this.playSFX("timeout", 1.0);
   }
+
+  private wheelAudioCtx: AudioContext | null = null;
+
+  private getWheelAudioCtx(): AudioContext | null {
+    if (typeof window === "undefined") return null;
+    try {
+      if (!this.wheelAudioCtx) {
+        const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (Ctx) {
+          this.wheelAudioCtx = new Ctx();
+        }
+      }
+      if (this.wheelAudioCtx && this.wheelAudioCtx.state === "suspended") {
+        this.wheelAudioCtx.resume().catch(() => {});
+      }
+      return this.wheelAudioCtx;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Tiếng kim gẩy chốt Vòng Quay Chiếc Nón Kỳ Diệu (Wheel of Fortune Peg Click)
+   * @param progress Tiến độ quay từ 0.0 (mới quay, đanh nhanh) -> 1.0 (sắp dừng, trầm và vang hơn)
+   */
+  public playWheelPegTick(progress: number = 0) {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("tick", 0.55);
+      return;
+    }
+
+    try {
+      const now = ctx.currentTime;
+      const clampedProg = Math.max(0, Math.min(1, progress));
+
+      // 1. Crisp flapper peg snap (triangle/square pitch drop)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+
+      // Pitch slightly higher when spinning fast, slightly deeper as each final peg clicks
+      const startFreq = 1150 - clampedProg * 280;
+      const endFreq = 240 - clampedProg * 60;
+      osc.frequency.setValueAtTime(startFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(Math.max(80, endFreq), now + 0.028);
+
+      const peakVol = Math.max(0.05, this.volume * (0.42 + clampedProg * 0.18));
+      gain.gain.setValueAtTime(peakVol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.034);
+
+      // 2. Subtle wooden/metallic peg body knock
+      const bodyOsc = ctx.createOscillator();
+      const bodyGain = ctx.createGain();
+      bodyOsc.type = "sine";
+      bodyOsc.frequency.setValueAtTime(420 - clampedProg * 80, now);
+      bodyOsc.frequency.exponentialRampToValueAtTime(135, now + 0.022);
+
+      bodyGain.gain.setValueAtTime(peakVol * 0.65, now);
+      bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+
+      bodyOsc.connect(bodyGain);
+      bodyGain.connect(ctx.destination);
+      bodyOsc.start(now);
+      bodyOsc.stop(now + 0.026);
+    } catch {
+      this.playSFX("tick", 0.5);
+    }
+  }
+
+  /**
+   * Âm ngân huyền bí khi kim Vòng Quay Tarot dừng hẳn tại ô định mệnh
+   */
+  public playWheelStopChime() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const freqs = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6 mystical chord
+      freqs.forEach((f, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(f, now + idx * 0.035);
+
+        const peak = Math.max(0.02, this.volume * 0.22);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.035);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.035 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + idx * 0.035 + 0.65);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.035);
+        osc.stop(now + idx * 0.035 + 0.68);
+      });
+    } catch {}
+  }
 }
 
 export const soundManager = typeof window !== "undefined" ? new SoundManager() : ({} as SoundManager);

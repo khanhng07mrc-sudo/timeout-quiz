@@ -6,6 +6,32 @@ import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWhe
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 import { TarotArcanaSvgIcon, renderTarotArcanaVectorNodes, getPureArcanaNameVi } from "./TarotArcanaIcons";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
+import { soundManager } from "@/lib/sound-manager";
+
+/**
+ * Evaluates 1D cubic-bezier(x1, y1, x2, y2) at time t in [0, 1]
+ * Used to synchronize Wheel of Fortune peg-click audio with CSS transform rotation.
+ */
+function evaluateCubicBezier(t: number, x1: number, y1: number, x2: number, y2: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  if (clamped === 0 || clamped === 1) return clamped;
+
+  let lo = 0;
+  let hi = 1;
+  let u = clamped;
+  for (let i = 0; i < 10; i++) {
+    u = 0.5 * (lo + hi);
+    const inv = 1 - u;
+    const bx = 3 * inv * inv * u * x1 + 3 * inv * u * u * x2 + u * u * u;
+    if (bx < clamped) {
+      lo = u;
+    } else {
+      hi = u;
+    }
+  }
+  const inv = 1 - u;
+  return 3 * inv * inv * u * y1 + 3 * inv * u * u * y2 + u * u * u;
+}
 
 interface Props {
   mysteryState?: MysteryQuestState;
@@ -84,6 +110,8 @@ export default function MysteryQuestBoard({
   const [isWheelSpinningOptimistic, setIsWheelSpinningOptimistic] = useState<boolean>(false);
   const [lockedPower, setLockedPower] = useState<number | null>(null);
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
+  const [isPointerTicking, setIsPointerTicking] = useState<boolean>(false);
+  const wheelPrevAngleRef = useRef<number>(0);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
   const lastClickedTileIdRef = useRef<number | null>(null);
@@ -259,22 +287,78 @@ export default function MysteryQuestBoard({
     setLockedPower(null);
   }, [currentTurnIndex, miniGameType, tarotState?.isDrawn]);
 
-  // Fallback safety timeout for optimistic spin state
+  // Fallback safety timeout for optimistic spin state (11.5s for 10s spin)
   useEffect(() => {
     if (!isWheelSpinningOptimistic) return;
     const fallbackTimer = setTimeout(() => {
       setIsWheelSpinningOptimistic(false);
       setLockedPower(null);
-    }, 10000);
+    }, 11500);
     return () => clearTimeout(fallbackTimer);
   }, [isWheelSpinningOptimistic]);
 
-  // Synchronize Tarot Wheel angle when server spins or stops
+  // Synchronize Tarot Wheel angle & Chiếc Nón Kỳ Diệu peg-click audio ("tạch-tạch-tạch")
   useEffect(() => {
-    if (tarotState?.targetAngle !== undefined && tarotState.targetAngle !== null) {
-      setClientWheelAngle(tarotState.targetAngle);
+    const target = tarotState?.targetAngle;
+    if (target === undefined || target === null) return;
+
+    const startAngle = wheelPrevAngleRef.current;
+    setClientWheelAngle(target);
+
+    if (!tarotState?.isWheelSpinning || target <= startAngle) {
+      wheelPrevAngleRef.current = target;
+      setIsPointerTicking(false);
+      return;
     }
-  }, [tarotState?.targetAngle, tarotState?.isWheelSpinning]);
+
+    const durationMs = tarotState?.spinDurationMs ?? 10000;
+    const segAngle = isPenaltySurvivalMode ? 18 : 360 / 22;
+    const totalDelta = target - startAngle;
+    const startTime = performance.now();
+    let lastPegIndex = Math.floor(startAngle / segAngle);
+    let rafId = 0;
+    let tickResetTimeout: ReturnType<typeof setTimeout> | null = null;
+    let finishedChimePlayed = false;
+
+    const step = (now: number) => {
+      const elapsed = now - startTime;
+      const rawProgress = Math.min(1, Math.max(0, elapsed / durationMs));
+      // Matches CSS transition: cubic-bezier(0.12, 0.84, 0.20, 1)
+      const eased = evaluateCubicBezier(rawProgress, 0.12, 0.84, 0.20, 1.0);
+      const currentLiveAngle = startAngle + totalDelta * eased;
+      const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
+
+      if (currentPegIndex > lastPegIndex) {
+        lastPegIndex = currentPegIndex;
+        soundManager.playWheelPegTick(rawProgress);
+        setIsPointerTicking(true);
+        if (tickResetTimeout) clearTimeout(tickResetTimeout);
+        tickResetTimeout = setTimeout(() => {
+          setIsPointerTicking(false);
+        }, 55);
+      }
+
+      if (rawProgress < 1) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        wheelPrevAngleRef.current = target;
+        setIsPointerTicking(false);
+        if (!finishedChimePlayed) {
+          finishedChimePlayed = true;
+          soundManager.playWheelStopChime();
+        }
+      }
+    };
+
+    rafId = requestAnimationFrame(step);
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      if (tickResetTimeout) clearTimeout(tickResetTimeout);
+      wheelPrevAngleRef.current = target;
+      setIsPointerTicking(false);
+    };
+  }, [tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
   // Ping-pong power gauge loop (0% -> 100% -> 0%) - freezes immediately when spun
   useEffect(() => {
@@ -462,12 +546,12 @@ export default function MysteryQuestBoard({
       badge: "Tarot 22 Arcana",
       icon: "🔮",
       steps: [
-        { step: "1. Chốt lực quay", desc: "Canh thanh lực dao động Ping-pong để xoay vòng quay 22 Ấn Cổ Major Arcana (0 – XXI).", icon: "🎡" },
+        { step: "1. Chốt lực quay", desc: "Canh thanh lực Ping-pong để xoay vòng quay 22 Ấn Cổ (2 – 5 vòng trong 10 giây chuẩn Chiếc Nón Kỳ Diệu).", icon: "🎡" },
         { step: "2. Lật bài định mệnh", desc: "Mặt vòng quay ẩn giấu toàn bộ hiệu ứng cộng/trừ. Bấm 'Lật Bài Định Mệnh' để khai mở quẻ bài!", icon: "✨" },
-        { step: "3. Đánh cược & Lật kèo", desc: "Trúng Ngôi Sao / Mặt Trăng mở Cánh Cổng Quay Thêm (đảo ngược lá xấu thành thưởng).", icon: "🔄" },
+        { step: "3. Đánh cược & Lật kèo", desc: "Trúng Ngôi Sao / Mặt Trăng mở Cánh Cổng Quay Thêm (đảo ngược mọi lá Bom thành thưởng +1x).", icon: "🔄" },
       ],
-      rewardMechanic: "Điềm Lành (+1x đến +2x điểm), Thần Chết / Công Lý / Ác Quỷ (Cướp +2x điểm Top 1), Cỗ Xe / Tòa Tháp (Khóa chân Top 1).",
-      riskMechanic: "Hoàng Đế (Chia sẻ +1x điểm toàn đội), Kẻ Khờ / Ẩn Sĩ / Người Treo Ngược (Bảo toàn ±0đ).",
+      rewardMechanic: "Điềm Lành (+1x, +1.5x, +2x điểm), Bánh Xe Vận Mệnh (Ngẫu nhiên x1/x1.5/x2), Chiến Xa & Thần Chết (Cướp tối đa 2x từ Top 1, chống cướp liên hoàn).",
+      riskMechanic: "Ác Quỷ (Bom Hắc Ám chia +5đ cho đối thủ), Tháp Sét (Bẫy Sập -1x điểm gốc), Người Treo Ngược (Bom Từ Thiện tặng Top 1), Kẻ Khờ & Công Lý (±0đ).",
       survivalMechanic: "Khi vào Sinh Tử: 20% quay trúng Ấn Bình Yên thoát hiểm & 80% Ấn Bẫy/Phạt.",
     },
   };
@@ -1972,6 +2056,15 @@ export default function MysteryQuestBoard({
 
           // Color & Glow scheme for the 22 Major Arcana Entities
           const getEntityVisuals = (cardKey?: string) => {
+            if (drawnCard && drawnCard.scoreDelta < 0) {
+              return {
+                gradient: "from-rose-950/50 via-red-950/40 to-black/95",
+                border: "border-rose-500",
+                glow: "rgba(244, 63, 94, 0.6)",
+                tagColor: "bg-red-500/20 text-red-300 border-red-500/40",
+                textColor: "text-rose-400",
+              };
+            }
             switch (cardKey) {
               case "THE_PEACE":
                 return {
@@ -1982,10 +2075,11 @@ export default function MysteryQuestBoard({
                   textColor: "text-emerald-300",
                 };
               case "THE_SUN":
+              case "THE_WORLD":
                 return {
                   gradient: "from-amber-600/30 via-yellow-500/20 to-amber-950/80",
                   border: "border-amber-400",
-                  glow: "rgba(251, 191, 36, 0.6)",
+                  glow: "rgba(251, 191, 36, 0.65)",
                   tagColor: "bg-amber-500/20 text-amber-300 border-amber-400/40",
                   textColor: "text-amber-300",
                 };
@@ -2006,9 +2100,10 @@ export default function MysteryQuestBoard({
                   tagColor: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40",
                   textColor: "text-cyan-300",
                 };
+              case "THE_EMPRESS":
+              case "THE_EMPEROR":
               case "STRENGTH":
               case "JUDGEMENT":
-              case "THE_WORLD":
                 return {
                   gradient: "from-blue-950/40 via-sky-900/30 to-black/90",
                   border: "border-sky-400",
@@ -2017,8 +2112,7 @@ export default function MysteryQuestBoard({
                   textColor: "text-sky-300",
                 };
               case "THE_FOOL":
-              case "THE_HERMIT":
-              case "THE_HANGED_MAN":
+              case "JUSTICE":
                 return {
                   gradient: "from-purple-950/40 via-violet-900/30 to-black/90",
                   border: "border-purple-500",
@@ -2026,28 +2120,20 @@ export default function MysteryQuestBoard({
                   tagColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
                   textColor: "text-purple-300",
                 };
-              case "THE_EMPEROR":
-                return {
-                  gradient: "from-amber-950/40 via-orange-950/30 to-black/90",
-                  border: "border-orange-500",
-                  glow: "rgba(249, 115, 22, 0.5)",
-                  tagColor: "bg-orange-500/20 text-orange-300 border-orange-400/40",
-                  textColor: "text-orange-300",
-                };
               case "THE_CHARIOT":
-              case "THE_TOWER":
-              case "THE_KNIGHT":
+              case "THE_DEATH":
+              case "DEATH":
                 return {
-                  gradient: "from-indigo-950/40 via-blue-950/30 to-black/90",
+                  gradient: "from-indigo-950/45 via-purple-950/35 to-black/90",
                   border: "border-indigo-400",
-                  glow: "rgba(99, 102, 241, 0.5)",
+                  glow: "rgba(99, 102, 241, 0.6)",
                   tagColor: "bg-indigo-500/20 text-indigo-300 border-indigo-400/40",
                   textColor: "text-indigo-300",
                 };
-              case "JUSTICE":
-              case "THE_DEATH":
               case "THE_DEVIL":
-              case "DEATH":
+              case "THE_TOWER":
+              case "THE_HANGED_MAN":
+              case "THE_KNIGHT":
                 return {
                   gradient: "from-rose-950/50 via-red-950/40 to-black/95",
                   border: "border-rose-500",
@@ -2104,8 +2190,13 @@ export default function MysteryQuestBoard({
 
                   {/* ── SVG 22-Segment Esoteric Tarot Wheel with 12 o'clock Astral Pointer ── */}
                   <div className={`relative ${isDisplay ? "w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-[340px] lg:h-[340px] my-1" : "w-80 h-80 sm:w-96 sm:h-96 md:w-[420px] md:h-[420px] my-2"} mx-auto flex items-center justify-center z-10`}>
-                    {/* Ornate Astral Gold-Violet Pointer Needle at 12 o'clock */}
-                    <div className={`absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)] ${tarotState?.isWheelSpinning || isWheelSpinningOptimistic ? "animate-bounce" : ""}`}>
+                    {/* Ornate Astral Gold-Violet Pointer Needle at 12 o'clock (Flicks on each peg click) */}
+                    <div
+                      className="absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)] transition-transform duration-75 origin-top"
+                      style={{
+                        transform: isPointerTicking ? "rotate(-16deg) scale(1.06)" : "rotate(0deg) scale(1)",
+                      }}
+                    >
                       <svg width="44" height="44" viewBox="0 0 40 40">
                         <defs>
                           <linearGradient id="astralPointerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -2123,13 +2214,13 @@ export default function MysteryQuestBoard({
                     {/* Outer Glowing Celestial Ring */}
                     <div className="absolute inset-0 rounded-full border-[3px] sm:border-4 border-amber-300/75 shadow-[0_0_40px_rgba(139,92,246,0.65),inset_0_0_25px_rgba(251,191,36,0.25)] pointer-events-none z-20" />
 
-                    {/* Spinning Wheel */}
+                    {/* Spinning Wheel (10s Chiếc Nón Kỳ Diệu Physics: 2 - 5 turns) */}
                     <div
                       className="w-full h-full rounded-full overflow-hidden shadow-2xl relative"
                       style={{
                         transform: `rotate(${tarotState?.targetAngle ?? clientWheelAngle ?? 0}deg)`,
                         transition: tarotState?.isWheelSpinning || isWheelSpinningOptimistic
-                          ? `transform ${tarotState?.spinDurationMs ?? 5000}ms cubic-bezier(0.15, 0.9, 0.25, 1)`
+                          ? `transform ${tarotState?.spinDurationMs ?? 10000}ms cubic-bezier(0.12, 0.84, 0.20, 1)`
                           : "none",
                       }}
                     >
@@ -2313,12 +2404,12 @@ export default function MysteryQuestBoard({
                                   : "bg-gradient-to-r from-[#2e1065] via-[#7e22ce] to-[#d97706] hover:from-[#3b0764] hover:to-[#f59e0b] text-amber-100 border-amber-300/90 shadow-[0_0_25px_rgba(147,51,234,0.55)] hover:scale-[1.02] active:scale-95"
                               }`}
                             >
-                              {isSpinningActive ? "🌀 ĐANG XOAY VÒNG TAROT..." : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
+                              {isSpinningActive ? "🌀 ĐANG XOAY VÒNG TAROT (10S)..." : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
                             </button>
                           ) : (
                             <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
                               {isSpinningActive
-                                ? "🌀 Vòng quay Major Arcana đang xoay..."
+                                ? "🌀 Vòng quay Major Arcana đang xoay (10 giây)..."
                                 : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
                             </div>
                           )}
@@ -2336,7 +2427,7 @@ export default function MysteryQuestBoard({
                           <p className="text-[10px] text-purple-200/60 tracking-wide">
                             {isPenaltySurvivalMode
                               ? "20 Ấn Sinh Tử: Ẩn giấu cơ hội Thoát Nạn Hòa Bình giữa các Ấn Phạt Cổ Xưa"
-                              : "22 Lá Major Arcana (0 – XXI): Điềm Lành, Đột Biến, Đánh Cược & Đoạt Mệnh ẩn sau mỗi ấn cổ"}
+                              : "22 Lá Major Arcana (0 – XXI): Điềm Lành, Đánh Cược, Cướp Điểm & Bẫy Phạt ẩn sau mỗi ấn cổ"}
                           </p>
                         </div>
                       </>
@@ -2422,38 +2513,30 @@ export default function MysteryQuestBoard({
                         </div>
                       ) : (
                         <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/75 border border-white/25">
-                          {drawnCard?.key === "THE_PEACE" && (
+                          {drawnCard?.key === "THE_PEACE" ? (
                             <span className="text-emerald-400">0đ (Thoát Nạn Thành Công 🕊️)</span>
-                          )}
-                          {drawnCard && (drawnCard.key === "THE_STAR" || drawnCard.key === "THE_MOON") && (
+                          ) : drawnCard && (drawnCard.key === "THE_STAR" || drawnCard.key === "THE_MOON") ? (
                             <span className="text-fuchsia-300">⭐ Cánh Cổng May Rủi (Quay Thêm)</span>
-                          )}
-                          {drawnCard && (drawnCard.key === "THE_FOOL" || drawnCard.key === "THE_HERMIT" || drawnCard.key === "THE_HANGED_MAN") && (
-                            isPenaltySurvivalMode && drawnCard.key === "THE_FOOL" ? (
-                              <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ (Khói Độc -50%)</span>
-                            ) : (
-                              <span className="text-purple-300">±0đ (Bảo toàn điểm)</span>
-                            )
-                          )}
-                          {drawnCard?.key === "THE_EMPEROR" && (
-                            <span className="text-orange-400">
-                              {drawnCard.scoreDelta > 0 ? `+${drawnCard.scoreDelta}đ (Chia sẻ toàn đội 👑)` : "0đ"}
-                            </span>
-                          )}
-                          {drawnCard && (drawnCard.key === "THE_CHARIOT" || drawnCard.key === "THE_TOWER" || drawnCard.key === "THE_KNIGHT") && (
+                          ) : drawnCard && drawnCard.stolenPoints && drawnCard.stolenPoints > 0 ? (
                             <span className="text-indigo-300">
-                              +{drawnCard.scoreDelta}đ (Khóa chân Top 1 ⚡)
+                              +{drawnCard.stolenPoints}đ ➔ Cướp từ {drawnCard.victimTeamName || "Top 1"}
                             </span>
-                          )}
-                          {drawnCard && (drawnCard.key === "JUSTICE" || drawnCard.key === "THE_DEATH" || drawnCard.key === "THE_DEVIL" || (drawnCard.key as any) === "DEATH") && (
-                            drawnCard.deathSubtype === "STEAL_TOP1" || (drawnCard.deathSubtype as any) === "STEAL" ? (
-                              <span className="text-emerald-400">+{drawnCard.stolenPoints || drawnCard.scoreDelta}đ ➔ Cướp từ {drawnCard.victimTeamName || "Top 1"}</span>
-                            ) : (
-                              <span className="text-rose-400">-{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}</span>
-                            )
-                          )}
-                          {drawnCard && (drawnCard.key === "THE_SUN" || drawnCard.key === "STRENGTH" || drawnCard.key === "JUDGEMENT" || drawnCard.key === "THE_WORLD" || drawnCard.key === "WHEEL_OF_FORTUNE" || drawnCard.key === "THE_MAGICIAN" || drawnCard.key === "THE_HIGH_PRIESTESS" || drawnCard.key === "THE_EMPRESS" || drawnCard.key === "THE_HIEROPHANT" || drawnCard.key === "THE_LOVERS" || drawnCard.key === "TEMPERANCE") && (
-                            <span className="text-emerald-400">+{drawnCard.scoreDelta}đ (Điềm Lành)</span>
+                          ) : drawnCard && drawnCard.giftedPoints && drawnCard.giftedPoints > 0 ? (
+                            <span className="text-rose-400">
+                              -{Math.abs(drawnCard.scoreDelta)}đ ➔ Tặng {drawnCard.victimTeamName || "Top 1"}
+                            </span>
+                          ) : drawnCard && drawnCard.darkBombRecipients && drawnCard.darkBombRecipients.length > 0 && drawnCard.scoreDelta <= 0 ? (
+                            <span className="text-rose-400">
+                              -{Math.abs(drawnCard.scoreDelta)}đ (Bom Hắc Ám Chia Đối Thủ 😈)
+                            </span>
+                          ) : drawnCard && drawnCard.scoreDelta < 0 ? (
+                            <span className="text-rose-400">
+                              -{Math.abs(drawnCard.scoreDelta)}đ ({isPenaltySurvivalMode ? "Phạt Sinh Tử" : "Bẫy Sập Phạt Điểm ⚡"})
+                            </span>
+                          ) : drawnCard && drawnCard.scoreDelta === 0 ? (
+                            <span className="text-purple-300">±0đ (Bảo toàn điểm)</span>
+                          ) : (
+                            <span className="text-emerald-400">+{drawnCard?.scoreDelta || 0}đ (Điềm Lành ✨)</span>
                           )}
                         </div>
                       )}
@@ -2499,7 +2582,7 @@ export default function MysteryQuestBoard({
                           <span>✦</span>
                         </h4>
                         <p className="text-xs text-purple-200/90 font-medium">
-                          Bạn có muốn <strong>Quay Thêm</strong>? Nếu trúng lá xấu (Thần Chết/Hiệp Sĩ), vận xui sẽ được <strong>ĐẢO NGƯỢC</strong> thành may mắn (+{baseQuestionPoints || 10}đ)! Hoặc dừng lại bảo toàn (±0đ).
+                          Bạn có muốn <strong>Quay Thêm</strong>? Nếu trúng các lá Bom phạt (Ác Quỷ / Tháp Sét / Người Treo Ngược), vận xui sẽ được <strong>ĐẢO NGƯỢC</strong> thành thưởng may mắn (+{baseQuestionPoints || 10}đ)! Hoặc dừng lại bảo toàn (±0đ).
                         </p>
                       </div>
 

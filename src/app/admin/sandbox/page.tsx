@@ -8038,14 +8038,14 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-[#0f0f1a]">
                 <iframe
                   ref={playerIframeRef}
-                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamId=${stableTeams[0]?.id || ""}&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
+                  src={`/play/${code}?sandbox=1&playerId=sb_${code}_t0&teamIndex=0&name=${encodeURIComponent("Bạn (Tester)")}`}
                   allow="autoplay; camera; microphone"
                   onLoad={() => {
                     if (isOfflineSandbox) {
                       syncToIframes();
                     }
                     const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
-                    if (targetTeam) {
+                    if (targetTeam && (isOfflineSandbox || activeTeamIndex > 0)) {
                       const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
                       const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
                       playerIframeRef.current?.contentWindow?.postMessage(

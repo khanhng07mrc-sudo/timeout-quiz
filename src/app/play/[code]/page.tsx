@@ -233,6 +233,7 @@ export default function PlayPage() {
         const teamIndex = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
         const currentAns = e.data.payload?.currentAnswer ?? e.data.currentAnswer;
         if (teamId) {
+          const prevTeamId = myTeamIdRef.current;
           myTeamIdRef.current = teamId;
           setActiveTeamId(teamId);
           setSelectedTeamId(teamId);
@@ -250,7 +251,10 @@ export default function PlayPage() {
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
 
-          if (socketRef.current?.connected) {
+          const currentPlayerInRoom = roomStateRef.current?.players?.find((p) => p.id === teamPlayerId);
+          const alreadyOnTargetTeam = prevTeamId === teamId && currentPlayerInRoom?.teamId === teamId;
+
+          if (socketRef.current?.connected && !alreadyOnTargetTeam) {
             if (isSandboxRef.current) {
               socketRef.current.emit("room:join", {
                 code,
@@ -523,9 +527,13 @@ export default function PlayPage() {
             sessionStorage.setItem("playerName", p.name);
             localStorage.setItem("playerName", p.name);
           }
-          if (p?.teamId) {
-            myTeamIdRef.current = p.teamId;
-            setSelectedTeamId(p.teamId);
+          const initialTeamId =
+            p?.teamId ||
+            myTeamIdRef.current ||
+            (isSandboxRef.current ? result.roomState?.teams?.[0]?.id : undefined);
+          if (initialTeamId) {
+            myTeamIdRef.current = initialTeamId;
+            setSelectedTeamId(initialTeamId);
           }
         } else {
           const err = result.error ?? "Không thể vào phòng thi";
@@ -610,7 +618,7 @@ export default function PlayPage() {
 
     socket.on("room:state", (state) => {
       const currentPid = playerIdRef.current || savedPlayerId;
-      const curTeam = myTeamIdRef.current || paramTeamId;
+      const curTeam = myTeamIdRef.current || paramTeamId || (isSandboxRef.current ? state?.teams?.[0]?.id : "");
       let patchedState = state;
       if (curTeam && state?.players) {
         const p = state.players.find((pl) => pl.id === currentPid);
@@ -633,9 +641,10 @@ export default function PlayPage() {
         setAnswered(false);
       }
       const p = patchedState.players.find((pl) => pl.id === currentPid);
-      if (p?.teamId) {
-        myTeamIdRef.current = p.teamId;
-        setSelectedTeamId(p.teamId);
+      const effectiveTid = p?.teamId || curTeam;
+      if (effectiveTid) {
+        myTeamIdRef.current = effectiveTid;
+        setSelectedTeamId(effectiveTid);
       }
       if (p?.name) {
         sessionStorage.setItem("playerName", p.name);

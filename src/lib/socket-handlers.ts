@@ -8630,6 +8630,7 @@ async function processAnswerSubmissionImpl({
     room.mode === "BUZZ" ||
     room.mode === "GRID_CARO" ||
     room.mode === "DICE_RACE" ||
+    room.mode === "MYSTERY_QUEST" ||
     room.mode === "TOURNAMENT" ||
     room.mode === "WAGER";
 
@@ -10168,19 +10169,29 @@ async function getRoomQuestions(roomId: string) {
 }
 
 async function getResolvedQuestion(roomId: string, questionId: string, dbQuestion?: any) {
-  let res: any = null;
+  const cachedQuestions = await getRoomQuestions(roomId);
+  const cachedQ = cachedQuestions.find((item: any) => item.id === questionId);
+  const fullQ = cachedQ || dbQuestion || (await prisma.question.findUnique({ where: { id: questionId } }));
   const activeQState = roomActiveQuestions.get(roomId);
-  if (activeQState?.question?.id === questionId) {
-    res = { ...(dbQuestion || {}), ...activeQState.question };
-  } else {
-    const cachedQuestions = await getRoomQuestions(roomId);
-    const cachedQ = cachedQuestions.find((item: any) => item.id === questionId);
-    if (cachedQ) {
-      res = { ...(dbQuestion || {}), ...cachedQ };
-    } else {
-      res = dbQuestion || (await prisma.question.findUnique({ where: { id: questionId } }));
-    }
+  if (!fullQ && activeQState?.question?.id === questionId) {
+    return activeQState.question;
   }
+  if (!fullQ) return null;
+
+  const activeQ = activeQState?.question?.id === questionId ? activeQState.question : null;
+  const res: any = {
+    ...fullQ,
+    ...(activeQ
+      ? {
+          points: activeQ.points ?? fullQ.points,
+          timeLimit: activeQ.timeLimit ?? fullQ.timeLimit,
+          order: activeQ.order ?? fullQ.order,
+        }
+      : {}),
+    options: fullQ.options ?? activeQ?.options,
+    answer: fullQ.answer ?? (activeQ as any)?.answer,
+    pairs: (fullQ as any).pairs ?? activeQ?.pairs,
+  };
   if (res && res.points) {
     res.points = normalizeToThreeLevels(res.points);
   }

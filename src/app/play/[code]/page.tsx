@@ -255,30 +255,30 @@ export default function PlayPage() {
           const alreadyOnTargetTeam = prevTeamId === teamId && currentPlayerInRoom?.teamId === teamId;
 
           if (socketRef.current?.connected && !alreadyOnTargetTeam) {
-            if (isSandboxRef.current) {
-              socketRef.current.emit("room:join", {
-                code,
-                playerName: "Bạn (Tester)",
-                playerId: teamPlayerId,
-                teamId,
-              }, (result) => {
-                if (result?.success && result.roomState) {
-                  setRoomState(result.roomState);
-                  if (
-                    result.roomState.mode === "MYSTERY_QUEST" &&
-                    result.roomState.mysteryQuestState &&
-                    result.roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
-                  ) {
-                    setCurrentQuestion(null);
-                    setRevealPayload(null);
-                    setTimer(null);
-                    setAnswered(false);
+            socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId }, (res: any) => {
+              if (!res?.success && isSandboxRef.current) {
+                socketRef.current?.emit("room:join", {
+                  code,
+                  playerName: "Bạn (Tester)",
+                  playerId: teamPlayerId,
+                  teamId,
+                }, (result) => {
+                  if (result?.success && result.roomState) {
+                    setRoomState(result.roomState);
+                    if (
+                      result.roomState.mode === "MYSTERY_QUEST" &&
+                      result.roomState.mysteryQuestState &&
+                      result.roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
+                    ) {
+                      setCurrentQuestion(null);
+                      setRevealPayload(null);
+                      setTimer(null);
+                      setAnswered(false);
+                    }
                   }
-                }
-              });
-            } else {
-              socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId });
-            }
+                });
+              }
+            });
           }
           setRoomState((prev) => {
             if (!prev) return prev;
@@ -311,12 +311,16 @@ export default function PlayPage() {
             playerIdRef.current = teamPlayerId;
             setPlayerId(teamPlayerId);
             if (socketRef.current?.connected) {
-              socketRef.current.emit("room:join", {
-                code,
-                playerName: "Bạn (Tester)",
-                playerId: teamPlayerId,
-                teamId,
-              }, () => {});
+              socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId }, (res: any) => {
+                if (!res?.success) {
+                  socketRef.current?.emit("room:join", {
+                    code,
+                    playerName: "Bạn (Tester)",
+                    playerId: teamPlayerId,
+                    teamId,
+                  }, () => {});
+                }
+              });
             }
           }
         }
@@ -774,6 +778,18 @@ export default function PlayPage() {
 
     socket.on("game:timer", (t) => {
       calibrateClockFromPacket(t.serverTime);
+      if (typeof t.remaining === "number" && t.remaining > 0) {
+        setCurrentQuestion((prev) =>
+          prev && (prev.timerPending || !prev.timerStarted)
+            ? {
+                ...prev,
+                timerPending: false,
+                timerStarted: true,
+                endsAt: t.endsAt || prev.endsAt,
+              }
+            : prev
+        );
+      }
       setTimer((prev) => {
         const effectiveEndsAt = t.endsAt || prev?.endsAt;
         if (effectiveEndsAt) {

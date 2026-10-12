@@ -2807,29 +2807,10 @@ export function handleFlipCard({
       };
     }
 
-    // TH 2.2: Card 2 (tile) trùng loại phạt với 1 lá phạt đã có từ trước trong previouslyKeptBombs!
-    const secondTilePenaltyKey = getPenaltyKey(tile);
-    if (secondTilePenaltyKey) {
-      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
-      const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === secondTilePenaltyKey
-      );
-      if (matchingPriorBomb) {
-        // Đã trùng cặp phạt secondTilePenaltyKey!
-        // Kích hoạt giải cứu, mở khóa chờ lật tiếp lá thứ 3!
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = secondTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0,
-        };
-      }
-    }
-
-    // TH 2.3: Cả 2 lá trong cùng lượt này đều là lá phạt!
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
+    const secondTilePenaltyKey = getPenaltyKey(tile);
+
+    // TH 2.1: Cả 2 lá trong cùng lượt này đều là lá phạt!
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
         // Cả 2 lá TRÙNG CÙNG MỘT CẶP PHẠT trong cùng một lượt!
@@ -2858,6 +2839,26 @@ export function handleFlipCard({
 
         state.memoryPairsState = { ...memState };
         return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      }
+    }
+
+    // TH 2.2: Card 2 (tile) trùng loại phạt với 1 lá phạt đã có từ trước trong các lượt trước (khác firstTile)!
+    if (secondTilePenaltyKey) {
+      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+      const matchingPriorBomb = state.tiles.find(
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+      );
+      if (matchingPriorBomb) {
+        // Đã trùng cặp phạt secondTilePenaltyKey với lá từ lượt trước!
+        // Kích hoạt giải cứu, mở khóa chờ lật tiếp lá thứ 3!
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = secondTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0,
+        };
       }
     }
 

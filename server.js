@@ -2847,24 +2847,8 @@ function handleFlipCard({
         scorePenalty: 0
       };
     }
-    const secondTilePenaltyKey = getPenaltyKey(tile2);
-    if (secondTilePenaltyKey) {
-      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
-      const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === secondTilePenaltyKey
-      );
-      if (matchingPriorBomb) {
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = secondTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0
-        };
-      }
-    }
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
+    const secondTilePenaltyKey = getPenaltyKey(tile2);
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
@@ -2885,6 +2869,22 @@ function handleFlipCard({
         }
         state.memoryPairsState = { ...memState };
         return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      }
+    }
+    if (secondTilePenaltyKey) {
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
+      const matchingPriorBomb = state.tiles.find(
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+      );
+      if (matchingPriorBomb) {
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = secondTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0
+        };
       }
     }
     if (firstTilePenaltyKey || secondTilePenaltyKey) {

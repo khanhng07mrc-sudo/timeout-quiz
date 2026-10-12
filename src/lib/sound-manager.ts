@@ -2,7 +2,7 @@
 // High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
 
 type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";
-type BGMKey = "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense";
+type BGMKey = "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense" | "wheel_spin";
 
 interface AudioSourceConfig {
   primary: string;
@@ -28,6 +28,7 @@ const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   olympia_30s: { primary: "/sounds/olympia_30s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_60s: { primary: "/sounds/olympia_60s.mp3", fallbacks: ["/sounds/olympia_30s.mp3", "/sounds/question_suspense.mp3"] },
   question_suspense: { primary: "/sounds/question_suspense.mp3", fallbacks: ["/sounds/question_suspense.wav"] },
+  wheel_spin: { primary: "/sounds/wheel_spin.mp3", fallbacks: [] },
 };
 
 class SoundManager {
@@ -58,6 +59,7 @@ class SoundManager {
   private sfxMap: Map<string, HTMLAudioElement> = new Map();
   private bgmMap: Map<string, HTMLAudioElement> = new Map();
   private currentFanfareAudio: HTMLAudioElement | null = null;
+  private wheelSpinAudio: HTMLAudioElement | null = null;
   private initialized: boolean = false;
 
   constructor() {
@@ -178,9 +180,15 @@ class SoundManager {
       if (this.currentMusicAudio) {
         this.currentMusicAudio.volume = 0;
       }
+      if (this.wheelSpinAudio) {
+        this.wheelSpinAudio.volume = 0;
+      }
     } else {
       if (this.currentMusicAudio) {
         this.currentMusicAudio.volume = this.volume * 0.75;
+      }
+      if (this.wheelSpinAudio && !this.wheelSpinAudio.paused) {
+        this.wheelSpinAudio.volume = Math.min(1, this.volume * 0.85);
       }
     }
   }
@@ -191,8 +199,13 @@ class SoundManager {
 
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
-    if (!this.isMuted && this.currentMusicAudio) {
-      this.currentMusicAudio.volume = this.volume * 0.75;
+    if (!this.isMuted) {
+      if (this.currentMusicAudio) {
+        this.currentMusicAudio.volume = this.volume * 0.75;
+      }
+      if (this.wheelSpinAudio && !this.wheelSpinAudio.paused) {
+        this.wheelSpinAudio.volume = Math.min(1, this.volume * 0.85);
+      }
     }
   }
 
@@ -732,7 +745,7 @@ class SoundManager {
       osc.frequency.setValueAtTime(startFreq, now);
       osc.frequency.exponentialRampToValueAtTime(Math.max(80, endFreq), now + 0.028);
 
-      const peakVol = Math.max(0.05, this.volume * (0.42 + clampedProg * 0.18));
+      const peakVol = Math.max(0.04, this.volume * (0.22 + clampedProg * 0.12));
       gain.gain.setValueAtTime(peakVol, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
 
@@ -756,14 +769,73 @@ class SoundManager {
       bodyOsc.start(now);
       bodyOsc.stop(now + 0.026);
     } catch {
-      this.playSFX("tick", 0.5);
+      this.playSFX("tick", 0.35);
     }
+  }
+
+  /**
+   * Nhạc nền vòng quay Chiếc Nón Kỳ Diệu VTV3 (2013) chạy suốt thời gian xoay (17.5s - 22.5s)
+   */
+  public playWheelSpinMusic(durationMs: number = 20000) {
+    if (typeof window === "undefined") return;
+    this.initAudioAssets();
+
+    try {
+      let audio = this.wheelSpinAudio || this.bgmMap.get("wheel_spin");
+      if (!audio) {
+        audio = this.createAudioWithFallbacks(BGM_CONFIG.wheel_spin, true);
+        this.bgmMap.set("wheel_spin", audio);
+      }
+      this.wheelSpinAudio = audio;
+
+      const prevFade = this.activeFadeMap.get(audio);
+      if (prevFade) {
+        clearInterval(prevFade);
+        this.activeFadeMap.delete(audio);
+      }
+
+      audio.pause();
+      audio.currentTime = 0;
+      audio.loop = true;
+
+      // Bản nhạc gốc VTV3 dài ~19.13s; co giãn nhẹ tốc độ phát để khớp mượt với thời lượng quay 17.5s - 22.5s
+      const rate = Math.max(0.82, Math.min(1.12, 19130 / Math.max(12000, durationMs)));
+      try {
+        audio.preservesPitch = true;
+        audio.playbackRate = rate;
+      } catch {}
+
+      audio.volume = this.isMuted ? 0 : Math.min(1, this.volume * 0.9);
+      audio.play().catch(() => {});
+    } catch {}
+  }
+
+  /**
+   * Dừng nhạc nền vòng quay Chiếc Nón Kỳ Diệu
+   */
+  public stopWheelSpinMusic(fadeDurationMs: number = 250) {
+    if (!this.wheelSpinAudio) return;
+    const audio = this.wheelSpinAudio;
+    if (fadeDurationMs <= 0) {
+      const prevFade = this.activeFadeMap.get(audio);
+      if (prevFade) {
+        clearInterval(prevFade);
+        this.activeFadeMap.delete(audio);
+      }
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+      return;
+    }
+    this.fadeOutAudio(audio, fadeDurationMs);
   }
 
   /**
    * Âm ngân huyền bí khi kim Vòng Quay Tarot dừng hẳn tại ô định mệnh
    */
   public playWheelStopChime() {
+    this.stopWheelSpinMusic(200);
     if (this.isMuted) return;
     const ctx = this.getWheelAudioCtx();
     if (!ctx) return;

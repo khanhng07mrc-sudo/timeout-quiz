@@ -4720,7 +4720,7 @@ export function getEffectiveTarotWheelSegments(
 
 /**
  * Tính toán góc quay vật lý và ô trúng thưởng dựa trên lực nạp (Power Percent 1-100%).
- * Chuẩn Chiếc Nón Kỳ Diệu: Xoay từ 2 đến 5 vòng (720° – 1800°) tùy lực trong đúng 10 giây (10000ms).
+ * Chuẩn Chiếc Nón Kỳ Diệu: Xoay từ 4 đến 9 vòng (1440° – 3240°) tùy lực trong khoảng 17.5s – 22.5s (17500ms – 22500ms).
  */
 export function calculateTarotWheelSpin({
   powerPercent,
@@ -4745,9 +4745,9 @@ export function calculateTarotWheelSpin({
   landedIndex: number;
 } {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
-  // Lực 1% -> 2 vòng (720°), Lực 100% -> 5 vòng (1800°)
-  const minTurnsAngle = 2 * 360; // 720°
-  const maxExtraAngle = 3 * 360; // +1080° (tối đa 5 vòng = 1800°)
+  // Lực 1% -> 4 vòng (1440°), Lực 100% -> 9 vòng (3240°)
+  const minTurnsAngle = 4 * 360; // 1440°
+  const maxExtraAngle = 5 * 360; // +1800° (tối đa 9 vòng = 3240°)
   const extraAngle = Math.round(((clampedPower - 1) / 99) * maxExtraAngle);
   const jitter = Math.floor(Math.random() * 7) - 3;
   let totalDelta = minTurnsAngle + extraAngle + jitter;
@@ -4768,7 +4768,8 @@ export function calculateTarotWheelSpin({
   const landedIndex = Math.floor(pointerAngle / segAngle) % segCount;
   const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode, options);
   const landedSegment = effectiveSegments[landedIndex];
-  const spinDurationMs = 10000;
+  // Thời gian quay từ 17.5s (17500ms) đến 22.5s (22500ms) tùy theo lực quay (1% -> 100%)
+  const spinDurationMs = Math.round(17500 + ((clampedPower - 1) / 99) * 5000);
 
   return {
     targetAngle,
@@ -5374,13 +5375,13 @@ export function resolveWheelCardEffect({
           icon: seg.icon,
           roman: seg.roman,
           group: "MUTATION",
-          scoreDelta: 0,
+          scoreDelta: basePoints,
         },
-        finalScoreDelta: 0,
+        finalScoreDelta: basePoints,
         scorePenalty: 0,
         isBomb: false,
-        scoreDeltas: [],
-        rewardText: `⭐ ${seg.nameVi} (${seg.nameEn}): Cánh cổng Định Mệnh mở ra! Bạn nhận được cơ hội Quay Thêm (Nếu trúng Bom sẽ đảo ngược thành thưởng +${basePoints}đ)!`,
+        scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+        rewardText: `⭐ ${seg.nameVi} (${seg.nameEn}): Cánh cổng Định Mệnh mở ra! Bạn có thể Dừng Lại nhận an toàn +${basePoints}đ hoặc Đánh Cược Quay Tiếp!`,
         isGambleTrigger: true,
       };
     }
@@ -5415,6 +5416,7 @@ export function handleAncientTarotSpinWheel({
   darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
   drawnCard: AncientTarotDrawnCard;
   scoreDeltas: Array<{ teamId: string; delta: number }>;
+  startAngle: number;
   targetAngle: number;
   spinDurationMs: number;
   landedSegment: TarotWheelSegment;
@@ -5466,6 +5468,7 @@ export function handleAncientTarotSpinWheel({
       ...(state.tarotState || {}),
       isWheelSpinning: false,
       wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+      startAngle: currentAngle,
       targetAngle,
       spinDurationMs,
       selectedSegmentIndex: landedIndex,
@@ -5492,6 +5495,7 @@ export function handleAncientTarotSpinWheel({
       scorePenalty: 0,
       drawnCard,
       scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+      startAngle: currentAngle,
       targetAngle,
       spinDurationMs,
       landedSegment,
@@ -5517,6 +5521,7 @@ export function handleAncientTarotSpinWheel({
     ...(state.tarotState || {}),
     isWheelSpinning: false,
     wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+    startAngle: currentAngle,
     targetAngle,
     spinDurationMs,
     selectedSegmentIndex: landedIndex,
@@ -5559,6 +5564,7 @@ export function handleAncientTarotSpinWheel({
     darkBombRecipients: effectResult.darkBombRecipients,
     drawnCard,
     scoreDeltas,
+    startAngle: currentAngle,
     targetAngle,
     spinDurationMs,
     landedSegment,
@@ -5571,10 +5577,9 @@ export function handleAncientTarotSpinWheel({
  * Xử lý quyết định Đánh Cược Tarot Gamble (THE_STAR / THE_MOON):
  * - Quay Thêm (spinAgain = true): Quay tiếp vòng quay với cùng bộ 22 lá.
  *   + Kết quả tốt -> nhận kết quả
- *   + Kết quả xấu (BOMB_DARK / BOMB_TRAP / BOMB_CHARITY) -> ĐẢO NGƯỢC thành SUN_SMALL (+basePoints x1)
  *   + Kết quả hòa (FOOL / JUSTICE) -> ±0
  *   + Trúng tiếp Gamble -> tiếp tục chuỗi gamble
- * - Dừng Lại (spinAgain = false): Kết thúc an toàn với ±0.
+ * - Dừng Lại An Toàn (spinAgain = false): Kết thúc an toàn với +1x điểm gốc câu hỏi (+basePoints).
  */
 export function handleAncientTarotGambleDecision({
   state,
@@ -5592,6 +5597,7 @@ export function handleAncientTarotGambleDecision({
   updatedState: MysteryQuestState;
   scoreDeltas: Array<{ teamId: string; delta: number }>;
   finalScoreDelta: number;
+  startAngle?: number;
   targetAngle?: number;
   spinDurationMs?: number;
   landedSegment?: TarotWheelSegment;
@@ -5604,11 +5610,18 @@ export function handleAncientTarotGambleDecision({
 
   if (!spinAgain) {
     const oldScore = currentScore;
+    const newScore = oldScore + basePoints;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "TAROT_WHEEL_SPUN";
     state.tarotGambleState = undefined;
     state.tarotState = {
       ...(state.tarotState || {}),
+      drawnCard: state.tarotState?.drawnCard
+        ? {
+            ...state.tarotState.drawnCard,
+            scoreDelta: basePoints,
+          }
+        : undefined,
       isGambling: false,
       isRevealPending: false,
     };
@@ -5616,15 +5629,15 @@ export function handleAncientTarotGambleDecision({
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `Dừng lại an toàn! Quyết định bảo toàn điểm số thành công (±0đ).`,
-      scoreDelta: 0,
+      rewardText: `🛑 Dừng lại an toàn! Quyết định nhận thưởng an toàn thành công (+${basePoints}đ - 1x điểm gốc câu hỏi).`,
+      scoreDelta: basePoints,
       oldScore,
-      newScore: oldScore,
+      newScore,
     };
     return {
       updatedState: { ...state },
-      scoreDeltas: [],
-      finalScoreDelta: 0,
+      scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+      finalScoreDelta: basePoints,
       isGambleAgain: false,
     };
   }
@@ -5686,6 +5699,7 @@ export function handleAncientTarotGambleDecision({
     ...(state.tarotState || {}),
     isWheelSpinning: false,
     wheelPower: Math.round(powerPercent),
+    startAngle: currentAngle,
     targetAngle,
     spinDurationMs,
     selectedSegmentIndex: landedIndex,
@@ -5712,6 +5726,7 @@ export function handleAncientTarotGambleDecision({
     updatedState: { ...state },
     scoreDeltas,
     finalScoreDelta,
+    startAngle: currentAngle,
     targetAngle,
     spinDurationMs,
     landedSegment,

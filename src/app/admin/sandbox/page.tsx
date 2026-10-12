@@ -3134,8 +3134,8 @@ export default function AdminSandboxPage() {
         const activeTeam = currentRoomState.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, scoreDeltas, landedSegment, targetAngle, spinDurationMs, landedIndex, drawnCard } = handleAncientTarotSpinWheel({
-          state: curMystery,
+        const { updatedState, scoreDeltas, landedSegment, startAngle, targetAngle, spinDurationMs, landedIndex, drawnCard } = handleAncientTarotSpinWheel({
+          state: { ...curMystery, tarotState: curMystery.tarotState ? { ...curMystery.tarotState } : undefined },
           team: activeTeam,
           allTeams: currentRoomState.teams,
           powerPercent,
@@ -3148,11 +3148,13 @@ export default function AdminSandboxPage() {
             ...curMystery.tarotState,
             isWheelSpinning: true,
             wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            startAngle,
             targetAngle,
             spinDurationMs,
             selectedSegmentIndex: landedIndex,
             drawnCard,
             isDrawn: false,
+            isRevealPending: false,
           },
         };
 
@@ -3247,8 +3249,8 @@ export default function AdminSandboxPage() {
         const activeTeam = roomStateRef.current.teams.find((t) => t.id === curMystery.currentTurnTeamId);
         if (!activeTeam) return;
 
-        const { updatedState, scoreDeltas, drawnCard, landedSegment, targetAngle, spinDurationMs, landedIndex } = handleAncientTarotGambleDecision({
-          state: curMystery,
+        const { updatedState, scoreDeltas, finalScoreDelta, drawnCard, landedSegment, startAngle, targetAngle, spinDurationMs, landedIndex } = handleAncientTarotGambleDecision({
+          state: { ...curMystery, tarotState: curMystery.tarotState ? { ...curMystery.tarotState } : undefined },
           team: activeTeam,
           allTeams: roomStateRef.current.teams,
           spinAgain,
@@ -3262,8 +3264,10 @@ export default function AdminSandboxPage() {
             tarotState: {
               ...curMystery.tarotState,
               isWheelSpinning: true,
+              wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+              startAngle,
               targetAngle,
-              spinDurationMs: spinDurationMs || 3000,
+              spinDurationMs: spinDurationMs || 20000,
               selectedSegmentIndex: landedIndex,
               drawnCard,
               isDrawn: false,
@@ -3291,16 +3295,28 @@ export default function AdminSandboxPage() {
             setRoomState(nextRoomState);
             syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
             addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
-          }, (spinDurationMs || 3000) + 200);
+          }, (spinDurationMs || 20000) + 200);
         } else {
+          let updatedTeams = [...roomStateRef.current.teams];
+          if (scoreDeltas && scoreDeltas.length > 0) {
+            for (const item of scoreDeltas) {
+              if (item.delta !== 0) {
+                updatedTeams = updatedTeams.map((t) =>
+                  t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+                );
+              }
+            }
+          }
+          delete (updatedState as any)._pendingScoreDeltas;
           const nextRoomState = {
             ...roomStateRef.current,
+            teams: updatedTeams,
             mysteryQuestState: updatedState,
           };
           roomStateRef.current = nextRoomState;
           setRoomState(nextRoomState);
           syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-          addLog(`🛑 [${activeTeam.name}] DỪNG LẠI (±0 điểm)!`);
+          addLog(`🛑 [${activeTeam.name}] DỪNG LẠI AN TOÀN (+${finalScoreDelta} điểm)!`);
         }
         return;
       }

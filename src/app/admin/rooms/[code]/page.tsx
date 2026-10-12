@@ -1503,7 +1503,7 @@ export default function AdminRoomPage() {
                 onDrawTarot={() => emit("admin:mystery:draw_tarot", { code })}
                 onSpinTarotWheel={(powerPercent) => emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent })}
                 onTarotReveal={() => emit("admin:mystery:ancient_tarot_reveal", { code })}
-                onTarotGambleDecision={(spinAgain) => emit("admin:mystery:ancient_tarot_gamble_decision", { spinAgain, code })}
+                onTarotGambleDecision={(spinAgain, powerPercent) => emit("admin:mystery:ancient_tarot_gamble_decision", { spinAgain, powerPercent, code })}
                 onSurvivalChoice={(choice) => emit("admin:mystery:survival_choice", { choice, code })}
                 onAdjustScore={(teamId, delta, setScore) => {
                   const currentTeam = roomState?.teams.find((t) => t.id === teamId);

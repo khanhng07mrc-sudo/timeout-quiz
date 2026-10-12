@@ -6306,6 +6306,7 @@ export function registerSocketHandlers(io: IO) {
           ...result.updatedState.tarotState,
           isWheelSpinning: true,
           wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+          startAngle: result.startAngle,
           targetAngle: result.targetAngle,
           spinDurationMs: result.spinDurationMs,
           selectedSegmentIndex: result.landedIndex,
@@ -6330,6 +6331,7 @@ export function registerSocketHandlers(io: IO) {
             ...result.updatedState.tarotState,
             isWheelSpinning: false,
             wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            startAngle: result.startAngle,
             targetAngle: result.targetAngle,
             spinDurationMs: result.spinDurationMs,
             selectedSegmentIndex: result.landedIndex,
@@ -6446,6 +6448,20 @@ export function registerSocketHandlers(io: IO) {
 
       if (!spinAgain) {
         roomTarotPendingScores.delete(room.id);
+        const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
+        for (const item of gambleResult.scoreDeltas || []) {
+          if (item.delta !== 0) {
+            const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
+            scoreUpdates.push({
+              teamId: item.teamId,
+              score: deltaRes.newScore,
+              delta: deltaRes.effectiveDelta,
+            });
+          }
+        }
+        if (scoreUpdates.length > 0) {
+          io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
         roomMysteryQuests.set(room.id, gambleResult.updatedState);
         io.to(`room:${room.code}`).emit("game:mystery:update", gambleResult.updatedState);
         const refreshedState = await buildRoomState(room.id);
@@ -6467,6 +6483,7 @@ export function registerSocketHandlers(io: IO) {
           ...gambleResult.updatedState.tarotState,
           isWheelSpinning: true,
           wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+          startAngle: gambleResult.startAngle,
           targetAngle: gambleResult.targetAngle,
           spinDurationMs: gambleResult.spinDurationMs,
           selectedSegmentIndex: gambleResult.landedIndex,
@@ -6480,7 +6497,7 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, spinningGambleState);
       io.to(`room:${room.code}`).emit("game:mystery:update", spinningGambleState);
 
-      const dur = gambleResult.spinDurationMs ?? 5000;
+      const dur = gambleResult.spinDurationMs ?? 20000;
       setTimeout(async () => {
         const curQuest = roomMysteryQuests.get(room.id);
         if (!curQuest) return;
@@ -6492,6 +6509,7 @@ export function registerSocketHandlers(io: IO) {
             ...gambleResult.updatedState.tarotState,
             isWheelSpinning: false,
             wheelPower: Math.max(1, Math.min(100, Math.round(powerPercent))),
+            startAngle: gambleResult.startAngle,
             targetAngle: gambleResult.targetAngle,
             spinDurationMs: gambleResult.spinDurationMs,
             selectedSegmentIndex: gambleResult.landedIndex,

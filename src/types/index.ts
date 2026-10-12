@@ -1122,6 +1122,7 @@ export interface MysteryQuestState {
     // Tarot Wheel of Destiny
     isWheelSpinning?: boolean;
     wheelPower?: number; // 0 - 100
+    startAngle?: number; // starting degree of current spin
     targetAngle?: number; // degree of wheel rotation
     spinDurationMs?: number;
     selectedSegmentIndex?: number;
@@ -1595,9 +1596,9 @@ export interface ClientToServerEvents {
   "ancient-tarot-reveal": (payload?: { code?: string }) => void;
   "game:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
   "admin:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
-  "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; code?: string }) => void;
-  "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; code?: string }) => void;
-  "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; code?: string }) => void;
+  "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
+  "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
+  "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   // Tie-Breaker Client Events
   "tie_breaker:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "tie_breaker:answer": (payload: { optionId: string }) => void;

@@ -2,7 +2,7 @@
 
 import { QuestionState, AnswerRevealPayload, BloomLevel, BLOOM_METADATA, getBloomLevelFromPoints } from "@/types";
 import { useState, useEffect, useRef } from "react";
-import { calculateAuthoritativeTimer } from "@/lib/clock-sync";
+import { calculateAuthoritativeTimer, getServerTime } from "@/lib/clock-sync";
 import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
 import { soundManager } from "@/lib/sound-manager";
 
@@ -281,6 +281,11 @@ export default function GameQuestion({
 
   const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE", "MYSTERY_QUEST"].includes(roomMode);
 
+  const isTimerTrulyExpired = timer
+    ? (timer.remaining <= 0 && (!timer.endsAt || timer.endsAt <= 0 || timer.endsAt - getServerTime() <= -400)) ||
+      Boolean(timer.endsAt && timer.endsAt > 0 && timer.endsAt - getServerTime() <= -400)
+    : false;
+
   const canAnswerThisQuestion = () => {
     if (isSpectator && !(roomMode === "ELIMINATION" && isGhost)) return false;
     if (isFinalizedLocally) return false;
@@ -291,7 +296,7 @@ export default function GameQuestion({
     if (question.bouncebackSelectPhase) return false;
     if (question.bouncebackAwaitingJudgment) return false;
     if (question.timerPending && !isSandboxTester) return false;
-    if (timer && timerDisplayRemaining <= 0) return false;
+    if (isTimerTrulyExpired) return false;
 
     // 1. BOUNCEBACK:
     if (roomMode === "BOUNCEBACK") {
@@ -328,7 +333,6 @@ export default function GameQuestion({
 
     // 7. MYSTERY_QUEST: Chỉ duy nhất đội đang làm lượt mới được trả lời!
     if (roomMode === "MYSTERY_QUEST") {
-      if (isSandboxTester) return true;
       return isPrimaryTeam;
     }
 
@@ -356,7 +360,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitMulti = () => {
-    if (selected.length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
+    if (selected.length > 0 && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -369,7 +373,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitEssay = () => {
-    if (essayText.trim() && (canAnswerThisQuestion() || isSandboxTester)) {
+    if (essayText.trim() && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -382,7 +386,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitFill = () => {
-    if (fillText.trim() && (canAnswerThisQuestion() || isSandboxTester)) {
+    if (fillText.trim() && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -395,7 +399,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitMatching = () => {
-    if (Object.keys(matchingPairs).length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
+    if (Object.keys(matchingPairs).length > 0 && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -408,7 +412,7 @@ export default function GameQuestion({
   };
 
   const handleSubmitDragOrder = () => {
-    if (dragOrder.length > 0 && (canAnswerThisQuestion() || isSandboxTester)) {
+    if (dragOrder.length > 0 && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
@@ -1244,9 +1248,9 @@ export default function GameQuestion({
                   <button
                     key={item.id}
                     type="button"
-                    disabled={isFinalizedLocally || Boolean(revealPayload)}
+                    disabled={isFinalizedLocally || Boolean(revealPayload) || !canAnswerThisQuestion()}
                     onClick={() => setSelectedMatchLeft(isSelectedLeft ? null : item.id)}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                       isSelectedLeft
                         ? "border-amber-400 bg-amber-500/20 shadow-md ring-2 ring-amber-400/40"
                         : matchedTargetId
@@ -1301,14 +1305,14 @@ export default function GameQuestion({
                   <button
                     key={opt.id}
                     type="button"
-                    disabled={isFinalizedLocally || Boolean(revealPayload)}
+                    disabled={isFinalizedLocally || Boolean(revealPayload) || !canAnswerThisQuestion()}
                     onClick={() => {
-                      if (!selectedMatchLeft) return;
+                      if (!selectedMatchLeft || !canAnswerThisQuestion()) return;
                       const next = { ...matchingPairs, [selectedMatchLeft]: opt.targetId };
                       setMatchingPairs(next);
                       setSelectedMatchLeft(null);
                     }}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer ${
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
                       isPairedWithCurrent
                         ? "border-cyan-400 bg-cyan-500/20 ring-2 ring-cyan-400/40"
                         : isPairedWithAny
@@ -1329,15 +1333,16 @@ export default function GameQuestion({
             <div className="flex gap-2 mt-2">
               <button
                 type="button"
+                disabled={!canAnswerThisQuestion()}
                 onClick={() => setMatchingPairs({})}
-                className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300 cursor-pointer"
+                className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 Đặt lại
               </button>
               <button
                 type="button"
                 onClick={handleSubmitMatching}
-                disabled={Object.keys(matchingPairs).length === 0 || (!canAnswerThisQuestion() && !isSandboxTester)}
+                disabled={Object.keys(matchingPairs).length === 0 || !canAnswerThisQuestion()}
                 className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm disabled:opacity-50 transition cursor-pointer"
               >
                 {answered ? `✓ Cập nhật ghép cặp (${Object.keys(matchingPairs).length} cặp)` : `Xác nhận ghép cặp (${Object.keys(matchingPairs).length} cặp)`}
@@ -1366,8 +1371,9 @@ export default function GameQuestion({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
-                        disabled={idx === 0}
+                        disabled={idx === 0 || !canAnswerThisQuestion()}
                         onClick={() => {
+                          if (!canAnswerThisQuestion()) return;
                           const next = [...dragOrder];
                           const temp = next[idx - 1];
                           next[idx - 1] = next[idx];
@@ -1381,8 +1387,9 @@ export default function GameQuestion({
                       </button>
                       <button
                         type="button"
-                        disabled={idx === dragOrder.length - 1}
+                        disabled={idx === dragOrder.length - 1 || !canAnswerThisQuestion()}
                         onClick={() => {
+                          if (!canAnswerThisQuestion()) return;
                           const next = [...dragOrder];
                           const temp = next[idx + 1];
                           next[idx + 1] = next[idx];
@@ -1405,7 +1412,7 @@ export default function GameQuestion({
             <button
               type="button"
               onClick={handleSubmitDragOrder}
-              disabled={dragOrder.length === 0 || (!canAnswerThisQuestion() && !isSandboxTester)}
+              disabled={dragOrder.length === 0 || !canAnswerThisQuestion()}
               className="mt-2 py-2.5 sm:py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm transition-colors disabled:opacity-50 cursor-pointer"
             >
               {answered ? "✓ Cập nhật thứ tự sắp xếp" : "Xác nhận thứ tự sắp xếp"}
@@ -1433,7 +1440,7 @@ export default function GameQuestion({
           <span className="text-base">✓</span>
           <span>{isSingleSubmit ? "Đã nộp bài (1 lần duy nhất)" : "Đã lưu đáp án tạm tính"}</span>
           <span className="text-[11px] sm:text-xs text-green-300/80 font-normal">
-            {timer && timerDisplayRemaining <= 0
+            {isTimerTrulyExpired
               ? "(Hết thời gian — Chờ Quản trò công bố kết quả)"
               : isSingleSubmit
               ? "(Chờ các thí sinh khác hoàn thành)"
@@ -1443,14 +1450,20 @@ export default function GameQuestion({
       )}
 
       {/* Chốt đáp án Button in ALLOW_CHANGE mode */}
-      {!isSingleSubmit && answered && !isFinalizedLocally && !revealPayload && timer && timerDisplayRemaining > 0 && (
+      {!isSingleSubmit && answered && !isFinalizedLocally && !revealPayload && timer && !isTimerTrulyExpired && canAnswerThisQuestion() && (
         <button
           type="button"
           onClick={() => {
+            if (!canAnswerThisQuestion()) return;
             setIsFinalizedLocally(true);
-            const finalAns = selected.length > 0
-              ? (q.type === "MC_MULTI" ? selected : selected[0])
-              : (fillText || essayText || undefined);
+            const finalAns =
+              q.type === "MATCHING" && Object.keys(matchingPairs).length > 0
+                ? (matchingPairs as any)
+                : q.type === "DRAG_DROP" && dragOrder.length > 0
+                ? dragOrder
+                : selected.length > 0
+                ? (q.type === "MC_MULTI" ? selected : selected[0])
+                : (fillText || essayText || undefined);
             if (onFinalizeAnswer) {
               onFinalizeAnswer(finalAns);
             }
@@ -1458,7 +1471,7 @@ export default function GameQuestion({
           className="w-full py-2.5 sm:py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-xl flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 border border-emerald-300/40 hover:border-emerald-300"
         >
           <span className="text-base">🔒</span>
-          <span>Chốt đáp án ({timerDisplayRemaining}s còn lại — Hoàn thành sớm)</span>
+          <span>Chốt đáp án ({Math.max(1, timerDisplayRemaining)}s còn lại — Hoàn thành sớm)</span>
         </button>
       )}
 

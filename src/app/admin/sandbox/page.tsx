@@ -3320,11 +3320,86 @@ export default function AdminSandboxPage() {
         }
         return;
       }
+      const isOfflineTeamAllowedToAnswer = (checkTeamId: string): boolean => {
+        if (!currentQuestion) return false;
+        const curState = roomStateRef.current || roomState;
+        if (selectedMode === "ELIMINATION") {
+          const tObj = curState?.teams.find((t) => t.id === checkTeamId);
+          if (tObj?.isEliminated) return false;
+        }
+        if (selectedMode === "BOUNCEBACK") {
+          if (currentQuestion.bouncebackSelectPhase || currentQuestion.isStealPhase) return false;
+          if (currentQuestion.stealBuzzedTeamId) {
+            return Boolean(currentQuestion.stealAnsweringActive && currentQuestion.stealBuzzedTeamId === checkTeamId);
+          }
+          return currentQuestion.primaryTeamId === checkTeamId;
+        }
+        if (selectedMode === "BUZZ") {
+          return Boolean(
+            currentQuestion.buzzAnsweringActive &&
+            currentQuestion.buzzedTeamId &&
+            currentQuestion.buzzedTeamId === checkTeamId
+          );
+        }
+        if (selectedMode === "GRID_CARO") {
+          const turnTeamId = currentQuestion.primaryTeamId || curState?.gridCaroState?.currentTurnTeamId;
+          return Boolean(turnTeamId && turnTeamId === checkTeamId);
+        }
+        if (selectedMode === "DICE_RACE") {
+          const turnTeamId = currentQuestion.primaryTeamId || curState?.diceRaceState?.currentTurnTeamId;
+          return Boolean(turnTeamId && turnTeamId === checkTeamId);
+        }
+        if (selectedMode === "MYSTERY_QUEST") {
+          const turnTeamId = currentQuestion.primaryTeamId || curState?.mysteryQuestState?.currentTurnTeamId;
+          return Boolean(turnTeamId && turnTeamId === checkTeamId);
+        }
+        if (selectedMode === "TOURNAMENT") {
+          const activeMatch =
+            curState?.tournamentState?.matches.find(
+              (m) => m.id === curState?.tournamentState?.currentMatchId || m.status === "IN_PROGRESS"
+            ) || curState?.tournamentState?.matches[0];
+          const t1 = currentQuestion.tournamentTeam1Id || activeMatch?.team1Id;
+          const t2 = currentQuestion.tournamentTeam2Id || activeMatch?.team2Id;
+          if (t1 || t2) {
+            return checkTeamId === t1 || checkTeamId === t2;
+          }
+        }
+        return true;
+      };
+
       if (e.data?.type === "SANDBOX_PLAYER_ANSWER_UPDATE") {
         const { teamId, answer } = e.data;
         if (teamId && answer) {
+          if (isOfflineSandbox && currentQuestion && !isOfflineTeamAllowedToAnswer(teamId)) {
+            return;
+          }
           const singleAns = Array.isArray(answer) ? answer[0] : answer;
           setTeamSelectedAnswers((prev) => ({ ...prev, [teamId]: singleAns }));
+          if (isOfflineSandbox && currentQuestion && !offlineFinalizedActorsRef.current.has(teamId)) {
+            const qData = currentQuestion.question;
+            const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
+            const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
+            const isCorrect = correctOpt
+              ? (correctOpt.id === singleAns ||
+                 (Array.isArray(answer) && answer.includes(correctOpt.id)) ||
+                 (typeof singleAns === "string" && (correctOpt.text?.trim() === singleAns.trim() || correctOpt.id === singleAns.trim())))
+              : false;
+            const timeLimit = currentQuestion.timeLimit || 30;
+            const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
+            const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
+            const base = getBasePointsForMode(currentQuestion.question.points || 10, selectedMode);
+            let awarded = 0;
+            if (isCorrect) {
+              if (selectedMode === "CLASSIC" || selectedMode === "ELIMINATION") {
+                const ratio = Math.max(0, 1 - timeSpentMs / (timeLimit * 1000));
+                const speedBonus = Math.round(base * 0.5 * ratio);
+                awarded = base + speedBonus;
+              } else {
+                awarded = base;
+              }
+            }
+            offlineAnswersRef.current.set(teamId, { answer: singleAns, isCorrect, points: awarded, timeSpent: timeSpentMs });
+          }
         }
         return;
       }
@@ -3463,6 +3538,10 @@ export default function AdminSandboxPage() {
 
       if (action === "answer") {
         if (!currentQuestion) return;
+        if (!isOfflineTeamAllowedToAnswer(targetTeamId)) {
+          addLog(`⚠️ [${targetTeamName}] chưa đến lượt trả lời ở chế độ này!`);
+          return;
+        }
         const qData = currentQuestion.question;
         const opts = qData.options || [];
         const chosenOpt = opts.find((o: any) => o.id === answer || o.text === answer);
@@ -3504,6 +3583,10 @@ export default function AdminSandboxPage() {
         }
       } else if (action === "finalize_answer") {
         if (!currentQuestion) return;
+        if (!isOfflineTeamAllowedToAnswer(targetTeamId)) {
+          addLog(`⚠️ [${targetTeamName}] chưa đến lượt chốt đáp án ở chế độ này!`);
+          return;
+        }
         const qData = currentQuestion.question;
         const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
         const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
@@ -3557,6 +3640,10 @@ export default function AdminSandboxPage() {
         checkOfflineEarlyCompletion();
       } else if (action === "buzz") {
         if (selectedMode === "BOUNCEBACK" && currentQuestion?.isStealPhase) {
+          if (currentQuestion.primaryTeamId === targetTeamId) {
+            addLog(`⚠️ [${targetTeamName}] là đội chính nên không được cướp điểm!`);
+            return;
+          }
           const stealData = { teamId: targetTeamId, teamName: targetTeamName, playerId: "", playerName: "" };
           const updatedQ: QuestionState = {
             ...currentQuestion,
@@ -3580,6 +3667,10 @@ export default function AdminSandboxPage() {
           syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
         }
       } else if (action === "bounceback_select_points") {
+        if (currentQuestion?.primaryTeamId && currentQuestion.primaryTeamId !== targetTeamId) {
+          addLog(`⚠️ Không phải lượt của [${targetTeamName}] để chọn gói điểm!`);
+          return;
+        }
         const pts = (points as 10 | 20 | 30) || 20;
         handleOfflineBouncebackPointsPicked(pts);
       } else if (action === "stop_early") {
@@ -4063,6 +4154,13 @@ export default function AdminSandboxPage() {
     };
     setAdminQuestionData(adminQuestionDataRef.current);
 
+    const activeOfflineMatch =
+      selectedMode === "TOURNAMENT"
+        ? roomState?.tournamentState?.matches.find(
+            (m) => m.id === roomState?.tournamentState?.currentMatchId || m.status === "IN_PROGRESS"
+          ) || roomState?.tournamentState?.matches[0]
+        : undefined;
+
     const qState: QuestionState = {
       question: {
         id: offlineQId,
@@ -4097,7 +4195,7 @@ export default function AdminSandboxPage() {
           : selectedMode === "DICE_RACE"
           ? (roomState?.diceRaceState?.currentTurnTeamId || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.id)
           : selectedMode === "TOURNAMENT"
-          ? roomState?.teams[0]?.id
+          ? (activeOfflineMatch?.team1Id || roomState?.teams[0]?.id)
           : undefined,
       primaryTeamName:
         selectedMode === "BOUNCEBACK"
@@ -4109,10 +4207,10 @@ export default function AdminSandboxPage() {
           : selectedMode === "DICE_RACE"
           ? (roomState?.diceRaceState?.currentTurnTeamName || roomState?.teams[nextIdx % (roomState?.teams.length || 4)]?.name)
           : selectedMode === "TOURNAMENT"
-          ? `${roomState?.teams[0]?.name || "Đội 1"} vs ${roomState?.teams[1]?.name || "Đội 2"}`
+          ? `${activeOfflineMatch?.team1Name || roomState?.teams[0]?.name || "Đội 1"} vs ${activeOfflineMatch?.team2Name || roomState?.teams[1]?.name || "Đội 2"}`
           : undefined,
-      tournamentTeam1Id: selectedMode === "TOURNAMENT" ? roomState?.teams[0]?.id : undefined,
-      tournamentTeam2Id: selectedMode === "TOURNAMENT" ? roomState?.teams[1]?.id : undefined,
+      tournamentTeam1Id: selectedMode === "TOURNAMENT" ? (activeOfflineMatch?.team1Id || roomState?.teams[0]?.id) : undefined,
+      tournamentTeam2Id: selectedMode === "TOURNAMENT" ? (activeOfflineMatch?.team2Id || roomState?.teams[1]?.id) : undefined,
       isGoldQuestion: selectedMode === "CLASSIC" && questions.length >= 7 && (
         normPoints === 30 || nextIdx >= Math.floor(questions.length * 0.7)
       ),

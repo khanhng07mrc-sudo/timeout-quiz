@@ -433,8 +433,8 @@ export default function MysteryQuestBoard({
   };
 
   const isMyTurn = Boolean(myTeamId && myTeamId === currentTurnTeamId);
-  const canInteract = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "PUSH_YOUR_LUCK");
-  const canInteractDecision = Boolean((isMyTurn || isAdmin || isSandbox) && phase === "DECISION_CHOICE");
+  const canInteract = Boolean((isMyTurn || isAdmin) && phase === "PUSH_YOUR_LUCK");
+  const canInteractDecision = Boolean((isMyTurn || isAdmin) && phase === "DECISION_CHOICE");
   const canCashOut = Boolean(canInteract && (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && potPoints > 0);
 
   // Việc chuyển lượt / chuyển câu hỏi diễn ra thủ công bởi Admin/MC, không tự động
@@ -2199,7 +2199,7 @@ export default function MysteryQuestBoard({
 
           const cardVisual = getEntityVisuals(drawnCard?.key);
           const isPendingReveal = Boolean(tarotState?.isRevealPending);
-          const canActOnTarot = Boolean(isMyTurn || isAdmin || isSandbox);
+          const canActOnTarot = Boolean(isMyTurn || isAdmin);
 
           return (
             <div className="max-w-2xl mx-auto py-1.5">
@@ -3278,7 +3278,7 @@ export default function MysteryQuestBoard({
                         </div>
                       </div>
 
-                      {(isMyTurn || isAdmin || isSandbox) ? (
+                      {(isMyTurn || isAdmin) ? (
                         <button
                           type="button"
                           onClick={() => onChooseStealTarget?.(t.id)}
@@ -3295,7 +3295,7 @@ export default function MysteryQuestBoard({
               })()}
             </div>
 
-            {!(isMyTurn || isAdmin || isSandbox) && (
+            {!(isMyTurn || isAdmin) && (
               <p className="text-xs text-slate-400 italic animate-pulse">
                 Đang chờ Đội {currentTurnTeamName} lựa chọn đối thủ để cướp điểm...
               </p>

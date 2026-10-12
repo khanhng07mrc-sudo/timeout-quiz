@@ -46,8 +46,16 @@ export function setServerClockOffset(offset: number) {
 }
 
 export function calibrateClockFromPacket(serverTime?: number) {
-  if (serverTime && !isClockSynced) {
-    serverClockOffset = serverTime - Date.now();
+  if (!serverTime) return;
+  const packetOffset = serverTime - Date.now();
+  if (!isClockSynced) {
+    serverClockOffset = packetOffset;
+    isClockSynced = true;
+    return;
+  }
+  const diff = packetOffset - serverClockOffset;
+  if (diff > 0 || diff < -250) {
+    serverClockOffset = packetOffset + 25;
   }
 }
 

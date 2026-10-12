@@ -184,7 +184,12 @@ export default function PlayPage() {
       setTimer((prev) => {
         if (!prev) return null;
         // Monotonic non-increasing: in the same question countdown, never jump backwards +1s
-        const safeRemaining = Math.min(prev.remaining, auth.remaining);
+        // Also hold at 1s for up to 350ms past endsAt until server's game:timer:expired arrives so last-second clicks are never blocked by minor clock skew
+        const rawAuthRem =
+          auth.remaining <= 0 && prev.remaining > 0 && timer.endsAt && timer.endsAt - getServerTime() > -350
+            ? 1
+            : auth.remaining;
+        const safeRemaining = Math.min(prev.remaining, rawAuthRem);
         if (prev.remaining === safeRemaining) return prev;
         return { ...prev, remaining: safeRemaining };
       });
@@ -214,14 +219,16 @@ export default function PlayPage() {
       ? `timeout_player_id_${code}_t${paramTeamIndex}`
       : `timeout_player_id_${code}`;
 
-    let savedPlayerId = paramPlayerId || sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey);
+    let savedPlayerId = isSandboxParam
+      ? (paramPlayerId || `sb_${code}_t0`)
+      : (paramPlayerId || sessionStorage.getItem(storageKey) || localStorage.getItem(storageKey));
     if (!savedPlayerId) {
       savedPlayerId = paramTeamIndex !== null && paramTeamIndex !== undefined
-        ? `p_sb_${code}_t${paramTeamIndex}_${Math.random().toString(36).slice(2, 7)}`
+        ? `sb_${code}_t0`
         : `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-      sessionStorage.setItem(storageKey, savedPlayerId);
-      localStorage.setItem(storageKey, savedPlayerId);
     }
+    sessionStorage.setItem(storageKey, savedPlayerId);
+    localStorage.setItem(storageKey, savedPlayerId);
     playerIdRef.current = savedPlayerId;
     setPlayerId(savedPlayerId);
     const playerName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || "Thí sinh";
@@ -230,10 +237,8 @@ export default function PlayPage() {
       if (e.data?.type === "SWITCH_ACTIVE_TEAM") {
         const teamId = e.data.payload?.teamId || e.data.teamId;
         const teamName = e.data.payload?.teamName || e.data.teamName || e.data.playerName || "";
-        const teamIndex = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
         const currentAns = e.data.payload?.currentAnswer ?? e.data.currentAnswer;
         if (teamId) {
-          const prevTeamId = myTeamIdRef.current;
           myTeamIdRef.current = teamId;
           setActiveTeamId(teamId);
           setSelectedTeamId(teamId);
@@ -242,8 +247,9 @@ export default function PlayPage() {
           if (currentAns !== undefined && currentAns !== null) {
             teamAnswersRef.current.set(teamId, currentAns);
           }
-          const hasAnswered = Boolean(teamAnswersRef.current.has(teamId));
-          setAnswered(hasAnswered);
+          const savedTeamAns = teamAnswersRef.current.get(teamId) ?? null;
+          setSubmittedAnswer(savedTeamAns);
+          setAnswered(savedTeamAns !== null && savedTeamAns !== undefined);
 
           const teamPlayerId = isSandboxRef.current
             ? `sb_${code}_t0`
@@ -251,10 +257,7 @@ export default function PlayPage() {
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
 
-          const currentPlayerInRoom = roomStateRef.current?.players?.find((p) => p.id === teamPlayerId);
-          const alreadyOnTargetTeam = prevTeamId === teamId && currentPlayerInRoom?.teamId === teamId;
-
-          if (socketRef.current?.connected && !alreadyOnTargetTeam) {
+          if (socketRef.current?.connected) {
             socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId }, (res: any) => {
               if (!res?.success && isSandboxRef.current) {
                 socketRef.current?.emit("room:join", {
@@ -367,6 +370,7 @@ export default function PlayPage() {
           if (isDifferentQ) {
             teamAnswersRef.current.clear();
             setAnswered(false);
+            setSubmittedAnswer(null);
             setSharedPowerupLocked(Boolean(p.currentQuestion?.hasSharedPowerupUsed));
             setSharedPowerupLockedTeamName(undefined);
             setUsedCardTypes([]);
@@ -531,10 +535,9 @@ export default function PlayPage() {
             sessionStorage.setItem("playerName", p.name);
             localStorage.setItem("playerName", p.name);
           }
-          const initialTeamId =
-            p?.teamId ||
-            myTeamIdRef.current ||
-            (isSandboxRef.current ? result.roomState?.teams?.[0]?.id : undefined);
+          const initialTeamId = isSandboxRef.current
+            ? (myTeamIdRef.current || p?.teamId || result.roomState?.teams?.[0]?.id)
+            : (p?.teamId || myTeamIdRef.current);
           if (initialTeamId) {
             myTeamIdRef.current = initialTeamId;
             setSelectedTeamId(initialTeamId);
@@ -623,13 +626,16 @@ export default function PlayPage() {
     socket.on("room:state", (state) => {
       const currentPid = playerIdRef.current || savedPlayerId;
       const curTeam = myTeamIdRef.current || paramTeamId || (isSandboxRef.current ? state?.teams?.[0]?.id : "");
+      const rawPlayer = state?.players?.find((pl) => pl.id === currentPid);
+      const effectiveTid = isSandboxRef.current
+        ? (myTeamIdRef.current || rawPlayer?.teamId || curTeam)
+        : (rawPlayer?.teamId || curTeam);
       let patchedState = state;
-      if (curTeam && state?.players) {
-        const p = state.players.find((pl) => pl.id === currentPid);
-        if (p && !p.teamId) {
+      if (effectiveTid && state?.players) {
+        if (rawPlayer && rawPlayer.teamId !== effectiveTid) {
           patchedState = {
             ...state,
-            players: state.players.map((pl) => pl.id === currentPid ? { ...pl, teamId: curTeam } : pl),
+            players: state.players.map((pl) => pl.id === currentPid ? { ...pl, teamId: effectiveTid } : pl),
           };
         }
       }
@@ -645,7 +651,6 @@ export default function PlayPage() {
         setAnswered(false);
       }
       const p = patchedState.players.find((pl) => pl.id === currentPid);
-      const effectiveTid = p?.teamId || curTeam;
       if (effectiveTid) {
         myTeamIdRef.current = effectiveTid;
         setSelectedTeamId(effectiveTid);
@@ -748,10 +753,10 @@ export default function PlayPage() {
       } else {
         setStealBuzzedTeam(null);
       }
-      if (q.timerStarted && !q.timerPending && q.endsAt && q.endsAt > Date.now()) {
+      if (q.timerStarted && !q.timerPending && q.endsAt && q.endsAt > getServerTime() - 1000) {
         const auth = calculateAuthoritativeTimer(q.endsAt, q.timeLimit, q.timeLimit);
         setTimer({ remaining: auth.remaining, total: q.timeLimit, endsAt: q.endsAt });
-      } else {
+      } else if (isNewQuestion || q.timerPending || !q.timerStarted) {
         setTimer(null);
       }
     });
@@ -831,7 +836,7 @@ export default function PlayPage() {
             }
           : prev
       );
-      const endsAt = Date.now() + payload.timeLimit * 1000;
+      const endsAt = getServerTime() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
       soundManager.stopMusic(); // Theo luật mới: Phần trả lời không phát âm thêm
     });
@@ -857,7 +862,7 @@ export default function PlayPage() {
     socket.on("game:bounceback:open_steal", (payload) => {
       setIsStealPhase(true);
       setStealBuzzedTeam(null);
-      const endsAt = Date.now() + payload.timeLimit * 1000;
+      const endsAt = getServerTime() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
     });
 
@@ -874,7 +879,7 @@ export default function PlayPage() {
 
     socket.on("game:bounceback:steal_answering", (payload) => {
       setStealPrepCountdown(null);
-      const endsAt = Date.now() + payload.timeLimit * 1000;
+      const endsAt = getServerTime() + payload.timeLimit * 1000;
       setTimer({ remaining: payload.timeLimit, total: payload.timeLimit, endsAt });
       if (soundEnabledRef.current) {
         if (payload.timeLimit <= 5) {
@@ -1156,7 +1161,13 @@ export default function PlayPage() {
     if (!currentQuestion || revealPayload) return;
     setAnswered(true);
     setSubmittedAnswer(answer);
-    const targetTeamId = explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId || mePlayer?.teamId || roomState?.teams[0]?.id;
+    const targetTeamId =
+      explicitTeamId ||
+      activeTeamId ||
+      myTeamIdRef.current ||
+      selectedTeamId ||
+      mePlayer?.teamId ||
+      (isSandboxRef.current ? roomState?.teams[0]?.id : undefined);
     if (targetTeamId) teamAnswersRef.current.set(targetTeamId, answer);
     if (socketRef.current?.connected) {
       socketRef.current.emit("game:answer:submit", {
@@ -1277,8 +1288,14 @@ export default function PlayPage() {
   };
 
   const handleFinalizeAnswer = (answer?: string | string[], explicitTeamId?: string) => {
+    const targetTeamId =
+      explicitTeamId ||
+      activeTeamId ||
+      myTeamIdRef.current ||
+      selectedTeamId ||
+      mePlayer?.teamId ||
+      (isSandboxRef.current ? roomState?.teams[0]?.id : undefined);
     if (socketRef.current?.connected && currentQuestion) {
-      const targetTeamId = explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId || mePlayer?.teamId || roomState?.teams[0]?.id;
       socketRef.current.emit("game:answer:finalize", {
         questionId: currentQuestion.question.id,
         answer,
@@ -1290,7 +1307,7 @@ export default function PlayPage() {
         action: "finalize_answer",
         questionId: currentQuestion?.question.id,
         answer,
-        teamId: explicitTeamId || myTeamIdRef.current || activeTeamId || selectedTeamId,
+        teamId: targetTeamId,
         playerId: playerIdRef.current,
       }, "*");
     }
@@ -1858,12 +1875,39 @@ export default function PlayPage() {
 
             <GameQuestion
               key={`${currentQuestion.question.id}_${effectiveTeamId}_${playerId}`}
-              question={currentQuestion}
+              question={
+                currentQuestion.primaryTeamId
+                  ? currentQuestion
+                  : {
+                      ...currentQuestion,
+                      primaryTeamId:
+                        roomState?.mode === "GRID_CARO"
+                          ? roomState.gridCaroState?.currentTurnTeamId
+                          : roomState?.mode === "DICE_RACE"
+                          ? roomState.diceRaceState?.currentTurnTeamId
+                          : roomState?.mode === "MYSTERY_QUEST"
+                          ? roomState.mysteryQuestState?.currentTurnTeamId
+                          : currentQuestion.primaryTeamId,
+                      primaryTeamName:
+                        currentQuestion.primaryTeamName ||
+                        roomState?.teams?.find(
+                          (t) =>
+                            t.id ===
+                            (roomState?.mode === "GRID_CARO"
+                              ? roomState.gridCaroState?.currentTurnTeamId
+                              : roomState?.mode === "DICE_RACE"
+                              ? roomState.diceRaceState?.currentTurnTeamId
+                              : roomState?.mode === "MYSTERY_QUEST"
+                              ? roomState.mysteryQuestState?.currentTurnTeamId
+                              : undefined)
+                        )?.name,
+                    }
+              }
               timer={timer}
               onAnswer={handleAnswer}
               onBuzz={handleBuzz}
               answered={answered || Boolean(effectiveTeamId && teamAnswersRef.current.has(effectiveTeamId))}
-              initialAnswer={submittedAnswer || (effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : null) || null}
+              initialAnswer={(effectiveTeamId ? teamAnswersRef.current.get(effectiveTeamId) : submittedAnswer) ?? null}
               revealPayload={revealPayload}
               roomStatus={roomState?.status ?? "PLAYING"}
               hiddenOptionIds={hiddenOptionIds}

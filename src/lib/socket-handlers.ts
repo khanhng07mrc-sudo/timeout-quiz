@@ -1077,6 +1077,16 @@ function generateDiceTiles(totalTiles: number = 60): DiceTile[] {
 const roomCache = new Map<string, any>(); // roomId -> room with quizBank & questions
 const roomQuestionsCache = new Map<string, any[]>(); // roomId -> questions
 const roomActiveAnswers = new Map<string, Map<string, { teamId?: string; playerId?: string; answer: string | string[]; isCorrect: boolean | null; timeSpent: number; submittedAt: number }>>(); // qKey -> (actorKey -> answerData)
+const roomPendingSubmissions = new Map<string, Set<Promise<void>>>(); // roomId -> Set of in-flight processAnswerSubmission promises
+
+async function waitForPendingSubmissions(roomId: string, timeoutMs = 1500) {
+  const pending = roomPendingSubmissions.get(roomId);
+  if (!pending || pending.size === 0) return;
+  await Promise.race([
+    Promise.allSettled(Array.from(pending)),
+    new Promise((r) => setTimeout(r, timeoutMs)),
+  ]);
+}
 
 export function cleanupRoomInMemory(roomId: string) {
   try {
@@ -1148,6 +1158,7 @@ export function cleanupRoomInMemory(roomId: string) {
     roomQuestionsCache.delete(roomId);
     roomGoldQuestions.delete(roomId);
     roomEliminationGhostStats.delete(roomId);
+    roomPendingSubmissions.delete(roomId);
 
     // 5. Delete qKey-level entries (qKey starts with `${roomId}:`)
     const prefix = `${roomId}:`;
@@ -1823,6 +1834,13 @@ export function registerSocketHandlers(io: IO) {
                 const isSteal = roomStealPhase.get(qKey) ?? false;
                 const config = room.config as any;
                 const mysteryState = roomMysteryQuests.get(room.id);
+                const gridState = roomGridCaros.get(room.id);
+                const diceState = roomDiceRaces.get(room.id);
+                const tournamentState = roomTournaments.get(room.id);
+                const activeMatch =
+                  room.mode === "TOURNAMENT" && tournamentState
+                    ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
+                    : undefined;
 
                 const qState = buildQuestionState(currentQ, {
                   order:
@@ -1831,10 +1849,28 @@ export function registerSocketHandlers(io: IO) {
                       : currentQ.order,
                   primaryTeamId:
                     primary?.teamId ||
-                    (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamId : undefined),
+                    (room.mode === "MYSTERY_QUEST"
+                      ? mysteryState?.currentTurnTeamId
+                      : room.mode === "GRID_CARO"
+                      ? gridState?.currentTurnTeamId
+                      : room.mode === "DICE_RACE"
+                      ? diceState?.currentTurnTeamId
+                      : room.mode === "TOURNAMENT"
+                      ? activeMatch?.team1Id
+                      : undefined),
                   primaryTeamName:
                     primary?.teamName ||
-                    (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamName : undefined),
+                    (room.mode === "MYSTERY_QUEST"
+                      ? mysteryState?.currentTurnTeamName
+                      : room.mode === "GRID_CARO"
+                      ? gridState?.currentTurnTeamName
+                      : room.mode === "DICE_RACE"
+                      ? diceState?.currentTurnTeamName
+                      : room.mode === "TOURNAMENT" && activeMatch
+                      ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
+                      : undefined),
+                  tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
+                  tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
                   bloomLevel: getBloomLevelFromPoints(currentQ.points),
                   answerMethod: config?.answerMethod ?? "DEVICE",
                   isStealPhase: isSteal,
@@ -2061,6 +2097,13 @@ export function registerSocketHandlers(io: IO) {
               const isSteal = roomStealPhase.get(qKey) ?? false;
               const config = room.config as any;
               const mysteryState = roomMysteryQuests.get(room.id);
+              const gridState = roomGridCaros.get(room.id);
+              const diceState = roomDiceRaces.get(room.id);
+              const tournamentState = roomTournaments.get(room.id);
+              const activeMatch =
+                room.mode === "TOURNAMENT" && tournamentState
+                  ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
+                  : undefined;
 
               const qState = buildQuestionState(currentQ, {
                 order:
@@ -2069,10 +2112,28 @@ export function registerSocketHandlers(io: IO) {
                     : currentQ.order,
                 primaryTeamId:
                   primary?.teamId ||
-                  (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamId : undefined),
+                  (room.mode === "MYSTERY_QUEST"
+                    ? mysteryState?.currentTurnTeamId
+                    : room.mode === "GRID_CARO"
+                    ? gridState?.currentTurnTeamId
+                    : room.mode === "DICE_RACE"
+                    ? diceState?.currentTurnTeamId
+                    : room.mode === "TOURNAMENT"
+                    ? activeMatch?.team1Id
+                    : undefined),
                 primaryTeamName:
                   primary?.teamName ||
-                  (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamName : undefined),
+                  (room.mode === "MYSTERY_QUEST"
+                    ? mysteryState?.currentTurnTeamName
+                    : room.mode === "GRID_CARO"
+                    ? gridState?.currentTurnTeamName
+                    : room.mode === "DICE_RACE"
+                    ? diceState?.currentTurnTeamName
+                    : room.mode === "TOURNAMENT" && activeMatch
+                    ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
+                    : undefined),
+                tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
+                tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
                 bloomLevel: getBloomLevelFromPoints(currentQ.points),
                 answerMethod: config?.answerMethod ?? "DEVICE",
                 isStealPhase: isSteal,
@@ -2293,6 +2354,13 @@ export function registerSocketHandlers(io: IO) {
               const isSteal = roomStealPhase.get(qKey) ?? false;
               const config = room.config as any;
               const mysteryState = roomMysteryQuests.get(room.id);
+              const gridState = roomGridCaros.get(room.id);
+              const diceState = roomDiceRaces.get(room.id);
+              const tournamentState = roomTournaments.get(room.id);
+              const activeMatch =
+                room.mode === "TOURNAMENT" && tournamentState
+                  ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
+                  : undefined;
 
               const qState = buildQuestionState(currentQ, {
                 order:
@@ -2301,10 +2369,28 @@ export function registerSocketHandlers(io: IO) {
                     : currentQ.order,
                 primaryTeamId:
                   primary?.teamId ||
-                  (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamId : undefined),
+                  (room.mode === "MYSTERY_QUEST"
+                    ? mysteryState?.currentTurnTeamId
+                    : room.mode === "GRID_CARO"
+                    ? gridState?.currentTurnTeamId
+                    : room.mode === "DICE_RACE"
+                    ? diceState?.currentTurnTeamId
+                    : room.mode === "TOURNAMENT"
+                    ? activeMatch?.team1Id
+                    : undefined),
                 primaryTeamName:
                   primary?.teamName ||
-                  (room.mode === "MYSTERY_QUEST" ? mysteryState?.currentTurnTeamName : undefined),
+                  (room.mode === "MYSTERY_QUEST"
+                    ? mysteryState?.currentTurnTeamName
+                    : room.mode === "GRID_CARO"
+                    ? gridState?.currentTurnTeamName
+                    : room.mode === "DICE_RACE"
+                    ? diceState?.currentTurnTeamName
+                    : room.mode === "TOURNAMENT" && activeMatch
+                    ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
+                    : undefined),
+                tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
+                tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
                 bloomLevel: getBloomLevelFromPoints(currentQ.points),
                 answerMethod: config?.answerMethod ?? "DEVICE",
                 isStealPhase: isSteal,
@@ -2381,8 +2467,6 @@ export function registerSocketHandlers(io: IO) {
     // ── Submit Answer (Player Device) ─────────────────────────────────────────
     socket.on("game:answer:submit", async ({ questionId, answer, teamId, playerId: clientPlayerId, clientAnsweredAt }: any) => {
       try {
-        if (!checkActionDebounce(socket.id, 150)) return;
-
         // Security: Ràng buộc định danh chặt chẽ với socket (chống packet spoofing / mạo danh)
         let playerId = playerSockets.get(socket.id);
         if (!playerId) {
@@ -2395,10 +2479,23 @@ export function registerSocketHandlers(io: IO) {
             playerSockets.set(socket.id, dbPlayer.id);
           }
         }
-        // Nếu client cố tình gửi clientPlayerId khác với ID thật của socket: Từ chối gói tin
-        if (clientPlayerId && playerId && clientPlayerId !== playerId) {
+
+        const isSandboxClient = Boolean(
+          socket.handshake?.query?.sandbox === "1" ||
+          playerId?.startsWith("sb_") ||
+          playerId?.startsWith("p_sb_") ||
+          clientPlayerId?.startsWith("sb_") ||
+          clientPlayerId?.startsWith("p_sb_")
+        );
+
+        // Nếu client cố tình gửi clientPlayerId khác với ID thật của socket: Từ chối gói tin (trừ Sandbox Tester đổi đội)
+        if (!isSandboxClient && clientPlayerId && playerId && clientPlayerId !== playerId) {
           console.warn(`[Security] Gói tin nộp bài mạo danh từ socket ${socket.id}: khai ${clientPlayerId}, thực tế ${playerId}`);
           return;
+        }
+        if (!playerId && isSandboxClient && clientPlayerId) {
+          playerId = clientPlayerId;
+          playerSockets.set(socket.id, clientPlayerId);
         }
         if (!playerId) return;
 
@@ -2409,6 +2506,7 @@ export function registerSocketHandlers(io: IO) {
               OR: [
                 { id: playerId },
                 { socketId: socket.id },
+                ...(clientPlayerId ? [{ id: clientPlayerId }] : []),
               ],
             },
             include: { room: true, team: true },
@@ -2428,9 +2526,13 @@ export function registerSocketHandlers(io: IO) {
           playerSessions.set(player.id, session);
         }
 
-        // Chống nộp bài thay đội khác: Chỉ chấp nhận nộp cho chính đội của socket
-        const submissionTeamId = session.teamId;
-        if (teamId && submissionTeamId && teamId !== submissionTeamId) {
+        // Chống nộp bài thay đội khác: Chỉ chấp nhận nộp cho chính đội của socket (trong Sandbox cho phép đổi đội tức thời)
+        let submissionTeamId = session.teamId;
+        if (isSandboxClient && teamId) {
+          session.teamId = teamId;
+          submissionTeamId = teamId;
+          roomSandboxActiveTeam.set(session.roomId, teamId);
+        } else if (teamId && submissionTeamId && teamId !== submissionTeamId) {
           console.warn(`[Security] Gói tin nộp bài mạo danh đội từ socket ${socket.id}: khai team ${teamId}, thực tế ${submissionTeamId}`);
           return;
         }
@@ -2874,7 +2976,18 @@ export function registerSocketHandlers(io: IO) {
       if (!playerId) return;
       const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
       if (!player?.room) return;
-      await handleBouncebackPointSelect(player.room.id, points as any);
+      const room = player.room;
+      const activeQ = roomActiveQuestions.get(room.id);
+      const qId = activeQ?.question?.id;
+      const primary = qId ? roomPrimaryTeams.get(`${room.id}:${qId}`) : undefined;
+      const expectedPrimaryTeamId = primary?.teamId || activeQ?.primaryTeamId;
+      const sess = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+      const effectivePlayerTeamId = sess?.teamId || player.teamId;
+      if (expectedPrimaryTeamId && effectivePlayerTeamId !== expectedPrimaryTeamId && player.id !== expectedPrimaryTeamId) {
+        socket.emit("error", "Hiện đang là lượt chọn gói câu hỏi của đội chính!");
+        return;
+      }
+      await handleBouncebackPointSelect(room.id, points as any);
     });
 
     socket.on("admin:bounceback:select_points", async ({ points }) => {
@@ -6941,6 +7054,24 @@ export function registerSocketHandlers(io: IO) {
       roomSandboxActiveTeam.set(room.id, teamId);
       console.log(`[admin:sandbox:set_active_team] Room ${room.code} active human team set to ${teamId} (index ${teamIndex})`);
 
+      // Sync in-memory player sessions for tester sockets immediately
+      for (const [, sess] of socketPlayerSessions.entries()) {
+        if (
+          sess.roomId === room.id &&
+          (sess.playerId.startsWith("sb_") || sess.playerId.startsWith("p_sb_") || sess.playerName.includes("Tester"))
+        ) {
+          sess.teamId = teamId;
+        }
+      }
+      for (const [, sess] of playerSessions.entries()) {
+        if (
+          sess.roomId === room.id &&
+          (sess.playerId.startsWith("sb_") || sess.playerId.startsWith("p_sb_") || sess.playerName.includes("Tester"))
+        ) {
+          sess.teamId = teamId;
+        }
+      }
+
       await prisma.player.updateMany({
         where: {
           roomId: room.id,
@@ -7388,11 +7519,11 @@ export function registerSocketHandlers(io: IO) {
       const room = player.room;
       const qKey = `${room.id}:${questionId}`;
 
-      let effectiveTeamId = teamId || player.teamId;
+      const sess = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
+      let effectiveTeamId = teamId || sess?.teamId || player.teamId;
       if (!effectiveTeamId && (playerId.startsWith("p_sb_") || playerId.startsWith("sb_") || player.name.includes("Tester"))) {
         const activeSb = roomSandboxActiveTeam.get(room.id);
-        const primary = roomPrimaryTeams.get(qKey);
-        effectiveTeamId = activeSb || primary?.teamId || null;
+        effectiveTeamId = activeSb || null;
         if (!effectiveTeamId && room.name?.startsWith("[Sandbox]")) {
           const match = playerId.match(/_t(\d+)/);
           if (match) {
@@ -7417,6 +7548,48 @@ export function registerSocketHandlers(io: IO) {
 
       const actorId = effectiveTeamId || player.id;
 
+      // Turn ownership validation before allowing finalize
+      if (room.mode === "BOUNCEBACK") {
+        const stealInfo = roomStealBuzzed.get(qKey);
+        const primary = roomPrimaryTeams.get(qKey);
+        if (stealInfo) {
+          if (effectiveTeamId !== stealInfo.teamId && actorId !== stealInfo.teamId && player.id !== stealInfo.playerId) {
+            socket.emit("error", "Chỉ đội cướp chuông mới được chốt đáp án!");
+            return;
+          }
+        } else if (primary) {
+          if (effectiveTeamId !== primary.teamId && actorId !== primary.teamId) {
+            socket.emit("error", "Hiện đang là lượt của đội chính!");
+            return;
+          }
+        }
+      } else if (room.mode === "BUZZ") {
+        const buzz = roomBuzzFirst.get(qKey);
+        if (!buzz || (effectiveTeamId !== buzz.teamId && actorId !== buzz.teamId && player.id !== buzz.playerId)) {
+          socket.emit("error", "Chỉ đội bấm chuông đầu tiên mới được chốt đáp án!");
+          return;
+        }
+      } else if (room.mode === "GRID_CARO") {
+        const gridState = roomGridCaros.get(room.id);
+        if (gridState && effectiveTeamId !== gridState.currentTurnTeamId && actorId !== gridState.currentTurnTeamId) {
+          socket.emit("error", "Hiện đang là lượt của đội khác!");
+          return;
+        }
+      } else if (room.mode === "DICE_RACE") {
+        const diceState = roomDiceRaces.get(room.id);
+        if (diceState && effectiveTeamId !== diceState.currentTurnTeamId && actorId !== diceState.currentTurnTeamId) {
+          socket.emit("error", "Hiện đang là lượt của đội khác!");
+          return;
+        }
+      } else if (room.mode === "MYSTERY_QUEST") {
+        const questState = roomMysteryQuests.get(room.id);
+        const turnTid = questState?.currentTurnTeamId;
+        if (questState && (questState.phase !== "QUESTION_ACTIVE" || (effectiveTeamId !== turnTid && actorId !== turnTid))) {
+          socket.emit("error", "Hiện đang là lượt thi đấu của đội khác!");
+          return;
+        }
+      }
+
       if (answer !== undefined) {
         await processAnswerSubmission({
           io,
@@ -7428,6 +7601,8 @@ export function registerSocketHandlers(io: IO) {
           isAdminOverride: false,
           socket,
         });
+      } else {
+        await waitForPendingSubmissions(room.id);
       }
 
       let finSet = roomFinalizedActors.get(qKey);
@@ -8130,7 +8305,32 @@ function evaluateAnswerCorrectness(
   return { isAutoCorrect, answerText };
 }
 
-async function processAnswerSubmission({
+async function processAnswerSubmission(params: {
+  io: IO;
+  roomId: string;
+  questionId: string;
+  playerId?: string;
+  teamId?: string;
+  answer: string | string[];
+  clientAnsweredAt?: number;
+  isAdminOverride?: boolean;
+  socket?: Sock;
+}) {
+  let pendingSet = roomPendingSubmissions.get(params.roomId);
+  if (!pendingSet) {
+    pendingSet = new Set<Promise<void>>();
+    roomPendingSubmissions.set(params.roomId, pendingSet);
+  }
+  const taskPromise = processAnswerSubmissionImpl(params);
+  pendingSet.add(taskPromise);
+  try {
+    await taskPromise;
+  } finally {
+    pendingSet.delete(taskPromise);
+  }
+}
+
+async function processAnswerSubmissionImpl({
   io,
   roomId,
   questionId,
@@ -8157,7 +8357,7 @@ async function processAnswerSubmission({
   });
   if (!room || room.status !== "PLAYING") return;
 
-  const question = await prisma.question.findUnique({ where: { id: questionId } });
+  const question = (await getResolvedQuestion(roomId, questionId)) || (await prisma.question.findUnique({ where: { id: questionId } }));
   if (!question) return;
   const qKey = `${room.id}:${questionId}`;
 
@@ -8208,11 +8408,11 @@ async function processAnswerSubmission({
     }
   }
 
-  // Security: Kiểm tra thời gian hết giờ căn cứ Authoritative trên Server Time (bù trễ mạng 1500ms)
+  // Security: Kiểm tra thời gian hết giờ căn cứ Authoritative trên Server Time (bù trễ mạng 2500ms cho các cú click giây cuối)
   const nowArrival = Date.now();
   const endsAtAuthoritative = activeQ?.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);
   if (endsAtAuthoritative > 0 && !isAdminOverride) {
-    if (nowArrival > endsAtAuthoritative + 1500) {
+    if (nowArrival > endsAtAuthoritative + 2500) {
       if (socket) {
         socket.emit("error", "Đã hết thời gian trả lời câu hỏi!");
         socket.emit("game:timer", {
@@ -8264,7 +8464,6 @@ async function processAnswerSubmission({
       }
     } else if (pRecord?.name?.includes("Tester") || playerId.startsWith("p_sb_") || playerId.startsWith("sb_")) {
       const activeSb = isSandboxRoom ? roomSandboxActiveTeam.get(room.id) : undefined;
-      const primary = roomPrimaryTeams.get(qKey);
       let matchTeamId: string | undefined;
       const match = playerId?.match(/_t(\d+)/);
       if (match && room.teams.length > 0) {
@@ -8272,7 +8471,7 @@ async function processAnswerSubmission({
         matchTeamId = (rawIdx < room.teams.length ? room.teams[rawIdx]?.id : undefined) ||
                       (rawIdx >= 1 && rawIdx <= room.teams.length ? room.teams[rawIdx - 1]?.id : undefined);
       }
-      effectiveTeamId = activeSb || matchTeamId || primary?.teamId || room.teams[0]?.id;
+      effectiveTeamId = activeSb || matchTeamId || room.teams[0]?.id;
       if (effectiveTeamId && pRecord?.id) {
         await prisma.player.update({
           where: { id: pRecord.id },
@@ -8890,6 +9089,7 @@ async function finalizeBuzzAnswer(
 ) {
   const qKey = `${roomId}:${questionId}`;
   stopQuestionTimer(roomId);
+  await waitForPendingSubmissions(roomId);
 
   const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
   const dbQuestion = await prisma.question.findUnique({ where: { id: questionId } });
@@ -9010,6 +9210,7 @@ async function finalizeBuzzAnswer(
 }
 
 async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9218,6 +9419,7 @@ async function advanceGridToBoard(io: IO, roomId: string, roomCode: string) {
 }
 
 async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9312,6 +9514,7 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
 }
 
 async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9364,6 +9567,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
 }
 
 async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, questionId: string) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9589,6 +9793,7 @@ async function finalizeBouncebackPrimary(
   questionId: string,
   forceCorrect?: boolean
 ): Promise<boolean> {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return false;
 
@@ -9719,6 +9924,7 @@ async function finalizeBouncebackSteal(
   questionId: string,
   forceCorrect?: boolean
 ) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9822,6 +10028,7 @@ async function finalizeBouncebackSteal(
 }
 
 async function finalizeIndividualScores(io: IO, roomId: string, roomCode: string, questionId: string) {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionProcessed.has(qKey)) return;
   roomQuestionProcessed.add(qKey);
@@ -9982,6 +10189,7 @@ async function getResolvedQuestion(roomId: string, questionId: string, dbQuestio
 
 async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, questionId: string, customTeamSummaries?: TeamRevealSummary[]) {
   stopQuestionTimer(roomId);
+  await waitForPendingSubmissions(roomId);
 
   const room = await prisma.room.findUnique({ where: { id: roomId } });
   const dbQ = await prisma.question.findUnique({ where: { id: questionId } });
@@ -10635,6 +10843,7 @@ async function resolveQuestionTeamScores(
   effectiveDifficulty?: number;
   itemDiscrimination?: number;
 }> {
+  await waitForPendingSubmissions(roomId);
   const qKey = `${roomId}:${questionId}`;
   if (roomQuestionScoresCache.has(qKey)) {
     return roomQuestionScoresCache.get(qKey)!;
@@ -10973,6 +11182,7 @@ async function resolveQuestionTeamScores(
 
 async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string) {
   stopQuestionTimer(roomId);
+  await waitForPendingSubmissions(roomId);
 
   const key = `${roomId}:timer`;
   roomRemainingTimes.set(key, 0);
@@ -11101,6 +11311,14 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
   roomTimerEndsAt.set(roomId, endsAt);
   roomRemainingTimes.set(key, timeLimit);
 
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ && activeQ.question?.id === questionId) {
+    activeQ.timerPending = false;
+    activeQ.timerStarted = true;
+    activeQ.endsAt = endsAt;
+    activeQ.serverTime = Date.now();
+  }
+
   // Broadcast immediate sync tick with authoritative endsAt and server timestamp
   io.to(`room:${roomCode}`).emit("game:timer", {
     remaining: timeLimit,
@@ -11121,6 +11339,9 @@ function startQuestionTimer(io: IO, roomCode: string, roomId: string, questionId
     });
     if (remaining <= 0) {
       stopQuestionTimer(roomId);
+      // 350ms network grace window so packets clicked in the last fraction of a second arrive before time-up finalization
+      await new Promise((r) => setTimeout(r, 350));
+      await waitForPendingSubmissions(roomId);
       await finalizeQuestionOnTimeUp(io, roomId, roomCode, questionId);
     }
   }, 1000) as unknown as NodeJS.Timeout);

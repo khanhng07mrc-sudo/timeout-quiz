@@ -164,14 +164,14 @@ export default function ArenaModeLaunchTransition({
         }}
       />
 
-      {/* ── 3. VIDEO WEBM 3D TRONG SUỐT CẤT CÁNH TỪ ICON GÓC TRÁI (0% GPU OVERHEAD, 0% CRASH TAB) ── */}
+      {/* ── 3. VIDEO WEBM 3D TRONG SUỐT (Căn chính giữa màn hình, hiệu ứng zoom mượt mà ổn định) ── */}
       <div
         className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform"
         style={{
           transform: isExpanded
             ? "translate3d(0, 0, 0) scale(1)"
-            : `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18)`,
-          transition: "transform 360ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease-out",
+            : "translate3d(0, 0, 0) scale(0.9)",
+          transition: "transform 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease-out",
           opacity: isOutro ? 0 : 1,
         }}
       >

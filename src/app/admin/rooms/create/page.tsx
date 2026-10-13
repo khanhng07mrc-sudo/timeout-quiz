@@ -8,6 +8,7 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import SystemIcon from "@/components/ui/SystemIcon";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import DualTabTransition from "@/components/ui/DualTabTransition";
+import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
@@ -44,6 +45,9 @@ export default function CreateRoomPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isLaunchingTransition, setIsLaunchingTransition] = useState(false);
+  const [isLaunchReady, setIsLaunchReady] = useState(false);
+  const [pendingRedirectUrl, setPendingRedirectUrl] = useState("");
 
   // Quiz banks
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
@@ -284,12 +288,18 @@ export default function CreateRoomPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      const nextUrl = data.hostKey
+        ? `/admin/rooms/${data.room.code}?key=${data.hostKey}`
+        : `/admin/rooms/${data.room.code}`;
       if (data.hostKey) {
         localStorage.setItem(`host_key_${data.room.code}`, data.hostKey);
-        router.push(`/admin/rooms/${data.room.code}?key=${data.hostKey}`);
-      } else {
-        router.push(`/admin/rooms/${data.room.code}`);
       }
+      // Kích hoạt transition 3D trước khi chuyển vào phòng đấu chính
+      setPendingRedirectUrl(nextUrl);
+      setIsLaunchingTransition(true);
+      setTimeout(() => {
+        setIsLaunchReady(true);
+      }, 150);
     } catch (err: any) {
       setError(err.message ?? "Lỗi khi tạo phòng");
       setLoading(false);
@@ -297,7 +307,19 @@ export default function CreateRoomPage() {
   };
 
   return (
-    <div className="max-w-4xl animate-loaded-reveal">
+    <div className="max-w-4xl animate-loaded-reveal relative">
+      {/* ── 3D Launch Transition Đồng Bộ Cho Phòng Đấu Chính ── */}
+      <ArenaModeLaunchTransition
+        isOpen={isLaunchingTransition}
+        isReady={isLaunchReady}
+        mode={mode}
+        modeName={GAME_MODES.find((m) => m.value === mode)?.label || mode}
+        onComplete={() => {
+          if (pendingRedirectUrl) {
+            router.push(pendingRedirectUrl);
+          }
+        }}
+      />
       <div className="mb-8">
         <h1 className="text-3xl font-black">Tạo phòng mới</h1>
         <div className="flex gap-2 mt-4">

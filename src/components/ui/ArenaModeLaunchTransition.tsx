@@ -37,6 +37,7 @@ export default function ArenaModeLaunchTransition({
 }: Props) {
   const [mounted, setMounted] = useState(false);
   const [phase, setPhase] = useState<"idle" | "loading" | "outro">("idle");
+  const [isExpanded, setIsExpanded] = useState(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -45,6 +46,7 @@ export default function ArenaModeLaunchTransition({
   const timerOutroRef = useRef<NodeJS.Timeout | null>(null);
   const timerDoneRef = useRef<NodeJS.Timeout | null>(null);
   const timerFallbackRef = useRef<NodeJS.Timeout | null>(null);
+  const timerExpandRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -55,6 +57,7 @@ export default function ArenaModeLaunchTransition({
     setPhase("outro");
     timerDoneRef.current = setTimeout(() => {
       setPhase("idle");
+      setIsExpanded(false);
       if (onCompleteRef.current) {
         onCompleteRef.current();
       }
@@ -67,12 +70,20 @@ export default function ArenaModeLaunchTransition({
       if (timerOutroRef.current) clearTimeout(timerOutroRef.current);
       if (timerDoneRef.current) clearTimeout(timerDoneRef.current);
       if (timerFallbackRef.current) clearTimeout(timerFallbackRef.current);
+      if (timerExpandRef.current) clearTimeout(timerExpandRef.current);
       setPhase("idle");
+      setIsExpanded(false);
       return;
     }
 
     openTimestampRef.current = Date.now();
     setPhase("loading");
+    setIsExpanded(false);
+
+    // Kích hoạt animation cất cánh mượt mà từ icon sau frame đầu tiên
+    timerExpandRef.current = setTimeout(() => {
+      setIsExpanded(true);
+    }, 25);
 
     // Phát âm thanh Web Audio API độc bản không cần tải file ngoài
     transitionSoundEngine.playTransitionSfx(String(mode));
@@ -96,6 +107,7 @@ export default function ArenaModeLaunchTransition({
     return () => {
       if (timerOutroRef.current) clearTimeout(timerOutroRef.current);
       if (timerFallbackRef.current) clearTimeout(timerFallbackRef.current);
+      if (timerExpandRef.current) clearTimeout(timerExpandRef.current);
     };
   }, [isOpen, mode, triggerOutro]);
 
@@ -118,8 +130,6 @@ export default function ArenaModeLaunchTransition({
     deltaY = srcY - centerY;
   }
 
-  const isTakeoff = phase === "loading" || phase === "outro";
-
   return createPortal(
     <div
       aria-hidden="true"
@@ -136,32 +146,32 @@ export default function ArenaModeLaunchTransition({
         isOutro ? "opacity-0" : "opacity-100"
       }`}
     >
-      {/* ── 1. MÀN CHE ĐEN TUYỀN SOLID 100% (Khử sạch hoàn toàn chữ và thẻ bên dưới) ── */}
+      {/* ── 1. MÀN CHE MỜ KÍNH TỐI NHẸ (Backdrop Blur + Dark Overlay 60% làm nổi bật video 3D trong suốt) ── */}
       <div
-        className={`absolute inset-0 bg-[#04050d] transition-opacity duration-300 ease-out will-change-transform ${
+        className={`absolute inset-0 bg-[#030712]/60 backdrop-blur-md transition-opacity duration-300 ease-out will-change-transform ${
           isOutro ? "opacity-0" : "opacity-100"
         }`}
       />
 
-      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh video 1080p điện ảnh) ── */}
+      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh video 3D điện ảnh trong suốt) ── */}
       <div
         className={`absolute inset-0 pointer-events-none transition-opacity duration-400 ${
           isOutro ? "opacity-0" : "opacity-100"
         }`}
         style={{
           background:
-            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.18) 0%, rgba(147,51,234,0.09) 35%, rgba(4,5,13,0.95) 70%, #04050d 100%)",
+            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.22) 0%, rgba(147,51,234,0.12) 35%, rgba(3,7,18,0.5) 70%, transparent 100%)",
         }}
       />
 
-      {/* ── 3. VIDEO WEBM 1080P GIẢI MÃ PHẦN CỨNG (0% WEBGPU OVERHEAD, 0% CRASH TAB) ── */}
+      {/* ── 3. VIDEO WEBM 3D TRONG SUỐT CẤT CÁNH TỪ ICON GÓC TRÁI (0% GPU OVERHEAD, 0% CRASH TAB) ── */}
       <div
         className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform"
         style={{
-          transform: isTakeoff
+          transform: isExpanded
             ? "translate3d(0, 0, 0) scale(1)"
             : `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18)`,
-          transition: "transform 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease-out",
+          transition: "transform 360ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease-out",
           opacity: isOutro ? 0 : 1,
         }}
       >
@@ -173,7 +183,7 @@ export default function ArenaModeLaunchTransition({
           playsInline
           preload="auto"
           onEnded={triggerOutro}
-          className="w-full h-full object-cover pointer-events-none drop-shadow-[0_0_50px_rgba(6,182,212,0.4)]"
+          className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_50px_rgba(6,182,212,0.45)]"
         />
       </div>
 

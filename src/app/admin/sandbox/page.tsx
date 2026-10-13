@@ -7558,7 +7558,7 @@ export default function AdminSandboxPage() {
               <span>Sandbox Studio · Môi trường thử nghiệm độc lập trên máy của bạn</span>
             </div>
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight">
-              Chọn Chế Độ Trò Chơi Thử Nghiệm
+              Chọn chế độ trò chơi thử nghiệm
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
               Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải với 4 đội thi. Hãy chọn 1 chế độ bên dưới để bắt đầu kiểm thử ngay lập tức.

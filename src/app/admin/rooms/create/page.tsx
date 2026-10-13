@@ -316,25 +316,25 @@ export default function CreateRoomPage() {
         {step === 1 && (
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2">Tên phòng *</label>
+            <label className="block text-sm font-semibold mb-2 text-slate-300">Tên phòng *</label>
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
-              placeholder="Quiz Trí Tuệ Khỏi Đầu Năm..."
-              className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring"
+              placeholder="Quiz Trí Tuệ Khởi Đầu Năm..."
+              className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/60 backdrop-blur-md border border-purple-500/30 text-white text-base focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">
+            <label className="block text-sm font-semibold mb-2 text-slate-300">
               Bộ đề câu hỏi{" "}
               <span className="text-muted-foreground font-normal">(có thể chọn sau)</span>
             </label>
             <select
               value={quizBankId}
               onChange={(e) => setQuizBankId(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl bg-[#151728] border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm text-white"
+              className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
             >
               <option value="" className="bg-[#151728] text-white">— Chưa chọn bộ đề —</option>
               {quizBanks.map((bank) => (
@@ -428,7 +428,7 @@ export default function CreateRoomPage() {
 
             {/* ─── 1. BỐ CỤC LƯỚI THẺ TRỰC QUAN (GRID 3x3) ─── */}
             {modeLayout === "GRID" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 animate-slide-up">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 animate-slide-up">
                 {GAME_MODES.map((m) => {
                   const isSelected = mode === m.value;
                   return (
@@ -436,10 +436,10 @@ export default function CreateRoomPage() {
                       key={m.value}
                       type="button"
                       onClick={() => handleSelectMode(m.value)}
-                      className={`relative flex flex-col justify-between p-3.5 rounded-2xl border-2 text-left transition-all duration-200 active:scale-95 group min-h-[140px] cursor-pointer ${
+                      className={`relative flex flex-col justify-between p-4 rounded-2xl text-left transition-all duration-200 active:scale-95 group min-h-[145px] cursor-pointer backdrop-blur-xl ${
                         isSelected
-                          ? "border-purple-500 bg-purple-500/15 ring-2 ring-purple-500/40 text-white shadow-xl glow-purple"
-                          : "border-border hover:border-purple-400 glass bg-card/60 hover:bg-card text-foreground"
+                          ? "border-2 border-purple-500 bg-purple-600/20 text-white shadow-[0_12px_28px_rgba(168,85,247,0.35)] ring-2 ring-purple-400/50 scale-[1.02]"
+                          : "border border-purple-500/20 hover:border-cyan-400/50 bg-[#121528]/50 hover:bg-[#181d36]/70 text-foreground hover:shadow-[0_10px_25px_rgba(6,182,212,0.15)]"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-1 mb-2">
@@ -1978,17 +1978,20 @@ export default function CreateRoomPage() {
         <div className="mt-4 text-destructive text-sm text-center bg-destructive/10 rounded-lg p-3">{error}</div>
       )}
 
-      {/* Navigation */}
-      <div className="flex gap-3 mt-8">
+      {/* Navigation with 3D Cyber Buttons */}
+      <div className="flex gap-4 mt-8">
         {step > 1 && (
-          <button onClick={() => setStep(step - 1)} className="flex-1 py-3 rounded-xl border border-border hover:border-purple-500 font-bold transition-colors">
+          <button
+            onClick={() => setStep(step - 1)}
+            className="btn-prism flex-1 py-3.5 text-center font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
             ← Quay lại
           </button>
         )}
         {step < 4 ? (
           <button
             onClick={() => { if (step === 1 && !roomName.trim()) { setError("Nhập tên phòng"); return; } setError(""); setStep(step + 1); }}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 font-bold transition-all"
+            className="btn-chamfer flex-1 py-3.5 text-center font-black transition-all cursor-pointer flex items-center justify-center gap-2"
           >
             Tiếp theo →
           </button>
@@ -1996,7 +1999,7 @@ export default function CreateRoomPage() {
           <button
             onClick={handleCreate}
             disabled={loading}
-            className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold disabled:opacity-50"
+            className="btn-chamfer flex-1 py-3.5 text-center font-black disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {loading ? "Đang tạo..." : "🎮 Tạo phòng ngay"}
           </button>

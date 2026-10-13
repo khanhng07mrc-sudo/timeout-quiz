@@ -42,125 +42,139 @@ select, option, optgroup {
   will-change: transform, opacity;
 }
 
-/* Custom styled surfaces with strong visibility (Slate Glass) */
+/* Custom styled surfaces with strong visibility (Holographic Translucent Glass) */
 .quiz-card {
-  background-color: #131626;
-  border: 1px solid #232845;
-  border-radius: 1.25rem;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 20px 0 rgba(139, 92, 246, 0.04);
+  background-color: rgba(19, 22, 38, 0.45);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 1.5rem;
+  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 25px rgba(139, 92, 246, 0.08);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .quiz-card:hover {
-  border-color: #3b426f;
+  background-color: rgba(25, 29, 51, 0.65);
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(6, 182, 212, 0.18);
 }
 
 .quiz-card-interactive {
-  background-color: #131626;
-  border: 1px solid #232845;
-  border-radius: 1.25rem;
-  transition: all 0.25s ease;
-  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5);
+  background-color: rgba(19, 22, 38, 0.5);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(139, 92, 246, 0.28);
+  border-radius: 1.5rem;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
 }
 
 .quiz-card-interactive:hover {
-  background-color: #191d33;
-  border-color: #8b5cf6;
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px -5px rgba(139, 92, 246, 0.12);
+  background-color: rgba(25, 29, 51, 0.75);
+  border-color: rgba(168, 85, 247, 0.7);
+  transform: translateY(-4px) scale(1.008);
+  box-shadow: 0 22px 45px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .input-box {
-  background-color: #0d0f1c;
-  border: 1.5px solid #232845;
+  background-color: rgba(13, 15, 28, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(139, 92, 246, 0.3);
   color: #f8fafc;
-  border-radius: 0.875rem;
+  border-radius: 1rem;
   transition: all 0.2s ease;
 }
 
 .input-box:focus {
   outline: none;
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
+  background-color: rgba(13, 15, 28, 0.85);
+  border-color: #06b6d4;
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25), 0 0 25px rgba(6, 182, 212, 0.2);
 }
 
-.btn-gradient {
-  background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
-  color: #ffffff;
-  font-weight: 700;
-  border-radius: 1rem;
-  box-shadow: 0 8px 20px -4px rgba(124, 58, 237, 0.4);
-  transition: all 0.2s ease;
-}
+/* ── NÚT 3D CÔNG NGHỆ TRONG SUỐT (3D CYBER HOLOGRAPHIC BUTTONS) ── */
 
-.btn-gradient:hover {
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 25px -4px rgba(124, 58, 237, 0.6);
-}
-
-.btn-gradient:active {
-  transform: translateY(0);
-}
-
-/* NÚT SÁNG TẠO 1: Vát góc giác đấu (Cyber Chamfer cut corner) - Cực kỳ dứt khoát, phong thái đấu trường */
+/* 1. NÚT 3D VÁT GÓC GIÁC ĐẤU (3D Cyber Chamfer Cut) */
 .btn-chamfer {
   clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
   position: relative;
   transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.9) 0%, rgba(79, 70, 229, 0.9) 100%);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85) 0%, rgba(79, 70, 229, 0.85) 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #ffffff;
   font-weight: 800;
-  box-shadow: 0 8px 25px -4px rgba(124, 58, 237, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* 3D Depth Layer */
+  box-shadow: 0 6px 0 #3b1d82, 0 14px 25px -4px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  transform: translateY(0);
 }
 
 .btn-chamfer:hover {
-  transform: translateY(-2px) scale(1.015);
-  box-shadow: 0 12px 30px -2px rgba(124, 58, 237, 0.65);
-  filter: brightness(1.1);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #3b1d82, 0 18px 35px -2px rgba(124, 58, 237, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 30px rgba(168, 85, 247, 0.5);
+  filter: brightness(1.12);
 }
 
 .btn-chamfer:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #3b1d82, 0 6px 15px rgba(124, 58, 237, 0.4);
 }
 
-/* NÚT SÁNG TẠO 2: Lăng kính hình thoi chéo góc (Prism Hex-cut) - Dành cho các nút công nghệ & hành động nhanh */
+/* 2. NÚT 3D LĂNG KÍNH THỦY TINH TRONG SUỐT (3D Prism Glass Cut) */
 .btn-prism {
   border-radius: 1.5rem 0.35rem 1.5rem 0.35rem;
   position: relative;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, #181d36 0%, #151a30 100%);
-  border: 1.5px solid #38bdf8;
+  background: linear-gradient(135deg, rgba(14, 21, 46, 0.55) 0%, rgba(6, 44, 77, 0.45) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1.5px solid rgba(56, 189, 248, 0.6);
   color: #38bdf8;
-  box-shadow: 0 0 18px -4px rgba(56, 189, 248, 0.3);
+  /* 3D Glass Layer */
+  box-shadow: 0 6px 0 #075985, 0 12px 25px -4px rgba(56, 189, 248, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(0);
 }
 
 .btn-prism:hover {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(6, 182, 212, 0.3) 100%);
   color: #ffffff;
-  border-color: #00f2fe;
+  border-color: #38bdf8;
   transform: translateY(-2px);
-  box-shadow: 0 0 25px rgba(56, 189, 248, 0.55);
+  box-shadow: 0 8px 0 #075985, 0 18px 30px rgba(56, 189, 248, 0.6), 0 0 30px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .btn-prism:active {
-  transform: translateY(1px) scale(0.98);
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #075985, 0 6px 12px rgba(56, 189, 248, 0.3);
 }
 
-/* NÚT SÁNG TẠO 3: Huy hiệu đấu trường (Arena Crest Pill) - Vòng sáng năng lượng kép */
+/* 3. NÚT 3D HUY HIỆU ĐẤU TRƯỜNG PHÁ KHỐI (3D Cyber Crest) */
 .btn-crest {
   border-radius: 9999px;
   position: relative;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  background: #14172b;
-  border: 1.5px solid #a855f7;
+  background: rgba(20, 23, 43, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1.5px solid rgba(168, 85, 247, 0.7);
   color: #e9d5ff;
+  box-shadow: 0 5px 0 #581c87, 0 10px 20px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-crest:hover {
-  background: #1e223f;
+  background: rgba(30, 34, 63, 0.85);
   border-color: #d8b4fe;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
-  transform: scale(1.03);
+  box-shadow: 0 7px 0 #581c87, 0 15px 30px rgba(168, 85, 247, 0.6), 0 0 25px rgba(168, 85, 247, 0.5);
+  transform: translateY(-2px);
+}
+
+.btn-crest:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #581c87, 0 4px 10px rgba(168, 85, 247, 0.3);
 }
 
 .btn-glass {

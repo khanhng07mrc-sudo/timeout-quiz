@@ -13,37 +13,38 @@ export default function QuizSoulBackground() {
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center select-none"
     >
-      {/* Vầng sáng tâm vũ trụ huyền bí */}
-      <div className="absolute w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-purple-900/10 via-indigo-950/5 to-cyan-950/10 blur-[140px] animate-pulse" />
+      {/* Vầng sáng tâm vũ trụ huyền bí đa tầng phát quang */}
+      <div className="absolute w-[950px] h-[950px] rounded-full bg-gradient-to-tr from-purple-700/20 via-indigo-600/15 to-cyan-500/20 blur-[130px] animate-pulse" />
+      <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-cyan-400/15 via-fuchsia-600/15 to-transparent blur-[90px] animate-spin" style={{ animationDuration: "40s" }} />
 
-      {/* Vector Linh hồn Thần Linh Tri Thức bao trùm */}
+      {/* Vector Linh hồn Thần Linh Tri Thức bao trùm với độ sáng rõ nét cao (75-80%) */}
       <svg
         viewBox="0 0 1000 1000"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-[120vw] max-w-[1300px] h-auto text-purple-400/20 opacity-40 transition-opacity duration-1000 soul-breathe"
+        className="w-[125vw] max-w-[1400px] h-auto text-purple-400 transition-opacity duration-1000 soul-breathe drop-shadow-[0_0_35px_rgba(168,85,247,0.35)]"
       >
         <defs>
-          {/* Radial Aura Gradient */}
+          {/* Radial Aura Gradient - Sắc nét và lan tỏa */}
           <radialGradient id="soulAura" cx="500" cy="500" r="450" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
-            <stop offset="40%" stopColor="#6366f1" stopOpacity="0.12" />
-            <stop offset="70%" stopColor="#06b6d4" stopOpacity="0.05" />
+            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.45" />
+            <stop offset="35%" stopColor="#6366f1" stopOpacity="0.30" />
+            <stop offset="65%" stopColor="#06b6d4" stopOpacity="0.18" />
             <stop offset="100%" stopColor="#090a12" stopOpacity="0" />
           </radialGradient>
 
-          {/* Core Halo Gradient */}
+          {/* Core Halo Gradient - Rực rỡ năng lượng */}
           <linearGradient id="soulRingGrad" x1="220" y1="160" x2="780" y2="720" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#c084fc" stopOpacity="0.35" />
-            <stop offset="50%" stopColor="#818cf8" stopOpacity="0.2" />
-            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="#c084fc" stopOpacity="0.75" />
+            <stop offset="45%" stopColor="#818cf8" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.70" />
           </linearGradient>
 
           {/* Tail Comet Gradient */}
           <linearGradient id="soulCometGrad" x1="500" y1="460" x2="810" y2="750" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
-            <stop offset="60%" stopColor="#06b6d4" stopOpacity="0.15" />
-            <stop offset="100%" stopColor="#0284c7" stopOpacity="0" />
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.85" />
+            <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.50" />
+            <stop offset="100%" stopColor="#0284c7" stopOpacity="0.05" />
           </linearGradient>
         </defs>
 
@@ -54,25 +55,25 @@ export default function QuizSoulBackground() {
         <ellipse
           cx="500"
           cy="500"
-          rx="420"
+          rx="430"
           ry="320"
           transform="rotate(-25 500 500)"
           stroke="#818cf8"
-          strokeWidth="1.5"
-          strokeDasharray="8 14"
-          strokeOpacity="0.25"
+          strokeWidth="2.5"
+          strokeDasharray="10 16"
+          strokeOpacity="0.65"
         />
 
         <ellipse
           cx="500"
           cy="500"
-          rx="450"
+          rx="460"
           ry="300"
           transform="rotate(35 500 500)"
           stroke="#38bdf8"
-          strokeWidth="1"
-          strokeDasharray="4 20"
-          strokeOpacity="0.2"
+          strokeWidth="2"
+          strokeDasharray="6 22"
+          strokeOpacity="0.55"
         />
 
         {/* 3. Vòng khuyên Q-Aura vĩ đại của Thần Linh Tri Thức */}
@@ -95,14 +96,14 @@ export default function QuizSoulBackground() {
           <path
             d="M 120 860 Q 500 770 880 860 Q 500 800 120 860 Z"
             fill="url(#soulRingGrad)"
-            opacity="0.4"
+            opacity="0.65"
           />
 
-          {/* 4. Các điểm tinh tú tri thức đối xứng */}
-          <circle cx="500" cy="110" r="5" fill="#c084fc" opacity="0.6" />
-          <circle cx="500" cy="890" r="4" fill="#38bdf8" opacity="0.5" />
-          <circle cx="110" cy="500" r="4" fill="#a855f7" opacity="0.5" />
-          <circle cx="890" cy="500" r="4" fill="#06b6d4" opacity="0.5" />
+          {/* 4. Các điểm tinh tú tri thức đối xứng phát quang */}
+          <circle cx="500" cy="110" r="7" fill="#e9d5ff" filter="drop-shadow(0 0 8px #c084fc)" />
+          <circle cx="500" cy="890" r="6" fill="#bae6fd" filter="drop-shadow(0 0 8px #38bdf8)" />
+          <circle cx="110" cy="500" r="6" fill="#f0abfc" filter="drop-shadow(0 0 8px #a855f7)" />
+          <circle cx="890" cy="500" r="6" fill="#a5f3fc" filter="drop-shadow(0 0 8px #06b6d4)" />
         </g>
       </svg>
     </div>

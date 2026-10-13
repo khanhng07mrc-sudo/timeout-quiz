@@ -27,6 +27,18 @@ const getModeVideoPath = (m: string) => {
   return "/transitions/classic.webm";
 };
 
+const ALL_TRANSITION_VIDEOS = [
+  "/transitions/tower_defense.webm",
+  "/transitions/gold_mine.webm",
+  "/transitions/grid_caro.webm",
+  "/transitions/mystery_quest.webm",
+  "/transitions/speed_race.webm",
+  "/transitions/battle_royale.webm",
+  "/transitions/boss_raid.webm",
+  "/transitions/auction_stealth.webm",
+  "/transitions/classic.webm",
+];
+
 export default function ArenaModeLaunchTransition({
   isOpen,
   isReady = false,
@@ -50,6 +62,16 @@ export default function ArenaModeLaunchTransition({
 
   useEffect(() => {
     setMounted(true);
+    // Warm cache preload video files in background so they play instantly with 0ms latency
+    if (typeof document !== "undefined") {
+      ALL_TRANSITION_VIDEOS.forEach((vPath) => {
+        const link = document.createElement("link");
+        link.rel = "prefetch";
+        link.as = "video";
+        link.href = vPath;
+        document.head.appendChild(link);
+      });
+    }
   }, []);
 
   const triggerOutro = useCallback(() => {
@@ -175,6 +197,10 @@ export default function ArenaModeLaunchTransition({
           opacity: isOutro ? 0 : 1,
         }}
       >
+        {/* ── Vầng sáng Hologram tĩnh/radial nhẹ phía sau video - 0% per-pixel rasterization overhead ── */}
+        <div
+          className="absolute w-[440px] h-[440px] rounded-full pointer-events-none blur-3xl opacity-35 bg-gradient-to-tr from-cyan-500/30 to-purple-500/25"
+        />
         <video
           ref={videoRef}
           src={videoSrc}
@@ -183,7 +209,7 @@ export default function ArenaModeLaunchTransition({
           playsInline
           preload="auto"
           onEnded={triggerOutro}
-          className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_50px_rgba(6,182,212,0.45)]"
+          className="w-full h-full object-contain pointer-events-none will-change-transform"
         />
       </div>
 

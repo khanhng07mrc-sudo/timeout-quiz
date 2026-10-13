@@ -13,8 +13,8 @@ os.makedirs(OUT_DIR, exist_ok=True)
 THREE_PATH = os.path.abspath(r"node_modules\three\build\three.module.js").replace('\\', '/')
 
 WIDTH, HEIGHT = 1280, 720
-FPS = 30
-TOTAL_FRAMES = 35
+FPS = 60
+TOTAL_FRAMES = 70
 
 HTML_TEMPLATE = f"""
 <!DOCTYPE html>
@@ -371,8 +371,8 @@ HTML_TEMPLATE = f"""
           sunburst.scale.setScalar(1.0 + exitT * 14.0);
 
           coins.forEach(c => {{
-            c.mesh.position.addScaledVector(c.vel, 0.05);
-            c.mesh.rotation.x += c.rotSpeed * 0.04;
+            c.mesh.position.addScaledVector(c.vel, 0.025);
+            c.mesh.rotation.x += c.rotSpeed * 0.02;
           }});
         }}
       }};
@@ -683,7 +683,7 @@ HTML_TEMPLATE = f"""
       rootGroup.add(car);
 
       updateChoreography = (t) => {{
-        wheels.forEach(w => {{ w.rotation.x += 0.45; }});
+        wheels.forEach(w => {{ w.rotation.x += 0.22; }});
 
         if (t < 0.60) {{
           const runT = t / 0.60;
@@ -1096,9 +1096,9 @@ HTML_TEMPLATE = f"""
     }} else {{
       const burstT = (t - 0.55) / 0.45;
       for (let i = 0; i < PARTICLE_COUNT; i++) {{
-        pos[i * 3] += pVelocities[i * 3] * 0.16 * (1.0 + burstT * 2.0);
-        pos[i * 3 + 1] += pVelocities[i * 3 + 1] * 0.16 * (1.0 + burstT * 2.0);
-        pos[i * 3 + 2] += pVelocities[i * 3 + 2] * 0.16 * (1.0 + burstT * 2.0);
+        pos[i * 3] += pVelocities[i * 3] * 0.08 * (1.0 + burstT * 2.0);
+        pos[i * 3 + 1] += pVelocities[i * 3 + 1] * 0.08 * (1.0 + burstT * 2.0);
+        pos[i * 3 + 2] += pVelocities[i * 3 + 2] * 0.08 * (1.0 + burstT * 2.0);
       }}
       pMat.opacity = Math.max(0, 1.0 - burstT * 0.85);
       pMat.size = 0.18 + burstT * 0.22;
@@ -1149,7 +1149,8 @@ def encode_mode(page, mode_id, out_filename):
         "-i", "-",
         "-c:v", "libvpx",
         "-auto-alt-ref", "0",
-        "-b:v", "2400k",
+        "-b:v", "2800k",
+        "-g", "60",
         "-quality", "realtime",
         "-cpu-used", "8",
         "-threads", "8",

@@ -3899,12 +3899,11 @@ export default function AdminSandboxPage() {
     setLaunchSourceRect(getModeIconRect(selectedMode));
     setIsLaunchingAnim(true);
     setIsLaunchReady(false);
-    // Nạp ngầm bàn đấu ngay lập tức vào DOM bên dưới lớp rèm che kín
-    startOfflineSandbox(selectedMode, selectedBankId);
-    // Chờ 150ms để React hoàn tất mount bàn đấu ngầm, sau đó kích hoạt pha quét logo 110vh & vén màn
+    // Cho phép video transition 3D khởi chạy mượt mà ngay frame đầu tiên không bị giật lag
     setTimeout(() => {
+      startOfflineSandbox(selectedMode, selectedBankId);
       setIsLaunchReady(true);
-    }, 150);
+    }, 120);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
@@ -3917,11 +3916,11 @@ export default function AdminSandboxPage() {
     setCreating(true);
 
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      startOfflineSandbox(modeToUse, selectedBankId);
       setTimeout(() => {
+        startOfflineSandbox(modeToUse, selectedBankId);
         setIsLaunchReady(true);
         setCreating(false);
-      }, 150);
+      }, 120);
       return;
     }
 

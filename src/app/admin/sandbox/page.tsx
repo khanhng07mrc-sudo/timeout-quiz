@@ -6303,8 +6303,8 @@ export default function AdminSandboxPage() {
               {launchingMeta?.emoji || "🧪"}
             </div>
             <div className="space-y-2">
-              <span className="text-xs px-3.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-black tracking-wider uppercase animate-pulse">
-                ⚡ INITIALIZING SANDBOX ENGINE
+              <span className="text-xs px-3.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold tracking-wide animate-pulse">
+                ⚡ Khởi tạo Sandbox Engine
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white">
                 {launchingMeta?.name || selectedMode}

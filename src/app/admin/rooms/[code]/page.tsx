@@ -1058,7 +1058,7 @@ export default function AdminRoomPage() {
           {/* Match warmup countdown banner with Skip button */}
           {matchStarting && (
             <div className="p-4 rounded-xl bg-purple-900/30 border border-purple-500/50 text-center space-y-3 animate-pulse">
-              <p className="text-xs uppercase font-bold text-purple-300 tracking-wider">
+              <p className="text-xs font-bold text-purple-300">
                 ⚡ Đang đếm ngược chuẩn bị trận đấu: {matchStarting.seconds}s
               </p>
               <div className="text-4xl font-black text-cyan-400">
@@ -1076,7 +1076,7 @@ export default function AdminRoomPage() {
           {/* Intermission status banner */}
           {intermission && (
             <div className="p-4 rounded-xl bg-gradient-to-r from-purple-900/40 via-indigo-900/40 to-cyan-900/40 border border-purple-500/50 text-center space-y-2 animate-pulse">
-              <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 📊 Bảng xếp hạng giữa hiệp
               </span>
               <p className="text-white font-bold text-sm">
@@ -1098,7 +1098,7 @@ export default function AdminRoomPage() {
           {roomState?.mode === "BOUNCEBACK" && currentQuestion && (
             <div className="p-4 rounded-xl bg-purple-900/20 border border-purple-500/30 space-y-3">
               <div className="flex items-center justify-between text-sm p-2.5 rounded-xl bg-white text-slate-900 border-2 border-slate-200 shadow-sm">
-                <span className="font-bold flex items-center gap-1.5 text-slate-600 text-xs uppercase tracking-wider">
+                <span className="font-bold flex items-center gap-1.5 text-slate-600 text-xs">
                   <span className="text-blue-600">🎯</span> Đội trả lời chính:
                 </span>
                 <span className="font-black text-slate-950 text-sm px-2.5 py-0.5 rounded-lg bg-slate-100 border border-slate-300">
@@ -1802,8 +1802,8 @@ export default function AdminRoomPage() {
               <div className="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/20 via-green-500/20 to-teal-500/20 border-2 border-emerald-500/80 shadow space-y-1.5 animate-slide-up">
                 <div className="flex items-center gap-2">
                   <span className="text-xl">✅</span>
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
-                    ĐÁP ÁN CHÍNH XÁC
+                  <span className="text-xs font-black text-emerald-300">
+                    Đáp án chính xác
                   </span>
                 </div>
                 <p className="text-base font-black text-white">

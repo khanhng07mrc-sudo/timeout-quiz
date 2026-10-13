@@ -30,9 +30,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#0b0c16] text-foreground">
+    <div className="min-h-screen flex flex-col lg:flex-row bg-transparent text-foreground relative">
       {/* ── Mobile Top Header (Screens < lg) ── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#121424]/95 backdrop-blur-md border-b border-[#222642] px-4 flex items-center justify-between z-40">
+      <header className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#131626]/90 backdrop-blur-md border-b border-[#232845] px-4 flex items-center justify-between z-40">
         <BrandLogo variant="compact" size="sm" subText="ADMIN PORTAL" href="/" />
 
         <button
@@ -48,14 +48,14 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {/* ── Mobile Drawer Backdrop & Menu ── */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex"
+          className="lg:hidden fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div
-            className="w-72 max-w-[80vw] h-full bg-[#121424] border-r border-[#222642] p-5 flex flex-col gap-4 animate-slide-right shadow-2xl"
+            className="w-72 max-w-[80vw] h-full bg-[#131626]/95 backdrop-blur-xl border-r border-[#232845] p-5 flex flex-col gap-4 animate-slide-right shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-[#222642]">
+            <div className="flex items-center justify-between pb-3 border-b border-[#232845]">
               <BrandLogo variant="compact" size="sm" href="/" />
               <button
                 type="button"
@@ -76,7 +76,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all ${
                       isActive
-                        ? "bg-purple-600/20 border border-purple-500/50 text-white font-bold"
+                        ? "bg-purple-600/25 border border-purple-500/50 text-white font-bold shadow-lg"
                         : "text-slate-300 hover:text-white hover:bg-white/5"
                     }`}
                   >
@@ -90,9 +90,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               })}
             </nav>
 
-            <div className="pt-3 border-t border-[#222642] flex flex-col gap-2">
+            <div className="pt-3 border-t border-[#232845] flex flex-col gap-2">
               {user && (
-                <div className="p-2.5 rounded-xl bg-[#171a30] border border-[#272c50] flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-[#191d33] border border-[#272c50] flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white text-xs font-black shrink-0">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
@@ -127,7 +127,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       <aside
         className={`hidden lg:flex ${
           sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-6"
-        } bg-[#121424] border-r border-[#222642] flex-col fixed h-full z-20 transition-all duration-200`}
+        } bg-[#131626]/85 backdrop-blur-xl border-r border-[#232845] flex-col fixed h-full z-20 transition-all duration-200`}
       >
         {/* Brand Header */}
         <div className={`mb-6 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2" : "justify-between"} w-full px-1`}>

@@ -71,7 +71,7 @@ export default function DisplayIndexPage() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-6 relative bg-[#0b0c16]">
+    <main className="min-h-screen flex flex-col items-center justify-center p-6 relative bg-transparent">
       {/* Ambient background glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-cyan-600/10 rounded-full blur-[140px] pointer-events-none" />
 
@@ -80,7 +80,7 @@ export default function DisplayIndexPage() {
         <div className="text-center">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-6 px-3.5 py-1.5 rounded-full bg-[#181a2e] border border-[#262a4a] transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white mb-6 px-3.5 py-1.5 rounded-full bg-[#131626]/80 border border-[#232845] backdrop-blur-md transition-colors"
           >
             ← Về trang chủ
           </Link>
@@ -96,7 +96,7 @@ export default function DisplayIndexPage() {
         </div>
 
         {/* PIN Input Card */}
-        <div className="quiz-card p-6 sm:p-8">
+        <div className="quiz-card p-6 sm:p-8 backdrop-blur-xl border border-[#232845] bg-[#131626]/90 shadow-2xl">
           <form onSubmit={handleOpenDisplay} className="space-y-6">
             <div>
               <label className="block text-sm font-bold text-slate-300 mb-2 whitespace-nowrap">
@@ -110,12 +110,12 @@ export default function DisplayIndexPage() {
                   placeholder="123456"
                   maxLength={6}
                   inputMode="numeric"
-                  className="flex-1 px-4 py-3.5 rounded-xl bg-[#141628] border-2 border-[#2b3054] text-center sm:text-left text-2xl font-mono font-bold tracking-widest text-white focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="flex-1 px-4 py-3.5 rounded-xl bg-[#0d0f1c] border-2 border-[#232845] text-center sm:text-left text-2xl font-mono font-bold tracking-widest text-cyan-300 focus:outline-none focus:border-cyan-400 transition-colors"
                 />
                 <button
                   type="submit"
                   disabled={loading || pin.length !== 6}
-                  className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
+                  className="btn-chamfer px-8 py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
                 >
                   {loading ? (
                     <span className="whitespace-nowrap">Đang kết nối...</span>
@@ -179,7 +179,7 @@ export default function DisplayIndexPage() {
                           {room.code}
                         </span>
                         <span
-                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold uppercase ${
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
                             isPlaying
                               ? "bg-green-500/20 text-green-300 border border-green-500/30 animate-pulse"
                               : isLobby

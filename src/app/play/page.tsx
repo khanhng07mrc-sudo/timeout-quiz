@@ -61,7 +61,7 @@ export default function JoinPage() {
           </p>
         </div>
 
-        <form onSubmit={handleJoin} className="quiz-card p-8 sm:p-10 space-y-6">
+        <form onSubmit={handleJoin} className="quiz-card p-8 sm:p-10 space-y-6 backdrop-blur-xl border border-[#232845] bg-[#131626]/90 shadow-2xl">
           <div>
             <label className="block text-sm font-semibold text-slate-300 mb-2 whitespace-nowrap">
               Mã phòng (PIN)
@@ -101,7 +101,7 @@ export default function JoinPage() {
           <button
             type="submit"
             disabled={loading || pin.length !== 6 || !name.trim()}
-            className="btn-gradient w-full py-4 text-lg flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
+            className="btn-chamfer w-full py-4 text-lg flex items-center justify-center gap-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 text-white font-bold shadow-xl shadow-purple-600/25 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap"
           >
             {loading ? (
               <span className="whitespace-nowrap font-bold">Đang kết nối...</span>

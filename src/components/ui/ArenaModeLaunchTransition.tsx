@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { GameMode } from "@/types";
-import ArenaThreeScene from "@/components/ui/three/ArenaThreeScene";
+import { transitionSoundEngine } from "@/lib/audio/transitionSoundEngine";
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +13,19 @@ interface Props {
   sourceRect?: { top: number; left: number; width: number; height: number } | null;
   onComplete?: () => void;
 }
+
+const getModeVideoPath = (m: string) => {
+  const norm = (m || "CLASSIC").toUpperCase();
+  if (norm.includes("CARO")) return "/transitions/grid_caro.webm";
+  if (norm.includes("MYSTERY") || norm.includes("QUEST")) return "/transitions/mystery_quest.webm";
+  if (norm.includes("BUZZ") || norm.includes("SPEED") || norm.includes("RACE")) return "/transitions/speed_race.webm";
+  if (norm.includes("TOWER") || norm.includes("DEFENSE") || norm.includes("ELIMINATION")) return "/transitions/tower_defense.webm";
+  if (norm.includes("BATTLE") || norm.includes("ROYALE") || norm.includes("TOURNAMENT")) return "/transitions/battle_royale.webm";
+  if (norm.includes("BOSS") || norm.includes("RAID")) return "/transitions/boss_raid.webm";
+  if (norm.includes("GOLD") || norm.includes("MINE") || norm.includes("WAGER")) return "/transitions/gold_mine.webm";
+  if (norm.includes("AUCTION") || norm.includes("STEALTH") || norm.includes("DICE")) return "/transitions/auction_stealth.webm";
+  return "/transitions/classic.webm";
+};
 
 export default function ArenaModeLaunchTransition({
   isOpen,
@@ -26,6 +39,7 @@ export default function ArenaModeLaunchTransition({
   const [phase, setPhase] = useState<"idle" | "loading" | "outro">("idle");
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const openTimestampRef = useRef<number>(0);
   const timerOutroRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,6 +49,17 @@ export default function ArenaModeLaunchTransition({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const triggerOutro = useCallback(() => {
+    if (phase === "outro") return;
+    setPhase("outro");
+    timerDoneRef.current = setTimeout(() => {
+      setPhase("idle");
+      if (onCompleteRef.current) {
+        onCompleteRef.current();
+      }
+    }, 280);
+  }, [phase]);
 
   // Quản lý khi mở transition (bắt đầu từ trạng thái loading)
   useEffect(() => {
@@ -49,52 +74,37 @@ export default function ArenaModeLaunchTransition({
     openTimestampRef.current = Date.now();
     setPhase("loading");
 
-    // Fallback an toàn: Nếu sau 8 giây mạng lỗi, tự động giải phóng
-    timerFallbackRef.current = setTimeout(() => {
-      setPhase("outro");
-      setTimeout(() => {
-        setPhase("idle");
-        if (onCompleteRef.current) onCompleteRef.current();
-      }, 550);
-    }, 8000);
+    // Phát âm thanh Web Audio API độc bản không cần tải file ngoài
+    transitionSoundEngine.playTransitionSfx(String(mode));
 
-    return () => {
-      if (timerFallbackRef.current) clearTimeout(timerFallbackRef.current);
-    };
-  }, [isOpen]);
+    // Thử phát video ngay lập tức
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
 
-  // Quản lý khi bàn đấu bên dưới đã nạp ngầm hoàn tất (isReady = true)
-  useEffect(() => {
-    if (!isOpen || !isReady || phase === "outro") return;
-
-    // Đảm bảo pha loading hiển thị 850ms để người dùng kịp chiêm ngưỡng kịch bản 3D đặc trưng bung nở
-    const elapsed = Date.now() - openTimestampRef.current;
-    const waitBeforeOutro = Math.max(0, 850 - elapsed);
-
+    // Tự động kết thúc sau 1.15s (đồng bộ hoàn hảo với độ dài video)
     timerOutroRef.current = setTimeout(() => {
-      // Pha Outro: Kích hoạt hoạt cảnh bung mở / camera xuyên tâm theo từng mode (550ms)
-      setPhase("outro");
+      triggerOutro();
+    }, 1150);
 
-      timerDoneRef.current = setTimeout(() => {
-        // Kết thúc chuyển cảnh sau đúng nhịp 1.4s tổng thể, hòa tan mượt mà vào bàn đấu
-        setPhase("idle");
-        if (onCompleteRef.current) {
-          onCompleteRef.current();
-        }
-      }, 550);
-    }, waitBeforeOutro);
+    // Fallback an toàn: Nếu có sự cố bất ngờ thì giải phóng sau 5s
+    timerFallbackRef.current = setTimeout(() => {
+      triggerOutro();
+    }, 5000);
 
     return () => {
       if (timerOutroRef.current) clearTimeout(timerOutroRef.current);
-      if (timerDoneRef.current) clearTimeout(timerDoneRef.current);
+      if (timerFallbackRef.current) clearTimeout(timerFallbackRef.current);
     };
-  }, [isOpen, isReady, phase]);
+  }, [isOpen, mode, triggerOutro]);
 
   if (!isOpen && phase === "idle") return null;
   if (!mounted || typeof document === "undefined") return null;
 
   const currentMode = String(mode || "CLASSIC").toUpperCase();
   const isOutro = phase === "outro";
+  const videoSrc = getModeVideoPath(currentMode);
 
   // Tính toán độ lệch từ icon của card được click đến tâm màn hình
   let deltaX = 0;
@@ -108,18 +118,7 @@ export default function ArenaModeLaunchTransition({
     deltaY = srcY - centerY;
   }
 
-  const [isTakeoff, setIsTakeoff] = useState(false);
-  useEffect(() => {
-    if (isOpen) {
-      setIsTakeoff(false);
-      const raf = requestAnimationFrame(() => {
-        setIsTakeoff(true);
-      });
-      return () => cancelAnimationFrame(raf);
-    } else {
-      setIsTakeoff(false);
-    }
-  }, [isOpen]);
+  const isTakeoff = phase === "loading" || phase === "outro";
 
   return createPortal(
     <div
@@ -133,74 +132,63 @@ export default function ArenaModeLaunchTransition({
         zIndex: 99999,
         willChange: "opacity",
       }}
-      className={`pointer-events-none overflow-hidden flex items-center justify-center select-none transition-opacity duration-350 ${
+      className={`pointer-events-none overflow-hidden flex items-center justify-center select-none transition-opacity duration-300 ${
         isOutro ? "opacity-0" : "opacity-100"
       }`}
     >
       {/* ── 1. MÀN CHE ĐEN TUYỀN SOLID 100% (Khử sạch hoàn toàn chữ và thẻ bên dưới) ── */}
       <div
-        className={`absolute inset-0 bg-[#04050d] transition-opacity duration-400 ease-out will-change-transform ${
+        className={`absolute inset-0 bg-[#04050d] transition-opacity duration-300 ease-out will-change-transform ${
           isOutro ? "opacity-0" : "opacity-100"
         }`}
       />
 
-      {/* ── 2. CONCENTRIC GLOWING AURA RINGS (CSS GPU Layer 60 FPS, không dùng wire loops) ── */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        {/* Vòng hào quang chính */}
-        <div
-          className={`w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-cyan-400/40 shadow-[0_0_80px_rgba(6,182,212,0.3)] transition-all duration-700 ease-out will-change-transform ${
-            isOutro ? "scale-150 opacity-0" : "scale-100 opacity-80"
-          }`}
-          style={{
-            background: "radial-gradient(circle, rgba(6,182,212,0.14) 0%, rgba(168,85,247,0.06) 45%, transparent 70%)",
-          }}
-        />
-        {/* Vòng quỹ đạo ánh sáng tím */}
-        <div
-          className={`absolute w-88 h-88 sm:w-[30rem] sm:h-[30rem] rounded-full border border-purple-500/25 shadow-[0_0_60px_rgba(168,85,247,0.2)] transition-all duration-700 ease-out will-change-transform ${
-            isOutro ? "scale-130 opacity-0" : "scale-100 opacity-60"
-          }`}
-        />
-      </div>
+      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh video 1080p điện ảnh) ── */}
+      <div
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-400 ${
+          isOutro ? "opacity-0" : "opacity-100"
+        }`}
+        style={{
+          background:
+            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.18) 0%, rgba(147,51,234,0.09) 35%, rgba(4,5,13,0.95) 70%, #04050d 100%)",
+        }}
+      />
 
-      {/* ── 3. THREE.JS REAL 3D ENGINE VỚI GPU COMPOSITOR TAKEOFF (60 FPS MƯỢT TUYỆT ĐỐI) ── */}
+      {/* ── 3. VIDEO WEBM 1080P GIẢI MÃ PHẦN CỨNG (0% WEBGPU OVERHEAD, 0% CRASH TAB) ── */}
       <div
         className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform"
         style={{
-          transform: isTakeoff ? "translate3d(0, 0, 0) scale(1)" : `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18)`,
-          transition: "transform 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 350ms ease-out",
+          transform: isTakeoff
+            ? "translate3d(0, 0, 0) scale(1)"
+            : `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18)`,
+          transition: "transform 260ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms ease-out",
           opacity: isOutro ? 0 : 1,
         }}
       >
-        <ArenaThreeScene mode={currentMode} isOutro={isOutro} />
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          autoPlay
+          muted
+          playsInline
+          preload="auto"
+          onEnded={triggerOutro}
+          className="w-full h-full object-cover pointer-events-none drop-shadow-[0_0_50px_rgba(6,182,212,0.4)]"
+        />
       </div>
 
-      {/* ── 4. CYAN WARP FLASH BURST (250ms hé lộ bàn đấu mượt mà, triệt tiêu giật hình) ── */}
+      {/* ── 4. CYAN WARP FLASH BURST (200ms hé lộ bàn đấu mượt mà, triệt tiêu giật hình) ── */}
       <div
-        className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
-          isOutro ? "opacity-25 bg-cyan-300" : "opacity-0"
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-250 ${
+          isOutro ? "opacity-35 bg-cyan-300" : "opacity-0"
         }`}
       />
 
-      {/* ── 5. HIỆU ỨNG OUTRO IRIS / SHOCKWAVE MỞ BUNG CỰC ĐẠI (300% SCREEN REVEAL) ── */}
+      {/* ── 5. THÔNG TIN TIÊU ĐỀ & TIẾN TRÌNH KHỞI TẠO ĐẤU TRƯỜNG CHUẨN ESPORTS ── */}
       <div
-        className={`absolute rounded-full pointer-events-none transition-all duration-550 ease-out will-change-transform ${
-          isOutro
-            ? "w-[240vmax] h-[240vmax] opacity-0 scale-100 border-[16px] border-cyan-400/80 shadow-[0_0_120px_#22d3ee]"
-            : "w-0 h-0 opacity-100 scale-0 border-[0px] border-transparent"
-        }`}
+        className="absolute bottom-12 sm:bottom-16 z-20 flex flex-col items-center justify-center text-center transition-all duration-300 ease-out will-change-transform pointer-events-none max-w-md mx-auto px-4"
         style={{
-          background: isOutro
-            ? "radial-gradient(circle, transparent 40%, rgba(6,182,212,0.15) 60%, rgba(168,85,247,0.3) 85%, transparent 100%)"
-            : "none",
-        }}
-      />
-
-      {/* ── 6. THÔNG TIN TIÊU ĐỀ & TIẾN TRÌNH KHỞI TẠO ĐẤU TRƯỜNG CHUẨN ESPORTS ── */}
-      <div
-        className="absolute bottom-16 sm:bottom-20 z-20 flex flex-col items-center justify-center text-center transition-all duration-400 ease-out will-change-transform pointer-events-none max-w-md mx-auto px-4"
-        style={{
-          transform: isOutro ? "scale(0.9) translateY(16px)" : "scale(1) translateY(0)",
+          transform: isOutro ? "scale(0.9) translateY(12px)" : "scale(1) translateY(0)",
           opacity: isOutro ? 0 : 1,
         }}
       >
@@ -208,7 +196,7 @@ export default function ArenaModeLaunchTransition({
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
           {isOutro ? "MỞ CỔNG ĐẤU TRƯỜNG" : "KHỞI ĐỘNG ĐẤU TRƯỜNG ARENA"}
         </div>
-        <h2 className="mt-2.5 text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-purple-200 tracking-tight drop-shadow-[0_4px_24px_rgba(34,211,238,0.4)]">
+        <h2 className="mt-2 text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-purple-200 tracking-tight drop-shadow-[0_4px_24px_rgba(34,211,238,0.4)]">
           {modeName || currentMode}
         </h2>
         <p className="mt-1 text-xs text-slate-400 font-medium tracking-wide">
@@ -218,10 +206,10 @@ export default function ArenaModeLaunchTransition({
         </p>
 
         {/* Thanh tiến trình lượng tử sắc nét */}
-        <div className="mt-4 w-56 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 relative shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+        <div className="mt-3.5 w-56 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 relative shadow-[0_0_15px_rgba(6,182,212,0.2)]">
           <div
             className={`h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full transition-all ${
-              isOutro ? "w-full duration-200" : "w-3/4 animate-pulse duration-500"
+              isOutro ? "w-full duration-150" : "w-3/4 animate-pulse duration-500"
             }`}
           />
         </div>

@@ -27,10 +27,11 @@ export default function HomePage() {
         </p>
 
         {/* Action Buttons with distinct styling and arena cuts */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mb-16">
+        {/* Action Buttons: 100% Unified 3D Cyber Glass Language */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-5 w-full max-w-2xl mb-16">
           <Link
             href="/play"
-            className="btn-chamfer w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 text-white font-bold shadow-xl shadow-purple-600/25 hover:shadow-cyan-500/30 whitespace-nowrap"
+            className="btn-3d-cyber-purple w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 cursor-pointer whitespace-nowrap"
           >
             <SystemIcon name="device" className="w-5 h-5 text-white shrink-0" />
             <span className="whitespace-nowrap font-bold">Tham gia phòng</span>
@@ -38,69 +39,69 @@ export default function HomePage() {
 
           <Link
             href="/display"
-            className="btn-prism w-full py-4 px-6 bg-slate-900/80 hover:bg-cyan-950/40 text-cyan-300 hover:text-white border-2 border-cyan-500/50 hover:border-cyan-400 font-bold text-base sm:text-lg text-center shadow-xl shadow-cyan-950/40 flex items-center justify-center gap-3 whitespace-nowrap"
+            className="btn-3d-cyber-cyan w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 cursor-pointer whitespace-nowrap"
           >
-            <SystemIcon name="display" className="w-5 h-5 text-cyan-400 shrink-0" />
+            <SystemIcon name="display" className="w-5 h-5 text-cyan-200 shrink-0" />
             <span className="whitespace-nowrap font-bold">Màn hình chiếu</span>
           </Link>
 
           <Link
             href="/admin"
-            className="btn-glass w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 whitespace-nowrap border-slate-700/60 hover:border-purple-500/40 text-slate-200"
+            className="btn-3d-cyber-slate w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 cursor-pointer whitespace-nowrap"
           >
             <SystemIcon name="dashboard" className="w-5 h-5 text-purple-400 shrink-0" />
             <span className="whitespace-nowrap font-bold">Quản lý (Admin)</span>
           </Link>
         </div>
 
-        {/* 5 Feature Cards with generous padding and spacing */}
+        {/* 5 Feature Cards: Holographic Cyber Deck (Non-boxy floating HUD style) */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 w-full">
-          <div className="quiz-card p-4 sm:p-5 text-center flex flex-col items-center justify-between">
+          <div className="hologram-deck-card p-4 sm:p-5 text-center flex flex-col items-center justify-between group">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 mb-3 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-purple-300/50 transition-all duration-200 shrink-0">
                 <SystemIcon name="sandbox" className="w-6 h-6" />
               </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight">Thẻ hỗ trợ</div>
+              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-purple-300 transition-colors">Thẻ hỗ trợ</div>
             </div>
             <div className="text-xs text-slate-400 leading-snug">10 loại thẻ chiến thuật đa năng cướp điểm, phong tỏa, nhân đôi</div>
           </div>
 
-          <div className="quiz-card p-4 sm:p-5 text-center flex flex-col items-center justify-between">
+          <div className="hologram-deck-card p-4 sm:p-5 text-center flex flex-col items-center justify-between group">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-3 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-cyan-300/50 transition-all duration-200 shrink-0">
                 <SystemIcon name="device" className="w-6 h-6" />
               </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight">Realtime</div>
+              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-cyan-300 transition-colors">Realtime</div>
             </div>
             <div className="text-xs text-slate-400 leading-snug">Đồng bộ tức thì qua WebSocket, bấm Buzz cướp quyền nhạy bén</div>
           </div>
 
-          <div className="quiz-card p-4 sm:p-5 text-center border-cyan-500/30 bg-cyan-950/10 flex flex-col items-center justify-between">
+          <div className="hologram-deck-card p-4 sm:p-5 text-center flex flex-col items-center justify-between group border-cyan-500/40">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 mb-3 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-cyan-500/20 border border-cyan-400/50 flex items-center justify-center text-cyan-300 mb-3 shadow-md group-hover:scale-110 group-hover:border-cyan-200 transition-all duration-200 shrink-0">
                 <SystemIcon name="display" className="w-6 h-6" />
               </div>
-              <div className="font-bold text-sm sm:text-base text-cyan-300 mb-2 whitespace-nowrap tracking-tight">Màn hình chiếu</div>
+              <div className="font-bold text-sm sm:text-base text-cyan-300 mb-2 whitespace-nowrap tracking-tight group-hover:text-white transition-colors">Màn hình chiếu</div>
             </div>
-            <div className="text-xs text-slate-400 leading-snug">Chế độ TV/Projector tối ưu hội trường, hiển thị câu hỏi &amp; bảng điểm sống động</div>
+            <div className="text-xs text-slate-300 leading-snug">Chế độ TV/Projector tối ưu hội trường, hiển thị câu hỏi &amp; bảng điểm sống động</div>
           </div>
 
-          <div className="quiz-card p-4 sm:p-5 text-center flex flex-col items-center justify-between">
+          <div className="hologram-deck-card p-4 sm:p-5 text-center flex flex-col items-center justify-between group">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 mb-3 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center text-indigo-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-indigo-300/50 transition-all duration-200 shrink-0">
                 <SystemIcon name="team" className="w-6 h-6" />
               </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight">Đội nhóm</div>
+              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-indigo-300 transition-colors">Đội nhóm</div>
             </div>
             <div className="text-xs text-slate-400 leading-snug">Chơi cá nhân hoặc tổ chức theo đội không giới hạn thành viên</div>
           </div>
 
-          <div className="quiz-card p-4 sm:p-5 text-center flex flex-col items-center justify-between col-span-2 md:col-span-1">
+          <div className="hologram-deck-card p-4 sm:p-5 text-center flex flex-col items-center justify-between group col-span-2 md:col-span-1">
             <div className="flex flex-col items-center">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-sm shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/15 border border-amber-400/30 flex items-center justify-center text-amber-400 mb-3 shadow-md group-hover:scale-110 group-hover:border-amber-300/50 transition-all duration-200 shrink-0">
                 <SystemIcon name="trophy" className="w-6 h-6" />
               </div>
-              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight">Đa chế độ</div>
+              <div className="font-bold text-sm sm:text-base text-white mb-2 whitespace-nowrap tracking-tight group-hover:text-amber-300 transition-colors">Đa chế độ</div>
             </div>
             <div className="text-xs text-slate-400 leading-snug">Classic, Buzz, Bounceback cướp lượt, và Elimination</div>
           </div>

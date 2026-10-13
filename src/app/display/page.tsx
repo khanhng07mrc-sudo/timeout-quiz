@@ -115,13 +115,13 @@ export default function DisplayIndexPage() {
                 <button
                   type="submit"
                   disabled={loading || pin.length !== 6}
-                  className="btn-chamfer px-8 py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 font-bold text-base text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xl shadow-cyan-500/25 flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
+                  className="btn-3d-cyber-cyan px-8 py-3.5 font-bold text-base text-cyan-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shrink-0 cursor-pointer whitespace-nowrap"
                 >
                   {loading ? (
                     <span className="whitespace-nowrap">Đang kết nối...</span>
                   ) : (
                     <>
-                      <SystemIcon name="display" className="w-4 h-4 shrink-0 text-white" />
+                      <SystemIcon name="display" className="w-4 h-4 shrink-0 text-cyan-200" />
                       <span className="whitespace-nowrap font-bold">Mở màn chiếu</span>
                     </>
                   )}

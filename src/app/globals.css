@@ -43,14 +43,17 @@ select, option, optgroup {
 }
 
 /* Custom styled surfaces with strong visibility (Holographic Translucent Glass) */
+/* Custom styled surfaces with strong visibility (Holographic Translucent Glass - 60FPS GPU Optimized) */
 .quiz-card {
   background-color: rgba(19, 22, 38, 0.45);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 1.5rem;
   box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 25px rgba(139, 92, 246, 0.08);
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .quiz-card:hover {
@@ -61,27 +64,29 @@ select, option, optgroup {
 
 .quiz-card-interactive {
   background-color: rgba(19, 22, 38, 0.5);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(139, 92, 246, 0.28);
   border-radius: 1.5rem;
-  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
   box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   position: relative;
   overflow: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 .quiz-card-interactive:hover {
   background-color: rgba(25, 29, 51, 0.75);
   border-color: rgba(168, 85, 247, 0.7);
-  transform: translateY(-4px) scale(1.008);
+  transform: translateY(-4px) scale(1.008) translateZ(0);
   box-shadow: 0 22px 45px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .input-box {
   background-color: rgba(13, 15, 28, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1.5px solid rgba(139, 92, 246, 0.3);
   color: #f8fafc;
   border-radius: 1rem;
@@ -95,71 +100,124 @@ select, option, optgroup {
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25), 0 0 25px rgba(6, 182, 212, 0.2);
 }
 
-/* ── NÚT 3D CÔNG NGHỆ TRONG SUỐT (3D CYBER HOLOGRAPHIC BUTTONS) ── */
+/* ── HỆ THỐNG NÚT 3D CYBER GLASS ĐỒNG BỘ 100% (3D UNIFIED CYBER GLASS BUTTONS) ── */
 
-/* 1. NÚT 3D VÁT GÓC GIÁC ĐẤU (3D Cyber Chamfer Cut) */
+/* 1. NÚT 3D TÍM ĐẤU TRƯỜNG (Primary 3D Cyber Cut) */
+.btn-3d-cyber-purple,
 .btn-chamfer {
   clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
   position: relative;
-  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.85) 0%, rgba(79, 70, 229, 0.85) 100%);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 800;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  /* 3D Depth Layer */
-  box-shadow: 0 6px 0 #3b1d82, 0 14px 25px -4px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transform: translateY(0);
-}
-
-.btn-chamfer:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #3b1d82, 0 18px 35px -2px rgba(124, 58, 237, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 30px rgba(168, 85, 247, 0.5);
-  filter: brightness(1.12);
-}
-
-.btn-chamfer:active {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 #3b1d82, 0 6px 15px rgba(124, 58, 237, 0.4);
-}
-
-/* 2. NÚT 3D LĂNG KÍNH THỦY TINH TRONG SUỐT (3D Prism Glass Cut) */
-.btn-prism {
-  border-radius: 1.5rem 0.35rem 1.5rem 0.35rem;
-  position: relative;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  background: linear-gradient(135deg, rgba(14, 21, 46, 0.55) 0%, rgba(6, 44, 77, 0.45) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1.5px solid rgba(56, 189, 248, 0.6);
-  color: #38bdf8;
-  /* 3D Glass Layer */
-  box-shadow: 0 6px 0 #075985, 0 12px 25px -4px rgba(56, 189, 248, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
-  transform: translateY(0);
-}
-
-.btn-prism:hover {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(6, 182, 212, 0.3) 100%);
   color: #ffffff;
-  border-color: #38bdf8;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 0 #075985, 0 18px 30px rgba(56, 189, 248, 0.6), 0 0 30px rgba(56, 189, 248, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.9) 0%, rgba(91, 33, 182, 0.9) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  /* 3D Mechanical Depth */
+  box-shadow: 0 6px 0 #3b1473, 0 14px 26px -2px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
+  user-select: none;
 }
 
+.btn-3d-cyber-purple:hover,
+.btn-chamfer:hover {
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 8px 0 #3b1473, 0 18px 32px rgba(124, 58, 237, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 25px rgba(168, 85, 247, 0.45);
+  filter: brightness(1.1);
+}
+
+.btn-3d-cyber-purple:active,
+.btn-chamfer:active {
+  transform: translate3d(0, 4px, 0);
+  box-shadow: 0 2px 0 #3b1473, 0 6px 14px rgba(124, 58, 237, 0.4);
+}
+
+/* 2. NÚT 3D CYAN HOLOGRAM (Secondary 3D Cyber Cut) */
+.btn-3d-cyber-cyan,
+.btn-prism {
+  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #e0f2fe;
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.88) 0%, rgba(14, 116, 144, 0.88) 100%);
+  border: 1px solid rgba(103, 232, 249, 0.55);
+  /* 3D Mechanical Depth */
+  box-shadow: 0 6px 0 #0e4e63, 0 14px 26px -2px rgba(6, 182, 212, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
+  user-select: none;
+}
+
+.btn-3d-cyber-cyan:hover,
+.btn-prism:hover {
+  color: #ffffff;
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 8px 0 #0e4e63, 0 18px 32px rgba(6, 182, 212, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 25px rgba(6, 182, 212, 0.45);
+  filter: brightness(1.1);
+}
+
+.btn-3d-cyber-cyan:active,
 .btn-prism:active {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 #075985, 0 6px 12px rgba(56, 189, 248, 0.3);
+  transform: translate3d(0, 4px, 0);
+  box-shadow: 0 2px 0 #0e4e63, 0 6px 14px rgba(6, 182, 212, 0.4);
 }
 
-/* 3. NÚT 3D HUY HIỆU ĐẤU TRƯỜNG PHÁ KHỐI (3D Cyber Crest) */
+/* 3. NÚT 3D ĐÁ PHIẾN CARBON MỜ (Tertiary / Admin 3D Cyber Cut) */
+.btn-3d-cyber-slate,
+.btn-glass {
+  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #e2e8f0;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.92) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  /* 3D Mechanical Depth */
+  box-shadow: 0 6px 0 #0a0f1d, 0 14px 26px -2px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translate3d(0, 0, 0);
+  will-change: transform, box-shadow;
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
+  user-select: none;
+}
+
+.btn-3d-cyber-slate:hover,
+.btn-glass:hover {
+  color: #ffffff;
+  border-color: rgba(168, 85, 247, 0.6);
+  transform: translate3d(0, -2px, 0);
+  box-shadow: 0 8px 0 #0a0f1d, 0 18px 32px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 20px rgba(168, 85, 247, 0.3);
+  filter: brightness(1.1);
+}
+
+.btn-3d-cyber-slate:active,
+.btn-glass:active {
+  transform: translate3d(0, 4px, 0);
+  box-shadow: 0 2px 0 #0a0f1d, 0 6px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* 4. NÚT 3D HUY HIỆU ĐẤU TRƯỜNG PHÁ KHỐI (3D Cyber Crest) */
 .btn-crest {
   border-radius: 9999px;
   position: relative;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   background: rgba(20, 23, 43, 0.6);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1.5px solid rgba(168, 85, 247, 0.7);
   color: #e9d5ff;
   box-shadow: 0 5px 0 #581c87, 0 10px 20px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
@@ -177,23 +235,36 @@ select, option, optgroup {
   box-shadow: 0 2px 0 #581c87, 0 4px 10px rgba(168, 85, 247, 0.3);
 }
 
-.btn-glass {
-  background-color: #15182e;
-  border: 1.5px solid #2a3056;
-  color: #f8fafc;
-  font-weight: 700;
-  border-radius: 1rem;
-  transition: all 0.2s ease;
+/* ── THẺ ĐỘT PHÁ CÔNG NGHỆ (HOLOGRAPHIC CYBER DECK - KHÔNG TÙ TÚNG) ── */
+.hologram-deck-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(20, 24, 46, 0.42) 0%, rgba(13, 16, 32, 0.5) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
-.btn-glass:hover {
-  background-color: #1e2342;
-  border-color: #8b5cf6;
-  transform: translateY(-2px);
+.hologram-deck-card:hover {
+  background: linear-gradient(135deg, rgba(28, 33, 64, 0.65) 0%, rgba(18, 22, 45, 0.75) 100%);
+  border-color: rgba(6, 182, 212, 0.6);
+  transform: translateY(-4px) translateZ(0);
+  box-shadow: 0 18px 35px -8px rgba(0, 0, 0, 0.8), 0 0 25px rgba(6, 182, 212, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-.btn-glass:active {
-  transform: translateY(0);
+.hologram-deck-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 14px;
+  right: 14px;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.7), rgba(6, 182, 212, 0.7), transparent);
+  pointer-events: none;
 }
 
 @keyframes flip360 {

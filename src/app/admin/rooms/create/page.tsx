@@ -1978,12 +1978,12 @@ export default function CreateRoomPage() {
         <div className="mt-4 text-destructive text-sm text-center bg-destructive/10 rounded-lg p-3">{error}</div>
       )}
 
-      {/* Navigation with 3D Cyber Buttons */}
+      {/* Navigation with Unified 3D Cyber Buttons */}
       <div className="flex gap-4 mt-8">
         {step > 1 && (
           <button
             onClick={() => setStep(step - 1)}
-            className="btn-prism flex-1 py-3.5 text-center font-bold transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="btn-3d-cyber-slate flex-1 py-3.5 text-center font-bold cursor-pointer flex items-center justify-center gap-2"
           >
             ← Quay lại
           </button>
@@ -1991,7 +1991,7 @@ export default function CreateRoomPage() {
         {step < 4 ? (
           <button
             onClick={() => { if (step === 1 && !roomName.trim()) { setError("Nhập tên phòng"); return; } setError(""); setStep(step + 1); }}
-            className="btn-chamfer flex-1 py-3.5 text-center font-black transition-all cursor-pointer flex items-center justify-center gap-2"
+            className="btn-3d-cyber-purple flex-1 py-3.5 text-center font-black cursor-pointer flex items-center justify-center gap-2"
           >
             Tiếp theo →
           </button>
@@ -1999,7 +1999,7 @@ export default function CreateRoomPage() {
           <button
             onClick={handleCreate}
             disabled={loading}
-            className="btn-chamfer flex-1 py-3.5 text-center font-black disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            className="btn-3d-cyber-purple flex-1 py-3.5 text-center font-black disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
           >
             {loading ? "Đang tạo..." : "🎮 Tạo phòng ngay"}
           </button>

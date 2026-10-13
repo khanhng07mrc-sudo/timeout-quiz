@@ -145,11 +145,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
       {/* ── Desktop Permanent Holo Nav Rail (lg+) ── */}
       <aside
         className={`hidden lg:flex ${
-          sidebarCollapsed ? "w-18 p-2 items-center" : "w-64 xl:w-72 p-5"
-        } bg-[#0e1122]/85 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-20 transition-all duration-300`}
+          sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-4.5"
+        } bg-[#0c0f20]/90 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-20 transition-all duration-250`}
       >
-        {/* Brand Header */}
-        <div className={`mb-6 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2" : "justify-between"} w-full px-1`}>
+        {/* Brand Header & Toggle */}
+        <div className={`mb-5 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2.5" : "justify-between"} w-full px-1`}>
           {sidebarCollapsed ? (
             <BrandLogo variant="icon" size="sm" href="/" />
           ) : (
@@ -158,7 +158,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer text-xs border border-white/10"
+            className="w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer text-xs border border-white/10 flex items-center justify-center"
             title={sidebarCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
           >
             {sidebarCollapsed ? "▶" : "◀"}
@@ -166,38 +166,57 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex flex-col gap-2 flex-1 w-full">
+        <nav className="flex flex-col gap-2 flex-1 w-full items-center">
           {NAV_ITEMS.map(({ href, icon, label, desc }) => {
             const isActive = isRouteActive(href, pathname);
             return (
               <Link
                 key={href}
                 href={href}
-                title={sidebarCollapsed ? `${label} - ${desc}` : undefined}
                 className={`relative flex items-center ${
-                  sidebarCollapsed ? "justify-center px-0 py-3" : "gap-3.5 px-3.5 py-3"
-                } rounded-xl transition-all duration-200 group overflow-hidden ${
+                  sidebarCollapsed ? "w-12 h-12 justify-center" : "w-full gap-3.5 px-3 py-2.5"
+                } rounded-2xl transition-all duration-200 group ${
                   isActive
-                    ? "bg-gradient-to-r from-purple-900/50 via-indigo-950/40 to-transparent border-l-3 border-l-cyan-400 border border-purple-500/40 text-white shadow-lg shadow-purple-950/50"
-                    : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent hover:border-purple-500/20"
+                    ? "bg-gradient-to-r from-purple-900/60 via-indigo-950/50 to-transparent border border-cyan-400/50 text-white shadow-lg shadow-purple-950/60"
+                    : "text-slate-400 hover:text-white hover:bg-white/6 border border-transparent hover:border-purple-500/20"
                 }`}
               >
                 {/* Active Indicator LED */}
                 {isActive && (
-                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                  <span
+                    className={`absolute ${
+                      sidebarCollapsed
+                        ? "left-0.5 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full"
+                        : "right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
+                    } bg-cyan-400 shadow-[0_0_10px_#22d3ee] animate-pulse`}
+                  />
                 )}
 
-                <div className={`w-11 h-11 rounded-2xl shrink-0 flex items-center justify-center transition-all duration-300 relative ${
-                  isActive
-                    ? "bg-gradient-to-br from-[#2b2269] via-[#1b173e] to-[#0d0f24] border-2 border-cyan-400/80 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.5),0_6px_14px_rgba(0,0,0,0.6)] ring-1 ring-white/30 scale-105"
-                    : "bg-gradient-to-br from-[#161a33]/90 to-[#0e1122]/95 border border-white/12 text-slate-400 group-hover:text-white group-hover:border-purple-400/50 group-hover:shadow-[0_0_18px_rgba(168,85,247,0.35)] group-hover:scale-105"
-                }`}>
-                  <SystemIcon name={icon} className="w-6.5 h-6.5 group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_3px_6px_rgba(0,0,0,0.5)]" />
+                <div
+                  className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center transition-all duration-200 relative ${
+                    isActive
+                      ? "bg-gradient-to-br from-[#2b2269] via-[#1b173e] to-[#0d0f24] border border-cyan-400/80 text-cyan-200 shadow-[0_0_16px_rgba(6,182,212,0.45)] ring-1 ring-white/20 scale-105"
+                      : "bg-[#14172c]/80 border border-white/8 text-slate-400 group-hover:text-white group-hover:border-purple-400/40 group-hover:shadow-[0_0_14px_rgba(168,85,247,0.3)] group-hover:scale-105"
+                  }`}
+                >
+                  <SystemIcon
+                    name={icon}
+                    className="w-5.5 h-5.5 group-hover:scale-110 transition-transform duration-200 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                  />
                 </div>
+
                 {!sidebarCollapsed && (
-                  <div className="min-w-0 pr-4">
+                  <div className="min-w-0 pr-2">
                     <span className="font-bold text-sm block truncate">{label}</span>
                     <span className="text-[10px] text-slate-400 block truncate">{desc}</span>
+                  </div>
+                )}
+
+                {/* Floating Tooltip khi ở chế độ Mini Dock */}
+                {sidebarCollapsed && (
+                  <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/95 border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0 backdrop-blur-md">
+                    <p className="font-bold text-cyan-200">{label}</p>
+                    <p className="text-[10px] text-slate-400 font-normal">{desc}</p>
                   </div>
                 )}
               </Link>
@@ -206,13 +225,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Bottom Actions & User Profile */}
-        <div className="border-t border-[#222642] pt-4 flex flex-col gap-2 w-full">
+        <div className="border-t border-[#20243d] pt-3 flex flex-col gap-2 w-full items-center">
           {user && (
             <div
-              className={`p-2 rounded-xl bg-[#171a30] border border-[#272c50] flex items-center ${
-                sidebarCollapsed ? "justify-center" : "gap-2.5 p-2.5"
+              className={`rounded-xl bg-[#15182e] border border-[#252a4a] flex items-center relative group ${
+                sidebarCollapsed ? "w-12 h-12 justify-center" : "w-full gap-2.5 p-2.5"
               }`}
-              title={sidebarCollapsed ? `${user.name} (${user.email})` : undefined}
             >
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white text-xs font-black shrink-0 shadow-sm">
                 {user.name.charAt(0).toUpperCase()}
@@ -230,28 +248,42 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   )}
                 </>
               )}
+              {sidebarCollapsed && (
+                <div className="absolute left-full ml-3 px-3 py-1.5 rounded-xl bg-[#14172e]/95 border border-purple-500/40 text-white text-xs whitespace-nowrap shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0 backdrop-blur-md">
+                  <p className="font-bold text-white">{user.name}</p>
+                  <p className="text-[10px] text-slate-400">{user.email}</p>
+                </div>
+              )}
             </div>
           )}
           <Link
             href="/"
-            title={sidebarCollapsed ? "Về trang chủ" : undefined}
             className={`flex items-center ${
-              sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
-            } rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors`}
+              sidebarCollapsed ? "w-12 h-10 justify-center" : "w-full gap-3 px-3 py-2"
+            } rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/6 transition-colors relative group`}
           >
             <SystemIcon name="home" className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-cyan-300 drop-shadow" />
             {!sidebarCollapsed && <span>Về trang chủ</span>}
+            {sidebarCollapsed && (
+              <div className="absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-[#14172e]/95 border border-white/10 text-white text-[11px] font-semibold whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all z-50">
+                Về trang chủ
+              </div>
+            )}
           </Link>
           <button
             type="button"
             onClick={handleLogout}
-            title={sidebarCollapsed ? "Đăng xuất" : undefined}
             className={`flex items-center ${
-              sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-left"
-            } rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full cursor-pointer`}
+              sidebarCollapsed ? "w-12 h-10 justify-center" : "w-full gap-3 px-3 py-2 text-left"
+            } rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors cursor-pointer relative group`}
           >
             <SystemIcon name="logout" className="w-5 h-5 shrink-0 text-rose-400 group-hover:text-rose-300 drop-shadow" />
             {!sidebarCollapsed && <span>Đăng xuất</span>}
+            {sidebarCollapsed && (
+              <div className="absolute left-full ml-3 px-2.5 py-1 rounded-lg bg-[#14172e]/95 border border-rose-500/30 text-rose-300 text-[11px] font-semibold whitespace-nowrap opacity-0 invisible group-hover:opacity-100 group-hover:visible pointer-events-none transition-all z-50">
+                Đăng xuất
+              </div>
+            )}
           </button>
         </div>
       </aside>

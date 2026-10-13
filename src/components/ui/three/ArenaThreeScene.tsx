@@ -39,9 +39,9 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       precision: "highp",
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.4;
+    renderer.toneMappingExposure = 1.35;
     container.appendChild(renderer.domElement);
 
     // ── 2. HỆ THỐNG ÁNH SÁNG STUDIO ĐA CHIỀU (PBR STUDIO LIGHTING) ──
@@ -52,41 +52,17 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     mainLight.position.set(6, 12, 8);
     scene.add(mainLight);
 
-    const cyanPointLight = new THREE.PointLight(0x06b6d4, 8.5, 30);
+    const cyanPointLight = new THREE.PointLight(0x06b6d4, 8.0, 30);
     cyanPointLight.position.set(-5, -2, 4);
     scene.add(cyanPointLight);
 
-    const purplePointLight = new THREE.PointLight(0xa855f7, 7.5, 30);
+    const purplePointLight = new THREE.PointLight(0xa855f7, 7.0, 30);
     purplePointLight.position.set(5, -2, 4);
     scene.add(purplePointLight);
 
-    const goldPointLight = new THREE.PointLight(0xfacc15, 9.0, 20);
+    const goldPointLight = new THREE.PointLight(0xfacc15, 8.5, 20);
     goldPointLight.position.set(0, 2, 5);
     scene.add(goldPointLight);
-
-    // ── 3. VẦNG HÀO QUANG NĂNG LƯỢNG TẬP TRUNG TẠI TÂM (KHÔNG DÙNG HẠT VỤN RẢI RÁC) ──
-    // Vòng hào quang đa lớp nhẹ nhàng ôm lấy vật thể trung tâm
-    const haloGroup = new THREE.Group();
-    const auraRing1 = new THREE.Mesh(
-      new THREE.TorusGeometry(3.2, 0.035, 16, 64),
-      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 })
-    );
-    haloGroup.add(auraRing1);
-
-    const auraRing2 = new THREE.Mesh(
-      new THREE.TorusGeometry(3.8, 0.02, 16, 64),
-      new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.4 })
-    );
-    auraRing2.rotation.x = Math.PI / 4;
-    haloGroup.add(auraRing2);
-    scene.add(haloGroup);
-
-    // Sóng xung kích Iris bùng nổ khi Outro
-    const shockwaveRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.1, 0.35, 64),
-      new THREE.MeshBasicMaterial({ color: 0x22d3ee, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
-    );
-    scene.add(shockwaveRing);
 
     // ── 4. CHẤT LIỆU CHUẨN PBR CAO CẤP ──
     const goldMaterial = new THREE.MeshStandardMaterial({
@@ -123,34 +99,9 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       roughness: 0.12,
     });
 
-    // ── 5. TÍNH TOÁN TỌA ĐỘ BAN ĐẦU TỪ ICON GÓC TRÁI CỦA CARD MODE ──
+    // ── 5. KHỞI TẠO HERO 3D MODEL TẠI TÂM (Takeoff do GPU Compositor CSS đảm nhiệm) ──
     const rootGroup = new THREE.Group();
     scene.add(rootGroup);
-
-    let startX = 0;
-    let startY = 0;
-    if (sourceRect) {
-      // Chuyển đổi tọa độ pixel màn hình sang không gian 3D của Camera
-      const iconCenterX = sourceRect.left + sourceRect.width / 2;
-      const iconCenterY = sourceRect.top + sourceRect.height / 2;
-      const ndcX = (iconCenterX / width) * 2 - 1;
-      const ndcY = -(iconCenterY / height) * 2 + 1;
-
-      // Chiếu lên mặt phẳng Z=0
-      const distance = camera.position.z;
-      const vFov = (camera.fov * Math.PI) / 180;
-      const planeHeight = 2 * Math.tan(vFov / 2) * distance;
-      const planeWidth = planeHeight * camera.aspect;
-
-      startX = (ndcX * planeWidth) / 2;
-      startY = (ndcY * planeHeight) / 2;
-
-      rootGroup.position.set(startX, startY, 0);
-      rootGroup.scale.set(0.18, 0.18, 0.18);
-    } else {
-      rootGroup.position.set(0, 0, 0);
-      rootGroup.scale.set(0.2, 0.2, 0.2);
-    }
 
     // ── 6. XÂY DỰNG 9 KỊCH BẢN 3D ĐỘC BẢN CHO 9 CHẾ ĐỘ ──
     const norm = (mode || "").toUpperCase();
@@ -589,7 +540,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       });
     }
 
-    // ── 7. HOẠT CẢNH VÒNG LẶP RAF (60 FPS VÀ DIỄN BIẾN LERPTAKE-OFF MƯỢT MÀ) ──
+    // ── 7. HOẠT CẢNH VÒNG LẶP RAF (60 FPS MƯỢT TUYỆT ĐỐI) ──
     let animationFrameId: number;
     const startTime = performance.now();
 
@@ -599,30 +550,11 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       const elapsed = (performance.now() - startTime) / 1000;
       const isOutroActive = isOutroRef.current;
 
-      // Pha 1 (0.0s -> 0.35s): Bay từ icon góc trái ra giữa màn hình và phóng lớn
-      if (elapsed < 0.35) {
-        const t = elapsed / 0.35;
-        const ease = t * t * (3 - 2 * t); // Smoothstep easing
-        rootGroup.position.x = THREE.MathUtils.lerp(startX, 0, ease);
-        rootGroup.position.y = THREE.MathUtils.lerp(startY, 0, ease);
-        const curScale = THREE.MathUtils.lerp(0.18, 1.0, ease);
-        rootGroup.scale.set(curScale, curScale, curScale);
-      } else {
-        rootGroup.position.x = THREE.MathUtils.lerp(rootGroup.position.x, 0, 0.1);
-        rootGroup.position.y = THREE.MathUtils.lerp(rootGroup.position.y, 0, 0.1);
-        rootGroup.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
-      }
-
-      // Vòng hào quang nhẹ nhàng xoay và thở
-      haloGroup.rotation.z = elapsed * 0.4;
-      haloGroup.scale.setScalar(1 + Math.sin(elapsed * 3) * 0.04);
-
       // Cập nhật kịch bản riêng của từng mode
       updateFns.forEach((fn) => fn(elapsed, isOutroActive, elapsed));
 
       renderer.render(scene, camera);
     };
-
     animate();
 
     // ── 8. THU DỌN TÀI NGUYÊN (CLEANUP & MEMORY LEAK PREVENTION) ──

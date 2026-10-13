@@ -96,6 +96,31 @@ export default function ArenaModeLaunchTransition({
   const currentMode = String(mode || "CLASSIC").toUpperCase();
   const isOutro = phase === "outro";
 
+  // Tính toán độ lệch từ icon của card được click đến tâm màn hình
+  let deltaX = 0;
+  let deltaY = 0;
+  if (sourceRect && typeof window !== "undefined") {
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const srcX = sourceRect.left + sourceRect.width / 2;
+    const srcY = sourceRect.top + sourceRect.height / 2;
+    deltaX = srcX - centerX;
+    deltaY = srcY - centerY;
+  }
+
+  const [isTakeoff, setIsTakeoff] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setIsTakeoff(false);
+      const raf = requestAnimationFrame(() => {
+        setIsTakeoff(true);
+      });
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setIsTakeoff(false);
+    }
+  }, [isOpen]);
+
   return createPortal(
     <div
       aria-hidden="true"
@@ -119,20 +144,36 @@ export default function ArenaModeLaunchTransition({
         }`}
       />
 
-      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh vật thể 3D điện ảnh) ── */}
-      <div
-        className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
-          isOutro ? "opacity-0" : "opacity-100"
-        }`}
-        style={{
-          background:
-            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.16) 0%, rgba(147,51,234,0.08) 35%, rgba(4,5,13,0.95) 70%, #04050d 100%)",
-        }}
-      />
+      {/* ── 2. CONCENTRIC GLOWING AURA RINGS (CSS GPU Layer 60 FPS, không dùng wire loops) ── */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        {/* Vòng hào quang chính */}
+        <div
+          className={`w-72 h-72 sm:w-96 sm:h-96 rounded-full border border-cyan-400/40 shadow-[0_0_80px_rgba(6,182,212,0.3)] transition-all duration-700 ease-out will-change-transform ${
+            isOutro ? "scale-150 opacity-0" : "scale-100 opacity-80"
+          }`}
+          style={{
+            background: "radial-gradient(circle, rgba(6,182,212,0.14) 0%, rgba(168,85,247,0.06) 45%, transparent 70%)",
+          }}
+        />
+        {/* Vòng quỹ đạo ánh sáng tím */}
+        <div
+          className={`absolute w-88 h-88 sm:w-[30rem] sm:h-[30rem] rounded-full border border-purple-500/25 shadow-[0_0_60px_rgba(168,85,247,0.2)] transition-all duration-700 ease-out will-change-transform ${
+            isOutro ? "scale-130 opacity-0" : "scale-100 opacity-60"
+          }`}
+        />
+      </div>
 
-      {/* ── 3. THREE.JS REAL 3D WEBGL ENGINE (Kim Loại Vàng PBR & Kính Cyberpunk) ── */}
-      {/* Vật thể 3D xuất phát từ toạ độ sourceRect của card mode và bay lướt ra giữa màn hình */}
-      <ArenaThreeScene mode={currentMode} isOutro={isOutro} sourceRect={sourceRect} />
+      {/* ── 3. THREE.JS REAL 3D ENGINE VỚI GPU COMPOSITOR TAKEOFF (60 FPS MƯỢT TUYỆT ĐỐI) ── */}
+      <div
+        className="absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform"
+        style={{
+          transform: isTakeoff ? "translate3d(0, 0, 0) scale(1)" : `translate3d(${deltaX}px, ${deltaY}px, 0) scale(0.18)`,
+          transition: "transform 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 350ms ease-out",
+          opacity: isOutro ? 0 : 1,
+        }}
+      >
+        <ArenaThreeScene mode={currentMode} isOutro={isOutro} />
+      </div>
 
       {/* ── 4. CYAN WARP FLASH BURST (250ms hé lộ bàn đấu mượt mà, triệt tiêu giật hình) ── */}
       <div

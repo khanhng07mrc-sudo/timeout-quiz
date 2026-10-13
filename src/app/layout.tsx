@@ -4,6 +4,7 @@ import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
+import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="vi">
       <body className={`${inter.className} bg-background text-foreground page-transition relative min-h-screen`}>
         <QuizSoulBackground />
+        <GlobalPageTransition />
         <OfflineBanner />
         <div className="relative z-10 w-full min-h-screen flex flex-col">
           {children}

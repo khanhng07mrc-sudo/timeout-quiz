@@ -102,20 +102,22 @@ select, option, optgroup {
 
 /* ── HỆ THỐNG NÚT 3D CYBER GLASS ĐỒNG BỘ 100% (3D UNIFIED CYBER GLASS BUTTONS) ── */
 
-/* 1. NÚT 3D TÍM ĐẤU TRƯỜNG (Primary 3D Cyber Cut) */
+/* ── HỆ THỐNG NÚT 3D CYBER GLASS ĐỒNG BỘ 100% BO GÓC (3D UNIFIED ROUNDED CYBER BUTTONS) ── */
+
+/* 1. NÚT 3D TÍM ĐẤU TRƯỜNG (Primary 3D Cyber Rounded) */
 .btn-3d-cyber-purple,
 .btn-chamfer {
-  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  border-radius: 0.875rem;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   color: #ffffff;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.9) 0%, rgba(91, 33, 182, 0.9) 100%);
-  border: 1px solid rgba(192, 132, 252, 0.45);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.95) 0%, rgba(91, 33, 182, 0.95) 100%);
+  border: 1px solid rgba(216, 180, 254, 0.5);
   /* 3D Mechanical Depth */
-  box-shadow: 0 6px 0 #3b1473, 0 14px 26px -2px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 0 #3b1473, 0 14px 26px -2px rgba(124, 58, 237, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
@@ -127,30 +129,30 @@ select, option, optgroup {
 .btn-3d-cyber-purple:hover,
 .btn-chamfer:hover {
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #3b1473, 0 18px 32px rgba(124, 58, 237, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 25px rgba(168, 85, 247, 0.45);
+  box-shadow: 0 8px 0 #3b1473, 0 18px 32px rgba(124, 58, 237, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 0 25px rgba(168, 85, 247, 0.5);
   filter: brightness(1.1);
 }
 
 .btn-3d-cyber-purple:active,
 .btn-chamfer:active {
   transform: translate3d(0, 4px, 0);
-  box-shadow: 0 2px 0 #3b1473, 0 6px 14px rgba(124, 58, 237, 0.4);
+  box-shadow: 0 2px 0 #3b1473, 0 6px 14px rgba(124, 58, 237, 0.45);
 }
 
-/* 2. NÚT 3D CYAN HOLOGRAM (Secondary 3D Cyber Cut) */
+/* 2. NÚT 3D CYAN HOLOGRAM (Secondary 3D Cyber Rounded) */
 .btn-3d-cyber-cyan,
 .btn-prism {
-  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  border-radius: 0.875rem;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   color: #e0f2fe;
-  background: linear-gradient(135deg, rgba(8, 145, 178, 0.88) 0%, rgba(14, 116, 144, 0.88) 100%);
-  border: 1px solid rgba(103, 232, 249, 0.55);
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.92) 0%, rgba(14, 116, 144, 0.92) 100%);
+  border: 1px solid rgba(103, 232, 249, 0.6);
   /* 3D Mechanical Depth */
-  box-shadow: 0 6px 0 #0e4e63, 0 14px 26px -2px rgba(6, 182, 212, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: 0 6px 0 #0e4e63, 0 14px 26px -2px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
@@ -163,30 +165,30 @@ select, option, optgroup {
 .btn-prism:hover {
   color: #ffffff;
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #0e4e63, 0 18px 32px rgba(6, 182, 212, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.6), 0 0 25px rgba(6, 182, 212, 0.45);
+  box-shadow: 0 8px 0 #0e4e63, 0 18px 32px rgba(6, 182, 212, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 0 25px rgba(6, 182, 212, 0.5);
   filter: brightness(1.1);
 }
 
 .btn-3d-cyber-cyan:active,
 .btn-prism:active {
   transform: translate3d(0, 4px, 0);
-  box-shadow: 0 2px 0 #0e4e63, 0 6px 14px rgba(6, 182, 212, 0.4);
+  box-shadow: 0 2px 0 #0e4e63, 0 6px 14px rgba(6, 182, 212, 0.45);
 }
 
-/* 3. NÚT 3D ĐÁ PHIẾN CARBON MỜ (Tertiary / Admin 3D Cyber Cut) */
+/* 3. NÚT 3D ĐÁ PHIẾN CARBON MỜ (Tertiary / Admin 3D Cyber Rounded) */
 .btn-3d-cyber-slate,
 .btn-glass {
-  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  border-radius: 0.875rem;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
   color: #e2e8f0;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.88) 0%, rgba(15, 23, 42, 0.92) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.45);
   /* 3D Mechanical Depth */
-  box-shadow: 0 6px 0 #0a0f1d, 0 14px 26px -2px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 6px 0 #0a0f1d, 0 14px 26px -2px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
@@ -198,16 +200,16 @@ select, option, optgroup {
 .btn-3d-cyber-slate:hover,
 .btn-glass:hover {
   color: #ffffff;
-  border-color: rgba(168, 85, 247, 0.6);
+  border-color: rgba(168, 85, 247, 0.7);
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #0a0f1d, 0 18px 32px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 0 20px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 8px 0 #0a0f1d, 0 18px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 20px rgba(168, 85, 247, 0.35);
   filter: brightness(1.1);
 }
 
 .btn-3d-cyber-slate:active,
 .btn-glass:active {
   transform: translate3d(0, 4px, 0);
-  box-shadow: 0 2px 0 #0a0f1d, 0 6px 14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 0 #0a0f1d, 0 6px 14px rgba(0, 0, 0, 0.55);
 }
 
 /* 4. NÚT 3D HUY HIỆU ĐẤU TRƯỜNG PHÁ KHỐI (3D Cyber Crest) */
@@ -235,39 +237,39 @@ select, option, optgroup {
   box-shadow: 0 2px 0 #581c87, 0 4px 10px rgba(168, 85, 247, 0.3);
 }
 
-/* ── THẺ ĐỘT PHÁ CÔNG NGHỆ (HOLOGRAPHIC CYBER DECK - KHÔNG TÙ TÚNG) ── */
+/* ── THẺ ĐỘT PHÁ CÔNG NGHỆ BO GÓC ĐỒNG BỘ (HOLOGRAPHIC ROUNDED CYBER DECK) ── */
 .hologram-deck-card {
   position: relative;
-  background: linear-gradient(135deg, rgba(20, 24, 46, 0.42) 0%, rgba(13, 16, 32, 0.5) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  background: linear-gradient(135deg, rgba(20, 24, 46, 0.55) 0%, rgba(13, 16, 32, 0.68) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 1.25rem;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
   transform: translateZ(0);
   will-change: transform;
 }
 
 .hologram-deck-card:hover {
-  background: linear-gradient(135deg, rgba(28, 33, 64, 0.65) 0%, rgba(18, 22, 45, 0.75) 100%);
-  border-color: rgba(6, 182, 212, 0.6);
+  background: linear-gradient(135deg, rgba(30, 36, 70, 0.75) 0%, rgba(18, 22, 48, 0.85) 100%);
+  border-color: rgba(6, 182, 212, 0.65);
   transform: translateY(-4px) translateZ(0);
-  box-shadow: 0 18px 35px -8px rgba(0, 0, 0, 0.8), 0 0 25px rgba(6, 182, 212, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.85), 0 0 25px rgba(6, 182, 212, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
 .hologram-deck-card::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 14px;
-  right: 14px;
+  left: 1.25rem;
+  right: 1.25rem;
   height: 1.5px;
-  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.7), rgba(6, 182, 212, 0.7), transparent);
+  background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.8), rgba(6, 182, 212, 0.8), transparent);
   pointer-events: none;
 }
 
-/* ── SÀN ĐẤU LƯỚI KHÔNG GIAN 3D (3D PERSPECTIVE CYBER ARENA FLOOR) ── */
+/* ── SÀN ĐẤU LƯỚI KHÔNG GIAN 3D TỐI ƯU 60FPS (ZERO-LAG 3D CYBER ARENA FLOOR) ── */
 .cyber-arena-grid {
   position: absolute;
   bottom: -120px;
@@ -275,28 +277,19 @@ select, option, optgroup {
   right: -25%;
   height: 65vh;
   background-image: 
-    linear-gradient(to right, rgba(139, 92, 246, 0.25) 1.5px, transparent 1.5px),
-    linear-gradient(to bottom, rgba(6, 182, 212, 0.25) 1.5px, transparent 1.5px);
+    linear-gradient(to right, rgba(139, 92, 246, 0.22) 1.5px, transparent 1.5px),
+    linear-gradient(to bottom, rgba(6, 182, 212, 0.22) 1.5px, transparent 1.5px);
   background-size: 64px 64px;
   transform: perspective(400px) rotateX(68deg) translateZ(0);
   transform-origin: center bottom;
   mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 85%);
   -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 85%);
   pointer-events: none;
-  animation: gridPerspectiveScroll 18s linear infinite;
-  will-change: background-position;
+  contain: strict;
+  will-change: transform;
 }
 
-@keyframes gridPerspectiveScroll {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 0 64px;
-  }
-}
-
-/* Tia laser quét quang học */
+/* Tia laser quét quang học tối ưu GPU */
 .cyber-scanline {
   position: absolute;
   top: 0;
@@ -305,8 +298,9 @@ select, option, optgroup {
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(168, 85, 247, 0.8), rgba(6, 182, 212, 0.9), transparent);
   box-shadow: 0 0 15px rgba(6, 182, 212, 0.8);
-  animation: scanlineSweep 10s ease-in-out infinite;
+  animation: scanlineSweep 12s ease-in-out infinite;
   pointer-events: none;
+  contain: paint;
   will-change: transform;
 }
 
@@ -316,15 +310,80 @@ select, option, optgroup {
     opacity: 0;
   }
   15% {
-    opacity: 0.7;
+    opacity: 0.65;
   }
   85% {
-    opacity: 0.7;
+    opacity: 0.65;
   }
   100% {
     transform: translateY(100vh);
     opacity: 0;
   }
+}
+
+/* ── 3D HOLOGRAPHIC GYROSCOPE LOGO & TRANSITIONS ── */
+@keyframes gyroOrbitOuter {
+  0% {
+    transform: rotateX(65deg) rotateY(15deg) rotateZ(0deg);
+  }
+  100% {
+    transform: rotateX(65deg) rotateY(15deg) rotateZ(360deg);
+  }
+}
+
+@keyframes gyroOrbitInner {
+  0% {
+    transform: rotateX(45deg) rotateY(-35deg) rotateZ(360deg);
+  }
+  100% {
+    transform: rotateX(45deg) rotateY(-35deg) rotateZ(0deg);
+  }
+}
+
+@keyframes gyroCorePulse {
+  0%, 100% {
+    transform: scale(1) translateZ(10px);
+    filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.6));
+  }
+  50% {
+    transform: scale(1.06) translateZ(16px);
+    filter: drop-shadow(0 0 25px rgba(6, 182, 212, 0.8));
+  }
+}
+
+@keyframes gyroWarpSpin {
+  0% {
+    transform: perspective(800px) rotateY(0deg) rotateX(10deg) scale(0.95);
+  }
+  50% {
+    transform: perspective(800px) rotateY(180deg) rotateX(-10deg) scale(1.1);
+  }
+  100% {
+    transform: perspective(800px) rotateY(360deg) rotateX(10deg) scale(0.95);
+  }
+}
+
+.animate-gyro-warp {
+  animation: gyroWarpSpin 1.6s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+  transform-style: preserve-3d;
+}
+
+.animate-gyro-outer {
+  animation: gyroOrbitOuter 8s linear infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.animate-gyro-inner {
+  animation: gyroOrbitInner 5s linear infinite;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.animate-gyro-core {
+  animation: gyroCorePulse 3s ease-in-out infinite;
+  transform-style: preserve-3d;
+  will-change: transform, filter;
 }
 
 /* ── 3D CYBER PORTAL GATES (CỔNG DỊCH CHUYỂN BỀ THẾ) ── */

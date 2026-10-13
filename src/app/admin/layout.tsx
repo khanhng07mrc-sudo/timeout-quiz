@@ -29,6 +29,19 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const isRouteActive = (targetHref: string, currentPath: string) => {
+    if (targetHref === "/admin") {
+      return currentPath === "/admin";
+    }
+    if (targetHref === "/admin/rooms") {
+      return (
+        currentPath === "/admin/rooms" ||
+        (currentPath.startsWith("/admin/rooms/") && !currentPath.startsWith("/admin/rooms/create"))
+      );
+    }
+    return currentPath === targetHref || currentPath.startsWith(targetHref + "/");
+  };
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-transparent text-foreground relative">
       {/* ── Mobile Top Header (Screens < lg) ── */}
@@ -68,7 +81,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
             <nav className="flex flex-col gap-1.5 flex-1 overflow-y-auto">
               {NAV_ITEMS.map(({ href, icon, label, desc }) => {
-                const isActive = pathname === href || (href !== "/admin" && pathname.startsWith(href));
+                const isActive = isRouteActive(href, pathname);
                 return (
                   <Link
                     key={href}
@@ -149,7 +162,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         {/* Navigation Menu */}
         <nav className="flex flex-col gap-2 flex-1 w-full">
           {NAV_ITEMS.map(({ href, icon, label, desc }) => {
-            const isActive = pathname === href || (href !== "/admin" && pathname.startsWith(href));
+            const isActive = isRouteActive(href, pathname);
             return (
               <Link
                 key={href}

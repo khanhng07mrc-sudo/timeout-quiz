@@ -112,18 +112,36 @@ export default function ArenaModeLaunchTransition({
         isOutro ? "opacity-0" : "opacity-100"
       }`}
     >
-      {/* ── 1. MÀN CHE LƯỢNG TỬ KHÔNG GIAN (Tối ưu 100% GPU, không dùng Blur nặng) ── */}
+      {/* ── 1. MÀN CHE ĐEN TUYỀN SOLID 100% (Khử sạch hoàn toàn chữ và thẻ bên dưới) ── */}
       <div
-        className={`absolute inset-0 bg-[#070814]/96 transition-transform duration-500 ease-out will-change-transform ${
-          isOutro ? "scale-105 opacity-0" : "scale-100 opacity-100"
+        className={`absolute inset-0 bg-[#04050d] transition-opacity duration-400 ease-out will-change-transform ${
+          isOutro ? "opacity-0" : "opacity-100"
         }`}
       />
 
-      {/* ── 2. THREE.JS REAL 3D WEBGL ENGINE (Kim Loại Vàng PBR & Kính Cyberpunk) ── */}
+      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh vật thể 3D điện ảnh) ── */}
+      <div
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-500 ${
+          isOutro ? "opacity-0" : "opacity-100"
+        }`}
+        style={{
+          background:
+            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.16) 0%, rgba(147,51,234,0.08) 35%, rgba(4,5,13,0.95) 70%, #04050d 100%)",
+        }}
+      />
+
+      {/* ── 3. THREE.JS REAL 3D WEBGL ENGINE (Kim Loại Vàng PBR & Kính Cyberpunk) ── */}
       {/* Vật thể 3D xuất phát từ toạ độ sourceRect của card mode và bay lướt ra giữa màn hình */}
       <ArenaThreeScene mode={currentMode} isOutro={isOutro} sourceRect={sourceRect} />
 
-      {/* ── 3. HIỆU ỨNG OUTRO IRIS / SHOCKWAVE MỞ BUNG CỰC ĐẠI (300% SCREEN REVEAL) ── */}
+      {/* ── 4. CYAN WARP FLASH BURST (250ms hé lộ bàn đấu mượt mà, triệt tiêu giật hình) ── */}
+      <div
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-300 ${
+          isOutro ? "opacity-25 bg-cyan-300" : "opacity-0"
+        }`}
+      />
+
+      {/* ── 5. HIỆU ỨNG OUTRO IRIS / SHOCKWAVE MỞ BUNG CỰC ĐẠI (300% SCREEN REVEAL) ── */}
       <div
         className={`absolute rounded-full pointer-events-none transition-all duration-550 ease-out will-change-transform ${
           isOutro
@@ -137,7 +155,7 @@ export default function ArenaModeLaunchTransition({
         }}
       />
 
-      {/* ── 4. THÔNG TIN TIÊU ĐỀ & TIẾN TRÌNH KHỞI TẠO ĐẤU TRƯỜNG ── */}
+      {/* ── 6. THÔNG TIN TIÊU ĐỀ & TIẾN TRÌNH KHỞI TẠO ĐẤU TRƯỜNG CHUẨN ESPORTS ── */}
       <div
         className="absolute bottom-16 sm:bottom-20 z-20 flex flex-col items-center justify-center text-center transition-all duration-400 ease-out will-change-transform pointer-events-none max-w-md mx-auto px-4"
         style={{
@@ -145,21 +163,21 @@ export default function ArenaModeLaunchTransition({
           opacity: isOutro ? 0 : 1,
         }}
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 font-mono text-xs font-black tracking-widest uppercase shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/50 text-cyan-300 font-mono text-[11px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(6,182,212,0.35)] backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
           {isOutro ? "MỞ CỔNG ĐẤU TRƯỜNG" : "KHỞI ĐỘNG ĐẤU TRƯỜNG ARENA"}
         </div>
-        <h2 className="mt-2 text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-200 to-purple-300 tracking-tight drop-shadow-md">
+        <h2 className="mt-2.5 text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-purple-200 tracking-tight drop-shadow-[0_4px_24px_rgba(34,211,238,0.4)]">
           {modeName || currentMode}
         </h2>
-        <p className="mt-1 text-xs text-slate-300 font-medium">
+        <p className="mt-1 text-xs text-slate-400 font-medium tracking-wide">
           {isOutro
             ? "Bàn đấu đã sẵn sàng · Đang mở màn hé lộ giao diện thi đấu..."
             : "Đang kết nối hệ thống · Chuẩn bị màn chiếu & thiết bị thí sinh..."}
         </p>
 
-        {/* Thanh tiến trình lượng tử */}
-        <div className="mt-4 w-52 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 relative shadow-inner">
+        {/* Thanh tiến trình lượng tử sắc nét */}
+        <div className="mt-4 w-56 h-1.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 relative shadow-[0_0_15px_rgba(6,182,212,0.2)]">
           <div
             className={`h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full transition-all ${
               isOutro ? "w-full duration-200" : "w-3/4 animate-pulse duration-500"

@@ -19,15 +19,15 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     const container = containerRef.current;
     if (!container) return;
 
-    // Kích hoạt âm thanh Web Audio API độc bản cho từng mode (0KB mp3 tải ngoài)
+    // Phát âm thanh Web Audio API độc bản cho từng mode (0KB mp3 tải ngoài)
     transitionSoundEngine.playTransitionSfx(mode);
 
     const width = container.clientWidth || window.innerWidth;
     const height = container.clientHeight || window.innerHeight;
 
-    // ── 1. KHỞI TẠO SCENE & CAMERA ──
+    // ── 1. KHỞI TẠO SCENE & CAMERA CHUẨN ĐIỆN ẢNH ──
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x070814, 0.03);
+    scene.fog = new THREE.FogExp2(0x04050d, 0.025);
 
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
     camera.position.set(0, 0, 11);
@@ -41,91 +41,86 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.35;
+    renderer.toneMappingExposure = 1.4;
     container.appendChild(renderer.domElement);
 
-    // ── 2. HỆ THỐNG ÁNH SÁNG ĐA CHIỀU (STUDIO LIGHTING) ──
-    const ambientLight = new THREE.AmbientLight(0x0f172a, 3.0);
+    // ── 2. HỆ THỐNG ÁNH SÁNG STUDIO ĐA CHIỀU (PBR STUDIO LIGHTING) ──
+    const ambientLight = new THREE.AmbientLight(0x0f172a, 3.2);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xfffbeb, 5.0);
+    const mainLight = new THREE.DirectionalLight(0xfffbeb, 5.5);
     mainLight.position.set(6, 12, 8);
     scene.add(mainLight);
 
-    const cyanPointLight = new THREE.PointLight(0x06b6d4, 8.0, 35);
-    cyanPointLight.position.set(-6, -3, 5);
+    const cyanPointLight = new THREE.PointLight(0x06b6d4, 8.5, 30);
+    cyanPointLight.position.set(-5, -2, 4);
     scene.add(cyanPointLight);
 
-    const purplePointLight = new THREE.PointLight(0xa855f7, 7.0, 35);
-    purplePointLight.position.set(6, -3, 5);
+    const purplePointLight = new THREE.PointLight(0xa855f7, 7.5, 30);
+    purplePointLight.position.set(5, -2, 4);
     scene.add(purplePointLight);
 
-    const goldPointLight = new THREE.PointLight(0xfacc15, 8.0, 25);
-    goldPointLight.position.set(0, 2, 6);
+    const goldPointLight = new THREE.PointLight(0xfacc15, 9.0, 20);
+    goldPointLight.position.set(0, 2, 5);
     scene.add(goldPointLight);
 
-    // ── 3. NỀN MA TRẬN HẠT LỐC XOÁY VÀ CYBER GRID ──
-    const gridHelper = new THREE.GridHelper(70, 45, 0x06b6d4, 0x1e1b4b);
-    gridHelper.position.y = -6.2;
-    gridHelper.rotation.x = 0.15;
-    scene.add(gridHelper);
+    // ── 3. VẦNG HÀO QUANG NĂNG LƯỢNG TẬP TRUNG TẠI TÂM (KHÔNG DÙNG HẠT VỤN RẢI RÁC) ──
+    // Vòng hào quang đa lớp nhẹ nhàng ôm lấy vật thể trung tâm
+    const haloGroup = new THREE.Group();
+    const auraRing1 = new THREE.Mesh(
+      new THREE.TorusGeometry(3.2, 0.035, 16, 64),
+      new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.55 })
+    );
+    haloGroup.add(auraRing1);
 
-    // 1,800 Hạt Năng Lượng Lốc Xoáy
-    const particleCount = 1800;
-    const particleGeometry = new THREE.BufferGeometry();
-    const particlePositions = new Float32Array(particleCount * 3);
-    for (let i = 0; i < particleCount; i++) {
-      const idx = i * 3;
-      const radius = 1.2 + Math.random() * 5.0;
-      const angle = Math.random() * Math.PI * 2;
-      particlePositions[idx] = Math.cos(angle) * radius;
-      particlePositions[idx + 1] = (Math.random() - 0.5) * 8.0;
-      particlePositions[idx + 2] = Math.sin(angle) * radius;
-    }
-    particleGeometry.setAttribute("position", new THREE.BufferAttribute(particlePositions, 3));
-    const particleMaterial = new THREE.PointsMaterial({
-      color: 0x38bdf8,
-      size: 0.14,
-      transparent: true,
-      opacity: 0.7,
-      blending: THREE.AdditiveBlending,
-    });
-    const vortexParticles = new THREE.Points(particleGeometry, particleMaterial);
-    scene.add(vortexParticles);
+    const auraRing2 = new THREE.Mesh(
+      new THREE.TorusGeometry(3.8, 0.02, 16, 64),
+      new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.4 })
+    );
+    auraRing2.rotation.x = Math.PI / 4;
+    haloGroup.add(auraRing2);
+    scene.add(haloGroup);
 
-    // ── 4. CHẤT LIỆU CHUẨN PBR ──
+    // Sóng xung kích Iris bùng nổ khi Outro
+    const shockwaveRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.1, 0.35, 64),
+      new THREE.MeshBasicMaterial({ color: 0x22d3ee, side: THREE.DoubleSide, transparent: true, opacity: 0.0 })
+    );
+    scene.add(shockwaveRing);
+
+    // ── 4. CHẤT LIỆU CHUẨN PBR CAO CẤP ──
     const goldMaterial = new THREE.MeshStandardMaterial({
       color: 0xffd700,
       metalness: 0.95,
-      roughness: 0.18,
+      roughness: 0.16,
       emissive: 0xb45309,
       emissiveIntensity: 0.35,
     });
     const darkMetalMaterial = new THREE.MeshStandardMaterial({
       color: 0x0f172a,
-      metalness: 0.85,
-      roughness: 0.28,
+      metalness: 0.9,
+      roughness: 0.22,
     });
     const neonCyanMaterial = new THREE.MeshStandardMaterial({
       color: 0x06b6d4,
       emissive: 0x22d3ee,
       emissiveIntensity: 0.85,
       metalness: 0.5,
-      roughness: 0.2,
+      roughness: 0.18,
     });
     const neonPurpleMaterial = new THREE.MeshStandardMaterial({
       color: 0x9333ea,
       emissive: 0xa855f7,
       emissiveIntensity: 0.85,
       metalness: 0.5,
-      roughness: 0.2,
+      roughness: 0.18,
     });
     const rubyMaterial = new THREE.MeshStandardMaterial({
       color: 0xf43f5e,
       emissive: 0xe11d48,
-      emissiveIntensity: 0.7,
-      metalness: 0.4,
-      roughness: 0.15,
+      emissiveIntensity: 0.8,
+      metalness: 0.35,
+      roughness: 0.12,
     });
 
     // ── 5. TÍNH TOÁN TỌA ĐỘ BAN ĐẦU TỪ ICON GÓC TRÁI CỦA CARD MODE ──
@@ -195,16 +190,14 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
 
       rootGroup.add(caroGroup);
 
-      updateFns.push((time, isOutroPhase, prog) => {
+      updateFns.push((time, isOutroPhase) => {
         caroGroup.rotation.y = Math.sin(time * 2.5) * 0.25;
         caroGroup.rotation.x = 0.18 + Math.cos(time * 2) * 0.1;
 
-        // Các ô lật ngẫu nhiên sống động
         tiles.forEach((t, i) => {
           t.rotation.x = Math.sin(time * 5 + i * 0.4) * 0.35;
         });
 
-        // Khi Outro: Lưới phóng xuyên qua camera biến mất sau ~1s
         if (isOutroPhase) {
           portalRing.scale.addScalar(0.08);
           caroGroup.position.z += 0.35;
@@ -214,52 +207,59 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // [MODE 2] MYSTERY QUEST: Chìa khóa vàng cắm xoay ổ khóa -> Iris expansion tròn
+    // [MODE 2] MYSTERY QUEST: Chìa khóa vàng hoàng gia, xoay 90° cắm ổ khóa -> Iris ring
     // ──────────────────────────────────────────────────────────────────────────
     else if (norm.includes("MYSTERY") || norm.includes("QUEST")) {
       const questGroup = new THREE.Group();
 
-      // Chiếc Chìa Khóa Vàng 3D Cổ Đại
+      // Chiếc Chìa Khóa Vàng 3D Hoàng Gia Cổ Đại
       const keyGroup = new THREE.Group();
-      const keyHead = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.16, 16, 32), goldMaterial);
-      keyHead.position.set(0, 0.9, 0);
-      keyGroup.add(keyHead);
+      // Vòng tròn đầu chìa khóa bọc vàng
+      const keyHeadOuter = new THREE.Mesh(new THREE.TorusGeometry(0.85, 0.18, 16, 32), goldMaterial);
+      keyHeadOuter.position.set(0, 0.95, 0);
+      keyGroup.add(keyHeadOuter);
 
-      const rubyGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.32), rubyMaterial);
-      rubyGem.position.set(0, 0.9, 0);
+      // Viên ngọc Ruby phát sáng ở trung tâm đầu chìa khóa
+      const rubyGem = new THREE.Mesh(new THREE.OctahedronGeometry(0.4), rubyMaterial);
+      rubyGem.position.set(0, 0.95, 0);
       keyGroup.add(rubyGem);
 
-      const keyShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 2.0, 16), goldMaterial);
-      keyShaft.position.set(0, -0.3, 0);
+      // Vòng đai phụ chạm khắc
+      const keyFiligree = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.06, 16, 24), goldMaterial);
+      keyFiligree.position.set(0, 0.95, 0);
+      keyFiligree.rotation.x = Math.PI / 2;
+      keyGroup.add(keyFiligree);
+
+      // Thân trục chìa khóa vàng
+      const keyShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 2.2, 16), goldMaterial);
+      keyShaft.position.set(0, -0.35, 0);
       keyGroup.add(keyShaft);
 
-      const keyTeeth = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.22, 0.14), goldMaterial);
-      keyTeeth.position.set(0.24, -0.9, 0);
-      keyGroup.add(keyTeeth);
+      // Răng cưa chìa khóa kép
+      const keyTeeth1 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.2, 0.15), goldMaterial);
+      keyTeeth1.position.set(0.25, -1.0, 0);
+      keyGroup.add(keyTeeth1);
+
+      const keyTeeth2 = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.15), goldMaterial);
+      keyTeeth2.position.set(0.2, -1.3, 0);
+      keyGroup.add(keyTeeth2);
+
       questGroup.add(keyGroup);
-
-      // Sóng xung kích tròn Iris Expansion Ring
-      const irisRing = new THREE.Mesh(
-        new THREE.RingGeometry(0.2, 0.35, 64),
-        new THREE.MeshBasicMaterial({ color: 0xfacc15, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
-      );
-      irisRing.position.set(0, -0.3, -0.2);
-      questGroup.add(irisRing);
-
       rootGroup.add(questGroup);
 
       updateFns.push((time, isOutroPhase) => {
+        rubyGem.rotation.y = time * 3;
+        rubyGem.rotation.x = time * 2;
+
         if (!isOutroPhase) {
-          keyGroup.rotation.y = time * 3;
-          keyGroup.rotation.z = Math.sin(time * 4) * 0.2;
-          keyGroup.position.y = Math.sin(time * 5) * 0.15;
+          keyGroup.rotation.y = time * 2.8;
+          keyGroup.rotation.z = Math.sin(time * 3.5) * 0.15;
+          keyGroup.position.y = Math.sin(time * 4) * 0.12;
         } else {
-          // Xoay 90 độ cắm ổ khóa và kích hoạt sóng tròn Iris nở bung cực đại
-          keyGroup.rotation.z = THREE.MathUtils.lerp(keyGroup.rotation.z, Math.PI / 2, 0.15);
-          irisRing.scale.addScalar(0.4);
-          if (irisRing.material instanceof THREE.Material) {
-            irisRing.material.opacity = Math.max(0, irisRing.material.opacity - 0.02);
-          }
+          // Xoay 90 độ cắm ổ khóa và mở rộng Iris
+          keyGroup.rotation.z = THREE.MathUtils.lerp(keyGroup.rotation.z, Math.PI / 2, 0.18);
+          keyGroup.position.z += 0.35;
+          keyGroup.scale.multiplyScalar(1.03);
         }
       });
     }
@@ -271,12 +271,12 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       const raceGroup = new THREE.Group();
 
       // Thân xe đua khí động học
-      const carBody = new THREE.Mesh(new THREE.ConeGeometry(1.2, 4.2, 5), neonCyanMaterial);
+      const carBody = new THREE.Mesh(new THREE.ConeGeometry(1.2, 4.4, 5), neonCyanMaterial);
       carBody.rotation.x = Math.PI / 2;
       raceGroup.add(carBody);
 
       // Đôi cánh lướt gió sau
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.15, 0.6), darkMetalMaterial);
+      const wing = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.15, 0.6), darkMetalMaterial);
       wing.position.set(0, 0.3, -1.8);
       raceGroup.add(wing);
 
@@ -289,27 +289,14 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       raceGroup.add(thrusterL);
       raceGroup.add(thrusterR);
 
-      // Vệt siêu tốc Speed Lines
-      const lineGeo = new THREE.BufferGeometry();
-      const lineCount = 100;
-      const linePos = new Float32Array(lineCount * 6);
-      for (let i = 0; i < lineCount; i++) {
-        const lx = (Math.random() - 0.5) * 8;
-        const ly = (Math.random() - 0.5) * 6;
-        const lz = -10 + Math.random() * 15;
-        linePos[i * 6] = lx;
-        linePos[i * 6 + 1] = ly;
-        linePos[i * 6 + 2] = lz;
-        linePos[i * 6 + 3] = lx;
-        linePos[i * 6 + 4] = ly;
-        linePos[i * 6 + 5] = lz - 3.5;
-      }
-      lineGeo.setAttribute("position", new THREE.BufferAttribute(linePos, 3));
-      const speedLines = new THREE.LineSegments(
-        lineGeo,
-        new THREE.LineBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.8 })
-      );
-      raceGroup.add(speedLines);
+      // Luồng lửa Nitro Cyan
+      const flameL = new THREE.Mesh(new THREE.ConeGeometry(0.25, 1.4, 8), rubyMaterial);
+      flameL.rotation.x = -Math.PI / 2;
+      flameL.position.set(-0.6, 0, -2.9);
+      const flameR = flameL.clone();
+      flameR.position.x = 0.6;
+      raceGroup.add(flameL);
+      raceGroup.add(flameR);
 
       rootGroup.add(raceGroup);
 
@@ -317,11 +304,11 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
         raceGroup.position.x = Math.sin(time * 8) * 0.1;
         raceGroup.position.y = Math.cos(time * 10) * 0.08;
         raceGroup.rotation.z = Math.sin(time * 4) * 0.15;
+        flameL.scale.y = 1 + Math.sin(time * 20) * 0.3;
+        flameR.scale.y = 1 + Math.cos(time * 20) * 0.3;
 
         if (isOutroPhase) {
-          // Lao vút qua camera
           raceGroup.position.z += 0.55;
-          speedLines.scale.z += 0.2;
         }
       });
     }
@@ -332,23 +319,23 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     else if (norm.includes("TOWER") || norm.includes("DEFENSE") || norm.includes("ELIMINATION")) {
       const towerGroup = new THREE.Group();
 
-      // Tháp pha lê cao
+      // Tháp pha lê công nghệ
       const towerMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.2, 4.0, 6), darkMetalMaterial);
       towerGroup.add(towerMesh);
 
       // Lõi năng lượng xoay trên đỉnh
-      const coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.75), neonCyanMaterial);
+      const coreMesh = new THREE.Mesh(new THREE.OctahedronGeometry(0.85), neonCyanMaterial);
       coreMesh.position.set(0, 2.5, 0);
       towerGroup.add(coreMesh);
 
-      // Vòm khiên lục giác bao phủ (Hexagon Forcefield Dome)
+      // Vòm khiên lục giác năng lượng (Hexagon Forcefield Dome)
       const forcefield = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(3.2, 1),
+        new THREE.IcosahedronGeometry(3.4, 1),
         new THREE.MeshStandardMaterial({
           color: 0x06b6d4,
           wireframe: true,
           transparent: true,
-          opacity: 0.65,
+          opacity: 0.7,
           emissive: 0x22d3ee,
           emissiveIntensity: 0.6,
         })
@@ -363,14 +350,14 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
         forcefield.rotation.y = -time * 1.5;
 
         if (isOutroPhase) {
-          forcefield.scale.addScalar(0.12);
+          forcefield.scale.addScalar(0.14);
           towerGroup.scale.multiplyScalar(1.03);
         }
       });
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // [MODE 5] BATTLE ROYALE / TOURNAMENT: Hòm Airdrop rơi cắm đất, khói đỏ, bo điện
+    // [MODE 5] BATTLE ROYALE / TOURNAMENT: Hòm Airdrop rơi cắm đất, vòng bo điện
     // ──────────────────────────────────────────────────────────────────────────
     else if (norm.includes("BATTLE") || norm.includes("ROYALE") || norm.includes("TOURNAMENT")) {
       const airdropGroup = new THREE.Group();
@@ -384,7 +371,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       tarpCover.position.y = 0.7;
       airdropGroup.add(tarpCover);
 
-      // Vòng bo điện tử quét qua (Blue Zone electric wall ring)
+      // Vòng bo điện tử Blue Zone
       const blueZone = new THREE.Mesh(
         new THREE.TorusGeometry(3.6, 0.08, 16, 64),
         new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
@@ -401,7 +388,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
 
         if (isOutroPhase) {
           blueZone.scale.addScalar(0.2);
-          airdropGroup.position.z += 0.3;
+          airdropGroup.position.z += 0.35;
         }
       });
     }
@@ -424,7 +411,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       bossGroup.add(hornR);
 
       // Đôi mắt đỏ rực rỡ
-      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), rubyMaterial);
+      const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.38, 16, 16), rubyMaterial);
       eyeL.position.set(-0.8, 0.2, 0.8);
       const eyeR = eyeL.clone();
       eyeR.position.x = 0.8;
@@ -448,7 +435,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
         bossGroup.rotation.y = Math.sin(time * 2) * 0.3;
         magmaHalo.rotation.z = time * 3;
 
-        // Screen shake rung chấn
+        // Rung chấn màn hình (Screen Shake)
         camera.position.x = (Math.random() - 0.5) * 0.08;
         camera.position.y = (Math.random() - 0.5) * 0.08;
 
@@ -460,7 +447,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
     }
 
     // ──────────────────────────────────────────────────────────────────────────
-    // [MODE 7] GOLD MINE / WAGER: Cuốc chim vàng giáng đá quý -> Mưa tiền vàng & kim cương
+    // [MODE 7] GOLD MINE / WAGER: Cuốc chim vàng giáng đá quý -> Mưa tiền vàng 3D
     // ──────────────────────────────────────────────────────────────────────────
     else if (norm.includes("GOLD") || norm.includes("MINE") || norm.includes("WAGER")) {
       const mineGroup = new THREE.Group();
@@ -484,11 +471,12 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       pickaxeGroup.rotation.z = -0.5;
       mineGroup.add(pickaxeGroup);
 
-      // Mưa tiền vàng và kim cương (15 đồng tiền vàng xoay)
+      // 12 đồng tiền vàng xoay tròn tập trung quanh khối đá (không rải rác ngoài rìa)
       const coins: THREE.Mesh[] = [];
-      for (let c = 0; c < 15; c++) {
-        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.06, 16), goldMaterial);
-        coin.position.set((Math.random() - 0.5) * 5, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3);
+      for (let c = 0; c < 12; c++) {
+        const coin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.08, 16), goldMaterial);
+        const a = (c / 12) * Math.PI * 2;
+        coin.position.set(Math.cos(a) * 2.2, Math.sin(a) * 1.8, (Math.random() - 0.5) * 1.5);
         mineGroup.add(coin);
         coins.push(coin);
       }
@@ -496,7 +484,6 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
       rootGroup.add(mineGroup);
 
       updateFns.push((time, isOutroPhase) => {
-        // Cuốc chim vung giáng
         pickaxeGroup.rotation.z = -0.5 + Math.sin(time * 6) * 0.4;
         crystalRock.rotation.y = time * 1.5;
 
@@ -506,11 +493,7 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
         });
 
         if (isOutroPhase) {
-          coins.forEach((coin) => {
-            coin.position.z += 0.3;
-            coin.position.x += (Math.random() - 0.5) * 0.1;
-          });
-          mineGroup.position.z += 0.25;
+          mineGroup.position.z += 0.35;
         }
       });
     }
@@ -601,7 +584,6 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
 
         if (isOutroPhase) {
           cupGroup.position.z += 0.4;
-          cupGroup.scale.multiplyScalar(1.03);
           classicGroup.position.z += 0.25;
         }
       });
@@ -631,8 +613,9 @@ export default function ArenaThreeScene({ mode, isOutro, sourceRect }: Props) {
         rootGroup.scale.lerp(new THREE.Vector3(1, 1, 1), 0.1);
       }
 
-      // Xoay nhẹ lốc xoáy hạt ma trận
-      vortexParticles.rotation.y = elapsed * 0.35;
+      // Vòng hào quang nhẹ nhàng xoay và thở
+      haloGroup.rotation.z = elapsed * 0.4;
+      haloGroup.scale.setScalar(1 + Math.sin(elapsed * 3) * 0.04);
 
       // Cập nhật kịch bản riêng của từng mode
       updateFns.forEach((fn) => fn(elapsed, isOutroActive, elapsed));

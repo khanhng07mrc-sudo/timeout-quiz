@@ -7,9 +7,10 @@ interface Props {
   mode: GameMode | string;
   className?: string;
   size?: number;
+  disableFilters?: boolean;
 }
 
-export default function GameModeIcon({ mode, className = "w-8 h-8", size }: Props) {
+export default function GameModeIcon({ mode, className = "w-8 h-8", size, disableFilters = false }: Props) {
   const sizeStyle = size ? { width: size, height: size } : undefined;
   const upperMode = (mode || "CLASSIC").toUpperCase();
 

@@ -23,6 +23,7 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import { formatRoomTitle } from "@/lib/game-engine/game-modes-meta";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { TieBreakerState } from "@/types";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
@@ -1186,10 +1187,20 @@ export default function DisplayPage() {
         )}
 
         <div className="text-center mb-6">
-          <h1 className="text-4xl sm:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
-            {roomState?.name ?? "Quizorra"}
-          </h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-2">Mã phòng tham gia</p>
+          {(() => {
+            const { mainTitle, badgeText } = formatRoomTitle(roomState?.name, roomState?.mode);
+            return (
+              <div className="flex flex-col items-center gap-2 mb-2">
+                <span className="px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                  {badgeText}
+                </span>
+                <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight">
+                  {mainTitle}
+                </h1>
+              </div>
+            );
+          })()}
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">Mã phòng tham gia</p>
           <div className="inline-block mt-2 px-6 sm:px-8 py-2.5 sm:py-3 rounded-2xl glass border-2 border-purple-500/40 glow-purple">
             <p className="text-5xl sm:text-7xl font-black font-mono tracking-widest text-cyan-300">{code}</p>
           </div>

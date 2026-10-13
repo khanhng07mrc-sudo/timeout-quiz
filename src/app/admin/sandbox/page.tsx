@@ -23,6 +23,7 @@ import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
+import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import { soundManager } from "@/lib/sound-manager";
 import {
@@ -93,21 +94,21 @@ const AVAILABLE_MODES: {
 }[] = [
   {
     mode: "GRID_CARO",
-    name: "Lưới chọn ô & Caro",
+    name: "Grid Caro",
     emoji: "🏁",
-    tagline: "Bàn cờ ma trận 4x4 · Nối chuỗi thắng K-in-a-row ăn điểm lớn",
+    tagline: "Chiếm ô ma trận 4x4 · Nối chuỗi Caro K ô nhận thưởng lớn",
     badge: "Chiến thuật",
     gradient: "from-cyan-600 via-blue-600 to-indigo-700",
     accentColor: "#06b6d4",
     glowClass: "glow-neon-cyan",
-    perks: ["Bàn cờ 4x4", "Chuỗi Caro 3 ô", "Thưởng chuỗi +30đ"],
+    perks: ["Ma trận 4x4", "Chuỗi Caro 3 ô", "Thưởng chuỗi +30đ"],
   },
   {
     mode: "MYSTERY_QUEST",
-    name: "Hành Trình Bí Ẩn",
+    name: "Mystery Quest",
     emoji: "🗝️",
-    tagline: "Lật rương may rủi · Chọn nhận điểm gốc an toàn hay cược Minigame",
-    badge: "May rủi & Minigame",
+    tagline: "Lật mở Rương thần bí · Cân não Minigame & Ô số phận",
+    badge: "Gameshow",
     gradient: "from-violet-600 via-purple-600 to-pink-600",
     accentColor: "#a855f7",
     glowClass: "glow-neon-purple",
@@ -115,10 +116,10 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "WAGER",
-    name: "Cược điểm Bí mật",
+    name: "Secret Wager",
     emoji: "💰",
-    tagline: "Tố điểm mù trước khi hiện câu · Gỡ gạc khẩn cấp khi phá sản",
-    badge: "Đấu trí",
+    tagline: "Bí mật cược điểm trước câu hỏi · Nhân bội điểm số thắng lớn",
+    badge: "Tâm lý",
     gradient: "from-amber-500 via-yellow-600 to-orange-600",
     accentColor: "#f59e0b",
     glowClass: "glow-neon-amber",
@@ -126,9 +127,9 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "DICE_RACE",
-    name: "Đua cờ Xí ngầu",
+    name: "Dice Race",
     emoji: "🎲",
-    tagline: "Tung xúc xắc 3D di chuyển · Ô thưởng, ô phạt & tranh đua về đích",
+    tagline: "Gieo 2 xí ngầu 3D marathon · Vượt cạm bẫy tranh đua về đích",
     badge: "Board Game",
     gradient: "from-orange-500 via-amber-600 to-yellow-600",
     accentColor: "#f97316",
@@ -137,10 +138,10 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "BOUNCEBACK",
-    name: "Cướp điểm luân phiên",
+    name: "Bounceback",
     emoji: "🔄",
-    tagline: "Về đích Olympia · Chuyển quyền cướp điểm khi đội chính trả lời sai",
-    badge: "Olympia",
+    tagline: "Đội chính trả lời sai · Mở chuông 5 giây cho đối thủ cướp lượt",
+    badge: "Cướp điểm",
     gradient: "from-emerald-600 via-teal-600 to-cyan-600",
     accentColor: "#10b981",
     glowClass: "glow-neon-emerald",
@@ -148,9 +149,9 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "BUZZ",
-    name: "Bấm chuông nhanh",
+    name: "Fast Buzz",
     emoji: "🛎️",
-    tagline: "Giành quyền bấm chuông siêu tốc · Phạt trừ điểm nếu trả lời sai",
+    tagline: "Bấm chuông siêu tốc · Độc chiếm quyền trả lời câu hỏi",
     badge: "Tốc độ",
     gradient: "from-rose-600 via-red-600 to-amber-600",
     accentColor: "#ef4444",
@@ -159,10 +160,10 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "TOURNAMENT",
-    name: "Đấu loại 1v1",
+    name: "Tournament 1v1",
     emoji: "🏆",
-    tagline: "Chia cặp nhánh đấu tứ kết/bán kết · Khán giả thả tim emoji",
-    badge: "Đấu Cúp 1v1",
+    tagline: "Nhánh đấu trực tiếp loại trừ · Tranh cúp vô địch đấu trường",
+    badge: "Đối kháng",
     gradient: "from-indigo-600 via-purple-600 to-blue-700",
     accentColor: "#6366f1",
     glowClass: "glow-neon-purple",
@@ -170,9 +171,9 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "ELIMINATION",
-    name: "Sinh tồn loại dần",
+    name: "Survival",
     emoji: "💀",
-    tagline: "Sinh tồn khốc liệt · Đội điểm thấp nhất sẽ bị loại dần",
+    tagline: "Đấu trường sinh tồn khốc liệt · Loại dần đội điểm thấp nhất",
     badge: "Sinh tồn",
     gradient: "from-purple-700 via-pink-700 to-rose-700",
     accentColor: "#d946ef",
@@ -181,15 +182,16 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "CLASSIC",
-    name: "Truyền thống",
+    name: "Classic",
     emoji: "⚡",
-    tagline: "Đấu bảng tính điểm tổng hợp · Hỗ trợ toàn bộ kho thẻ bổ trợ",
-    badge: "Cơ bản",
+    tagline: "Đấu bảng tính điểm tổng hợp · Trọn bộ thẻ bổ trợ chiến thuật",
+    badge: "Toàn năng",
     gradient: "from-blue-600 via-indigo-600 to-cyan-500",
     accentColor: "#3b82f6",
     glowClass: "glow-neon-cyan",
     perks: ["Tính thời gian", "Bonus tốc độ", "Kho thẻ bài"],
   },
+
 ];
 
 export default function AdminSandboxPage() {
@@ -706,9 +708,10 @@ export default function AdminSandboxPage() {
         const existingList: any[] = rawList ? JSON.parse(rawList) : [];
         const safeList = Array.isArray(existingList) ? existingList : [];
         const effectiveMode = mode || "CLASSIC";
+        const cleanName = MODE_DISPLAY_NAMES[effectiveMode] || effectiveMode;
         const entry = {
           code: codeStr,
-          name: roomName || `[Sandbox] ${effectiveMode} - 4 Đội Test`,
+          name: roomName || `Sandbox: ${cleanName} (4 Đội)`,
           mode: effectiveMode,
           isOffline,
           createdAt: new Date().toISOString(),
@@ -6353,9 +6356,9 @@ export default function AdminSandboxPage() {
                 <div className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 rounded-lg bg-white/5 border border-purple-500/30 text-xs shrink-0">
                   <span className="text-muted-foreground text-[10px]">PIN:</span>
                   <span className="font-mono font-black text-cyan-300 text-xs">{code}</span>
-                  <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1 text-[11px]">
-                    <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3 h-3" />
-                    [{roomState?.mode || selectedMode}]
+                  <span className="text-purple-300 font-bold hidden sm:inline-flex items-center gap-1.5 text-[11px]">
+                    <GameModeIcon mode={roomState?.mode || selectedMode} className="w-3.5 h-3.5 drop-shadow-sm" />
+                    <span>{MODE_DISPLAY_NAMES[(roomState?.mode || selectedMode).toUpperCase()] || (roomState?.mode || selectedMode)}</span>
                   </span>
                   <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
                     roomState?.status === "PLAYING" ? "bg-green-500/20 text-green-300" : roomState?.status ? "bg-yellow-500/20 text-yellow-300" : "bg-cyan-500/20 text-cyan-300 animate-pulse"
@@ -7752,8 +7755,8 @@ export default function AdminSandboxPage() {
                         <h3 className="text-base sm:text-lg font-black text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
                           <span>{m.name}</span>
                         </h3>
-                        <span className="font-mono text-[10px] text-cyan-400/80 font-bold tracking-wider">
-                          [{m.mode}]
+                        <span className="text-[10px] text-cyan-400 font-mono font-bold tracking-wide">
+                          Arena Mode
                         </span>
                       </div>
 

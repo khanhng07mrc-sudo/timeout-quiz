@@ -4,6 +4,7 @@ import { useState } from "react";
 import { RoomState } from "@/types";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeRulesCard from "@/components/ui/GameModeRulesCard";
+import { formatRoomTitle } from "@/lib/game-engine/game-modes-meta";
 
 interface Props {
   roomState: RoomState;
@@ -31,13 +32,20 @@ export default function PlayerLobby({ roomState, playerId, selectedTeamId, onSel
 
       {/* Header */}
       <div className="text-center mb-5">
-        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-          Chế độ: {isTeamMode ? "Đấu Đội (Team Mode)" : "Cá Nhân (Individual)"}
-        </span>
-        <h1 className="text-3xl sm:text-5xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent mt-2">
-          {roomState.name}
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">Đang chờ chủ phòng bắt đầu trận đấu...</p>
+        {(() => {
+          const { mainTitle, badgeText } = formatRoomTitle(roomState?.name, roomState?.mode);
+          return (
+            <div className="flex flex-col items-center gap-1.5 mb-1">
+              <span className="px-3 py-0.5 rounded-full text-xs font-mono font-bold tracking-wider bg-purple-500/20 text-cyan-300 border border-cyan-400/30 shadow-[0_0_10px_rgba(6,182,212,0.3)]">
+                {badgeText}
+              </span>
+              <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-300 via-pink-300 to-cyan-300 bg-clip-text text-transparent tracking-tight mt-1">
+                {mainTitle}
+              </h1>
+            </div>
+          );
+        })()}
+        <p className="text-muted-foreground text-xs sm:text-sm mt-0.5">Đang chờ chủ phòng bắt đầu trận đấu...</p>
       </div>
 
       {/* Game Rules Inline Summary */}

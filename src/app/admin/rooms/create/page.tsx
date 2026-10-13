@@ -13,15 +13,15 @@ import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
 
 const GAME_MODES = [
-  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Đại chúng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
-  { value: "BUZZ", label: "Buzz", desc: "Bấm chuông tranh quyền trả lời nhanh nhất", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
-  { value: "BOUNCEBACK", label: "Bounceback", desc: "1 đội trả lời chính, sai thì mở chuông 5s cho các đội khác cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
-  { value: "ELIMINATION", label: "Elimination", desc: "Loại dần đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Bảng đấu đối kháng trực tiếp (Tứ kết, Bán kết, Chung kết)", emoji: "🏆", badge: "Đối kháng", badgeColor: "text-yellow-300 bg-yellow-500/20 border-yellow-500/30" },
-  { value: "GRID_CARO", label: "Chọn ô & Caro", desc: "Lưới chữ nhật 1-X ô, độ khó bí ẩn & tính năng Tic-Tac-Toe", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
-  { value: "DICE_RACE", label: "Đua cờ Xí ngầu", desc: "Đường đua marathon 60-100 ô, gieo 2 xí ngầu 2-12 bước và chinh phục ô sự kiện", emoji: "🎲", badge: "May mắn", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
-  { value: "WAGER", label: "Cược điểm Bí mật", desc: "All-in cân não, bí mật cược điểm trước khi hiện câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
-  { value: "MYSTERY_QUEST", label: "Hành Trình Bí Ẩn", desc: "Gameshow luân phiên, Background biến hóa & Ô số phận (Không dùng Thẻ Bổ Trợ)", emoji: "🗝️", badge: "Kịch tính", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Toàn năng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
+  { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
+  { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
+  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Nhánh đấu trực tiếp loại trừ tranh cúp vô địch", emoji: "🏆", badge: "Đối kháng", badgeColor: "text-yellow-300 bg-yellow-500/20 border-yellow-500/30" },
+  { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
+  { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
+  { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
+  { value: "MYSTERY_QUEST", label: "Mystery Quest", desc: "Lật mở Rương thần bí, Minigame cân não & Ô số phận", emoji: "🗝️", badge: "Gameshow", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
 ];
 
 const POWERUP_TYPES = [

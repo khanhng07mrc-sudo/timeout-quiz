@@ -5,6 +5,7 @@ import { generateHostKey, getCurrentUserFromRequest } from "@/lib/security";
 import { GameMode } from "@/types";
 import { getDefaultAllowedPowerupsForMode, distributeCategorizedCardsToTeams } from "@/lib/game-engine/powerups";
 import { calculateModeDerivedConfig } from "@/lib/game-engine/question-allocator";
+import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 
 const DEFAULT_SANDBOX_CONFIG = {
   powerupEnabled: true,
@@ -191,11 +192,12 @@ export async function POST(req: NextRequest) {
     }
 
     let room;
+    const cleanName = MODE_DISPLAY_NAMES[mode] || mode;
     try {
       room = await prisma.room.create({
         data: {
           code,
-          name: `[Sandbox] ${mode} - 4 Đội Test`,
+          name: `Sandbox: ${cleanName} (4 Đội)`,
           hostId: effectiveHostId,
           hostKey,
           quizBankId: quizBank?.id || null,
@@ -212,7 +214,7 @@ export async function POST(req: NextRequest) {
         room = await prisma.room.create({
           data: {
             code,
-            name: `[Sandbox] ${mode} - 4 Đội Test`,
+            name: `Sandbox: ${cleanName} (4 Đội)`,
             hostId: effectiveHostId,
             hostKey,
             quizBankId: quizBank?.id || null,

@@ -116,14 +116,14 @@ export default function GameModeHologramIcon({
     >
       {/* ── 1. Vầng Hào Quang Quang Học Đa Tầng (Holographic Ambient Aura) ── */}
       <div
-        className={`absolute inset-[-15%] rounded-full bg-gradient-to-tr ${config.auraGrad} blur-3xl pointer-events-none ${
-          isGiantWatermark ? "opacity-35" : "opacity-85 animate-pulse"
+        className={`absolute inset-[-10%] rounded-full bg-gradient-to-tr ${config.auraGrad} pointer-events-none ${
+          isGiantWatermark ? "opacity-25" : "opacity-80 blur-2xl animate-pulse"
         }`}
       />
 
       {/* ── 2. Khung Quỹ Đạo Thiên Hà 3D Xoay Quanh Trục (3D Gyroscope Rings) ── */}
       <div
-        className={`absolute inset-0 pointer-events-none flex items-center justify-center ${
+        className={`absolute inset-0 pointer-events-none flex items-center justify-center will-change-transform ${
           isSpinning ? "rotate-3d-glass" : ""
         }`}
         style={{ transformStyle: "preserve-3d" }}
@@ -135,7 +135,7 @@ export default function GameModeHologramIcon({
           style={{
             transform: "rotateX(65deg) rotateY(18deg)",
             opacity: isGiantWatermark ? 0.35 : 0.85,
-            filter: `drop-shadow(0 0 12px ${config.subGlow})`,
+            filter: isGiantWatermark ? undefined : `drop-shadow(0 0 10px ${config.subGlow})`,
           }}
         >
           <ellipse
@@ -145,11 +145,11 @@ export default function GameModeHologramIcon({
             ry="92"
             fill="none"
             stroke={config.ringColor}
-            strokeWidth={isGiantWatermark ? "3" : "2"}
+            strokeWidth={isGiantWatermark ? "2" : "1.8"}
             strokeDasharray="18 12 6 12"
           />
           {/* Hạt photon chạy trên quỹ đạo */}
-          <circle cx="192" cy="100" r="3.5" fill="#ffffff" />
+          <circle cx="192" cy="100" r="3" fill="#ffffff" />
         </svg>
 
         {/* Vòng quỹ đạo thứ 2 (Nghiêng góc âm ngược pha) */}
@@ -159,7 +159,7 @@ export default function GameModeHologramIcon({
           style={{
             transform: "rotateX(-58deg) rotateY(-22deg)",
             opacity: isGiantWatermark ? 0.3 : 0.75,
-            filter: `drop-shadow(0 0 14px ${config.subGlow})`,
+            filter: isGiantWatermark ? undefined : `drop-shadow(0 0 10px ${config.subGlow})`,
           }}
         >
           <ellipse
@@ -172,18 +172,18 @@ export default function GameModeHologramIcon({
             strokeWidth="1.5"
             strokeDasharray="24 16"
           />
-          <circle cx="8" cy="100" r="3" fill={config.neonColor} />
+          <circle cx="8" cy="100" r="2.5" fill={config.neonColor} />
         </svg>
       </div>
 
       {/* ── 3. Lõi Biểu Tượng Kính 3D Đột Phá (Holographic 3D Glass Emblem) ── */}
       <div
-        className={`relative flex items-center justify-center rounded-3xl transition-transform ${
+        className={`relative flex items-center justify-center rounded-3xl transition-transform will-change-transform ${
           isSpinning ? "rotate-3d-glass-fast" : ""
         } ${
           isGiantWatermark
-            ? "bg-transparent backdrop-blur-[2px] opacity-35"
-            : "bg-[#111428]/60 backdrop-blur-md p-3.5 shadow-2xl border border-white/20"
+            ? "bg-transparent opacity-40"
+            : "bg-[#111428]/60 backdrop-blur-sm p-3.5 shadow-2xl border border-white/20"
         }`}
         style={{
           width: "78%",
@@ -191,7 +191,7 @@ export default function GameModeHologramIcon({
           transformStyle: "preserve-3d",
           boxShadow: isGiantWatermark
             ? "none"
-            : `0 15px 35px -5px ${config.subGlow}, inset 0 2px 4px rgba(255,255,255,0.4)`,
+            : `0 12px 30px -5px ${config.subGlow}, inset 0 2px 4px rgba(255,255,255,0.4)`,
         }}
       >
         {/* Phản xạ kính quang học (Glass Specular Sheen) */}
@@ -202,9 +202,11 @@ export default function GameModeHologramIcon({
         {/* Vector SVG biểu tượng gốc của Mode */}
         <GameModeIcon
           mode={upperMode}
-          className="w-full h-full drop-shadow-[0_8px_20px_rgba(0,0,0,0.85)]"
+          disableFilters={isGiantWatermark}
+          className={`w-full h-full ${isGiantWatermark ? "" : "drop-shadow-[0_8px_16px_rgba(0,0,0,0.75)]"}`}
         />
       </div>
+
     </div>
   );
 }

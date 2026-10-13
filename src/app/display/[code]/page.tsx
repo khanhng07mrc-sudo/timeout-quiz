@@ -37,6 +37,7 @@ import {
   getServerClockOffset,
 } from "@/lib/clock-sync";
 import { ContinuousTimerBar, ContinuousTimerRing } from "@/components/ui/ContinuousTimerBar";
+import DualTabTransition from "@/components/ui/DualTabTransition";
 
 export default function DisplayPage() {
   const { code } = useParams<{ code: string }>();
@@ -90,7 +91,20 @@ export default function DisplayPage() {
     Array<{ id: number; emoji: string; left: number }>
   >([]);
   const [oracleScores, setOracleScores] = useState<Record<string, number> | null>(null);
+  const [fontSizeLevel, setFontSizeLevel] = useState<"normal" | "large" | "xlarge">("large");
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [highContrast, setHighContrast] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastRevealKeyRef = useRef<string | null>(null);
+
+  const toggleFullscreen = () => {
+    if (typeof document === "undefined") return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  };
 
   const triggerFloatingCheer = useCallback((emoji: string, _targetTeamId: string) => {
     const id = Date.now() + Math.random();
@@ -974,7 +988,7 @@ export default function DisplayPage() {
               <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 Bàn cờ Caro & Lượt thi đấu
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">CỤC DIỆN BÀN CỜ CARO</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">Cục diện bàn cờ Caro</h2>
               <p className="text-sm text-cyan-300 mt-1 font-semibold">
                 Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
               </p>
@@ -987,7 +1001,7 @@ export default function DisplayPage() {
               <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                 Đường đua xúc xắc & Vị trí các đội
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">ĐƯỜNG ĐUA XÍ NGẦU</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">Đường đua xí ngầu</h2>
               <p className="text-sm text-cyan-300 mt-1 font-semibold">
                 Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
               </p>
@@ -1000,7 +1014,7 @@ export default function DisplayPage() {
               <span className="px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
                 Bảng điểm & Điểm cược các đội
               </span>
-              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">TỔNG KẾT ĐIỂM CƯỢC</h2>
+              <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">Tổng kết điểm cược</h2>
               <p className="text-sm text-cyan-300 mt-1 font-semibold">
                 Chuẩn bị bước vào Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
               </p>
@@ -1035,10 +1049,10 @@ export default function DisplayPage() {
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-gradient-to-r from-purple-500/20 via-pink-500/20 to-cyan-500/20 border border-purple-500/40 text-cyan-300 font-black text-xs uppercase tracking-widest shadow-lg">
                 <span>📊</span>
-                <span>BẢNG XẾP HẠNG TỔNG HỢP GIỮA CÁC CÂU THI</span>
+                <span>Bảng xếp hạng tổng hợp giữa các câu thi</span>
               </div>
               <h2 className="text-4xl sm:text-6xl font-black bg-gradient-to-r from-purple-400 via-pink-300 to-cyan-400 bg-clip-text text-transparent">
-                CỤC DIỆN ĐIỂM SỐ
+                Cục diện điểm số
               </h2>
               <p className="text-sm sm:text-base text-slate-300">
                 Sẵn sàng cho Câu hỏi #{intermission.nextQuestionIndex + 1} / {intermission.totalQuestions}
@@ -1295,8 +1309,31 @@ export default function DisplayPage() {
     !isMysteryNonQuestion
   );
 
+  const layoutGridClass = showSidebar
+    ? "min-[500px]:grid min-[500px]:grid-cols-[1fr_190px] sm:grid-cols-[1fr_220px] md:grid-cols-[1fr_250px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px]"
+    : "flex flex-col";
+
+  const questionFontClass =
+    fontSizeLevel === "xlarge"
+      ? "text-2xl sm:text-4xl lg:text-5xl"
+      : fontSizeLevel === "large"
+      ? "text-xl sm:text-3xl lg:text-4xl"
+      : "text-lg sm:text-2xl lg:text-3xl";
+
+  const optionFontClass =
+    fontSizeLevel === "xlarge"
+      ? "text-lg sm:text-xl lg:text-2xl p-4 sm:p-5"
+      : fontSizeLevel === "large"
+      ? "text-base sm:text-lg lg:text-xl p-3.5 sm:p-4"
+      : "text-sm sm:text-base p-2.5 sm:p-3.5";
+
   return (
-    <div className="h-screen max-h-[100dvh] overflow-hidden flex flex-col min-[500px]:grid min-[500px]:grid-cols-[1fr_190px] sm:grid-cols-[1fr_220px] md:grid-cols-[1fr_250px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px] gap-2 p-2 relative animate-loaded-reveal select-none" onClick={handleUnlockAudio}>
+    <div
+      className={`h-screen max-h-[100dvh] overflow-hidden flex flex-col ${layoutGridClass} gap-2 p-2 relative animate-loaded-reveal select-none ${
+        highContrast ? "contrast-125 bg-black" : ""
+      }`}
+      onClick={handleUnlockAudio}
+    >
       {!audioUnlocked && (
         <div
           onClick={handleUnlockAudio}
@@ -1311,7 +1348,7 @@ export default function DisplayPage() {
       {eliminationNotice && (
         <div className="fixed top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 glass bg-red-950/95 border-2 border-red-500 rounded-3xl p-8 max-w-xl w-[90vw] text-center shadow-2xl animate-bounce-in">
           <span className="text-6xl mb-3 block">💀</span>
-          <h2 className="text-3xl font-black text-red-400">VÒNG LOẠI #{eliminationNotice.round}</h2>
+          <h2 className="text-3xl font-black text-red-400">Vòng loại #{eliminationNotice.round}</h2>
           <p className="text-xl text-white mt-2">
             Đội <span className="font-black text-yellow-400">{eliminationNotice.eliminatedTeamName}</span> đã bị loại!
           </p>
@@ -1330,10 +1367,10 @@ export default function DisplayPage() {
             <span className="text-7xl block animate-bounce">✨👻✨</span>
             <div className="space-y-1">
               <span className="px-4 py-1 rounded-full bg-yellow-400 text-black font-black text-xs uppercase tracking-widest">
-                ĐẶC CÁCH HỒI SINH (STAGE #{revivalNotice.round})
+                Đặc cách hồi sinh (Chặng #{revivalNotice.round})
               </span>
               <h2 className="text-3xl sm:text-4xl font-black text-yellow-300 pt-2">
-                HỒI SINH THÀNH CÔNG!
+                Hồi sinh thành công!
               </h2>
             </div>
             <p className="text-xl sm:text-2xl font-bold text-white">
@@ -1444,14 +1481,18 @@ export default function DisplayPage() {
           </div>
         )}
 
-        {/* Question vs Board / Fallback view */}
-        {currentQuestion && showQuestion ? (
-          <div className="flex-1 min-h-0 glass rounded-2xl p-3 sm:p-4 flex flex-col justify-between overflow-y-auto lg:overflow-hidden">
+        {/* Question vs Board / Fallback view with seamless DualTabTransition */}
+        <DualTabTransition
+          tabKey={currentQuestion && showQuestion ? "QUESTION" : "BOARD"}
+          className="flex-1 min-h-0 flex flex-col justify-between"
+        >
+          {currentQuestion && showQuestion ? (
+            <div className="flex-1 min-h-0 glass rounded-2xl p-3 sm:p-4 flex flex-col justify-between overflow-y-auto lg:overflow-hidden h-full">
             {currentQuestion.bouncebackSelectPhase ? (
               <div className="py-8 sm:py-16 px-4 text-center flex flex-col items-center justify-center space-y-6 sm:space-y-8 animate-slide-up flex-1">
                 <div className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-gradient-to-r from-blue-600/30 via-indigo-600/30 to-purple-600/30 border border-indigo-400/50 text-indigo-300 font-black text-sm sm:text-base uppercase tracking-widest shadow-xl">
                   <span>🎯</span>
-                  <span>PHẦN THI VỀ ĐÍCH — CHỌN GÓI CÂU HỎI</span>
+                  <span>Phần thi Về đích — Chọn gói câu hỏi</span>
                 </div>
 
                 <div className="space-y-2 max-w-2xl">
@@ -1561,7 +1602,7 @@ export default function DisplayPage() {
                     {currentQuestion.isGoldQuestion && (
                       <span className="px-3 py-1 rounded-xl text-xs font-black border-2 border-yellow-400 bg-gradient-to-r from-amber-500/30 to-yellow-500/30 text-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.5)] flex items-center gap-1.5 animate-pulse whitespace-nowrap">
                         <span>⭐</span>
-                        <span>CÂU HỎI ĐIỂM VÀNG (x2 ĐIỂM)</span>
+                        <span>Câu hỏi Điểm Vàng (x2 điểm)</span>
                       </span>
                     )}
 
@@ -1573,31 +1614,107 @@ export default function DisplayPage() {
                     ) : null}
                   </div>
 
-                  {/* Cụm phải: Nút chuyển chế độ xem bảng đấu / bàn cờ */}
-                  {(roomState.mode === "DICE_RACE" || roomState.mode === "GRID_CARO" || roomState.mode === "TOURNAMENT") && (
-                    <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/20 shrink-0 ml-auto shadow">
+                  {/* Cụm phải: Bộ điều khiển trình chiếu & Chuyển chế độ xem */}
+                  <div className="flex items-center gap-1.5 ml-auto flex-wrap shrink-0">
+                    {/* Chuyển đổi cỡ chữ */}
+                    <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-white/20 shadow">
                       <button
                         type="button"
-                        onClick={() => setDisplayModeTab("QUESTION")}
-                        className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
-                          displayModeTab === "QUESTION" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
+                        title="Cỡ chữ tiêu chuẩn"
+                        onClick={() => setFontSizeLevel("normal")}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          fontSizeLevel === "normal" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
                         }`}
                       >
-                        <span>📖</span>
-                        <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
+                        A
                       </button>
                       <button
                         type="button"
-                        onClick={() => setDisplayModeTab("BOARD")}
-                        className={`px-3 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
-                          displayModeTab === "BOARD" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white hover:bg-white/10"
+                        title="Cỡ chữ lớn (Hội trường)"
+                        onClick={() => setFontSizeLevel("large")}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          fontSizeLevel === "large" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
                         }`}
                       >
-                        <span>🗺️</span>
-                        <span>{roomState.mode === "TOURNAMENT" ? "Nhánh đấu" : roomState.mode === "GRID_CARO" ? "Bảng Caro" : "Bàn cờ"}</span>
+                        A+
+                      </button>
+                      <button
+                        type="button"
+                        title="Cỡ chữ cực lớn (Phòng rộng)"
+                        onClick={() => setFontSizeLevel("xlarge")}
+                        className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                          fontSizeLevel === "xlarge" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
+                        }`}
+                      >
+                        A++
                       </button>
                     </div>
-                  )}
+
+                    {/* Nút Tương phản cao */}
+                    <button
+                      type="button"
+                      title={highContrast ? "Tắt tương phản cao" : "Bật tương phản cao"}
+                      onClick={() => setHighContrast(!highContrast)}
+                      className={`p-1.5 rounded-xl border text-xs font-bold transition cursor-pointer shadow flex items-center gap-1 ${
+                        highContrast
+                          ? "bg-amber-400 text-black border-amber-300"
+                          : "bg-black/60 text-slate-300 border-white/20 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <span>🌓</span>
+                    </button>
+
+                    {/* Nút Toàn màn hình F11 */}
+                    <button
+                      type="button"
+                      title={isFullscreen ? "Thoát toàn màn hình" : "Toàn màn hình máy chiếu"}
+                      onClick={toggleFullscreen}
+                      className="p-1.5 rounded-xl bg-black/60 border border-white/20 text-slate-300 hover:text-white hover:bg-white/10 text-xs font-bold transition cursor-pointer shadow flex items-center gap-1"
+                    >
+                      <span>{isFullscreen ? "🗗" : "⛶"}</span>
+                    </button>
+
+                    {/* Nút Ẩn/Hiện Bảng điểm bên phải để nới rộng màn hình */}
+                    <button
+                      type="button"
+                      title={showSidebar ? "Thu gọn bảng điểm để rộng màn chiếu" : "Mở lại bảng điểm"}
+                      onClick={() => setShowSidebar(!showSidebar)}
+                      className={`px-2.5 py-1 rounded-xl border text-xs font-bold transition cursor-pointer shadow flex items-center gap-1 ${
+                        !showSidebar
+                          ? "bg-purple-600 text-white border-purple-400 shadow-lg animate-pulse"
+                          : "bg-black/60 text-slate-300 border-white/20 hover:text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <span>📊</span>
+                      <span>{showSidebar ? "Thu gọn" : "Hiện BXH"}</span>
+                    </button>
+
+                    {/* Nút chuyển chế độ xem bảng đấu / bàn cờ */}
+                    {(roomState.mode === "DICE_RACE" || roomState.mode === "GRID_CARO" || roomState.mode === "TOURNAMENT") && (
+                      <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-xl border border-white/20 shadow">
+                        <button
+                          type="button"
+                          onClick={() => setDisplayModeTab("QUESTION")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                            displayModeTab === "QUESTION" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
+                          }`}
+                        >
+                          <span>📖</span>
+                          <span>{revealPayload ? "Đáp án" : "Câu hỏi"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDisplayModeTab("BOARD")}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 cursor-pointer ${
+                            displayModeTab === "BOARD" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white hover:bg-white/10"
+                          }`}
+                        >
+                          <span>🗺️</span>
+                          <span>{roomState.mode === "TOURNAMENT" ? "Nhánh đấu" : roomState.mode === "GRID_CARO" ? "Bảng Caro" : "Bàn cờ"}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* ── TẦNG 2: BANNER THÔNG TIN CHẾ ĐỘ RỘNG RÃI TOÀN MÀN HÌNH ── */}
@@ -1750,37 +1867,133 @@ export default function DisplayPage() {
               </div>
 
               {/* Question content */}
-              <h2 className="text-lg sm:text-2xl font-bold mb-2.5 sm:mb-4 leading-snug">{currentQuestion.question.content}</h2>
+              <h2 className={`font-black mb-3 sm:mb-5 leading-snug drop-shadow-md ${questionFontClass}`}>
+                {currentQuestion.question.content}
+              </h2>
 
               {currentQuestion.question.mediaUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-44 sm:max-h-56 rounded-xl mb-3 sm:mb-4 mx-auto" />
+                <img src={currentQuestion.question.mediaUrl} alt="Question media" className="max-h-52 sm:max-h-72 rounded-2xl mb-4 sm:mb-5 mx-auto border-2 border-white/20 shadow-2xl" />
               )}
 
-              {/* Options */}
-              {currentQuestion.question.options && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5">
+              {/* DẠNG 1: GHÉP NỐI (MATCHING) - Hiển thị 2 Cột Trực Quan A & B */}
+              {currentQuestion.question.type === "MATCHING" ? (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Cột A */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider px-1">
+                        Cột A: Mục câu hỏi
+                      </span>
+                      {(((currentQuestion.question as any).pairs && (currentQuestion.question as any).pairs.length > 0)
+                        ? (currentQuestion.question as any).pairs.map((p: any, idx: number) => ({ id: p.id || `L_${idx}`, text: p.left }))
+                        : (currentQuestion.question.options || []).map((o, idx) => ({ id: `L_${idx}`, text: o.text.split(" - ")[0] || o.text }))
+                      ).map((item: { id: string; text: string }, idx: number) => (
+                        <div
+                          key={item.id}
+                          className={`rounded-2xl border-2 font-semibold flex items-center gap-3 shadow-lg ${optionFontClass} ${
+                            revealPayload ? "border-amber-400/80 bg-amber-500/15 text-amber-100" : "border-amber-500/40 bg-amber-950/30 text-white"
+                          }`}
+                        >
+                          <span className="w-8 h-8 rounded-full bg-amber-500/30 text-amber-300 font-black flex items-center justify-center shrink-0 text-sm sm:text-base border border-amber-400/40">
+                            {idx + 1}
+                          </span>
+                          <span className="leading-snug">{item.text}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Cột B */}
+                    <div className="flex flex-col gap-2">
+                      <span className="text-xs sm:text-sm font-black text-cyan-300 uppercase tracking-wider px-1">
+                        Cột B: Đáp án tương ứng
+                      </span>
+                      {(((currentQuestion.question as any).pairs && (currentQuestion.question as any).pairs.length > 0)
+                        ? (currentQuestion.question as any).pairs.map((p: any, idx: number) => ({
+                            id: p.id || `R_${idx}`,
+                            text: p.right,
+                            label: String.fromCharCode(65 + idx),
+                          }))
+                        : (currentQuestion.question.options || []).map((o, idx) => ({
+                            id: o.id,
+                            label: String.fromCharCode(65 + idx),
+                            text: o.text.split(" - ")[1] || o.text,
+                          }))
+                      ).map((opt: { id: string; label: string; text: string }) => (
+                        <div
+                          key={opt.id}
+                          className={`rounded-2xl border-2 font-semibold flex items-center gap-3 shadow-lg ${optionFontClass} ${
+                            revealPayload ? "border-cyan-400/80 bg-cyan-500/15 text-cyan-100" : "border-cyan-500/40 bg-cyan-950/30 text-white"
+                          }`}
+                        >
+                          <span className="w-8 h-8 rounded-full bg-cyan-500/30 text-cyan-300 font-black flex items-center justify-center shrink-0 text-sm sm:text-base border border-cyan-400/40">
+                            {opt.label}
+                          </span>
+                          <span className="leading-snug">{opt.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : currentQuestion.question.type === "DRAG_DROP" ? (
+                /* DẠNG 2: SẮP XẾP QUY TRÌNH / THỨ TỰ (DRAG_DROP) */
+                <div className="space-y-2.5">
+                  <span className="text-xs sm:text-sm font-black text-purple-300 uppercase tracking-wider px-1">
+                    Các bước quy trình cần sắp xếp:
+                  </span>
+                  <div className="grid grid-cols-1 gap-2.5 sm:gap-3">
+                    {(currentQuestion.question.options || []).map((opt, i) => (
+                      <div
+                        key={opt.id}
+                        className={`rounded-2xl border-2 font-semibold flex items-center gap-3 shadow-lg ${optionFontClass} ${
+                          revealPayload ? "border-purple-400/60 bg-purple-950/40" : "border-purple-500/30 bg-purple-950/25 text-white"
+                        }`}
+                      >
+                        <span className="w-8 h-8 rounded-full bg-purple-600/40 text-purple-200 font-black flex items-center justify-center shrink-0 text-sm sm:text-base border border-purple-400/50">
+                          {i + 1}
+                        </span>
+                        <span className="leading-snug">{opt.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : currentQuestion.question.type === "FILL_BLANK" || currentQuestion.question.type === "ESSAY" ? (
+                /* DẠNG 3: ĐIỀN KHUYẾT / TỰ LUẬN */
+                <div className="p-4 sm:p-6 rounded-2xl border-2 border-indigo-500/40 bg-indigo-950/20 text-center space-y-2">
+                  <span className="text-2xl sm:text-3xl">✍️</span>
+                  <p className="text-base sm:text-xl font-bold text-indigo-200">
+                    {currentQuestion.question.type === "FILL_BLANK" ? "Câu hỏi Điền từ vào chỗ trống" : "Câu hỏi Tự luận"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Thí sinh / các đội nhập trực tiếp đáp án trên thiết bị. Đáp án chuẩn sẽ hiển thị ngay khi quản trò công bố.
+                  </p>
+                </div>
+              ) : currentQuestion.question.options ? (
+                /* DẠNG 4: TRẮC NGHIỆM ĐƠN / NHIỀU PHƯƠNG ÁN (MC, MC_MULTI) */
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4">
                   {currentQuestion.question.options.map((opt, i) => {
                     const labels = ["A", "B", "C", "D", "E", "F"];
                     const isRevealed = revealPayload?.correctAnswer.includes(opt.id);
                     return (
                       <div
                         key={opt.id}
-                        className={`p-2.5 sm:p-3.5 rounded-xl border-2 transition-all text-sm sm:text-base font-medium ${
+                        className={`rounded-2xl border-2 transition-all font-semibold shadow-lg flex items-center ${optionFontClass} ${
                           revealPayload
                             ? isRevealed
-                              ? "border-green-500 bg-green-500/20 text-green-300 ring-2 ring-green-500/50 animate-glow-celebrate"
-                              : "border-border opacity-40"
-                            : "border-border glass"
+                              ? "border-green-400 bg-green-500/25 text-green-200 ring-4 ring-green-500/50 animate-glow-celebrate scale-[1.02]"
+                              : "border-border opacity-35"
+                            : "border-white/15 glass hover:border-white/30 text-white"
                         }`}
                       >
-                        <span className="font-black mr-2 sm:mr-2.5 text-purple-400">{labels[i]}.</span>
-                        {opt.text}
+                        <span className="w-8 h-8 rounded-full bg-purple-600/40 text-purple-200 font-black mr-3 flex items-center justify-center shrink-0 text-sm sm:text-base border border-purple-400/40">
+                          {labels[i]}
+                        </span>
+                        <span className="leading-snug">{opt.text}</span>
                       </div>
                     );
                   })}
                 </div>
-              )}
+              ) : null}
 
               {/* Prominent Correct Answer Banner on Reveal */}
               {revealPayload && (
@@ -1788,7 +2001,7 @@ export default function DisplayPage() {
                   <div className="flex items-center gap-2">
                     <span className="text-xl sm:text-2xl">✅</span>
                     <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300">
-                      ĐÁP ÁN CHÍNH XÁC
+                      Đáp án chính xác
                     </span>
                   </div>
                   <p className="text-lg sm:text-2xl font-black text-white leading-relaxed">
@@ -1932,7 +2145,7 @@ export default function DisplayPage() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-start md:justify-center p-2 overflow-y-auto w-full">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-start md:justify-center p-2 overflow-y-auto w-full tab-content-enter">
             {/* If user switched to Board view while question is active, show Return button */}
             {currentQuestion && displayModeTab === "BOARD" && (
               <div className="w-full flex justify-end pb-1 shrink-0">
@@ -1994,17 +2207,19 @@ export default function DisplayPage() {
                   📊
                 </div>
                 <div>
-                  <h3 className="text-2xl font-black text-white">BẢNG XẾP HẠNG THỜI GIAN THỰC</h3>
+                  <h3 className="text-2xl font-black text-white">Bảng xếp hạng thời gian thực</h3>
                   <p className="text-sm text-cyan-300 mt-1">Đang chờ câu hỏi tiếp theo từ Quản trò...</p>
                 </div>
               </div>
             )}
           </div>
         )}
+        </DualTabTransition>
       </div>
 
       {/* Leaderboard sidebar */}
-      <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full shrink-0 max-[499px]:h-auto max-[499px]:max-h-36">
+      {showSidebar && (
+        <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full shrink-0 max-[499px]:h-auto max-[499px]:max-h-36 tab-content-enter">
         <div className="flex items-center justify-between pb-1 border-b border-white/10 shrink-0">
           <h3 className="text-sm font-bold inline-flex items-center gap-1.5 text-white">
             <SystemIcon name="trophy" className="w-4 h-4 text-amber-400 shrink-0" />
@@ -2038,6 +2253,7 @@ export default function DisplayPage() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Rules Modal */}
       <GameModeRulesModal

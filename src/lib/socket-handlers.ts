@@ -1,4 +1,5 @@
 import { Server as SocketIOServer, Socket } from "socket.io";
+import { AsyncLocalStorage } from "async_hooks";
 import { prisma } from "./prisma";
 import {
   ClientToServerEvents,
@@ -1077,13 +1078,18 @@ function generateDiceTiles(totalTiles: number = 60): DiceTile[] {
 const roomCache = new Map<string, any>(); // roomId -> room with quizBank & questions
 const roomQuestionsCache = new Map<string, any[]>(); // roomId -> questions
 const roomActiveAnswers = new Map<string, Map<string, { teamId?: string; playerId?: string; answer: string | string[]; isCorrect: boolean | null; timeSpent: number; submittedAt: number }>>(); // qKey -> (actorKey -> answerData)
+const roomOriginalQuestions = new Map<string, any>(); // qKey -> full question with isCorrect
+const currentSubmissionStorage = new AsyncLocalStorage<Promise<void>>();
 const roomPendingSubmissions = new Map<string, Set<Promise<void>>>(); // roomId -> Set of in-flight processAnswerSubmission promises
 
 async function waitForPendingSubmissions(roomId: string, timeoutMs = 1500) {
   const pending = roomPendingSubmissions.get(roomId);
   if (!pending || pending.size === 0) return;
+  const currentTask = currentSubmissionStorage.getStore();
+  const otherTasks = Array.from(pending).filter((p) => p !== currentTask);
+  if (otherTasks.length === 0) return;
   await Promise.race([
-    Promise.allSettled(Array.from(pending)),
+    Promise.allSettled(otherTasks),
     new Promise((r) => setTimeout(r, timeoutMs)),
   ]);
 }
@@ -3503,6 +3509,8 @@ export function registerSocketHandlers(io: IO) {
         const standardTimeLimit = getStandardQuestionTimeLimit(q, chosenPoints);
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
+
+        roomOriginalQuestions.set(qKey, q);
 
         // Đếm ngược thủ công (Manual Timer) mặc định cho TẤT CẢ các mode
         // Chỉ tự động đếm ngay nếu config.autoTimerStart === true và không phải giai đoạn chọn điểm Bounceback
@@ -6432,10 +6440,13 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, spinningState);
       io.to(`room:${room.code}`).emit("game:mystery:update", spinningState);
 
+      const turnIndexSnapshot = questState.currentTurnIndex;
+      const roundSnapshot = questState.currentRound;
+
       // Settle wheel stop & mark isRevealPending: true (still in PUSH_YOUR_LUCK until player clicks Reveal!)
       setTimeout(async () => {
         const curQuest = roomMysteryQuests.get(room.id);
-        if (!curQuest) return;
+        if (!curQuest || curQuest.currentTurnIndex !== turnIndexSnapshot || curQuest.currentRound !== roundSnapshot) return;
 
         const settledState: MysteryQuestState = {
           ...result.updatedState,
@@ -6611,9 +6622,12 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:mystery:update", spinningGambleState);
 
       const dur = gambleResult.spinDurationMs ?? 20000;
+      const turnIndexSnapshot = questState.currentTurnIndex;
+      const roundSnapshot = questState.currentRound;
+
       setTimeout(async () => {
         const curQuest = roomMysteryQuests.get(room.id);
-        if (!curQuest) return;
+        if (!curQuest || curQuest.currentTurnIndex !== turnIndexSnapshot || curQuest.currentRound !== roundSnapshot) return;
 
         const settledGambleState: MysteryQuestState = {
           ...gambleResult.updatedState,
@@ -8321,12 +8335,18 @@ async function processAnswerSubmission(params: {
     pendingSet = new Set<Promise<void>>();
     roomPendingSubmissions.set(params.roomId, pendingSet);
   }
-  const taskPromise = processAnswerSubmissionImpl(params);
+  let resolveTask!: () => void;
+  const taskPromise = new Promise<void>((res) => {
+    resolveTask = res;
+  });
   pendingSet.add(taskPromise);
   try {
-    await taskPromise;
+    await currentSubmissionStorage.run(taskPromise, async () => {
+      await processAnswerSubmissionImpl(params);
+    });
   } finally {
     pendingSet.delete(taskPromise);
+    resolveTask();
   }
 }
 
@@ -10171,7 +10191,8 @@ async function getRoomQuestions(roomId: string) {
 async function getResolvedQuestion(roomId: string, questionId: string, dbQuestion?: any) {
   const cachedQuestions = await getRoomQuestions(roomId);
   const cachedQ = cachedQuestions.find((item: any) => item.id === questionId);
-  const fullQ = cachedQ || dbQuestion || (await prisma.question.findUnique({ where: { id: questionId } }));
+  const originalQ = roomOriginalQuestions.get(`${roomId}:${questionId}`);
+  const fullQ = cachedQ || originalQ || dbQuestion || (await prisma.question.findUnique({ where: { id: questionId } }));
   const activeQState = roomActiveQuestions.get(roomId);
   if (!fullQ && activeQState?.question?.id === questionId) {
     return activeQState.question;
@@ -11192,6 +11213,10 @@ async function resolveQuestionTeamScores(
 }
 
 async function finalizeQuestionOnTimeUp(io: IO, roomId: string, roomCode: string, questionId: string) {
+  const activeQ = roomActiveQuestions.get(roomId);
+  if (activeQ?.question?.id && activeQ.question.id !== questionId) {
+    return;
+  }
   stopQuestionTimer(roomId);
   await waitForPendingSubmissions(roomId);
 

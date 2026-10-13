@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
+import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 
 const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
@@ -23,9 +24,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className={`${inter.className} bg-background text-foreground page-transition`}>
+      <body className={`${inter.className} bg-background text-foreground page-transition relative min-h-screen`}>
+        <QuizSoulBackground />
         <OfflineBanner />
-        {children}
+        <div className="relative z-10 w-full min-h-screen flex flex-col">
+          {children}
+        </div>
       </body>
     </html>
   );

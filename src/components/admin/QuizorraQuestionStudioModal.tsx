@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { ParsedQuestionItem } from "@/lib/quiz-document-parser";
 import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+import DualTabTransition from "@/components/ui/DualTabTransition";
 
 interface Props {
   isOpen: boolean;
@@ -384,216 +385,218 @@ export default function QuizorraQuestionStudioModal({
             </div>
           )}
 
-          {/* ── TAB 1: TOPIC SOURCE ── */}
-          {activeTab === "topic" && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2 space-y-1.5">
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider">
-                    Chủ Đề Hoặc Lĩnh Vực Cần Ra Đề <span className="text-rose-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={topic}
-                    onChange={(e) => setTopic(e.target.value)}
-                    placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 20, Trí tuệ nhân tạo, Vật lý lượng tử..."
-                    className="w-full px-4 py-3 rounded-2xl glass border border-white/20 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-500"
-                  />
-                </div>
+          {/* ── SOURCE TABS WITH DUAL TAB TRANSITION ── */}
+          <DualTabTransition tabKey={activeTab} durationOut={140} className="w-full">
+            {activeTab === "topic" && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-2 space-y-1.5">
+                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider">
+                      Chủ đề hoặc lĩnh vực cần ra đề <span className="text-rose-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      placeholder="Ví dụ: Lịch sử Việt Nam thế kỷ 20, Trí tuệ nhân tạo, Vật lý lượng tử..."
+                      className="w-full px-4 py-3 rounded-2xl glass border border-white/20 text-white text-sm focus:outline-none focus:border-purple-400 placeholder:text-slate-500"
+                    />
+                  </div>
 
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider">
-                    Cấp Độ / Đối Tượng
-                  </label>
-                  <select
-                    value={gradeLevel}
-                    onChange={(e) => setGradeLevel(e.target.value)}
-                    className="w-full px-4 py-3 rounded-2xl glass border border-white/20 text-white text-sm bg-[#151728] focus:outline-none focus:border-purple-400"
-                  >
-                    <option value="Học sinh THCS (Cơ bản)">Học sinh THCS (Cơ bản)</option>
-                    <option value="Trung bình / THPT">Trung bình / THPT</option>
-                    <option value="Đại học / Chuyên sâu">Đại học / Chuyên sâu</option>
-                    <option value="Đố vui giải trí / Đại chúng">Đố vui giải trí / Đại chúng</option>
-                  </select>
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider">
+                      Cấp độ / Đối tượng
+                    </label>
+                    <select
+                      value={gradeLevel}
+                      onChange={(e) => setGradeLevel(e.target.value)}
+                      className="w-full px-4 py-3 rounded-2xl glass border border-white/20 text-white text-sm bg-[#151728] focus:outline-none focus:border-purple-400"
+                    >
+                      <option value="Học sinh THCS (Cơ bản)">Học sinh THCS (Cơ bản)</option>
+                      <option value="Trung bình / THPT">Trung bình / THPT</option>
+                      <option value="Đại học / Chuyên sâu">Đại học / Chuyên sâu</option>
+                      <option value="Đố vui giải trí / Đại chúng">Đố vui giải trí / Đại chúng</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── TAB 2: DOCUMENT SOURCE ── */}
-          {activeTab === "document" && (
-            <div className="space-y-5">
-              {!selectedFile ? (
-                <div className="border-2 border-dashed border-cyan-500/40 rounded-3xl p-8 text-center bg-cyan-500/5 hover:bg-cyan-500/10 transition flex flex-col items-center justify-center relative cursor-pointer group">
-                  <span className="text-5xl mb-3 group-hover:scale-110 transition transform">📑</span>
-                  <p className="text-base font-black text-white mb-1">
-                    Nhấp vào đây hoặc kéo thả file tài liệu vào khung
-                  </p>
-                  <p className="text-xs text-slate-400 max-w-md">
-                    Hỗ trợ đầy đủ: <b>PDF (.pdf)</b>, Word (.docx), Excel (.xlsx, .xls), CSV, Text (.txt, .md)
-                  </p>
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
-                    onChange={handleFileUpload}
-                    disabled={isParsingDoc}
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                  />
-                </div>
-              ) : (
-                <div className="p-4 sm:p-5 rounded-2xl glass border border-cyan-500/40 bg-cyan-950/20 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl p-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40">
-                        📄
-                      </span>
-                      <div>
-                        <h4 className="text-sm sm:text-base font-black text-white truncate max-w-md">
-                          {selectedFile.name}
-                        </h4>
-                        <div className="flex items-center gap-2 text-xs text-cyan-300 mt-0.5">
-                          <span>{(selectedFile.size / 1024).toFixed(1)} KB</span>
-                          <span>•</span>
-                          <span>{parsedDocData?.wordCount ?? 0} từ đã trích xuất</span>
-                        </div>
-                      </div>
-                    </div>
-                    <label className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white transition cursor-pointer">
-                      Đổi file khác
-                      <input
-                        type="file"
-                        accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
-                        onChange={handleFileUpload}
-                        disabled={isParsingDoc}
-                        className="hidden"
-                      />
-                    </label>
+            {/* ── TAB 2: DOCUMENT SOURCE ── */}
+            {activeTab === "document" && (
+              <div className="space-y-5">
+                {!selectedFile ? (
+                  <div className="border-2 border-dashed border-cyan-500/40 rounded-3xl p-8 text-center bg-cyan-500/5 hover:bg-cyan-500/10 transition flex flex-col items-center justify-center relative cursor-pointer group">
+                    <span className="text-5xl mb-3 group-hover:scale-110 transition transform">📑</span>
+                    <p className="text-base font-black text-white mb-1">
+                      Nhấp vào đây hoặc kéo thả file tài liệu vào khung
+                    </p>
+                    <p className="text-xs text-slate-400 max-w-md">
+                      Hỗ trợ đầy đủ: <b>PDF (.pdf)</b>, Word (.docx), Excel (.xlsx, .xls), CSV, Text (.txt, .md)
+                    </p>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
+                      onChange={handleFileUpload}
+                      disabled={isParsingDoc}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
                   </div>
-
-                  {/* Processing Mode Switcher for Document */}
-                  <div className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <label
-                      onClick={() => setDocProcessingMode("ai_generate")}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-start gap-3 ${
-                        docProcessingMode === "ai_generate"
-                          ? "bg-purple-600/20 border-purple-500/80 text-white shadow-lg"
-                          : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="docProcessingMode"
-                        checked={docProcessingMode === "ai_generate"}
-                        onChange={() => setDocProcessingMode("ai_generate")}
-                        className="mt-0.5 text-purple-600 focus:ring-0"
-                      />
-                      <div>
-                        <div className="text-xs font-black text-purple-300 uppercase tracking-wider">
-                          ✨ AI Đọc Hiểu & Biên Soạn Đề Mới
+                ) : (
+                  <div className="p-4 sm:p-5 rounded-2xl glass border border-cyan-500/40 bg-cyan-950/20 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl p-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40">
+                          📄
+                        </span>
+                        <div>
+                          <h4 className="text-sm sm:text-base font-black text-white truncate max-w-md">
+                            {selectedFile.name}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-cyan-300 mt-0.5">
+                            <span>{(selectedFile.size / 1024).toFixed(1)} KB</span>
+                            <span>•</span>
+                            <span>{parsedDocData?.wordCount ?? 0} từ đã trích xuất</span>
+                          </div>
                         </div>
-                        <p className="text-[11px] text-slate-300 mt-0.5">
-                          AI tự phân tích tài liệu và sinh bộ câu hỏi trắc nghiệm chuẩn theo các mức điểm.
-                        </p>
                       </div>
-                    </label>
-
-                    <label
-                      onClick={() => setDocProcessingMode("direct_extract")}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-start gap-3 ${
-                        docProcessingMode === "direct_extract"
-                          ? "bg-cyan-600/20 border-cyan-500/80 text-white shadow-lg"
-                          : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="docProcessingMode"
-                        checked={docProcessingMode === "direct_extract"}
-                        onChange={() => setDocProcessingMode("direct_extract")}
-                        className="mt-0.5 text-cyan-600 focus:ring-0"
-                      />
-                      <div>
-                        <div className="text-xs font-black text-cyan-300 uppercase tracking-wider">
-                          🔍 Bóc Tách Câu Hỏi Có Sẵn Trong File
-                        </div>
-                        <p className="text-[11px] text-slate-300 mt-0.5">
-                          File đã chứa sẵn ngân hàng đề thi (A, B, C, D). Hệ thống trích xuất trực tiếp.
-                        </p>
-                      </div>
-                    </label>
-                  </div>
-
-                  {docProcessingMode === "ai_generate" && (
-                    <div className="pt-2">
-                      <label className="block text-xs font-bold text-slate-300 mb-1">
-                        🎯 Trọng tâm kiến thức / Chương cần ra đề (Tùy chọn)
+                      <label className="px-3 py-1.5 rounded-xl glass hover:bg-white/10 text-xs font-bold text-slate-300 hover:text-white transition cursor-pointer">
+                        Đổi file khác
+                        <input
+                          type="file"
+                          accept=".pdf,.docx,.xlsx,.xls,.csv,.txt,.md,.json"
+                          onChange={handleFileUpload}
+                          disabled={isParsingDoc}
+                          className="hidden"
+                        />
                       </label>
-                      <input
-                        type="text"
-                        value={docFocusPrompt}
-                        onChange={(e) => setDocFocusPrompt(e.target.value)}
-                        placeholder="Ví dụ: Chỉ tập trung vào phần nguyên lý và ứng dụng thực tiễn của chương 2..."
-                        className="w-full px-3.5 py-2 rounded-xl glass border border-white/20 text-xs text-white focus:outline-none focus:border-cyan-400"
-                      />
                     </div>
-                  )}
-                </div>
-              )}
 
-              {isParsingDoc && (
-                <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold text-center animate-pulse flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-cyan-300/30 border-t-cyan-300 rounded-full animate-spin" />
-                  <span>Đang trích xuất và phân tích nội dung tệp tin...</span>
-                </div>
-              )}
-            </div>
-          )}
+                    {/* Processing Mode Switcher for Document */}
+                    <div className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <label
+                        onClick={() => setDocProcessingMode("ai_generate")}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-start gap-3 ${
+                          docProcessingMode === "ai_generate"
+                            ? "bg-purple-600/20 border-purple-500/80 text-white shadow-lg"
+                            : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="docProcessingMode"
+                          checked={docProcessingMode === "ai_generate"}
+                          onChange={() => setDocProcessingMode("ai_generate")}
+                          className="mt-0.5 text-purple-600 focus:ring-0"
+                        />
+                        <div>
+                          <div className="text-xs font-black text-purple-300 uppercase tracking-wider">
+                            ✨ AI Đọc hiểu & Biên soạn đề mới
+                          </div>
+                          <p className="text-[11px] text-slate-300 mt-0.5">
+                            AI tự phân tích tài liệu và sinh bộ câu hỏi trắc nghiệm chuẩn theo các mức điểm.
+                          </p>
+                        </div>
+                      </label>
 
-          {/* ── TAB 3: RAW TEXT SOURCE ── */}
-          {activeTab === "rawtext" && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 p-1 rounded-xl glass border border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setRawTextMode("ai_generate")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                    rawTextMode === "ai_generate" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <span>✨</span>
-                  <span>AI đọc văn bản này để soạn đề</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRawTextMode("direct_extract")}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                    rawTextMode === "direct_extract" ? "bg-cyan-600 text-white shadow" : "text-slate-400 hover:text-white"
-                  }`}
-                >
-                  <span>🔍</span>
-                  <span>Bóc tách đề trắc nghiệm có sẵn</span>
-                </button>
+                      <label
+                        onClick={() => setDocProcessingMode("direct_extract")}
+                        className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-start gap-3 ${
+                          docProcessingMode === "direct_extract"
+                            ? "bg-cyan-600/20 border-cyan-500/80 text-white shadow-lg"
+                            : "bg-white/5 border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="docProcessingMode"
+                          checked={docProcessingMode === "direct_extract"}
+                          onChange={() => setDocProcessingMode("direct_extract")}
+                          className="mt-0.5 text-cyan-600 focus:ring-0"
+                        />
+                        <div>
+                          <div className="text-xs font-black text-cyan-300 uppercase tracking-wider">
+                            🔍 Bóc tách câu hỏi có sẵn trong file
+                          </div>
+                          <p className="text-[11px] text-slate-300 mt-0.5">
+                            File đã chứa sẵn ngân hàng đề thi (A, B, C, D). Hệ thống trích xuất trực tiếp.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
+                    {docProcessingMode === "ai_generate" && (
+                      <div className="pt-2">
+                        <label className="block text-xs font-bold text-slate-300 mb-1">
+                          🎯 Trọng tâm kiến thức / Chương cần ra đề (Tùy chọn)
+                        </label>
+                        <input
+                          type="text"
+                          value={docFocusPrompt}
+                          onChange={(e) => setDocFocusPrompt(e.target.value)}
+                          placeholder="Ví dụ: Chỉ tập trung vào phần nguyên lý và ứng dụng thực tiễn của chương 2..."
+                          className="w-full px-3.5 py-2 rounded-xl glass border border-white/20 text-xs text-white focus:outline-none focus:border-cyan-400"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {isParsingDoc && (
+                  <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold text-center animate-pulse flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-cyan-300/30 border-t-cyan-300 rounded-full animate-spin" />
+                    <span>Đang trích xuất và phân tích nội dung tệp tin...</span>
+                  </div>
+                )}
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-black text-slate-300 mb-1 uppercase tracking-wider">
-                  Nội Dung Văn Bản Đề Thi Hoặc Tài Liệu Học Tập
-                </label>
-                <textarea
-                  rows={8}
-                  value={rawTextContent}
-                  onChange={(e) => setRawTextContent(e.target.value)}
-                  placeholder={
-                    rawTextMode === "ai_generate"
-                      ? "Dán bài đọc, đoạn văn bản, tài liệu bài giảng hoặc ghi chú ôn tập tại đây..."
-                      : `Ví dụ định dạng đề thi có sẵn:\n\nCâu 1: Thủ đô của Việt Nam là gì?\nA. Đà Nẵng\nB. Hà Nội*\nC. Huế\nD. Cần Thơ\nĐáp án: B`
-                  }
-                  className="w-full p-4 rounded-2xl glass border border-white/20 text-xs font-mono text-white leading-relaxed focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
-                />
+            {/* ── TAB 3: RAW TEXT SOURCE ── */}
+            {activeTab === "rawtext" && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-1 rounded-xl glass border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setRawTextMode("ai_generate")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      rawTextMode === "ai_generate" ? "bg-purple-600 text-white shadow" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span>✨</span>
+                    <span>AI đọc văn bản này để soạn đề</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRawTextMode("direct_extract")}
+                    className={`flex-1 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                      rawTextMode === "direct_extract" ? "bg-cyan-600 text-white shadow" : "text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    <span>🔍</span>
+                    <span>Bóc tách đề trắc nghiệm có sẵn</span>
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-black text-slate-300 mb-1 uppercase tracking-wider">
+                    Nội dung văn bản đề thi hoặc tài liệu học tập
+                  </label>
+                  <textarea
+                    rows={8}
+                    value={rawTextContent}
+                    onChange={(e) => setRawTextContent(e.target.value)}
+                    placeholder={
+                      rawTextMode === "ai_generate"
+                        ? "Dán bài đọc, đoạn văn bản, tài liệu bài giảng hoặc ghi chú ôn tập tại đây..."
+                        : `Ví dụ định dạng đề thi có sẵn:\n\nCâu 1: Thủ đô của Việt Nam là gì?\nA. Đà Nẵng\nB. Hà Nội*\nC. Huế\nD. Cần Thơ\nĐáp án: B`
+                    }
+                    className="w-full p-4 rounded-2xl glass border border-white/20 text-xs font-mono text-white leading-relaxed focus:outline-none focus:border-amber-400 placeholder:text-slate-500"
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </DualTabTransition>
 
           {/* ── QUIZORRA GAME MODE PRESET & DISTRIBUTION ── */}
           {isAiMode && (

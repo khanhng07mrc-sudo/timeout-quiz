@@ -150,6 +150,11 @@ class SoundManager {
 
   public unlockAudio() {
     this.initAudioAssets();
+    // Warm up wheel AudioContext if created
+    const wheelCtx = this.getWheelAudioCtx();
+    if (wheelCtx && wheelCtx.state === "suspended") {
+      wheelCtx.resume().catch(() => {});
+    }
     // Warm up an audio element to satisfy browser interaction policies
     const tick = this.sfxMap.get("tick");
     if (tick) {
@@ -751,6 +756,12 @@ class SoundManager {
 
       osc.connect(gain);
       gain.connect(ctx.destination);
+      osc.onended = () => {
+        try {
+          osc.disconnect();
+          gain.disconnect();
+        } catch {}
+      };
       osc.start(now);
       osc.stop(now + 0.034);
 
@@ -766,6 +777,12 @@ class SoundManager {
 
       bodyOsc.connect(bodyGain);
       bodyGain.connect(ctx.destination);
+      bodyOsc.onended = () => {
+        try {
+          bodyOsc.disconnect();
+          bodyGain.disconnect();
+        } catch {}
+      };
       bodyOsc.start(now);
       bodyOsc.stop(now + 0.026);
     } catch {

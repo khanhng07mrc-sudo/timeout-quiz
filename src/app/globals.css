@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0b0c16;
+  --background: #090a12;
   --foreground: #f8fafc;
-  --card: #151728;
-  --card-hover: #1c1f36;
-  --card-border: #262947;
+  --card: #131626;
+  --card-hover: #191d33;
+  --card-border: #232845;
   --primary: #8b5cf6;
   --primary-hover: #7c3aed;
   --accent: #06b6d4;
-  --muted: #64748b;
+  --muted: #94a3b8;
 }
 
 body {
@@ -21,40 +21,57 @@ body {
 }
 
 select, option, optgroup {
-  background-color: #151728 !important;
+  background-color: #131626 !important;
   color: #f8fafc !important;
 }
 
-/* Custom styled surfaces with strong visibility */
+/* Biểu tượng Linh hồn tri thức Quizorra: Nhịp thở thiên hà nhẹ dịu */
+@keyframes soulBreatheAnim {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.28;
+  }
+  50% {
+    transform: scale(1.035) rotate(1.5deg);
+    opacity: 0.42;
+  }
+}
+
+.soul-breathe {
+  animation: soulBreatheAnim 16s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+/* Custom styled surfaces with strong visibility (Slate Glass) */
 .quiz-card {
-  background-color: #151728;
-  border: 1px solid #282c4e;
+  background-color: #131626;
+  border: 1px solid #232845;
   border-radius: 1.25rem;
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px 0 rgba(139, 92, 246, 0.05);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6), 0 0 20px 0 rgba(139, 92, 246, 0.04);
 }
 
 .quiz-card:hover {
-  border-color: #3f467a;
+  border-color: #3b426f;
 }
 
 .quiz-card-interactive {
-  background-color: #151728;
-  border: 1px solid #282c4e;
+  background-color: #131626;
+  border: 1px solid #232845;
   border-radius: 1.25rem;
   transition: all 0.25s ease;
-  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.5);
 }
 
 .quiz-card-interactive:hover {
-  background-color: #1a1e36;
+  background-color: #191d33;
   border-color: #8b5cf6;
-  transform: translateY(-3px);
-  box-shadow: 0 15px 35px -5px rgba(139, 92, 246, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px -5px rgba(139, 92, 246, 0.12);
 }
 
 .input-box {
-  background-color: #101221;
-  border: 1.5px solid #282c4e;
+  background-color: #0d0f1c;
+  border: 1.5px solid #232845;
   color: #f8fafc;
   border-radius: 0.875rem;
   transition: all 0.2s ease;
@@ -85,9 +102,70 @@ select, option, optgroup {
   transform: translateY(0);
 }
 
+/* NÚT SÁNG TẠO 1: Vát góc giác đấu (Cyber Chamfer cut corner) - Cực kỳ dứt khoát, phong thái đấu trường */
+.btn-chamfer {
+  clip-path: polygon(14px 0%, 100% 0%, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0% 100%, 0% 14px);
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.9) 0%, rgba(79, 70, 229, 0.9) 100%);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 8px 25px -4px rgba(124, 58, 237, 0.4);
+}
+
+.btn-chamfer:hover {
+  transform: translateY(-2px) scale(1.015);
+  box-shadow: 0 12px 30px -2px rgba(124, 58, 237, 0.65);
+  filter: brightness(1.1);
+}
+
+.btn-chamfer:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* NÚT SÁNG TẠO 2: Lăng kính hình thoi chéo góc (Prism Hex-cut) - Dành cho các nút công nghệ & hành động nhanh */
+.btn-prism {
+  border-radius: 1.5rem 0.35rem 1.5rem 0.35rem;
+  position: relative;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: linear-gradient(135deg, #181d36 0%, #151a30 100%);
+  border: 1.5px solid #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 18px -4px rgba(56, 189, 248, 0.3);
+}
+
+.btn-prism:hover {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
+  color: #ffffff;
+  border-color: #00f2fe;
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(56, 189, 248, 0.55);
+}
+
+.btn-prism:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* NÚT SÁNG TẠO 3: Huy hiệu đấu trường (Arena Crest Pill) - Vòng sáng năng lượng kép */
+.btn-crest {
+  border-radius: 9999px;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #14172b;
+  border: 1.5px solid #a855f7;
+  color: #e9d5ff;
+}
+
+.btn-crest:hover {
+  background: #1e223f;
+  border-color: #d8b4fe;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+  transform: scale(1.03);
+}
+
 .btn-glass {
-  background-color: #181a2e;
-  border: 1.5px solid #333861;
+  background-color: #15182e;
+  border: 1.5px solid #2a3056;
   color: #f8fafc;
   font-weight: 700;
   border-radius: 1rem;
@@ -95,7 +173,7 @@ select, option, optgroup {
 }
 
 .btn-glass:hover {
-  background-color: #21243f;
+  background-color: #1e2342;
   border-color: #8b5cf6;
   transform: translateY(-2px);
 }
@@ -646,5 +724,26 @@ button:not(:disabled):active,
 .btn-tactile:active {
   transform: translateY(1px) scale(0.96);
   filter: brightness(0.95);
+}
+
+/* Seamless view and tab transition animations */
+@keyframes tabCrossFade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tab-content-enter {
+  animation: tabCrossFade 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+.view-crossfade {
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

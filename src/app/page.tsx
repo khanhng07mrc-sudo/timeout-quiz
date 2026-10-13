@@ -26,11 +26,11 @@ export default function HomePage() {
           <span className="inline-block whitespace-nowrap">Đa hình thức &amp; Đa chế độ</span>
         </p>
 
-        {/* Action Buttons with distinct styling and healthy gap */}
+        {/* Action Buttons with distinct styling and arena cuts */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-2xl mb-16">
           <Link
             href="/play"
-            className="btn-gradient w-full py-4 px-5 text-center text-base sm:text-lg flex items-center justify-center gap-3 shadow-lg shadow-purple-600/20 whitespace-nowrap"
+            className="btn-chamfer w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 text-white font-bold shadow-xl shadow-purple-600/25 hover:shadow-cyan-500/30 whitespace-nowrap"
           >
             <SystemIcon name="device" className="w-5 h-5 text-white shrink-0" />
             <span className="whitespace-nowrap font-bold">Tham gia phòng</span>
@@ -38,7 +38,7 @@ export default function HomePage() {
 
           <Link
             href="/display"
-            className="w-full py-4 px-5 rounded-2xl bg-[#181d36] hover:bg-cyan-600/20 text-cyan-300 hover:text-white border-2 border-cyan-500/40 hover:border-cyan-400 font-bold text-base sm:text-lg text-center transition-all shadow-lg flex items-center justify-center gap-3 whitespace-nowrap"
+            className="btn-prism w-full py-4 px-6 bg-slate-900/80 hover:bg-cyan-950/40 text-cyan-300 hover:text-white border-2 border-cyan-500/50 hover:border-cyan-400 font-bold text-base sm:text-lg text-center shadow-xl shadow-cyan-950/40 flex items-center justify-center gap-3 whitespace-nowrap"
           >
             <SystemIcon name="display" className="w-5 h-5 text-cyan-400 shrink-0" />
             <span className="whitespace-nowrap font-bold">Màn hình chiếu</span>
@@ -46,7 +46,7 @@ export default function HomePage() {
 
           <Link
             href="/admin"
-            className="btn-glass w-full py-4 px-5 text-center text-base sm:text-lg flex items-center justify-center gap-3 whitespace-nowrap"
+            className="btn-glass w-full py-4 px-6 text-center text-base sm:text-lg flex items-center justify-center gap-3 whitespace-nowrap border-slate-700/60 hover:border-purple-500/40 text-slate-200"
           >
             <SystemIcon name="dashboard" className="w-5 h-5 text-purple-400 shrink-0" />
             <span className="whitespace-nowrap font-bold">Quản lý (Admin)</span>

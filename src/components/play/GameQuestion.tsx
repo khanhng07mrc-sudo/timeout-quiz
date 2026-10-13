@@ -94,6 +94,9 @@ export default function GameQuestion({
   const [fillText, setFillText] = useState(() => {
     return typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "";
   });
+  const [lastAnsweredText, setLastAnsweredText] = useState<string>(() => {
+    return typeof initialAnswer === "string" && (q.type === "FILL_BLANK" || q.type === "ESSAY") ? initialAnswer : "";
+  });
   // MATCHING state: user maps left item index/id -> right option id / targetId
   const [matchingPairs, setMatchingPairs] = useState<Record<string, string>>(() => {
     if (initialAnswer) {
@@ -125,6 +128,10 @@ export default function GameQuestion({
     return shuffled;
   });
   const [selectedMatchLeft, setSelectedMatchLeft] = useState<string | null>(null);
+  const [draggingMatchLeftId, setDraggingMatchLeftId] = useState<string | null>(null);
+  const [dragOverRightTargetId, setDragOverRightTargetId] = useState<string | null>(null);
+  const [draggingOrderIndex, setDraggingOrderIndex] = useState<number | null>(null);
+  const [dragOverOrderIndex, setDragOverOrderIndex] = useState<number | null>(null);
   const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
   const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer && isSingleSubmit));
 
@@ -137,6 +144,7 @@ export default function GameQuestion({
       setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
       setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
       setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
+      setLastAnsweredText(typeof initialAnswer === "string" && (q.type === "FILL_BLANK" || q.type === "ESSAY") ? initialAnswer : "");
       if (typeof initialAnswer === "object" && !Array.isArray(initialAnswer)) {
         setMatchingPairs(initialAnswer as Record<string, string>);
       } else if (Array.isArray(initialAnswer) && typeof initialAnswer[0] === "object" && initialAnswer[0] !== null) {
@@ -170,6 +178,7 @@ export default function GameQuestion({
       setSelected([]);
       setEssayText("");
       setFillText("");
+      setLastAnsweredText("");
       setMatchingPairs({});
       if (q.type === "DRAG_DROP") {
         const ids = q.options ? q.options.map((o) => o.id) : [];
@@ -282,8 +291,8 @@ export default function GameQuestion({
   const isSingleTeamTurnMode = ["BUZZ", "BOUNCEBACK", "GRID_CARO", "DICE_RACE", "MYSTERY_QUEST"].includes(roomMode);
 
   const isTimerTrulyExpired = timer
-    ? (timer.remaining <= 0 && (!timer.endsAt || timer.endsAt <= 0 || timer.endsAt - getServerTime() <= -400)) ||
-      Boolean(timer.endsAt && timer.endsAt > 0 && timer.endsAt - getServerTime() <= -400)
+    ? (timer.remaining <= 0 && (!timer.endsAt || timer.endsAt <= 0 || timer.endsAt - getServerTime() <= -2000)) ||
+      Boolean(timer.endsAt && timer.endsAt > 0 && timer.endsAt - getServerTime() <= -2000)
     : false;
 
   const canAnswerThisQuestion = () => {
@@ -373,12 +382,17 @@ export default function GameQuestion({
   };
 
   const handleSubmitEssay = () => {
-    if (essayText.trim() && canAnswerThisQuestion()) {
+    const val = essayText.trim();
+    if (val && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
       }
-      onAnswer(essayText.trim());
+      setLastAnsweredText(val);
+      if (!isSingleSubmit) {
+        setEssayText("");
+      }
+      onAnswer(val);
       if (isSingleSubmit) {
         setIsFinalizedLocally(true);
       }
@@ -386,12 +400,17 @@ export default function GameQuestion({
   };
 
   const handleSubmitFill = () => {
-    if (fillText.trim() && canAnswerThisQuestion()) {
+    const val = fillText.trim();
+    if (val && canAnswerThisQuestion()) {
       if (isSingleSubmit) {
         if (isSubmittingSingleRef.current) return;
         isSubmittingSingleRef.current = true;
       }
-      onAnswer(fillText.trim());
+      setLastAnsweredText(val);
+      if (!isSingleSubmit) {
+        setFillText("");
+      }
+      onAnswer(val);
       if (isSingleSubmit) {
         setIsFinalizedLocally(true);
       }
@@ -474,8 +493,8 @@ export default function GameQuestion({
           <div className="flex items-center gap-2.5">
             <span className="text-2xl sm:text-3xl">⭐</span>
             <div>
-              <p className="font-black text-sm sm:text-base text-yellow-300 uppercase tracking-wider">
-                CÂU HỎI ĐIỂM VÀNG — NHÂN ĐÔI ĐIỂM SỐ (X2)!
+              <p className="font-black text-sm sm:text-base text-yellow-300">
+                Câu hỏi Điểm Vàng — Nhân đôi điểm số (x2)!
               </p>
               <p className="text-[11px] sm:text-xs text-yellow-200/90 font-medium">
                 Cơ hội bứt phá ngoạn mục! Điểm nhận được ở câu hỏi này sẽ được nhân đôi cho tất cả câu trả lời đúng.
@@ -483,7 +502,7 @@ export default function GameQuestion({
             </div>
           </div>
           <span className="shrink-0 px-3 py-1 rounded-full bg-yellow-400 text-black font-black text-xs sm:text-sm shadow">
-            x2 ĐIỂM
+            x2 điểm
           </span>
         </div>
       )}
@@ -495,8 +514,8 @@ export default function GameQuestion({
             <div className="flex items-center gap-2">
               <span className="text-2xl animate-bounce">👻</span>
               <div>
-                <p className="font-black text-sm sm:text-base text-purple-300 uppercase tracking-wider">
-                  CHẾ ĐỘ BÓNG MA (GHOST TEAM) — ĐƯỜNG ĐUA HỒI SINH
+                <p className="font-black text-sm sm:text-base text-purple-300">
+                  Chế độ bóng ma (Ghost team) — Đường đua hồi sinh
                 </p>
                 <p className="text-[11px] sm:text-xs text-purple-200/90">
                   Đạt 100% một chặng để được ưu tiên cao nhất, hoặc tích luỹ thành tích cao nhất để giành vé HỒI SINH ở chặng áp chót!
@@ -504,7 +523,7 @@ export default function GameQuestion({
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-purple-500/30 border border-purple-400/50 text-purple-200 font-bold text-xs">
-              {ghostStats?.eliminatedAtStage ? `BỊ LOẠI CHẶNG ${ghostStats.eliminatedAtStage}` : "VẪN ĐANG THI ĐẤU"}
+              {ghostStats?.eliminatedAtStage ? `Bị loại chặng ${ghostStats.eliminatedAtStage}` : "Vẫn đang thi đấu"}
             </span>
           </div>
 
@@ -513,7 +532,7 @@ export default function GameQuestion({
             <span>🔥 Tích luỹ toàn trận: <strong>{ghostStats?.ghostTotalCorrect || 0}/{ghostStats?.ghostTotalAnswered || 0} câu đúng</strong> ({ghostStats?.ghostStreak || 0} câu liên tiếp)</span>
             {ghostStats?.ghostRoundAllCorrect && (
               <span className="text-yellow-300 font-bold ml-auto flex items-center gap-1">
-                <span>✨</span> ĐẠT CHUẨN 100% (Ưu tiên hồi sinh cao nhất!)
+                <span>✨</span> Đạt chuẩn 100% (Ưu tiên hồi sinh cao nhất!)
               </span>
             )}
           </div>
@@ -527,8 +546,8 @@ export default function GameQuestion({
             <div className="flex items-center gap-2">
               <span className="text-2xl">🔮</span>
               <div>
-                <p className="font-black text-sm sm:text-base text-cyan-300 uppercase tracking-wide">
-                  GÓC KHÁN GIẢ: DỰ ĐOÁN & CỔ VŨ
+                <p className="font-black text-sm sm:text-base text-cyan-300">
+                  Góc khán giả: Dự đoán & Cổ vũ
                 </p>
                 <p className="text-[11px] text-muted-foreground">
                   Dự đoán đúng đội chiến thắng nhận +15đ · Trả lời thử câu hỏi nhận +10đ Tiên Tri!
@@ -792,7 +811,7 @@ export default function GameQuestion({
             <div className="mt-3 flex flex-col items-center justify-center gap-2 bg-indigo-950/80 border-2 border-indigo-400 p-5 rounded-2xl text-center shadow-xl animate-pulse">
               <div className="text-3xl">⚖️</div>
               <p className="text-base sm:text-lg font-black text-indigo-200">
-                {isPrimaryTeam ? "ĐÃ CHỐT ĐÁP ÁN — ĐANG CHỜ PHÁN QUYẾT CỦA MC" : `ĐỘI [${question.primaryTeamName || "CHÍNH"}] ĐÃ CHỐT — CHỜ MC PHÁN QUYẾT`}
+                {isPrimaryTeam ? "Đã chốt đáp án — Đang chờ phán quyết của MC" : `Đội [${question.primaryTeamName || "Chính"}] đã chốt — Chờ MC phán quyết`}
               </p>
               <p className="text-xs text-indigo-300/80">
                 MC / Ban giám khảo đang xem xét câu trả lời để quyết định Đúng hoặc Sai.
@@ -1193,23 +1212,40 @@ export default function GameQuestion({
           )}
         </div>
       ) : q.type === "FILL_BLANK" ? (
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={fillText}
-            onChange={(e) => setFillText(e.target.value)}
-            placeholder={isMcMode ? "Đang ở chế độ trả lời qua MC..." : "Điền câu trả lời..."}
-            disabled={!canAnswerThisQuestion()}
-            className="flex-1 px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-            onKeyDown={(e) => e.key === "Enter" && handleSubmitFill()}
-          />
-          <button
-            onClick={handleSubmitFill}
-            disabled={!fillText.trim() || !canAnswerThisQuestion()}
-            className="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50 cursor-pointer"
-          >
-            {answered ? "Cập nhật" : "Gửi"}
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={fillText}
+              onChange={(e) => setFillText(e.target.value)}
+              placeholder={isMcMode ? "Đang ở chế độ trả lời qua MC..." : "Điền câu trả lời rồi nhấn Enter..."}
+              disabled={!canAnswerThisQuestion()}
+              className="flex-1 px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+              onKeyDown={(e) => e.key === "Enter" && handleSubmitFill()}
+            />
+            <button
+              onClick={handleSubmitFill}
+              disabled={!fillText.trim() || !canAnswerThisQuestion()}
+              className="px-4 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold disabled:opacity-50 cursor-pointer"
+            >
+              {answered ? "Cập nhật" : "Gửi"}
+            </button>
+          </div>
+          {lastAnsweredText && !revealPayload && (
+            <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200">
+              <span className="truncate">
+                <span className="text-muted-foreground mr-1">Đáp án gần nhất đã gửi:</span>
+                <strong className="text-amber-300 font-mono">"{lastAnsweredText}"</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setFillText(lastAnsweredText)}
+                className="text-[11px] underline hover:text-white cursor-pointer ml-2 shrink-0 font-medium"
+              >
+                Điền lại
+              </button>
+            </div>
+          )}
         </div>
       ) : q.type === "ESSAY" ? (
         <div className="flex flex-col gap-2">
@@ -1220,6 +1256,12 @@ export default function GameQuestion({
             rows={3}
             disabled={!canAnswerThisQuestion()}
             className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmitEssay();
+              }
+            }}
           />
           <button
             onClick={handleSubmitEssay}
@@ -1228,37 +1270,74 @@ export default function GameQuestion({
           >
             {answered ? "Cập nhật bài làm" : "Nộp bài"}
           </button>
+          {lastAnsweredText && !revealPayload && (
+            <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-200">
+              <span className="truncate">
+                <span className="text-muted-foreground mr-1">Đáp án gần nhất đã gửi:</span>
+                <strong className="text-amber-300 font-mono">"{lastAnsweredText}"</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setEssayText(lastAnsweredText)}
+                className="text-[11px] underline hover:text-white cursor-pointer ml-2 shrink-0 font-medium"
+              >
+                Điền lại
+              </button>
+            </div>
+          )}
         </div>
       ) : q.type === "MATCHING" ? (
         <div className="flex flex-col gap-3">
           <p className="text-xs text-muted-foreground italic">
-            💡 Hướng dẫn: Nhấn chọn 1 mục ở cột A, sau đó nhấn chọn 1 mục ở cột B để ghép cặp.
+            💡 Hướng dẫn: Kéo thả từ cột A sang cột B, hoặc nhấn chọn 1 mục ở cột A rồi chọn mục tương ứng ở cột B để ghép cặp.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Cột Trái (Left items hoặc Mục cần ghép) */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-amber-300">Cột A: Mục cần ghép</span>
+              <span className="text-xs font-bold text-amber-300">Cột A: Mục cần ghép (Kéo thả hoặc Nhấn chọn)</span>
               {(((q as any).pairs && (q as any).pairs.length > 0)
                 ? (q as any).pairs.map((p: any, idx: number) => ({ id: p.id || `L_${idx}`, text: p.left }))
                 : (q.options || []).map((o, idx) => ({ id: `L_${idx}`, text: o.text.split(" - ")[0] || o.text }))
               ).map((item: { id: string; text: string }, idx: number) => {
                 const matchedTargetId = matchingPairs[item.id];
                 const isSelectedLeft = selectedMatchLeft === item.id;
+                const isDraggingThis = draggingMatchLeftId === item.id;
+                const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+
                 return (
                   <button
                     key={item.id}
                     type="button"
-                    disabled={isFinalizedLocally || Boolean(revealPayload) || !canAnswerThisQuestion()}
+                    draggable={canInteract}
+                    onDragStart={(e) => {
+                      if (!canInteract) return;
+                      setDraggingMatchLeftId(item.id);
+                      setSelectedMatchLeft(item.id);
+                      e.dataTransfer.effectAllowed = "link";
+                      try {
+                        e.dataTransfer.setData("text/plain", item.id);
+                      } catch {}
+                    }}
+                    onDragEnd={() => {
+                      setDraggingMatchLeftId(null);
+                      setDragOverRightTargetId(null);
+                    }}
+                    disabled={!canInteract}
                     onClick={() => setSelectedMatchLeft(isSelectedLeft ? null : item.id)}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                      isSelectedLeft
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
+                      isDraggingThis
+                        ? "opacity-50 border-dashed border-amber-400 bg-amber-500/20"
+                        : isSelectedLeft
                         ? "border-amber-400 bg-amber-500/20 shadow-md ring-2 ring-amber-400/40"
                         : matchedTargetId
                         ? "border-green-500/60 bg-green-500/15 text-green-200"
                         : "border-border hover:border-amber-400/50 bg-black/20"
                     }`}
                   >
-                    <span>{idx + 1}. {item.text}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-muted-foreground text-[10px]">⋮⋮</span>
+                      <span>{idx + 1}. {item.text}</span>
+                    </span>
                     {matchedTargetId && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/30 text-green-300 font-mono">
                         ✓ Đã ghép
@@ -1271,7 +1350,7 @@ export default function GameQuestion({
 
             {/* Cột Phải (Right items) */}
             <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-cyan-300">Cột B: Đáp án tương ứng</span>
+              <span className="text-xs font-bold text-cyan-300">Cột B: Đáp án tương ứng (Khu vực thả)</span>
               {(() => {
                 const rawPairs = (q as any).pairs;
                 if (rawPairs && rawPairs.length > 0) {
@@ -1301,23 +1380,53 @@ export default function GameQuestion({
               })().map((opt: { id: string; targetId: string; label: string; text: string }) => {
                 const isPairedWithCurrent = selectedMatchLeft && matchingPairs[selectedMatchLeft] === opt.targetId;
                 const isPairedWithAny = Object.values(matchingPairs).includes(opt.targetId);
+                const isDragOver = dragOverRightTargetId === opt.targetId;
+                const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+
                 return (
                   <button
                     key={opt.id}
                     type="button"
-                    disabled={isFinalizedLocally || Boolean(revealPayload) || !canAnswerThisQuestion()}
+                    disabled={!canInteract}
+                    onDragOver={(e) => {
+                      if (!canInteract) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "link";
+                      if (dragOverRightTargetId !== opt.targetId) {
+                        setDragOverRightTargetId(opt.targetId);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverRightTargetId === opt.targetId) {
+                        setDragOverRightTargetId(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      if (!canInteract) return;
+                      e.preventDefault();
+                      setDragOverRightTargetId(null);
+                      const leftId = draggingMatchLeftId || e.dataTransfer.getData("text/plain") || selectedMatchLeft;
+                      if (leftId) {
+                        const next = { ...matchingPairs, [leftId]: opt.targetId };
+                        setMatchingPairs(next);
+                        setSelectedMatchLeft(null);
+                        setDraggingMatchLeftId(null);
+                      }
+                    }}
                     onClick={() => {
                       if (!selectedMatchLeft || !canAnswerThisQuestion()) return;
                       const next = { ...matchingPairs, [selectedMatchLeft]: opt.targetId };
                       setMatchingPairs(next);
                       setSelectedMatchLeft(null);
                     }}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                      isPairedWithCurrent
+                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
+                      isDragOver
+                        ? "border-emerald-400 bg-emerald-500/25 ring-2 ring-emerald-400/50 shadow-lg scale-102"
+                        : isPairedWithCurrent
                         ? "border-cyan-400 bg-cyan-500/20 ring-2 ring-cyan-400/40"
                         : isPairedWithAny
                         ? "border-purple-500/60 bg-purple-500/15 text-purple-200"
-                        : selectedMatchLeft
+                        : selectedMatchLeft || draggingMatchLeftId
                         ? "border-cyan-500/40 hover:border-cyan-300 bg-cyan-950/20 animate-pulse"
                         : "border-border bg-black/20"
                     }`}
@@ -1353,16 +1462,68 @@ export default function GameQuestion({
       ) : q.type === "DRAG_DROP" ? (
         <div className="flex flex-col gap-2.5">
           <p className="text-xs text-muted-foreground italic">
-            💡 Hướng dẫn: Sử dụng nút ⬆️ / ⬇️ để sắp xếp thứ tự các phương án từ trên xuống dưới theo đúng quy trình.
+            💡 Hướng dẫn: Kéo thả trực tiếp các ô hoặc sử dụng nút ⬆️ / ⬇️ để sắp xếp thứ tự từ trên xuống dưới.
           </p>
           <div className="flex flex-col gap-2">
             {dragOrder.map((optId, idx) => {
               const opt = (q.options || []).find((o) => o.id === optId) || { id: optId, text: optId };
+              const isDragging = draggingOrderIndex === idx;
+              const isOver = dragOverOrderIndex === idx;
+              const canInteract = !revealPayload && !isFinalizedLocally && canAnswerThisQuestion();
+
               return (
                 <div
                   key={optId}
-                  className="flex items-center gap-2.5 p-2.5 rounded-xl glass border border-purple-500/30 bg-purple-950/20"
+                  draggable={canInteract}
+                  onDragStart={(e) => {
+                    if (!canInteract) return;
+                    setDraggingOrderIndex(idx);
+                    e.dataTransfer.effectAllowed = "move";
+                    try {
+                      e.dataTransfer.setData("text/plain", String(idx));
+                    } catch {}
+                  }}
+                  onDragOver={(e) => {
+                    if (!canInteract) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dragOverOrderIndex !== idx) {
+                      setDragOverOrderIndex(idx);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverOrderIndex === idx) {
+                      setDragOverOrderIndex(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    if (!canInteract) return;
+                    e.preventDefault();
+                    setDragOverOrderIndex(null);
+                    const sourceIdx = draggingOrderIndex !== null ? draggingOrderIndex : Number(e.dataTransfer.getData("text/plain"));
+                    setDraggingOrderIndex(null);
+                    if (isNaN(sourceIdx) || sourceIdx === idx) return;
+
+                    const next = [...dragOrder];
+                    const [movedItem] = next.splice(sourceIdx, 1);
+                    next.splice(idx, 0, movedItem);
+                    setDragOrder(next);
+                  }}
+                  onDragEnd={() => {
+                    setDraggingOrderIndex(null);
+                    setDragOverOrderIndex(null);
+                  }}
+                  className={`flex items-center gap-2.5 p-2.5 rounded-xl glass border transition-all select-none ${
+                    isDragging
+                      ? "opacity-40 border-dashed border-purple-400 bg-purple-900/30 scale-98"
+                      : isOver
+                      ? "border-amber-400 bg-amber-500/20 shadow-lg ring-2 ring-amber-400/50 scale-102"
+                      : "border-purple-500/30 bg-purple-950/20"
+                  } ${canInteract ? "cursor-grab active:cursor-grabbing" : ""}`}
                 >
+                  <span className="text-muted-foreground text-xs px-0.5 cursor-grab" title="Kéo thả vị trí">
+                    ⋮⋮
+                  </span>
                   <span className="w-6 h-6 rounded-full bg-purple-600/40 text-purple-200 font-black text-xs flex items-center justify-center shrink-0">
                     {idx + 1}
                   </span>
@@ -1561,7 +1722,7 @@ export default function GameQuestion({
             <div className="flex items-center gap-2">
               <span className="text-xl">✅</span>
               <span className="text-xs font-black uppercase tracking-wider text-emerald-300">
-                ĐÁP ÁN CHÍNH XÁC
+                Đáp án chính xác
               </span>
             </div>
             <p className="text-base sm:text-lg font-black text-white leading-relaxed">

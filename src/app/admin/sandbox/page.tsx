@@ -7701,7 +7701,7 @@ export default function AdminSandboxPage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {AVAILABLE_MODES.map((m, mIdx) => {
                 const isSelected = selectedMode === m.mode;
                 return (
@@ -7711,56 +7711,58 @@ export default function AdminSandboxPage() {
                     onDoubleClick={() => handleLaunchSandbox(m.mode)}
                     style={{
                       animationDelay: `${mIdx * 45}ms`,
-                      boxShadow: isSelected ? `0 0 35px -5px ${m.accentColor}66` : undefined,
+                      boxShadow: isSelected ? `0 0 35px -5px ${m.accentColor}80, 0 12px 25px -5px rgba(0,0,0,0.8)` : undefined,
                     }}
                     className={`rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer relative overflow-hidden group flex flex-col justify-between animate-card-stagger ${
                       isSelected
-                        ? `bg-[#16182e] border-2 border-white/70 ${m.glowClass} scale-[1.02] shadow-2xl`
-                        : "glass border-white/10 hover:border-white/30 hover:bg-white/5 hover:scale-[1.01]"
+                        ? `bg-gradient-to-br from-[#1e2246] via-[#141833] to-[#0d1024] border-2 border-cyan-300 ${m.glowClass} scale-[1.02] shadow-2xl ring-1 ring-cyan-400/50`
+                        : "bg-gradient-to-br from-[#15182e]/80 to-[#0e1022]/90 border-purple-500/20 hover:border-cyan-400/50 hover:bg-[#1a1e38]/80 hover:scale-[1.01]"
                     }`}
                   >
-                    {/* Top decorative gradient bar when selected */}
-                    {isSelected && (
+                    {/* Top holographic light line when selected */}
+                    {isSelected ? (
                       <div
-                        className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${m.gradient}`}
+                        className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${m.gradient} shadow-[0_0_12px_#22d3ee]`}
                       />
+                    ) : (
+                      <div className="absolute top-0 left-4 right-4 h-[1px] bg-gradient-to-r from-transparent via-purple-500/30 to-transparent" />
                     )}
 
                     <div>
                       {/* Header: Emoji box + Category badge */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div
-                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-lg group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/10 ${
+                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-xl group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/15 ${
                             isSelected ? "animate-bounce" : ""
                           }`}
                         >
                           {m.emoji}
                         </div>
                         <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 border border-white/15 font-bold uppercase tracking-wider">
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/20 font-bold uppercase tracking-wider backdrop-blur-md">
                             {m.badge}
                           </span>
                           {isSelected && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold flex items-center gap-1 animate-pulse">
-                              <span>✓</span>
-                              <span>ĐANG CHỌN</span>
+                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/60 font-black flex items-center gap-1.5 shadow-[0_0_10px_rgba(6,182,212,0.4)]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                              <span>ONLINE</span>
                             </span>
                           )}
                         </div>
                       </div>
 
                       {/* Title & Mode code */}
-                      <div className="mb-1">
+                      <div className="mb-1.5">
                         <h3 className="text-base sm:text-lg font-black text-white group-hover:text-cyan-300 transition-colors flex items-center gap-1.5">
                           <span>{m.name}</span>
                         </h3>
-                        <span className="font-mono text-[10px] text-slate-400 font-bold tracking-wider">
+                        <span className="font-mono text-[10px] text-cyan-400/80 font-bold tracking-wider">
                           [{m.mode}]
                         </span>
                       </div>
 
                       {/* Tagline */}
-                      <p className="text-xs text-slate-300 leading-relaxed min-h-[36px] line-clamp-2 mb-3">
+                      <p className="text-xs text-slate-300 leading-relaxed min-h-[36px] line-clamp-2 mb-3 font-medium">
                         {m.tagline}
                       </p>
 
@@ -7769,7 +7771,7 @@ export default function AdminSandboxPage() {
                         {m.perks.map((p, pIdx) => (
                           <span
                             key={pIdx}
-                            className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-300 font-medium"
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-purple-500/20 text-slate-300 font-semibold"
                           >
                             • {p}
                           </span>
@@ -7778,9 +7780,9 @@ export default function AdminSandboxPage() {
                     </div>
 
                     {/* Bottom Card Footer */}
-                    <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
                       <span className={`text-[11px] font-bold ${isSelected ? "text-cyan-300" : "text-slate-500 group-hover:text-slate-300"}`}>
-                        {isSelected ? "⚡ Sẵn sàng khởi chạy" : "Nhấp để chọn chế độ"}
+                        {isSelected ? "⚡ Sẵn sàng khởi chạy" : "Nhấp để chọn"}
                       </span>
                       <button
                         type="button"
@@ -7789,10 +7791,10 @@ export default function AdminSandboxPage() {
                           setSelectedMode(m.mode);
                           handleLaunchSandbox(m.mode);
                         }}
-                        className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                        className={`px-3.5 py-1.5 rounded-lg text-xs font-black transition flex items-center gap-1.5 cursor-pointer ${
                           isSelected
-                            ? "bg-purple-600 hover:bg-purple-500 text-white shadow glow-neon-purple"
-                            : "glass text-slate-400 hover:text-white hover:bg-white/10"
+                            ? "btn-3d-cyber-purple text-white shadow-lg"
+                            : "glass text-slate-300 hover:text-white hover:bg-white/15 border border-white/15"
                         }`}
                       >
                         <span>Chạy</span>

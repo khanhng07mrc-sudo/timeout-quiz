@@ -13,11 +13,17 @@ export default function QuizSoulBackground() {
       aria-hidden="true"
       className="fixed inset-0 pointer-events-none z-0 overflow-hidden flex items-center justify-center select-none"
     >
-      {/* Vầng sáng tâm vũ trụ huyền bí đa tầng phát quang */}
-      <div className="absolute w-[950px] h-[950px] rounded-full bg-gradient-to-tr from-purple-700/20 via-indigo-600/15 to-cyan-500/20 blur-[130px] animate-pulse" />
-      <div className="absolute w-[500px] h-[500px] rounded-full bg-gradient-to-br from-cyan-400/15 via-fuchsia-600/15 to-transparent blur-[90px] animate-spin" style={{ animationDuration: "40s" }} />
+      {/* 1. Sàn đấu lưới không gian 3D viễn tưởng (3D Perspective Cyber Floor) */}
+      <div className="cyber-arena-grid" />
 
-      {/* Vector Linh hồn Thần Linh Tri Thức bao trùm với độ sáng rõ nét cao (75-80%) */}
+      {/* 2. Tia laser quét quang học nhịp nhàng */}
+      <div className="cyber-scanline" />
+
+      {/* 3. Vầng sáng tâm vũ trụ huyền bí đa tầng phát quang */}
+      <div className="absolute w-[950px] h-[950px] rounded-full bg-gradient-to-tr from-purple-700/25 via-indigo-600/20 to-cyan-500/25 blur-[140px] animate-pulse" />
+      <div className="absolute w-[520px] h-[520px] rounded-full bg-gradient-to-br from-cyan-400/20 via-fuchsia-600/20 to-transparent blur-[95px] animate-spin" style={{ animationDuration: "35s" }} />
+
+      {/* 4. Vector Linh hồn Thần Linh Tri Thức bao trùm với độ sáng rõ nét cao (75-80%) */}
       <svg
         viewBox="0 0 1000 1000"
         fill="none"

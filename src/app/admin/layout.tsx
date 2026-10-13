@@ -123,23 +123,23 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* ── Desktop Permanent Sidebar (lg+) ── */}
+      {/* ── Desktop Permanent Holo Nav Rail (lg+) ── */}
       <aside
         className={`hidden lg:flex ${
-          sidebarCollapsed ? "w-16 p-2 items-center" : "w-64 xl:w-72 p-6"
-        } bg-[#131626]/85 backdrop-blur-xl border-r border-[#232845] flex-col fixed h-full z-20 transition-all duration-200`}
+          sidebarCollapsed ? "w-18 p-2 items-center" : "w-64 xl:w-72 p-5"
+        } bg-[#0e1122]/85 backdrop-blur-2xl border-r border-purple-500/25 shadow-2xl flex-col fixed h-full z-20 transition-all duration-300`}
       >
         {/* Brand Header */}
         <div className={`mb-6 flex items-center ${sidebarCollapsed ? "justify-center flex-col gap-2" : "justify-between"} w-full px-1`}>
           {sidebarCollapsed ? (
             <BrandLogo variant="icon" size="sm" href="/" />
           ) : (
-            <BrandLogo variant="compact" size="md" subText="ADMIN PORTAL" href="/" />
+            <BrandLogo variant="compact" size="md" subText="CYBER CONTROL CENTER" href="/" />
           )}
           <button
             type="button"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer text-xs"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer text-xs border border-white/10"
             title={sidebarCollapsed ? "Mở rộng thanh điều hướng" : "Thu gọn thanh điều hướng"}
           >
             {sidebarCollapsed ? "▶" : "◀"}
@@ -147,7 +147,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation Menu */}
-        <nav className="flex flex-col gap-1.5 flex-1 w-full">
+        <nav className="flex flex-col gap-2 flex-1 w-full">
           {NAV_ITEMS.map(({ href, icon, label, desc }) => {
             const isActive = pathname === href || (href !== "/admin" && pathname.startsWith(href));
             return (
@@ -155,19 +155,26 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 title={sidebarCollapsed ? `${label} - ${desc}` : undefined}
-                className={`flex items-center ${
-                  sidebarCollapsed ? "justify-center px-0 py-3" : "gap-3.5 px-4 py-3"
-                } rounded-xl transition-all group ${
+                className={`relative flex items-center ${
+                  sidebarCollapsed ? "justify-center px-0 py-3" : "gap-3.5 px-3.5 py-3"
+                } rounded-xl transition-all duration-200 group overflow-hidden ${
                   isActive
-                    ? "bg-[#1c203b] border border-[#3b4375] text-white"
-                    : "text-slate-300 hover:text-white hover:bg-[#1c203b] border border-transparent hover:border-[#2f355f]"
+                    ? "bg-gradient-to-r from-purple-900/50 via-indigo-950/40 to-transparent border-l-3 border-l-cyan-400 border border-purple-500/40 text-white shadow-lg shadow-purple-950/50"
+                    : "text-slate-300 hover:text-white hover:bg-white/5 border border-transparent hover:border-purple-500/20"
                 }`}
               >
-                <SystemIcon name={icon} className="w-5 h-5 shrink-0 group-hover:scale-110 transition-transform" />
+                {/* Active Indicator LED */}
+                {isActive && (
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                )}
+
+                <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-slate-400 group-hover:text-white"}`}>
+                  <SystemIcon name={icon} className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                </div>
                 {!sidebarCollapsed && (
-                  <div>
-                    <span className="font-bold text-sm block">{label}</span>
-                    <span className="text-[11px] text-slate-500 block">{desc}</span>
+                  <div className="min-w-0 pr-4">
+                    <span className="font-bold text-sm block truncate">{label}</span>
+                    <span className="text-[10px] text-slate-400 block truncate">{desc}</span>
                   </div>
                 )}
               </Link>

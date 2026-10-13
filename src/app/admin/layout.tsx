@@ -93,12 +93,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         : "text-slate-300 hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    <div className={`p-2 rounded-xl shrink-0 ${
+                    <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center transition-all ${
                       isActive
-                        ? "bg-gradient-to-tr from-cyan-500/30 via-purple-600/30 to-white/20 border border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                        : "bg-[#13172e]/60 border border-white/10 text-slate-400"
+                        ? "bg-gradient-to-br from-[#261f5c] via-[#1a173b] to-[#0f1226] border border-cyan-400/60 text-cyan-200 shadow-[0_0_16px_rgba(6,182,212,0.45)] ring-1 ring-white/25"
+                        : "bg-[#13172e]/80 border border-white/10 text-slate-400"
                     }`}>
-                      <SystemIcon name={icon} className="w-5 h-5 shrink-0 drop-shadow" />
+                      <SystemIcon name={icon} className="w-6 h-6 shrink-0 drop-shadow-md" />
                     </div>
                     <div>
                       <span className="text-sm block">{label}</span>
@@ -187,12 +187,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
                 )}
 
-                <div className={`p-2 rounded-xl shrink-0 transition-all duration-300 relative ${
+                <div className={`w-11 h-11 rounded-2xl shrink-0 flex items-center justify-center transition-all duration-300 relative ${
                   isActive
-                    ? "bg-gradient-to-tr from-cyan-500/30 via-purple-600/30 to-white/20 border border-cyan-400/50 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.4)] ring-1 ring-white/20"
-                    : "bg-[#13172e]/60 border border-white/10 text-slate-400 group-hover:text-white group-hover:border-purple-500/40 group-hover:shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                    ? "bg-gradient-to-br from-[#2b2269] via-[#1b173e] to-[#0d0f24] border-2 border-cyan-400/80 text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.5),0_6px_14px_rgba(0,0,0,0.6)] ring-1 ring-white/30 scale-105"
+                    : "bg-gradient-to-br from-[#161a33]/90 to-[#0e1122]/95 border border-white/12 text-slate-400 group-hover:text-white group-hover:border-purple-400/50 group-hover:shadow-[0_0_18px_rgba(168,85,247,0.35)] group-hover:scale-105"
                 }`}>
-                  <SystemIcon name={icon} className="w-4 h-4 group-hover:scale-110 transition-transform drop-shadow" />
+                  <SystemIcon name={icon} className="w-6.5 h-6.5 group-hover:scale-110 transition-transform duration-300 drop-shadow-[0_3px_6px_rgba(0,0,0,0.5)]" />
                 </div>
                 {!sidebarCollapsed && (
                   <div className="min-w-0 pr-4">
@@ -239,7 +239,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2"
             } rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-[#1a1c33] transition-colors`}
           >
-            <SystemIcon name="home" className="w-4 h-4 shrink-0 text-slate-400" />
+            <SystemIcon name="home" className="w-5 h-5 shrink-0 text-slate-400 group-hover:text-cyan-300 drop-shadow" />
             {!sidebarCollapsed && <span>Về trang chủ</span>}
           </Link>
           <button
@@ -250,7 +250,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
               sidebarCollapsed ? "justify-center px-0 py-2.5" : "gap-3 px-3 py-2 text-left"
             } rounded-xl text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors w-full cursor-pointer`}
           >
-            <SystemIcon name="logout" className="w-4 h-4 shrink-0 text-rose-400" />
+            <SystemIcon name="logout" className="w-5 h-5 shrink-0 text-rose-400 group-hover:text-rose-300 drop-shadow" />
             {!sidebarCollapsed && <span>Đăng xuất</span>}
           </button>
         </div>

@@ -7605,13 +7605,13 @@ export default function AdminSandboxPage() {
               </button>
             </form>
 
-            {/* Right: Master Launch Buttons */}
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+            {/* Right: Master Launch Buttons (Unified 3D Cyber Buttons) */}
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end flex-wrap">
               <button
                 type="button"
                 disabled={creating}
                 onClick={() => handleLaunchSandbox()}
-                className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-xl hover:shadow-cyan-500/25 transition-all transform hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer glow-neon-purple whitespace-nowrap"
+                className="btn-3d-cyber-purple flex-1 sm:flex-initial px-5 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap disabled:opacity-50"
               >
                 <span>⚡</span>
                 <span>{creating ? "Đang chuẩn bị..." : `Khởi chạy Online: ${selectedMode}`}</span>
@@ -7620,7 +7620,7 @@ export default function AdminSandboxPage() {
               <button
                 type="button"
                 onClick={handleLaunchOffline}
-                className="px-4 py-2.5 rounded-xl glass hover:bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs sm:text-sm shadow-lg transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap glow-neon-amber"
+                className="btn-3d-cyber-cyan px-4 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
                 title="Chạy mô phỏng trực tiếp trên trình duyệt, không cần mạng hay máy chủ"
               >
                 <span>🔌</span>

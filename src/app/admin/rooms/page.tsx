@@ -329,10 +329,10 @@ export default function AdminRoomsListPage() {
 
           <Link
             href="/admin/rooms/create"
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500 text-white font-bold hover:opacity-90 transition inline-flex items-center justify-center gap-2 text-sm shadow-md whitespace-nowrap"
+            className="btn-3d-cyber-purple px-5 py-2.5 text-sm flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
-            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-            <span className="whitespace-nowrap">Tạo phòng đấu chính</span>
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0 text-white" />
+            <span className="whitespace-nowrap font-bold">Tạo phòng đấu chính</span>
           </Link>
         </div>
       </div>

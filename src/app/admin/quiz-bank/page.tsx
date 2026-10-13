@@ -812,7 +812,7 @@ export default function QuizBankPage() {
               setPreviewTargetMode("new");
               setShowStudioModal(true);
             }}
-            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:opacity-95 text-white font-black text-xs sm:text-sm transition inline-flex items-center gap-2 shadow-xl shadow-purple-500/25 whitespace-nowrap cursor-pointer border border-purple-400/40"
+            className="btn-3d-cyber-purple px-5 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
             <span>⚡</span>
             <span>Question Studio (Tạo đề AI & Tài liệu)</span>
@@ -839,10 +839,10 @@ export default function QuizBankPage() {
           </label>
           <button
             onClick={() => setShowNewBankModal(true)}
-            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 font-bold hover:opacity-90 transition inline-flex items-center gap-2 whitespace-nowrap cursor-pointer"
+            className="btn-3d-cyber-cyan px-5 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
-            <SystemIcon name="create_room" className="w-4 h-4 shrink-0" />
-            <span className="whitespace-nowrap">Tạo bộ đề mới</span>
+            <SystemIcon name="create_room" className="w-4 h-4 shrink-0 text-cyan-200" />
+            <span className="whitespace-nowrap font-bold">Tạo bộ đề mới</span>
           </button>
         </div>
       </div>

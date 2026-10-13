@@ -14,11 +14,11 @@ export default function AdminDashboard() {
         </p>
       </div>
 
-      {/* 5 Main Action Cards with high visibility, padding, and interaction */}
+      {/* 5 Main Action Cards with Holographic Cyber Deck styling */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Link
           href="/admin/sandbox"
-          className="quiz-card-interactive p-8 flex flex-col justify-between group border-fuchsia-500/30 bg-gradient-to-br from-fuchsia-950/20 via-[#131626]/80 to-[#131626]/90 backdrop-blur-md"
+          className="hologram-deck-card p-8 flex flex-col justify-between group border-fuchsia-500/35 bg-gradient-to-br from-fuchsia-950/25 via-[#131626]/85 to-[#131626]/90"
         >
           <div>
             <div className="w-14 h-14 rounded-2xl bg-fuchsia-500/10 border border-fuchsia-500/30 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -43,7 +43,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/admin/quiz-bank"
-          className="quiz-card-interactive p-8 flex flex-col justify-between group backdrop-blur-md"
+          className="hologram-deck-card p-8 flex flex-col justify-between group"
         >
           <div>
             <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/admin/rooms/create"
-          className="quiz-card-interactive p-8 flex flex-col justify-between group backdrop-blur-md"
+          className="hologram-deck-card p-8 flex flex-col justify-between group"
         >
           <div>
             <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -83,7 +83,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/admin/rooms"
-          className="quiz-card-interactive p-8 flex flex-col justify-between group backdrop-blur-md"
+          className="hologram-deck-card p-8 flex flex-col justify-between group"
         >
           <div>
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
 
         <Link
           href="/display"
-          className="quiz-card-interactive p-8 flex flex-col justify-between group backdrop-blur-md"
+          className="hologram-deck-card p-8 flex flex-col justify-between group"
         >
           <div>
             <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">

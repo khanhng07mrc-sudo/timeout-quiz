@@ -202,6 +202,7 @@ export default function AdminSandboxPage() {
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
+  const [isLaunchReady, setIsLaunchReady] = useState(false);
   const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
@@ -3897,10 +3898,13 @@ export default function AdminSandboxPage() {
     setLaunchingMeta(meta);
     setLaunchSourceRect(getModeIconRect(selectedMode));
     setIsLaunchingAnim(true);
-    // Kích hoạt nạp ngầm bàn đấu tại mốc 480ms (đúng khúc giữa của transition khi overlay đang che kín)
+    setIsLaunchReady(false);
+    // Nạp ngầm bàn đấu ngay lập tức vào DOM bên dưới lớp rèm che kín
+    startOfflineSandbox(selectedMode, selectedBankId);
+    // Chờ 150ms để React hoàn tất mount bàn đấu ngầm, sau đó kích hoạt pha quét logo 110vh & vén màn
     setTimeout(() => {
-      startOfflineSandbox(selectedMode, selectedBankId);
-    }, 480);
+      setIsLaunchReady(true);
+    }, 150);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
@@ -3909,13 +3913,15 @@ export default function AdminSandboxPage() {
     setLaunchingMeta(meta);
     setLaunchSourceRect(getModeIconRect(modeToUse));
     setIsLaunchingAnim(true);
+    setIsLaunchReady(false);
     setCreating(true);
 
     if (typeof navigator !== "undefined" && !navigator.onLine) {
+      startOfflineSandbox(modeToUse, selectedBankId);
       setTimeout(() => {
-        startOfflineSandbox(modeToUse, selectedBankId);
+        setIsLaunchReady(true);
         setCreating(false);
-      }, 480);
+      }, 150);
       return;
     }
 
@@ -3940,24 +3946,28 @@ export default function AdminSandboxPage() {
         if (data.hostKey) {
           localStorage.setItem(`host_key_${data.code}`, data.hostKey);
         }
-        // Đảm bảo bàn đấu được nạp ngầm ngay tại khúc giữa của transition (450ms)
+        // Nạp ngầm bàn đấu NGAY LẬP TỨC vào DOM (đang được che kín bởi transition loading)
+        setCurrentQuestion(null);
+        setRevealPayload(null);
+        setTimer(null);
+        setMatchStarting(null);
+        setQuestionPrepare(null);
+        setIntermission(null);
+        setAdminQuestionData(null);
+        adminQuestionDataRef.current = null;
+        setCode(data.code);
+        setIsOfflineSandbox(false);
+        saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
+        connectAdminSocket(data.code);
+        addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
+
+        // Chờ 150ms để React hoàn tất mount bàn đấu ngầm, sau đó kích hoạt pha quét logo 110vh & vén màn
         setTimeout(() => {
-          setCurrentQuestion(null);
-          setRevealPayload(null);
-          setTimer(null);
-          setMatchStarting(null);
-          setQuestionPrepare(null);
-          setIntermission(null);
-          setAdminQuestionData(null);
-          adminQuestionDataRef.current = null;
-          setCode(data.code);
-          setIsOfflineSandbox(false);
-          saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
-          connectAdminSocket(data.code);
-          addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
-        }, 450);
+          setIsLaunchReady(true);
+        }, 150);
       } else {
         setIsLaunchingAnim(false);
+        setIsLaunchReady(false);
         const errorMsg = data?.error || "Không thể tạo phòng Sandbox trên máy chủ";
         addLog(`❌ Không thể tạo phòng online: ${errorMsg}`);
         const wantOffline = window.confirm(`Không thể tạo phòng Sandbox Online trên máy chủ:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
@@ -3967,6 +3977,7 @@ export default function AdminSandboxPage() {
       }
     } catch (err: any) {
       setIsLaunchingAnim(false);
+      setIsLaunchReady(false);
       const errorMsg = err?.message || "Lỗi kết nối mạng";
       addLog(`❌ Lỗi kết nối mạng: ${errorMsg}`);
       const wantOffline = window.confirm(`Lỗi kết nối mạng khi tạo Sandbox Online:\n\n"${errorMsg}"\n\nBạn có muốn chuyển sang chế độ Sandbox Offline (mô phỏng trên trình duyệt) không?`);
@@ -6313,11 +6324,13 @@ export default function AdminSandboxPage() {
       {/* ── Holographic 3D Arena Mode Launch Transition (110% Screen Wipe) ── */}
       <ArenaModeLaunchTransition
         isOpen={isLaunchingAnim}
+        isReady={isLaunchReady}
         mode={launchingMeta?.mode || selectedMode}
         modeName={launchingMeta?.name || selectedMode}
         sourceRect={launchSourceRect}
         onComplete={() => {
           setIsLaunchingAnim(false);
+          setIsLaunchReady(false);
           setCreating(false);
         }}
       />

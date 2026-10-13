@@ -67,16 +67,16 @@ export default function ArenaModeLaunchTransition({
   useEffect(() => {
     if (!isOpen || !isReady || phase === "outro") return;
 
-    // Đảm bảo pha loading hiển thị tối thiểu 360ms để người dùng kịp chiêm ngưỡng quỹ đạo bay 3D từ card mode ra tâm
+    // Đảm bảo pha loading hiển thị 850ms để người dùng kịp chiêm ngưỡng kịch bản 3D đặc trưng bung nở
     const elapsed = Date.now() - openTimestampRef.current;
-    const waitBeforeOutro = Math.max(0, 360 - elapsed);
+    const waitBeforeOutro = Math.max(0, 850 - elapsed);
 
     timerOutroRef.current = setTimeout(() => {
-      // Pha Outro: Kích hoạt hoạt cảnh bung mở đặc trưng theo từng mode (550ms)
+      // Pha Outro: Kích hoạt hoạt cảnh bung mở / camera xuyên tâm theo từng mode (550ms)
       setPhase("outro");
 
       timerDoneRef.current = setTimeout(() => {
-        // Kết thúc chuyển cảnh sau đúng nhịp 900ms tổng thể
+        // Kết thúc chuyển cảnh sau đúng nhịp 1.4s tổng thể, hòa tan mượt mà vào bàn đấu
         setPhase("idle");
         if (onCompleteRef.current) {
           onCompleteRef.current();

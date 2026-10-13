@@ -47,6 +47,7 @@ export default function CreateRoomPage() {
   const [error, setError] = useState("");
   const [isLaunchingTransition, setIsLaunchingTransition] = useState(false);
   const [isLaunchReady, setIsLaunchReady] = useState(false);
+  const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [pendingRedirectUrl, setPendingRedirectUrl] = useState("");
 
   // Quiz banks
@@ -296,6 +297,13 @@ export default function CreateRoomPage() {
       }
       // Kích hoạt transition 3D trước khi chuyển vào phòng đấu chính
       setPendingRedirectUrl(nextUrl);
+      if (typeof document !== "undefined") {
+        const el = document.getElementById(`mode-card-icon-${mode}`) || document.getElementById(`mode-card-icon-list-${mode}`);
+        if (el) {
+          const r = el.getBoundingClientRect();
+          setLaunchSourceRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+        }
+      }
       setIsLaunchingTransition(true);
       setTimeout(() => {
         setIsLaunchReady(true);
@@ -314,6 +322,7 @@ export default function CreateRoomPage() {
         isReady={isLaunchReady}
         mode={mode}
         modeName={GAME_MODES.find((m) => m.value === mode)?.label || mode}
+        sourceRect={launchSourceRect}
         onComplete={() => {
           if (pendingRedirectUrl) {
             router.push(pendingRedirectUrl);
@@ -465,7 +474,9 @@ export default function CreateRoomPage() {
                       }`}
                     >
                       <div className="flex items-start justify-between gap-1 mb-2">
-                        <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow shrink-0" />
+                        <div id={`mode-card-icon-${m.value}`} className="shrink-0">
+                          <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow" />
+                        </div>
                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0 ${m.badgeColor}`}>
                           {m.badge}
                         </span>
@@ -501,7 +512,9 @@ export default function CreateRoomPage() {
                           : "border-border hover:border-purple-400 glass bg-card/50"
                       }`}
                     >
-                      <GameModeIcon mode={m.value} className="w-10 h-10 shrink-0 drop-shadow" />
+                      <div id={`mode-card-icon-list-${m.value}`} className="shrink-0">
+                        <GameModeIcon mode={m.value} className="w-10 h-10 drop-shadow" />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-bold text-base">{m.label}</p>

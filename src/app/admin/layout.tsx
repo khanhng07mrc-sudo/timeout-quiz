@@ -263,7 +263,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
           } flex-1 h-screen max-h-screen overflow-hidden p-1 sm:p-2 pt-16 lg:pt-2 flex flex-col min-h-0 transition-all duration-200`}
         >
-          <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-pull-from-left">
+          <div key={pathname} className="w-full h-full flex flex-col min-h-0 animate-fade-in">
             {children}
           </div>
         </main>
@@ -273,7 +273,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
             sidebarCollapsed ? "lg:ml-16" : "lg:ml-64 xl:ml-72"
           } flex-1 p-4 sm:p-6 lg:p-10 pt-20 lg:pt-10 min-h-screen transition-all duration-200`}
         >
-          <div key={pathname} className="max-w-6xl mx-auto w-full animate-pull-from-left">
+          <div key={pathname} className="max-w-6xl mx-auto w-full animate-fade-in">
             {children}
           </div>
         </main>

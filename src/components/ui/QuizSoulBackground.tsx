@@ -16,8 +16,15 @@ export default function QuizSoulBackground() {
       {/* 1. Sàn đấu lưới không gian 3D viễn tưởng (3D Perspective Cyber Floor) */}
       <div className="cyber-arena-grid" />
 
-      {/* 2. Tia laser quét quang học nhịp nhàng */}
-      <div className="cyber-scanline" />
+      {/* 2. Các hạt bụi tinh tú lượng tử vũ trụ bay lơ lửng (Stardust Motes) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="stardust-mote absolute top-[18%] left-[12%] w-2 h-2 rounded-full bg-cyan-400/80 shadow-[0_0_12px_#22d3ee]" style={{ animationDelay: "0s", animationDuration: "8s" }} />
+        <div className="stardust-mote absolute top-[35%] right-[15%] w-2.5 h-2.5 rounded-full bg-purple-400/80 shadow-[0_0_14px_#c084fc]" style={{ animationDelay: "2.5s", animationDuration: "10s" }} />
+        <div className="stardust-mote absolute bottom-[28%] left-[22%] w-1.5 h-1.5 rounded-full bg-cyan-300/70 shadow-[0_0_10px_#67e8f9]" style={{ animationDelay: "5s", animationDuration: "7.5s" }} />
+        <div className="stardust-mote absolute bottom-[22%] right-[25%] w-2 h-2 rounded-full bg-fuchsia-400/80 shadow-[0_0_12px_#e879f9]" style={{ animationDelay: "1.2s", animationDuration: "9.5s" }} />
+        <div className="stardust-mote absolute top-[60%] left-[8%] w-1.5 h-1.5 rounded-full bg-purple-300/70 shadow-[0_0_8px_#d8b4fe]" style={{ animationDelay: "3.8s", animationDuration: "11s" }} />
+        <div className="stardust-mote absolute top-[75%] right-[10%] w-2 h-2 rounded-full bg-cyan-400/75 shadow-[0_0_12px_#22d3ee]" style={{ animationDelay: "6.2s", animationDuration: "8.5s" }} />
+      </div>
 
       {/* 3. Vầng sáng tâm vũ trụ huyền bí đa tầng phát quang rực rỡ */}
       <div className="absolute w-[980px] h-[980px] rounded-full bg-gradient-to-tr from-purple-600/35 via-indigo-600/30 to-cyan-400/35 blur-[120px] animate-pulse" />

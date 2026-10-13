@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import Logo3DGyroscope from "@/components/ui/Logo3DGyroscope";
 
 export default function GlobalPageTransition() {
   const pathname = usePathname();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const prevPathRef = useRef(pathname);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     // Chỉ kích hoạt hiệu ứng khi thực sự chuyển đổi route
@@ -23,12 +29,20 @@ export default function GlobalPageTransition() {
     }
   }, [pathname]);
 
-  if (!isTransitioning) return null;
+  if (!isTransitioning || !mounted || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <div
       aria-hidden="true"
-      className="fixed inset-0 z-50 pointer-events-none flex flex-col items-center justify-center bg-[#090b16]/75 backdrop-blur-md transition-opacity duration-300 animate-fade-in select-none"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100vw",
+        height: "100vh",
+        zIndex: 9999,
+      }}
+      className="pointer-events-none flex flex-col items-center justify-center bg-[#090b16]/80 backdrop-blur-md transition-opacity duration-300 animate-fade-in select-none"
     >
       {/* 3D Holographic Gyroscope Logo quay bứt tốc 360° */}
       <div className="relative flex flex-col items-center justify-center">
@@ -47,6 +61,7 @@ export default function GlobalPageTransition() {
           </span>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

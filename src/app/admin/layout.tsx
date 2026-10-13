@@ -93,7 +93,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         : "text-slate-300 hover:text-white hover:bg-white/5"
                     }`}
                   >
-                    <SystemIcon name={icon} className="w-5 h-5 shrink-0" />
+                    <div className={`p-2 rounded-xl shrink-0 ${
+                      isActive
+                        ? "bg-gradient-to-tr from-cyan-500/30 via-purple-600/30 to-white/20 border border-cyan-400/50 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.4)]"
+                        : "bg-[#13172e]/60 border border-white/10 text-slate-400"
+                    }`}>
+                      <SystemIcon name={icon} className="w-5 h-5 shrink-0 drop-shadow" />
+                    </div>
                     <div>
                       <span className="text-sm block">{label}</span>
                       <span className="text-[10px] text-muted-foreground block">{desc}</span>
@@ -181,8 +187,12 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-pulse" />
                 )}
 
-                <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-slate-400 group-hover:text-white"}`}>
-                  <SystemIcon name={icon} className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <div className={`p-2 rounded-xl shrink-0 transition-all duration-300 relative ${
+                  isActive
+                    ? "bg-gradient-to-tr from-cyan-500/30 via-purple-600/30 to-white/20 border border-cyan-400/50 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.4)] ring-1 ring-white/20"
+                    : "bg-[#13172e]/60 border border-white/10 text-slate-400 group-hover:text-white group-hover:border-purple-500/40 group-hover:shadow-[0_0_12px_rgba(168,85,247,0.3)]"
+                }`}>
+                  <SystemIcon name={icon} className="w-4 h-4 group-hover:scale-110 transition-transform drop-shadow" />
                 </div>
                 {!sidebarCollapsed && (
                   <div className="min-w-0 pr-4">

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className={`${inter.className} bg-background text-foreground page-transition relative min-h-screen`}>
+      <body className={`${inter.className} bg-background text-foreground relative min-h-screen`}>
         <QuizSoulBackground />
         <GlobalPageTransition />
         <OfflineBanner />

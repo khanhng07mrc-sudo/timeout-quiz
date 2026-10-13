@@ -22,6 +22,7 @@ import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
 import GameModeIcon from "@/components/ui/GameModeIcon";
+import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
 import { soundManager } from "@/lib/sound-manager";
 import {
@@ -199,6 +200,7 @@ export default function AdminSandboxPage() {
   const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
+  const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
@@ -3874,21 +3876,34 @@ export default function AdminSandboxPage() {
     return () => window.removeEventListener("message", handlePlayerAction);
   }, [isOfflineSandbox, currentQuestion, addLog, syncToIframes, activeTeamIndex, roomState?.teams, roomState?.config.answerSubmissionMode, selectedMode, processOfflineWager]);
 
-  // ── 1-Click Launch with Zoom & Morph Transition ──────────────────────────
+  // ── Helper lấy vị trí Logo 2D ở góc trên bên trái của thẻ Mode ────────────
+  const getModeIconRect = (targetMode: GameMode) => {
+    if (typeof document !== "undefined") {
+      const el = document.getElementById(`mode-card-icon-${targetMode}`);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        return { top: r.top, left: r.left, width: r.width, height: r.height };
+      }
+    }
+    return null;
+  };
+
+  // ── 1-Click Launch with 3D Hologram Transition (110% Screen Wipe) ──────────
   const handleLaunchOffline = useCallback(() => {
     const meta = AVAILABLE_MODES.find((m) => m.mode === selectedMode) || AVAILABLE_MODES[0];
     setLaunchingMeta(meta);
+    setLaunchSourceRect(getModeIconRect(selectedMode));
     setIsLaunchingAnim(true);
     setTimeout(() => {
       startOfflineSandbox(selectedMode, selectedBankId);
-      setTimeout(() => setIsLaunchingAnim(false), 450);
-    }, 650);
+    }, 600);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
     const modeToUse = targetMode || selectedMode;
     const meta = AVAILABLE_MODES.find((m) => m.mode === modeToUse) || AVAILABLE_MODES[0];
     setLaunchingMeta(meta);
+    setLaunchSourceRect(getModeIconRect(modeToUse));
     setIsLaunchingAnim(true);
     setCreating(true);
 
@@ -3896,8 +3911,7 @@ export default function AdminSandboxPage() {
       setTimeout(() => {
         startOfflineSandbox(modeToUse, selectedBankId);
         setCreating(false);
-        setTimeout(() => setIsLaunchingAnim(false), 450);
-      }, 650);
+      }, 600);
       return;
     }
 
@@ -3935,7 +3949,6 @@ export default function AdminSandboxPage() {
         saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
         connectAdminSocket(data.code);
         addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
-        setTimeout(() => setIsLaunchingAnim(false), 500);
       } else {
         setIsLaunchingAnim(false);
         const errorMsg = data?.error || "Không thể tạo phòng Sandbox trên máy chủ";
@@ -6290,35 +6303,17 @@ export default function AdminSandboxPage() {
       className="h-full max-h-full flex flex-col min-h-0 gap-1.5 sm:gap-2 overflow-hidden relative"
       onClick={() => { if (showSettingsDropdown) setShowSettingsDropdown(false); if (showCheatDropdown) setShowCheatDropdown(false); }}
     >
-      {/* ── Cinematic Morph & Zoom-Expand Transition Overlay ── */}
-      {isLaunchingAnim && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-2xl animate-fade-in overflow-hidden">
-          {/* Shockwave Rings */}
-          <div className="absolute w-72 h-72 rounded-full border-2 border-cyan-400/60 animate-shockwave pointer-events-none" />
-          <div className="absolute w-96 h-96 rounded-full border-2 border-purple-500/40 animate-shockwave pointer-events-none" style={{ animationDelay: "350ms" }} />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/50 via-cyan-950/40 to-black pointer-events-none" />
-
-          <div className="relative z-10 text-center flex flex-col items-center gap-4 max-w-md mx-auto animate-warp-expand">
-            <div className={`w-32 h-32 rounded-3xl bg-gradient-to-tr ${launchingMeta?.gradient || "from-purple-600 to-cyan-500"} flex items-center justify-center text-6xl shadow-2xl animate-morph-pulse ring-4 ring-white/30`}>
-              {launchingMeta?.emoji || "🧪"}
-            </div>
-            <div className="space-y-2">
-              <span className="text-xs px-3.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold tracking-wide animate-pulse">
-                ⚡ Khởi tạo Sandbox Engine
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">
-                {launchingMeta?.name || selectedMode}
-              </h2>
-              <p className="text-xs text-slate-300 max-w-sm mx-auto leading-relaxed">
-                Đang kết nối môi trường thử nghiệm độc lập trên máy · Tự động tách đôi màn hình Màn chiếu và Thiết bị thí sinh!
-              </p>
-            </div>
-            <div className="w-72 h-2.5 bg-white/10 rounded-full overflow-hidden border border-white/20 p-0.5 mt-2 relative">
-              <div className="h-full bg-gradient-to-r from-purple-500 via-cyan-400 to-emerald-400 rounded-full animate-shimmer-sweep" style={{ width: "100%" }} />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Holographic 3D Arena Mode Launch Transition (110% Screen Wipe) ── */}
+      <ArenaModeLaunchTransition
+        isOpen={isLaunchingAnim}
+        mode={launchingMeta?.mode || selectedMode}
+        modeName={launchingMeta?.name || selectedMode}
+        sourceRect={launchSourceRect}
+        onComplete={() => {
+          setIsLaunchingAnim(false);
+          setCreating(false);
+        }}
+      />
 
       {/* ── Top Header Controls (Compact Single-Bar) ─────────────────── */}
       <div className="glass rounded-xl px-2.5 py-1.5 sm:px-3 sm:py-2 border border-white/10 flex flex-wrap items-center justify-between gap-1.5 sm:gap-2 shadow-lg shrink-0 bg-[#121424]">
@@ -7732,11 +7727,12 @@ export default function AdminSandboxPage() {
                       {/* Header: Emoji box + Category badge */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div
-                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center text-2xl shadow-xl group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/15 ${
-                            isSelected ? "animate-bounce" : ""
+                          id={`mode-card-icon-${m.mode}`}
+                          className={`w-12 h-12 rounded-2xl bg-gradient-to-tr ${m.gradient} flex items-center justify-center p-2 shadow-xl group-hover:scale-110 transition-transform duration-300 shrink-0 ring-2 ring-white/15 relative ${
+                            isSelected ? "scale-105 ring-cyan-400" : ""
                           }`}
                         >
-                          {m.emoji}
+                          <GameModeIcon mode={m.mode} className="w-full h-full drop-shadow-md" />
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-white/10 text-slate-200 border border-white/20 font-bold uppercase tracking-wider backdrop-blur-md">

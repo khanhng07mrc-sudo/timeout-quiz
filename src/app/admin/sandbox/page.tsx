@@ -3897,9 +3897,10 @@ export default function AdminSandboxPage() {
     setLaunchingMeta(meta);
     setLaunchSourceRect(getModeIconRect(selectedMode));
     setIsLaunchingAnim(true);
+    // Kích hoạt nạp ngầm bàn đấu tại mốc 480ms (đúng khúc giữa của transition khi overlay đang che kín)
     setTimeout(() => {
       startOfflineSandbox(selectedMode, selectedBankId);
-    }, 600);
+    }, 480);
   }, [selectedMode, selectedBankId, startOfflineSandbox]);
 
   const handleLaunchSandbox = async (targetMode?: GameMode) => {
@@ -3914,7 +3915,7 @@ export default function AdminSandboxPage() {
       setTimeout(() => {
         startOfflineSandbox(modeToUse, selectedBankId);
         setCreating(false);
-      }, 600);
+      }, 480);
       return;
     }
 
@@ -3939,19 +3940,22 @@ export default function AdminSandboxPage() {
         if (data.hostKey) {
           localStorage.setItem(`host_key_${data.code}`, data.hostKey);
         }
-        setCurrentQuestion(null);
-        setRevealPayload(null);
-        setTimer(null);
-        setMatchStarting(null);
-        setQuestionPrepare(null);
-        setIntermission(null);
-        setAdminQuestionData(null);
-        adminQuestionDataRef.current = null;
-        setCode(data.code);
-        setIsOfflineSandbox(false);
-        saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
-        connectAdminSocket(data.code);
-        addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
+        // Đảm bảo bàn đấu được nạp ngầm ngay tại khúc giữa của transition (450ms)
+        setTimeout(() => {
+          setCurrentQuestion(null);
+          setRevealPayload(null);
+          setTimer(null);
+          setMatchStarting(null);
+          setQuestionPrepare(null);
+          setIntermission(null);
+          setAdminQuestionData(null);
+          adminQuestionDataRef.current = null;
+          setCode(data.code);
+          setIsOfflineSandbox(false);
+          saveSandboxSession(data.code, false, data.mode || modeToUse, selectedBankId, data.hostKey, data.name);
+          connectAdminSocket(data.code);
+          addLog(`⚡ Đã khởi tạo Sandbox Online: Phòng ${data.code} (${data.mode}) - Bộ đề: ${data.quizBankTitle || "Trực tuyến"}`);
+        }, 450);
       } else {
         setIsLaunchingAnim(false);
         const errorMsg = data?.error || "Không thể tạo phòng Sandbox trên máy chủ";

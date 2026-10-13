@@ -35,26 +35,27 @@ export default function ArenaModeLaunchTransition({
       return;
     }
 
-    // Giai đoạn 1: Bắt đầu từ toạ độ sourceRect (icon card), bay bứt tốc ra tâm & biến thành 3D kính (220ms)
+    // Giai đoạn 1: Bắt đầu từ toạ độ sourceRect (icon card), bay ra tâm & biến thành 3D kính (0 - 380ms)
     setPhase("expand");
 
-    // Giai đoạn 2 (sau 220ms): Biến thành Logo 3D kính khổng lồ 110% chiều cao màn hình, vừa quay vừa lướt qua bứt tốc
+    // Giai đoạn 2 (380ms): Biến thành Logo 3D kính khổng lồ 110% chiều cao màn hình, vừa quay vừa lướt qua (380 - 850ms)
+    // Tại mốc 500-550ms: Giao diện bàn đấu bên dưới đã nạp ngầm hoàn tất
     const swooshTimer = setTimeout(() => {
       setPhase("swoosh");
-    }, 220);
+    }, 380);
 
-    // Giai đoạn 3 (sau 500ms): Vén màn mượt mà
+    // Giai đoạn 3 (850ms): Vén màn mượt mà để lộ bàn đấu ngầm đã sẵn sàng 100% bên dưới
     const fadeoutTimer = setTimeout(() => {
       setPhase("fadeout");
-    }, 500);
+    }, 850);
 
-    // Giai đoạn 4 (sau 680ms): Hoàn tất chuyển cảnh sang bàn đấu (Esports Fast Pacing)
+    // Giai đoạn 4 (1200ms): Hoàn tất chuyển cảnh (Cinematic 1.2s)
     const doneTimer = setTimeout(() => {
       setPhase("idle");
       if (onCompleteRef.current) {
         onCompleteRef.current();
       }
-    }, 690);
+    }, 1200);
 
     return () => {
       clearTimeout(swooshTimer);
@@ -77,15 +78,15 @@ export default function ArenaModeLaunchTransition({
         height: "100vh",
         zIndex: 99999,
       }}
-      className={`pointer-events-none overflow-hidden flex items-center justify-center transition-opacity duration-200 select-none ${
+      className={`pointer-events-none overflow-hidden flex items-center justify-center transition-opacity duration-350 select-none ${
         phase === "fadeout" ? "opacity-0" : "opacity-100"
       }`}
     >
       {/* ── 1. Màn Che Lượng Tử Không Gian (Backdrop Không Dùng Blur Nặng) ── */}
       <div
-        className={`absolute inset-0 bg-[#070814]/94 transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-[#070814]/94 transition-opacity duration-400 ${
           phase === "expand"
-            ? "opacity-85"
+            ? "opacity-90"
             : phase === "swoosh"
             ? "opacity-95"
             : "opacity-0"
@@ -94,7 +95,7 @@ export default function ArenaModeLaunchTransition({
 
       {/* ── 2. Dải Sóng Năng Lượng Quét Ngang Toàn Màn Hình (Quantum Swoosh Wave) ── */}
       <div
-        className={`absolute inset-0 pointer-events-none transition-transform duration-500 ease-out will-change-transform ${
+        className={`absolute inset-0 pointer-events-none transition-transform duration-650 ease-out will-change-transform ${
           phase === "swoosh"
             ? "translate-x-[-120%] opacity-100"
             : "translate-x-[120%] opacity-0"
@@ -108,7 +109,7 @@ export default function ArenaModeLaunchTransition({
       {/* ── 3. LOGO 3D KÍNH KHỔNG LỒ 110% CHIỀU CAO MÀN HÌNH CHẠY QUA & QUAY (TỐI ƯU 60 FPS) ── */}
       {/* Kích thước 110vh, will-change: transform kích hoạt GPU độc lập, không dùng filter nặng */}
       <div
-        className="absolute pointer-events-none flex items-center justify-center transition-all duration-500 ease-out will-change-transform"
+        className="absolute pointer-events-none flex items-center justify-center transition-all duration-600 ease-out will-change-transform"
         style={{
           width: "110vh",
           height: "110vh",
@@ -116,10 +117,10 @@ export default function ArenaModeLaunchTransition({
           maxHeight: "110vh",
           transform:
             phase === "expand"
-              ? `translate3d(0, 0, 0) scale(0.7) rotate(0deg)`
+              ? `translate3d(0, 0, 0) scale(0.68) rotate(0deg)`
               : phase === "swoosh"
               ? `translate3d(-25vw, 0, 0) scale(1.05) rotate(-22deg)`
-              : `translate3d(-100vw, 0, 0) scale(1.15) rotate(-40deg)`,
+              : `translate3d(-105vw, 0, 0) scale(1.18) rotate(-40deg)`,
           opacity: phase === "expand" ? 0.85 : phase === "swoosh" ? 0.75 : 0,
         }}
       >
@@ -134,14 +135,14 @@ export default function ArenaModeLaunchTransition({
 
       {/* ── 4. LOGO 3D KÍNH TRUNG TÂM PHÓNG TO TỪ VỊ TRÍ 2D CỦA CARD MODE ── */}
       <div
-        className="relative z-10 flex flex-col items-center justify-center text-center transition-all duration-500 ease-out"
+        className="relative z-10 flex flex-col items-center justify-center text-center transition-all duration-450 ease-out"
         style={{
           transform:
             phase === "expand"
               ? "scale(1.15) translateY(0)"
               : phase === "swoosh"
-              ? "scale(1.4) translateY(-10px)"
-              : "scale(0.8) translateY(20px)",
+              ? "scale(1.35) translateY(-8px)"
+              : "scale(0.85) translateY(16px)",
           opacity: phase === "fadeout" ? 0 : 1,
         }}
       >

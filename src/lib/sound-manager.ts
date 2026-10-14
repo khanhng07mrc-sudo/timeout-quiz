@@ -471,14 +471,20 @@ class SoundManager {
     if (
       this.currentMusicType === "QUESTION" &&
       this.currentMusicAudio &&
-      !this.currentMusicAudio.paused &&
       !this.currentMusicAudio.ended
     ) {
       // Only restart if an explicit DIFFERENT questionId is provided
-      if (questionId && this.currentPlayingQuestionId && questionId !== this.currentPlayingQuestionId) {
-        // Proceed below to start track for new question
-      } else {
-        if (questionId && !this.currentPlayingQuestionId) this.currentPlayingQuestionId = questionId;
+      const hasBothIds = Boolean(questionId && this.currentPlayingQuestionId);
+      const isDifferentQuestion = hasBothIds && questionId !== this.currentPlayingQuestionId;
+
+      if (!isDifferentQuestion) {
+        if (questionId && !this.currentPlayingQuestionId) {
+          this.currentPlayingQuestionId = questionId;
+        }
+        // If paused by browser interaction or backgrounding, resume without resetting currentTime
+        if (this.currentMusicAudio.paused) {
+          this.currentMusicAudio.play().catch(() => {});
+        }
         return;
       }
     }

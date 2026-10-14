@@ -3279,6 +3279,13 @@ export default function AdminSandboxPage() {
           setRoomState(nextRoomState);
           syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
           addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
+
+          // Quy định mới: Tự động lật bài sau 0.5s (500ms)
+          setTimeout(() => {
+            if (roomStateRef.current?.mysteryQuestState?.tarotState?.isRevealPending) {
+              window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
+            }
+          }, 500);
         }, Math.max(spinDurationMs, 19200) + 200);
         return;
       }

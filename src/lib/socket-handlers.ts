@@ -6510,6 +6510,14 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:mystery:update", settledState);
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
+
+        // Quy định mới: Các chức năng đã hiện rõ trên ô vòng quay, nên tự động lật bài sau 0.5s (500ms)
+        setTimeout(async () => {
+          const currentQuest = roomMysteryQuests.get(room.id);
+          if (currentQuest && currentQuest.tarotState?.isRevealPending) {
+            await executeMysteryTarotReveal(room, currentQuest);
+          }
+        }, 500);
       }, Math.max(result.spinDurationMs, 19200) + 250);
     };
 

@@ -333,6 +333,16 @@ export default function MysteryQuestBoard({
     };
   }, []);
 
+  // Tự động lật bài sau 0.5s (500ms) khi bài xuất hiện trên màn hình
+  useEffect(() => {
+    if (tarotState?.isDrawn && tarotState?.isRevealPending) {
+      const timer = setTimeout(() => {
+        onTarotReveal?.();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [tarotState?.isDrawn, tarotState?.isRevealPending, onTarotReveal]);
+
   // Synchronize Tarot Wheel angle, Chiếc Nón Kỳ Diệu BGM & peg-click audio ("tạch-tạch-tạch")
   useEffect(() => {
     const target = tarotState?.targetAngle;
@@ -2331,9 +2341,9 @@ export default function MysteryQuestBoard({
                     <div
                       className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 18%",
+                        transformOrigin: "50% 16%",
                         transform: isWheelZoomedIn
-                          ? "scale(2.1) translateY(-28px)"
+                          ? "scale(2.1) translateY(-52px)"
                           : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
@@ -2519,12 +2529,15 @@ export default function MysteryQuestBoard({
                           const pegY = cy - rPeg * Math.cos(theta1);
 
                           // Wedge Content Formatting:
-                          // Yêu cầu: "chỉ để lại duy nhất 1 dòng chữ mỗi ô, đối với các ô có số thì ghi kiểu +, 1, 0 hoặc -, 1, 5"
+                          // Yêu cầu: Chữ nhỏ lại vừa vặn. Dấu + / - bọc trong hình tròn màu sáng, dấu màu tối, nằm cạnh icon Tarot thay vì để gần tâm.
                           const cleanLabel = displayInfo.mainLabel.trim();
-                          const isNumeric = /^[+-]?\d+$/.test(cleanLabel);
-                          const labelChars = cleanLabel.split("");
+                          const hasSign = cleanLabel.startsWith("+") || cleanLabel.startsWith("-");
+                          const signChar = hasSign ? cleanLabel[0] : "";
+                          const numericPart = hasSign ? cleanLabel.slice(1) : cleanLabel;
+                          const isNumeric = /^\d+$/.test(numericPart);
+                          const numericDigits = isNumeric ? numericPart.split("") : [];
                           const labelLen = cleanLabel.length;
-                          const radialMainFontSize = labelLen <= 5 ? "16" : labelLen <= 9 ? "14.5" : "12.5";
+                          const radialMainFontSize = labelLen <= 5 ? "11" : labelLen <= 9 ? "9.5" : "8";
                           const ySpokeCenter = cy - 105;
 
                           return (
@@ -2554,25 +2567,63 @@ export default function MysteryQuestBoard({
                                 {/* Outer Accent Pin */}
                                 <circle cx={cx} cy={cy - 180} r="1.3" fill={symbolColor} opacity="0.8" />
 
-                                {/* Large Arcana Vector Line-Art SVG Icon */}
-                                <svg
-                                  x={cx - 12}
-                                  y={cy - 172}
-                                  width="24"
-                                  height="24"
-                                  viewBox="0 0 32 32"
-                                  filter="url(#arcanaSymbolGlow)"
-                                >
-                                  {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
-                                </svg>
+                                {/* Arcana Vector Line-Art Icon + Sign Badge (nếu có dấu + hoặc -) */}
+                                {hasSign ? (
+                                  <g>
+                                    {/* Icon lệch trái một chút để nhường chỗ cho badge dấu */}
+                                    <svg
+                                      x={cx - 18}
+                                      y={cy - 168}
+                                      width="19"
+                                      height="19"
+                                      viewBox="0 0 32 32"
+                                      filter="url(#arcanaSymbolGlow)"
+                                    >
+                                      {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
+                                    </svg>
+                                    {/* Hình tròn màu sáng bọc dấu màu tối nằm ngay cạnh icon Tarot */}
+                                    <circle
+                                      cx={cx + 9}
+                                      cy={cy - 158.5}
+                                      r="6.8"
+                                      fill={signChar === "+" ? "#ffffff" : "#fee2e2"}
+                                      stroke="#0f172a"
+                                      strokeWidth="0.8"
+                                      filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.6))"
+                                    />
+                                    <text
+                                      x={cx + 9}
+                                      y={signChar === "+" ? cy - 158 : cy - 159}
+                                      textAnchor="middle"
+                                      dominantBaseline="central"
+                                      fontSize="11.5"
+                                      fontWeight="900"
+                                      fill="#0f172a"
+                                      className="font-black select-none pointer-events-none"
+                                    >
+                                      {signChar}
+                                    </text>
+                                  </g>
+                                ) : (
+                                  <svg
+                                    x={cx - 10}
+                                    y={cy - 168}
+                                    width="20"
+                                    height="20"
+                                    viewBox="0 0 32 32"
+                                    filter="url(#arcanaSymbolGlow)"
+                                  >
+                                    {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
+                                  </svg>
+                                )}
 
-                                {/* Wedge Content: Stacked Upright Digits (+ 1 0 or - 1 5) or Single Rotated Text Line */}
+                                {/* Wedge Content: Stacked Upright Digits (1 0 hoặc 1 5) or Single Rotated Text Line */}
                                 {isNumeric ? (
-                                  /* Các ô có số: Chữ số đứng thẳng (upright), xếp chồng dọc từ ngoài vào rốn: +, 1, 0 hoặc -, 1, 5 */
+                                  /* Các ô có số: Chữ số đứng thẳng, xếp chồng dọc từ ngoài vào rốn, cỡ chữ nhỏ gọn, không còn chứa dấu + / - */
                                   <g className="font-black select-none pointer-events-none">
-                                    {labelChars.map((ch, chIdx) => {
-                                      const charStep = 24;
-                                      const startY = (cy - 104) - ((labelChars.length - 1) * charStep) / 2;
+                                    {numericDigits.map((ch, chIdx) => {
+                                      const charStep = 16;
+                                      const startY = ySpokeCenter - ((numericDigits.length - 1) * charStep) / 2;
                                       const charY = startY + chIdx * charStep;
                                       return (
                                         <text
@@ -2581,11 +2632,11 @@ export default function MysteryQuestBoard({
                                           y={charY}
                                           textAnchor="middle"
                                           dominantBaseline="central"
-                                          fontSize={labelChars.length === 1 ? "26" : "22"}
+                                          fontSize="14"
                                           fontWeight="900"
                                           fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : seg.isMagnetized ? "#fef08a" : "#ffffff"}
                                           stroke="#000000"
-                                          strokeWidth="3.2"
+                                          strokeWidth="2.0"
                                           style={{ paintOrder: "stroke fill" }}
                                           className="font-black select-none pointer-events-none tracking-normal"
                                         >
@@ -2595,7 +2646,7 @@ export default function MysteryQuestBoard({
                                     })}
                                   </g>
                                 ) : (
-                                  /* Các ô chữ (THÊM LƯỢT, MẤT LƯỢT, MAY MẮN, BOM...): Duy nhất 1 dòng chữ in đậm xoay 90° dọc nan quạt */
+                                  /* Các ô chữ (THÊM LƯỢT, MẤT LƯỢT, CƯỚP 10, MAY MẮN...): Duy nhất 1 dòng chữ in đậm xoay 90° dọc nan quạt, cỡ chữ nhỏ lại */
                                   <g transform={`rotate(90 ${cx} ${ySpokeCenter})`}>
                                     <text
                                       x={cx}
@@ -2605,7 +2656,7 @@ export default function MysteryQuestBoard({
                                       fontWeight="900"
                                       fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : "#ffffff"}
                                       stroke="#000000"
-                                      strokeWidth="2.8"
+                                      strokeWidth="2.0"
                                       style={{ paintOrder: "stroke fill" }}
                                       dominantBaseline="central"
                                       className="font-black select-none pointer-events-none tracking-tight uppercase"

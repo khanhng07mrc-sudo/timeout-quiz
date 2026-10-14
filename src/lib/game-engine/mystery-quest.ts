@@ -1605,7 +1605,19 @@ export function generateNextPushYourLuckCard({
 
   // Scale reward deltaPoints according to basePoints (guarantee rewards are >= basePoints)
   let delta = template.deltaPoints;
-  if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
+  if (template.effectType === "STEAL_POINTS") {
+    // Quy tắc tuyệt đối: Số điểm cướp KHÔNG BAO GIỜ được vượt quá số điểm gốc câu hỏi
+    if (basePoints <= 10) {
+      delta = 10;
+    } else if (basePoints <= 20) {
+      delta = [10, 15, 20][Math.floor(Math.random() * 3)];
+    } else if (basePoints <= 30) {
+      delta = [15, 20, 25, 30][Math.floor(Math.random() * 4)];
+    } else {
+      delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
+    }
+    delta = Math.min(delta, basePoints);
+  } else if (template.effectType === "BONUS_POINTS") {
     if (basePoints <= 10) {
       // 10đ tier: +10đ, +15đ, +20đ, +25đ
       delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
@@ -4839,9 +4851,9 @@ export function getTarotSegmentDisplayLabel(
     return { mainLabel: "THÊM LƯỢT", colorType: "SPECIAL" };
   }
 
-  // e) 2 lá Cướp 2x điểm: VII Chariot & XIII Death
+  // e) 2 lá Cướp điểm (Quy định chuẩn: Không vượt quá điểm gốc câu hỏi): VII Chariot & XIII Death
   if (seg.key === "THE_CHARIOT" || seg.key === "THE_DEATH") {
-    const stealPts = basePoints * 2;
+    const stealPts = basePoints;
     return { mainLabel: `CƯỚP ${stealPts}`, colorType: "SPECIAL" };
   }
 
@@ -5424,15 +5436,16 @@ export function resolveWheelCardEffect({
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
 
-      // 5. Đã bị cướp 1 lần trong chu kỳ -> giảm mức cướp xuống 50% (tức 1x Điểm gốc)
+      // 5. Đã bị cướp 1 lần trong chu kỳ -> giảm mức cướp xuống 50%
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
       const targetSteal =
         timesStolen === 1
-          ? Math.max(5, roundToMultipleOfFive(basePoints * 2 * 0.5))
-          : basePoints * 2;
+          ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5))
+          : basePoints;
 
       // 6. Khóa công bằng 1:1: Đối thủ thực tế mất bao nhiêu điểm thì đội quay nhận ĐÚNG bấy nhiêu điểm
-      const actualStolen = Math.min(targetSteal, victimScore);
+      // Tuyệt đối không bao giờ vượt quá điểm gốc câu hỏi!
+      const actualStolen = Math.min(targetSteal, victimScore, basePoints);
       const scoreDeltas: Array<{ teamId: string; delta: number }> = [
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen },

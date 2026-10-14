@@ -769,6 +769,7 @@ export default function DisplayPage() {
   }, [code]);
 
   const handleUnlockAudio = useCallback(() => {
+    if (audioUnlocked) return;
     soundManager.unlockAudio();
     soundManager.setMuted(false);
     setAudioUnlocked(true);
@@ -788,7 +789,7 @@ export default function DisplayPage() {
         soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }
     }
-  }, [currentQuestion, matchStarting, questionPrepare, revealPayload, roomState?.mode, roomState?.status]);
+  }, [audioUnlocked, currentQuestion, matchStarting, questionPrepare, revealPayload, roomState?.mode, roomState?.status]);
 
   useEffect(() => {
     if (audioUnlocked) return;
@@ -1632,7 +1633,10 @@ export default function DisplayPage() {
                       <button
                         type="button"
                         title="Cỡ chữ tiêu chuẩn"
-                        onClick={() => setFontSizeLevel("normal")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFontSizeLevel("normal");
+                        }}
                         className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                           fontSizeLevel === "normal" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
                         }`}
@@ -1642,7 +1646,10 @@ export default function DisplayPage() {
                       <button
                         type="button"
                         title="Cỡ chữ lớn (Hội trường)"
-                        onClick={() => setFontSizeLevel("large")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFontSizeLevel("large");
+                        }}
                         className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                           fontSizeLevel === "large" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
                         }`}
@@ -1652,7 +1659,10 @@ export default function DisplayPage() {
                       <button
                         type="button"
                         title="Cỡ chữ cực lớn (Phòng rộng)"
-                        onClick={() => setFontSizeLevel("xlarge")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setFontSizeLevel("xlarge");
+                        }}
                         className={`px-2 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                           fontSizeLevel === "xlarge" ? "bg-purple-600 text-white shadow" : "text-slate-300 hover:text-white"
                         }`}

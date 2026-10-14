@@ -1947,7 +1947,18 @@ function generateNextPushYourLuckCard({
   const themeRewards = REWARD_TEMPLATES[theme] || REWARD_TEMPLATES.CASTLE;
   let template = themeRewards[Math.floor(Math.random() * themeRewards.length)];
   let delta = template.deltaPoints;
-  if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
+  if (template.effectType === "STEAL_POINTS") {
+    if (basePoints <= 10) {
+      delta = 10;
+    } else if (basePoints <= 20) {
+      delta = [10, 15, 20][Math.floor(Math.random() * 3)];
+    } else if (basePoints <= 30) {
+      delta = [15, 20, 25, 30][Math.floor(Math.random() * 4)];
+    } else {
+      delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
+    }
+    delta = Math.min(delta, basePoints);
+  } else if (template.effectType === "BONUS_POINTS") {
     if (basePoints <= 10) {
       delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
     } else if (basePoints <= 20) {
@@ -4651,8 +4662,8 @@ function resolveWheelCardEffect({
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
-      const targetSteal = timesStolen === 1 ? Math.max(5, roundToMultipleOfFive(basePoints * 2 * 0.5)) : basePoints * 2;
-      const actualStolen = Math.min(targetSteal, victimScore);
+      const targetSteal = timesStolen === 1 ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5)) : basePoints;
+      const actualStolen = Math.min(targetSteal, victimScore, basePoints);
       const scoreDeltas = [
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen }
@@ -11455,6 +11466,12 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:mystery:update", settledState);
         const refreshedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+        setTimeout(async () => {
+          const currentQuest = roomMysteryQuests.get(room.id);
+          if (currentQuest && currentQuest.tarotState?.isRevealPending) {
+            await executeMysteryTarotReveal(room, currentQuest);
+          }
+        }, 500);
       }, Math.max(result.spinDurationMs, 19200) + 250);
     };
     const executeMysteryTarotReveal = async (room, questState) => {

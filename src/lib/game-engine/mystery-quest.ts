@@ -4851,8 +4851,12 @@ export function getTarotSegmentDisplayLabel(
     return { mainLabel: "THÊM LƯỢT", colorType: "SPECIAL" };
   }
 
-  // e) 2 lá Cướp điểm (Quy định chuẩn: Không vượt quá điểm gốc câu hỏi): VII Chariot & XIII Death
-  if (seg.key === "THE_CHARIOT" || seg.key === "THE_DEATH") {
+  // e) 2 lá Cướp điểm (Phương án 2: VII Chiến Xa 50% nhẹ nhàng, XIII Thần Chết 100% chí mạng):
+  if (seg.key === "THE_CHARIOT") {
+    const stealPts = Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
+    return { mainLabel: `CƯỚP ${stealPts}`, colorType: "SPECIAL" };
+  }
+  if (seg.key === "THE_DEATH") {
     const stealPts = basePoints;
     return { mainLabel: `CƯỚP ${stealPts}`, colorType: "SPECIAL" };
   }
@@ -5436,16 +5440,22 @@ export function resolveWheelCardEffect({
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
 
-      // 5. Đã bị cướp 1 lần trong chu kỳ -> giảm mức cướp xuống 50%
+      // 5. Định mức cướp theo lá bài (Phương án 2: VII Chiến Xa 50% nhẹ nhàng, XIII Thần Chết 100% chí mạng):
+      const isChariot = cardKey === "THE_CHARIOT";
+      const nominalSteal = isChariot
+        ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5))
+        : basePoints;
+
+      // Đã bị cướp 1 lần trong chu kỳ -> Khiên Chống Vắt Kiệt giảm 50% mức cướp
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
       const targetSteal =
         timesStolen === 1
-          ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5))
-          : basePoints;
+          ? Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5))
+          : nominalSteal;
 
       // 6. Khóa công bằng 1:1: Đối thủ thực tế mất bao nhiêu điểm thì đội quay nhận ĐÚNG bấy nhiêu điểm
       // Tuyệt đối không bao giờ vượt quá điểm gốc câu hỏi!
-      const actualStolen = Math.min(targetSteal, victimScore, basePoints);
+      const actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       const scoreDeltas: Array<{ teamId: string; delta: number }> = [
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen },

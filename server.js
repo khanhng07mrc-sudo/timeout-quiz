@@ -4661,9 +4661,11 @@ function resolveWheelCardEffect({
       const topCandidates = eligibleOpponents.filter((t) => (t.score || 0) === maxScore);
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
+      const isChariot = cardKey === "THE_CHARIOT";
+      const nominalSteal = isChariot ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5)) : basePoints;
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
-      const targetSteal = timesStolen === 1 ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5)) : basePoints;
-      const actualStolen = Math.min(targetSteal, victimScore, basePoints);
+      const targetSteal = timesStolen === 1 ? Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5)) : nominalSteal;
+      const actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       const scoreDeltas = [
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen }

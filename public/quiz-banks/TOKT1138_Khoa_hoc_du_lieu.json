@@ -969,12 +969,33 @@
     "isTieBreaker": false
   },
   {
-    "type": "ESSAY",
-    "content": "Hãy giải thích sự khác biệt giữa hai chỉ số đánh giá phân loại: Precision (Độ chuẩn xác) và Recall (Độ thu hồi / Độ nhạy). Trong bài toán chẩn đoán gian lận tín dụng ngân hàng, chỉ số nào thường được ưu tiên tối đa và vì sao?",
-    "answer": "Precision = TP/(TP+FP): trong số các mẫu đoán gian lận, bao nhiêu % là gian lận thật. Recall = TP/(TP+FN): trong tổng số các vụ gian lận thực tế, mô hình phát hiện được bao nhiêu %. Trong gian lận ngân hàng, Recall được ưu tiên tối đa để không bỏ lọt bất kỳ kẻ gian lận nào (tránh thiệt hại tài chính lớn).",
+    "type": "MC_SINGLE",
+    "content": "Trong bài toán phân loại nhị phân (Binary Classification), sự khác biệt căn bản giữa hai chỉ số Precision (Độ chính xác) và Recall (Độ thu hồi) là gì?",
     "points": 20,
-    "timeLimit": 30,
-    "hint": "Precision phản ánh độ chính xác của dự đoán dương; Recall phản ánh khả năng bắt trọn không bỏ sót.",
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Precision đo tỷ lệ dự đoán Đúng trong tổng số các mẫu mô hình DỰ ĐOÁN LÀ DƯƠNG; Recall đo tỷ lệ nhận diện Đúng trong tổng số các mẫu THỰC TẾ LÀ DƯƠNG",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Precision và Recall là hai tên gọi khác nhau của cùng một công thức toán học",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Recall chỉ áp dụng cho bài toán hồi quy; Precision chỉ áp dụng cho bài toán phân cụm",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Khi Precision tăng lên 100% thì Recall luôn luôn tự động đạt mức 100%",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Precision = TP / (TP + FP). Recall = TP / (TP + FN).",
     "isTieBreaker": false
   },
   {
@@ -1088,12 +1109,33 @@
     "isTieBreaker": false
   },
   {
-    "type": "ESSAY",
-    "content": "Hãy phân tích ngắn gọn Trade-off giữa Bias (Độ chệch) và Variance (Phương sai) trong mô hình học máy. Một mô hình quá đơn giản (Underfitting) và một mô hình quá phức tạp (Overfitting) sẽ tương ứng với mức Bias và Variance như thế nào?",
-    "answer": "Underfitting (quá đơn giản): High Bias (độ chệch cao, không nắm bắt được xu hướng dữ liệu) và Low Variance. Overfitting (quá phức tạp): Low Bias nhưng High Variance (nhạy cảm quá mức với dữ liệu huấn luyện, kém khả năng tổng quát hóa).",
+    "type": "MC_SINGLE",
+    "content": "Mối quan hệ đánh đổi (Trade-off) giữa Bias (Độ chệch) và Variance (Phương sai) trong học máy chỉ ra quy luật nào dưới đây?",
     "points": 30,
-    "timeLimit": 40,
-    "hint": "Nêu rõ cặp Bias-Variance cho cả Underfitting và Overfitting.",
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Mô hình quá đơn giản thường có Bias cao và Variance thấp (Underfitting); mô hình quá phức tạp thường có Bias thấp nhưng Variance rất cao (Overfitting)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cả Bias và Variance đều luôn bằng 0 đối với mọi mô hình học máy trên tập dữ liệu thực tế",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tăng độ phức tạp của mô hình sẽ luôn làm giảm cả Bias và Variance đồng thời",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Variance đo lường sai số trên tập huấn luyện; Bias đo lường sai số trên tập kiểm tra",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bias-Variance Tradeoff: Đơn giản -> High Bias (Underfitting). Phức tạp -> High Variance (Overfitting).",
     "isTieBreaker": false
   },
   {

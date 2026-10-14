@@ -784,5 +784,505 @@
       }
     ],
     "hint": "Hệ thống thị trường định giá carbon phổ biến tại Liên minh Châu Âu (EU ETS). (Cap-and-Trade)"
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Thỏa thuận Paris năm 2015 về biến đổi khí hậu, mục tiêu dài hạn cốt lõi là giữ mức tăng nhiệt độ trung bình toàn cầu:",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Dưới 2°C và nỗ lực giới hạn mức tăng ở 1,5°C so với thời kỳ tiền công nghiệp",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Dưới 3,5°C so với năm 1990",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Không làm tăng nhiệt độ vượt quá 0,5°C trong vòng 10 năm tới",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Duy trì nguyên trạng nhiệt độ toàn cầu của năm 2015",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thỏa thuận Paris đặt ngưỡng trần 2°C và hướng tới mục tiêu tham vọng 1,5°C.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Khí nhà kính (GHG) là một chất ô nhiễm mang tính toàn cầu (Global Pollutant), do đó một tấn CO2 phát thải ở bất kỳ quốc gia nào cũng gây ra tác động biến đổi khí hậu tương đương nhau.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CO2 hòa trộn đồng đều trong khí quyển toàn cầu, không phụ thuộc vào vị trí địa lý nguồn phát thải.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Mục tiêu cam kết của Việt Nam tại Hội nghị thượng đỉnh COP26 là đạt mức phát thải ròng bằng '0' (Net Zero) vào năm ...",
+    "answer": "2050",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Thủ tướng Phạm Minh Chính cam kết tại Glasgow (COP26) đưa phát thải ròng về 0 vào mốc giữa thế kỷ.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số 'Chi phí xã hội của Carbon' (Social Cost of Carbon - SCC) được định nghĩa là:",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Tổng thiệt hại kinh tế tính bằng tiền trên toàn cầu gây ra bởi việc phát thải thêm một tấn CO2 vào khí quyển",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Giá bán của một tấn than đá trên thị trường quốc tế",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chi phí xây dựng một nhà máy nhiệt điện sử dụng công nghệ thu giữ carbon",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Mức tiền phạt doanh nghiệp phải nộp khi xả nước thải công nghiệp ra sông hồ",
+        "isCorrect": false
+      }
+    ],
+    "hint": "SCC đo lường giá trị hiện tại ròng của toàn bộ thiệt hại xã hội biên do 1 tấn CO2 phát thải thêm gây ra trong tương lai.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Cơ chế Điều chỉnh Biên giới Carbon (CBAM) do Liên minh Châu Âu (EU) ban hành nhằm mục đích chính nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Ngăn chặn nguy cơ 'Rò rỉ carbon' (Carbon Leakage) bằng cách áp thuế carbon lên hàng hóa nhập khẩu có cường độ phát thải cao",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cấm hoàn toàn việc nhập khẩu hàng nông sản từ các nước đang phát triển",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tài trợ không hoàn lại 100% kinh phí chuyển dịch năng lượng cho các nước châu Á",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xóa bỏ toàn bộ hạn ngạch phát thải nội khối của các nhà máy sản xuất thép châu Âu",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CBAM áp chi phí carbon lên hàng nhập khẩu (thép, xi măng, nhôm, phân bón...) tương đương chi phí các nhà sản xuất EU phải chịu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Biện pháp Thích ứng (Adaptation) là các giải pháp nhằm ngăn chặn và giảm thiểu lượng phát thải khí nhà kính từ gốc rễ, ví dụ như chuyển sang năng lượng tái tạo.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Đó là Giảm nhẹ (Mitigation). Thích ứng (Adaptation) là các hành động nhằm thích nghi và giảm thiểu tổn thương trước các tác động của BĐKH (xây đê chắn sóng, chuyển đổi giống cây chịu mặn).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Sự khác biệt căn bản về cơ chế thị trường giữa Thuế Carbon (Carbon Tax) và Hệ thống Mua bán Hạn ngạch Phát thải (ETS / Cap-and-Trade) là gì?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thuế Carbon cố định Giá phát thải và để thị trường quyết định Lượng giảm; ETS cố định tổng Lượng phát thải tối đa (Cap) và để thị trường quyết định Giá hạn ngạch",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Thuế Carbon do Liên Hợp Quốc thu; ETS do từng doanh nghiệp tư nhân tự thu tiền của nhau",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hệ thống ETS cấm hoàn toàn mọi hoạt động mua bán trao đổi tín chỉ carbon giữa các nhà máy",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thuế Carbon chỉ áp dụng cho người đi bộ; ETS chỉ áp dụng cho người đi xe đạp điện",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thuế carbon: Price-based (cố định giá). ETS: Quantity-based (cố định trần lượng phát thải Cap).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những công cụ tài chính khí hậu (Climate Finance Instruments) nào dưới đây đang được phát triển mạnh mẽ nhằm thu hút dòng vốn xanh vào các dự án giảm phát thải?",
+    "points": 20,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Trái phiếu xanh (Green Bonds)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tín dụng liên kết phát triển bền vững (Sustainability-Linked Loans)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tín chỉ bù trừ carbon tự nguyện (Voluntary Carbon Offsets)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Trợ cấp giá tiêu dùng cho các nhiên liệu hóa thạch truyền thống",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tài chính khí hậu huy động vốn công và tư cho các dự án xanh, năng lượng tái tạo và giảm phát thải.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Báo cáo cam kết của từng quốc gia về mục tiêu cắt giảm khí nhà kính và thích ứng khí hậu theo Thỏa thuận Paris được viết tắt là Báo cáo ...",
+    "answer": "NDC",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Nationally Determined Contributions (Đóng góp do quốc gia tự quyết định).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong kinh tế học biến đổi khí hậu, việc lựa chọn Tỷ lệ chiết khấu xã hội (Social Discount Rate - SDR) THẤP (như đề xuất của Nicholas Stern: ~1.4%) phản ánh quan điểm đạo đức kinh tế nào?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Coi trọng phúc lợi của các thế hệ tương lai bình đẳng như thế hệ hiện tại, ủng hộ hành động cắt giảm phát thải mạnh mẽ ngay từ bây giờ",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Ưu tiên tối đa hóa lợi nhuận tiêu dùng của thế hệ hôm nay bất chấp hậu quả mai sau",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Cho rằng tiến bộ công nghệ tương lai sẽ tự động giải quyết mọi vấn đề môi trường",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Phản đối mọi hình thức đầu tư vào năng lượng tái tạo",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tỷ lệ chiết khấu càng thấp thì thiệt hại lớn trong tương lai xa khi quy về hiện tại càng có giá trị lớn, đòi hỏi hành động khẩn cấp ngay hôm nay.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Theo Điều 6 của Thỏa thuận Paris (Article 6), các quốc gia được phép chuyển giao quốc tế các kết quả giảm nhẹ phát thải (ITMO) để cùng nhau hoàn thành mục tiêu cam kết trong NDC.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Điều 6 thiết lập khuôn khổ thị trường carbon quốc tế chính thức cho phép chuyển giao ITMO và cơ chế tín chỉ toàn cầu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Hiện tượng một quốc gia nỗ lực giảm phát thải nội địa nhưng lại khiến các ngành công nghiệp thâm dụng carbon dịch chuyển nhà máy sang các quốc gia khác có quy định lỏng lẻo hơn được gọi là:",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Rò rỉ carbon (Carbon Leakage)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tẩy xanh (Greenwashing)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Bẫy nghèo đói sinh thái",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Khủng hoảng năng lượng sơ cấp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Carbon Leakage làm vô hiệu hóa nỗ lực bảo vệ khí hậu toàn cầu do hoạt động phát thải chỉ chuyển từ nơi này sang nơi khác.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo định lý Weitzman (1974) về việc lựa chọn công cụ kiểm soát ô nhiễm trong điều kiện thông tin bất định, khi đường Lợi ích biên của việc giảm phát thải (MB) DỐC HƠN đường Chi phí biên (MC), chính phủ nên ưu tiên công cụ nào?",
+    "points": 30,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Công cụ dựa trên Số lượng (Hạn ngạch trần phát thải / Cap-and-Trade) để ngăn chặn rủi ro vượt ngưỡng sinh thái thảm họa (Tipping point)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Công cụ dựa trên Giá (Thuế carbon cố định)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Bãi bỏ toàn bộ các quy định bảo vệ môi trường để thị trường tự điều tiết",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trợ cấp tiền trực tiếp cho các nhà máy phát thải nhiều nhất",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khi rủi ro thảm họa cận kề (MB dốc), việc kiểm soát chắc chắn tổng Lượng (Cap) là ưu tiên số một.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng cơ chế và quỹ tài chính khí hậu toàn cầu với chức năng nhiệm vụ chủ đạo của nó:",
+    "points": 30,
+    "timeLimit": 35,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Quỹ Khí hậu Xanh (GCF - Green Climate Fund)",
+        "right": "Quỹ tài chính lớn nhất trực thuộc UNFCCC hỗ trợ các nước đang phát triển chuyển dịch năng lượng và thích ứng"
+      },
+      {
+        "id": "p2",
+        "left": "Quỹ Tổn thất và Thiệt hại (Loss and Damage Fund)",
+        "right": "Thành lập tại COP27/COP28 hỗ trợ bồi thường thiệt hại không thể phục hồi do BĐKH cho các nước dễ bị tổn thương"
+      },
+      {
+        "id": "p3",
+        "left": "Cơ chế REDD+ (Lâm nghiệp)",
+        "right": "Chi trả tài chính dựa trên kết quả giảm phát thải từ mất rừng và suy thoái rừng tại các nước nhiệt đới"
+      },
+      {
+        "id": "p4",
+        "left": "Đối tác Chuyển dịch Năng lượng Công bằng (JETP)",
+        "right": "Gói cam kết 15,5 tỷ USD từ các nước G7/quốc tế hỗ trợ Việt Nam loại bỏ điện than và phát triển năng lượng sạch"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "GCF (Quỹ khí hậu chung), Loss and Damage (Tổn thất không thể đảo ngược), REDD+ (Rừng), JETP (Loại bỏ than đá).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những rủi ro và tác động tiêu cực của biến đổi khí hậu đối với vùng Đồng bằng sông Cửu Long (ĐBSCL) của Việt Nam dưới góc độ kinh tế nông nghiệp bao gồm:",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Xâm nhập mặn sâu vào đất liền làm thu hẹp diện tích đất trồng lúa và cây ăn trái nước ngọt",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Hiện tượng sụt lún đất do khai thác nước ngầm quá mức kết hợp với nước biển dâng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Sạt lở bờ sông, bờ biển phá hủy cơ sở hạ tầng giao thông và nhà cửa của cư dân",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Làm đóng băng các tuyến vận tải thủy nội địa do hiện tượng băng giá kéo dài",
+        "isCorrect": false
+      }
+    ],
+    "hint": "ĐBSCL đối mặt với xâm nhập mặn, sụt lún, xói lở bờ sông và hạn hán mùa khô do tác động kép của BĐKH và thủy điện thượng nguồn.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Xây dựng và Thẩm định một Dự án Tín chỉ Carbon (Carbon Credit Project) theo tiêu chuẩn quốc tế (VCS / Gold Standard):",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Xây dựng Tài liệu thiết kế dự án (PDD) và xác định kịch bản phát thải cơ sở (Baseline)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Chứng minh tính Bổ sung (Additionality) - dự án không thể xảy ra nếu không có doanh thu tín chỉ",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Thẩm định độc lập bởi tổ chức chuyên môn được chỉ định (Validation by VVB)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Triển khai dự án, giám sát và đo lường lượng giảm phát thải thực tế (Monitoring)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Xác minh (Verification) và phát hành tín chỉ carbon chính thức lên sàn giao dịch đăng ký",
+        "isCorrect": true
+      }
+    ],
+    "hint": "PDD & Baseline -> Additionality -> Thẩm định độc lập (Validation) -> Giám sát (Monitoring) -> Xác minh & Phát hành (Issuance).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một nhà máy xi măng phát thải 100.000 tấn CO2/năm. Hàm chi phí giảm phát thải biên của nhà máy là MAC = 20 x Q (đồng/tấn), trong đó Q là số tấn CO2 được cắt giảm. Chính phủ ban hành chính sách Thuế carbon với mức thuế t = 600.000 đồng/tấn CO2 phát thải. Để tối thiểu hóa tổng chi phí (gồm chi phí giảm phát thải và tiền thuế phải nộp), nhà máy sẽ quyết định cắt giảm bao nhiêu tấn CO2?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "30.000 tấn CO2 (nộp thuế cho 70.000 tấn còn lại)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "50.000 tấn CO2",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "20.000 tấn CO2",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cắt giảm toàn bộ 100.000 tấn CO2",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Doanh nghiệp sẽ giảm phát thải đến khi MAC = Thuế t. Ta có 20*Q = 600.000 -> Q = 30.000 tấn. Lượng phát thải còn lại nộp thuế = 100.000 - 30.000 = 70.000 tấn.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình kiểm kê khí nhà kính (GHG Inventory) cấp doanh nghiệp theo chuẩn Giao thức Khí nhà kính (GHG Protocol):",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Xác định ranh giới tổ chức và ranh giới hoạt động của doanh nghiệp",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Nhận diện và phân loại nguồn phát thải theo 3 Phạm vi (Scope 1: Trực tiếp, Scope 2: Điện năng, Scope 3: Chuỗi giá trị)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Thu thập số liệu hoạt động tiêu thụ năng lượng và nguyên vật liệu thực tế",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Áp dụng hệ số phát thải (Emission Factors) phù hợp để tính toán lượng CO2 tương đương (tCO2e)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Lập Báo cáo kiểm kê GHG, kiểm toán độc lập của bên thứ ba và xây dựng kế hoạch giảm phát thải",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Ranh giới tổ chức -> Phân loại Scope 1, 2, 3 -> Thu thập số liệu -> Áp hệ số phát thải -> Lập báo cáo & Kiểm toán.",
+    "isTieBreaker": false
   }
 ]

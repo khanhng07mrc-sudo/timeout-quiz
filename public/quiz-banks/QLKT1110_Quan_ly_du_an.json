@@ -774,5 +774,505 @@
       }
     ],
     "hint": "Cấu trúc phân chia công việc nền tảng trong PMBOK. (Work Breakdown Structure)"
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Tam giác ràng buộc cốt lõi (Iron Triangle / Triple Constraint) trong quản lý dự án truyền thống bao gồm 3 yếu tố cạnh tranh nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phạm vi (Scope), Thời gian (Time), Chi phí (Cost)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Nhân sự, Pháp lý, Quảng cáo",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Doanh thu, Lợi nhuận ròng, Cổ tức",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Công nghệ, Mặt bằng, Thiết bị",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tam giác sắt quản lý dự án gắn liền 3 ràng buộc: Scope, Time, Cost (với Chất lượng - Quality ở trọng tâm).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Đường găng (Critical Path) trong sơ đồ mạng dự án là chuỗi các công việc có tổng thời gian thực hiện ngắn nhất và luôn có độ dự trữ thời gian (Float) lớn hơn 0.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Đường găng là đường DÀI NHẤT xuyên suốt sơ đồ mạng, quyết định thời gian hoàn thành dự án, và có dự trữ thời gian Float = 0.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Công cụ phân rã thứ bậc toàn bộ phạm vi công việc của dự án thành các gói công việc (Work Packages) nhỏ hơn, dễ quản lý được viết tắt là ...",
+    "answer": "WBS",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Work Breakdown Structure (Cơ cấu phân rã công việc).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Biểu đồ nào dưới đây sử dụng các thanh ngang trên trục thời gian để minh họa tiến độ, thời lượng và trình tự thực hiện của từng công việc dự án?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Biểu đồ Gantt (Gantt Chart)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Biểu đồ Pareto (80/20)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Biểu đồ Xương cá Ishikawa",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Biểu đồ Phân tán Scatter",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Henry Gantt phát minh biểu đồ thanh ngang Gantt chart kinh điển.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong phương pháp Quản lý Giá trị thu được (Earned Value Management - EVM), chỉ số Hiệu quả Chi phí CPI = EV / AC có giá trị BẰNG 1.2 có ý nghĩa gì?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Dự án đang tiết kiệm chi phí (Mỗi 1 đồng thực chi tạo ra được 1,2 đồng giá trị công việc)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Dự án đang bị bội chi ngân sách 20%",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Dự án đang chậm tiến độ 20%",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Dự án đã sử dụng hết toàn bộ quỹ dự phòng rủi ro",
+        "isCorrect": false
+      }
+    ],
+    "hint": "CPI > 1 là dấu hiệu tốt: Dự án làm ra nhiều giá trị hơn số tiền thực tế bỏ ra (Under Budget).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hiện tượng 'Phình phạm vi' (Scope Creep) là việc phạm vi dự án liên tục bị mở rộng thêm các tính năng mà không có sự kiểm soát, phê duyệt chính thức và không điều chỉnh tương ứng về ngân sách hay thời gian.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Scope Creep là nguyên nhân hàng đầu khiến các dự án CNTT và xây dựng bị vỡ trận về tiến độ và chi phí.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong quản lý dự án, điểm khác biệt cốt lõi giữa kỹ thuật Rút ngắn thời gian (Crashing) và kỹ thuật Thực hiện song song (Fast-tracking) là gì?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Crashing bổ sung thêm nguồn lực để đẩy nhanh tiến độ (chấp nhận tăng chi phí); Fast-tracking sắp xếp các công việc vốn tuần tự thành làm song song (chấp nhận tăng rủi ro làm lại/rework)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Crashing cắt giảm bớt các tính năng của dự án; Fast-tracking tăng gấp đôi ngân sách dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Fast-tracking chỉ áp dụng cho dự án đã bị quá hạn; Crashing chỉ áp dụng trước khi khởi công",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cả hai kỹ thuật đều đảm bảo không làm phát sinh thêm bất kỳ chi phí hay rủi ro nào",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Crashing: Bơm tiền/nhân lực (đánh đổi chi phí). Fast-tracking: Làm song song các bước (đánh đổi rủi ro).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo chuẩn quản lý rủi ro dự án của Viện Quản lý Dự án (PMI - PMBOK), bốn chiến lược phản ứng đối với RỦI RO TIÊU CỰC (Threats) bao gồm:",
+    "points": 20,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Né tránh rủi ro (Avoidance)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Giảm thiểu rủi ro (Mitigation)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Chuyển giao rủi ro (Transfer / Bảo hiểm / Hợp đồng trọn gói)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Chấp nhận rủi ro chủ động hoặc thụ động (Acceptance)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "4 chiến lược ứng phó rủi ro tiêu cực: Avoid, Mitigate, Transfer, Accept.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Văn bản chính thức phê duyệt sự tồn tại của dự án, trao quyền cho Giám đốc dự án sử dụng các nguồn lực của tổ chức được gọi là Điều lệ dự án (Project ...).",
+    "answer": "Charter",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Project Charter (Hiến chương dự án / Điều lệ dự án).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong kỹ thuật ước tính thời gian 3 điểm của phương pháp PERT (Program Evaluation and Review Technique), thời gian kỳ vọng (Expected Time - Te) được tính toán theo công thức nào với: a (Lạc quan), m (Khả năng cao nhất), b (Bi quan)?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Te = (a + 4m + b) / 6",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Te = (a + m + b) / 3",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Te = (a + 2m + b) / 4",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Te = (2a + 3m + b) / 6",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phân phối xác suất Beta trong PERT gán trọng số 4 cho giá trị khả dĩ nhất (m): Te = (a + 4m + b) / 6.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Độ dự trữ thời gian toàn phần (Total Float) là khoảng thời gian một công việc có thể bị trì hoãn mà KHÔNG làm ảnh hưởng đến thời điểm hoàn thành chung của toàn bộ dự án.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Total Float = LS - ES (hoặc LF - EF). Nếu Float = 0 thì công việc đó nằm trên đường găng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một dự án có Chi phí kế hoạch PV = 500 triệu đồng. Tại thời điểm kiểm tra, Giá trị thu được EV = 400 triệu đồng và Chi phí thực tế AC = 480 triệu đồng. Kết luận chính xác về tình trạng dự án là:",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Dự án đang chậm tiến độ (SV = -100 tr) và bị vượt ngân sách (CV = -80 tr)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Dự án vượt tiến độ và tiết kiệm chi phí",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Dự án chậm tiến độ nhưng tiết kiệm chi phí",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Dự án đạt tiến độ hoàn hảo đúng kế hoạch ban đầu",
+        "isCorrect": false
+      }
+    ],
+    "hint": "SV = EV - PV = 400 - 500 = -100tr (< 0: chậm tiến độ). CV = EV - AC = 400 - 480 = -80tr (< 0: bội chi chi phí).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Lợi thế vượt trội lớn nhất của phương pháp quản lý dự án Linh hoạt (Agile / Scrum) so với mô hình Thác nước truyền thống (Waterfall) trong môi trường đổi mới sáng tạo là gì?",
+    "points": 30,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khả năng thích ứng nhanh với các thay đổi yêu cầu thông qua các chu kỳ lặp ngắn (Sprints) và liên tục bàn giao sản phẩm dùng được để thu thập phản hồi khách hàng sớm",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Không cần bất kỳ nhân sự lập trình hay kiểm thử nào tham gia dự án",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Đảm bảo dự án không bao giờ phải thay đổi bất kỳ kế hoạch nào đã lập từ ban đầu",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Xóa bỏ hoàn toàn chi phí phát triển và vận hành hệ thống",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Agile linh hoạt thích ứng với biến động yêu cầu thông qua các vòng lặp Sprint bàn giao sớm.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng chỉ số phân tích giá trị thu được (EVM) với ý nghĩa chẩn đoán sức khỏe dự án của nó:",
+    "points": 30,
+    "timeLimit": 35,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "SPI < 1 (Schedule Performance Index)",
+        "right": "Tốc độ thực hiện công việc đang chậm hơn so với kế hoạch ban đầu"
+      },
+      {
+        "id": "p2",
+        "left": "CPI > 1 (Cost Performance Index)",
+        "right": "Hiệu quả sử dụng ngân sách tốt, chi phí thực tế thấp hơn giá trị tạo ra"
+      },
+      {
+        "id": "p3",
+        "left": "EAC (Estimate at Completion)",
+        "right": "Dự báo tổng chi phí ước tính cuối cùng khi toàn bộ dự án hoàn thành"
+      },
+      {
+        "id": "p4",
+        "left": "VAC = BAC - EAC (Variance at Completion)",
+        "right": "Chênh lệch dự báo giữa ngân sách được duyệt ban đầu và chi phí thực tế ước tính khi xong việc"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "SPI < 1 chậm tiến độ; CPI > 1 tiết kiệm chi phí; EAC dự báo tổng chi phí cuối kỳ; VAC chênh lệch ngân sách lúc kết thúc.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong ma trận Đánh giá các bên liên quan (Stakeholder Power / Interest Grid), nhóm các bên liên quan có 'Quyền lực cao' (High Power) và 'Mức độ quan tâm cao' (High Interest) cần được quản lý theo chiến lược nào?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Quản lý chặt chẽ và tương tác thường xuyên (Manage Closely)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tham vấn ý kiến và gắn kết trực tiếp trong các quyết định cốt lõi của dự án",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Báo cáo tiến độ chi tiết định kỳ và giải quyết kịp thời các mối quan ngại của họ",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Chỉ gửi thông tin tối thiểu khi có yêu cầu và hạn chế tiếp xúc tối đa",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Nhóm Quyền lực cao + Quan tâm cao (Key Players) là đối tượng quan trọng nhất, phải 'Manage Closely'.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự 5 nhóm quy trình quản lý dự án (Project Management Process Groups) theo tiêu chuẩn chuẩn mực quốc tế PMBOK:",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Nhóm quy trình Khởi tạo (Initiating Process Group)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Nhóm quy trình Lập kế hoạch (Planning Process Group)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Nhóm quy trình Thực thi (Executing Process Group)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Nhóm quy trình Giám sát và Kiểm soát (Monitoring and Controlling Process Group)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Nhóm quy trình Đóng dự án (Closing Process Group)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Initiating -> Planning -> Executing -> Monitoring & Controlling -> Closing.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một dự án đầu tư có tổng vốn đầu tư ban đầu I0 = 1.000 triệu đồng. Dự án hoạt động trong 3 năm với dòng tiền thuần hàng năm lần lượt là: Năm 1 = 400 triệu, Năm 2 = 500 triệu, Năm 3 = 600 triệu đồng. Tỷ lệ chiết khấu (chi phí vốn WACC) của dự án là 10%/năm. Giá trị hiện tại thuần (NPV) của dự án là bao nhiêu (làm tròn đến chữ số hàng triệu)?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "+228 triệu đồng (Dự án có hiệu quả tài chính cao, nên chấp thuận đầu tư)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "-150 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "+500 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "+320 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "PV = 400/(1,1)^1 + 500/(1,1)^2 + 600/(1,1)^3 = 363,64 + 413,22 + 450,79 = 1.227,65 triệu. NPV = 1.227,65 - 1.000 = +227,65 triệu (~228 triệu đồng). NPV > 0 nên dự án sinh lời.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Kiểm soát thay đổi tích hợp (Integrated Change Control Process) khi nhận được một yêu cầu thay đổi (Change Request):",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Tiếp nhận và ghi nhận Yêu cầu thay đổi vào Nhật ký theo dõi (Change Log)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Đánh giá tác động toàn diện của thay đổi lên Tam giác sắt (Phạm vi, Thời gian, Chi phí, Rủi ro)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Trình Hội đồng kiểm soát thay đổi (CCB - Change Control Board) xem xét phê duyệt",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Thông báo quyết định (Chấp thuận / Từ chối) tới các bên liên quan",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Cập nhật đường cơ sở kế hoạch (Baselines) và điều hành đội ngũ triển khai theo phương án mới",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Ghi nhận Change Log -> Đánh giá tác động -> CCB phê duyệt -> Thông báo kết quả -> Cập nhật Baselines.",
+    "isTieBreaker": false
   }
 ]

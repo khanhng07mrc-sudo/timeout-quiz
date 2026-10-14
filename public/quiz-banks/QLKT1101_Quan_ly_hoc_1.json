@@ -774,5 +774,505 @@
       }
     ],
     "hint": "Nghiên cứu của Elton Mayo tại nhà máy Western Electric."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Bốn chức năng cơ bản bất biến cấu thành chu trình quản lý (POLC) theo lý thuyết quản trị học kinh điển bao gồm:",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hoạch định, Tổ chức, Lãnh đạo, Kiểm tra (Planning, Organizing, Leading, Controlling)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Mua hàng, Bán hàng, Kế toán, Tiếp thị",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Nghiên cứu, Thiết kế, Gia công, Phân phối",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Tuyển dụng, Sa thải, Khen thưởng, Kỷ luật",
+        "isCorrect": false
+      }
+    ],
+    "hint": "POLC là 4 chức năng nền tảng xuyên suốt của bất kỳ tổ chức quản trị nào.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Theo Henry Mintzberg, nhà quản trị cấp cao thường dành tỷ trọng thời gian nhiều nhất cho vai trò quan hệ giữa con người với con người (Interpersonal roles) và vai trò ra quyết định (Decisional roles).",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "10 vai trò quản lý của Mintzberg chia thành: Quan hệ con người, Thông tin và Quyết định.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Số lượng cấp dưới trực tiếp mà một nhà quản trị có thể giám sát và điều hành một cách hiệu quả nhất được gọi là ... quản trị (Span of Control).",
+    "answer": "tầm hạn",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Tầm hạn quản trị (hay tầm kiểm soát / quy mô quản lý).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Ai được tôn vinh là 'Cha đẻ của Thuyết quản lý khoa học' (Scientific Management) với trọng tâm là chuẩn hóa thao tác và định mức thời gian lao động?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Frederick Winslow Taylor",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Henri Fayol",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Max Weber",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Peter Drucker",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Taylor nổi tiếng với nghiên cứu thời gian - động tác và trả lương theo sản phẩm.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Tháp nhu cầu của Abraham Maslow, nhu cầu nào nằm ở đỉnh cao nhất của bậc thang phát triển tâm lý con người?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Nhu cầu tự thể hiện và hoàn thiện bản thân (Self-Actualization)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Nhu cầu an toàn thân thể và công việc",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Nhu cầu xã hội và kết nối tình cảm",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Nhu cầu sinh học cơ bản (ăn, mặc, ở)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Đỉnh tháp Maslow là nhu cầu phát huy tối đa tiềm năng và sứ mệnh cá nhân.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Cơ cấu tổ chức kiểu Ma trận (Matrix Structure) tuân thủ tuyệt đối nguyên tắc 'Thống nhất chỉ huy' (Mỗi nhân viên chỉ có duy nhất một cấp trên trực tiếp).",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Cơ cấu ma trận vi phạm nguyên tắc thống nhất chỉ huy vì nhân viên có cùng lúc 2 cấp trên: Trưởng phòng chức năng và Giám đốc dự án.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo học thuyết của Douglas McGregor, sự khác biệt căn bản trong giả định về bản chất con người giữa Thuyết X và Thuyết Y là gì?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thuyết X coi con người bản chất lười biếng, trốn tránh trách nhiệm nên cần kiểm soát độc đoán; Thuyết Y coi con người ham làm việc, có tính sáng tạo và tự chủ nếu được tạo điều kiện",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Thuyết X dành cho nhân viên nam; Thuyết Y dành cho nhân viên nữ",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Thuyết X coi tiền bạc không có giá trị; Thuyết Y coi tiền bạc là động lực duy nhất",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thuyết X áp dụng cho doanh nghiệp công nghệ cao; Thuyết Y áp dụng cho quân đội",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thuyết X: Bi quan (độc đoán, giám sát). Thuyết Y: Lạc quan (dân chủ, trao quyền).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo thuyết Hai yếu tố (Two-Factor Theory) của Frederick Herzberg, những yếu tố nào dưới đây thuộc nhóm 'Yếu tố động viên' (Motivators) thực sự thúc đẩy sự thỏa mãn và hiệu suất vượt trội?",
+    "points": 20,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Sự công nhận thành tích và nỗ lực cá nhân (Recognition)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Bản chất công việc có tính thách thức và thú vị (Work itself)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Cơ hội thăng tiến và phát triển nghề nghiệp (Advancement)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Điều kiện làm việc vật chất và chính sách quy chế công ty",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Điều kiện làm việc và tiền lương cơ bản thuộc nhóm Duy trì (Hygiene) chỉ triệt tiêu bất mãn chứ không tạo động lực thực sự.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Quá trình một nhà quản trị giao phó quyền hạn, trách nhiệm và nguồn lực cho cấp dưới để thực hiện một công việc cụ thể được gọi là sự ... quyền (Delegation of Authority).",
+    "answer": "ủy",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Ủy quyền (hoặc Phân quyền).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Mô hình Lãnh đạo Tình huống của Hersey & Blanchard, khi nhân viên ở mức độ sẵn sàng thấp (R1: Chưa có năng lực và thiếu tự tin/thiếu nhiệt tình), phong cách lãnh đạo phù hợp nhất là:",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phong cách Chỉ đạo / Hướng dẫn cụ thể (Telling / Directing: Nhiệm vụ cao, Quan hệ thấp)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phong cách Trao quyền hoàn toàn (Delegating: Nhiệm vụ thấp, Quan hệ thấp)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Phong cách Tham gia / Hỗ trợ (Participating: Nhiệm vụ thấp, Quan hệ cao)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Không can thiệp để nhân viên tự bơi",
+        "isCorrect": false
+      }
+    ],
+    "hint": "R1 cần sự chỉ đạo chi tiết từng bước (Telling) vì chưa đủ năng lực tự hoàn thành nhiệm vụ.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Văn hóa doanh nghiệp mạnh (Strong Corporate Culture) là tập hợp các giá trị, niềm tin và chuẩn mực cốt lõi được chia sẻ rộng rãi, giúp định hình hành vi và gắn kết các thành viên mà không cần quá nhiều quy chế hành chính cứng nhắc.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Văn hóa doanh nghiệp đóng vai trò như hệ thống kiểm soát xã hội vô hình điều chỉnh hành vi tự giác.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Thuyết Kỳ vọng của Victor Vroom, Động lực làm việc (Motivation) là tích số của ba nhân tố nào dưới đây?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Kỳ vọng nỗ lực tạo ra kết quả (Expectancy) x Phương tiện kết quả mang lại phần thưởng (Instrumentality) x Giá trị phần thưởng (Valence)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tiền lương x Số giờ làm việc x Mức phạt kỷ luật",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trình độ học vấn x Mối quan hệ cá nhân x Độ tuổi",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Áp lực công việc x Lòng trung thành x Thời gian gắn bó",
+        "isCorrect": false
+      }
+    ],
+    "hint": "M = E x I x V (Expectancy x Instrumentality x Valence). Nếu bất kỳ yếu tố nào bằng 0 thì động lực bằng 0.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Đặc trưng nổi bật phân biệt phong cách Lãnh đạo chuyển đổi (Transformational Leadership) với Lãnh đạo giao dịch (Transactional Leadership) là gì?",
+    "points": 30,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Lãnh đạo chuyển đổi truyền cảm hứng qua tầm nhìn hấp dẫn, kích thích trí tuệ đổi mới và quan tâm cá nhân hóa; Lãnh đạo giao dịch chủ yếu dựa trên cơ chế thưởng phạt đổi chác theo chỉ tiêu ngắn hạn",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Lãnh đạo chuyển đổi không bao giờ tiếp xúc hay nói chuyện với nhân viên cấp dưới",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Lãnh đạo giao dịch từ chối trả lương cho nhân viên khi hoàn thành xuất sắc nhiệm vụ",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Hai phong cách này hoàn toàn giống nhau về cách thức tác động lên nhân viên",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chuyển đổi: Tầm nhìn, truyền cảm hứng, đổi mới. Giao dịch: Thưởng phạt theo thỏa thuận chỉ tiêu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng nhà lý thuyết quản trị học kinh điển với đóng góp học thuyết mang tính cách mạng của họ:",
+    "points": 30,
+    "timeLimit": 35,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Henri Fayol",
+        "right": "14 nguyên tắc quản trị tổng quát và 5 chức năng quản lý hành chính"
+      },
+      {
+        "id": "p2",
+        "left": "Max Weber",
+        "right": "Lý thuyết tổ chức Thư lại bàn giấy (Bureaucracy) dựa trên quyền lực pháp lý hợp lý"
+      },
+      {
+        "id": "p3",
+        "left": "Elton Mayo",
+        "right": "Các cuộc thử nghiệm tại nhà máy Western Electric Hawthorne đặt nền móng phong trào Quan hệ con người"
+      },
+      {
+        "id": "p4",
+        "left": "Peter Drucker",
+        "right": "Khái niệm Quản trị theo mục tiêu (MBO) và định nghĩa tri thức như nguồn lực kinh tế số một"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Fayol (Hành chính 14 nguyên tắc), Weber (Bộ máy thư lại), Mayo (Hawthorne/Tâm lý xã hội), Drucker (MBO).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo Thuyết Công bằng của John Stacey Adams (Equity Theory), khi nhân viên nhận thức rằng tỷ lệ giữa [Đầu vào của mình / Phần thưởng nhận được] THẤP HƠN so với đồng nghiệp cùng vị trí, họ sẽ có xu hướng phản ứng bằng cách nào?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giảm mức độ nỗ lực, đi muộn về sớm hoặc từ chối làm thêm giờ",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Yêu cầu tăng lương, thưởng hoặc cải thiện điều kiện làm việc",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Bóp méo nhận thức tâm lý hoặc thay đổi đối tượng để so sánh",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tự nguyện tăng gấp đôi khối lượng công việc mà không cần đòi hỏi thù lao",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Sự bất công khiến nhân viên tìm cách tái lập cân bằng: giảm nỗ lực đầu vào, đòi tăng lương, hoặc nghỉ việc.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Ra quyết định quản trị hợp lý (Rational Decision-Making Model):",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Nhận diện và xác định bản chất của vấn đề cần giải quyết",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Xác lập các tiêu chí ra quyết định và phân bổ trọng số ưu tiên",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Xây dựng và phát triển các phương án hành động khả thi",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Đánh giá và so sánh các phương án dựa trên các tiêu chí",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Lựa chọn phương án tối ưu, triển khai thực thi và đánh giá kết quả",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Nhận diện vấn đề -> Tiêu chí & Trọng số -> Phát triển phương án -> Đánh giá phương án -> Lựa chọn & Thực thi.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một doanh nghiệp công nghệ hoạt động trong môi trường VUCA (Biến động nhanh, Bất định cao, Phức tạp và Mơ hồ). Doanh nghiệp muốn tối ưu hóa sự phối hợp đa chức năng để phát triển sản phẩm mới thần tốc, đồng thời vẫn duy trì chiều sâu chuyên môn kỹ thuật. Mô hình cơ cấu tổ chức nào dưới đây là sự lựa chọn tối ưu nhất?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "Cơ cấu tổ chức Ma trận kết hợp nhóm linh hoạt (Agile Matrix Structure)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cơ cấu tổ chức Thư lại bàn giấy phân cấp thứ bậc cứng nhắc kiểu Weber",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Cơ cấu tổ chức Trực tuyến thuần túy theo đường mệnh lệnh quân sự",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cơ cấu tổ chức gia đình phi hình thức không có phân công nhiệm vụ",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Cơ cấu ma trận linh hoạt kết hợp phòng chức năng (chuyên môn) và các Squad dự án liên phòng ban (tốc độ).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự 5 giai đoạn phát triển nhóm (Group Development Stages) theo mô hình kinh điển của Bruce Tuckman:",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Hình thành (Forming): Các thành viên làm quen, thăm dò và tìm hiểu mục tiêu chung",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Sóng gió / Xung đột (Storming): Tranh luận gay gắt về vai trò, quyền lực và cách làm việc",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Chuẩn hóa (Norming): Thiết lập các quy tắc chung, gắn kết và thấu hiểu lẫn nhau",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Hoạt động hiệu quả (Performing): Nhóm phối hợp ăn ý, tự chủ và đạt hiệu suất cao nhất",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Tan rã / Kết thúc (Adjourning): Hoàn thành sứ mệnh, tổng kết bài học và giải tán nhóm",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Forming -> Storming -> Norming -> Performing -> Adjourning.",
+    "isTieBreaker": false
   }
 ]

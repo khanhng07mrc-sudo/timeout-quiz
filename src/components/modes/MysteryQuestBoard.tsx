@@ -2270,15 +2270,15 @@ export default function MysteryQuestBoard({
                   })()}
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
-                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-2" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-2"} mx-auto flex items-center justify-center z-10 pt-7 pb-2 px-1 overflow-hidden rounded-3xl`}>
-                    {/* 3D Camera Rig: Phóng dần về sát kim quay sau 3s, dừng ở giây 10, nghiêng nhẹ theo trục Y sinh động */}
+                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 pt-7 pb-4 px-1 overflow-visible`}>
+                    {/* 3D Camera Rig: Nghiêng 3D trường quay ngay từ đầu (26°), phóng dần về sát kim quay sau 3s đến giây 10 (20°), không bao giờ bị cắt cụt */}
                     <div
                       className="w-full h-full relative flex items-center justify-center"
                       style={{
-                        transformOrigin: "50% 6%",
+                        transformOrigin: "50% 12%",
                         transform: isWheelZoomedIn
-                          ? "perspective(1200px) rotateX(14deg) rotateY(-4deg) scale(1.62) translateY(3%)"
-                          : "perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1.0) translateY(0%)",
+                          ? "perspective(1400px) rotateX(20deg) rotateY(-3.5deg) scale(1.28) translateY(36px)"
+                          : "perspective(1400px) rotateX(26deg) rotateY(-2deg) scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
                         transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
@@ -2303,15 +2303,16 @@ export default function MysteryQuestBoard({
 
                       return (
                         <div
-                          className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.95)] transition-transform duration-100 origin-top"
+                          className="absolute -top-6 sm:-top-7 left-1/2 -translate-x-1/2 z-30 transition-transform duration-100 origin-top pointer-events-none"
                           style={{
                             transform: isPointerTicking
                               ? "rotate(-18deg) scale(1.08)"
                               : `rotate(${restingDeflectionDeg}deg) scale(1)`,
+                            filter: "drop-shadow(0px 10px 16px rgba(0,0,0,0.95)) drop-shadow(0px 3px 6px rgba(0,0,0,0.85))",
                           }}
                         >
-                          {/* 3D Chrome Flipper Pointer */}
-                          <svg width="48" height="52" viewBox="0 0 44 48">
+                          {/* 3D Chrome & Ruby Flipper Pointer */}
+                          <svg width="50" height="54" viewBox="0 0 44 48">
                             <defs>
                               <linearGradient id="chromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                                 <stop offset="0%" stopColor="#ffffff" />
@@ -2319,38 +2320,78 @@ export default function MysteryQuestBoard({
                                 <stop offset="60%" stopColor="#94a3b8" />
                                 <stop offset="100%" stopColor="#334155" />
                               </linearGradient>
-                              <linearGradient id="needleGoldAccent" x1="0%" y1="0%" x2="0%" y2="100%">
+                              <linearGradient id="needleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
                                 <stop offset="0%" stopColor="#fef08a" />
                                 <stop offset="50%" stopColor="#f59e0b" />
-                                <stop offset="100%" stopColor="#b45309" />
+                                <stop offset="100%" stopColor="#d97706" />
+                              </linearGradient>
+                              <linearGradient id="needleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" stopColor="#d97706" />
+                                <stop offset="60%" stopColor="#b45309" />
+                                <stop offset="100%" stopColor="#78350f" />
                               </linearGradient>
                             </defs>
-                            {/* Needle Body */}
+                            {/* Left Beveled Facet */}
                             <path
-                              d="M22 44 L11 8 Q22 14 33 8 Z"
-                              fill="url(#needleGoldAccent)"
+                              d="M22 45 L11 8 Q22 13 22 8 Z"
+                              fill="url(#needleFacetLeft)"
                               stroke="#fef08a"
-                              strokeWidth="1.8"
+                              strokeWidth="1.2"
                               strokeLinejoin="round"
                             />
-                            {/* Chrome Spine Rib */}
+                            {/* Right Beveled Facet (Shadowed) */}
                             <path
-                              d="M22 42 L22 12"
+                              d="M22 45 L33 8 Q22 13 22 8 Z"
+                              fill="url(#needleFacetRight)"
+                              stroke="#b45309"
+                              strokeWidth="1.2"
+                              strokeLinejoin="round"
+                            />
+                            {/* Chrome Center Spine Rib */}
+                            <path
+                              d="M22 44 L22 10"
                               stroke="url(#chromeNeedleGrad)"
-                              strokeWidth="2.5"
+                              strokeWidth="2.8"
                               strokeLinecap="round"
                             />
                             {/* Pivot Mount Bolt */}
-                            <circle cx="22" cy="11" r="5" fill="#1e293b" stroke="#fef08a" strokeWidth="1.8" />
-                            <circle cx="22" cy="11" r="3.2" fill="url(#chromeNeedleGrad)" />
-                            <circle cx="20.8" cy="9.8" r="1.1" fill="#ffffff" />
+                            <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
+                            <circle cx="22" cy="11" r="3.6" fill="url(#chromeNeedleGrad)" />
+                            <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
                           </svg>
                         </div>
                       );
                     })()}
 
-                    {/* Outer 3D Beveled Gold-Bronze Ring with Glowing Ambient Aura */}
-                    <div className="absolute inset-0 rounded-full border-[6px] sm:border-[8px] border-amber-400/90 shadow-[0_0_55px_rgba(245,158,11,0.5),inset_0_0_35px_rgba(0,0,0,0.85)] pointer-events-none z-20" />
+                    {/* ── 3D Turntable Stage Floor Shadow ── */}
+                    <div className="absolute -bottom-8 sm:-bottom-10 w-[92%] h-16 sm:h-20 bg-[radial-gradient(ellipse_at_50%_50%,rgba(0,0,0,0.95)_20%,rgba(15,8,30,0.8)_55%,transparent_75%)] blur-md pointer-events-none -z-10" />
+
+                    {/* ── 3D Drum Cylinder Body (Thành Tang Trống Chiếc Nón Kỳ Diệu dày ~25px) ── */}
+                    <div
+                      className="absolute inset-0 rounded-full pointer-events-none"
+                      style={{
+                        transform: "translateY(22px) translateZ(-22px)",
+                        background: "linear-gradient(180deg, #b45309 0%, #78350f 25%, #451a03 60%, #1e0902 100%)",
+                        boxShadow: "0 24px 44px rgba(0,0,0,0.95), inset 0 -4px 10px rgba(0,0,0,0.9)",
+                        border: "3.5px solid #d97706",
+                      }}
+                    >
+                      {/* Brushed metallic reflection highlights along the cylindrical drum wall */}
+                      <div className="absolute inset-0 rounded-full opacity-40 bg-[linear-gradient(90deg,transparent_0%,rgba(254,240,138,0.5)_30%,rgba(217,119,6,0.8)_50%,rgba(254,240,138,0.5)_70%,transparent_100%)]" />
+                    </div>
+
+                    {/* ── Outer 3D Beveled Brushed Gold Rim Ring ── */}
+                    <div
+                      className="absolute -inset-1 rounded-full pointer-events-none z-20"
+                      style={{
+                        background: "conic-gradient(from 45deg, #78350f 0deg, #fef08a 45deg, #d97706 90deg, #451a03 135deg, #fef08a 180deg, #78350f 225deg, #fef08a 270deg, #b45309 315deg, #78350f 360deg)",
+                        padding: "6px",
+                        boxShadow: "0 14px 30px rgba(0,0,0,0.9), 0 0 35px rgba(245,158,11,0.45)",
+                        border: "2px solid #fbbf24",
+                      }}
+                    >
+                      <div className="w-full h-full rounded-full border-2 border-amber-950/80 shadow-[inset_0_2px_8px_rgba(0,0,0,0.9)]" />
+                    </div>
 
                     {/* Spinning Wheel (17.5s - 22.5s Chiếc Nón Kỳ Diệu Physics: 4 - 9 turns) */}
                     <div
@@ -2364,18 +2405,27 @@ export default function MysteryQuestBoard({
                     >
                       <svg viewBox="0 0 440 440" className="w-full h-full select-none">
                         <defs>
-                          {/* 3D Chrome Metallic Gradients */}
-                          <linearGradient id="chromePegGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#ffffff" />
-                            <stop offset="25%" stopColor="#cbd5e1" />
-                            <stop offset="50%" stopColor="#64748b" />
-                            <stop offset="75%" stopColor="#f8fafc" />
+                          {/* 3D Chrome Vertical Stem Gradient */}
+                          <linearGradient id="chromeStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#64748b" />
+                            <stop offset="30%" stopColor="#f8fafc" />
+                            <stop offset="60%" stopColor="#cbd5e1" />
+                            <stop offset="85%" stopColor="#94a3b8" />
                             <stop offset="100%" stopColor="#334155" />
                           </linearGradient>
-                          <radialGradient id="chromeCapGrad" cx="35%" cy="35%" r="65%">
+
+                          {/* 3D Chrome Collar Base Gradient */}
+                          <linearGradient id="chromeCollarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#cbd5e1" />
+                            <stop offset="50%" stopColor="#64748b" />
+                            <stop offset="100%" stopColor="#1e293b" />
+                          </linearGradient>
+
+                          {/* 3D Chrome Ball Cap Radial Gradient */}
+                          <radialGradient id="chromeCapGrad" cx="35%" cy="30%" r="65%">
                             <stop offset="0%" stopColor="#ffffff" />
                             <stop offset="35%" stopColor="#e2e8f0" />
-                            <stop offset="80%" stopColor="#64748b" />
+                            <stop offset="70%" stopColor="#64748b" />
                             <stop offset="100%" stopColor="#1e293b" />
                           </radialGradient>
 
@@ -2395,6 +2445,11 @@ export default function MysteryQuestBoard({
                             <stop offset="80%" stopColor="#0f0720" />
                             <stop offset="100%" stopColor="#05030a" />
                           </radialGradient>
+
+                          {/* Center Hub Outer Drop Shadow */}
+                          <filter id="hubDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.85" />
+                          </filter>
 
                           {/* Arcana Icon Glow Filter */}
                           <filter id="arcanaSymbolGlow" x="-30%" y="-30%" width="160%" height="160%">
@@ -2451,11 +2506,13 @@ export default function MysteryQuestBoard({
                           const pegX = cx + rPeg * Math.sin(theta1);
                           const pegY = cy - rPeg * Math.cos(theta1);
 
-                          // Font sizing & positioning for RADIAL spoke orientation (dọc theo nan quạt, chiều dài hơn)
-                          const labelLen = displayInfo.mainLabel.length;
-                          const hasBadge = Boolean(displayInfo.badge);
-                          const radialMainFontSize = labelLen <= 3 ? "20" : labelLen <= 6 ? "16" : labelLen <= 9 ? "14" : "12";
-                          const strokeW = labelLen <= 4 ? "2.6" : "2.0";
+                          // Wedge Content Formatting:
+                          // Yêu cầu: "chỉ để lại duy nhất 1 dòng chữ mỗi ô, đối với các ô có số thì ghi kiểu +, 1, 0 hoặc -, 1, 5"
+                          const cleanLabel = displayInfo.mainLabel.trim();
+                          const isNumeric = /^[+-]?\d+$/.test(cleanLabel);
+                          const labelChars = cleanLabel.split("");
+                          const labelLen = cleanLabel.length;
+                          const radialMainFontSize = labelLen <= 5 ? "16" : labelLen <= 9 ? "14.5" : "12.5";
                           const ySpokeCenter = cy - 105;
 
                           return (
@@ -2480,7 +2537,7 @@ export default function MysteryQuestBoard({
                                 strokeOpacity="0.25"
                               />
 
-                              {/* Wedge Content (Icon & Function Text Label along Radial Spoke) */}
+                              {/* Wedge Content (Icon & Radial Upright Stacked Digits or Single Text Line) */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
                                 {/* Outer Accent Pin */}
                                 <circle cx={cx} cy={cy - 180} r="1.3" fill={symbolColor} opacity="0.8" />
@@ -2497,42 +2554,37 @@ export default function MysteryQuestBoard({
                                   {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
                                 </svg>
 
-                                {/* Main Function Text Label & Badge along Radial Spoke (dọc theo nan quạt, xoay 90 độ) */}
-                                <g transform={`rotate(90 ${cx} ${ySpokeCenter})`}>
-                                  {hasBadge ? (
-                                    <>
-                                      <text
-                                        x={cx}
-                                        y={ySpokeCenter - 5.5}
-                                        textAnchor="middle"
-                                        fontSize={radialMainFontSize}
-                                        fontWeight="900"
-                                        fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : "#ffffff"}
-                                        stroke="#000000"
-                                        strokeWidth={strokeW}
-                                        style={{ paintOrder: "stroke fill" }}
-                                        dominantBaseline="central"
-                                        className="font-black select-none pointer-events-none tracking-tight uppercase"
-                                      >
-                                        {displayInfo.mainLabel}
-                                      </text>
-                                      <text
-                                        x={cx}
-                                        y={ySpokeCenter + 7}
-                                        textAnchor="middle"
-                                        fontSize="7.8"
-                                        fontWeight="800"
-                                        fill={symbolColor}
-                                        stroke="#000000"
-                                        strokeWidth="1.2"
-                                        style={{ paintOrder: "stroke fill" }}
-                                        dominantBaseline="central"
-                                        className="select-none pointer-events-none tracking-widest uppercase opacity-95 font-black"
-                                      >
-                                        {displayInfo.badge}
-                                      </text>
-                                    </>
-                                  ) : (
+                                {/* Wedge Content: Stacked Upright Digits (+ 1 0 or - 1 5) or Single Rotated Text Line */}
+                                {isNumeric ? (
+                                  /* Các ô có số: Chữ số đứng thẳng (upright), xếp chồng dọc từ ngoài vào rốn: +, 1, 0 hoặc -, 1, 5 */
+                                  <g className="font-black select-none pointer-events-none">
+                                    {labelChars.map((ch, chIdx) => {
+                                      const charStep = 24;
+                                      const startY = (cy - 104) - ((labelChars.length - 1) * charStep) / 2;
+                                      const charY = startY + chIdx * charStep;
+                                      return (
+                                        <text
+                                          key={chIdx}
+                                          x={cx}
+                                          y={charY}
+                                          textAnchor="middle"
+                                          dominantBaseline="central"
+                                          fontSize={labelChars.length === 1 ? "26" : "22"}
+                                          fontWeight="900"
+                                          fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : seg.isMagnetized ? "#fef08a" : "#ffffff"}
+                                          stroke="#000000"
+                                          strokeWidth="3.2"
+                                          style={{ paintOrder: "stroke fill" }}
+                                          className="font-black select-none pointer-events-none tracking-normal"
+                                        >
+                                          {ch}
+                                        </text>
+                                      );
+                                    })}
+                                  </g>
+                                ) : (
+                                  /* Các ô chữ (THÊM LƯỢT, MẤT LƯỢT, MAY MẮN, BOM...): Duy nhất 1 dòng chữ in đậm xoay 90° dọc nan quạt */
+                                  <g transform={`rotate(90 ${cx} ${ySpokeCenter})`}>
                                     <text
                                       x={cx}
                                       y={ySpokeCenter}
@@ -2541,30 +2593,32 @@ export default function MysteryQuestBoard({
                                       fontWeight="900"
                                       fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : "#ffffff"}
                                       stroke="#000000"
-                                      strokeWidth={strokeW}
+                                      strokeWidth="2.8"
                                       style={{ paintOrder: "stroke fill" }}
                                       dominantBaseline="central"
                                       className="font-black select-none pointer-events-none tracking-tight uppercase"
                                     >
-                                      {displayInfo.mainLabel}
+                                      {cleanLabel}
                                     </text>
-                                  )}
-                                </g>
+                                  </g>
+                                )}
 
                                 {/* Inner Accent Dot near Hub */}
                                 <circle cx={cx} cy={cy - 56} r="1.1" fill={symbolColor} opacity="0.5" />
                               </g>
 
-                              {/* ── 3D Chrome Cylindrical Peg at Segment Boundary ── */}
+                              {/* ── 3D Upright Chrome Peg with Spherical Ball Cap & Cast Shadow ── */}
                               <g>
-                                {/* Cast Shadow */}
-                                <circle cx={pegX + 1.2} cy={pegY + 1.5} r="4.5" fill="#000000" opacity="0.6" />
-                                {/* Chrome Collar Base */}
-                                <circle cx={pegX} cy={pegY} r="4.2" fill="url(#chromePegGrad)" stroke="#1e293b" strokeWidth="0.8" />
-                                {/* Raised Chrome Dome Head */}
-                                <circle cx={pegX - 0.3} cy={pegY - 0.4} r="3.1" fill="url(#chromeCapGrad)" />
-                                {/* Specular Gleam Reflection */}
-                                <circle cx={pegX - 1.1} cy={pegY - 1.2} r="1" fill="#ffffff" opacity="0.95" />
+                                {/* Cast Shadow onto Wheel Surface */}
+                                <ellipse cx={pegX + 2} cy={pegY + 1.8} rx="4" ry="2" fill="#000000" opacity="0.65" />
+                                {/* Peg Base Collar */}
+                                <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                                {/* Vertical Standing Chrome Post */}
+                                <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
+                                {/* Spherical Chrome Ball Cap */}
+                                <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
+                                {/* Specular Highlight Gleam */}
+                                <circle cx={pegX - 1.1} cy={pegY - 9.8} r="1" fill="#ffffff" opacity="0.95" />
                               </g>
                             </g>
                           );
@@ -2574,25 +2628,27 @@ export default function MysteryQuestBoard({
                         <circle cx="220" cy="220" r="185" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
                         <circle cx="220" cy="220" r="88" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.35" />
 
-                        {/* ── 3D Center Hub ── */}
-                        {/* Chrome Hub Bezel */}
-                        <circle cx="220" cy="220" r="48" fill="url(#chromePegGrad)" stroke="#0f172a" strokeWidth="1.5" />
-                        {/* Gold Step Ring */}
-                        <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
-                        {/* Obsidian Dome Core */}
-                        <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
-                        {/* 8-Pointed Celestial Star & Sun/Moon Emblem */}
-                        <g transform="translate(202, 202)">
-                          <svg width="36" height="36" viewBox="0 0 32 32">
-                            <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.75" />
-                            <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#c084fc" strokeWidth="1" opacity="0.5" />
-                            <circle cx="16" cy="16" r="8" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
-                            <path d="M17.5 10 A6 6 0 1 0 17.5 22 A4.5 4.5 0 1 1 17.5 10 Z" fill="#fde68a" />
-                            <circle cx="19.5" cy="16" r="1.8" fill="#f5d0fe" />
-                            {/* Center Chrome Screw/Rivet Pin */}
-                            <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
-                            <circle cx="15.2" cy="15.2" r="0.8" fill="#ffffff" />
-                          </svg>
+                        {/* ── 3D Center Hub (Elevated Tiered Obsidian Dome) ── */}
+                        <g filter="url(#hubDropShadow)">
+                          {/* Chrome Hub Bezel */}
+                          <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
+                          {/* Gold Step Ring */}
+                          <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
+                          {/* Obsidian Dome Core */}
+                          <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
+                          {/* 8-Pointed Celestial Star & Sun/Moon Emblem */}
+                          <g transform="translate(202, 202)">
+                            <svg width="36" height="36" viewBox="0 0 32 32">
+                              <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.75" />
+                              <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#c084fc" strokeWidth="1" opacity="0.5" />
+                              <circle cx="16" cy="16" r="8" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
+                              <path d="M17.5 10 A6 6 0 1 0 17.5 22 A4.5 4.5 0 1 1 17.5 10 Z" fill="#fde68a" />
+                              <circle cx="19.5" cy="16" r="1.8" fill="#f5d0fe" />
+                              {/* Center Chrome Screw/Rivet Pin */}
+                              <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                              <circle cx="15.2" cy="15.2" r="0.8" fill="#ffffff" />
+                            </svg>
+                          </g>
                         </g>
                       </svg>
                     </div>

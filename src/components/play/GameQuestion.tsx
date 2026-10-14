@@ -1108,7 +1108,7 @@ export default function GameQuestion({
         <div className="text-center py-6 text-muted-foreground text-sm font-semibold glass rounded-xl">⏸️ Game đã tạm dừng</div>
       ) : q.type === "MC_SINGLE" || q.type === "TRUE_FALSE" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-          {q.options?.map((opt, i) => {
+          {(q.options || []).filter((opt) => opt && typeof opt.text === "string" && opt.text.trim().length > 0).map((opt, i) => {
             const labels = ["A", "B", "C", "D", "E", "F"];
             const badgeClasses = [
               "bg-blue-500 text-white shadow-blue-500/30",
@@ -1162,7 +1162,7 @@ export default function GameQuestion({
         </div>
       ) : q.type === "MC_MULTI" ? (
         <div className="flex flex-col gap-2.5">
-          {q.options?.map((opt, i) => {
+          {(q.options || []).filter((opt) => opt && typeof opt.text === "string" && opt.text.trim().length > 0).map((opt, i) => {
             const labels = ["A", "B", "C", "D"];
             const isCorrect = revealPayload?.correctAnswer.includes(opt.id);
             const isSelected = selected.includes(opt.id);

@@ -1030,12 +1030,33 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
     },
     {
         "id": "q_off_36",
-        "type": "ESSAY",
-        "content": "Hãy nêu sự khác biệt cốt lõi giữa Kế hoạch chiến lược (Strategic Plan) và Kế hoạch tác nghiệp (Operational Plan) về: Tầm nhìn thời gian và Cấp quản lý chịu trách nhiệm chính.",
-        "answer": "Kế hoạch chiến lược: dài hạn (3-5+ năm), do cấp cao (HĐQT/CEO) xây dựng. Kế hoạch tác nghiệp: ngắn hạn (hàng tuần/tháng/dưới 1 năm), do cấp cơ sở/trưởng bộ phận thực hiện.",
+        "type": "MC_SINGLE",
+        "content": "Sự khác biệt cốt lõi giữa Kế hoạch chiến lược (Strategic Plan) và Kế hoạch tác nghiệp (Operational Plan) được thể hiện chính xác ở phát biểu nào?",
         "points": 20,
-        "timeLimit": 30,
-        "hint": "Tập trung vào 2 tiêu chí: Thời hạn (dài hạn vs ngắn hạn) và Thẩm quyền ban hành (cấp cao vs cấp cơ sở).",
+        "timeLimit": 20,
+        "options": [
+            {
+                "id": "A",
+                "text": "Kế hoạch chiến lược mang tầm nhìn dài hạn (3-5+ năm) do lãnh đạo cấp cao phê duyệt; Kế hoạch tác nghiệp mang tính ngắn hạn (tuần/tháng/dưới 1 năm) do cấp cơ sở triển khai cụ thể",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Kế hoạch chiến lược do nhân viên thực tập lập; Kế hoạch tác nghiệp do Hội đồng quản trị xây dựng",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Kế hoạch tác nghiệp không có bất kỳ chỉ tiêu số lượng hay thời hạn cụ thể nào",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Kế hoạch chiến lược chỉ có giá trị thực thi trong vòng 24 giờ sau khi ký ban hành",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Chiến lược: Dài hạn, toàn diện, cấp cao. Tác nghiệp: Ngắn hạn, cụ thể, cấp cơ sở.",
         "isTieBreaker": false
     },
     {
@@ -1154,12 +1175,33 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
     },
     {
         "id": "q_off_41",
-        "type": "ESSAY",
-        "content": "Tại sao trong môi trường kinh doanh biến động mạnh (VUCA), kế hoạch dạng cuốn chiếu (Rolling Plan / Rolling Forecast) lại ưu việt hơn kế hoạch cố định hàng năm (Fixed Annual Plan)?",
-        "answer": "Kế hoạch cuốn chiếu liên tục cập nhật khung thời gian (ví dụ 12-18 tháng tới) theo từng quý/tháng, cho phép doanh nghiệp điều chỉnh linh hoạt nguồn lực và giả định theo biến động thực tế thay vì bị trói buộc vào chỉ tiêu cứng nhắc đã lỗi thời.",
+        "type": "MC_SINGLE",
+        "content": "Lý do quan trọng nhất khiến Kế hoạch cuốn chiếu (Rolling Plan / Rolling Forecast) ưu việt hơn Kế hoạch cố định hàng năm trong môi trường VUCA là gì?",
         "points": 30,
-        "timeLimit": 40,
-        "hint": "Nhấn mạnh tính linh hoạt, khả năng cập nhật giả định liên tục và phản ứng kịp thời với rủi ro thị trường.",
+        "timeLimit": 25,
+        "options": [
+            {
+                "id": "A",
+                "text": "Liên tục cập nhật khung thời gian dự báo tương lai (ví dụ 12-18 tháng tới) theo từng kỳ, giúp doanh nghiệp linh hoạt điều chỉnh giả định và nguồn lực theo biến động thực tế thay vì bám vào chỉ tiêu cứng nhắc đã lỗi thời",
+                "isCorrect": true
+            },
+            {
+                "id": "B",
+                "text": "Giúp doanh nghiệp không cần theo dõi bất kỳ số liệu doanh thu hay chi phí thực tế nào",
+                "isCorrect": false
+            },
+            {
+                "id": "C",
+                "text": "Tự động khóa cứng ngân sách chi tiêu không cho phép bất kỳ phòng ban nào thay đổi",
+                "isCorrect": false
+            },
+            {
+                "id": "D",
+                "text": "Loại bỏ hoàn toàn vai trò của ban giám đốc trong công tác quản trị doanh nghiệp",
+                "isCorrect": false
+            }
+        ],
+        "hint": "Rolling plan liên tục mở rộng tầm nhìn về phía trước, tăng tính linh hoạt và khả năng ứng biến.",
         "isTieBreaker": false
     },
     {

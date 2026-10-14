@@ -779,5 +779,505 @@
       }
     ],
     "hint": "Được đánh giá bằng các chỉ tiêu như ROI (Return on Investment) và EVA (Economic Value Added)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong hệ thống kiểm soát quản lý (MCS), mục đích tối thượng của chức năng kiểm soát là gì?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đảm bảo các hoạt động của tổ chức diễn ra đúng kế hoạch và đạt được mục tiêu chiến lược đề ra",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tìm kiếm các sai phạm cá nhân để xử phạt kỷ luật kịp thời",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Cắt giảm tối đa mọi khoản chi phí vận hành bất kể kết quả kinh doanh",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Thay thế toàn bộ trách nhiệm ra quyết định của các cấp quản lý cơ sở",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kiểm soát quản lý hướng tới sự hội tụ mục tiêu (Goal Congruence) và thực thi chiến lược thành công.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kiểm soát trước (Feedforward Control / Preliminary Control) tập trung vào việc giám sát và can thiệp ngay trong khi hoạt động đang diễn ra tại hiện trường.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Kiểm soát trước diễn ra TRƯỚC KHI hoạt động bắt đầu (kiểm tra nguyên liệu đầu vào, quy chuẩn, dự báo rủi ro). Kiểm soát trong quá trình là Concurrent Control.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Trung tâm trách nhiệm mà người quản lý chỉ chịu trách nhiệm và có quyền quyết định về chi phí phát sinh (không kiểm soát doanh thu) được gọi là Trung tâm ...",
+    "answer": "chi phí",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Ví dụ: Phòng Kế toán, Phòng Hành chính, Phân xưởng gia công sản phẩm (Cost Center).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo Robert Anthony, hệ thống kiểm soát quản lý nằm ở tầng trung gian kết nối giữa hai cấp độ nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hoạch định chiến lược (Strategic Planning) và Kiểm soát tác nghiệp (Operational Control)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Kế toán tài chính và Kiểm toán độc lập",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Nghiên cứu phát triển (R&D) và Bán hàng tiếp thị (Marketing)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Quản trị nguồn nhân lực và Pháp chế doanh nghiệp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Anthony Triangle: Hoạch định chiến lược (cấp cao) -> Kiểm soát quản lý (cấp trung) -> Kiểm soát tác nghiệp (cấp cơ sở).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Thuật ngữ 'Hội tụ mục tiêu' (Goal Congruence) trong kiểm soát quản lý thể hiện trạng thái nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hành động theo đuổi lợi ích cá nhân của nhân viên đồng thời dẫn tới việc đạt được mục tiêu chung của tổ chức",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Mọi phòng ban phải có mức ngân sách chi tiêu bằng nhau trong năm tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Ban giám đốc trực tiếp làm thay toàn bộ công việc của nhân viên cấp dưới",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Doanh nghiệp chỉ tập trung vào một mục tiêu lợi nhuận ngắn hạn duy nhất",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hội tụ mục tiêu đạt được khi cơ chế khuyến khích khiến nhân viên vì lợi ích bản thân mà hành động vì lợi ích tổ chức.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong một Trung tâm Lợi nhuận (Profit Center), người quản lý được đánh giá dựa trên chênh lệch giữa Doanh thu và Chi phí của bộ phận mình phụ trách.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Trung tâm lợi nhuận chịu trách nhiệm về cả đầu vào (chi phí) và đầu ra (doanh thu), do đó kết quả đánh giá là lợi nhuận bộ phận.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Sự khác biệt cốt lõi về thẩm quyền ra quyết định giữa Trung tâm Đầu tư (Investment Center) và Trung tâm Lợi nhuận (Profit Center) là gì?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Người quản lý Trung tâm Đầu tư có thêm quyền quyết định đầu tư/mua sắm tài sản và mở rộng vốn, được đo lường bằng ROI hoặc EVA/RI",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Trung tâm Lợi nhuận có quyền quyết định mua bán sáp nhập các công ty con bên ngoài tập đoàn",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Trung tâm Đầu tư không cần chịu trách nhiệm về chi phí hoạt động và doanh thu hàng tháng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Trung tâm Lợi nhuận được quyền phát hành trái phiếu doanh nghiệp ra công chúng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Trung tâm đầu tư có quyền hạn tối cao về quy mô vốn và tài sản đầu tư, đánh giá qua ROI, RI, EVA.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo mô hình Thẻ điểm cân bằng (Balanced Scorecard - BSC) của Kaplan & Norton, 4 khía cạnh đo lường hiệu quả quản lý bao gồm những khía cạnh nào?",
+    "points": 20,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khía cạnh Tài chính (Financial Perspective)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Khía cạnh Khách hàng (Customer Perspective)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Khía cạnh Quy trình nội bộ (Internal Business Processes)",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Khía cạnh Học hỏi và Phát triển (Learning and Growth)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "BSC cân bằng giữa tài chính và phi tài chính, ngắn hạn và dài hạn qua 4 góc nhìn chuẩn mực.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Mức giá được áp dụng khi chuyển giao sản phẩm hoặc dịch vụ giữa các đơn vị thành viên trực thuộc cùng một tập đoàn doanh nghiệp được gọi là Giá ...",
+    "answer": "chuyển nhượng",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Transfer Price (Giá nội bộ / Giá chuyển giao).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Phương pháp định giá chuyển nhượng nội bộ nào được đánh giá là tối ưu nhất khi thị trường bên ngoài có tính cạnh tranh hoàn hảo?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giá thị trường (Market-based Transfer Price)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chi phí thực tế phát sinh cộng thêm lãi định mức",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chi phí biến đổi biên (Marginal Variable Cost)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Giá do Tổng giám đốc ấn định hành chính không qua thương thảo",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khi thị trường cạnh tranh hoàn hảo, giá thị trường phản ánh đúng chi phí cơ hội và bảo toàn tính tự chủ của các trung tâm lợi nhuận.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hiện tượng 'Đệm ngân sách' (Budgetary Slack) là việc các nhà quản trị cố tình đánh giá thấp doanh thu và thổi phồng chi phí dự toán để mục tiêu dễ đạt được hơn trong thực tế.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Budgetary Slack là hành vi phòng thủ tâm lý của quản lý khi ngân sách được gắn chặt với việc thưởng phạt thành tích.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số ROI (Return on Investment) của một Trung tâm Đầu tư được tính toán bằng công thức nào dưới đây?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "ROI = Lợi nhuận hoạt động thuần (EBIT) / Vốn hoạt động bình quân",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "ROI = Doanh thu thuần / Tổng nợ phải trả",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "ROI = Lợi nhuận sau thuế / Vốn điều lệ đăng ký",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "ROI = Dòng tiền thuần từ kinh doanh / Chi phí lãi vay",
+        "isCorrect": false
+      }
+    ],
+    "hint": "ROI = Operating Income / Average Operating Assets (hoặc Tỷ suất lợi nhuận biên x Vòng quay tài sản).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Nguyên nhân cốt lõi khiến chỉ tiêu Thu nhập thặng dư (Residual Income - RI) được đánh giá ưu việt hơn chỉ tiêu ROI trong việc thúc đẩy sự hội tụ mục tiêu (Goal Congruence) là gì?",
+    "points": 30,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khắc phục hiện tượng người quản lý từ chối các dự án có tỷ suất sinh lời cao hơn chi phí vốn của tập đoàn nhưng thấp hơn ROI hiện tại của bộ phận mình",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "RI luôn cho ra một con số tỷ lệ phần trăm dễ so sánh giữa các công ty có quy mô vốn khác nhau",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "RI loại bỏ hoàn toàn trách nhiệm trả chi phí sử dụng vốn của các trung tâm đầu tư",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "RI giúp doanh nghiệp không phải nộp thuế thu nhập doanh nghiệp cho các dự án mở rộng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "ROI khiến nhà quản lý thiển cận từ chối dự án có lời cho công ty mẹ; RI khuyến khích nhận mọi dự án có thặng dư dương.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng đòn bẩy kiểm soát trong Mô hình 4 đòn bẩy của Robert Simons (Levers of Control) với chức năng cốt lõi của nó:",
+    "points": 30,
+    "timeLimit": 35,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Hệ thống niềm tin (Belief Systems)",
+        "right": "Truyền đạt sứ mệnh, giá trị cốt lõi và định hướng hành vi tích cực của tổ chức"
+      },
+      {
+        "id": "p2",
+        "left": "Hệ thống ranh giới (Boundary Systems)",
+        "right": "Thiết lập các giới hạn quy tắc rõ ràng về những điều nhân viên KHÔNG ĐƯỢC PHÉP làm"
+      },
+      {
+        "id": "p3",
+        "left": "Hệ thống kiểm soát chẩn đoán (Diagnostic Control)",
+        "right": "Theo dõi chỉ số KPI định kỳ để sửa chữa các sai lệch so với chuẩn mực kế hoạch"
+      },
+      {
+        "id": "p4",
+        "left": "Hệ thống kiểm soát tương tác (Interactive Control)",
+        "right": "Thúc đẩy đối thoại trực tiếp liên tục để thích ứng với biến động bất định của chiến lược"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Simons Levers of Control: Beliefs (Tạo cảm hứng), Boundaries (Rào chắn), Diagnostic (Đo lường KPI), Interactive (Học hỏi chiến lược).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Những rủi ro kiểm soát nào dưới đây thường xuất hiện khi doanh nghiệp áp dụng cơ chế đánh giá thưởng phạt thành tích quá phụ thuộc vào các chỉ tiêu tài chính ngắn hạn?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hành vi cận thị (Short-termism): Cắt giảm các chi phí R&D, bảo trì và đào tạo cần thiết cho tương lai",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Thao túng số liệu kế toán (Gaming/Data Manipulation) nhằm làm đẹp báo cáo tài chính",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Tập trung khai thác khách hàng hiện tại quá mức dẫn đến giảm chất lượng trải nghiệm dài hạn",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Tăng cường đầu tư đột phá dài hạn vượt mức ngân sách cho phép",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Áp lực tài chính ngắn hạn thường dẫn tới hành vi thiển cận, bóp méo dữ liệu và bỏ bê đầu tư phát triển dài hạn.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Kiểm soát Phản hồi tiêu chuẩn (Feedback Control Process):",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Xác lập các tiêu chuẩn và chỉ tiêu đánh giá thành tích (Standards / KPIs)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Thu thập số liệu và đo lường kết quả hoạt động thực tế phát sinh",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "So sánh kết quả thực tế với tiêu chuẩn kế hoạch để xác định chênh lệch",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Phân tích nguyên nhân gốc rễ gây ra biến động (Variance Analysis)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Thực hiện hành động điều chỉnh và cập nhật cải tiến quy trình",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Thiết lập tiêu chuẩn -> Đo lường thực tế -> So sánh chênh lệch -> Phân tích nguyên nhân -> Hành động khắc phục.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Bộ phận A sản xuất linh kiện X với chi phí biến đổi 60.000đ/sp, tổng chi phí cố định phân bổ 30.000đ/sp. Giá thị trường ngoài là 110.000đ/sp. Bộ phận B muốn mua linh kiện X từ bộ phận A để hoàn thiện sản phẩm cuối. Nếu bộ phận A ĐÃ HOẠT ĐỘNG HẾT CÔNG SUẤT, mức giá chuyển nhượng nội bộ tối thiểu mà bộ phận A có thể chấp nhận để không bị thiệt hại là bao nhiêu?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "110.000 đồng/sản phẩm (bằng đúng giá bán ra thị trường ngoài)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "60.000 đồng/sản phẩm (bằng chi phí biến đổi)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "90.000 đồng/sản phẩm (bằng toàn bộ chi phí sản xuất)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "100.000 đồng/sản phẩm",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Công thức giá chuyển nhượng tối thiểu = Chi phí biến đổi phát sinh thêm + Chi phí cơ hội bị mất (Do hết công suất nên chi phí cơ hội = Giá thị trường - Chi phí biến đổi = 110k - 60k = 50k. Giá tối thiểu = 60k + 50k = 110k).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình phân bổ chi phí gián tiếp theo phương pháp Chi phí dựa trên hoạt động (Activity-Based Costing - ABC):",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Nhận diện và xác định các hoạt động tiêu hao nguồn lực trong tổ chức",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Tập hợp chi phí tài nguyên vào từng nhóm hoạt động (Activity Cost Pools)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Xác định các tác nhân phát sinh chi phí cho từng hoạt động (Cost Drivers)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Tính toán tỷ lệ phân bổ chi phí hoạt động trên mỗi đơn vị tác nhân (Activity Rates)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Phân bổ chi phí từ nhóm hoạt động vào từng đối tượng chịu chi phí (sản phẩm/khách hàng)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Nhận diện hoạt động -> Cost Pools -> Cost Drivers -> Activity Rates -> Phân bổ vào sản phẩm.",
+    "isTieBreaker": false
   }
 ]

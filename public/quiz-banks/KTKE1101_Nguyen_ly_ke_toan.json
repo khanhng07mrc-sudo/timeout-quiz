@@ -779,5 +779,505 @@
       }
     ],
     "hint": "Bức ảnh chụp nhanh (snapshot) sức khỏe tài chính của doanh nghiệp tại một thời điểm. (Báo cáo tình hình tài chính)"
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo nguyên tắc Giá gốc (Historical Cost), giá trị của tài sản cố định mua về được ghi nhận trên sổ sách kế toán theo:",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giá trị thị trường tại thời điểm lập báo cáo tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Toàn bộ các chi phí thực tế đã chi ra để có được tài sản ở trạng thái sẵn sàng sử dụng",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Giá ước tính do hội đồng thẩm định giá độc lập xác định",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Giá niêm yết trên hóa đơn trừ đi toàn bộ chi phí vận chuyển bốc dỡ",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Giá gốc bao gồm giá mua và toàn bộ chi phí liên quan trực tiếp đưa tài sản vào trạng thái sẵn sàng hoạt động.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Nguyên tắc Cơ sở dồn tích (Accrual Basis) yêu cầu doanh thu và chi phí phải được ghi nhận tại thời điểm phát sinh thực tế, không căn cứ vào thời điểm thực tế thu hoặc chi tiền.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Cơ sở dồn tích ghi nhận nghiệp vụ khi giao dịch kinh tế phát sinh chứ không phụ thuộc dòng tiền vào/ra.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Báo cáo tài chính phản ánh tổng quát tình hình tài sản, nợ phải trả và nguồn vốn chủ sở hữu của doanh nghiệp tại một THỜI ĐIỂM nhất định là Bảng ...",
+    "answer": "cân đối kế toán",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Báo cáo này mang tính chất thời điểm (Snapshot), thể hiện phương trình Tài sản = Nợ phải trả + Vốn chủ sở hữu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khi doanh nghiệp rút tiền gửi ngân hàng về nhập quỹ tiền mặt 50 triệu đồng, kết cấu tài sản và nguồn vốn của doanh nghiệp biến động như thế nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Một tài sản tăng và một tài sản giảm với số tiền tương ứng, tổng tài sản không đổi",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tài sản tăng và Nợ phải trả tăng tương ứng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Tài sản giảm và Nguồn vốn chủ sở hữu giảm tương ứng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cả tổng tài sản và tổng nguồn vốn đều tăng 50 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Tiền mặt tăng (Nợ TK 111), Tiền gửi ngân hàng giảm (Có TK 112) - biến động nội bộ tài sản.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Khoản mục nào dưới đây thuộc nhóm Nợ phải trả ngắn hạn trên Bảng cân đối kế toán?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phải trả người bán ngắn hạn",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phải thu ngắn hạn của khách hàng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hàng mua đang đi trên đường",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Quỹ đầu tư phát triển",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khoản nợ mà doanh nghiệp có nghĩa vụ thanh toán cho nhà cung cấp trong chu kỳ kinh doanh bình thường hoặc dưới 12 tháng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Tài khoản phản ánh Nguồn vốn (loại 3, 4) và Doanh thu (loại 5, 7) có số dư thông thường nằm ở bên Nợ.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Tài khoản nguồn vốn tăng bên Có, giảm bên Nợ và có số dư bên Có; tài khoản doanh thu không có số dư cuối kỳ.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Phát biểu nào dưới đây phản ánh CHÍNH XÁC sự khác biệt cốt lõi giữa Phương pháp Kê khai thường xuyên và Phương pháp Kiểm kê định kỳ trong kế toán hàng tồn kho?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Kê khai thường xuyên theo dõi và phản ánh liên tục tình hình nhập, xuất, tồn kho sau mỗi nghiệp vụ; Kiểm kê định kỳ chỉ căn cứ vào kiểm kê thực tế cuối kỳ để xác định giá trị xuất kho",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Kê khai thường xuyên chỉ áp dụng cho doanh nghiệp thương mại; Kiểm kê định kỳ chỉ áp dụng cho doanh nghiệp sản xuất",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Kiểm kê định kỳ không cần sử dụng bất kỳ chứng từ xuất kho hay phiếu nhập kho nào trong suốt năm tài chính",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cả hai phương pháp đều tính toán giá vốn hàng bán ngay tại thời điểm xuất kho cho từng đơn hàng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Kê khai thường xuyên ghi nhận xuất kho liên tục; Kiểm kê định kỳ kiểm kê cuối kỳ rồi mới tính ngược giá vốn xuất kho.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo Chuẩn mực Kế toán Việt Nam (VAS), những trường hợp nào dưới đây yêu cầu kế toán viên phải thực hiện bút toán điều chỉnh (Adjusting Entries) vào cuối kỳ kế toán?",
+    "points": 20,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Phân bổ chi phí trả trước dài hạn vào chi phí kinh doanh trong kỳ",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Trích khấu hao tài sản cố định dùng cho phân xưởng sản xuất và văn phòng quản lý",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Ghi nhận doanh thu chưa thực hiện khi đã hoàn thành nghĩa vụ cung cấp dịch vụ",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Ghi nhận nghiệp vụ rút tiền gửi ngân hàng về nộp thuế thu nhập doanh nghiệp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bút toán điều chỉnh nhằm tuân thủ nguyên tắc dồn tích và phù hợp, phân bổ chi phí/doanh thu dồn tích hoặc hoãn lại.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Doanh nghiệp mua một thiết bị văn phòng nguyên giá 120 triệu đồng, thời gian sử dụng hữu ích ước tính 5 năm, giá trị thanh lý ước tính bằng 0. Theo phương pháp khấu hao đường thẳng, mức trích khấu hao hàng tháng là bao nhiêu?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "2.000.000 đồng/tháng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "24.000.000 đồng/tháng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1.500.000 đồng/tháng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "2.500.000 đồng/tháng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Khấu hao năm = 120 tr / 5 = 24 triệu. Khấu hao tháng = 24 tr / 12 = 2 triệu đồng/tháng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Báo cáo tài chính phản ánh luồng tiền vào và luồng tiền ra phân loại theo 3 hoạt động: Hoạt động kinh doanh, Hoạt động đầu tư và Hoạt động tài chính là Báo cáo ...",
+    "answer": "lưu chuyển tiền tệ",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Báo cáo này giải thích sự biến động của tiền và tương đương tiền trong kỳ báo cáo (Cash Flow Statement).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Nguyên tắc Thận trọng (Prudence / Conservatism) trong kế toán quy định việc lập các khoản dự phòng phải đảm bảo yêu cầu nào?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Ghi nhận ngay khi có bằng chứng chắc chắn về khả năng phát sinh tổn thất, nhưng chỉ ghi nhận doanh thu khi có bằng chứng chắc chắn",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Lập dự phòng càng lớn càng tốt để giảm tối đa số thuế thu nhập doanh nghiệp phải nộp",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Ước tính giá trị tài sản cao hơn giá trị thị trường để nâng cao uy tín tài chính của doanh nghiệp",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Không ghi nhận các khoản chi phí chưa có hóa đơn giá trị gia tăng hợp pháp",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Thận trọng: Không lập dự phòng quá lớn, không đánh giá cao hơn giá trị tài sản/thu nhập, không đánh giá thấp hơn nợ phải trả/chi phí.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Tài khoản 214 (Hao mòn tài sản cố định) là tài khoản điều chỉnh giảm tài sản, có kết cấu ngược với tài khoản tài sản thông thường (phát sinh tăng ghi bên Có, số dư cuối kỳ bên Có).",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "TK 214 là tài khoản phản ánh giá trị hao mòn lũy kế, ghi giảm trực tiếp nguyên giá tài sản trên Bảng cân đối kế toán (ghi số âm).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Theo Chuẩn mực Kế toán (VAS), việc tuân thủ nguyên tắc Phù hợp (Matching Principle) đòi hỏi kế toán viên phải thực hiện những yêu cầu nào dưới đây?",
+    "points": 30,
+    "timeLimit": 25,
+    "options": [
+      {
+        "id": "A",
+        "text": "Khi ghi nhận một khoản doanh thu thì phải ghi nhận một khoản chi phí tương ứng có liên quan đến việc tạo ra doanh thu đó",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chi phí của kỳ nào phải được hạch toán đầy đủ vào chi phí của kỳ đó để xác định đúng kết quả kinh doanh",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Phân bổ hợp lý các khoản chi phí trả trước phát sinh liên quan đến kết quả hoạt động của nhiều kỳ kế toán",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Ghi nhận toàn bộ chi phí mua sắm máy móc thiết bị vào chi phí hoạt động ngay trong tháng đầu tiên mua về",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Doanh thu và chi phí tạo ra doanh thu đó phải được ghi nhận đồng thời trong cùng kỳ kế toán.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng phương pháp tính giá trị hàng tồn kho xuất kho với đặc trưng nổi bật của nó:",
+    "points": 30,
+    "timeLimit": 35,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Phương pháp FIFO (Nhập trước xuất trước)",
+        "right": "Hàng mua trước xuất trước, giá trị hàng tồn kho cuối kỳ phản ánh sát giá thị trường gần nhất"
+      },
+      {
+        "id": "p2",
+        "left": "Phương pháp Bình quân gia quyền cả kỳ",
+        "right": "Đơn giá xuất kho tính bằng tổng giá trị hàng tồn chia tổng số lượng hàng sẵn có trong kỳ"
+      },
+      {
+        "id": "p3",
+        "left": "Phương pháp Giá thực tế đích danh",
+        "right": "Áp dụng cho hàng hóa có giá trị cao, chủng loại đặc thù nhận diện riêng lẻ từng lô hàng"
+      },
+      {
+        "id": "p4",
+        "left": "Phương pháp Bình quân sau mỗi lần nhập",
+        "right": "Đơn giá xuất kho được tính lại ngay sau mỗi chuyến hàng mới nhập về kho"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "FIFO giả định hàng cũ xuất trước; Đích danh đòi hỏi nhận diện từng đơn vị; Bình quân chia đều giá trị cho số lượng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Khi lập Bảng cân đối số phát sinh (Trial Balance), những lỗi sai sót kế toán nào dưới đây KHÔNG làm mất cân đối tổng số phát sinh Nợ và tổng số phát sinh Có?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Bỏ sót hoàn toàn một nghiệp vụ kinh tế phát sinh không ghi vào sổ kế toán",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Ghi trùng lặp (ghi 2 lần) cùng một định khoản kế toán hợp lệ",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Định khoản sai tài khoản đối ứng nhưng số tiền bên Nợ và bên Có vẫn bằng nhau",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Ghi số tiền bên Nợ là 50 triệu nhưng bên Có lại ghi 5 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bảng cân đối số phát sinh chỉ phát hiện sai lệch số học tổng Nợ != tổng Có, không phát hiện được sai sót đối ứng hoặc bỏ sót/ghi trùng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng trình tự các bước trong Chu trình kế toán (Accounting Cycle) tại một doanh nghiệp trong một kỳ kế toán:",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Thu thập, kiểm tra và phân tích chứng từ kế toán gốc",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Ghi chép các nghiệp vụ vào Nhật ký chung (General Journal)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Chuyển số liệu từ Nhật ký chung vào Sổ cái các tài khoản (General Ledger)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Lập Bảng cân đối thử và thực hiện các bút toán điều chỉnh cuối kỳ",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Thực hiện bút toán khóa sổ và lập Báo cáo tài chính hoàn chỉnh",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Chứng từ gốc -> Nhật ký chung -> Sổ cái -> Bảng cân đối thử & Điều chỉnh -> Khóa sổ & Lập BCTC.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Đầu kỳ doanh nghiệp có: Tổng Tài sản = 800 triệu, Nợ phải trả = 300 triệu. Trong kỳ, doanh nghiệp đạt doanh thu 400 triệu, chi phí kinh doanh 280 triệu (chưa tính thuế TNDN 20%), đồng thời chủ sở hữu rút vốn 50 triệu và góp thêm vốn 80 triệu. Cuối kỳ, nợ phải trả tăng thêm 40 triệu. Tổng Tài sản cuối kỳ của doanh nghiệp là bao nhiêu?",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "A",
+        "text": "966 triệu đồng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "980 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "940 triệu đồng",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1.020 triệu đồng",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Vốn CSH đầu = 800 - 300 = 500tr. Lợi nhuận trước thuế = 400 - 280 = 120tr. Thuế 20% = 24tr -> LN sau thuế = 96tr. Vốn CSH cuối = 500 + 96 - 50 + 80 = 626tr. Nợ cuối = 300 + 40 = 340tr. Tổng Tài sản cuối = 626 + 340 = 966 triệu đồng.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình kiểm kê và xử lý chênh lệch hàng tồn kho phát hiện thiếu hụt cuối kỳ kế toán:",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Thành lập ban kiểm kê và lập Biên bản kiểm kê quỹ / kho thực tế",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Đối chiếu số lượng thực tế với số dư sổ sách kế toán để xác định giá trị thiếu",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Hạch toán giá trị tài sản thiếu chờ xử lý vào Tài khoản 1381",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Họp hội đồng xử lý xác định nguyên nhân và trách nhiệm bồi thường cá nhân / hao hụt tự nhiên",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Hạch toán kết chuyển theo quyết định xử lý (trừ lương, bồi thường hoặc ghi nhận vào chi phí khác)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Biên bản kiểm kê -> Đối chiếu sổ sách -> Treo TK 1381 -> Họp hội đồng phân định trách nhiệm -> Hạch toán quyết định xử lý.",
+    "isTieBreaker": false
   }
 ]

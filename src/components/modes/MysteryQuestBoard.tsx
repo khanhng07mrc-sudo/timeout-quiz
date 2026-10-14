@@ -2366,32 +2366,19 @@ export default function MysteryQuestBoard({
                     {/* ── 3D Turntable Stage Floor Shadow ── */}
                     <div className="absolute -bottom-8 sm:-bottom-10 w-[92%] h-16 sm:h-20 bg-[radial-gradient(ellipse_at_50%_50%,rgba(0,0,0,0.95)_20%,rgba(15,8,30,0.8)_55%,transparent_75%)] blur-md pointer-events-none -z-10" />
 
-                    {/* ── 3D Drum Cylinder Body (Thành Tang Trống Chiếc Nón Kỳ Diệu dày ~25px) ── */}
+                    {/* ── 3D Drum Cylinder Body (Thành Tang Trống Chiếc Nón Kỳ Diệu dày ~20px) ── */}
                     <div
-                      className="absolute inset-0 rounded-full pointer-events-none"
+                      className="absolute inset-0 rounded-full pointer-events-none -z-10"
                       style={{
-                        transform: "translateY(22px) translateZ(-22px)",
-                        background: "linear-gradient(180deg, #b45309 0%, #78350f 25%, #451a03 60%, #1e0902 100%)",
-                        boxShadow: "0 24px 44px rgba(0,0,0,0.95), inset 0 -4px 10px rgba(0,0,0,0.9)",
-                        border: "3.5px solid #d97706",
+                        transform: "translateY(18px) translateZ(-18px)",
+                        background: "linear-gradient(180deg, #d97706 0%, #78350f 30%, #451a03 65%, #1e0902 100%)",
+                        boxShadow: "0 22px 38px rgba(0,0,0,0.95), inset 0 -4px 10px rgba(0,0,0,0.9)",
+                        border: "3.5px solid #b45309",
                       }}
-                    >
-                      {/* Brushed metallic reflection highlights along the cylindrical drum wall */}
-                      <div className="absolute inset-0 rounded-full opacity-40 bg-[linear-gradient(90deg,transparent_0%,rgba(254,240,138,0.5)_30%,rgba(217,119,6,0.8)_50%,rgba(254,240,138,0.5)_70%,transparent_100%)]" />
-                    </div>
+                    />
 
-                    {/* ── Outer 3D Beveled Brushed Gold Rim Ring ── */}
-                    <div
-                      className="absolute -inset-1 rounded-full pointer-events-none z-20"
-                      style={{
-                        background: "conic-gradient(from 45deg, #78350f 0deg, #fef08a 45deg, #d97706 90deg, #451a03 135deg, #fef08a 180deg, #78350f 225deg, #fef08a 270deg, #b45309 315deg, #78350f 360deg)",
-                        padding: "6px",
-                        boxShadow: "0 14px 30px rgba(0,0,0,0.9), 0 0 35px rgba(245,158,11,0.45)",
-                        border: "2px solid #fbbf24",
-                      }}
-                    >
-                      <div className="w-full h-full rounded-full border-2 border-amber-950/80 shadow-[inset_0_2px_8px_rgba(0,0,0,0.9)]" />
-                    </div>
+                    {/* ── Outer 3D Beveled Gold-Bronze Ring with Glowing Ambient Aura ── */}
+                    <div className="absolute -inset-1 rounded-full border-[7px] sm:border-[9px] border-amber-400/90 shadow-[0_0_40px_rgba(245,158,11,0.5),inset_0_0_20px_rgba(0,0,0,0.85)] pointer-events-none z-20" />
 
                     {/* Spinning Wheel (17.5s - 22.5s Chiếc Nón Kỳ Diệu Physics: 4 - 9 turns) */}
                     <div
@@ -2660,11 +2647,6 @@ export default function MysteryQuestBoard({
                   {(() => {
                     const effectivePower = Math.min(100, Math.max(0, lockedPower ?? wheelPower));
                     const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
-                    const activeSpinSec = (
-                      (tarotState?.spinDurationMs ??
-                        Math.round(15000 + ((Math.max(1, effectivePower) - 1) / 99) * 5000)) /
-                      1000
-                    ).toFixed(1);
 
                     const handleTriggerSpin = () => {
                       if (isSpinningActive) return;
@@ -2742,13 +2724,13 @@ export default function MysteryQuestBoard({
                               }`}
                             >
                               {isSpinningActive
-                                ? `🌀 ĐANG XOAY VÒNG TAROT (${activeSpinSec}S)...`
+                                ? "🌀 ĐANG XOAY VÒNG TAROT..."
                                 : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
                             </button>
                           ) : (
                             <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
                               {isSpinningActive
-                                ? `🌀 Vòng quay Major Arcana đang xoay (${activeSpinSec} giây)...`
+                                ? "🌀 Vòng quay Major Arcana đang xoay..."
                                 : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
                             </div>
                           )}

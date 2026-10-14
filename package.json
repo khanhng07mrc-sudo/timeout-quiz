@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node --project tsconfig.server.json server.ts",
     "dev:next": "next dev",
-    "build": "next build && esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js --external:next --external:@prisma/client --external:socket.io --external:bcryptjs",
+    "build": "next build --webpack && esbuild server.ts --bundle --platform=node --target=node20 --outfile=server.js --external:next --external:@prisma/client --external:socket.io --external:bcryptjs",
     "start": "node server.js",
     "lint": "next lint",
     "type-check": "tsc --noEmit",

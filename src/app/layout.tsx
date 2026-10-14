@@ -1,12 +1,9 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
-
-const inter = Inter({ subsets: ["latin", "vietnamese"] });
 
 export const metadata: Metadata = {
   title: "Quizorra — Đấu Trường Trí Tuệ & Realtime Quiz Arena",
@@ -25,7 +22,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="vi">
-      <body className={`${inter.className} bg-background text-foreground relative min-h-screen`}>
+      <body className="font-sans bg-background text-foreground relative min-h-screen">
         <QuizSoulBackground />
         <GlobalPageTransition />
         <OfflineBanner />

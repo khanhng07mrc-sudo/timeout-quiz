@@ -2375,13 +2375,13 @@ export default function MysteryQuestBoard({
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
                   <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 p-0 overflow-visible`}>
-                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.05x cận cảnh chuẩn 12h kịch tính ── */}
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.1x đẩy vòng quay lên & hiện trọn vẹn nội dung ô ── */}
                     <div
                       className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 6%",
+                        transformOrigin: "50% 18%",
                         transform: isWheelZoomedIn
-                          ? "scale(2.05) translateY(-6px)"
+                          ? "scale(2.1) translateY(-28px)"
                           : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,

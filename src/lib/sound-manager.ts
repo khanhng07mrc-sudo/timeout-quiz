@@ -791,9 +791,10 @@ class SoundManager {
   }
 
   /**
-   * Nhạc nền vòng quay Chiếc Nón Kỳ Diệu VTV3 (2013) chạy suốt thời gian xoay (17.5s - 22.5s)
+   * Nhạc nền vòng quay Chiếc Nón Kỳ Diệu VTV3 (2013) chạy suốt thời gian xoay (15s - 20s).
+   * Không tua nhanh, không loop, và chống kích hoạt lặp lại (re-trigger) gây tải trùng âm thanh.
    */
-  public playWheelSpinMusic(durationMs: number = 20000) {
+  public playWheelSpinMusic(durationMs: number = 20000, forceRestart: boolean = false) {
     if (typeof window === "undefined") return;
     this.initAudioAssets();
 
@@ -804,6 +805,12 @@ class SoundManager {
         this.bgmMap.set("wheel_spin", audio);
       }
       this.wheelSpinAudio = audio;
+
+      // Nếu âm thanh đang phát mượt mà và không yêu cầu cưỡng chế khởi động lại -> chỉ cập nhật volume
+      if (!forceRestart && !audio.paused && !audio.ended && audio.currentTime > 0.05) {
+        audio.volume = this.isMuted ? 0 : Math.min(1, this.volume * 0.9);
+        return;
+      }
 
       const prevFade = this.activeFadeMap.get(audio);
       if (prevFade) {

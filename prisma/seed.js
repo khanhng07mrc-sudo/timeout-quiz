@@ -67,17 +67,21 @@ async function main() {
       });
       for (let i = 0; i < questionsData.length; i++) {
         const q = questionsData[i];
+        const rawPts = Number(q.points) || 10;
+        const normalizedPts = rawPts <= 10 ? 10 : rawPts <= 20 ? 20 : rawPts <= 30 ? 30 : 40;
         await prisma.question.create({
           data: {
             quizBankId: bank.id,
             type: q.type,
             content: q.content,
             options: q.options || void 0,
+            pairs: q.pairs || void 0,
             answer: q.answer || null,
-            points: q.points || 10,
-            timeLimit: q.timeLimit || 30,
+            points: normalizedPts,
+            timeLimit: normalizedPts <= 10 ? 15 : normalizedPts <= 20 ? 20 : normalizedPts <= 30 ? 30 : 60,
             hint: q.hint || null,
-            order: i + 1
+            order: i + 1,
+            isTieBreaker: Boolean(q.isTieBreaker)
           }
         });
       }

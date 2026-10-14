@@ -114,7 +114,12 @@ export default function MysteryQuestBoard({
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const [isWheelCssTransitioning, setIsWheelCssTransitioning] = useState<boolean>(false);
   const [isPointerTicking, setIsPointerTicking] = useState<boolean>(false);
+  const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
+  const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
   const wheelPrevAngleRef = useRef<number>(0);
+  const wheelSpinAudioTargetRef = useRef<number | null>(null);
+  const localDoorActionTimeRef = useRef<number>(0);
+  const hasLocalDoorActionRef = useRef<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
   const flippingTileIdRef = useRef<number | null>(null);
   const lastClickedTileIdRef = useRef<number | null>(null);
@@ -164,9 +169,14 @@ export default function MysteryQuestBoard({
     survivalDilemmaChoice,
   } = mysteryState;
 
-  // Synchronize optimistic selection for ONE_SHOT_DOORS Phase 1
+  // Synchronize optimistic selection for ONE_SHOT_DOORS Phase 1 (Chống nháy/lệch nhịp khi click nhanh)
   useEffect(() => {
     if (oneShotState?.selectedDoorIds) {
+      const now = Date.now();
+      if (hasLocalDoorActionRef.current && now - localDoorActionTimeRef.current < 350) {
+        return;
+      }
+      hasLocalDoorActionRef.current = false;
       setOptimisticSelectedDoorIds(oneShotState.selectedDoorIds);
     }
   }, [oneShotState?.selectedDoorIds]);
@@ -329,6 +339,11 @@ export default function MysteryQuestBoard({
       setIsWheelCssTransitioning(false);
       setClientWheelAngle(target);
       setIsPointerTicking(false);
+      wheelSpinAudioTargetRef.current = null;
+      if (!tarotState?.targetAngle || tarotState?.targetAngle === 0) {
+        setIsWheelZoomedIn(false);
+        setWheelZoomDurationMs(800);
+      }
       return;
     }
 
@@ -341,16 +356,32 @@ export default function MysteryQuestBoard({
     let cssRaf1 = 0;
     let cssRaf2 = 0;
     let tickResetTimeout: ReturnType<typeof setTimeout> | null = null;
+    let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
     // 1. Snap wheel to startAngle with transition: none first (critical when remounting after Gamble)
     setIsWheelCssTransitioning(false);
     setClientWheelAngle(startAngle);
 
-    // 2. Start VTV3 Chiếc Nón Kỳ Diệu wheel spin background music
-    soundManager.playWheelSpinMusic(durationMs);
+    // 2. Dynamic Camera Zoom Rig:
+    // "lúc ban đầu quay đủ cả vòng ngoài, sau 3s đầu tiên, dần phóng về sát khu vực kim quay, dừng phóng ở khoảng giây thứ 10"
+    // "khi phóng, thì góc quay sẽ bị quay lên một chút theo trục Y để nhìn sinh động hơn"
+    setIsWheelZoomedIn(false);
+    setWheelZoomDurationMs(7000);
+    zoomStartTimer = setTimeout(() => {
+      setIsWheelZoomedIn(true);
+      setWheelZoomDurationMs(7000); // Phóng dần từ 3s đến 10s (chính xác 7000ms)
+    }, 3000);
 
-    // 3. On next painted frame, activate CSS transition to targetAngle
+    // 3. Start VTV3 Chiếc Nón Kỳ Diệu wheel spin background music (chỉ kích hoạt 1 lần duy nhất cho target hiện tại)
+    const isSandboxChild = typeof window !== "undefined" && window.self !== window.top;
+    const shouldPlayBgm = isDisplay || !isSandboxChild;
+    if (shouldPlayBgm && wheelSpinAudioTargetRef.current !== target) {
+      wheelSpinAudioTargetRef.current = target;
+      soundManager.playWheelSpinMusic(durationMs);
+    }
+
+    // 4. On next painted frame, activate CSS transition to targetAngle
     cssRaf1 = requestAnimationFrame(() => {
       cssRaf2 = requestAnimationFrame(() => {
         setIsWheelCssTransitioning(true);
@@ -361,8 +392,8 @@ export default function MysteryQuestBoard({
     const step = (now: number) => {
       const elapsed = now - startTime;
       const rawProgress = Math.min(1, Math.max(0, elapsed / durationMs));
-      // Matches CSS transition: cubic-bezier(0.12, 0.84, 0.20, 1)
-      const eased = evaluateCubicBezier(rawProgress, 0.12, 0.84, 0.20, 1.0);
+      // Matches CSS transition: cubic-bezier(0.22, 1, 0.36, 1) - Tốc độ quay cơ học tự nhiên, kim gẩy rõ từng nấc kim loại
+      const eased = evaluateCubicBezier(rawProgress, 0.22, 1.0, 0.36, 1.0);
       const currentLiveAngle = startAngle + totalDelta * eased;
       const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
 
@@ -381,6 +412,7 @@ export default function MysteryQuestBoard({
       } else {
         wheelPrevAngleRef.current = target;
         setIsPointerTicking(false);
+        wheelSpinAudioTargetRef.current = null;
         if (!finishedChimePlayed) {
           finishedChimePlayed = true;
           soundManager.playWheelStopChime();
@@ -395,6 +427,7 @@ export default function MysteryQuestBoard({
       if (cssRaf2) cancelAnimationFrame(cssRaf2);
       if (rafId) cancelAnimationFrame(rafId);
       if (tickResetTimeout) clearTimeout(tickResetTimeout);
+      if (zoomStartTimer) clearTimeout(zoomStartTimer);
       setIsPointerTicking(false);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
@@ -488,6 +521,8 @@ export default function MysteryQuestBoard({
       const isOneShot = miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS";
       // Trong Chọn Cửa Giai Đoạn 1: Cung cấp phản hồi thị giác siêu tốc (<16ms) và cooldown ngắn 80ms!
       if (isOneShot && (oneShotState?.phase === "SELECTING" || !oneShotState?.phase) && !isPenaltySurvivalMode) {
+        hasLocalDoorActionRef.current = true;
+        localDoorActionTimeRef.current = Date.now();
         setOptimisticSelectedDoorIds((prev) => {
           if (prev.includes(tile.id)) {
             return prev.filter((id) => id !== tile.id);
@@ -1764,9 +1799,9 @@ export default function MysteryQuestBoard({
 
             <div className="grid grid-cols-5 gap-1 sm:gap-2.5 max-w-4xl mx-auto py-2">
               {tiles.map((tile) => {
-                const effectiveSelectedDoorIds = optimisticSelectedDoorIds.length > 0
+                const effectiveSelectedDoorIds = hasLocalDoorActionRef.current
                   ? optimisticSelectedDoorIds
-                  : (oneShotState?.selectedDoorIds || []);
+                  : (oneShotState?.selectedDoorIds || optimisticSelectedDoorIds);
                 const isSelected = Boolean(effectiveSelectedDoorIds.includes(tile.id));
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
                 const isBomb = tile.type !== "REWARD" && tile.type !== "ESCAPE_SAFE";
@@ -2235,7 +2270,21 @@ export default function MysteryQuestBoard({
                   })()}
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
-                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-2" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-2"} mx-auto flex items-center justify-center z-10`}>
+                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-2" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-2"} mx-auto flex items-center justify-center z-10 pt-7 pb-2 px-1 overflow-hidden rounded-3xl`}>
+                    {/* 3D Camera Rig: Phóng dần về sát kim quay sau 3s, dừng ở giây 10, nghiêng nhẹ theo trục Y sinh động */}
+                    <div
+                      className="w-full h-full relative flex items-center justify-center"
+                      style={{
+                        transformOrigin: "50% 6%",
+                        transform: isWheelZoomedIn
+                          ? "perspective(1200px) rotateX(14deg) rotateY(-4deg) scale(1.62) translateY(3%)"
+                          : "perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1.0) translateY(0%)",
+                        transitionProperty: "transform",
+                        transitionDuration: `${wheelZoomDurationMs}ms`,
+                        transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
+                        transformStyle: "preserve-3d",
+                      }}
+                    >
                     {/* 3D Flipper Pointer Needle at 12 o'clock (Flicks on ticks & deflects on peg boundaries) */}
                     {(() => {
                       const segCount = isPenaltySurvivalMode ? 20 : 22;
@@ -2309,7 +2358,7 @@ export default function MysteryQuestBoard({
                       style={{
                         transform: `rotate(${clientWheelAngle}deg)`,
                         transition: isWheelCssTransitioning && tarotState?.isWheelSpinning
-                          ? `transform ${tarotState?.spinDurationMs ?? 20000}ms cubic-bezier(0.12, 0.84, 0.20, 1)`
+                          ? `transform ${tarotState?.spinDurationMs ?? 20000}ms cubic-bezier(0.22, 1, 0.36, 1)`
                           : "none",
                       }}
                     >
@@ -2402,9 +2451,12 @@ export default function MysteryQuestBoard({
                           const pegX = cx + rPeg * Math.sin(theta1);
                           const pegY = cy - rPeg * Math.cos(theta1);
 
-                          // Font sizing based on function label length
+                          // Font sizing & positioning for RADIAL spoke orientation (dọc theo nan quạt, chiều dài hơn)
                           const labelLen = displayInfo.mainLabel.length;
-                          const mainFontSize = labelLen <= 3 ? "15" : labelLen <= 6 ? "12" : labelLen <= 9 ? "10" : "8.5";
+                          const hasBadge = Boolean(displayInfo.badge);
+                          const radialMainFontSize = labelLen <= 3 ? "20" : labelLen <= 6 ? "16" : labelLen <= 9 ? "14" : "12";
+                          const strokeW = labelLen <= 4 ? "2.6" : "2.0";
+                          const ySpokeCenter = cy - 105;
 
                           return (
                             <g key={seg.index}>
@@ -2428,15 +2480,15 @@ export default function MysteryQuestBoard({
                                 strokeOpacity="0.25"
                               />
 
-                              {/* Wedge Content (Icon & Function Text Label) */}
+                              {/* Wedge Content (Icon & Function Text Label along Radial Spoke) */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
                                 {/* Outer Accent Pin */}
-                                <circle cx={cx} cy={cy - 178} r="1.3" fill={symbolColor} opacity="0.8" />
+                                <circle cx={cx} cy={cy - 180} r="1.3" fill={symbolColor} opacity="0.8" />
 
                                 {/* Large Arcana Vector Line-Art SVG Icon */}
                                 <svg
                                   x={cx - 12}
-                                  y={cy - 168}
+                                  y={cy - 172}
                                   width="24"
                                   height="24"
                                   viewBox="0 0 32 32"
@@ -2445,44 +2497,62 @@ export default function MysteryQuestBoard({
                                   {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
                                 </svg>
 
-                                {/* Main Function Text Label (e.g. +15, +10, THÊM LƯỢT, MẤT ĐIỂM, BOM HẮC ÁM, CƯỚP 20...) */}
-                                <text
-                                  x={cx}
-                                  y={cy - 128}
-                                  textAnchor="middle"
-                                  fontSize={mainFontSize}
-                                  fontWeight="900"
-                                  fill="#ffffff"
-                                  stroke="#000000"
-                                  strokeWidth="1.2"
-                                  style={{ paintOrder: "stroke fill" }}
-                                  dominantBaseline="central"
-                                  className="font-black select-none pointer-events-none tracking-tight"
-                                >
-                                  {displayInfo.mainLabel}
-                                </text>
+                                {/* Main Function Text Label & Badge along Radial Spoke (dọc theo nan quạt, xoay 90 độ) */}
+                                <g transform={`rotate(90 ${cx} ${ySpokeCenter})`}>
+                                  {hasBadge ? (
+                                    <>
+                                      <text
+                                        x={cx}
+                                        y={ySpokeCenter - 5.5}
+                                        textAnchor="middle"
+                                        fontSize={radialMainFontSize}
+                                        fontWeight="900"
+                                        fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : "#ffffff"}
+                                        stroke="#000000"
+                                        strokeWidth={strokeW}
+                                        style={{ paintOrder: "stroke fill" }}
+                                        dominantBaseline="central"
+                                        className="font-black select-none pointer-events-none tracking-tight uppercase"
+                                      >
+                                        {displayInfo.mainLabel}
+                                      </text>
+                                      <text
+                                        x={cx}
+                                        y={ySpokeCenter + 7}
+                                        textAnchor="middle"
+                                        fontSize="7.8"
+                                        fontWeight="800"
+                                        fill={symbolColor}
+                                        stroke="#000000"
+                                        strokeWidth="1.2"
+                                        style={{ paintOrder: "stroke fill" }}
+                                        dominantBaseline="central"
+                                        className="select-none pointer-events-none tracking-widest uppercase opacity-95 font-black"
+                                      >
+                                        {displayInfo.badge}
+                                      </text>
+                                    </>
+                                  ) : (
+                                    <text
+                                      x={cx}
+                                      y={ySpokeCenter}
+                                      textAnchor="middle"
+                                      fontSize={radialMainFontSize}
+                                      fontWeight="900"
+                                      fill={seg.isShieldTransformed ? "#a7f3d0" : isLandedWinner ? "#fef08a" : "#ffffff"}
+                                      stroke="#000000"
+                                      strokeWidth={strokeW}
+                                      style={{ paintOrder: "stroke fill" }}
+                                      dominantBaseline="central"
+                                      className="font-black select-none pointer-events-none tracking-tight uppercase"
+                                    >
+                                      {displayInfo.mainLabel}
+                                    </text>
+                                  )}
+                                </g>
 
-                                {/* Optional Badge / Subtitle */}
-                                {displayInfo.badge && (
-                                  <text
-                                    x={cx}
-                                    y={cy - 113}
-                                    textAnchor="middle"
-                                    fontSize="6.8"
-                                    fontWeight="800"
-                                    fill={symbolColor}
-                                    stroke="#000000"
-                                    strokeWidth="0.6"
-                                    style={{ paintOrder: "stroke fill" }}
-                                    dominantBaseline="central"
-                                    className="select-none pointer-events-none tracking-widest uppercase opacity-90"
-                                  >
-                                    {displayInfo.badge}
-                                  </text>
-                                )}
-
-                                {/* Inner Accent Dot */}
-                                <circle cx={cx} cy={cy - 92} r="1.1" fill={symbolColor} opacity="0.5" />
+                                {/* Inner Accent Dot near Hub */}
+                                <circle cx={cx} cy={cy - 56} r="1.1" fill={symbolColor} opacity="0.5" />
                               </g>
 
                               {/* ── 3D Chrome Cylindrical Peg at Segment Boundary ── */}
@@ -2526,7 +2596,9 @@ export default function MysteryQuestBoard({
                         </g>
                       </svg>
                     </div>
+                    {/* End 3D Camera Rig */}
                   </div>
+                </div>
 
                   {/* ── Ping-pong Power Gauge ── */}
                   {(() => {

@@ -13,7 +13,7 @@
     "title": "Lập kế hoạch (QLKT1120)",
     "description": "Quy trình lập kế hoạch chiến lược và tác nghiệp, mục tiêu SMART, ma trận SWOT/BCG, phương pháp dự báo và ngân sách",
     "file": "/quiz-banks/QLKT1120_Lap_ke_hoach.json",
-    "totalQuestions": 28,
+    "totalQuestions": 45,
     "lecturer": "Mai Anh Bảo",
     "tieBreakerCount": 3
   },
@@ -40,7 +40,7 @@
     "title": "Khoa học dữ liệu trong kinh tế và kinh doanh (TOKT1138)",
     "description": "Quy trình CRISP-DM, hồi quy tuyến tính OLS, phân loại Logistic/Cây quyết định, phân cụm K-Means, tiền xử lý và đánh giá mô hình",
     "file": "/quiz-banks/TOKT1138_Khoa_hoc_du_lieu.json",
-    "totalQuestions": 28,
+    "totalQuestions": 45,
     "lecturer": "Nguyễn Ngọc Tuấn",
     "tieBreakerCount": 3
   },

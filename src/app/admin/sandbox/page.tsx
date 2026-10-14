@@ -1283,19 +1283,26 @@ export default function AdminSandboxPage() {
   const intermissionRef = useRef(intermission);
   intermissionRef.current = intermission;
 
+  const lastExplicitSyncTimeRef = useRef<number>(0);
+
   const syncToIframes = useCallback((overrides?: Record<string, any>) => {
     if (!isOfflineSandbox) return;
+    if (overrides) {
+      lastExplicitSyncTimeRef.current = Date.now();
+    }
+    const rState = overrides?.roomState ?? roomStateRef.current;
+    const curQ = overrides?.currentQuestion ?? currentQuestionRef.current;
     const payload = {
-      roomState: roomStateRef.current,
-      currentQuestion: currentQuestionRef.current,
-      timer: timerRef.current,
-      revealPayload: revealPayloadRef.current,
+      roomState: rState,
+      currentQuestion: curQ,
+      timer: overrides?.timer ?? timerRef.current,
+      revealPayload: overrides?.revealPayload ?? revealPayloadRef.current,
       buzzed: null,
       lastPowerup: null,
       matchStarting: matchStarting,
       questionPrepare: questionPrepare,
       intermission: intermissionRef.current,
-      mysteryQuestState: roomStateRef.current?.mysteryQuestState,
+      mysteryQuestState: rState?.mysteryQuestState,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
@@ -1303,6 +1310,8 @@ export default function AdminSandboxPage() {
   }, [isOfflineSandbox, matchStarting, questionPrepare]);
 
   useEffect(() => {
+    // Tránh gửi lặp 2 lần liên tiếp trong cùng một khung hình khi vừa mới sync trực tiếp từ handler
+    if (Date.now() - lastExplicitSyncTimeRef.current < 50) return;
     syncToIframes();
   }, [roomState, currentQuestion, revealPayload, syncToIframes]);
 

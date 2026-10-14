@@ -774,5 +774,485 @@
       }
     ],
     "hint": "Chữ E đầu tiên trong từ viết tắt PESTEL."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong mô hình lập kế hoạch kinh doanh 5W1H, chữ 'W' đại diện cho câu hỏi 'Tại sao phải thực hiện mục tiêu này?' là từ nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Where (Ở đâu)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Why (Tại sao)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "When (Khi nào)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Who (Ai làm)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Why xác định lý do, mục đích cốt lõi và ý nghĩa của kế hoạch.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Kế hoạch tác nghiệp (Operational Planning) thường có tầm nhìn dài hạn từ 5 đến 10 năm và do Hội đồng Quản trị ban hành.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Kế hoạch tác nghiệp mang tính ngắn hạn (dưới 1 năm), gắn với hoạt động hàng ngày của cấp cơ sở.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Mô hình quản trị mục tiêu hiện đại được Google và Intel áp dụng phổ biến, bao gồm Mục tiêu (Objectives) và Các kết quả then chốt, viết tắt là gì?",
+    "answer": "OKR",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Viết tắt của 3 chữ cái tiếng Anh: Objectives and Key Results.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong chu trình cải tiến liên tục PDCA của Deming, chữ 'C' đại diện cho hành động nào?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Control (Kiểm soát nội bộ)",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Check (Kiểm tra, đo lường kết quả)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Create (Sáng tạo phương án mới)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Cancel (Hủy bỏ dự án thất bại)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "PDCA = Plan - Do - Check - Act.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Loại kế hoạch nào dưới đây quy định chuỗi các hành động bắt buộc phải thực hiện theo trình tự thời gian cụ thể để hoàn thành một công việc?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Quy trình (Procedures)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chính sách (Policies)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Chiến lược (Strategies)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Quy chế văn hóa công ty",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Quy trình định rõ từng bước 1, 2, 3... theo trình tự trước sau.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong ma trận SWOT, Cơ hội (Opportunities) và Thách thức (Threats) phản ánh các nhân tố thuộc môi trường bên ngoài của tổ chức.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Điểm mạnh/yếu thuộc nội bộ, cơ hội/thách thức đến từ môi trường bên ngoài.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong các phát biểu dưới đây về Ma trận mở rộng sản phẩm / thị trường của Ansoff, những phát biểu nào là ĐÚNG?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Thâm nhập thị trường là bán sản phẩm hiện có vào thị trường hiện có",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Phát triển sản phẩm là đưa sản phẩm mới vào thị trường hiện có",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Đa dạng hóa là đưa sản phẩm mới vào thị trường hoàn toàn mới",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Phát triển thị trường là bán sản phẩm mới vào thị trường hiện có",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phát triển thị trường là bán sản phẩm hiện có vào các thị trường hoặc phân khúc khách hàng mới.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Phương pháp lập ngân sách yêu cầu người quản lý phải giải trình và chứng minh lại toàn bộ các khoản chi tiêu từ con số 0 cho mỗi kỳ lập kế hoạch mới được gọi là ngân sách gì? (Ghi tên tiếng Anh 3 chữ cái)",
+    "answer": "ZBB",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Viết tắt của Zero-Based Budgeting (Ngân sách dựa trên số không).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy nêu sự khác biệt cốt lõi giữa Kế hoạch chiến lược (Strategic Plan) và Kế hoạch tác nghiệp (Operational Plan) về: Tầm nhìn thời gian và Cấp quản lý chịu trách nhiệm chính.",
+    "answer": "Kế hoạch chiến lược: dài hạn (3-5+ năm), do cấp cao (HĐQT/CEO) xây dựng. Kế hoạch tác nghiệp: ngắn hạn (hàng tuần/tháng/dưới 1 năm), do cấp cơ sở/trưởng bộ phận thực hiện.",
+    "points": 20,
+    "timeLimit": 30,
+    "hint": "Tập trung vào 2 tiêu chí: Thời hạn (dài hạn vs ngắn hạn) và Thẩm quyền ban hành (cấp cao vs cấp cơ sở).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Một doanh nghiệp có chi phí cố định (FC) = 200 triệu đồng/tháng. Giá bán một sản phẩm P = 50.000 đồng, chi phí biến đổi trên mỗi sản phẩm VC = 30.000 đồng. Sản lượng hòa vốn (BEP) của doanh nghiệp là bao nhiêu?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "10.000 sản phẩm",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "6.667 sản phẩm",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "4.000 sản phẩm",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "15.000 sản phẩm",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Q_hòa vốn = FC / (P - VC) = 200.000.000 / (50.000 - 30.000) = 10.000 sản phẩm.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Phương pháp chuyên gia Delphi trong dự báo lập kế hoạch cho phép các chuyên gia tranh luận trực tiếp mặt đối mặt để đạt được đồng thuận nhanh nhất.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Phương pháp Delphi giữ ẩn danh hoàn toàn giữa các chuyên gia qua các vòng gửi phiếu khảo sát để tránh hiệu ứng tâm lý bầy đàn.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Theo mô hình 5 lực lượng cạnh tranh của Michael Porter, rào cản gia nhập ngành CAO sẽ dẫn đến hệ quả nào đối với các doanh nghiệp hiện tại trong ngành?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Giảm áp lực cạnh tranh từ các đối thủ tiềm năng mới",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Tăng quyền lực thương lượng của khách hàng",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Làm tăng nguy cơ xuất hiện sản phẩm thay thế",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Làm giảm tỷ suất lợi nhuận trung bình toàn ngành",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Rào cản cao ngăn các đối thủ tiềm tàng mới bước vào thị trường, bảo vệ thị phần doanh nghiệp hiện tại.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong các phát biểu dưới đây về kỹ thuật phân tích ma trận SWOT kết hợp, những cặp chiến lược nào được xác định CHÍNH XÁC?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chiến lược S-O: Tận dụng thế mạnh nội bộ để nắm bắt cơ hội bên ngoài",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chiến lược W-O: Khắc phục điểm yếu nội bộ bằng cách tận dụng cơ hội bên ngoài",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Chiến lược S-T: Sử dụng thế mạnh nội bộ để phòng ngừa và hạn chế các mối đe dọa bên ngoài",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Chiến lược W-T: Tối đa hóa chi phí đầu tư để biến điểm yếu thành cơ hội đột phá",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Chiến lược W-T là chiến lược phòng thủ tối thiểu hóa điểm yếu và né tránh nguy cơ de dọa.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "ESSAY",
+    "content": "Tại sao trong môi trường kinh doanh biến động mạnh (VUCA), kế hoạch dạng cuốn chiếu (Rolling Plan / Rolling Forecast) lại ưu việt hơn kế hoạch cố định hàng năm (Fixed Annual Plan)?",
+    "answer": "Kế hoạch cuốn chiếu liên tục cập nhật khung thời gian (ví dụ 12-18 tháng tới) theo từng quý/tháng, cho phép doanh nghiệp điều chỉnh linh hoạt nguồn lực và giả định theo biến động thực tế thay vì bị trói buộc vào chỉ tiêu cứng nhắc đã lỗi thời.",
+    "points": 30,
+    "timeLimit": 40,
+    "hint": "Nhấn mạnh tính linh hoạt, khả năng cập nhật giả định liên tục và phản ứng kịp thời với rủi ro thị trường.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng công cụ hoạch định chiến lược với mục đích ứng dụng chủ đạo của nó:",
+    "points": 30,
+    "timeLimit": 40,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Ma trận Ansoff",
+        "right": "Xác định 4 hướng tăng trưởng dựa trên Sản phẩm & Thị trường"
+      },
+      {
+        "id": "p2",
+        "left": "Ma trận GE / McKinsey",
+        "right": "Đánh giá 9 ô vị thế cạnh tranh kinh doanh và Sức hấp dẫn ngành"
+      },
+      {
+        "id": "p3",
+        "left": "Mô hình Chuỗi giá trị (Value Chain)",
+        "right": "Phân tích các hoạt động chính và hoạt động bổ trợ tạo ra giá trị"
+      },
+      {
+        "id": "p4",
+        "left": "Thẻ điểm cân bằng (BSC)",
+        "right": "Cụ thể hóa chiến lược thành 4 khía cạnh đo lường định lượng"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mỗi ma trận và khung lý thuyết phục vụ một góc nhìn phân tích chiến lược riêng biệt.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng trình tự các bước thực hiện kỹ thuật Dự báo theo phương pháp San bằng hàm mũ bậc nhất:",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Thu thập chuỗi số liệu thực tế của các kỳ quá khứ",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Lựa chọn giá trị dự báo khởi đầu (F1) cho kỳ phân tích đầu tiên",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Xác định hệ số san bằng alpha tối ưu trong khoảng (0, 1)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Áp dụng công thức F(t+1) = F(t) + alpha * [A(t) - F(t)]",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Đo lường sai số dự báo (MAD, MSE) và hiệu chỉnh tham số",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Số liệu lịch sử -> Giá trị ban đầu -> Chọn alpha -> Tính dự báo -> Đo sai số.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng các chỉ số thẩm định hiệu quả tài chính của dự án đầu tư trong kế hoạch dài hạn với tiêu chuẩn chấp thuận tương ứng:",
+    "points": 40,
+    "timeLimit": 60,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Giá trị hiện giá thuần (NPV)",
+        "right": "Chấp thuận khi NPV > 0 (tăng thêm giá trị cho chủ sở hữu)"
+      },
+      {
+        "id": "p2",
+        "left": "Tỷ suất sinh lời nội bộ (IRR)",
+        "right": "Chấp thuận khi IRR > Chi phí vốn sử dụng (WACC / r)"
+      },
+      {
+        "id": "p3",
+        "left": "Chỉ số khả năng sinh lời (PI)",
+        "right": "Chấp thuận khi PI = Tổng PV dòng thu / Vốn đầu tư > 1"
+      },
+      {
+        "id": "p4",
+        "left": "Thời gian hoàn vốn có chiết khấu (DPP)",
+        "right": "Chấp thuận khi DPP nhỏ hơn thời hạn hoàn vốn yêu cầu"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "NPV > 0, IRR > r, PI > 1 là bộ 3 quy tắc quyết định đầu tư kinh điển.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các giai đoạn của quy trình Quản trị Rủi ro trong lập kế hoạch chiến lược theo chuẩn ISO 31000:",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Thiết lập bối cảnh nội bộ và bên ngoài của tổ chức",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Nhận diện các nguy cơ và rủi ro tiềm tàng (Risk Identification)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Phân tích xác suất và mức độ tác động của rủi ro (Risk Analysis)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Đánh giá và xếp hạng ưu tiên các rủi ro (Risk Evaluation)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Lập kế hoạch ứng phó: Né tránh, Giảm thiểu, Chuyển giao hoặc Chấp nhận",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Bối cảnh -> Nhận diện -> Phân tích -> Đánh giá xếp hạng -> Kế hoạch ứng phó.",
+    "isTieBreaker": false
   }
 ]

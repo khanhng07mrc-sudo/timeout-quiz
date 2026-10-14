@@ -54,11 +54,6 @@
         "id": "D",
         "text": "Rút gọn số chiều dữ liệu bằng phương pháp PCA",
         "isCorrect": false
-      },
-      {
-        "id": "A",
-        "text": "A",
-        "isCorrect": false
       }
     ],
     "hint": "Đầu ra là nhãn danh mục rời rạc (Nhị phân: Có/Không). (Vỡ nợ / Không vỡ nợ)",
@@ -794,5 +789,485 @@
       }
     ],
     "hint": "Có dạng đồ thị hình chữ S: f(z) = 1 / (1 + e^-z)."
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong quy trình chuẩn CRISP-DM của khoa học dữ liệu, bước đầu tiên mang tính quyết định định hình bài toán là gì?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hiểu bài toán kinh doanh (Business Understanding)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Thu thập và chuẩn bị dữ liệu (Data Preparation)",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Xây dựng mô hình học máy (Modeling)",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Triển khai hệ thống (Deployment)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phải bắt đầu từ nhu cầu và mục tiêu kinh doanh của doanh nghiệp.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Hồi quy tuyến tính (Linear Regression) là một thuật toán thuộc nhóm Học không giám sát (Unsupervised Learning).",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": false
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Hồi quy tuyến tính là thuật toán Học có giám sát (Supervised Learning) vì cần nhãn mục tiêu y liên tục.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Thuật toán học máy kinh điển dùng để phân cụm khách hàng dựa trên khoảng cách Euclide đến K tâm cụm có tên là gì?",
+    "answer": "K-Means",
+    "points": 10,
+    "timeLimit": 15,
+    "hint": "Tên thuật toán ghép từ chữ cái K và chữ Means (trung bình).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số nào dưới đây thường được dùng để đánh giá mức độ tương quan tuyến tính giữa hai biến định lượng liên tục?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Hệ số tương quan Pearson (r)",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chỉ số Silhouette",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "Hàm Entropy",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Chỉ số Gini Impurity",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hệ số Pearson dao động trong đoạn [-1, 1].",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Trong thư viện Scikit-Learn của Python, hàm nào được sử dụng để chia ngẫu nhiên tập dữ liệu thành tập huấn luyện (train) và kiểm thử (test)?",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "train_test_split",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "data_partition_split",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "k_fold_splitter",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "cross_validation_cut",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Hàm train_test_split nằm trong module sklearn.model_selection.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Đồ thị ROC biểu diễn mối quan hệ giữa Tỷ lệ dương tính thật (TPR / Recall) và Tỷ lệ dương tính giả (FPR) ở các ngưỡng phân loại khác nhau.",
+    "points": 10,
+    "timeLimit": 15,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Trục tung là TPR (True Positive Rate) và trục hoành là FPR (False Positive Rate).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Khi dữ liệu có hiện tượng mất cân bằng mẫu nghiêm trọng (ví dụ 99% khách hàng bình thường, chỉ 1% gian lận thẻ tín dụng), những chỉ số nào dưới đây ĐÁNG TIN CẬY để đánh giá mô hình hơn chỉ số Accuracy?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chỉ số F1-Score",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Chỉ số PR-AUC (Diện tích dưới đường Precision-Recall)",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Độ nhạy / Recall của lớp thiểu số gian lận",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Chỉ số Độ chính xác tổng thể (Overall Accuracy)",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Accuracy bị đánh lừa bởi lớp đa số (mô hình đoán bừa tất cả không gian lận vẫn đạt 99% accuracy).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "FILL_BLANK",
+    "content": "Hiện tượng mô hình học máy đạt độ chính xác cực cao trên tập huấn luyện (Train) nhưng lại có sai số rất lớn trên tập dữ liệu kiểm thử (Test) được gọi là hiện tượng gì?",
+    "answer": "Overfitting",
+    "points": 20,
+    "timeLimit": 20,
+    "hint": "Tiếng Anh là Overfitting (Quá khớp dữ liệu).",
+    "isTieBreaker": false
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy giải thích sự khác biệt giữa hai chỉ số đánh giá phân loại: Precision (Độ chuẩn xác) và Recall (Độ thu hồi / Độ nhạy). Trong bài toán chẩn đoán gian lận tín dụng ngân hàng, chỉ số nào thường được ưu tiên tối đa và vì sao?",
+    "answer": "Precision = TP/(TP+FP): trong số các mẫu đoán gian lận, bao nhiêu % là gian lận thật. Recall = TP/(TP+FN): trong tổng số các vụ gian lận thực tế, mô hình phát hiện được bao nhiêu %. Trong gian lận ngân hàng, Recall được ưu tiên tối đa để không bỏ lọt bất kỳ kẻ gian lận nào (tránh thiệt hại tài chính lớn).",
+    "points": 20,
+    "timeLimit": 30,
+    "hint": "Precision phản ánh độ chính xác của dự đoán dương; Recall phản ánh khả năng bắt trọn không bỏ sót.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Kỹ thuật mã hóa biến định danh danh mục (Categorical) không có thứ bậc (như Quốc gia, Ngành nghề) thành các cột nhị phân 0/1 được gọi là gì?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "One-Hot Encoding",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Ordinal Encoding",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "MinMax Scaling",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "Z-score Standardization",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mỗi danh mục trở thành một cột nhị phân riêng có giá trị 1 hoặc 0.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "TRUE_FALSE",
+    "content": "Trong kỹ thuật kiểm định chéo K-Fold Cross Validation (với K=5), dữ liệu được chia làm 5 phần bằng nhau, mô hình sẽ được huấn luyện và đánh giá lặp lại đúng 5 lần.",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "Đúng",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Sai",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Mỗi lần lấy 4 phần làm train và 1 phần làm test, sau đó tính trung bình kết quả 5 lần.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_SINGLE",
+    "content": "Chỉ số VIF (Variance Inflation Factor) vượt quá ngưỡng nào thường là dấu hiệu cảnh báo hiện tượng đa cộng tuyến nghiêm trọng trong mô hình hồi quy OLS?",
+    "points": 20,
+    "timeLimit": 20,
+    "options": [
+      {
+        "id": "A",
+        "text": "VIF > 10",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "VIF > 1",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "VIF > 2",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "VIF > 0.05",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Ngưỡng phổ biến trong kinh tế lượng là VIF > 5 hoặc VIF > 10.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MC_MULTI",
+    "content": "Trong các phát biểu dưới đây về thuật toán Cây quyết định (Decision Tree), những phát biểu nào là ĐÚNG?",
+    "points": 30,
+    "timeLimit": 30,
+    "options": [
+      {
+        "id": "A",
+        "text": "Chỉ số Gini Impurity và Entropy thường được dùng để chọn điểm phân nhánh tối ưu",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "Cắt tỉa cây (Pruning) là phương pháp hữu hiệu để kiểm soát và giảm bớt hiện tượng Overfitting",
+        "isCorrect": true
+      },
+      {
+        "id": "C",
+        "text": "Cây quyết định rất nhạy cảm với dữ liệu nhiễu và có phương sai (Variance) cao",
+        "isCorrect": true
+      },
+      {
+        "id": "D",
+        "text": "Cây quyết định bắt buộc phải chuẩn hóa dữ liệu (Standardization) trước khi huấn luyện",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Cây quyết định hoạt động dựa trên các ngưỡng giá trị (if-else) nên không bị ảnh hưởng bởi thang đo dữ liệu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "ESSAY",
+    "content": "Hãy phân tích ngắn gọn Trade-off giữa Bias (Độ chệch) và Variance (Phương sai) trong mô hình học máy. Một mô hình quá đơn giản (Underfitting) và một mô hình quá phức tạp (Overfitting) sẽ tương ứng với mức Bias và Variance như thế nào?",
+    "answer": "Underfitting (quá đơn giản): High Bias (độ chệch cao, không nắm bắt được xu hướng dữ liệu) và Low Variance. Overfitting (quá phức tạp): Low Bias nhưng High Variance (nhạy cảm quá mức với dữ liệu huấn luyện, kém khả năng tổng quát hóa).",
+    "points": 30,
+    "timeLimit": 40,
+    "hint": "Nêu rõ cặp Bias-Variance cho cả Underfitting và Overfitting.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng từng giải thuật học máy với họ thuật toán tương ứng:",
+    "points": 30,
+    "timeLimit": 40,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Logistic Regression",
+        "right": "Học có giám sát: Bài toán Phân loại (Classification)"
+      },
+      {
+        "id": "p2",
+        "left": "K-Means",
+        "right": "Học không giám sát: Phân cụm dữ liệu (Clustering)"
+      },
+      {
+        "id": "p3",
+        "left": "PCA (Principal Component Analysis)",
+        "right": "Học không giám sát: Rút gọn số chiều dữ liệu (Dimensionality Reduction)"
+      },
+      {
+        "id": "p4",
+        "left": "Random Forest",
+        "right": "Kỹ thuật học kết hợp Bagging Ensemble đa cây quyết định"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Phân biệt rõ bài toán có giám sát, không giám sát và kỹ thuật học kết hợp Ensemble.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước trong quy trình Xây dựng và Triển khai mô hình Học máy Machine Learning tiêu chuẩn:",
+    "points": 30,
+    "timeLimit": 35,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Khám phá và Tiền xử lý làm sạch dữ liệu (EDA & Data Cleaning)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Kỹ thuật tạo đặc trưng và Chuẩn hóa biến (Feature Engineering & Scaling)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Chia tập dữ liệu Train / Validation / Test",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Huấn luyện mô hình và Tinh chỉnh siêu tham số (Model Training & Hyperparameter Tuning)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Đánh giá hiệu năng mô hình trên tập Test độc lập và Đóng gói triển khai (Evaluation & Deployment)",
+        "isCorrect": true
+      }
+    ],
+    "hint": "EDA -> Feature Engineering -> Split -> Training/Tuning -> Test Evaluation/Deploy.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "MATCHING",
+    "content": "Hãy ghép đúng các ma trận nhầm lẫn (Confusion Matrix) với công thức tính chỉ số đánh giá tương ứng:",
+    "points": 40,
+    "timeLimit": 60,
+    "pairs": [
+      {
+        "id": "p1",
+        "left": "Precision (Độ chuẩn xác)",
+        "right": "TP / (TP + FP)"
+      },
+      {
+        "id": "p2",
+        "left": "Recall / Sensitivity (Độ thu hồi)",
+        "right": "TP / (TP + FN)"
+      },
+      {
+        "id": "p3",
+        "left": "Specificity (Độ đặc hiệu)",
+        "right": "TN / (TN + FP)"
+      },
+      {
+        "id": "p4",
+        "left": "F1-Score",
+        "right": "2 * (Precision * Recall) / (Precision + Recall)"
+      }
+    ],
+    "options": [
+      {
+        "id": "A",
+        "text": "1-A, 2-B, 3-C, 4-D",
+        "isCorrect": true
+      },
+      {
+        "id": "B",
+        "text": "1-C, 2-D, 3-A, 4-B",
+        "isCorrect": false
+      },
+      {
+        "id": "C",
+        "text": "1-B, 2-A, 3-D, 4-C",
+        "isCorrect": false
+      },
+      {
+        "id": "D",
+        "text": "1-D, 2-C, 3-B, 4-A",
+        "isCorrect": false
+      }
+    ],
+    "hint": "Bộ công thức kinh điển đánh giá bài toán phân loại nhị phân trong khoa học dữ liệu.",
+    "isTieBreaker": false
+  },
+  {
+    "type": "DRAG_DROP",
+    "content": "Hãy sắp xếp đúng thứ tự các bước toán học trong thuật toán Phân tích thành phần chính (PCA) để giảm chiều dữ liệu:",
+    "points": 40,
+    "timeLimit": 60,
+    "options": [
+      {
+        "id": "STEP_1",
+        "text": "Chuẩn hóa dữ liệu về trung bình bằng 0 (Mean centering / Standardization)",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_2",
+        "text": "Tính ma trận hiệp phương sai (Covariance Matrix) của các biến",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_3",
+        "text": "Tìm các trị riêng (Eigenvalues) và vectơ riêng (Eigenvectors) của ma trận hiệp phương sai",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_4",
+        "text": "Sắp xếp các vectơ riêng theo thứ tự giảm dần của trị riêng tương ứng",
+        "isCorrect": true
+      },
+      {
+        "id": "STEP_5",
+        "text": "Chiếu ma trận dữ liệu ban đầu lên K vectơ riêng hàng đầu để thu được không gian số chiều mới",
+        "isCorrect": true
+      }
+    ],
+    "hint": "Chuẩn hóa -> Ma trận hiệp phương sai -> Trị riêng/Vectơ riêng -> Sắp xếp -> Chiếu không gian mới.",
+    "isTieBreaker": false
   }
 ]

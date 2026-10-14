@@ -2460,29 +2460,27 @@ export function handleFlipCard({
         ? `⚠️ ĐÃ HỦY BỎ CẶP ${cancelOldKey === "PAIR_TRAP" ? "BẪY KHÓI" : "KÍP NỔ"} CŨ! Thực hiện phạt theo cặp mới: `
         : "";
 
-      // Kiểm tra khiên thần bảo vệ
+      // Kiểm tra khiên thần bảo vệ (chỉ có hiệu lực đúng 1 lần duy nhất trong minigame)
       if (state.hasShield) {
         state.hasShield = false;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "PAIR_MATCHED";
+        memState.activePenaltyPairKey = null;
+        memState.keptBombTileIds = [];
+        memState.isBombRescueActive = false;
         state.potPoints = 0;
-        const basePoints = state.baseQuestionPoints || 10;
-        const oldScore = team.score || 0;
-        const newScore = oldScore + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ PHẠT! Nhận an toàn +${basePoints}đ câu hỏi gốc!`,
-          scoreDelta: basePoints,
-          oldScore,
-          newScore,
+          rewardText: `${cancelPrefix}🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cặp thẻ bẫy bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được bảo toàn điểm số và tiếp tục lật các cặp thẻ còn lại!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0,
         };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: basePoints,
+          finalScoreDelta: 0,
         };
       }
 
@@ -3176,26 +3174,25 @@ export function handleFlipCard({
       if (isNegative) {
         if (state.hasShield) {
           state.hasShield = false;
-          state.potPoints = 0;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "DOOR_CHOSEN";
-          const basePoints = state.baseQuestionPoints || 10;
-          const oldScore = team.score || 0;
-          const newScore = oldScore + basePoints;
+          tile.isOpened = true;
+          osState.chosenFinalDoorId = undefined;
+          osState.phase = "STAGE_2_PICK";
+          osState.allRevealed = false;
+          osState.selectedDoorIds = (osState.selectedDoorIds || []).filter((id) => id !== tileId);
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa phạt đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-            scoreDelta: basePoints,
-            oldScore,
-            newScore,
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${tile.id} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được bảo toàn điểm số và chọn lại 1 cánh cửa khác!`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0,
           };
           return {
             updatedState: { ...state },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: basePoints,
+            finalScoreDelta: 0,
           };
         }
 
@@ -3407,26 +3404,21 @@ export function handleFlipCard({
       // Shield Protection Check:
       if (state.hasShield) {
         state.hasShield = false;
-        state.potPoints = 0;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "TAROT_DRAWN";
-        const basePoints = state.baseQuestionPoints || 20;
-        const oldScore = team.score || 0;
-        const newScore = oldScore + basePoints;
+        tile.isOpened = true;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `🛡️ KHIÊN THẦN ĐẨY LÙI THẦN CHẾT! Bạn an toàn thoát hiểm và nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-          scoreDelta: basePoints,
-          oldScore,
-          newScore,
+          rewardText: `🛡️ KHIÊN THẦN ĐÃ ĐẨY LÙI THẦN CHẾT! Lá bài #${tile.id} (${tile.storyTitle}) đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được bảo toàn điểm số và chọn lại 1 lá bài khác!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0,
         };
         return {
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: basePoints,
+          finalScoreDelta: 0,
         };
       }
 
@@ -3633,26 +3625,38 @@ export function handleFlipCard({
   if (isBombCard) {
     if (state.hasShield) {
       state.hasShield = false;
-      const basePoints = state.baseQuestionPoints || 10;
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
-      const oldScore = team.score || 0;
-      const newScore = oldScore + basePoints;
+      tile.isOpened = true;
+      state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
+      state.lastFlippedTile = tile;
+      // Sinh lá bài tiếp theo trên đỉnh chồng bài để người chơi có thể tiếp tục lật hoặc Chốt điểm (Cash Out)
+      const nextTopCard = generateNextPushYourLuckCard({
+        theme: state.theme,
+        drawIndex: state.cardsFlippedCount + 1,
+        basePoints: state.baseQuestionPoints || 10,
+        teamScore: team.score || 0,
+        isDoublePromo: false,
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id,
+        },
+      });
+      state.tiles.push(nextTopCard);
+      state.nextCardPeek = undefined;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Vô hiệu hóa bẫy bom an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-        scoreDelta: basePoints,
-        oldScore,
-        newScore,
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ VỤ NỔ! Quả bom Lá #${tile.id} đã bị vô hiệu hóa an toàn! Bạn bảo toàn được quỹ ${state.potPoints}đ và có thể CHỐT ĐIỂM ngay hoặc tiếp tục lật liều!`,
+        scoreDelta: 0,
+        oldScore: team.score || 0,
+        newScore: team.score || 0,
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: basePoints,
+        finalScoreDelta: 0,
       };
     }
 
@@ -3975,6 +3979,9 @@ export function handleMemoryPairsSecondChanceDecision({
 
     // Đảm bảo tất cả các thẻ úp lại và đã được xáo trộn ngẫu nhiên hoàn toàn
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
+    // Đảm bảo quy tắc: Mỗi minigame đội chỉ có tối đa 1 khiên duy nhất.
+    // Nếu khiên đã bị dùng/hấp thụ ở Vòng 1 thì sang Vòng 2 tuyệt đối KHÔNG được hồi lại!
+    state.hasShield = state.hasShield === true;
     state.memoryPairsState = { ...memState };
 
     return {
@@ -4264,26 +4271,30 @@ export function handleOneShotDoorsDecision({
   if (isNegative) {
     if (state.hasShield) {
       state.hasShield = false;
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "DOOR_CHOSEN";
-      const basePoints = state.baseQuestionPoints || 10;
-      const oldScore = team.score || 0;
-      const newScore = oldScore + basePoints;
+      chosenTile.isOpened = true;
+      if (osState.selectedDoorIds) {
+        osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
+      }
+      osState.chosenFinalDoorId = undefined;
+      osState.phase = "STAGE_2_PICK";
+      osState.allRevealed = false;
+      state.tiles.forEach((t) => {
+        if (t.id !== doorIdToOpen) t.isOpened = false;
+      });
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa phạt đã bị chặn đứng an toàn, nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-        scoreDelta: basePoints,
-        oldScore,
-        newScore,
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${doorIdToOpen} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được chọn lại 1 trong các cánh cửa còn lại!`,
+        scoreDelta: 0,
+        oldScore: team.score || 0,
+        newScore: team.score || 0,
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: basePoints,
+        finalScoreDelta: 0,
       };
     }
 
@@ -4505,31 +4516,32 @@ export function handleAncientTarotDraw({
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
     state.potPoints = 0;
-    state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "TAROT_DRAWN";
+    state.phase = "PUSH_YOUR_LUCK";
+    state.turnFinishedReason = undefined;
     state.tarotState = {
       ...(state.tarotState || {}),
       drawnCard,
-      isDrawn: true,
+      isDrawn: false,
+      isShieldRespin: true,
+      shieldTransformedCardKey: drawnCard.key,
     };
     const oldScore = currentScore;
-    const newScore = oldScore + basePoints;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ ĐỊNH MỆNH XẤU (${drawnCard.nameVi})! Nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-      scoreDelta: basePoints,
+      rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ ĐỊNH MỆNH XẤU (${drawnCard.nameVi})! Ô trừ đã bị vô hiệu hóa (0đ). Đội bạn được rút lại lá mới và loại ô này được hóa giải!`,
+      scoreDelta: 0,
       oldScore,
-      newScore,
+      newScore: oldScore,
     };
     return {
       updatedState: { ...state },
-      finalScoreDelta: basePoints,
+      finalScoreDelta: 0,
       isBomb: false,
       scorePenalty: 0,
       drawnCard,
-      scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+      scoreDeltas: [],
     };
   }
 
@@ -4661,47 +4673,48 @@ export function getEffectiveTarotWheelSegments(
     riskTier?: TeamRiskTier;
     currentRound?: number;
     teamScore?: number;
+    shieldTransformedCardKey?: AncientTarotCardKey;
   }
 ): TarotWheelSegment[] {
-  if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
-
   const riskTier = options?.riskTier ?? "NEUTRAL";
   const currentRound = options?.currentRound ?? 1;
   const teamScore = options?.teamScore ?? 0;
 
-  let segments = MAJOR_ARCANA_WHEEL_SEGMENTS.map((seg) => {
-    // 1. Vòng 1: Phong ấn Bom Hắc Ám (15 - XV Devil) & Bom Từ Thiện (12 - XII Hanged Man) thành ±0đ (NEUTRAL)
-    if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL",
-      };
-    }
-    // 2. Vòng 2: Mở khóa Bom Hắc Ám (15), chỉ còn Bom Từ Thiện (12) phong ấn (trừ khi đội DOMINANT thì chịu đủ 3 Bom)
-    if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL",
-      };
-    }
-    // 3. Đội yếu thế (UNDERDOG / 0đ): Giảm nhẹ Bom Hắc Ám (15) & Bom Từ Thiện (12) thành ±0đ
-    if ((riskTier === "UNDERDOG" || teamScore <= 0) && (seg.index === 12 || seg.index === 15)) {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL",
-      };
-    }
-    // 4. Đội đang dẫn đầu Top 1 (DOMINANT): Khi quay trúng lá Cướp (7 - Chariot, 13 - Death) chỉ nhận +1x Điểm gốc
-    if (riskTier === "DOMINANT" && (seg.index === 7 || seg.index === 13)) {
-      return {
-        ...seg,
-        maskedEffect: "SUN_SMALL",
-      };
+  let segments = (isSurvivalMode ? TAROT_SURVIVAL_WHEEL_SEGMENTS : MAJOR_ARCANA_WHEEL_SEGMENTS).map((seg) => {
+    if (!isSurvivalMode) {
+      // 1. Vòng 1: Phong ấn Bom Hắc Ám (15 - XV Devil) & Bom Từ Thiện (12 - XII Hanged Man) thành ±0đ (NEUTRAL)
+      if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL",
+        };
+      }
+      // 2. Vòng 2: Mở khóa Bom Hắc Ám (15), chỉ còn Bom Từ Thiện (12) phong ấn (trừ khi đội DOMINANT thì chịu đủ 3 Bom)
+      if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL",
+        };
+      }
+      // 3. Đội yếu thế (UNDERDOG / 0đ): Giảm nhẹ Bom Hắc Ám (15) & Bom Từ Thiện (12) thành ±0đ
+      if ((riskTier === "UNDERDOG" || teamScore <= 0) && (seg.index === 12 || seg.index === 15)) {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL",
+        };
+      }
+      // 4. Đội đang dẫn đầu Top 1 (DOMINANT): Khi quay trúng lá Cướp (7 - Chariot, 13 - Death) chỉ nhận +1x Điểm gốc
+      if (riskTier === "DOMINANT" && (seg.index === 7 || seg.index === 13)) {
+        return {
+          ...seg,
+          maskedEffect: "SUN_SMALL",
+        };
+      }
     }
     return seg;
   });
 
-  if (hasSunMagnet) {
+  if (hasSunMagnet && !isSurvivalMode) {
     segments = segments.map((seg) => {
       if (seg.index === 19) {
         return {
@@ -4709,6 +4722,26 @@ export function getEffectiveTarotWheelSegments(
           nameVi: "Mặt Trời (Nam Châm)",
           nameEn: "The Sun (Magnet)",
           isMagnetized: true,
+        };
+      }
+      return seg;
+    });
+  }
+
+  // LƯỢT 2 SHIELD PROMO: Chuyển hóa loại ô đã quay vô (và tất cả các ô chung chức năng) thành ô CỘNG ĐIỂM (+1x)
+  if (options?.shieldTransformedCardKey) {
+    segments = segments.map((seg) => {
+      if (seg.key === options.shieldTransformedCardKey) {
+        const cleanName = seg.nameVi.split(" (")[0];
+        return {
+          ...seg,
+          nameVi: `${cleanName} (Hóa Giải ✨)`,
+          icon: "✨",
+          bgColor: "#064e3b",
+          borderColor: "#10b981",
+          textColor: "#6ee7b7",
+          isShieldTransformed: true,
+          maskedEffect: "SUN_SMALL",
         };
       }
       return seg;
@@ -4737,6 +4770,7 @@ export function calculateTarotWheelSpin({
     riskTier?: TeamRiskTier;
     currentRound?: number;
     teamScore?: number;
+    shieldTransformedCardKey?: AncientTarotCardKey;
   };
 }): {
   targetAngle: number;
@@ -4804,6 +4838,7 @@ export function resolveWheelCardEffect({
   isGambleSpin = false,
   isSurvivalMode = false,
   timesStolenInCycle = {},
+  shieldTransformedCardKey,
 }: {
   cardKey: AncientTarotCardKey;
   basePoints: number;
@@ -4814,6 +4849,7 @@ export function resolveWheelCardEffect({
   isGambleSpin?: boolean;
   isSurvivalMode?: boolean;
   timesStolenInCycle?: Record<string, number>;
+  shieldTransformedCardKey?: AncientTarotCardKey;
 }): {
   drawnCard: AncientTarotDrawnCard;
   finalScoreDelta: number;
@@ -4830,6 +4866,32 @@ export function resolveWheelCardEffect({
 } {
   const currentScore = team.score || 0;
   const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+
+  // LƯỢT 2 SHIELD PROMO: Chuyển hóa loại ô đã quay vô (và tất cả ô chung chức năng) thành ô CỘNG ĐIỂM
+  if (shieldTransformedCardKey && cardKey === shieldTransformedCardKey) {
+    const seg =
+      (isSurvivalMode ? TAROT_SURVIVAL_WHEEL_SEGMENTS : MAJOR_ARCANA_WHEEL_SEGMENTS).find(
+        (s) => s.key === cardKey
+      ) || MAJOR_ARCANA_WHEEL_SEGMENTS[0];
+    const cleanName = seg.nameVi.split(" (")[0];
+    const scoreDelta = basePoints;
+    return {
+      drawnCard: {
+        key: cardKey,
+        nameVi: `${cleanName} (Hóa Giải Điềm Lành ✨)`,
+        nameEn: `${seg.nameEn} (Blessed)`,
+        icon: "✨",
+        roman: seg.roman,
+        group: "COMMON",
+        scoreDelta,
+      },
+      finalScoreDelta: scoreDelta,
+      scorePenalty: 0,
+      isBomb: false,
+      scoreDeltas: [{ teamId: team.id, delta: scoreDelta }],
+      rewardText: `🛡️✨ ${cleanName} (ĐÃ HÓA GIẢI): Nhờ Khiên Thần chuyển hóa ô phạt thành điềm lành! Đội bạn nhận trọn vẹn +${scoreDelta}đ!`,
+    };
+  }
 
   if (isSurvivalMode) {
     if (cardKey === "THE_PEACE") {
@@ -5431,12 +5493,18 @@ export function handleAncientTarotSpinWheel({
     allTeams,
     currentRound: state.currentRound || 1,
   });
+  const shieldTransformedCardKey = state.tarotState?.shieldTransformedCardKey;
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
     hasSunMagnet,
     isSurvivalMode,
-    options: { riskTier, currentRound: state.currentRound || 1, teamScore: team.score || 0 },
+    options: {
+      riskTier,
+      currentRound: state.currentRound || 1,
+      teamScore: team.score || 0,
+      shieldTransformedCardKey,
+    },
   });
 
   const basePoints = normalizeToThreeLevels(state.baseQuestionPoints || 10);
@@ -5451,6 +5519,7 @@ export function handleAncientTarotSpinWheel({
     riskTier,
     isSurvivalMode,
     timesStolenInCycle: state.timesStolenInCycle,
+    shieldTransformedCardKey,
   });
 
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
@@ -5463,7 +5532,7 @@ export function handleAncientTarotSpinWheel({
     state.potPoints = 0;
     // Giữ phase = "PUSH_YOUR_LUCK" trong khi chờ người chơi bấm Lật Bài Định Mệnh (isRevealPending: true)
     state.phase = "PUSH_YOUR_LUCK";
-    state.turnFinishedReason = "TAROT_WHEEL_SPUN";
+    state.turnFinishedReason = undefined;
     state.tarotState = {
       ...(state.tarotState || {}),
       isWheelSpinning: false,
@@ -5476,25 +5545,26 @@ export function handleAncientTarotSpinWheel({
       isDrawn: true,
       isRevealPending: true,
       isGambling: false,
+      isShieldRespin: true,
+      shieldTransformedCardKey: drawnCard.key, // LƯỢT 2: Toàn bộ ô chung loại/chức năng biến thành ô cộng điểm!
     };
     const oldScore = currentScore;
-    const newScore = oldScore + basePoints;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ ĐỊNH MỆNH XẤU (${drawnCard.nameVi})! Nhận trọn vẹn +${basePoints}đ câu hỏi gốc!`,
-      scoreDelta: basePoints,
+      rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ ĐỊNH MỆNH XẤU (${drawnCard.nameVi})! Ô trừ đã bị vô hiệu hóa (0đ). Đội bạn được thưởng thêm 1 lượt quay mới và toàn bộ ô loại này trên vòng quay được chuyển hóa thành ô cộng điểm!`,
+      scoreDelta: 0,
       oldScore,
-      newScore,
+      newScore: oldScore,
     };
     return {
       updatedState: { ...state },
-      finalScoreDelta: basePoints,
+      finalScoreDelta: 0,
       isBomb: false,
       scorePenalty: 0,
       drawnCard,
-      scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+      scoreDeltas: [],
       startAngle: currentAngle,
       targetAngle,
       spinDurationMs,
@@ -5508,6 +5578,25 @@ export function handleAncientTarotSpinWheel({
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[effectResult.victimTeamId] = (state.timesStolenInCycle[effectResult.victimTeamId] || 0) + 1;
+  }
+
+  // EXTRA_POT_PROMO: Chỉ thưởng +5 điểm khi trúng ô cộng / thắng minigame, ô trừ thì không
+  let effectiveFinalDelta = finalScoreDelta;
+  let effectiveRewardText = rewardText;
+  let effectiveScoreDeltas = [...scoreDeltas];
+
+  if (!isNegative && finalScoreDelta > 0 && !isSurvivalMode && getPerkType(state.promoPerk) === "EXTRA_POT_PROMO") {
+    effectiveFinalDelta += 5;
+    effectiveRewardText += ` (🎁 Quỹ thưởng Promo +5đ!)`;
+    const teamDeltaIdx = effectiveScoreDeltas.findIndex((d) => d.teamId === team.id);
+    if (teamDeltaIdx >= 0) {
+      effectiveScoreDeltas[teamDeltaIdx] = {
+        ...effectiveScoreDeltas[teamDeltaIdx],
+        delta: effectiveScoreDeltas[teamDeltaIdx].delta + 5,
+      };
+    } else {
+      effectiveScoreDeltas.push({ teamId: team.id, delta: 5 });
+    }
   }
 
   state.potPoints = 0;
@@ -5530,6 +5619,8 @@ export function handleAncientTarotSpinWheel({
     isRevealPending: true,
     isGambling: Boolean(isGambleTrigger),
     gamblingSpinCount: 0,
+    isShieldRespin: false,
+    shieldTransformedCardKey: state.tarotState?.shieldTransformedCardKey,
   };
 
   if (isGambleTrigger) {
@@ -5541,20 +5632,20 @@ export function handleAncientTarotSpinWheel({
   }
 
   const oldScore = currentScore;
-  const newScore = Math.max(0, oldScore + finalScoreDelta);
+  const newScore = Math.max(0, oldScore + effectiveFinalDelta);
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
     teamColor: team.color || "#ef4444",
-    rewardText,
-    scoreDelta: finalScoreDelta,
+    rewardText: effectiveRewardText,
+    scoreDelta: effectiveFinalDelta,
     oldScore,
     newScore,
   };
 
   return {
     updatedState: { ...state },
-    finalScoreDelta,
+    finalScoreDelta: effectiveFinalDelta,
     isBomb,
     scorePenalty,
     victimTeamId: effectResult.victimTeamId,
@@ -5563,7 +5654,7 @@ export function handleAncientTarotSpinWheel({
     giftedPoints: effectResult.giftedPoints,
     darkBombRecipients: effectResult.darkBombRecipients,
     drawnCard,
-    scoreDeltas,
+    scoreDeltas: effectiveScoreDeltas,
     startAngle: currentAngle,
     targetAngle,
     spinDurationMs,

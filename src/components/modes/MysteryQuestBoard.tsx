@@ -61,6 +61,7 @@ interface Props {
   onDrawTarot?: () => void;
   onSpinTarotWheel?: (powerPercent: number) => void;
   onTarotReveal?: () => void;
+  onTarotRespin?: () => void;
   onTarotGambleDecision?: (spinAgain: boolean, powerPercent?: number) => void;
   onSurvivalChoice?: (choice: "SACRIFICE_HEART" | "RISK_SURVIVAL") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
@@ -89,6 +90,7 @@ export default function MysteryQuestBoard({
   onDrawTarot,
   onSpinTarotWheel,
   onTarotReveal,
+  onTarotRespin,
   onTarotGambleDecision,
   onSurvivalChoice,
   teams = [],
@@ -1022,7 +1024,7 @@ export default function MysteryQuestBoard({
                         {perkType === "SHIELD_PROMO" && (
                           <>
                             <span>🛡️</span>
-                            <span className="truncate">Khiên Chặn Bom (Bảo toàn điểm gốc)!</span>
+                            <span className="truncate">Khiên Chặn Bom 1 Lần (Cứu nguy & cho chơi tiếp)!</span>
                           </>
                         )}
                         {perkType === "EXTRA_POT_PROMO" && (
@@ -2290,7 +2292,12 @@ export default function MysteryQuestBoard({
                           return getEffectiveTarotWheelSegments(
                             !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO",
                             Boolean(isPenaltySurvivalMode),
-                            { riskTier: activeRiskTier, currentRound, teamScore: currentTurnTeam?.score }
+                            {
+                              riskTier: activeRiskTier,
+                              currentRound,
+                              teamScore: currentTurnTeam?.score,
+                              shieldTransformedCardKey: tarotState?.shieldTransformedCardKey,
+                            }
                           );
                         })().map((seg, i, arr) => {
                           const segCount = arr.length;
@@ -2305,15 +2312,15 @@ export default function MysteryQuestBoard({
                           const x2 = cx + r * Math.sin(theta2);
                           const y2 = cy - r * Math.cos(theta2);
                           const midDeg = (i + 0.5) * degPerSeg;
-                          const symbolColor = seg.isMagnetized ? "#fef08a" : seg.textColor;
+                          const symbolColor = seg.isShieldTransformed ? "#6ee7b7" : seg.isMagnetized ? "#fef08a" : seg.textColor;
 
                           return (
                             <g key={seg.index}>
                               <path
                                 d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                                fill={seg.isMagnetized ? "#3b1d06" : seg.bgColor}
-                                stroke={seg.isMagnetized ? "#fef08a" : seg.borderColor}
-                                strokeWidth={seg.isMagnetized ? "2" : "1.1"}
+                                fill={seg.isShieldTransformed ? "#064e3b" : seg.isMagnetized ? "#3b1d06" : seg.bgColor}
+                                stroke={seg.isShieldTransformed ? "#10b981" : seg.isMagnetized ? "#fef08a" : seg.borderColor}
+                                strokeWidth={seg.isShieldTransformed || seg.isMagnetized ? "2.5" : "1.1"}
                               />
                               {/* Subtle inner astrological arc dot */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
@@ -2628,6 +2635,51 @@ export default function MysteryQuestBoard({
                         >
                           ⚡ Admin Lật Bài Hộ
                         </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── Shield Respin Option when isShieldRespin (after reveal) ── */}
+                  {!isPendingReveal && tarotState?.isShieldRespin && (
+                    <div className="mt-4 p-4 rounded-2xl bg-emerald-950/85 border-2 border-emerald-400/80 shadow-[0_0_30px_rgba(16,185,129,0.35)] text-center space-y-3 max-w-md w-full animate-fade-in z-10">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-black text-emerald-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                          <span>🛡️</span>
+                          <span>KHIÊN THẦN ĐÃ HẤP THỤ Ô TRỪ (0đ)</span>
+                          <span>🛡️</span>
+                        </h4>
+                        <p className="text-xs text-emerald-100/90 font-medium leading-relaxed">
+                          Bẫy trừ điểm đã bị vô hiệu hóa an toàn! Đội bạn được thưởng <strong>1 lượt quay mới</strong>.<br />
+                          Đặc biệt: Toàn bộ ô <strong>{drawnCard?.nameVi}</strong> trên vòng quay đã được chuyển hóa thành <strong>ô cộng điểm (+{baseQuestionPoints || 10}đ ✨)</strong>!
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-3 pt-1">
+                        {canActOnTarot && !isDisplay ? (
+                          <button
+                            type="button"
+                            onClick={() => onTarotRespin?.()}
+                            className="w-full py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-600 to-emerald-700 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-emerald-300 hover:scale-105 active:scale-95 transition cursor-pointer animate-pulse"
+                          >
+                            ✨ BƯỚC VÀO LƯỢT QUAY MỚI (LƯỢT 2) ✨
+                          </button>
+                        ) : (
+                          <div className="py-2 px-3 text-xs text-slate-300 italic">
+                            Đang đợi Đội {currentTurnTeamName} bắt đầu lượt quay mới...
+                          </div>
+                        )}
+                      </div>
+
+                      {(isAdmin || isSandbox) && !isDisplay && (
+                        <div className="pt-2 border-t border-emerald-500/20">
+                          <button
+                            type="button"
+                            onClick={() => onTarotRespin?.()}
+                            className="py-1 px-3 rounded-lg bg-emerald-900/50 hover:bg-emerald-800/60 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold transition cursor-pointer"
+                          >
+                            ⚡ Admin Bắt Đầu Lượt Quay Mới
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

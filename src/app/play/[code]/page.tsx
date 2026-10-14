@@ -1493,10 +1493,10 @@ export default function PlayPage() {
                 <span className="text-2xl animate-bounce shrink-0">🏁</span>
                 <div className="min-w-0">
                   <p className="font-black text-amber-300 text-xs sm:text-sm truncate">
-                    CUỘC ĐUA CỜ XÍ NGẦU BẮT ĐẦU!
+                    ĐUA CỜ BẮT ĐẦU!
                   </p>
                   <p className="text-[11px] text-amber-200/90 truncate">
-                    Xem toàn cảnh vị trí các quân cờ ở ô xuất phát
+                    Chuẩn bị xuất phát
                   </p>
                 </div>
               </div>
@@ -1522,10 +1522,10 @@ export default function PlayPage() {
         {reconnectBanner}
         <div className="min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-4 sm:space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] sm:text-xs font-bold uppercase tracking-widest">
-            ⚡ Sẵn sàng thi đấu
+            ⚡ Sẵn sàng
           </div>
           <h1 className="text-2xl sm:text-4xl font-black bg-gradient-to-r from-purple-400 to-cyan-400 bg-clip-text text-transparent">
-            Trận đấu bắt đầu sau
+            Bắt đầu sau
           </h1>
           <div className="flex flex-col items-center justify-center">
             <div className="relative flex items-center justify-center">
@@ -1553,7 +1553,7 @@ export default function PlayPage() {
             </div>
           </div>
           <p className="text-muted-foreground text-xs sm:text-sm max-w-xs">
-            Tập trung vào màn hình của bạn và sẵn sàng cho câu hỏi đầu tiên!
+            Sẵn sàng cho câu hỏi đầu tiên!
           </p>
           <button
             onClick={toggleSound}
@@ -1870,6 +1870,13 @@ export default function PlayPage() {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal", teamId: effectiveTeamId }, "*");
                 } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                   socketRef.current.emit("game:mystery:ancient_tarot_reveal" as any, { code });
+                }
+              }}
+              onTarotRespin={() => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_TAROT_RESPIN", action: "mystery_tarot_respin", teamId: effectiveTeamId }, "*");
+                } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:ancient_tarot_respin" as any, { code });
                 }
               }}
               onTarotGambleDecision={(spinAgain, powerPercent) => {
@@ -2191,6 +2198,13 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal", teamId: effectiveTeamId }, "*");
                     } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:ancient_tarot_reveal" as any, { code });
+                    }
+                  }}
+                  onTarotRespin={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_RESPIN", action: "mystery_tarot_respin", teamId: effectiveTeamId }, "*");
+                    } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:ancient_tarot_respin" as any, { code });
                     }
                   }}
                   onTarotGambleDecision={(spinAgain, powerPercent) => {

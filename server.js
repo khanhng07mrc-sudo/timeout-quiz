@@ -2592,26 +2592,24 @@ function handleFlipCard({
       const cancelPrefix = cancelOldKey ? `\u26A0\uFE0F \u0110\xC3 H\u1EE6Y B\u1ECE C\u1EB6P ${cancelOldKey === "PAIR_TRAP" ? "B\u1EAAY KH\xD3I" : "K\xCDP N\u1ED4"} C\u0168! Th\u1EF1c hi\u1EC7n ph\u1EA1t theo c\u1EB7p m\u1EDBi: ` : "";
       if (state.hasShield) {
         state.hasShield = false;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "PAIR_MATCHED";
+        memState.activePenaltyPairKey = null;
+        memState.keptBombTileIds = [];
+        memState.isBombRescueActive = false;
         state.potPoints = 0;
-        const basePoints = state.baseQuestionPoints || 10;
-        const oldScore = team.score || 0;
-        const newScore = oldScore + basePoints;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 PH\u1EA0T! Nh\u1EADn an to\xE0n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-          scoreDelta: basePoints,
-          oldScore,
-          newScore
+          rewardText: `${cancelPrefix}\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY PH\u1EA0T! C\u1EB7p th\u1EBB b\u1EABy b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n (0\u0111 ph\u1EA1t). \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n \u0111i\u1EC3m s\u1ED1 v\xE0 ti\u1EBFp t\u1EE5c l\u1EADt c\xE1c c\u1EB7p th\u1EBB c\xF2n l\u1EA1i!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0
         };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: basePoints
+          finalScoreDelta: 0
         };
       }
       if (penaltyKey === "PAIR_TRAP") {
@@ -3143,26 +3141,25 @@ function handleFlipCard({
       if (isNegative) {
         if (state.hasShield) {
           state.hasShield = false;
-          state.potPoints = 0;
-          state.phase = "TURN_SUMMARY";
-          state.turnFinishedReason = "DOOR_CHOSEN";
-          const basePoints = state.baseQuestionPoints || 10;
-          const oldScore = team.score || 0;
-          const newScore = oldScore + basePoints;
+          tile2.isOpened = true;
+          osState.chosenFinalDoorId = void 0;
+          osState.phase = "STAGE_2_PICK";
+          osState.allRevealed = false;
+          osState.selectedDoorIds = (osState.selectedDoorIds || []).filter((id) => id !== tileId);
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY PH\u1EA0T! C\u1EEDa ph\u1EA1t \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-            scoreDelta: basePoints,
-            oldScore,
-            newScore
+            rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY PH\u1EA0T! C\u1EEDa b\u1EABy #${tile2.id} \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n (0\u0111 ph\u1EA1t). \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n \u0111i\u1EC3m s\u1ED1 v\xE0 ch\u1ECDn l\u1EA1i 1 c\xE1nh c\u1EEDa kh\xE1c!`,
+            scoreDelta: 0,
+            oldScore: team.score || 0,
+            newScore: team.score || 0
           };
           return {
             updatedState: { ...state },
             isBomb: false,
             scorePenalty: 0,
-            finalScoreDelta: basePoints
+            finalScoreDelta: 0
           };
         }
         const isRandomBomb = tile2.type === "BOMB_MAJOR" || Boolean(tile2.bombDoorType);
@@ -3332,26 +3329,21 @@ function handleFlipCard({
     if (isBomb) {
       if (state.hasShield) {
         state.hasShield = false;
-        state.potPoints = 0;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "TAROT_DRAWN";
-        const basePoints = state.baseQuestionPoints || 20;
-        const oldScore2 = team.score || 0;
-        const newScore2 = oldScore2 + basePoints;
+        tile2.isOpened = true;
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\u1EA8Y L\xD9I TH\u1EA6N CH\u1EBET! B\u1EA1n an to\xE0n tho\xE1t hi\u1EC3m v\xE0 nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-          scoreDelta: basePoints,
-          oldScore: oldScore2,
-          newScore: newScore2
+          rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 \u0110\u1EA8Y L\xD9I TH\u1EA6N CH\u1EBET! L\xE1 b\xE0i #${tile2.id} (${tile2.storyTitle}) \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n (0\u0111 ph\u1EA1t). \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n \u0111i\u1EC3m s\u1ED1 v\xE0 ch\u1ECDn l\u1EA1i 1 l\xE1 b\xE0i kh\xE1c!`,
+          scoreDelta: 0,
+          oldScore: team.score || 0,
+          newScore: team.score || 0
         };
         return {
           updatedState: { ...state },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: basePoints
+          finalScoreDelta: 0
         };
       }
       penalty = Math.abs(tile2.deltaPoints || 20);
@@ -3525,26 +3517,37 @@ function handleFlipCard({
   if (isBombCard) {
     if (state.hasShield) {
       state.hasShield = false;
-      const basePoints = state.baseQuestionPoints || 10;
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "BOMB_HIT";
-      const oldScore2 = team.score || 0;
-      const newScore2 = oldScore2 + basePoints;
+      tile.isOpened = true;
+      state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
+      state.lastFlippedTile = tile;
+      const nextTopCard2 = generateNextPushYourLuckCard({
+        theme: state.theme,
+        drawIndex: state.cardsFlippedCount + 1,
+        basePoints: state.baseQuestionPoints || 10,
+        teamScore: team.score || 0,
+        isDoublePromo: false,
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: team.id
+        }
+      });
+      state.tiles.push(nextTopCard2);
+      state.nextCardPeek = void 0;
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! V\xF4 hi\u1EC7u h\xF3a b\u1EABy bom an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-        scoreDelta: basePoints,
-        oldScore: oldScore2,
-        newScore: newScore2
+        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 V\u1EE4 N\u1ED4! Qu\u1EA3 bom L\xE1 #${tile.id} \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n! B\u1EA1n b\u1EA3o to\xE0n \u0111\u01B0\u1EE3c qu\u1EF9 ${state.potPoints}\u0111 v\xE0 c\xF3 th\u1EC3 CH\u1ED0T \u0110I\u1EC2M ngay ho\u1EB7c ti\u1EBFp t\u1EE5c l\u1EADt li\u1EC1u!`,
+        scoreDelta: 0,
+        oldScore: team.score || 0,
+        newScore: team.score || 0
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: basePoints
+        finalScoreDelta: 0
       };
     }
     const bombTypeMapped = tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR" ? "BOMB_SMOKE" : tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM" ? "BOMB_DARK" : "BOMB_CHARITY";
@@ -3787,6 +3790,7 @@ function handleMemoryPairsSecondChanceDecision({
     memState.isMismatchResolving = false;
     memState.matchedPairKey = null;
     state.tiles = shuffleMemoryPairsTiles(state.tiles);
+    state.hasShield = state.hasShield === true;
     state.memoryPairsState = { ...memState };
     return {
       updatedState: { ...state },
@@ -3973,26 +3977,30 @@ function handleOneShotDoorsDecision({
   if (isNegative) {
     if (state.hasShield) {
       state.hasShield = false;
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "DOOR_CHOSEN";
-      const basePoints = state.baseQuestionPoints || 10;
-      const oldScore = team.score || 0;
-      const newScore = oldScore + basePoints;
+      chosenTile.isOpened = true;
+      if (osState.selectedDoorIds) {
+        osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
+      }
+      osState.chosenFinalDoorId = void 0;
+      osState.phase = "STAGE_2_PICK";
+      osState.allRevealed = false;
+      state.tiles.forEach((t) => {
+        if (t.id !== doorIdToOpen) t.isOpened = false;
+      });
       state.storyResult = {
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY PH\u1EA0T! C\u1EEDa ph\u1EA1t \u0111\xE3 b\u1ECB ch\u1EB7n \u0111\u1EE9ng an to\xE0n, nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-        scoreDelta: basePoints,
-        oldScore,
-        newScore
+        rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 B\u1EAAY PH\u1EA0T! C\u1EEDa b\u1EABy #${doorIdToOpen} \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a an to\xE0n (0\u0111 ph\u1EA1t). \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c ch\u1ECDn l\u1EA1i 1 trong c\xE1c c\xE1nh c\u1EEDa c\xF2n l\u1EA1i!`,
+        scoreDelta: 0,
+        oldScore: team.score || 0,
+        newScore: team.score || 0
       };
       return {
         updatedState: { ...state },
         isBomb: false,
         scorePenalty: 0,
-        finalScoreDelta: basePoints
+        finalScoreDelta: 0
       };
     }
     const isRandomBomb = chosenTile.type === "BOMB_MAJOR" || Boolean(chosenTile.bombDoorType);
@@ -4178,38 +4186,39 @@ var TAROT_SURVIVAL_WHEEL_SEGMENTS = [
   { index: 19, key: "THE_FOOL", nameVi: "K\u1EBB Kh\u1EDD (Kh\xF3i \u0110\u1ED9c)", nameEn: "The Fool", icon: "\u{1F0CF}", roman: "0", group: "COMMON", bgColor: "#110926", borderColor: "#6d28d9", textColor: "#e0e7ff" }
 ];
 function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = false, options) {
-  if (isSurvivalMode) return TAROT_SURVIVAL_WHEEL_SEGMENTS;
   const riskTier = options?.riskTier ?? "NEUTRAL";
   const currentRound = options?.currentRound ?? 1;
   const teamScore = options?.teamScore ?? 0;
-  let segments = MAJOR_ARCANA_WHEEL_SEGMENTS.map((seg) => {
-    if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL"
-      };
-    }
-    if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL"
-      };
-    }
-    if ((riskTier === "UNDERDOG" || teamScore <= 0) && (seg.index === 12 || seg.index === 15)) {
-      return {
-        ...seg,
-        maskedEffect: "NEUTRAL"
-      };
-    }
-    if (riskTier === "DOMINANT" && (seg.index === 7 || seg.index === 13)) {
-      return {
-        ...seg,
-        maskedEffect: "SUN_SMALL"
-      };
+  let segments = (isSurvivalMode ? TAROT_SURVIVAL_WHEEL_SEGMENTS : MAJOR_ARCANA_WHEEL_SEGMENTS).map((seg) => {
+    if (!isSurvivalMode) {
+      if (currentRound <= 1 && (seg.index === 12 || seg.index === 15)) {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL"
+        };
+      }
+      if (currentRound === 2 && seg.index === 12 && riskTier !== "DOMINANT") {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL"
+        };
+      }
+      if ((riskTier === "UNDERDOG" || teamScore <= 0) && (seg.index === 12 || seg.index === 15)) {
+        return {
+          ...seg,
+          maskedEffect: "NEUTRAL"
+        };
+      }
+      if (riskTier === "DOMINANT" && (seg.index === 7 || seg.index === 13)) {
+        return {
+          ...seg,
+          maskedEffect: "SUN_SMALL"
+        };
+      }
     }
     return seg;
   });
-  if (hasSunMagnet) {
+  if (hasSunMagnet && !isSurvivalMode) {
     segments = segments.map((seg) => {
       if (seg.index === 19) {
         return {
@@ -4217,6 +4226,24 @@ function getEffectiveTarotWheelSegments(hasSunMagnet = false, isSurvivalMode = f
           nameVi: "M\u1EB7t Tr\u1EDDi (Nam Ch\xE2m)",
           nameEn: "The Sun (Magnet)",
           isMagnetized: true
+        };
+      }
+      return seg;
+    });
+  }
+  if (options?.shieldTransformedCardKey) {
+    segments = segments.map((seg) => {
+      if (seg.key === options.shieldTransformedCardKey) {
+        const cleanName = seg.nameVi.split(" (")[0];
+        return {
+          ...seg,
+          nameVi: `${cleanName} (H\xF3a Gi\u1EA3i \u2728)`,
+          icon: "\u2728",
+          bgColor: "#064e3b",
+          borderColor: "#10b981",
+          textColor: "#6ee7b7",
+          isShieldTransformed: true,
+          maskedEffect: "SUN_SMALL"
         };
       }
       return seg;
@@ -4268,10 +4295,34 @@ function resolveWheelCardEffect({
   riskTier = "NEUTRAL",
   isGambleSpin = false,
   isSurvivalMode = false,
-  timesStolenInCycle = {}
+  timesStolenInCycle = {},
+  shieldTransformedCardKey
 }) {
   const currentScore = team.score || 0;
   const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+  if (shieldTransformedCardKey && cardKey === shieldTransformedCardKey) {
+    const seg2 = (isSurvivalMode ? TAROT_SURVIVAL_WHEEL_SEGMENTS : MAJOR_ARCANA_WHEEL_SEGMENTS).find(
+      (s) => s.key === cardKey
+    ) || MAJOR_ARCANA_WHEEL_SEGMENTS[0];
+    const cleanName = seg2.nameVi.split(" (")[0];
+    const scoreDelta = basePoints;
+    return {
+      drawnCard: {
+        key: cardKey,
+        nameVi: `${cleanName} (H\xF3a Gi\u1EA3i \u0110i\u1EC1m L\xE0nh \u2728)`,
+        nameEn: `${seg2.nameEn} (Blessed)`,
+        icon: "\u2728",
+        roman: seg2.roman,
+        group: "COMMON",
+        scoreDelta
+      },
+      finalScoreDelta: scoreDelta,
+      scorePenalty: 0,
+      isBomb: false,
+      scoreDeltas: [{ teamId: team.id, delta: scoreDelta }],
+      rewardText: `\u{1F6E1}\uFE0F\u2728 ${cleanName} (\u0110\xC3 H\xD3A GI\u1EA2I): Nh\u1EDD Khi\xEAn Th\u1EA7n chuy\u1EC3n h\xF3a \xF4 ph\u1EA1t th\xE0nh \u0111i\u1EC1m l\xE0nh! \u0110\u1ED9i b\u1EA1n nh\u1EADn tr\u1ECDn v\u1EB9n +${scoreDelta}\u0111!`
+    };
+  }
   if (isSurvivalMode) {
     if (cardKey === "THE_PEACE") {
       return {
@@ -4744,12 +4795,18 @@ function handleAncientTarotSpinWheel({
     allTeams,
     currentRound: state.currentRound || 1
   });
+  const shieldTransformedCardKey = state.tarotState?.shieldTransformedCardKey;
   const { targetAngle, spinDurationMs, landedSegment, landedIndex } = calculateTarotWheelSpin({
     powerPercent,
     currentAngle,
     hasSunMagnet,
     isSurvivalMode,
-    options: { riskTier, currentRound: state.currentRound || 1, teamScore: team.score || 0 }
+    options: {
+      riskTier,
+      currentRound: state.currentRound || 1,
+      teamScore: team.score || 0,
+      shieldTransformedCardKey
+    }
   });
   const basePoints = normalizeToThreeLevels(state.baseQuestionPoints || 10);
   const currentScore = team.score || 0;
@@ -4761,7 +4818,8 @@ function handleAncientTarotSpinWheel({
     currentRound: state.currentRound || 1,
     riskTier,
     isSurvivalMode,
-    timesStolenInCycle: state.timesStolenInCycle
+    timesStolenInCycle: state.timesStolenInCycle,
+    shieldTransformedCardKey
   });
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isNegative = isBomb || scorePenalty > 0 || drawnCard.scoreDelta < 0;
@@ -4769,7 +4827,7 @@ function handleAncientTarotSpinWheel({
     state.hasShield = false;
     state.potPoints = 0;
     state.phase = "PUSH_YOUR_LUCK";
-    state.turnFinishedReason = "TAROT_WHEEL_SPUN";
+    state.turnFinishedReason = void 0;
     state.tarotState = {
       ...state.tarotState || {},
       isWheelSpinning: false,
@@ -4781,26 +4839,28 @@ function handleAncientTarotSpinWheel({
       drawnCard,
       isDrawn: true,
       isRevealPending: true,
-      isGambling: false
+      isGambling: false,
+      isShieldRespin: true,
+      shieldTransformedCardKey: drawnCard.key
+      // LƯỢT 2: Toàn bộ ô chung loại/chức năng biến thành ô cộng điểm!
     };
     const oldScore2 = currentScore;
-    const newScore2 = oldScore2 + basePoints;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 \u0110\u1ECANH M\u1EC6NH X\u1EA4U (${drawnCard.nameVi})! Nh\u1EADn tr\u1ECDn v\u1EB9n +${basePoints}\u0111 c\xE2u h\u1ECFi g\u1ED1c!`,
-      scoreDelta: basePoints,
+      rewardText: `\u{1F6E1}\uFE0F KHI\xCAN TH\u1EA6N \u0110\xC3 H\u1EA4P TH\u1EE4 \u0110\u1ECANH M\u1EC6NH X\u1EA4U (${drawnCard.nameVi})! \xD4 tr\u1EEB \u0111\xE3 b\u1ECB v\xF4 hi\u1EC7u h\xF3a (0\u0111). \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c th\u01B0\u1EDFng th\xEAm 1 l\u01B0\u1EE3t quay m\u1EDBi v\xE0 to\xE0n b\u1ED9 \xF4 lo\u1EA1i n\xE0y tr\xEAn v\xF2ng quay \u0111\u01B0\u1EE3c chuy\u1EC3n h\xF3a th\xE0nh \xF4 c\u1ED9ng \u0111i\u1EC3m!`,
+      scoreDelta: 0,
       oldScore: oldScore2,
-      newScore: newScore2
+      newScore: oldScore2
     };
     return {
       updatedState: { ...state },
-      finalScoreDelta: basePoints,
+      finalScoreDelta: 0,
       isBomb: false,
       scorePenalty: 0,
       drawnCard,
-      scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+      scoreDeltas: [],
       startAngle: currentAngle,
       targetAngle,
       spinDurationMs,
@@ -4812,6 +4872,22 @@ function handleAncientTarotSpinWheel({
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[effectResult.victimTeamId] = (state.timesStolenInCycle[effectResult.victimTeamId] || 0) + 1;
+  }
+  let effectiveFinalDelta = finalScoreDelta;
+  let effectiveRewardText = rewardText;
+  let effectiveScoreDeltas = [...scoreDeltas];
+  if (!isNegative && finalScoreDelta > 0 && !isSurvivalMode && getPerkType(state.promoPerk) === "EXTRA_POT_PROMO") {
+    effectiveFinalDelta += 5;
+    effectiveRewardText += ` (\u{1F381} Qu\u1EF9 th\u01B0\u1EDFng Promo +5\u0111!)`;
+    const teamDeltaIdx = effectiveScoreDeltas.findIndex((d) => d.teamId === team.id);
+    if (teamDeltaIdx >= 0) {
+      effectiveScoreDeltas[teamDeltaIdx] = {
+        ...effectiveScoreDeltas[teamDeltaIdx],
+        delta: effectiveScoreDeltas[teamDeltaIdx].delta + 5
+      };
+    } else {
+      effectiveScoreDeltas.push({ teamId: team.id, delta: 5 });
+    }
   }
   state.potPoints = 0;
   state.phase = "PUSH_YOUR_LUCK";
@@ -4830,7 +4906,9 @@ function handleAncientTarotSpinWheel({
     isDrawn: true,
     isRevealPending: true,
     isGambling: Boolean(isGambleTrigger),
-    gamblingSpinCount: 0
+    gamblingSpinCount: 0,
+    isShieldRespin: false,
+    shieldTransformedCardKey: state.tarotState?.shieldTransformedCardKey
   };
   if (isGambleTrigger) {
     state.tarotGambleState = {
@@ -4840,19 +4918,19 @@ function handleAncientTarotSpinWheel({
     };
   }
   const oldScore = currentScore;
-  const newScore = Math.max(0, oldScore + finalScoreDelta);
+  const newScore = Math.max(0, oldScore + effectiveFinalDelta);
   state.storyResult = {
     teamId: team.id,
     teamName: team.name,
     teamColor: team.color || "#ef4444",
-    rewardText,
-    scoreDelta: finalScoreDelta,
+    rewardText: effectiveRewardText,
+    scoreDelta: effectiveFinalDelta,
     oldScore,
     newScore
   };
   return {
     updatedState: { ...state },
-    finalScoreDelta,
+    finalScoreDelta: effectiveFinalDelta,
     isBomb,
     scorePenalty,
     victimTeamId: effectResult.victimTeamId,
@@ -4861,7 +4939,7 @@ function handleAncientTarotSpinWheel({
     giftedPoints: effectResult.giftedPoints,
     darkBombRecipients: effectResult.darkBombRecipients,
     drawnCard,
-    scoreDeltas,
+    scoreDeltas: effectiveScoreDeltas,
     startAngle: currentAngle,
     targetAngle,
     spinDurationMs,
@@ -5254,6 +5332,14 @@ function shuffle(arr) {
   }
   return result;
 }
+function getRoundTargetDifficulty(roundIndex, totalRounds) {
+  if (totalRounds <= 1) return "MEDIUM";
+  if (totalRounds === 2) return roundIndex === 0 ? "EASY" : "HARD";
+  const progress = (roundIndex + 0.5) / totalRounds;
+  if (progress <= 0.35) return "EASY";
+  if (progress <= 0.7) return "MEDIUM";
+  return "HARD";
+}
 function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) {
   const safeTeams = Math.max(1, teamsCount);
   const qCount = Math.max(1, targetCount);
@@ -5354,7 +5440,7 @@ function calculateModeDerivedConfig(mode, targetCount, teamsCount = 4, options) 
   }
 }
 function allocateQuestionsForMatch(params) {
-  const { questions, mode, targetCount, teamsCount = 4, options } = params;
+  const { questions, mode, targetCount, teamsCount = 4, allocationStrategy = "ORIGINAL_POINTS", options } = params;
   const regularQuestions = questions.filter((q) => !q.isTieBreaker);
   const poolToUse = regularQuestions.length > 0 ? regularQuestions : questions;
   const bankTotal = poolToUse.length;
@@ -5379,84 +5465,115 @@ function allocateQuestionsForMatch(params) {
   const shuffledEasy = shuffle(easyPool);
   const shuffledMed = shuffle(medPool);
   const shuffledHard = shuffle(hardPool);
-  let targetHard = Math.max(1, Math.round(effectiveTotal * 0.33));
-  let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.3));
-  let targetMed = effectiveTotal - targetEasy - targetHard;
-  if (targetMed < 1 && effectiveTotal >= 3) {
-    targetMed = 1;
-    targetHard = Math.max(1, effectiveTotal - targetEasy - targetMed);
-  }
-  const selectedHard = [];
-  const selectedMed = [];
-  const selectedEasy = [];
-  const pickedIds = /* @__PURE__ */ new Set();
-  while (selectedHard.length < targetHard && shuffledHard.length > 0) {
-    const q = shuffledHard.pop();
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
-    }
-  }
-  while (selectedEasy.length < targetEasy && shuffledEasy.length > 0) {
-    const q = shuffledEasy.pop();
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
-    }
-  }
-  while (selectedMed.length < targetMed && shuffledMed.length > 0) {
-    const q = shuffledMed.pop();
-    if (!pickedIds.has(q.id)) {
-      pickedIds.add(q.id);
-      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
-    }
-  }
-  const remainingCandidates = shuffle(poolToUse.filter((q) => !pickedIds.has(q.id)));
-  while (selectedHard.length < targetHard && remainingCandidates.length > 0) {
-    const q = remainingCandidates.pop();
-    pickedIds.add(q.id);
-    selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
-  }
-  while (selectedEasy.length < targetEasy && remainingCandidates.length > 0) {
-    const q = remainingCandidates.pop();
-    pickedIds.add(q.id);
-    selectedEasy.push({ ...q, allocatedDiff: "EASY", points: 10, bloomLevel: "REMEMBER" });
-  }
-  while (selectedMed.length < targetMed && remainingCandidates.length > 0) {
-    const q = remainingCandidates.pop();
-    pickedIds.add(q.id);
-    selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
-  }
-  while (selectedHard.length + selectedMed.length + selectedEasy.length < effectiveTotal && remainingCandidates.length > 0) {
-    const q = remainingCandidates.pop();
-    pickedIds.add(q.id);
-    if (selectedHard.length <= selectedMed.length) {
-      selectedHard.push({ ...q, allocatedDiff: "HARD", points: 30, bloomLevel: "ANALYZE" });
-    } else {
-      selectedMed.push({ ...q, allocatedDiff: "MEDIUM", points: 20, bloomLevel: "APPLY" });
-    }
-  }
+  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER" || mode === "DICE_RACE";
   let allocatedQuestions = [];
-  const isTurnBasedMode = mode === "MYSTERY_QUEST" || mode === "BOUNCEBACK" || mode === "WAGER";
+  const pickedIds = /* @__PURE__ */ new Set();
+  const drawFromPool = (desiredDiff) => {
+    let pool = desiredDiff === "HARD" ? shuffledHard : desiredDiff === "MEDIUM" ? shuffledMed : shuffledEasy;
+    while (pool.length > 0) {
+      const q = pool.pop();
+      if (!pickedIds.has(q.id)) {
+        pickedIds.add(q.id);
+        return q;
+      }
+    }
+    const fallbackOrder = desiredDiff === "HARD" ? [shuffledMed, shuffledEasy] : desiredDiff === "MEDIUM" ? [shuffledHard, shuffledEasy] : [shuffledMed, shuffledHard];
+    for (const fbPool of fallbackOrder) {
+      while (fbPool.length > 0) {
+        const q = fbPool.pop();
+        if (!pickedIds.has(q.id)) {
+          pickedIds.add(q.id);
+          return q;
+        }
+      }
+    }
+    const remaining = poolToUse.filter((q) => !pickedIds.has(q.id));
+    if (remaining.length > 0) {
+      const q = remaining[Math.floor(Math.random() * remaining.length)];
+      pickedIds.add(q.id);
+      return q;
+    }
+    return null;
+  };
   if (isTurnBasedMode && safeTeams > 1) {
-    const allSelected = [...selectedEasy, ...selectedMed, ...selectedHard];
-    allSelected.sort((a, b) => {
-      const diffScore = { EASY: 1, MEDIUM: 2, HARD: 3 };
-      return (diffScore[a.allocatedDiff || "EASY"] || 1) - (diffScore[b.allocatedDiff || "EASY"] || 1);
-    });
-    allocatedQuestions = allSelected;
+    let questionsPerRound = safeTeams;
+    let roundsCount = 1;
+    if (mode === "MYSTERY_QUEST") {
+      roundsCount = derived.mysteryQuestTurnsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
+      questionsPerRound = safeTeams;
+    } else if (mode === "WAGER") {
+      roundsCount = derived.wagerRoundsPerTeam || Math.max(1, Math.floor(effectiveTotal / safeTeams));
+      questionsPerRound = safeTeams;
+    } else if (mode === "BOUNCEBACK") {
+      const qPerTurn = derived.bouncebackQuestionsPerTurn || 1;
+      questionsPerRound = safeTeams * qPerTurn;
+      roundsCount = derived.bouncebackCycles || Math.max(1, Math.floor(effectiveTotal / questionsPerRound));
+    } else if (mode === "DICE_RACE") {
+      questionsPerRound = safeTeams;
+      roundsCount = Math.max(1, Math.floor(effectiveTotal / safeTeams));
+    }
+    const roundAllocatedQuestions = [];
+    for (let r = 0; r < roundsCount; r++) {
+      const roundDiff = getRoundTargetDifficulty(r, roundsCount);
+      const targetPoints = normalizePointsToLevel(roundDiff);
+      const targetBloom = roundDiff === "HARD" ? "ANALYZE" : roundDiff === "MEDIUM" ? "APPLY" : "REMEMBER";
+      for (let qIdx = 0; qIdx < questionsPerRound; qIdx++) {
+        const rawQ = drawFromPool(roundDiff);
+        if (!rawQ) break;
+        let finalPoints = targetPoints;
+        let finalBloom = targetBloom;
+        if (allocationStrategy === "ORIGINAL_POINTS") {
+          finalPoints = rawQ.points !== void 0 && rawQ.points !== null ? rawQ.points : targetPoints;
+          finalBloom = rawQ.bloomLevel || targetBloom;
+        }
+        roundAllocatedQuestions.push({
+          ...rawQ,
+          allocatedDiff: roundDiff,
+          roundIndex: r + 1,
+          points: allocationStrategy === "BLOOM_BALANCED" ? targetPoints : finalPoints,
+          bloomLevel: allocationStrategy === "BLOOM_BALANCED" ? targetBloom : finalBloom
+        });
+      }
+    }
+    allocatedQuestions = roundAllocatedQuestions;
   } else {
+    let targetHard = Math.max(1, Math.round(effectiveTotal * 0.33));
+    let targetEasy = Math.max(1, Math.round(effectiveTotal * 0.3));
+    let targetMed = effectiveTotal - targetEasy - targetHard;
+    if (targetMed < 1 && effectiveTotal >= 3) {
+      targetMed = 1;
+      targetHard = Math.max(1, effectiveTotal - targetEasy - targetMed);
+    }
+    const selectedHard = [];
+    const selectedMed = [];
+    const selectedEasy = [];
+    while (selectedHard.length < targetHard) {
+      const q = drawFromPool("HARD");
+      if (!q) break;
+      selectedHard.push({ ...q, allocatedDiff: "HARD" });
+    }
+    while (selectedEasy.length < targetEasy) {
+      const q = drawFromPool("EASY");
+      if (!q) break;
+      selectedEasy.push({ ...q, allocatedDiff: "EASY" });
+    }
+    while (selectedMed.length < targetMed) {
+      const q = drawFromPool("MEDIUM");
+      if (!q) break;
+      selectedMed.push({ ...q, allocatedDiff: "MEDIUM" });
+    }
     allocatedQuestions = [...selectedEasy, ...selectedMed, ...selectedHard];
   }
   allocatedQuestions = allocatedQuestions.slice(0, effectiveTotal);
   allocatedQuestions = allocatedQuestions.map((q, idx) => {
     const diff = q.allocatedDiff || classifyQuestionDifficulty(q);
-    const normalizedPoints = normalizePointsToLevel(diff);
+    const standardPoints = normalizePointsToLevel(diff);
+    const standardBloom = diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER";
     return {
       ...q,
       order: idx + 1,
-      points: normalizedPoints,
-      bloomLevel: diff === "HARD" ? "ANALYZE" : diff === "MEDIUM" ? "APPLY" : "REMEMBER"
+      points: allocationStrategy === "BLOOM_BALANCED" ? standardPoints : q.points !== void 0 && q.points !== null ? q.points : standardPoints,
+      bloomLevel: allocationStrategy === "BLOOM_BALANCED" ? standardBloom : q.bloomLevel || standardBloom
     };
   });
   const finalEasy = allocatedQuestions.filter((q) => q.points <= 10).length;
@@ -5489,6 +5606,7 @@ function allocateQuestionsForMatch(params) {
     modeDetails,
     targetCount: desiredCount,
     bankTotal,
+    strategy: allocationStrategy,
     derivedConfig: {
       matchMaxQuestions: allocatedQuestions.length,
       mysteryQuestTurnsPerTeam: derived.mysteryQuestTurnsPerTeam,
@@ -9241,6 +9359,7 @@ function registerSocketHandlers(io2) {
           targetCount: targetQCount,
           mode: room.mode,
           teamsCount: teams.length,
+          allocationStrategy: config2?.questionAllocationStrategy || "ORIGINAL_POINTS",
           options: {
             eliminationStages: config2?.eliminationRounds,
             bouncebackQuestionsPerTurn: config2?.bouncebackQuestionsPerTurn,
@@ -11259,7 +11378,7 @@ function registerSocketHandlers(io2) {
     const executeMysterySpinTarotWheel = async (room, questState, teamOrTeamId, powerPercent = 50) => {
       const targetTeamId = typeof teamOrTeamId === "string" ? teamOrTeamId : teamOrTeamId?.id;
       if (!targetTeamId) return;
-      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
+      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn && !questState.tarotState?.isShieldRespin || questState.tarotState?.isWheelSpinning) return;
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
       const allTeams = rawTeams.map((t) => ({
         id: t.id,
@@ -11333,8 +11452,9 @@ function registerSocketHandlers(io2) {
     const executeMysteryTarotReveal = async (room, questState) => {
       if (!questState.tarotState || !questState.tarotState.isRevealPending) return;
       const drawnCard = questState.tarotState.drawnCard;
+      const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
-      if (!isGamble) {
+      if (!isGamble && !isShieldRespin) {
         const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
         const scoreUpdates = [];
@@ -11352,8 +11472,8 @@ function registerSocketHandlers(io2) {
           io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
         }
       }
-      const nextPhase = isGamble ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY";
-      const nextFinishedReason = isGamble ? questState.turnFinishedReason : questState.isPenaltySurvivalMode ? drawnCard?.key === "THE_PEACE" ? "SURVIVAL_ESCAPE" : "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
+      const nextPhase = isGamble || isShieldRespin ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY";
+      const nextFinishedReason = isGamble || isShieldRespin ? void 0 : questState.isPenaltySurvivalMode ? drawnCard?.key === "THE_PEACE" ? "SURVIVAL_ESCAPE" : "SURVIVAL_FAILED" : "TAROT_WHEEL_SPUN";
       const revealedState = {
         ...questState,
         phase: nextPhase,
@@ -11361,7 +11481,9 @@ function registerSocketHandlers(io2) {
         tarotState: {
           ...questState.tarotState,
           isRevealPending: false,
-          isGambling: isGamble
+          isGambling: isGamble,
+          isShieldRespin,
+          shieldTransformedCardKey: questState.tarotState.shieldTransformedCardKey
         },
         ...isGamble ? {
           tarotGambleState: {
@@ -11375,6 +11497,27 @@ function registerSocketHandlers(io2) {
       };
       roomMysteryQuests.set(room.id, revealedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", revealedState);
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+    const executeMysteryTarotRespin = async (room, questState) => {
+      if (!questState.tarotState || !questState.tarotState.isShieldRespin) return;
+      const respinState = {
+        ...questState,
+        phase: "PUSH_YOUR_LUCK",
+        turnFinishedReason: void 0,
+        tarotState: {
+          ...questState.tarotState,
+          isDrawn: false,
+          isRevealPending: false,
+          drawnCard: void 0,
+          isWheelSpinning: false,
+          shieldTransformedCardKey: questState.tarotState.shieldTransformedCardKey,
+          isShieldRespin: false
+        }
+      };
+      roomMysteryQuests.set(room.id, respinState);
+      io2.to(`room:${room.code}`).emit("game:mystery:update", respinState);
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", refreshedState);
     };
@@ -11554,6 +11697,49 @@ function registerSocketHandlers(io2) {
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
       await executeMysteryTarotReveal(room, questState);
+    });
+    socket.on("ancient-tarot-respin", async ({ code } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      await executeMysteryTarotRespin(room, questState);
+    });
+    socket.on("game:mystery:ancient_tarot_respin", async ({ code } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      await executeMysteryTarotRespin(room, questState);
+    });
+    socket.on("admin:mystery:ancient_tarot_respin", async ({ code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+      await executeMysteryTarotRespin(room, questState);
     });
     socket.on("ancient-tarot-gamble-decision", async ({ spinAgain = false, powerPercent = 50, code } = {}) => {
       const playerId = playerSockets.get(socket.id);

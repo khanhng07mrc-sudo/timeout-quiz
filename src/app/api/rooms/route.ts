@@ -155,29 +155,10 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const reqEasy = Math.ceil(easyCells * 1.25);
-      const reqMed = Math.ceil(medCells * 1.25);
-      const reqHard = Math.ceil(hardCells * 1.25);
-
-      const easyInBank = quizBank.questions.filter((q) => (q.points || 10) <= 10).length;
-      const medInBank = quizBank.questions.filter((q) => (q.points || 10) > 10 && (q.points || 10) <= 20).length;
-      const hardInBank = quizBank.questions.filter((q) => (q.points || 10) > 20).length;
-
-      const errors: string[] = [];
-      if (easyInBank < reqEasy) {
-        errors.push(`Câu Dễ: cần tối thiểu ${reqEasy} câu (hiện có ${easyInBank}, thiếu ${reqEasy - easyInBank})`);
-      }
-      if (medInBank < reqMed) {
-        errors.push(`Câu Trung bình: cần tối thiểu ${reqMed} câu (hiện có ${medInBank}, thiếu ${reqMed - medInBank})`);
-      }
-      if (hardInBank < reqHard) {
-        errors.push(`Câu Khó: cần tối thiểu ${reqHard} câu (hiện có ${hardInBank}, thiếu ${reqHard - hardInBank})`);
-      }
-
-      if (errors.length > 0) {
+      if (quizBank.questions.length < totalCells) {
         return NextResponse.json(
           {
-            error: `Kho câu hỏi không đáp ứng yêu cầu bàn cờ ${gridRows}×${gridCols} (gồm 25% dự phòng): ${errors.join("; ")}. Vui lòng bổ sung câu hỏi hoặc điều chỉnh bàn cờ!`,
+            error: `Kho câu hỏi không đủ số lượng cho bàn cờ ${gridRows}×${gridCols} (${totalCells} ô)! Hiện kho chỉ có ${quizBank.questions.length} câu. Vui lòng bổ sung thêm câu hỏi!`,
           },
           { status: 400 }
         );

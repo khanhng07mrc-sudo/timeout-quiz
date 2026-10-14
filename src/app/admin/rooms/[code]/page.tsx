@@ -1059,7 +1059,7 @@ export default function AdminRoomPage() {
           {matchStarting && (
             <div className="p-4 rounded-xl bg-purple-900/30 border border-purple-500/50 text-center space-y-3 animate-pulse">
               <p className="text-xs font-bold text-purple-300">
-                ⚡ Đang đếm ngược chuẩn bị trận đấu: {matchStarting.seconds}s
+                ⚡ Chuẩn bị: {matchStarting.seconds}s
               </p>
               <div className="text-4xl font-black text-cyan-400">
                 {matchStarting.seconds}s
@@ -1068,7 +1068,7 @@ export default function AdminRoomPage() {
                 onClick={() => emit("admin:skip:prepare")}
                 className="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs shadow transition-all flex items-center justify-center gap-1.5"
               >
-                <span>⚡</span> Bỏ qua đếm ngược (Vào câu hỏi ngay)
+                <span>⚡</span> Vào câu hỏi ngay
               </button>
             </div>
           )}
@@ -1503,6 +1503,7 @@ export default function AdminRoomPage() {
                 onDrawTarot={() => emit("admin:mystery:draw_tarot", { code })}
                 onSpinTarotWheel={(powerPercent) => emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent })}
                 onTarotReveal={() => emit("admin:mystery:ancient_tarot_reveal", { code })}
+                onTarotRespin={() => emit("admin:mystery:ancient_tarot_respin", { code })}
                 onTarotGambleDecision={(spinAgain, powerPercent) => emit("admin:mystery:ancient_tarot_gamble_decision", { spinAgain, powerPercent, code })}
                 onSurvivalChoice={(choice) => emit("admin:mystery:survival_choice", { choice, code })}
                 onAdjustScore={(teamId, delta, setScore) => {

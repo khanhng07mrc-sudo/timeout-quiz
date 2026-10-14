@@ -601,6 +601,7 @@ export interface GameConfig {
   answerSubmissionMode?: "SINGLE_SUBMIT" | "ALLOW_CHANGE";
   autoTimerStart?: boolean;
   initialTeamScore?: number;
+  questionAllocationStrategy?: "ORIGINAL_POINTS" | "BLOOM_BALANCED";
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -982,6 +983,7 @@ export interface TarotWheelSegment {
   isMagnetized?: boolean;
   isRevealPending?: boolean;
   maskedEffect?: string;
+  isShieldTransformed?: boolean;
 }
 
 export type TeamRiskTier = "UNDERDOG" | "NEUTRAL" | "DOMINANT";
@@ -1130,6 +1132,8 @@ export interface MysteryQuestState {
     isRevealPending?: boolean; // true after wheel stops, before user reveals
     isGambling?: boolean;
     gamblingSpinCount?: number;
+    isShieldRespin?: boolean; // Khiên thần hấp thụ ô trừ -> được cộng thêm 1 lượt quay mới
+    shieldTransformedCardKey?: AncientTarotCardKey; // Lá bài/ô trừ đã bị khiên hấp thụ và biến đổi thành ô cộng điểm
   };
   tarotGambleState?: {
     isGambling: boolean;
@@ -1596,6 +1600,9 @@ export interface ClientToServerEvents {
   "ancient-tarot-reveal": (payload?: { code?: string }) => void;
   "game:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
   "admin:mystery:ancient_tarot_reveal": (payload?: { code?: string }) => void;
+  "ancient-tarot-respin": (payload?: { code?: string }) => void;
+  "game:mystery:ancient_tarot_respin": (payload?: { code?: string }) => void;
+  "admin:mystery:ancient_tarot_respin": (payload?: { code?: string }) => void;
   "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;

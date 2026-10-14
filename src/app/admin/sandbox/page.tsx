@@ -246,21 +246,59 @@ export default function AdminSandboxPage() {
   const [activeTeamIndex, setActiveTeamIndex] = useState<number>(0);
   const activeTeamIdRef = useRef<string>("");
   const initialTeamOrderRef = useRef<string[]>([]);
+  // Customizable Sandbox Teams (2 to 8 teams)
+  const [sandboxCustomTeams, setSandboxCustomTeams] = useState<Array<{ name: string; color: string }>>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("sandbox_custom_teams");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+        }
+      }
+    } catch {}
+    return [
+      { name: "Đội Đỏ", color: "#ef4444" },
+      { name: "Đội Lam", color: "#3b82f6" },
+      { name: "Đội Vàng", color: "#eab308" },
+      { name: "Đội Lục", color: "#10b981" },
+    ];
+  });
 
-  // Stable team ordering: keeps teams in deterministic positions (index 0, 1, 2, 3) across questions & score updates
+  const handleSetSandboxTeamCount = (count: number) => {
+    const clamped = Math.max(2, Math.min(8, count));
+    const palette = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
+    let updated = [...sandboxCustomTeams];
+    if (clamped > updated.length) {
+      for (let i = updated.length; i < clamped; i++) {
+        updated.push({
+          name: `Đội ${i + 1}`,
+          color: palette[i % palette.length],
+        });
+      }
+    } else if (clamped < updated.length) {
+      updated = updated.slice(0, clamped);
+    }
+    setSandboxCustomTeams(updated);
+    try {
+      localStorage.setItem("sandbox_custom_teams", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const handleUpdateSandboxTeamName = (index: number, newName: string) => {
+    const updated = [...sandboxCustomTeams];
+    if (updated[index]) {
+      updated[index] = { ...updated[index], name: newName };
+      setSandboxCustomTeams(updated);
+      try {
+        localStorage.setItem("sandbox_custom_teams", JSON.stringify(updated));
+      } catch {}
+    }
+  };
+
+  // Stable team ordering: keeps teams in deterministic positions (index 0, 1, 2, ...) across questions & score updates
   const stableTeams = useMemo<TeamState[]>(() => {
     if (!roomState?.teams || roomState.teams.length === 0) return [];
-    if (isOfflineSandbox) {
-      const fixedOrder = ["t_red", "t_blue", "t_yellow", "t_purple"];
-      return [...roomState.teams].sort((a, b) => {
-        const idxA = fixedOrder.indexOf(a.id);
-        const idxB = fixedOrder.indexOf(b.id);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return 0;
-      });
-    }
     if (initialTeamOrderRef.current.length === 0 && roomState.teams.length > 0) {
       initialTeamOrderRef.current = roomState.teams.map((t) => t.id);
     }
@@ -272,7 +310,7 @@ export default function AdminSandboxPage() {
       if (idxB !== -1) return 1;
       return (a.name || "").localeCompare(b.name || "");
     });
-  }, [roomState?.teams, isOfflineSandbox]);
+  }, [roomState?.teams]);
 
   const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
 
@@ -1320,12 +1358,20 @@ export default function AdminSandboxPage() {
       ...q,
       points: normalizeToThreeLevels(q.points || 10),
     }));
+    const activeCustomTeams = sandboxCustomTeams.length >= 2 ? sandboxCustomTeams : [
+      { name: "Đội Đỏ", color: "#ef4444" },
+      { name: "Đội Lam", color: "#3b82f6" },
+      { name: "Đội Vàng", color: "#eab308" },
+      { name: "Đội Lục", color: "#10b981" },
+    ];
+    const numTeams = activeCustomTeams.length;
+
     const maxQ = roomState?.config?.matchMaxQuestions && roomState.config.matchMaxQuestions > 0 ? roomState.config.matchMaxQuestions : undefined;
     const allocResult = allocateQuestionsForMatch({
       questions: rawQuestions,
       targetCount: maxQ,
       mode,
-      teamsCount: 4,
+      teamsCount: numTeams,
     });
     offlineQuestionsRef.current = allocResult.allocatedQuestions;
     offlineQIndexRef.current = -1;
@@ -1334,23 +1380,42 @@ export default function AdminSandboxPage() {
 
     const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
     const initialScore = mode === "DICE_RACE" ? 1 : 0;
-    const teamIds = ["t_red", "t_blue", "t_yellow", "t_purple"];
+    const teamIds = activeCustomTeams.map((_, idx) => `t_${idx}`);
+    initialTeamOrderRef.current = teamIds;
     const offlineCardsMap = distributeCategorizedCardsToTeams(teamIds, modeAllowedPowerups as any, 2, 2);
     offlineSharedPowerupUsedThisQuestionRef.current = false;
 
-    let teams = [
-      { id: "t_red", name: "Đội Đỏ (Bạn)", color: "#ef4444", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_red") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_r${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_red", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_blue", name: "Đội Xanh 🤖", color: "#3b82f6", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_blue") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_b${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_blue", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_yellow", name: "Đội Vàng 🤖", color: "#eab308", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_yellow") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_y${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_yellow", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-      { id: "t_purple", name: "Đội Tím 🤖", color: "#a855f7", score: initialScore, isEliminated: false, frozenRounds: 0, shieldCount: 0, cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get("t_purple") || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((t, idx) => ({ id: `c_p${idx + 1}`, type: t, ownerType: "TEAM" as const, teamId: "t_purple", used: false })), playerCount: 1, isGhost: false, ghostStreak: 0, ghostRoundAllCorrect: false, ghostTotalCorrect: 0, ghostTotalAnswered: 0, ghostCurrentRoundCorrect: 0, eliminationInterval: 3 },
-    ];
+    const palette = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
+    let teams = activeCustomTeams.map((t, idx) => {
+      const tid = teamIds[idx];
+      return {
+        id: tid,
+        name: idx === 0 ? `${t.name} (Bạn)` : `${t.name} 🤖`,
+        color: t.color || palette[idx % palette.length],
+        score: initialScore,
+        isEliminated: false,
+        frozenRounds: 0,
+        shieldCount: 0,
+        cards: mode === "MYSTERY_QUEST" ? [] : (offlineCardsMap.get(tid) || [modeAllowedPowerups[0] || "FIFTY_FIFTY", modeAllowedPowerups[1] || "TIME_PLUS"]).map((type, cidx) => ({ id: `c_${idx}_${cidx + 1}`, type, ownerType: "TEAM" as const, teamId: tid, used: false })),
+        playerCount: 1,
+        isGhost: false,
+        ghostStreak: 0,
+        ghostRoundAllCorrect: false,
+        ghostTotalCorrect: 0,
+        ghostTotalAnswered: 0,
+        ghostCurrentRoundCorrect: 0,
+        eliminationInterval: 3,
+      };
+    });
 
-    const players = [
-      { id: "p_you", name: "Bạn (Tester)", score: initialScore, teamId: "t_red", isHost: true, isOnline: true },
-      { id: "bot_1", name: "Đội Xanh 🤖", score: initialScore, teamId: "t_blue", isHost: false, isOnline: true },
-      { id: "bot_2", name: "Đội Vàng 🤖", score: initialScore, teamId: "t_yellow", isHost: false, isOnline: true },
-      { id: "bot_3", name: "Đội Tím 🤖", score: initialScore, teamId: "t_purple", isHost: false, isOnline: true },
-    ];
+    const players = teams.map((t, idx) => ({
+      id: idx === 0 ? "p_you" : `bot_${idx}`,
+      name: idx === 0 ? "Bạn (Tester)" : t.name,
+      score: initialScore,
+      teamId: t.id,
+      isHost: idx === 0,
+      isOnline: true,
+    }));
 
     let gridCaroState: any = undefined;
     if (mode === "GRID_CARO") {
@@ -1367,8 +1432,8 @@ export default function AdminSandboxPage() {
         gridSize: 3,
         targetToWin: 3,
         cells,
-        currentTurnTeamId: "t_red",
-        currentTurnTeamName: "Đội Đỏ (Bạn)",
+        currentTurnTeamId: teams[0].id,
+        currentTurnTeamName: teams[0].name,
         currentTurnIndex: 0,
         completedLines: [],
         previewActive: false,
@@ -1379,17 +1444,23 @@ export default function AdminSandboxPage() {
     if (mode === "DICE_RACE") {
       const totalTiles = 30;
       const tiles = generateBalancedDiceTiles(totalTiles);
+      const teamPositions: Record<string, any> = {};
+      for (const t of teams) {
+        teamPositions[t.id] = {
+          teamId: t.id,
+          teamName: t.name,
+          teamColor: t.color,
+          position: 0,
+          hasFinished: false,
+          hasShield: false,
+        };
+      }
       diceRaceState = {
         totalTiles,
         tiles,
-        teamPositions: {
-          t_red: { teamId: "t_red", teamName: "Đội Đỏ (Bạn)", teamColor: "#ef4444", position: 0, hasFinished: false, hasShield: false },
-          t_blue: { teamId: "t_blue", teamName: "Đội Xanh 🤖", teamColor: "#3b82f6", position: 0, hasFinished: false, hasShield: false },
-          t_yellow: { teamId: "t_yellow", teamName: "Đội Vàng 🤖", teamColor: "#eab308", position: 0, hasFinished: false, hasShield: false },
-          t_purple: { teamId: "t_purple", teamName: "Đội Tím 🤖", teamColor: "#a855f7", position: 0, hasFinished: false, hasShield: false },
-        },
-        currentTurnTeamId: "t_red",
-        currentTurnTeamName: "Đội Đỏ (Bạn)",
+        teamPositions,
+        currentTurnTeamId: teams[0].id,
+        currentTurnTeamName: teams[0].name,
         currentTurnIndex: 0,
         canRollDice: false,
         finishLeaderboard: [],
@@ -1563,7 +1634,7 @@ export default function AdminSandboxPage() {
       neededTeamIds = teams.filter((t) => !t.isEliminated).map((t) => t.id);
     }
 
-    const testerTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || "t_red";
+    const testerTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id || "t_0";
     const testerNeedsToFinalize = neededTeamIds.includes(testerTeamId);
     if (testerNeedsToFinalize && !offlineFinalizedActorsRef.current.has(testerTeamId)) {
       // Tester is playing this question and has not finalized yet! Do not end early!
@@ -1593,7 +1664,7 @@ export default function AdminSandboxPage() {
       clearInterval(offlineTimerRef.current);
       offlineTimerRef.current = null;
     }
-    const primaryId = currentQuestionRef.current?.primaryTeamId || roomStateRef.current?.teams[0]?.id || "t_red";
+    const primaryId = currentQuestionRef.current?.primaryTeamId || roomStateRef.current?.teams[0]?.id || stableTeams[0]?.id || "t_0";
     const primaryName = roomStateRef.current?.teams.find((t) => t.id === primaryId)?.name || "Đội chính";
 
     // Step 1: 3s prepare countdown
@@ -3210,11 +3281,12 @@ export default function AdminSandboxPage() {
         if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
         const curMystery = roomStateRef.current.mysteryQuestState;
         const drawnCard = curMystery.tarotState?.drawnCard;
+        const isShieldRespin = Boolean(curMystery.tarotState?.isShieldRespin);
         const isGamble = !curMystery.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
         const pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (!isGamble && pendingDeltas.length > 0) {
+        if (!isGamble && !isShieldRespin && pendingDeltas.length > 0) {
           for (const item of pendingDeltas) {
             if (item.delta !== 0) {
               updatedTeams = updatedTeams.map((t) =>
@@ -3228,12 +3300,14 @@ export default function AdminSandboxPage() {
           ...curMystery.tarotState,
           isRevealPending: false,
           isGambling: isGamble,
+          isShieldRespin,
+          shieldTransformedCardKey: curMystery.tarotState?.shieldTransformedCardKey,
         };
         const updatedMystery: MysteryQuestState = {
           ...curMystery,
-          phase: isGamble ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY",
-          turnFinishedReason: isGamble
-            ? curMystery.turnFinishedReason
+          phase: (isGamble || isShieldRespin) ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY",
+          turnFinishedReason: (isGamble || isShieldRespin)
+            ? undefined
             : curMystery.isPenaltySurvivalMode
             ? drawnCard?.key === "THE_PEACE"
               ? "SURVIVAL_ESCAPE"
@@ -3252,6 +3326,34 @@ export default function AdminSandboxPage() {
         setRoomState(nextRoomState);
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedMystery });
         addLog(`🔮 Đã lật bài Tarot: ${updatedTarot.drawnCard?.nameVi || ""} (Lá ${updatedTarot.drawnCard?.roman || ""})!`);
+        return;
+      }
+      if (e.data?.type === "MYSTERY_TAROT_RESPIN" || e.data?.action === "mystery_tarot_respin") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_respin" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const respinMystery: MysteryQuestState = {
+          ...curMystery,
+          phase: "PUSH_YOUR_LUCK",
+          turnFinishedReason: undefined,
+          tarotState: {
+            ...curMystery.tarotState,
+            isDrawn: false,
+            isRevealPending: false,
+            drawnCard: undefined,
+            isWheelSpinning: false,
+            shieldTransformedCardKey: curMystery.tarotState?.shieldTransformedCardKey,
+            isShieldRespin: false,
+          },
+        };
+        const nextRoomState = { ...roomStateRef.current, mysteryQuestState: respinMystery };
+        setRoomState(nextRoomState);
+        roomStateRef.current = nextRoomState;
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: respinMystery });
+        addLog(`🛡️ [KHIÊN THẦN] Đã hóa giải ô trừ thành ô cộng điểm! Chuẩn bị bước vào Lượt quay 2!`);
         return;
       }
       if (e.data?.type === "MYSTERY_TAROT_GAMBLE_DECISION" || e.data?.action === "mystery_tarot_gamble_decision") {
@@ -3550,7 +3652,7 @@ export default function AdminSandboxPage() {
       }
       if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
       const { action, answer, points, cellId, teamId } = e.data;
-      const targetTeamId = teamId || stableTeams[activeTeamIndex]?.id || "t_red";
+      const targetTeamId = teamId || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id || "t_0";
       const targetTeamName = stableTeams.find((t) => t.id === targetTeamId)?.name || "Bạn (Tester)";
 
       if (action === "answer") {
@@ -3949,6 +4051,7 @@ export default function AdminSandboxPage() {
         body: JSON.stringify({
           mode: modeToUse,
           quizBankId: selectedBankId,
+          teams: sandboxCustomTeams,
         }),
       });
       const data = await res.json();
@@ -4901,6 +5004,8 @@ export default function AdminSandboxPage() {
       const wagerAmount = curWager?.currentHighestWager || 10;
       const baseQPoints = normalizeToThreeLevels(currentQuestion.question.points || 10);
 
+      const activeTesterId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id || "t_0";
+
       // 1. Điểm các đội không cược khi đúng: 1/2 điểm gốc cố định (5đ/10đ/15đ), sai = 0đ
       const nonWagerCorrectPoints = Math.max(5, Math.floor(baseQPoints / 2));
 
@@ -4909,7 +5014,7 @@ export default function AdminSandboxPage() {
       (roomState?.teams || []).forEach((t) => {
         if (t.id !== lastWagerTeamId) {
           const recorded = offlineAnswersRef.current.get(t.id);
-          const ansId = recorded ? recorded.answer : (t.id === "t_red" ? correctId : "B");
+          const ansId = recorded ? recorded.answer : (t.id === activeTesterId ? correctId : "B");
           const isCorrect = recorded ? recorded.isCorrect : ansId === correctId;
           if (isCorrect) otherCorrectCount++;
         }
@@ -4932,7 +5037,7 @@ export default function AdminSandboxPage() {
       const hasAnyRecorded = offlineAnswersRef.current.size > 0;
       currentTeamsList.forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === activeTesterId ? correctId : null));
         const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         if (isCorrect) correctSandboxCount++;
       });
@@ -4950,7 +5055,7 @@ export default function AdminSandboxPage() {
 
       currentTeamsList.forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === activeTesterId ? correctId : null));
         const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         if (topHalfIds.has(t.id)) {
           topHalfTotal++;
@@ -4977,7 +5082,7 @@ export default function AdminSandboxPage() {
 
       (roomState?.teams || []).forEach((t) => {
         const recorded = offlineAnswersRef.current.get(t.id);
-        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === "t_red" ? correctId : null));
+        const ansId = recorded ? recorded.answer : (hasAnyRecorded ? null : (t.id === activeTesterId ? correctId : null));
         const isCorrect = recorded ? recorded.isCorrect : (ansId ? ansId === correctId : false);
         const timeSpent = recorded?.timeSpent ?? 3000;
 
@@ -5372,7 +5477,7 @@ export default function AdminSandboxPage() {
         const curName = roomState?.diceRaceState?.currentTurnTeamName || curTurnTeamId;
         if (isCurTeamCorrect) {
           addLog(`🎲 [${curName}] trả lời ĐÚNG! Đã mở quyền gieo xúc xắc!`);
-          if (botAutoEnabled && curTurnTeamId && curTurnTeamId !== "t_red") {
+          if (botAutoEnabled && curTurnTeamId && curTurnTeamId !== activeTesterId) {
             setTimeout(() => {
               handleDiceRollManual();
             }, 1800);
@@ -5632,7 +5737,7 @@ export default function AdminSandboxPage() {
       const correctId = correctOpt ? correctOpt.id : "A";
       const chosenPoints = currentQuestion.selectedPointLevel || currentQuestion.question.points || 20;
 
-      const primaryTeamId = currentQuestion.primaryTeamId || stableTeams[activeTeamIndex]?.id || "t_red";
+      const primaryTeamId = currentQuestion.primaryTeamId || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id || "t_0";
       const primaryTeamName = currentQuestion.primaryTeamName || stableTeams.find((t) => t.id === primaryTeamId)?.name || "Đội chính";
       const stealTeamId = currentQuestion.stealBuzzedTeamId;
       const stealTeamName = currentQuestion.stealBuzzedTeamName;
@@ -6204,7 +6309,7 @@ export default function AdminSandboxPage() {
 
     if (isOfflineSandbox) {
       (roomState?.teams || []).forEach((t) => {
-        if (t.id === (currentTeam?.id || "t_red")) return;
+        if (t.id === (currentTeam?.id || stableTeams[0]?.id)) return;
         const isBotCorrect = Math.random() < 0.75;
         const opt = isBotCorrect ? correctOpt : wrongOpt;
         const isCorrect = isBotCorrect;
@@ -7646,6 +7751,59 @@ export default function AdminSandboxPage() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Team Configuration inside Settings */}
+                      <div className="space-y-1.5 pt-1.5 border-t border-white/10">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-slate-300 font-bold">Cấu hình Đội ({sandboxCustomTeams.length} đội)</span>
+                          <div className="flex items-center gap-1">
+                            {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                              <button
+                                key={cnt}
+                                type="button"
+                                onClick={() => handleSetSandboxTeamCount(cnt)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer ${
+                                  sandboxCustomTeams.length === cnt
+                                    ? "bg-purple-500/30 border-purple-400 text-purple-200"
+                                    : "glass border-white/10 text-slate-400 hover:text-white"
+                                }`}
+                              >
+                                {cnt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-1.5 pt-1 max-h-36 overflow-y-auto no-scrollbar">
+                          {sandboxCustomTeams.map((team, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5 p-1 rounded-lg bg-black/40 border border-white/10">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: team.color }} />
+                              <input
+                                type="text"
+                                value={team.name}
+                                onChange={(e) => handleUpdateSandboxTeamName(idx, e.target.value)}
+                                className="flex-1 bg-transparent text-[10px] font-bold text-white focus:outline-none"
+                              />
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowSettingsDropdown(false);
+                            if (isOfflineSandbox) {
+                              startOfflineSandbox(roomState.mode, selectedBankId);
+                            } else {
+                              handleLaunchSandbox(roomState.mode);
+                            }
+                          }}
+                          className="w-full mt-1 py-1 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-[10px] shadow transition flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <span>🔄</span>
+                          <span>Áp dụng & Chạy lại với cấu hình đội này</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -7688,8 +7846,65 @@ export default function AdminSandboxPage() {
               Chọn chế độ trò chơi thử nghiệm
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
-              Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải với 4 đội thi. Hãy chọn 1 chế độ bên dưới để bắt đầu kiểm thử ngay lập tức.
+              Hệ thống tích hợp Màn chiếu hội trường bên trái và Điện thoại thí sinh bên phải. Bạn có thể tự do tùy chỉnh số đội và tên đội mong muốn để kiểm thử toàn diện.
             </p>
+          </div>
+
+          {/* ── Sandbox Team Setup Bar ── */}
+          <div className="max-w-5xl mx-auto glass rounded-2xl p-3 sm:p-4 border border-purple-500/25 bg-[#121424]/90 space-y-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-base">👥</span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold text-purple-300">
+                    Cấu hình Đội thi đấu ({sandboxCustomTeams.length} đội)
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Tùy chỉnh số lượng đội (2 đến 8 đội) và đặt tên đội mong muốn cho Sandbox
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick team count selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-300">Số đội:</span>
+                {[2, 3, 4, 5, 6, 8].map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => handleSetSandboxTeamCount(cnt)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      sandboxCustomTeams.length === cnt
+                        ? "bg-purple-500/30 border-purple-400 text-purple-200 ring-1 ring-purple-400/40"
+                        : "glass border-white/10 text-slate-400 hover:text-white"
+                    }`}
+                  >
+                    {cnt} đội
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Editable Team Names List */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              {sandboxCustomTeams.map((team, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-black/40 border border-white/10">
+                  <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: team.color }} />
+                  <input
+                    type="text"
+                    value={team.name}
+                    onChange={(e) => handleUpdateSandboxTeamName(idx, e.target.value)}
+                    className="flex-1 bg-transparent text-xs font-bold text-white focus:outline-none focus:ring-1 focus:ring-purple-400 rounded px-1"
+                    placeholder={`Đội ${idx + 1}`}
+                  />
+                  {idx === 0 ? (
+                    <span className="text-[9px] font-bold text-cyan-300 px-1 py-0.5 rounded bg-cyan-500/20 shrink-0">Bạn</span>
+                  ) : (
+                    <span className="text-[9px] font-bold text-purple-300 px-1 py-0.5 rounded bg-purple-500/20 shrink-0">Bot</span>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* ── Floating Control & Config Bar ── */}
@@ -8058,7 +8273,7 @@ export default function AdminSandboxPage() {
             {/* Team Switcher Tabs (Ultra-Compact Single Row) */}
             <div className="glass rounded-xl px-2 py-1 border border-white/10 bg-[#121424] shrink-0 flex items-center gap-1.5">
               <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap shrink-0 hidden sm:inline">📱 Chọn Đội:</span>
-              <div className="grid grid-cols-4 gap-1 flex-1">
+              <div className="flex items-center gap-1 flex-1 overflow-x-auto no-scrollbar">
                 {stableTeams.map((t: TeamState, idx: number) => {
                   const isActive = activeTeamIndex === idx;
                   const teamPopups = scorePopups.filter((p) => p.teamId === t.id);
@@ -8851,6 +9066,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:ancient_tarot_reveal" as any, { code });
                         } else {
                           window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
+                        }
+                      }}
+                      onTarotRespin={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_respin" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_RESPIN", action: "mystery_tarot_respin" }, "*");
                         }
                       }}
                       onTarotGambleDecision={(spinAgain, powerPercent) => {

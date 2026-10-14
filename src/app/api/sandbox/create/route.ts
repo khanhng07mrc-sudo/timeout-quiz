@@ -166,10 +166,17 @@ export async function POST(req: NextRequest) {
       sandboxConfig.allowedPowerups = [];
     }
 
+    const TEAM_PALETTE = ["#ef4444", "#3b82f6", "#eab308", "#10b981", "#a855f7", "#ec4899", "#06b6d4", "#f97316"];
+    const inputTeams = (Array.isArray(body.teams) && body.teams.length >= 2)
+      ? body.teams.slice(0, 10)
+      : DEFAULT_TEAMS;
+    const teamCount = inputTeams.length;
+    sandboxConfig.maxTeams = teamCount;
+
     if (body.matchMaxQuestions || body.config?.matchMaxQuestions) {
       const maxQ = Number(body.matchMaxQuestions || body.config?.matchMaxQuestions);
       if (maxQ > 0) {
-        const derived = calculateModeDerivedConfig(mode, maxQ, 4);
+        const derived = calculateModeDerivedConfig(mode, maxQ, teamCount);
         if (derived.mysteryQuestTurnsPerTeam) sandboxConfig.mysteryQuestTurnsPerTeam = derived.mysteryQuestTurnsPerTeam;
         if (derived.wagerRoundsPerTeam) sandboxConfig.wagerRoundsPerTeam = derived.wagerRoundsPerTeam;
         if (derived.bouncebackCycles) sandboxConfig.bouncebackCycles = derived.bouncebackCycles;
@@ -197,7 +204,7 @@ export async function POST(req: NextRequest) {
       room = await prisma.room.create({
         data: {
           code,
-          name: `[Sandbox] ${cleanName} (4 Đội)`,
+          name: `[Sandbox] ${cleanName} (${teamCount} Đội)`,
           hostId: effectiveHostId,
           hostKey,
           quizBankId: quizBank?.id || null,
@@ -214,7 +221,7 @@ export async function POST(req: NextRequest) {
         room = await prisma.room.create({
           data: {
             code,
-            name: `[Sandbox] ${cleanName} (4 Đội)`,
+            name: `[Sandbox] ${cleanName} (${teamCount} Đội)`,
             hostId: effectiveHostId,
             hostKey,
             quizBankId: quizBank?.id || null,
@@ -230,13 +237,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create 4 standard teams
+    // Create teams dynamically
     const createdTeams = [];
-    for (const t of DEFAULT_TEAMS) {
+    for (let i = 0; i < inputTeams.length; i++) {
+      const t = inputTeams[i];
       const team = await prisma.team.create({
         data: {
-          name: t.name,
-          color: t.color,
+          name: t.name || `Đội ${i + 1}`,
+          color: t.color || TEAM_PALETTE[i % TEAM_PALETTE.length],
           roomId: room.id,
           score: mode === "DICE_RACE" ? 1 : Math.max(0, Number(sandboxConfig.initialTeamScore) || 0),
         },
@@ -253,13 +261,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Create Players for the teams (Player 1 is Human Tester, Players 2-4 are Bots)
-    const playerConfigs = [
-      { id: `sb_${code}_t0`, name: "Bạn (Tester)", teamIndex: 0 },
-      { id: `bot_${code}_t2`, name: "Đội Lam 🤖", teamIndex: 1 },
-      { id: `bot_${code}_t3`, name: "Đội Vàng 🤖", teamIndex: 2 },
-      { id: `bot_${code}_t4`, name: "Đội Lục 🤖", teamIndex: 3 },
-    ];
+    // Create Players for the teams (Player 0 is Human Tester, Players 1..N-1 are Bots)
+    const playerConfigs = createdTeams.map((t, idx) => ({
+      id: idx === 0 ? `sb_${code}_t0` : `bot_${code}_t${idx + 1}`,
+      name: idx === 0 ? "Bạn (Tester)" : `${t.name} 🤖`,
+      teamIndex: idx,
+    }));
 
     const createdPlayers = [];
     for (const p of playerConfigs) {

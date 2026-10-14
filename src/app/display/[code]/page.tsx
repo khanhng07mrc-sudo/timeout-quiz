@@ -884,10 +884,10 @@ export default function DisplayPage() {
                 <span className="text-3xl animate-bounce">🏁</span>
                 <div className="text-left">
                   <h2 className="text-xl sm:text-2xl font-black text-amber-300">
-                    BẮT ĐẦU ĐƯỜNG ĐUA CỜ XÍ NGẦU!
+                    ĐUA CỜ BẮT ĐẦU!
                   </h2>
                   <p className="text-xs sm:text-sm text-amber-200/90">
-                    Chiêm ngưỡng toàn cảnh các ô và vị trí quân cờ xuất phát trước khi vào câu hỏi 1...
+                    Chuẩn bị xuất phát...
                   </p>
                 </div>
               </div>
@@ -900,13 +900,13 @@ export default function DisplayPage() {
         ) : (
           <div className="text-center z-10 max-w-2xl space-y-6 animate-slide-up">
             <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-sm font-bold uppercase tracking-widest">
-              ⚡ Chuẩn bị bắt đầu trận đấu
+              ⚡ Chuẩn bị
             </div>
             <h1 className="text-5xl sm:text-7xl font-black bg-gradient-to-r from-purple-400 via-pink-400 to-cyan-400 bg-clip-text text-transparent">
               {roomState?.name ?? "Quizorra"}
             </h1>
             <p className="text-xl text-white/70">
-              Các đội và người chơi hãy sẵn sàng trên thiết bị của mình!
+              Các đội hãy sẵn sàng!
             </p>
             <div className="py-6 flex flex-col items-center justify-center">
               <div className="relative flex items-center justify-center">
@@ -934,7 +934,7 @@ export default function DisplayPage() {
               </div>
             </div>
             <p className="text-sm text-cyan-300 font-mono tracking-wider animate-pulse">
-              Trận đấu sẽ bắt đầu ngay sau tiếng chuông...
+              Bắt đầu sau tiếng chuông...
             </p>
           </div>
         )}

@@ -3976,6 +3976,7 @@ export function registerSocketHandlers(io: IO) {
           targetCount: targetQCount,
           mode: room.mode as GameMode,
           teamsCount: teams.length,
+          allocationStrategy: config?.questionAllocationStrategy || "ORIGINAL_POINTS",
           options: {
             eliminationStages: config?.eliminationRounds,
             bouncebackQuestionsPerTurn: config?.bouncebackQuestionsPerTurn,
@@ -6438,7 +6439,7 @@ export function registerSocketHandlers(io: IO) {
     ) => {
       const targetTeamId = typeof teamOrTeamId === "string" ? teamOrTeamId : teamOrTeamId?.id;
       if (!targetTeamId) return;
-      if (questState.miniGameType !== "TAROT_DESTINY" || questState.tarotState?.isDrawn || questState.tarotState?.isWheelSpinning) return;
+      if (questState.miniGameType !== "TAROT_DESTINY" || (questState.tarotState?.isDrawn && !questState.tarotState?.isShieldRespin) || questState.tarotState?.isWheelSpinning) return;
 
       const rawTeams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
       const allTeams = rawTeams.map((t) => ({
@@ -6526,9 +6527,10 @@ export function registerSocketHandlers(io: IO) {
       if (!questState.tarotState || !questState.tarotState.isRevealPending) return;
 
       const drawnCard = questState.tarotState.drawnCard;
+      const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
 
-      if (!isGamble) {
+      if (!isGamble && !isShieldRespin) {
         const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
 
@@ -6549,9 +6551,9 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      const nextPhase = isGamble ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY";
-      const nextFinishedReason = isGamble
-        ? questState.turnFinishedReason
+      const nextPhase = (isGamble || isShieldRespin) ? "PUSH_YOUR_LUCK" : "TURN_SUMMARY";
+      const nextFinishedReason = (isGamble || isShieldRespin)
+        ? undefined
         : questState.isPenaltySurvivalMode
         ? drawnCard?.key === "THE_PEACE"
           ? "SURVIVAL_ESCAPE"
@@ -6566,6 +6568,8 @@ export function registerSocketHandlers(io: IO) {
           ...questState.tarotState,
           isRevealPending: false,
           isGambling: isGamble,
+          isShieldRespin,
+          shieldTransformedCardKey: questState.tarotState.shieldTransformedCardKey,
         },
         ...(isGamble
           ? {
@@ -6582,6 +6586,30 @@ export function registerSocketHandlers(io: IO) {
 
       roomMysteryQuests.set(room.id, revealedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", revealedState);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+
+    const executeMysteryTarotRespin = async (room: any, questState: any) => {
+      if (!questState.tarotState || !questState.tarotState.isShieldRespin) return;
+
+      const respinState: MysteryQuestState = {
+        ...questState,
+        phase: "PUSH_YOUR_LUCK",
+        turnFinishedReason: undefined,
+        tarotState: {
+          ...questState.tarotState,
+          isDrawn: false,
+          isRevealPending: false,
+          drawnCard: undefined,
+          isWheelSpinning: false,
+          shieldTransformedCardKey: questState.tarotState.shieldTransformedCardKey,
+          isShieldRespin: false,
+        },
+      };
+
+      roomMysteryQuests.set(room.id, respinState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", respinState);
       const refreshedState = await buildRoomState(room.id);
       io.to(`room:${room.code}`).emit("room:state", refreshedState);
     };
@@ -6797,6 +6825,58 @@ export function registerSocketHandlers(io: IO) {
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
 
       await executeMysteryTarotReveal(room, questState);
+    });
+
+    socket.on("ancient-tarot-respin", async ({ code }: { code?: string } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room: any = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true },
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotRespin(room, questState);
+    });
+
+    socket.on("game:mystery:ancient_tarot_respin", async ({ code }: { code?: string } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room: any = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true },
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotRespin(room, questState);
+    });
+
+    socket.on("admin:mystery:ancient_tarot_respin", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotRespin(room, questState);
     });
 
     socket.on("ancient-tarot-gamble-decision", async ({ spinAgain = false, powerPercent = 50, code }: { spinAgain?: boolean; powerPercent?: number; code?: string } = {}) => {

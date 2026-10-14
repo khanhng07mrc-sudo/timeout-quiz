@@ -5403,18 +5403,34 @@ export function resolveWheelCardEffect({
     }
 
     case "STEAL_2X": {
+      // 5. Định mức cướp theo lá bài (Phương án 2: VII Chiến Xa 50% nhẹ nhàng, XIII Thần Chết 100% chí mạng):
+      const isChariot = cardKey === "THE_CHARIOT";
+      const nominalSteal = isChariot
+        ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5))
+        : basePoints;
+
       // Quy tắc Cướp Điểm Công Bằng & Chống Cướp Liên Hoàn:
+      // (Số lần được tính từ lượt X của đội bị cướp đến trước lượt X + 1 của họ)
+      // - Với VII Chiến Xa: Một đội đã bị cướp 1 lần trước đó (timesStolen >= 1) thì KHÔNG THỂ bị cướp bởi Chiến Xa.
+      // - Với XIII Thần Chết: Bị cướp 1 lần trước đó (timesStolen = 1) VẪN CÓ THỂ bị cướp 50% bởi Thần Chết ở lần 2.
+      // - Đội đã bị cướp >= 2 lần hoàn toàn miễn nhiễm với mọi loại cướp.
+      const maxAllowedSteals = isChariot ? 1 : 2;
+
       // 1. Lọc các đối thủ đang có điểm > 0
       const opponentsWithPoints = otherTeams.filter((t) => (t.score || 0) > 0);
-      // 2. Loại trừ các đối thủ đã bị cướp >= 2 lần trước khi lượt tiếp theo của họ diễn ra
-      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+      // 2. Lọc đối thủ hợp lệ theo giới hạn của từng lá bài
+      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
 
-      // 3. Nếu không có đối thủ nào hợp lệ để cướp (đều 0đ hoặc đều miễn nhiễm) -> thưởng an toàn +1x Điểm gốc từ Hệ thống
+      // 3. Nếu không có đối thủ nào hợp lệ để cướp -> thưởng an toàn từ Hệ thống
       if (eligibleOpponents.length === 0) {
+        const rewardReason = isChariot
+          ? `Các đối thủ có điểm đều đã từng bị cướp trong vòng và được miễn nhiễm trước Chiến Xa!`
+          : `Các đối thủ có điểm đều đang được Khiên Miễn Nhiễm Cướp bảo vệ (đã bị cướp đủ 2 lần)!`;
+
         const rewardText =
           opponentsWithPoints.length > 0
-            ? `🛡️ ${seg.nameVi}: Các đối thủ có điểm đều đang được Khiên Miễn Nhiễm Cướp bảo vệ (đã bị cướp đủ 2 lần)! Đội bạn nhận an toàn +${basePoints}đ từ Hệ Thống!`
-            : `✨ ${seg.nameVi}: Chưa có đối thủ nào có điểm để cướp! Đội bạn nhận thưởng an toàn +${basePoints}đ từ Hệ Thống!`;
+            ? `🛡️ ${seg.nameVi}: ${rewardReason} Đội bạn nhận thưởng an toàn +${nominalSteal}đ từ Hệ Thống!`
+            : `✨ ${seg.nameVi}: Chưa có đối thủ nào có điểm để cướp! Đội bạn nhận thưởng an toàn +${nominalSteal}đ từ Hệ Thống!`;
 
         return {
           drawnCard: {
@@ -5424,12 +5440,12 @@ export function resolveWheelCardEffect({
             icon: seg.icon,
             roman: seg.roman,
             group: "COMMON",
-            scoreDelta: basePoints,
+            scoreDelta: nominalSteal,
           },
-          finalScoreDelta: basePoints,
+          finalScoreDelta: nominalSteal,
           scorePenalty: 0,
           isBomb: false,
-          scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+          scoreDeltas: [{ teamId: team.id, delta: nominalSteal }],
           rewardText,
         };
       }
@@ -5440,18 +5456,17 @@ export function resolveWheelCardEffect({
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
 
-      // 5. Định mức cướp theo lá bài (Phương án 2: VII Chiến Xa 50% nhẹ nhàng, XIII Thần Chết 100% chí mạng):
-      const isChariot = cardKey === "THE_CHARIOT";
-      const nominalSteal = isChariot
-        ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5))
-        : basePoints;
-
-      // Đã bị cướp 1 lần trong chu kỳ -> Khiên Chống Vắt Kiệt giảm 50% mức cướp
+      // 5. Tính toán mức cướp thực tế:
+      // - Với Chiến Xa: Nạn nhân chắc chắn có timesStolen = 0 -> Cướp 50% điểm gốc.
+      // - Với Thần Chết: Nếu timesStolen = 0 -> Cướp 100% điểm gốc; nếu timesStolen = 1 -> Cướp 50% điểm gốc ở lần 2.
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
-      const targetSteal =
-        timesStolen === 1
-          ? Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5))
-          : nominalSteal;
+      let targetSteal = nominalSteal;
+      let halfNote = "";
+
+      if (!isChariot && timesStolen === 1) {
+        targetSteal = Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
+        halfNote = ` (Đội ${victim.name} đã bị cướp 1 lần trước đó: Thần Chết cướp 50% điểm gốc ở lần 2)`;
+      }
 
       // 6. Khóa công bằng 1:1: Đối thủ thực tế mất bao nhiêu điểm thì đội quay nhận ĐÚNG bấy nhiêu điểm
       // Tuyệt đối không bao giờ vượt quá điểm gốc câu hỏi!
@@ -5460,11 +5475,6 @@ export function resolveWheelCardEffect({
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen },
       ];
-
-      const halfNote =
-        timesStolen === 1
-          ? ` (Khiên Chống Vắt Kiệt giảm 50% mức cướp cho đội đã bị cướp 1 lần)`
-          : "";
 
       return {
         drawnCard: {

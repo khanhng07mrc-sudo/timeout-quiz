@@ -4636,10 +4636,14 @@ function resolveWheelCardEffect({
       };
     }
     case "STEAL_2X": {
+      const isChariot = cardKey === "THE_CHARIOT";
+      const nominalSteal = isChariot ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5)) : basePoints;
+      const maxAllowedSteals = isChariot ? 1 : 2;
       const opponentsWithPoints = otherTeams.filter((t) => (t.score || 0) > 0);
-      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
       if (eligibleOpponents.length === 0) {
-        const rewardText = opponentsWithPoints.length > 0 ? `\u{1F6E1}\uFE0F ${seg.nameVi}: C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7 (\u0111\xE3 b\u1ECB c\u01B0\u1EDBp \u0111\u1EE7 2 l\u1EA7n)! \u0110\u1ED9i b\u1EA1n nh\u1EADn an to\xE0n +${basePoints}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!` : `\u2728 ${seg.nameVi}: Ch\u01B0a c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o c\xF3 \u0111i\u1EC3m \u0111\u1EC3 c\u01B0\u1EDBp! \u0110\u1ED9i b\u1EA1n nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${basePoints}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!`;
+        const rewardReason = isChariot ? `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111\xE3 t\u1EEBng b\u1ECB c\u01B0\u1EDBp trong v\xF2ng v\xE0 \u0111\u01B0\u1EE3c mi\u1EC5n nhi\u1EC5m tr\u01B0\u1EDBc Chi\u1EBFn Xa!` : `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7 (\u0111\xE3 b\u1ECB c\u01B0\u1EDBp \u0111\u1EE7 2 l\u1EA7n)!`;
+        const rewardText = opponentsWithPoints.length > 0 ? `\u{1F6E1}\uFE0F ${seg.nameVi}: ${rewardReason} \u0110\u1ED9i b\u1EA1n nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${nominalSteal}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!` : `\u2728 ${seg.nameVi}: Ch\u01B0a c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o c\xF3 \u0111i\u1EC3m \u0111\u1EC3 c\u01B0\u1EDBp! \u0110\u1ED9i b\u1EA1n nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${nominalSteal}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!`;
         return {
           drawnCard: {
             key: cardKey,
@@ -4648,12 +4652,12 @@ function resolveWheelCardEffect({
             icon: seg.icon,
             roman: seg.roman,
             group: "COMMON",
-            scoreDelta: basePoints
+            scoreDelta: nominalSteal
           },
-          finalScoreDelta: basePoints,
+          finalScoreDelta: nominalSteal,
           scorePenalty: 0,
           isBomb: false,
-          scoreDeltas: [{ teamId: team.id, delta: basePoints }],
+          scoreDeltas: [{ teamId: team.id, delta: nominalSteal }],
           rewardText
         };
       }
@@ -4661,16 +4665,18 @@ function resolveWheelCardEffect({
       const topCandidates = eligibleOpponents.filter((t) => (t.score || 0) === maxScore);
       const victim = topCandidates[Math.floor(Math.random() * topCandidates.length)];
       const victimScore = victim.score || 0;
-      const isChariot = cardKey === "THE_CHARIOT";
-      const nominalSteal = isChariot ? Math.max(5, roundToMultipleOfFive(basePoints * 0.5)) : basePoints;
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
-      const targetSteal = timesStolen === 1 ? Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5)) : nominalSteal;
+      let targetSteal = nominalSteal;
+      let halfNote = "";
+      if (!isChariot && timesStolen === 1) {
+        targetSteal = Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
+        halfNote = ` (\u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp 1 l\u1EA7n tr\u01B0\u1EDBc \u0111\xF3: Th\u1EA7n Ch\u1EBFt c\u01B0\u1EDBp 50% \u0111i\u1EC3m g\u1ED1c \u1EDF l\u1EA7n 2)`;
+      }
       const actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       const scoreDeltas = [
         { teamId: team.id, delta: actualStolen },
         { teamId: victim.id, delta: -actualStolen }
       ];
-      const halfNote = timesStolen === 1 ? ` (Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t gi\u1EA3m 50% m\u1EE9c c\u01B0\u1EDBp cho \u0111\u1ED9i \u0111\xE3 b\u1ECB c\u01B0\u1EDBp 1 l\u1EA7n)` : "";
       return {
         drawnCard: {
           key: cardKey,

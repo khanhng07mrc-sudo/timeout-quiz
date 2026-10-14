@@ -302,10 +302,16 @@ export default function GameQuestion({
     if (!!revealPayload || roomStatus === "PAUSED") return false;
     // MATCHING và DRAG_DROP không bị khóa bởi isMcMode
     if (q.type !== "MATCHING" && q.type !== "DRAG_DROP" && isMcMode) return false;
-    if (question.bouncebackSelectPhase) return false;
-    if (question.bouncebackAwaitingJudgment) return false;
-    if (question.timerPending && !isSandboxTester) return false;
-    if (isTimerTrulyExpired) return false;
+    // Yêu cầu cốt lõi: "hệ thống chỉ cho chọn khi đã đếm"
+    // Khi đồng hồ chưa đếm giờ (timerPending, chưa timerStarted, hoặc chưa có timer), tuyệt đối khóa chọn đáp án!
+    const isTimerCounting = Boolean(
+      !question.timerPending &&
+      (question.timerStarted ?? true) &&
+      timer &&
+      timer.remaining > 0 &&
+      !isTimerTrulyExpired
+    );
+    if (!isTimerCounting) return false;
 
     // 1. BOUNCEBACK:
     if (roomMode === "BOUNCEBACK") {
@@ -458,10 +464,10 @@ export default function GameQuestion({
       )}
 
       {/* Timer Pending Alert */}
-      {question.timerPending && !revealPayload && !isBuzzedWaitingPrep && (
+      {(question.timerPending || !question.timerStarted) && !revealPayload && !isBuzzedWaitingPrep && (
         <div className="p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-400 text-amber-200 text-center font-bold text-xs sm:text-sm flex items-center justify-center gap-2 animate-pulse shadow-lg">
           <span className="text-xl">⏳</span>
-          <span>Lắng nghe câu hỏi — Chờ MC / Admin bấm Bắt đầu tính giờ...</span>
+          <span>Lắng nghe câu hỏi — Đáp án đang khóa! Hệ thống chỉ cho phép chọn khi đồng hồ bắt đầu đếm.</span>
         </div>
       )}
 
@@ -1138,7 +1144,7 @@ export default function GameQuestion({
                     : isSelected
                     ? "border-purple-500 bg-purple-500/25 text-white ring-2 ring-purple-500/60 shadow-lg"
                     : disabled
-                    ? "border-border opacity-60 cursor-not-allowed"
+                    ? "border-border/60 opacity-60 cursor-not-allowed pointer-events-none bg-slate-900/30"
                     : "border-border hover:border-purple-400 hover:bg-white/5 active:bg-purple-500/10 cursor-pointer"
                 }`}
               >
@@ -1184,7 +1190,7 @@ export default function GameQuestion({
                     : isSelected
                     ? "border-purple-500 bg-purple-500/20"
                     : disabled
-                    ? "border-border opacity-60 cursor-not-allowed"
+                    ? "border-border/60 opacity-60 cursor-not-allowed pointer-events-none bg-slate-900/30"
                     : "border-border hover:border-purple-400"
                 }`}
               >

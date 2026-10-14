@@ -8527,29 +8527,12 @@ async function processAnswerSubmissionImpl({
   const activeQ = roomActiveQuestions.get(room.id);
   const isSandboxRoom = isSandboxRoomEntity(room) || socket?.handshake?.query?.sandbox === "1";
 
-  if (activeQ?.timerPending && !isAdminOverride) {
-    if (isSandboxRoom) {
-      // In Sandbox, if a tester or bot answers while timer is pending, automatically activate the timer!
-      activeQ.timerPending = false;
-      activeQ.timerStarted = true;
-      activeQ.startedAt = Date.now();
-      const effLimit = getStandardQuestionTimeLimit(question);
-      activeQ.endsAt = Date.now() + effLimit * 1000;
-      io.to(`room:${room.code}`).emit("game:question", activeQ);
-      io.to(`room:${room.code}`).emit("game:timer:started", {
-        timeLimit: effLimit,
-        endsAt: activeQ.endsAt,
-        serverTime: Date.now(),
-        questionId: question.id,
-      });
-      startQuestionTimer(io, room.code, room.id, question.id, effLimit);
-    } else {
-      if (socket) {
-        socket.emit("error", "Chưa đến giờ trả lời! Hãy chờ Admin bấm Bắt đầu tính giờ.");
-        if (activeQ) socket.emit("game:question", activeQ);
-      }
-      return;
+  if ((activeQ?.timerPending || !activeQ?.timerStarted) && !isAdminOverride) {
+    if (socket) {
+      socket.emit("error", "Chưa đến giờ trả lời! Hệ thống chỉ cho phép chọn khi đồng hồ bắt đầu đếm.");
+      if (activeQ) socket.emit("game:question", activeQ);
     }
+    return;
   }
 
   // Security: Kiểm tra thời gian hết giờ căn cứ Authoritative trên Server Time (bù trễ mạng 2500ms cho các cú click giây cuối)

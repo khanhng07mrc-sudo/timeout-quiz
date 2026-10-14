@@ -33,6 +33,42 @@ function evaluateCubicBezier(t: number, x1: number, y1: number, x2: number, y2: 
   return 3 * inv * inv * u * y1 + 3 * inv * u * u * y2 + u * u * u;
 }
 
+/**
+ * 3-Phase Physics Speed Curve for Tarot Wheel:
+ * - 0s to 3s: Smooth sinusoidal acceleration from 0 to V_max
+ * - 3s to 10s: Constant MAXIMUM velocity V_max (FASTEST PHASE)
+ * - 10s to T: Smooth friction deceleration to 0 at T
+ * Returns normalized progress in [0, 1].
+ */
+function evaluateThreePhaseWheelProgress(elapsedMs: number, totalDurationMs: number): number {
+  if (elapsedMs <= 0) return 0;
+  if (elapsedMs >= totalDurationMs) return 1;
+
+  const t = elapsedMs / 1000;
+  const T = Math.max(12, totalDurationMs / 1000);
+  const t1 = 3.0; // Acceleration ends at 3s
+  const t2 = Math.min(10.0, T - 2.5); // Cruise ends at 10s
+
+  const D1 = 0.5 * t1; // 1.5 * V_max
+  const D2 = t2 - t1; // 7.0 * V_max
+  const D3 = (T - t2) / 3; // (T - 10) / 3 * V_max
+  const D_total = D1 + D2 + D3;
+
+  if (t < t1) {
+    const d = 0.5 * (t - (t1 / Math.PI) * Math.sin((Math.PI * t) / t1));
+    return Math.max(0, Math.min(1, d / D_total));
+  } else if (t < t2) {
+    const d = D1 + (t - t1);
+    return Math.max(0, Math.min(1, d / D_total));
+  } else {
+    const u = (t - t2) / (T - t2);
+    const uClamped = Math.max(0, Math.min(1, u));
+    const dDecel = ((T - t2) * (1 - Math.pow(1 - uClamped, 3))) / 3;
+    const d = D1 + D2 + dDecel;
+    return Math.max(0, Math.min(1, d / D_total));
+  }
+}
+
 interface Props {
   mysteryState?: MysteryQuestState;
   isDisplay?: boolean;
@@ -114,10 +150,12 @@ export default function MysteryQuestBoard({
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const [isWheelCssTransitioning, setIsWheelCssTransitioning] = useState<boolean>(false);
   const [isPointerTicking, setIsPointerTicking] = useState<boolean>(false);
+  const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
   const wheelPrevAngleRef = useRef<number>(0);
   const wheelSpinAudioTargetRef = useRef<number | null>(null);
+  const lastSnapTimeRef = useRef<number>(0);
   const localDoorActionTimeRef = useRef<number>(0);
   const hasLocalDoorActionRef = useRef<boolean>(false);
   const isFlippingRef = useRef<boolean>(false);
@@ -353,19 +391,16 @@ export default function MysteryQuestBoard({
     const startTime = performance.now();
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
-    let cssRaf1 = 0;
-    let cssRaf2 = 0;
-    let tickResetTimeout: ReturnType<typeof setTimeout> | null = null;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
     // 1. Snap wheel to startAngle with transition: none first (critical when remounting after Gamble)
     setIsWheelCssTransitioning(false);
     setClientWheelAngle(startAngle);
+    setNeedleDeflectionDeg(0);
 
-    // 2. Dynamic Camera Zoom Rig:
+    // 2. Dynamic Camera Zoom Rig (Phóng to 2.35x sát kim 12h kịch tính):
     // "lúc ban đầu quay đủ cả vòng ngoài, sau 3s đầu tiên, dần phóng về sát khu vực kim quay, dừng phóng ở khoảng giây thứ 10"
-    // "khi phóng, thì góc quay sẽ bị quay lên một chút theo trục Y để nhìn sinh động hơn"
     setIsWheelZoomedIn(false);
     setWheelZoomDurationMs(7000);
     zoomStartTimer = setTimeout(() => {
@@ -381,38 +416,61 @@ export default function MysteryQuestBoard({
       soundManager.playWheelSpinMusic(durationMs);
     }
 
-    // 4. On next painted frame, activate CSS transition to targetAngle
-    cssRaf1 = requestAnimationFrame(() => {
-      cssRaf2 = requestAnimationFrame(() => {
-        setIsWheelCssTransitioning(true);
-        setClientWheelAngle(target);
-      });
-    });
-
+    // 4. RequestAnimationFrame loop driving the exact 3-phase physics curve & Hooke's Law needle physics
     const step = (now: number) => {
       const elapsed = now - startTime;
       const rawProgress = Math.min(1, Math.max(0, elapsed / durationMs));
-      // Matches CSS transition: cubic-bezier(0.22, 1, 0.36, 1) - Tốc độ quay cơ học tự nhiên, kim gẩy rõ từng nấc kim loại
-      const eased = evaluateCubicBezier(rawProgress, 0.22, 1.0, 0.36, 1.0);
-      const currentLiveAngle = startAngle + totalDelta * eased;
-      const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
+      // Tốc độ nhanh nhất ở 3s - 10s, 10s rồi mới chậm dần (đường cong 3 pha)
+      const threePhaseProgress = evaluateThreePhaseWheelProgress(elapsed, durationMs);
+      const currentLiveAngle = startAngle + totalDelta * threePhaseProgress;
 
+      setClientWheelAngle(currentLiveAngle);
+
+      // Kiểm tra chốt đi qua kim
+      const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
       if (currentPegIndex > lastPegIndex) {
         lastPegIndex = currentPegIndex;
+        lastSnapTimeRef.current = now;
         soundManager.playWheelPegTick(rawProgress);
         setIsPointerTicking(true);
-        if (tickResetTimeout) clearTimeout(tickResetTimeout);
-        tickResetTimeout = setTimeout(() => {
-          setIsPointerTicking(false);
-        }, 55);
       }
+
+      // Vật lý Kim Flipper: Định luật Hooke đàn hồi & Dao động tắt dần (Damped Harmonic Oscillation)
+      const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
+      let needleAngle = 0;
+      if (normAngle < 3.2) {
+        // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
+        needleAngle = -22 * (1 - normAngle / 3.2);
+      } else {
+        // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
+        const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
+        if (dt < 0.12) {
+          needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
+        } else {
+          setIsPointerTicking(false);
+        }
+      }
+      setNeedleDeflectionDeg(needleAngle);
 
       if (rawProgress < 1) {
         rafId = requestAnimationFrame(step);
       } else {
-        wheelPrevAngleRef.current = target;
+        setClientWheelAngle(target);
         setIsPointerTicking(false);
+        wheelPrevAngleRef.current = target;
         wheelSpinAudioTargetRef.current = null;
+
+        // Mô phỏng chính xác "Chiếc nón kỳ diệu" khi dừng ở giữa hai chốt:
+        // Kim tì nghiêng chéo về ô bên phải theo đúng phản lực đàn hồi của chốt
+        const finalNorm = (360 - (target % 360)) % segAngle;
+        if (finalNorm < 2.8) {
+          setNeedleDeflectionDeg(-15);
+        } else if (finalNorm > segAngle - 2.8) {
+          setNeedleDeflectionDeg(15);
+        } else {
+          setNeedleDeflectionDeg(0);
+        }
+
         if (!finishedChimePlayed) {
           finishedChimePlayed = true;
           soundManager.playWheelStopChime();
@@ -423,10 +481,7 @@ export default function MysteryQuestBoard({
     rafId = requestAnimationFrame(step);
 
     return () => {
-      if (cssRaf1) cancelAnimationFrame(cssRaf1);
-      if (cssRaf2) cancelAnimationFrame(cssRaf2);
       if (rafId) cancelAnimationFrame(rafId);
-      if (tickResetTimeout) clearTimeout(tickResetTimeout);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
       setIsPointerTicking(false);
     };
@@ -2271,123 +2326,90 @@ export default function MysteryQuestBoard({
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
                   <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 pt-7 pb-4 px-1 overflow-visible`}>
-                    {/* 3D Camera Rig: Nghiêng 3D trường quay ngay từ đầu (26°), phóng dần về sát kim quay sau 3s đến giây 10 (20°), không bao giờ bị cắt cụt */}
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.35x sát kim 12h ── */}
                     <div
-                      className="w-full h-full relative flex items-center justify-center"
+                      className="w-full h-full relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 12%",
+                        transformOrigin: "50% 14%",
                         transform: isWheelZoomedIn
-                          ? "perspective(1400px) rotateX(20deg) rotateY(-3.5deg) scale(1.28) translateY(36px)"
-                          : "perspective(1400px) rotateX(26deg) rotateY(-2deg) scale(1.0) translateY(0px)",
+                          ? "scale(2.35) translateY(142px)"
+                          : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
                         transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
-                        transformStyle: "preserve-3d",
                       }}
                     >
-                    {/* 3D Flipper Pointer Needle at 12 o'clock (Flicks on ticks & deflects on peg boundaries) */}
-                    {(() => {
-                      const segCount = isPenaltySurvivalMode ? 20 : 22;
-                      const degPerSeg = 360 / segCount;
-                      const normAngle = (360 - (clientWheelAngle % 360)) % 360;
-                      const offsetInSeg = normAngle % degPerSeg;
-                      let restingDeflectionDeg = 0;
-                      if (!tarotState?.isWheelSpinning && clientWheelAngle > 0) {
-                        // Nếu dừng rất sát thanh kim loại phân cách (sai lệch < 2.6 độ), kim tì nghiêng vào lòng ô chiến thắng!
-                        if (offsetInSeg < 2.6) {
-                          restingDeflectionDeg = 9;
-                        } else if (offsetInSeg > degPerSeg - 2.6) {
-                          restingDeflectionDeg = -9;
-                        }
-                      }
-
-                      return (
-                        <div
-                          className="absolute -top-6 sm:-top-7 left-1/2 -translate-x-1/2 z-30 transition-transform duration-100 origin-top pointer-events-none"
-                          style={{
-                            transform: isPointerTicking
-                              ? "rotate(-18deg) scale(1.08)"
-                              : `rotate(${restingDeflectionDeg}deg) scale(1)`,
-                            filter: "drop-shadow(0px 10px 16px rgba(0,0,0,0.95)) drop-shadow(0px 3px 6px rgba(0,0,0,0.85))",
-                          }}
-                        >
-                          {/* 3D Chrome & Ruby Flipper Pointer */}
-                          <svg width="50" height="54" viewBox="0 0 44 48">
-                            <defs>
-                              <linearGradient id="chromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#ffffff" />
-                                <stop offset="30%" stopColor="#e2e8f0" />
-                                <stop offset="60%" stopColor="#94a3b8" />
-                                <stop offset="100%" stopColor="#334155" />
-                              </linearGradient>
-                              <linearGradient id="needleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#fef08a" />
-                                <stop offset="50%" stopColor="#f59e0b" />
-                                <stop offset="100%" stopColor="#d97706" />
-                              </linearGradient>
-                              <linearGradient id="needleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
-                                <stop offset="0%" stopColor="#d97706" />
-                                <stop offset="60%" stopColor="#b45309" />
-                                <stop offset="100%" stopColor="#78350f" />
-                              </linearGradient>
-                            </defs>
-                            {/* Left Beveled Facet */}
-                            <path
-                              d="M22 45 L11 8 Q22 13 22 8 Z"
-                              fill="url(#needleFacetLeft)"
-                              stroke="#fef08a"
-                              strokeWidth="1.2"
-                              strokeLinejoin="round"
-                            />
-                            {/* Right Beveled Facet (Shadowed) */}
-                            <path
-                              d="M22 45 L33 8 Q22 13 22 8 Z"
-                              fill="url(#needleFacetRight)"
-                              stroke="#b45309"
-                              strokeWidth="1.2"
-                              strokeLinejoin="round"
-                            />
-                            {/* Chrome Center Spine Rib */}
-                            <path
-                              d="M22 44 L22 10"
-                              stroke="url(#chromeNeedleGrad)"
-                              strokeWidth="2.8"
-                              strokeLinecap="round"
-                            />
-                            {/* Pivot Mount Bolt */}
-                            <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
-                            <circle cx="22" cy="11" r="3.6" fill="url(#chromeNeedleGrad)" />
-                            <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
-                          </svg>
-                        </div>
-                      );
-                    })()}
-
-                    {/* ── 3D Turntable Stage Floor Shadow ── */}
-                    <div className="absolute -bottom-8 sm:-bottom-10 w-[92%] h-16 sm:h-20 bg-[radial-gradient(ellipse_at_50%_50%,rgba(0,0,0,0.95)_20%,rgba(15,8,30,0.8)_55%,transparent_75%)] blur-md pointer-events-none -z-10" />
-
-                    {/* ── 3D Drum Cylinder Body (Thành Tang Trống Chiếc Nón Kỳ Diệu dày ~20px) ── */}
+                    {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation */}
                     <div
-                      className="absolute inset-0 rounded-full pointer-events-none -z-10"
+                      className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 transition-transform duration-75 origin-top pointer-events-none"
                       style={{
-                        transform: "translateY(18px) translateZ(-18px)",
-                        background: "linear-gradient(180deg, #d97706 0%, #78350f 30%, #451a03 65%, #1e0902 100%)",
-                        boxShadow: "0 22px 38px rgba(0,0,0,0.95), inset 0 -4px 10px rgba(0,0,0,0.9)",
-                        border: "3.5px solid #b45309",
+                        transform: `rotate(${needleDeflectionDeg}deg) scale(1.06)`,
+                        filter: "drop-shadow(0px 8px 14px rgba(0,0,0,0.95)) drop-shadow(0px 2px 4px rgba(0,0,0,0.85))",
                       }}
-                    />
+                    >
+                      {/* 3D Chrome & Ruby Flipper Pointer */}
+                      <svg width="50" height="54" viewBox="0 0 44 48">
+                        <defs>
+                          <linearGradient id="chromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#ffffff" />
+                            <stop offset="30%" stopColor="#e2e8f0" />
+                            <stop offset="60%" stopColor="#94a3b8" />
+                            <stop offset="100%" stopColor="#334155" />
+                          </linearGradient>
+                          <linearGradient id="needleFacetLeft" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#fef08a" />
+                            <stop offset="50%" stopColor="#f59e0b" />
+                            <stop offset="100%" stopColor="#d97706" />
+                          </linearGradient>
+                          <linearGradient id="needleFacetRight" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stopColor="#d97706" />
+                            <stop offset="60%" stopColor="#b45309" />
+                            <stop offset="100%" stopColor="#78350f" />
+                          </linearGradient>
+                        </defs>
+                        {/* Left Beveled Facet */}
+                        <path
+                          d="M22 45 L11 8 Q22 13 22 8 Z"
+                          fill="url(#needleFacetLeft)"
+                          stroke="#fef08a"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                        {/* Right Beveled Facet (Shadowed) */}
+                        <path
+                          d="M22 45 L33 8 Q22 13 22 8 Z"
+                          fill="url(#needleFacetRight)"
+                          stroke="#b45309"
+                          strokeWidth="1.2"
+                          strokeLinejoin="round"
+                        />
+                        {/* Chrome Center Spine Rib */}
+                        <path
+                          d="M22 44 L22 10"
+                          stroke="url(#chromeNeedleGrad)"
+                          strokeWidth="2.8"
+                          strokeLinecap="round"
+                        />
+                        {/* Pivot Mount Bolt */}
+                        <circle cx="22" cy="11" r="5.5" fill="#0f172a" stroke="#fef08a" strokeWidth="1.8" />
+                        <circle cx="22" cy="11" r="3.6" fill="url(#chromeNeedleGrad)" />
+                        <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
+                      </svg>
+                    </div>
 
-                    {/* ── Outer 3D Beveled Gold-Bronze Ring with Glowing Ambient Aura ── */}
-                    <div className="absolute -inset-1 rounded-full border-[7px] sm:border-[9px] border-amber-400/90 shadow-[0_0_40px_rgba(245,158,11,0.5),inset_0_0_20px_rgba(0,0,0,0.85)] pointer-events-none z-20" />
+                    {/* ── Stage Floor Shadow ── */}
+                    <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
 
-                    {/* Spinning Wheel (17.5s - 22.5s Chiếc Nón Kỳ Diệu Physics: 4 - 9 turns) */}
+                    {/* ── Royal Beveled Gold & Bronze Outer Frame (Đúc nổi đa tầng, không méo oval) ── */}
+                    <div className="absolute -inset-2 sm:-inset-2.5 rounded-full border-[9px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+                      <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
+                    </div>
+
+                    {/* Spinning Wheel */}
                     <div
                       className="w-full h-full rounded-full overflow-hidden shadow-2xl relative"
                       style={{
                         transform: `rotate(${clientWheelAngle}deg)`,
-                        transition: isWheelCssTransitioning && tarotState?.isWheelSpinning
-                          ? `transform ${tarotState?.spinDurationMs ?? 20000}ms cubic-bezier(0.22, 1, 0.36, 1)`
-                          : "none",
                       }}
                     >
                       <svg viewBox="0 0 440 440" className="w-full h-full select-none">

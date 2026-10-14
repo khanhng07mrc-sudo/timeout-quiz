@@ -4914,12 +4914,28 @@ export function calculateTarotWheelSpin({
   const segAngle = isSurvivalMode ? 18 : 360 / 22;
   const segCount = isSurvivalMode ? 20 : 22;
 
+  // Mô phỏng chính xác hiện tượng "Chiếc nón kỳ diệu" khi dừng ở giữa hai chốt:
+  // Kim bị chốt đẩy chéo về ô bên phải (theo hướng nhìn).
+  // Nếu lực quay và xung lượng còn đủ -> Bánh xe lách qua đỉnh chốt, kim bật tách sang ô bên trái!
   let pointerAngle = (360 - ((currentAngle + totalDelta) % 360)) % 360;
   const remInSeg = pointerAngle % segAngle;
-  if (remInSeg < 1.5) {
-    totalDelta += 3;
-  } else if (remInSeg > segAngle - 1.5) {
-    totalDelta -= 3;
+  if (remInSeg < 2.4) {
+    // Rơi vào vùng tiếp xúc chốt: quyết định vượt đỉnh chốt hay bật lùi
+    const hasEnoughForceToPushThrough = (clampedPower * 7 + jitter * 13) % 100 > 45;
+    if (hasEnoughForceToPushThrough) {
+      // Đủ lực: Vượt qua đỉnh chốt sang ô tiếp theo
+      totalDelta += 3.2;
+    } else {
+      // Không đủ lực: Lò xo kim đẩy bánh xe giật lùi nhẹ (rollback) về ô bên phải
+      totalDelta -= 1.8;
+    }
+  } else if (remInSeg > segAngle - 2.4) {
+    const hasEnoughForceToPushThrough = (clampedPower * 11 + jitter * 17) % 100 > 45;
+    if (hasEnoughForceToPushThrough) {
+      totalDelta += 2.2;
+    } else {
+      totalDelta -= 3.0;
+    }
   }
 
   const targetAngle = currentAngle + totalDelta;

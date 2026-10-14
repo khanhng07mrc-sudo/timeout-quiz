@@ -4268,10 +4268,20 @@ function calculateTarotWheelSpin({
   const segCount = isSurvivalMode ? 20 : 22;
   let pointerAngle = (360 - (currentAngle + totalDelta) % 360) % 360;
   const remInSeg = pointerAngle % segAngle;
-  if (remInSeg < 1.5) {
-    totalDelta += 3;
-  } else if (remInSeg > segAngle - 1.5) {
-    totalDelta -= 3;
+  if (remInSeg < 2.4) {
+    const hasEnoughForceToPushThrough = (clampedPower * 7 + jitter * 13) % 100 > 45;
+    if (hasEnoughForceToPushThrough) {
+      totalDelta += 3.2;
+    } else {
+      totalDelta -= 1.8;
+    }
+  } else if (remInSeg > segAngle - 2.4) {
+    const hasEnoughForceToPushThrough = (clampedPower * 11 + jitter * 17) % 100 > 45;
+    if (hasEnoughForceToPushThrough) {
+      totalDelta += 2.2;
+    } else {
+      totalDelta -= 3;
+    }
   }
   const targetAngle = currentAngle + totalDelta;
   pointerAngle = (360 - targetAngle % 360) % 360;
@@ -13091,28 +13101,12 @@ async function processAnswerSubmissionImpl({
   }
   const activeQ = roomActiveQuestions.get(room.id);
   const isSandboxRoom = isSandboxRoomEntity(room) || socket?.handshake?.query?.sandbox === "1";
-  if (activeQ?.timerPending && !isAdminOverride) {
-    if (isSandboxRoom) {
-      activeQ.timerPending = false;
-      activeQ.timerStarted = true;
-      activeQ.startedAt = Date.now();
-      const effLimit = getStandardQuestionTimeLimit(question);
-      activeQ.endsAt = Date.now() + effLimit * 1e3;
-      io2.to(`room:${room.code}`).emit("game:question", activeQ);
-      io2.to(`room:${room.code}`).emit("game:timer:started", {
-        timeLimit: effLimit,
-        endsAt: activeQ.endsAt,
-        serverTime: Date.now(),
-        questionId: question.id
-      });
-      startQuestionTimer(io2, room.code, room.id, question.id, effLimit);
-    } else {
-      if (socket) {
-        socket.emit("error", "Ch\u01B0a \u0111\u1EBFn gi\u1EDD tr\u1EA3 l\u1EDDi! H\xE3y ch\u1EDD Admin b\u1EA5m B\u1EAFt \u0111\u1EA7u t\xEDnh gi\u1EDD.");
-        if (activeQ) socket.emit("game:question", activeQ);
-      }
-      return;
+  if ((activeQ?.timerPending || !activeQ?.timerStarted) && !isAdminOverride) {
+    if (socket) {
+      socket.emit("error", "Ch\u01B0a \u0111\u1EBFn gi\u1EDD tr\u1EA3 l\u1EDDi! H\u1EC7 th\u1ED1ng ch\u1EC9 cho ph\xE9p ch\u1ECDn khi \u0111\u1ED3ng h\u1ED3 b\u1EAFt \u0111\u1EA7u \u0111\u1EBFm.");
+      if (activeQ) socket.emit("game:question", activeQ);
     }
+    return;
   }
   const nowArrival = Date.now();
   const endsAtAuthoritative = activeQ?.endsAt || (roomTimerEndsAt.get(room.id) ?? 0);

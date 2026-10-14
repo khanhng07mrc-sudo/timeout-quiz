@@ -17,7 +17,6 @@ import {
   quantizeOlympiaTimeLimit,
   getBuzzedAnswerTimeLimit,
   getStandardQuestionTimeLimit,
-  GameStartingPayload,
   GamePreparePayload,
   TournamentMatch,
   TournamentState,
@@ -41,7 +40,6 @@ import {
   handleFlipCard,
   handleCashOut,
   normalizeMiniGameType,
-  shuffleMemoryPairsTiles,
   handleMemoryPairsSecondChanceDecision,
   handleChooseStealTarget,
   handleOneShotDoorsDecision,
@@ -51,15 +49,12 @@ import {
   handleTarotProphecyDecision,
   synchronizeMysteryStageWithQuestionPoints,
   getPerkType,
-  handleAncientTarotDraw,
   handleAncientTarotSpinWheel,
   handleAncientTarotGambleDecision,
-  TAROT_WHEEL_SEGMENTS,
-  roundToMultipleOfFive,
   startSurvivalPenaltyMinigame,
   getInitialMemoryPairsState,
 } from "./game-engine/mystery-quest";
-import { isPowerupAllowedForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
+import { isPowerupAllowedForMode, isSharedPowerup, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
 import { verifyAdminToken, sanitizePlayerName } from "./security";
@@ -549,7 +544,7 @@ async function assignDefaultWagerTeamIfNone(roomId: string, wagerState: WagerSta
   }
 }
 
-async function launchWagerQuestion(ioInstance: IO, roomId: string, roomCode: string) {
+async function launchWagerQuestion(ioInstance: IO, roomId: string, _roomCode?: string) {
   const existingAutoTimer = roomWagerAutoLaunchTimers.get(roomId);
   if (existingAutoTimer) {
     clearTimeout(existingAutoTimer);
@@ -1120,10 +1115,6 @@ function buildTournamentMatches(teams: any[], questionsPerMatch: number): Tourna
     }
   );
   return matches;
-}
-
-function generateDiceTiles(totalTiles: number = 60): DiceTile[] {
-  return generateBalancedDiceTiles(totalTiles);
 }
 
 // In-memory cache for ultra-fast response
@@ -3554,7 +3545,6 @@ export function registerSocketHandlers(io: IO) {
           questionState.buzzDisqualifiedTeamIds = [];
         }
 
-        const isDeviceAnswer = (config?.answerMethod ?? "DEVICE") === "DEVICE";
         const standardTimeLimit = getStandardQuestionTimeLimit(q, chosenPoints);
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
@@ -9756,7 +9746,6 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
   const currentTeamId = diceState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
   const hasHuman = currentTeam?.players?.some((p) => !isPlayerBot(p)) ?? true;
-  const scoreUpdates: ScoreUpdate[] = [];
 
   const ans = await prisma.answer.findFirst({
     where: { roomId, questionId, teamId: currentTeamId },
@@ -10449,7 +10438,6 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
-      const currentStageJustFinished = Math.floor((room.currentQuestion + 1) / interval);
       let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         // 1. Evaluate round performance for each ghost team (100% correct in at least 1 round qualifies for revival)
@@ -11323,7 +11311,6 @@ async function resolveQuestionTeamScores(
       mode: room.mode as any,
     });
     const teamPoints = teamScoreRes.points;
-    const accuracyRatio = teamScoreRes.accuracyRatio;
     const speedBonus = teamScoreRes.speedBonus;
     const empiricalMultiplier = teamScoreRes.empiricalMultiplier;
 

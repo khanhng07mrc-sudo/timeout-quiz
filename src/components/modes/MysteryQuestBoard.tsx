@@ -2,36 +2,10 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments, evaluateTeamRiskTier, getTarotSegmentDisplayLabel } from "@/lib/game-engine/mystery-quest";
-import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
+import { MYSTERY_THEMES, getPerkType, getEffectiveTarotWheelSegments, evaluateTeamRiskTier, getTarotSegmentDisplayLabel } from "@/lib/game-engine/mystery-quest";
 import { TarotArcanaSvgIcon, renderTarotArcanaVectorNodes, getPureArcanaNameVi } from "./TarotArcanaIcons";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
 import { soundManager } from "@/lib/sound-manager";
-
-/**
- * Evaluates 1D cubic-bezier(x1, y1, x2, y2) at time t in [0, 1]
- * Used to synchronize Wheel of Fortune peg-click audio with CSS transform rotation.
- */
-function evaluateCubicBezier(t: number, x1: number, y1: number, x2: number, y2: number): number {
-  const clamped = Math.max(0, Math.min(1, t));
-  if (clamped === 0 || clamped === 1) return clamped;
-
-  let lo = 0;
-  let hi = 1;
-  let u = clamped;
-  for (let i = 0; i < 10; i++) {
-    u = 0.5 * (lo + hi);
-    const inv = 1 - u;
-    const bx = 3 * inv * inv * u * x1 + 3 * inv * u * u * x2 + u * u * u;
-    if (bx < clamped) {
-      lo = u;
-    } else {
-      hi = u;
-    }
-  }
-  const inv = 1 - u;
-  return 3 * inv * inv * u * y1 + 3 * inv * u * u * y2 + u * u * u;
-}
 
 /**
  * 3-Phase Physics Speed Curve for Tarot Wheel:
@@ -112,17 +86,17 @@ export default function MysteryQuestBoard({
   myTeamId,
   onFlipCard,
   onCashOut,
-  onStealBuzz,
+  onStealBuzz: _onStealBuzz,
   onAdvanceTurn,
   onSelectMiniGame,
   onChooseAction,
   onPairsDecision,
   onChooseStealTarget,
   onDoorsDecision,
-  onTarotRedraw,
-  onTarotConfirmKeep,
+  onTarotRedraw: _onTarotRedraw,
+  onTarotConfirmKeep: _onTarotConfirmKeep,
   onUsePeek,
-  onTarotProphecyDecision,
+  onTarotProphecyDecision: _onTarotProphecyDecision,
   onAdjustScore,
   onDrawTarot,
   onSpinTarotWheel,
@@ -133,7 +107,6 @@ export default function MysteryQuestBoard({
   onSurvivalChoice,
   teams = [],
 }: Props) {
-  const [flippingTileId, setFlippingTileId] = useState<number | null>(null);
   const [optimisticOpenedIds, setOptimisticOpenedIds] = useState<Set<number>>(new Set());
   const [optimisticMatchedPairKey, setOptimisticMatchedPairKey] = useState<string | null>(null);
   const [optimisticSelectedDoorIds, setOptimisticSelectedDoorIds] = useState<number[]>([]);
@@ -142,7 +115,6 @@ export default function MysteryQuestBoard({
   const [showScoreEditModal, setShowScoreEditModal] = useState<boolean>(false);
   const [showRulesModal, setShowRulesModal] = useState<boolean>(false);
   const [rulesModalTab, setRulesModalTab] = useState<MysteryMiniGameType>(mysteryState?.miniGameType || "PUSH_YOUR_LUCK");
-  const [doorsRiskAccepted, setDoorsRiskAccepted] = useState<boolean>(false);
   const [swapStep, setSwapStep] = useState<"IDLE" | "SELECT_REMOVE" | "SELECT_ADD">("IDLE");
   const [swapRemovedId, setSwapRemovedId] = useState<number | null>(null);
   const [wheelPower, setWheelPower] = useState<number>(50);
@@ -151,8 +123,6 @@ export default function MysteryQuestBoard({
   const [isLocalGambleArming, setIsLocalGambleArming] = useState<boolean>(false);
   const [lockedPower, setLockedPower] = useState<number | null>(null);
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
-  const [isWheelCssTransitioning, setIsWheelCssTransitioning] = useState<boolean>(false);
-  const [isPointerTicking, setIsPointerTicking] = useState<boolean>(false);
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
@@ -193,8 +163,6 @@ export default function MysteryQuestBoard({
     phase,
     baseQuestionPoints,
     promoPerk,
-    hasShield,
-    decisionMade,
     potPoints,
     potMultiplier,
     cardsFlippedCount,
@@ -209,7 +177,6 @@ export default function MysteryQuestBoard({
     peekUsesRemaining,
     isPenaltySurvivalMode,
     survivalDilemmaPending,
-    survivalDilemmaChoice,
   } = mysteryState;
 
   // Synchronize optimistic selection for ONE_SHOT_DOORS Phase 1 (Chống nháy/lệch nhịp khi click nhanh)
@@ -332,7 +299,6 @@ export default function MysteryQuestBoard({
   }, [phase, potPoints]);
 
   useEffect(() => {
-    setDoorsRiskAccepted(false);
     setSwapStep("IDLE");
     setSwapRemovedId(null);
   }, [currentTurnIndex, miniGameType, oneShotState?.phase]);
@@ -372,7 +338,6 @@ export default function MysteryQuestBoard({
     const target = tarotState?.targetAngle;
     if (target === undefined || target === null) {
       wheelPrevAngleRef.current = 0;
-      setIsWheelCssTransitioning(false);
       setClientWheelAngle(0);
       if (wheelRef.current) {
         wheelRef.current.style.transform = "rotate(0deg)";
@@ -380,7 +345,6 @@ export default function MysteryQuestBoard({
       if (needleRef.current) {
         needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
       }
-      setIsPointerTicking(false);
       soundManager.stopWheelSpinMusic(150);
       return;
     }
@@ -392,12 +356,10 @@ export default function MysteryQuestBoard({
 
     if (!tarotState?.isWheelSpinning || target <= startAngle) {
       wheelPrevAngleRef.current = target;
-      setIsWheelCssTransitioning(false);
       setClientWheelAngle(target);
       if (wheelRef.current) {
         wheelRef.current.style.transform = `rotate(${target}deg)`;
       }
-      setIsPointerTicking(false);
       wheelSpinAudioTargetRef.current = null;
       if (!tarotState?.targetAngle || tarotState?.targetAngle === 0) {
         setIsWheelZoomedIn(false);
@@ -416,7 +378,6 @@ export default function MysteryQuestBoard({
     let finishedChimePlayed = false;
 
     // 1. Snap wheel to startAngle directly on DOM without trigger re-renders
-    setIsWheelCssTransitioning(false);
     if (wheelRef.current) {
       wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
     }
@@ -460,7 +421,6 @@ export default function MysteryQuestBoard({
         lastPegIndex = currentPegIndex;
         lastSnapTimeRef.current = now;
         soundManager.playWheelPegTick(rawProgress);
-        setIsPointerTicking(true);
       }
 
       // Vật lý Kim Flipper: Định luật Hooke đàn hồi & Dao động tắt dần (Damped Harmonic Oscillation)
@@ -474,8 +434,6 @@ export default function MysteryQuestBoard({
         const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
         if (dt < 0.12) {
           needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
-        } else {
-          setIsPointerTicking(false);
         }
       }
 
@@ -490,7 +448,6 @@ export default function MysteryQuestBoard({
           wheelRef.current.style.transform = `rotate(${target}deg)`;
         }
         setClientWheelAngle(target);
-        setIsPointerTicking(false);
         wheelPrevAngleRef.current = target;
         wheelSpinAudioTargetRef.current = null;
 
@@ -522,7 +479,6 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
-      setIsPointerTicking(false);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -650,14 +606,10 @@ export default function MysteryQuestBoard({
     if (!isOneShot || oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED") {
       setOptimisticOpenedIds((prev) => new Set(prev).add(tile.id));
     }
-    setFlippingTileId(tile.id);
     if (miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") {
       setIsDrawingAnimation(true);
       setTimeout(() => setIsDrawingAnimation(false), 450);
     }
-    setTimeout(() => {
-      setFlippingTileId(null);
-    }, 450);
 
     onFlipCard?.(tile.id);
   };

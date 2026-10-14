@@ -447,6 +447,7 @@ export function getBloomLevelFromPoints(points: number, explicitLevel?: string):
  * - 40 điểm (Tính toán phức tạp, đa số liệu) -> 60 giây (olympia_60s.mp3)
  */
 export function quantizeOlympiaTimeLimit(points: number = 10, _explicitTimeLimit?: number): number {
+  void _explicitTimeLimit;
   if (points <= 10) return 15;
   if (points <= 20) return 20;
   if (points <= 30) return 30;

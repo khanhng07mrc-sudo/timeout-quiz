@@ -1,4 +1,4 @@
-import { GameMode, BloomLevel } from "@/types";
+import { GameMode } from "@/types";
 
 export interface QuestionAllocationBreakdown {
   easyCount: number;

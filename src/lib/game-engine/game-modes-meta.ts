@@ -1,5 +1,3 @@
-import { GameMode } from "@/types";
-
 export interface ModeRulesSummary {
   objective: string;
   mechanism: string;

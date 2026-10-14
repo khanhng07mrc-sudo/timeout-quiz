@@ -6,7 +6,6 @@ import {
   MysteryTileType,
   MysteryTileEffectType,
   MysteryPromoPerk,
-  TeamState,
   CardType,
   AncientTarotCardKey,
   AncientTarotDrawnCard,
@@ -273,7 +272,6 @@ export function resolveBombOutcome({
 } {
   const currentScore = team.score || 0;
   const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-  const X = allTeams.length;
 
   if (bombType === "BOMB_SMOKE") {
     if (isSurvivalPenalty) {
@@ -457,7 +455,7 @@ export function resolveBombOutcome({
  * - 30đ: higher double pot chance for epic payoffs
  */
 export function generateMysteryPromoPerk(
-  basePoints: number = 10,
+  _basePoints: number = 10,
   miniGameType?: MysteryMiniGameType,
   options?: {
     teams?: MysteryTeamRef[];
@@ -963,7 +961,7 @@ export function generateMemoryPairsTiles(
  */
 export function generateSurvivalMemoryPairsTiles(
   basePoints: number = 20,
-  options?: {
+  _options?: {
     teams?: MysteryTeamRef[];
     currentTeamId?: string;
   }
@@ -1260,7 +1258,7 @@ export function generateOneShotDoorsTiles(
  */
 export function generateSurvivalOneShotDoorsTiles(
   basePoints: number = 20,
-  options?: {
+  _options?: {
     teams?: MysteryTeamRef[];
     currentTeamId?: string;
   }
@@ -1683,8 +1681,8 @@ export function generateNextPushYourLuckCard({
 export function generateSurvivalPushYourLuckCard({
   drawIndex = 1,
   basePoints = 10,
-  teamScore = 0,
-  options,
+  teamScore: _teamScore = 0,
+  options: _options,
 }: {
   drawIndex?: number;
   basePoints?: number;
@@ -3680,7 +3678,6 @@ export function handleFlipCard({
     const penalty = bombOutcome.penalty;
     const penaltyText = bombOutcome.penaltyText;
     const recipientTeamId = bombOutcome.recipientTeamId;
-    const recipientTeamName = bombOutcome.recipientTeamName;
     const giftedPoints = bombOutcome.giftedPoints;
     const darkBombRecipients = bombOutcome.darkBombRecipients;
     state.bombExploded = bombOutcome.bombExploded;

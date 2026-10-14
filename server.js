@@ -207,6 +207,7 @@ function getBloomLevelFromPoints(points, explicitLevel) {
   return "REMEMBER";
 }
 function quantizeOlympiaTimeLimit(points = 10, _explicitTimeLimit) {
+  void _explicitTimeLimit;
   if (points <= 10) return 15;
   if (points <= 20) return 20;
   if (points <= 30) return 30;
@@ -964,7 +965,6 @@ function resolveBombOutcome({
 }) {
   const currentScore = team.score || 0;
   const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
-  const X = allTeams.length;
   if (bombType === "BOMB_SMOKE") {
     if (isSurvivalPenalty) {
       const penalty = Math.min(currentScore, roundToMultipleOfFive(baseQuestionPoints * 0.5));
@@ -1113,7 +1113,7 @@ function resolveBombOutcome({
     }
   };
 }
-function generateMysteryPromoPerk(basePoints = 10, miniGameType, options) {
+function generateMysteryPromoPerk(_basePoints = 10, miniGameType, options) {
   const normType = miniGameType ? normalizeMiniGameType(miniGameType) : "PUSH_YOUR_LUCK";
   const hasOpponentWithScore = Boolean(
     options?.teams && options.teams.some((t) => t.id !== options.currentTeamId && (t.score || 0) > 0)
@@ -1470,7 +1470,7 @@ function generateMemoryPairsTiles(basePoints = 20, options) {
     label: `Th\u1EBB #${idx + 1}`
   }));
 }
-function generateSurvivalMemoryPairsTiles(basePoints = 20, options) {
+function generateSurvivalMemoryPairsTiles(basePoints = 20, _options) {
   const pPenalty = basePoints;
   const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
   const pairs = [
@@ -1688,7 +1688,7 @@ function generateOneShotDoorsTiles(basePoints = 20, options) {
     };
   });
 }
-function generateSurvivalOneShotDoorsTiles(basePoints = 20, options) {
+function generateSurvivalOneShotDoorsTiles(basePoints = 20, _options) {
   const pPenalty = basePoints;
   const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
   const doors = [
@@ -2006,8 +2006,8 @@ function generateNextPushYourLuckCard({
 function generateSurvivalPushYourLuckCard({
   drawIndex = 1,
   basePoints = 10,
-  teamScore = 0,
-  options
+  teamScore: _teamScore = 0,
+  options: _options
 }) {
   const id = drawIndex;
   const label = `L\xE1 Sinh T\u1EED #${drawIndex}`;
@@ -3562,7 +3562,6 @@ function handleFlipCard({
     const penalty = bombOutcome.penalty;
     const penaltyText = bombOutcome.penaltyText;
     const recipientTeamId = bombOutcome.recipientTeamId;
-    const recipientTeamName = bombOutcome.recipientTeamName;
     const giftedPoints = bombOutcome.giftedPoints;
     const darkBombRecipients = bombOutcome.darkBombRecipients;
     state.bombExploded = bombOutcome.bombExploded;
@@ -6127,7 +6126,7 @@ function handleTieBreakerAnswer({
 function launchTieBreakerLuckyDraw({
   io: io2,
   roomId,
-  onGameEnd
+  onGameEnd: _onGameEnd
 }) {
   clearTieBreakerTimer(roomId);
   const tieState = roomTieBreakers.get(roomId);
@@ -6521,7 +6520,7 @@ async function assignDefaultWagerTeamIfNone(roomId, wagerState) {
     }
   }
 }
-async function launchWagerQuestion(ioInstance, roomId, roomCode) {
+async function launchWagerQuestion(ioInstance, roomId, _roomCode) {
   const existingAutoTimer = roomWagerAutoLaunchTimers.get(roomId);
   if (existingAutoTimer) {
     clearTimeout(existingAutoTimer);
@@ -9012,7 +9011,6 @@ function registerSocketHandlers(io2) {
           questionState.buzzMaxAttempts = buzzMaxAttempts;
           questionState.buzzDisqualifiedTeamIds = [];
         }
-        const isDeviceAnswer = (config?.answerMethod ?? "DEVICE") === "DEVICE";
         const standardTimeLimit = getStandardQuestionTimeLimit(q, chosenPoints);
         questionState.timeLimit = standardTimeLimit;
         questionState.question.timeLimit = standardTimeLimit;
@@ -14108,7 +14106,6 @@ async function finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId) {
   const currentTeamId = diceState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
   const hasHuman = currentTeam?.players?.some((p) => !isPlayerBot(p)) ?? true;
-  const scoreUpdates = [];
   const ans = await prisma.answer.findFirst({
     where: { roomId, questionId, teamId: currentTeamId },
     orderBy: { submittedAt: "desc" }
@@ -14669,7 +14666,6 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
   if (room.mode === "ELIMINATION") {
     const interval = Math.max(1, config?.eliminationIntervalQuestions || 3);
     if ((room.currentQuestion + 1) % interval === 0) {
-      const currentStageJustFinished = Math.floor((room.currentQuestion + 1) / interval);
       let roomGhosts = roomEliminationGhostStats.get(room.id);
       if (roomGhosts) {
         for (const [, ghostStat] of roomGhosts.entries()) {
@@ -15356,7 +15352,6 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
       mode: room.mode
     });
     const teamPoints = teamScoreRes.points;
-    const accuracyRatio = teamScoreRes.accuracyRatio;
     const speedBonus = teamScoreRes.speedBonus;
     const empiricalMultiplier = teamScoreRes.empiricalMultiplier;
     if (room.mode === "ELIMINATION" && team.isEliminated) {

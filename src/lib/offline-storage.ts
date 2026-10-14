@@ -26,7 +26,6 @@ export interface OfflineQuizBank {
 }
 
 const LOCAL_BANKS_KEY = "timeout_quiz_offline_banks";
-const SYNC_QUEUE_KEY = "timeout_quiz_sync_queue";
 
 // Default Preset Quiz Bank (always available offline)
 export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {

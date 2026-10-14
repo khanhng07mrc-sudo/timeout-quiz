@@ -794,7 +794,7 @@ class SoundManager {
    * Nhạc nền vòng quay Chiếc Nón Kỳ Diệu VTV3 (2013) chạy suốt thời gian xoay (15s - 20s).
    * Không tua nhanh, không loop, và chống kích hoạt lặp lại (re-trigger) gây tải trùng âm thanh.
    */
-  public playWheelSpinMusic(durationMs: number = 20000, forceRestart: boolean = false) {
+  public playWheelSpinMusic(_durationMs: number = 20000, forceRestart: boolean = false) {
     if (typeof window === "undefined") return;
     this.initAudioAssets();
 

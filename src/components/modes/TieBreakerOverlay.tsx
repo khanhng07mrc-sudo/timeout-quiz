@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import type { TieBreakerState, TieBreakerEnvelope } from "@/types";
-import { soundManager } from "@/lib/sound-manager";
+import type { TieBreakerState } from "@/types";
 
 interface TieBreakerOverlayProps {
   tieBreaker: TieBreakerState | null;
@@ -26,11 +25,9 @@ export default function TieBreakerOverlay({
   onClose,
 }: TieBreakerOverlayProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [hasBuzzed, setHasBuzzed] = useState(false);
 
   useEffect(() => {
     setSelectedOption(null);
-    setHasBuzzed(false);
   }, [tieBreaker?.questionIndex, tieBreaker?.status]);
 
   if (!tieBreaker) return null;
@@ -259,7 +256,7 @@ export default function TieBreakerOverlay({
 
         {/* Versus badges */}
         <div className="flex items-center gap-1.5">
-          {tieBreaker.tiedTeams.map((t, idx) => (
+          {tieBreaker.tiedTeams.map((t) => (
             <span
               key={t.id}
               className="px-2.5 py-1 rounded-lg text-xs font-black truncate max-w-[120px]"
@@ -380,7 +377,6 @@ export default function TieBreakerOverlay({
                 <button
                   type="button"
                   onClick={() => {
-                    setHasBuzzed(true);
                     onBuzz?.();
                   }}
                   className="w-full py-4 sm:py-5 rounded-2xl bg-gradient-to-r from-red-600 via-rose-600 to-red-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-base sm:text-xl uppercase tracking-wider shadow-2xl border-2 border-white/30 cursor-pointer active:scale-95 transition-all transform hover:scale-102 animate-pulse"

@@ -1,4 +1,4 @@
-import { Server as SocketIOServer, Socket } from "socket.io";
+import { Server as SocketIOServer } from "socket.io";
 import type {
   ClientToServerEvents,
   ServerToClientEvents,
@@ -9,7 +9,6 @@ import type {
 import { prisma } from "@/lib/prisma";
 
 type IO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
-type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
 
 // In-memory active tie-breaker states: roomId -> TieBreakerState
 export const roomTieBreakers = new Map<string, TieBreakerState>();
@@ -395,11 +394,11 @@ export function handleTieBreakerAnswer({
 export function launchTieBreakerLuckyDraw({
   io,
   roomId,
-  onGameEnd,
+  onGameEnd: _onGameEnd,
 }: {
   io: IO;
   roomId: string;
-  onGameEnd: () => Promise<void>;
+  onGameEnd?: () => Promise<void>;
 }) {
   clearTieBreakerTimer(roomId);
   const tieState = roomTieBreakers.get(roomId);

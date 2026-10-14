@@ -1128,6 +1128,7 @@ export interface MysteryQuestState {
     targetAngle?: number; // degree of wheel rotation
     spinDurationMs?: number;
     selectedSegmentIndex?: number;
+    landedIndex?: number;
     spinTimeoutSeconds?: number;
     isRevealPending?: boolean; // true after wheel stops, before user reveals
     isGambling?: boolean;

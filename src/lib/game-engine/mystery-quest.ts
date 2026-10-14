@@ -4751,6 +4751,135 @@ export function getEffectiveTarotWheelSegments(
   return segments;
 }
 
+export interface TarotSegmentDisplayInfo {
+  mainLabel: string;
+  badge?: string;
+  colorType: "POSITIVE" | "NEGATIVE" | "NEUTRAL" | "SPECIAL";
+}
+
+/**
+ * Helper trích xuất nhãn chức năng và điểm số thực tế hiển thị trên nan quạt Vòng Quay Tarot:
+ * - Thay vì số La Mã, hiển thị các nhãn trực quan: +10, +15, +20, THÊM LƯỢT, MẤT ĐIỂM, BOM HẮC ÁM, CƯỚP ĐIỂM...
+ */
+export function getTarotSegmentDisplayLabel(
+  seg: TarotWheelSegment,
+  basePointsInput: number = 10,
+  isSurvivalMode: boolean = false
+): TarotSegmentDisplayInfo {
+  const basePoints = Math.max(5, normalizeToThreeLevels(basePointsInput || 10));
+
+  // 1. Khiên thần hóa giải (Lượt 2)
+  if (seg.isShieldTransformed) {
+    return {
+      mainLabel: `+${basePoints}`,
+      badge: "HÓA GIẢI",
+      colorType: "POSITIVE",
+    };
+  }
+
+  // 2. Chế độ Sinh Tử (20 nan quạt)
+  if (isSurvivalMode) {
+    if (seg.key === "THE_PEACE") {
+      return { mainLabel: "THOÁT NẠN", badge: "SỐNG SÓT", colorType: "NEUTRAL" };
+    }
+    if (seg.key === "THE_KNIGHT") {
+      return { mainLabel: "CHIA ĐÔI", badge: "-50% ĐIỂM", colorType: "NEGATIVE" };
+    }
+    if (seg.key === "THE_EMPEROR") {
+      return { mainLabel: "BOM HẮC ÁM", badge: "MẤT ĐIỂM", colorType: "NEGATIVE" };
+    }
+    if (seg.key === "THE_DEATH") {
+      return { mainLabel: "HIẾN TẾ", badge: "TẶNG TOP 1", colorType: "NEGATIVE" };
+    }
+    if (seg.key === "THE_FOOL") {
+      const pen = Math.max(5, Math.round(basePoints * 0.5));
+      return { mainLabel: `-${pen}`, badge: "KHÓI ĐỘC", colorType: "NEGATIVE" };
+    }
+  }
+
+  // 3. Chế độ Thường (22 Major Arcana)
+  // Masked Effect (được phong ấn hoặc bảo hộ)
+  if (seg.maskedEffect === "NEUTRAL") {
+    return { mainLabel: "0 ĐIỂM", badge: "MẤT LƯỢT", colorType: "NEUTRAL" };
+  }
+  if (seg.maskedEffect === "SUN_SMALL") {
+    return { mainLabel: `+${basePoints}`, badge: "ĐỊNH MỆNH", colorType: "POSITIVE" };
+  }
+
+  // a) 4 lá +1x: I Magician, II High Priestess, V Hierophant, IX Hermit
+  if (
+    seg.key === "THE_MAGICIAN" ||
+    seg.key === "THE_HIGH_PRIESTESS" ||
+    seg.key === "THE_HIEROPHANT" ||
+    seg.key === "THE_HERMIT"
+  ) {
+    return { mainLabel: `+${basePoints}`, colorType: "POSITIVE" };
+  }
+
+  // b) 4 lá +1.5x: III Empress, IV Emperor, VIII Strength, XX Judgement
+  if (
+    seg.key === "THE_EMPRESS" ||
+    seg.key === "THE_EMPEROR" ||
+    seg.key === "STRENGTH" ||
+    seg.key === "JUDGEMENT"
+  ) {
+    const pts = Math.round(basePoints * 1.5);
+    return { mainLabel: `+${pts}`, colorType: "POSITIVE" };
+  }
+
+  // c) 4 lá +2x: VI Lovers, XIV Temperance, XIX Sun, XXI World
+  if (
+    seg.key === "THE_LOVERS" ||
+    seg.key === "TEMPERANCE" ||
+    seg.key === "THE_SUN" ||
+    seg.key === "THE_WORLD"
+  ) {
+    const pts = basePoints * 2;
+    if (seg.isMagnetized) {
+      return { mainLabel: `+${pts}`, badge: "NAM CHÂM", colorType: "POSITIVE" };
+    }
+    return { mainLabel: `+${pts}`, colorType: "POSITIVE" };
+  }
+
+  // d) 2 lá Cược thêm lượt: "THÊM LƯỢT" theo yêu cầu người dùng
+  if (seg.key === "THE_STAR" || seg.key === "THE_MOON") {
+    return { mainLabel: "THÊM LƯỢT", badge: "CƯỢC QUAY", colorType: "SPECIAL" };
+  }
+
+  // e) 2 lá Cướp 2x điểm: VII Chariot & XIII Death
+  if (seg.key === "THE_CHARIOT" || seg.key === "THE_DEATH") {
+    const stealPts = basePoints * 2;
+    return { mainLabel: `CƯỚP ${stealPts}`, badge: "ĐỐI THỦ", colorType: "SPECIAL" };
+  }
+
+  // f) 1 lá Ngẫu nhiên: X Wheel of Fortune
+  if (seg.key === "WHEEL_OF_FORTUNE") {
+    return { mainLabel: "MAY MẮN", badge: "x1~x2", colorType: "SPECIAL" };
+  }
+
+  // g) 2 lá 0đ: 0 Fool & XI Justice ("0 ĐIỂM / MẤT LƯỢT")
+  if (seg.key === "THE_FOOL" || seg.key === "JUSTICE") {
+    return { mainLabel: "0 ĐIỂM", badge: "MẤT LƯỢT", colorType: "NEUTRAL" };
+  }
+
+  // h) 1 lá Bẫy sập: XVI Tower (-1x điểm) - Ghi rõ số điểm trừ để không bị nhầm thành mất sạch điểm
+  if (seg.key === "THE_TOWER") {
+    return { mainLabel: `-${basePoints}`, badge: "BẪY SẬP", colorType: "NEGATIVE" };
+  }
+
+  // i) 1 lá Bom Hắc Ám: XV Devil
+  if (seg.key === "THE_DEVIL") {
+    return { mainLabel: "BOM HẮC ÁM", badge: "MẤT HẾT", colorType: "NEGATIVE" };
+  }
+
+  // j) 1 lá Bom Từ Thiện: XII Hanged Man
+  if (seg.key === "THE_HANGED_MAN") {
+    return { mainLabel: "BOM TỪ THIỆN", badge: "CHIA ĐỀU", colorType: "NEGATIVE" };
+  }
+
+  return { mainLabel: `+${basePoints}`, colorType: "POSITIVE" };
+}
+
 /**
  * Tính toán góc quay vật lý và ô trúng thưởng dựa trên lực nạp (Power Percent 1-100%).
  * Chuẩn Chiếc Nón Kỳ Diệu: Xoay từ 4 đến 9 vòng (1440° – 3240°) tùy lực trong khoảng 17.5s – 22.5s (17500ms – 22500ms).

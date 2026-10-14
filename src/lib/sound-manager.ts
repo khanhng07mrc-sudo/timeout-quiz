@@ -813,13 +813,12 @@ class SoundManager {
 
       audio.pause();
       audio.currentTime = 0;
-      audio.loop = true;
+      audio.loop = false;
 
-      // Bản nhạc gốc VTV3 dài ~19.13s; co giãn nhẹ tốc độ phát để khớp mượt với thời lượng quay 17.5s - 22.5s
-      const rate = Math.max(0.82, Math.min(1.12, 19130 / Math.max(12000, durationMs)));
+      // Nhạc vòng quay Chiếc Nón Kỳ Diệu chạy tốc độ cố định 1.0x (chuẩn bản gốc VTV3, không tua nhanh hay méo cao độ)
       try {
         audio.preservesPitch = true;
-        audio.playbackRate = rate;
+        audio.playbackRate = 1.0;
       } catch {}
 
       audio.volume = this.isMuted ? 0 : Math.min(1, this.volume * 0.9);

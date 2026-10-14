@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { MysteryQuestState, MysteryTile, MysteryMiniGameType } from "@/types";
-import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments, evaluateTeamRiskTier } from "@/lib/game-engine/mystery-quest";
+import { MYSTERY_THEMES, getPerkType, TAROT_WHEEL_SEGMENTS, getEffectiveTarotWheelSegments, evaluateTeamRiskTier, getTarotSegmentDisplayLabel } from "@/lib/game-engine/mystery-quest";
 import { TarotCardBackSvg, TarotCardEmblem, getTarotCardMeta } from "./TarotCardGraphic";
 import { TarotArcanaSvgIcon, renderTarotArcanaVectorNodes, getPureArcanaNameVi } from "./TarotArcanaIcons";
 import { DoorClipPathDefinition, RealisticDoorArtwork } from "./DoorGraphic";
@@ -2204,10 +2204,10 @@ export default function MysteryQuestBoard({
           const canActOnTarot = Boolean(isMyTurn || isAdmin);
 
           return (
-            <div className="max-w-2xl mx-auto py-1.5">
+            <div className={`w-full ${isDisplay ? "max-w-3xl" : "max-w-2xl"} mx-auto py-1.5`}>
               {!isDrawn ? (
-                /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 22 Major Arcana ── */
-                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4 space-y-2" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
+                /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 3D Chiếc Nón Kỳ Diệu ── */
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-5 space-y-2.5" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
                   {/* Mystical Starfield & Astral Nebula Aura */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(139,92,246,0.22),rgba(15,10,35,0.6)_55%,transparent_80%)] pointer-events-none" />
                   <div className="absolute inset-0 opacity-35 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px), radial-gradient(#e0e7ff 0.6px, transparent 0.6px)", backgroundSize: "36px 36px, 24px 24px", backgroundPosition: "0 0, 14px 18px" }} />
@@ -2217,13 +2217,13 @@ export default function MysteryQuestBoard({
                     const hasSunMagnet = !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
                     return (
                       <div className="text-center z-10 space-y-0.5">
-                        <h3 className={`${isDisplay ? "text-sm sm:text-base md:text-lg" : "text-base sm:text-lg md:text-xl"} font-black text-amber-200 uppercase tracking-[0.18em] drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]`}>
+                        <h3 className={`${isDisplay ? "text-base sm:text-lg md:text-xl" : "text-base sm:text-lg md:text-xl"} font-black text-amber-200 uppercase tracking-[0.18em] drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]`}>
                           {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "✦ VÒNG QUAY TAROT ĐỊNH MỆNH ✦"}
                         </h3>
                         <p className="text-[11px] sm:text-xs text-purple-200/80 font-medium tracking-wider">
                           {isPenaltySurvivalMode
-                            ? "20 Ấn Cổ Sinh Tử • Ẩn Giấu Thoát Nạn & Bẫy Phạt"
-                            : "22 Ấn Cổ Major Arcana • Phúc Họa Ẩn Giấu Sau Mặt Bài"}
+                            ? "20 Ô Sinh Tử • Phân Tách Bằng Chốt Kim Loại Bạc Crom"
+                            : "22 Ô Major Arcana • Phân Tách Bằng Chốt Kim Loại Bạc Crom"}
                         </p>
                         {hasSunMagnet && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/80 text-amber-200 text-[11px] font-bold shadow-lg animate-pulse mt-1">
@@ -2235,31 +2235,74 @@ export default function MysteryQuestBoard({
                     );
                   })()}
 
-                  {/* ── SVG 22-Segment Esoteric Tarot Wheel with 12 o'clock Astral Pointer ── */}
-                  <div className={`relative ${isDisplay ? "w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 lg:w-[340px] lg:h-[340px] my-1" : "w-80 h-80 sm:w-96 sm:h-96 md:w-[420px] md:h-[420px] my-2"} mx-auto flex items-center justify-center z-10`}>
-                    {/* Ornate Astral Gold-Violet Pointer Needle at 12 o'clock (Flicks on each peg click) */}
-                    <div
-                      className="absolute -top-4 sm:-top-5 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_6px_14px_rgba(0,0,0,0.95)] transition-transform duration-75 origin-top"
-                      style={{
-                        transform: isPointerTicking ? "rotate(-16deg) scale(1.06)" : "rotate(0deg) scale(1)",
-                      }}
-                    >
-                      <svg width="44" height="44" viewBox="0 0 40 40">
-                        <defs>
-                          <linearGradient id="astralPointerGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="#fef08a" />
-                            <stop offset="55%" stopColor="#f59e0b" />
-                            <stop offset="100%" stopColor="#9333ea" />
-                          </linearGradient>
-                        </defs>
-                        <path d="M20 35 L9 8 L20 14 L31 8 Z" fill="url(#astralPointerGrad)" stroke="#fef08a" strokeWidth="1.8" strokeLinejoin="round" />
-                        <circle cx="20" cy="11" r="3.5" fill="#1e1b4b" stroke="#fef08a" strokeWidth="1.6" />
-                        <circle cx="20" cy="11" r="1.3" fill="#fef08a" />
-                      </svg>
-                    </div>
+                  {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
+                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-2" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-2"} mx-auto flex items-center justify-center z-10`}>
+                    {/* 3D Flipper Pointer Needle at 12 o'clock (Flicks on ticks & deflects on peg boundaries) */}
+                    {(() => {
+                      const segCount = isPenaltySurvivalMode ? 20 : 22;
+                      const degPerSeg = 360 / segCount;
+                      const normAngle = (360 - (clientWheelAngle % 360)) % 360;
+                      const offsetInSeg = normAngle % degPerSeg;
+                      let restingDeflectionDeg = 0;
+                      if (!tarotState?.isWheelSpinning && clientWheelAngle > 0) {
+                        // Nếu dừng rất sát thanh kim loại phân cách (sai lệch < 2.6 độ), kim tì nghiêng vào lòng ô chiến thắng!
+                        if (offsetInSeg < 2.6) {
+                          restingDeflectionDeg = 9;
+                        } else if (offsetInSeg > degPerSeg - 2.6) {
+                          restingDeflectionDeg = -9;
+                        }
+                      }
 
-                    {/* Outer Glowing Celestial Ring */}
-                    <div className="absolute inset-0 rounded-full border-[3px] sm:border-4 border-amber-300/75 shadow-[0_0_40px_rgba(139,92,246,0.65),inset_0_0_25px_rgba(251,191,36,0.25)] pointer-events-none z-20" />
+                      return (
+                        <div
+                          className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.95)] transition-transform duration-100 origin-top"
+                          style={{
+                            transform: isPointerTicking
+                              ? "rotate(-18deg) scale(1.08)"
+                              : `rotate(${restingDeflectionDeg}deg) scale(1)`,
+                          }}
+                        >
+                          {/* 3D Chrome Flipper Pointer */}
+                          <svg width="48" height="52" viewBox="0 0 44 48">
+                            <defs>
+                              <linearGradient id="chromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#ffffff" />
+                                <stop offset="30%" stopColor="#e2e8f0" />
+                                <stop offset="60%" stopColor="#94a3b8" />
+                                <stop offset="100%" stopColor="#334155" />
+                              </linearGradient>
+                              <linearGradient id="needleGoldAccent" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" stopColor="#fef08a" />
+                                <stop offset="50%" stopColor="#f59e0b" />
+                                <stop offset="100%" stopColor="#b45309" />
+                              </linearGradient>
+                            </defs>
+                            {/* Needle Body */}
+                            <path
+                              d="M22 44 L11 8 Q22 14 33 8 Z"
+                              fill="url(#needleGoldAccent)"
+                              stroke="#fef08a"
+                              strokeWidth="1.8"
+                              strokeLinejoin="round"
+                            />
+                            {/* Chrome Spine Rib */}
+                            <path
+                              d="M22 42 L22 12"
+                              stroke="url(#chromeNeedleGrad)"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            />
+                            {/* Pivot Mount Bolt */}
+                            <circle cx="22" cy="11" r="5" fill="#1e293b" stroke="#fef08a" strokeWidth="1.8" />
+                            <circle cx="22" cy="11" r="3.2" fill="url(#chromeNeedleGrad)" />
+                            <circle cx="20.8" cy="9.8" r="1.1" fill="#ffffff" />
+                          </svg>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Outer 3D Beveled Gold-Bronze Ring with Glowing Ambient Aura */}
+                    <div className="absolute inset-0 rounded-full border-[6px] sm:border-[8px] border-amber-400/90 shadow-[0_0_55px_rgba(245,158,11,0.5),inset_0_0_35px_rgba(0,0,0,0.85)] pointer-events-none z-20" />
 
                     {/* Spinning Wheel (17.5s - 22.5s Chiếc Nón Kỳ Diệu Physics: 4 - 9 turns) */}
                     <div
@@ -2271,15 +2314,49 @@ export default function MysteryQuestBoard({
                           : "none",
                       }}
                     >
-                      <svg viewBox="0 0 340 340" className="w-full h-full select-none">
+                      <svg viewBox="0 0 440 440" className="w-full h-full select-none">
                         <defs>
-                          <radialGradient id="hubObsidianGrad" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="#1e1b4b" />
-                            <stop offset="65%" stopColor="#0f0720" />
+                          {/* 3D Chrome Metallic Gradients */}
+                          <linearGradient id="chromePegGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#ffffff" />
+                            <stop offset="25%" stopColor="#cbd5e1" />
+                            <stop offset="50%" stopColor="#64748b" />
+                            <stop offset="75%" stopColor="#f8fafc" />
+                            <stop offset="100%" stopColor="#334155" />
+                          </linearGradient>
+                          <radialGradient id="chromeCapGrad" cx="35%" cy="35%" r="65%">
+                            <stop offset="0%" stopColor="#ffffff" />
+                            <stop offset="35%" stopColor="#e2e8f0" />
+                            <stop offset="80%" stopColor="#64748b" />
+                            <stop offset="100%" stopColor="#1e293b" />
+                          </radialGradient>
+
+                          {/* 3D Royal Gold Rim Gradient */}
+                          <linearGradient id="goldRimGrad3D" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fef08a" />
+                            <stop offset="25%" stopColor="#f59e0b" />
+                            <stop offset="50%" stopColor="#78350f" />
+                            <stop offset="75%" stopColor="#fbbf24" />
+                            <stop offset="100%" stopColor="#b45309" />
+                          </linearGradient>
+
+                          {/* Obsidian Dome Core Gradient */}
+                          <radialGradient id="hubObsidianGrad" cx="45%" cy="40%" r="55%">
+                            <stop offset="0%" stopColor="#312e81" />
+                            <stop offset="40%" stopColor="#1e1b4b" />
+                            <stop offset="80%" stopColor="#0f0720" />
                             <stop offset="100%" stopColor="#05030a" />
                           </radialGradient>
-                          <filter id="arcanaSymbolGlow" x="-25%" y="-25%" width="150%" height="150%">
-                            <feDropShadow dx="0" dy="0" stdDeviation="1.4" floodColor="#fde68a" floodOpacity="0.6" />
+
+                          {/* Arcana Icon Glow Filter */}
+                          <filter id="arcanaSymbolGlow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="2.2" floodColor="#fde68a" floodOpacity="0.8" />
+                          </filter>
+
+                          {/* Winning Landed Slice 3D Pulsing Glow */}
+                          <filter id="winningSliceGlow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#fbbf24" floodOpacity="0.95" />
+                            <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#f59e0b" floodOpacity="0.8" />
                           </filter>
                         </defs>
 
@@ -2304,9 +2381,9 @@ export default function MysteryQuestBoard({
                           const degPerSeg = 360 / segCount;
                           const theta1 = (i * degPerSeg * Math.PI) / 180;
                           const theta2 = ((i + 1) * degPerSeg * Math.PI) / 180;
-                          const r = 168;
-                          const cx = 170;
-                          const cy = 170;
+                          const r = 194;
+                          const cx = 220;
+                          const cy = 220;
                           const x1 = cx + r * Math.sin(theta1);
                           const y1 = cy - r * Math.cos(theta1);
                           const x2 = cx + r * Math.sin(theta2);
@@ -2314,62 +2391,138 @@ export default function MysteryQuestBoard({
                           const midDeg = (i + 0.5) * degPerSeg;
                           const symbolColor = seg.isShieldTransformed ? "#6ee7b7" : seg.isMagnetized ? "#fef08a" : seg.textColor;
 
+                          const isLandedWinner = !tarotState?.isWheelSpinning && (tarotState?.landedIndex === i || tarotState?.selectedSegmentIndex === i);
+                          const displayInfo = getTarotSegmentDisplayLabel(
+                            seg,
+                            baseQuestionPoints || 10,
+                            Boolean(isPenaltySurvivalMode)
+                          );
+
+                          // Peg position at segment divider boundary theta1
+                          const rPeg = 189;
+                          const pegX = cx + rPeg * Math.sin(theta1);
+                          const pegY = cy - rPeg * Math.cos(theta1);
+
+                          // Font sizing based on function label length
+                          const labelLen = displayInfo.mainLabel.length;
+                          const mainFontSize = labelLen <= 3 ? "15" : labelLen <= 6 ? "12" : labelLen <= 9 ? "10" : "8.5";
+
                           return (
                             <g key={seg.index}>
+                              {/* Wedge Slice Path */}
                               <path
                                 d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
-                                fill={seg.isShieldTransformed ? "#064e3b" : seg.isMagnetized ? "#3b1d06" : seg.bgColor}
-                                stroke={seg.isShieldTransformed ? "#10b981" : seg.isMagnetized ? "#fef08a" : seg.borderColor}
-                                strokeWidth={seg.isShieldTransformed || seg.isMagnetized ? "2.5" : "1.1"}
+                                fill={seg.isShieldTransformed ? "#064e3b" : seg.isMagnetized ? "#3b1d06" : isLandedWinner ? "#4c1d95" : seg.bgColor}
+                                stroke={isLandedWinner ? "#fbbf24" : seg.isShieldTransformed ? "#10b981" : seg.isMagnetized ? "#fef08a" : seg.borderColor}
+                                strokeWidth={isLandedWinner ? "3.5" : seg.isShieldTransformed || seg.isMagnetized ? "2.5" : "1.2"}
+                                filter={isLandedWinner ? "url(#winningSliceGlow)" : undefined}
                               />
-                              {/* Subtle inner astrological arc dot */}
+
+                              {/* Subtle 3D Inset Edge Highlight */}
+                              <line
+                                x1={cx}
+                                y1={cy}
+                                x2={x1}
+                                y2={y1}
+                                stroke="#ffffff"
+                                strokeWidth="0.6"
+                                strokeOpacity="0.25"
+                              />
+
+                              {/* Wedge Content (Icon & Function Text Label) */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
-                                <circle cx={cx} cy={cy - 157} r="1.1" fill={symbolColor} opacity="0.65" />
-                                {/* Esoteric Vector Line-Art SVG Icon */}
+                                {/* Outer Accent Pin */}
+                                <circle cx={cx} cy={cy - 178} r="1.3" fill={symbolColor} opacity="0.8" />
+
+                                {/* Large Arcana Vector Line-Art SVG Icon */}
                                 <svg
-                                  x={cx - 8.5}
-                                  y={cy - 142}
-                                  width="17"
-                                  height="17"
+                                  x={cx - 12}
+                                  y={cy - 168}
+                                  width="24"
+                                  height="24"
                                   viewBox="0 0 32 32"
                                   filter="url(#arcanaSymbolGlow)"
                                 >
                                   {renderTarotArcanaVectorNodes(seg.key, symbolColor)}
                                 </svg>
-                                {/* Roman Numeral */}
+
+                                {/* Main Function Text Label (e.g. +15, +10, THÊM LƯỢT, MẤT ĐIỂM, BOM HẮC ÁM, CƯỚP 20...) */}
                                 <text
                                   x={cx}
-                                  y={cy - 104}
+                                  y={cy - 128}
                                   textAnchor="middle"
-                                  fontSize={segCount === 22 ? "7.8" : "9"}
+                                  fontSize={mainFontSize}
                                   fontWeight="900"
-                                  fill={symbolColor}
+                                  fill="#ffffff"
+                                  stroke="#000000"
+                                  strokeWidth="1.2"
+                                  style={{ paintOrder: "stroke fill" }}
                                   dominantBaseline="central"
-                                  className="font-serif select-none pointer-events-none tracking-tighter"
+                                  className="font-black select-none pointer-events-none tracking-tight"
                                 >
-                                  {seg.roman}
+                                  {displayInfo.mainLabel}
                                 </text>
-                                <circle cx={cx} cy={cy - 88} r="0.9" fill={symbolColor} opacity="0.4" />
+
+                                {/* Optional Badge / Subtitle */}
+                                {displayInfo.badge && (
+                                  <text
+                                    x={cx}
+                                    y={cy - 113}
+                                    textAnchor="middle"
+                                    fontSize="6.8"
+                                    fontWeight="800"
+                                    fill={symbolColor}
+                                    stroke="#000000"
+                                    strokeWidth="0.6"
+                                    style={{ paintOrder: "stroke fill" }}
+                                    dominantBaseline="central"
+                                    className="select-none pointer-events-none tracking-widest uppercase opacity-90"
+                                  >
+                                    {displayInfo.badge}
+                                  </text>
+                                )}
+
+                                {/* Inner Accent Dot */}
+                                <circle cx={cx} cy={cy - 92} r="1.1" fill={symbolColor} opacity="0.5" />
+                              </g>
+
+                              {/* ── 3D Chrome Cylindrical Peg at Segment Boundary ── */}
+                              <g>
+                                {/* Cast Shadow */}
+                                <circle cx={pegX + 1.2} cy={pegY + 1.5} r="4.5" fill="#000000" opacity="0.6" />
+                                {/* Chrome Collar Base */}
+                                <circle cx={pegX} cy={pegY} r="4.2" fill="url(#chromePegGrad)" stroke="#1e293b" strokeWidth="0.8" />
+                                {/* Raised Chrome Dome Head */}
+                                <circle cx={pegX - 0.3} cy={pegY - 0.4} r="3.1" fill="url(#chromeCapGrad)" />
+                                {/* Specular Gleam Reflection */}
+                                <circle cx={pegX - 1.1} cy={pegY - 1.2} r="1" fill="#ffffff" opacity="0.95" />
                               </g>
                             </g>
                           );
                         })}
 
-                        {/* Outer & Inner Sacred Geometry Rings */}
-                        <circle cx="170" cy="170" r="162" fill="none" stroke="#fde68a" strokeWidth="0.6" strokeDasharray="2 4" opacity="0.45" />
-                        <circle cx="170" cy="170" r="82" fill="none" stroke="#c084fc" strokeWidth="0.7" strokeDasharray="3 3" opacity="0.35" />
+                        {/* ── Outer & Inner Sacred Geometry Rings ── */}
+                        <circle cx="220" cy="220" r="185" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
+                        <circle cx="220" cy="220" r="88" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.35" />
 
-                        {/* Center Hub: Intertwined Crescent Moon & Radiant Sun */}
-                        <circle cx="170" cy="170" r="38" fill="#05030a" stroke="#fde68a" strokeWidth="2.2" />
-                        <circle cx="170" cy="170" r="33" fill="url(#hubObsidianGrad)" stroke="#a855f7" strokeWidth="1" strokeDasharray="2 2" />
+                        {/* ── 3D Center Hub ── */}
+                        {/* Chrome Hub Bezel */}
+                        <circle cx="220" cy="220" r="48" fill="url(#chromePegGrad)" stroke="#0f172a" strokeWidth="1.5" />
+                        {/* Gold Step Ring */}
+                        <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
+                        {/* Obsidian Dome Core */}
+                        <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
                         {/* 8-Pointed Celestial Star & Sun/Moon Emblem */}
-                        <g transform="translate(154, 154)">
-                          <svg width="32" height="32" viewBox="0 0 32 32">
-                            <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.2" opacity="0.55" />
-                            <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#c084fc" strokeWidth="0.9" opacity="0.4" />
-                            <circle cx="16" cy="16" r="7.5" fill="#090514" stroke="#fde68a" strokeWidth="1.5" />
-                            <path d="M17.5 10.5 A5.5 5.5 0 1 0 17.5 21.5 A4.2 4.2 0 1 1 17.5 10.5 Z" fill="#fde68a" />
-                            <circle cx="19.5" cy="16" r="1.6" fill="#f5d0fe" />
+                        <g transform="translate(202, 202)">
+                          <svg width="36" height="36" viewBox="0 0 32 32">
+                            <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.75" />
+                            <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#c084fc" strokeWidth="1" opacity="0.5" />
+                            <circle cx="16" cy="16" r="8" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
+                            <path d="M17.5 10 A6 6 0 1 0 17.5 22 A4.5 4.5 0 1 1 17.5 10 Z" fill="#fde68a" />
+                            <circle cx="19.5" cy="16" r="1.8" fill="#f5d0fe" />
+                            {/* Center Chrome Screw/Rivet Pin */}
+                            <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                            <circle cx="15.2" cy="15.2" r="0.8" fill="#ffffff" />
                           </svg>
                         </g>
                       </svg>

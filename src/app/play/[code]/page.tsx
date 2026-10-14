@@ -1879,6 +1879,13 @@ export default function PlayPage() {
                   socketRef.current.emit("game:mystery:ancient_tarot_respin" as any, { code });
                 }
               }}
+              onTarotGamblePrepare={() => {
+                if (typeof window !== "undefined" && window.self !== window.top) {
+                  window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_PREPARE", action: "mystery_tarot_gamble_prepare", teamId: effectiveTeamId }, "*");
+                } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                  socketRef.current.emit("game:mystery:ancient_tarot_gamble_prepare" as any, { code });
+                }
+              }}
               onTarotGambleDecision={(spinAgain, powerPercent) => {
                 if (typeof window !== "undefined" && window.self !== window.top) {
                   window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_DECISION", action: "mystery_tarot_gamble_decision", spinAgain, powerPercent, teamId: effectiveTeamId }, "*");
@@ -2205,6 +2212,13 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MYSTERY_TAROT_RESPIN", action: "mystery_tarot_respin", teamId: effectiveTeamId }, "*");
                     } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("game:mystery:ancient_tarot_respin" as any, { code });
+                    }
+                  }}
+                  onTarotGamblePrepare={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MYSTERY_TAROT_GAMBLE_PREPARE", action: "mystery_tarot_gamble_prepare", teamId: effectiveTeamId }, "*");
+                    } else if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("game:mystery:ancient_tarot_gamble_prepare" as any, { code });
                     }
                   }}
                   onTarotGambleDecision={(spinAgain, powerPercent) => {

@@ -1132,6 +1132,7 @@ export interface MysteryQuestState {
     spinTimeoutSeconds?: number;
     isRevealPending?: boolean; // true after wheel stops, before user reveals
     isGambling?: boolean;
+    isGamblingWaitingSpin?: boolean; // Đang ở màn hình Vòng quay chờ canh lực và bấm quay tiếp (Cánh Cổng Đánh Cược)
     gamblingSpinCount?: number;
     isShieldRespin?: boolean; // Khiên thần hấp thụ ô trừ -> được cộng thêm 1 lượt quay mới
     shieldTransformedCardKey?: AncientTarotCardKey; // Lá bài/ô trừ đã bị khiên hấp thụ và biến đổi thành ô cộng điểm
@@ -1604,6 +1605,9 @@ export interface ClientToServerEvents {
   "ancient-tarot-respin": (payload?: { code?: string }) => void;
   "game:mystery:ancient_tarot_respin": (payload?: { code?: string }) => void;
   "admin:mystery:ancient_tarot_respin": (payload?: { code?: string }) => void;
+  "ancient-tarot-gamble-prepare": (payload?: { code?: string }) => void;
+  "game:mystery:ancient_tarot_gamble_prepare": (payload?: { code?: string }) => void;
+  "admin:mystery:ancient_tarot_gamble_prepare": (payload?: { code?: string }) => void;
   "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;

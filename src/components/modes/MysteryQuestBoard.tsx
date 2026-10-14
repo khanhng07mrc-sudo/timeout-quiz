@@ -98,6 +98,7 @@ interface Props {
   onSpinTarotWheel?: (powerPercent: number) => void;
   onTarotReveal?: () => void;
   onTarotRespin?: () => void;
+  onTarotGamblePrepare?: () => void;
   onTarotGambleDecision?: (spinAgain: boolean, powerPercent?: number) => void;
   onSurvivalChoice?: (choice: "SACRIFICE_HEART" | "RISK_SURVIVAL") => void;
   teams?: Array<{ id: string; name: string; color: string; score: number; hearts?: number }>;
@@ -127,6 +128,7 @@ export default function MysteryQuestBoard({
   onSpinTarotWheel,
   onTarotReveal,
   onTarotRespin,
+  onTarotGamblePrepare,
   onTarotGambleDecision,
   onSurvivalChoice,
   teams = [],
@@ -146,6 +148,7 @@ export default function MysteryQuestBoard({
   const [wheelPower, setWheelPower] = useState<number>(50);
   const [isPowerIncreasing, setIsPowerIncreasing] = useState<boolean>(true);
   const [isWheelSpinningOptimistic, setIsWheelSpinningOptimistic] = useState<boolean>(false);
+  const [isLocalGambleArming, setIsLocalGambleArming] = useState<boolean>(false);
   const [lockedPower, setLockedPower] = useState<number | null>(null);
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const [isWheelCssTransitioning, setIsWheelCssTransitioning] = useState<boolean>(false);
@@ -153,6 +156,8 @@ export default function MysteryQuestBoard({
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
+  const wheelRef = useRef<HTMLDivElement>(null);
+  const needleRef = useRef<HTMLDivElement>(null);
   const wheelPrevAngleRef = useRef<number>(0);
   const wheelSpinAudioTargetRef = useRef<number | null>(null);
   const lastSnapTimeRef = useRef<number>(0);
@@ -336,7 +341,14 @@ export default function MysteryQuestBoard({
   useEffect(() => {
     setIsWheelSpinningOptimistic(false);
     setLockedPower(null);
+    setIsLocalGambleArming(false);
   }, [currentTurnIndex, miniGameType, tarotState?.isDrawn]);
+
+  useEffect(() => {
+    if (tarotState?.isWheelSpinning) {
+      setIsLocalGambleArming(false);
+    }
+  }, [tarotState?.isWheelSpinning]);
 
   // Fallback safety timeout for optimistic spin state (25s for 17.5s-22.5s spin)
   useEffect(() => {
@@ -362,6 +374,12 @@ export default function MysteryQuestBoard({
       wheelPrevAngleRef.current = 0;
       setIsWheelCssTransitioning(false);
       setClientWheelAngle(0);
+      if (wheelRef.current) {
+        wheelRef.current.style.transform = "rotate(0deg)";
+      }
+      if (needleRef.current) {
+        needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+      }
       setIsPointerTicking(false);
       soundManager.stopWheelSpinMusic(150);
       return;
@@ -376,6 +394,9 @@ export default function MysteryQuestBoard({
       wheelPrevAngleRef.current = target;
       setIsWheelCssTransitioning(false);
       setClientWheelAngle(target);
+      if (wheelRef.current) {
+        wheelRef.current.style.transform = `rotate(${target}deg)`;
+      }
       setIsPointerTicking(false);
       wheelSpinAudioTargetRef.current = null;
       if (!tarotState?.targetAngle || tarotState?.targetAngle === 0) {
@@ -394,12 +415,16 @@ export default function MysteryQuestBoard({
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
-    // 1. Snap wheel to startAngle with transition: none first (critical when remounting after Gamble)
+    // 1. Snap wheel to startAngle directly on DOM without trigger re-renders
     setIsWheelCssTransitioning(false);
-    setClientWheelAngle(startAngle);
-    setNeedleDeflectionDeg(0);
+    if (wheelRef.current) {
+      wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
+    }
+    if (needleRef.current) {
+      needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+    }
 
-    // 2. Dynamic Camera Zoom Rig (Phóng to 2.35x sát kim 12h kịch tính):
+    // 2. Dynamic Camera Zoom Rig (Phóng to 2.05x cận cảnh chuẩn 12h kịch tính):
     // "lúc ban đầu quay đủ cả vòng ngoài, sau 3s đầu tiên, dần phóng về sát khu vực kim quay, dừng phóng ở khoảng giây thứ 10"
     setIsWheelZoomedIn(false);
     setWheelZoomDurationMs(7000);
@@ -417,6 +442,7 @@ export default function MysteryQuestBoard({
     }
 
     // 4. RequestAnimationFrame loop driving the exact 3-phase physics curve & Hooke's Law needle physics
+    // Using direct DOM refs to avoid 1200+ React re-renders for 60fps silky smooth rendering!
     const step = (now: number) => {
       const elapsed = now - startTime;
       const rawProgress = Math.min(1, Math.max(0, elapsed / durationMs));
@@ -424,7 +450,9 @@ export default function MysteryQuestBoard({
       const threePhaseProgress = evaluateThreePhaseWheelProgress(elapsed, durationMs);
       const currentLiveAngle = startAngle + totalDelta * threePhaseProgress;
 
-      setClientWheelAngle(currentLiveAngle);
+      if (wheelRef.current) {
+        wheelRef.current.style.transform = `rotate(${currentLiveAngle}deg)`;
+      }
 
       // Kiểm tra chốt đi qua kim
       const currentPegIndex = Math.floor(currentLiveAngle / segAngle);
@@ -450,11 +478,17 @@ export default function MysteryQuestBoard({
           setIsPointerTicking(false);
         }
       }
-      setNeedleDeflectionDeg(needleAngle);
+
+      if (needleRef.current) {
+        needleRef.current.style.transform = `rotate(${needleAngle}deg) scale(1.06)`;
+      }
 
       if (rawProgress < 1) {
         rafId = requestAnimationFrame(step);
       } else {
+        if (wheelRef.current) {
+          wheelRef.current.style.transform = `rotate(${target}deg)`;
+        }
         setClientWheelAngle(target);
         setIsPointerTicking(false);
         wheelPrevAngleRef.current = target;
@@ -463,13 +497,18 @@ export default function MysteryQuestBoard({
         // Mô phỏng chính xác "Chiếc nón kỳ diệu" khi dừng ở giữa hai chốt:
         // Kim tì nghiêng chéo về ô bên phải theo đúng phản lực đàn hồi của chốt
         const finalNorm = (360 - (target % 360)) % segAngle;
+        let finalNeedle = 0;
         if (finalNorm < 2.8) {
-          setNeedleDeflectionDeg(-15);
+          finalNeedle = -15;
         } else if (finalNorm > segAngle - 2.8) {
-          setNeedleDeflectionDeg(15);
+          finalNeedle = 15;
         } else {
-          setNeedleDeflectionDeg(0);
+          finalNeedle = 0;
         }
+        if (needleRef.current) {
+          needleRef.current.style.transform = `rotate(${finalNeedle}deg) scale(1.06)`;
+        }
+        setNeedleDeflectionDeg(finalNeedle);
 
         if (!finishedChimePlayed) {
           finishedChimePlayed = true;
@@ -490,7 +529,8 @@ export default function MysteryQuestBoard({
   // Ping-pong power gauge loop (0% -> 100% -> 0%) - freezes immediately when spun
   useEffect(() => {
     const isSpinning = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
-    if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || (tarotState?.isDrawn && !tarotState?.isGambling)) {
+    const isGambleWaiting = Boolean(tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
+    if (miniGameType !== "TAROT_DESTINY" || phase !== "PUSH_YOUR_LUCK" || isSpinning || (tarotState?.isDrawn && !isGambleWaiting)) {
       return;
     }
     const interval = setInterval(() => {
@@ -513,7 +553,7 @@ export default function MysteryQuestBoard({
       });
     }, 35);
     return () => clearInterval(interval);
-  }, [miniGameType, phase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic, tarotState?.isDrawn, isPowerIncreasing]);
+  }, [miniGameType, phase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic, tarotState?.isDrawn, tarotState?.isGamblingWaitingSpin, isLocalGambleArming, isPowerIncreasing]);
 
   const themeMeta = MYSTERY_THEMES[theme] || {
     accentColor: "#a855f7",
@@ -2180,11 +2220,13 @@ export default function MysteryQuestBoard({
             2. VARIANT: BÀI TAROT (Định Mệnh Chọn Lá - 5 Thực Thể Cổ Xưa)
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (() => {
+          const isGambleWaiting = Boolean(tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
           const isDrawn = Boolean(
             tarotState?.isDrawn &&
               tarotState?.drawnCard &&
               !tarotState?.isWheelSpinning &&
-              !isWheelSpinningOptimistic
+              !isWheelSpinningOptimistic &&
+              !isGambleWaiting
           );
           const drawnCard = tarotState?.drawnCard;
 
@@ -2304,17 +2346,24 @@ export default function MysteryQuestBoard({
                   {/* Header Title */}
                   {(() => {
                     const hasSunMagnet = !isPenaltySurvivalMode && getPerkType(promoPerk) === "SUN_MAGNET_PROMO";
+                    const isGambleRound = Boolean(tarotState?.isGambling || tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
                     return (
                       <div className="text-center z-10 space-y-0.5">
-                        <h3 className={`${isDisplay ? "text-base sm:text-lg md:text-xl" : "text-base sm:text-lg md:text-xl"} font-black text-amber-200 uppercase tracking-[0.18em] drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]`}>
-                          {isPenaltySurvivalMode ? "💀 VÒNG QUAY TAROT SINH TỬ" : "✦ VÒNG QUAY TAROT ĐỊNH MỆNH ✦"}
+                        <h3 className={`${isDisplay ? "text-base sm:text-lg md:text-xl" : "text-base sm:text-lg md:text-xl"} font-black ${isGambleRound ? "text-fuchsia-300 drop-shadow-[0_0_15px_rgba(232,121,249,0.7)] animate-pulse" : "text-amber-200 drop-shadow-[0_0_12px_rgba(251,191,36,0.5)]"} uppercase tracking-[0.18em]`}>
+                          {isGambleRound
+                            ? "✦ CÁNH CỔNG ĐÁNH CƯỢC: LƯỢT QUAY TIẾP THEO ✦"
+                            : isPenaltySurvivalMode
+                            ? "💀 VÒNG QUAY TAROT SINH TỬ"
+                            : "✦ VÒNG QUAY TAROT ĐỊNH MỆNH ✦"}
                         </h3>
                         <p className="text-[11px] sm:text-xs text-purple-200/80 font-medium tracking-wider">
-                          {isPenaltySurvivalMode
+                          {isGambleRound
+                            ? "Canh thanh lực Ping-pong (5% - 100%) và bấm Chốt Lực & Quay để săn phần thưởng lớn hơn!"
+                            : isPenaltySurvivalMode
                             ? "20 Ô Sinh Tử • Phân Tách Bằng Chốt Kim Loại Bạc Crom"
                             : "22 Ô Major Arcana • Phân Tách Bằng Chốt Kim Loại Bạc Crom"}
                         </p>
-                        {hasSunMagnet && (
+                        {hasSunMagnet && !isGambleRound && (
                           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/80 text-amber-200 text-[11px] font-bold shadow-lg animate-pulse mt-1">
                             <span>☀️</span>
                             <span>Nam Châm Thái Dương: Ấn Mặt Trời đã được cường hóa (+{baseQuestionPoints || 10}đ)!</span>
@@ -2325,14 +2374,14 @@ export default function MysteryQuestBoard({
                   })()}
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
-                  <div className={`relative ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 pt-7 pb-4 px-1 overflow-visible`}>
-                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.35x sát kim 12h ── */}
+                  <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 p-0 overflow-visible`}>
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.05x cận cảnh chuẩn 12h kịch tính ── */}
                     <div
-                      className="w-full h-full relative flex items-center justify-center select-none"
+                      className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 14%",
+                        transformOrigin: "50% 6%",
                         transform: isWheelZoomedIn
-                          ? "scale(2.35) translateY(142px)"
+                          ? "scale(2.05) translateY(-6px)"
                           : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
@@ -2341,7 +2390,8 @@ export default function MysteryQuestBoard({
                     >
                     {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation */}
                     <div
-                      className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 transition-transform duration-75 origin-top pointer-events-none"
+                      ref={needleRef}
+                      className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 origin-top pointer-events-none"
                       style={{
                         transform: `rotate(${needleDeflectionDeg}deg) scale(1.06)`,
                         filter: "drop-shadow(0px 8px 14px rgba(0,0,0,0.95)) drop-shadow(0px 2px 4px rgba(0,0,0,0.85))",
@@ -2400,14 +2450,15 @@ export default function MysteryQuestBoard({
                     {/* ── Stage Floor Shadow ── */}
                     <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
 
-                    {/* ── Royal Beveled Gold & Bronze Outer Frame (Đúc nổi đa tầng, không méo oval) ── */}
-                    <div className="absolute -inset-2 sm:-inset-2.5 rounded-full border-[9px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+                    {/* ── Royal Beveled Gold & Bronze Outer Frame (100% Tròn xoe chuẩn tuyệt đối, không méo squircle) ── */}
+                    <div className="absolute inset-0 aspect-square rounded-full border-[10px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
                       <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
                     </div>
 
                     {/* Spinning Wheel */}
                     <div
-                      className="w-full h-full rounded-full overflow-hidden shadow-2xl relative"
+                      ref={wheelRef}
+                      className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
                       style={{
                         transform: `rotate(${clientWheelAngle}deg)`,
                       }}
@@ -2670,12 +2721,17 @@ export default function MysteryQuestBoard({
                     const effectivePower = Math.min(100, Math.max(0, lockedPower ?? wheelPower));
                     const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
 
+                    const isGambleRound = Boolean(tarotState?.isGambling || tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
+
                     const handleTriggerSpin = () => {
                       if (isSpinningActive) return;
                       const powerToLock = Math.min(100, Math.max(0, wheelPower));
                       setLockedPower(powerToLock);
                       setIsWheelSpinningOptimistic(true);
-                      if (onSpinTarotWheel) {
+                      if (isGambleRound && onTarotGambleDecision) {
+                        setIsLocalGambleArming(false);
+                        onTarotGambleDecision(true, powerToLock);
+                      } else if (onSpinTarotWheel) {
                         onSpinTarotWheel(powerToLock);
                       } else if (onDrawTarot) {
                         onDrawTarot();
@@ -2742,29 +2798,62 @@ export default function MysteryQuestBoard({
                               className={`w-full py-2.5 sm:py-3 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
                                 isSpinningActive
                                   ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
+                                  : isGambleRound
+                                  ? "bg-gradient-to-r from-[#4a044e] via-[#c026d3] to-[#f59e0b] hover:from-[#701a75] hover:to-[#fbbf24] text-white border-fuchsia-300 shadow-[0_0_25px_rgba(217,70,239,0.65)] hover:scale-[1.02] active:scale-95 animate-pulse"
                                   : "bg-gradient-to-r from-[#2e1065] via-[#7e22ce] to-[#d97706] hover:from-[#3b0764] hover:to-[#f59e0b] text-amber-100 border-amber-300/90 shadow-[0_0_25px_rgba(147,51,234,0.55)] hover:scale-[1.02] active:scale-95"
                               }`}
                             >
                               {isSpinningActive
                                 ? "🌀 ĐANG XOAY VÒNG TAROT..."
+                                : isGambleRound
+                                ? `✦ CHỐT LỰC & QUAY TIẾP (${effectivePower}%) ✦`
                                 : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
                             </button>
                           ) : (
                             <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
                               {isSpinningActive
                                 ? "🌀 Vòng quay Major Arcana đang xoay..."
+                                : isGambleRound
+                                ? `Đang đợi Đội ${currentTurnTeamName} chốt lực quay tiếp...`
                                 : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
                             </div>
                           )}
 
-                          {(isAdmin || isSandbox) && !isSpinningActive && !isDisplay && (
+                          {isGambleRound && canActOnTarot && !isSpinningActive && !isDisplay && (
                             <button
                               type="button"
-                              onClick={handleTriggerSpin}
-                              className="w-full py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
+                              onClick={() => {
+                                setIsLocalGambleArming(false);
+                                onTarotGambleDecision?.(false);
+                              }}
+                              className="w-full py-1.5 px-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-200 text-xs font-bold transition cursor-pointer"
                             >
-                              ⚡ Admin Quay Hộ ({effectivePower}%)
+                              🛑 Hoặc: Dừng Lại An Toàn (+{baseQuestionPoints || 10}đ)
                             </button>
+                          )}
+
+                          {(isAdmin || isSandbox) && !isSpinningActive && !isDisplay && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={handleTriggerSpin}
+                                className="flex-1 py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
+                              >
+                                ⚡ Admin {isGambleRound ? "Quay Tiếp Hộ" : "Quay Hộ"} ({effectivePower}%)
+                              </button>
+                              {isGambleRound && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setIsLocalGambleArming(false);
+                                    onTarotGambleDecision?.(false);
+                                  }}
+                                  className="py-1 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-400/50 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                                >
+                                  ⚡ Admin Dừng Lại (+{baseQuestionPoints || 10}đ)
+                                </button>
+                              )}
+                            </div>
                           )}
 
                           <p className="text-[10px] text-purple-200/60 tracking-wide">
@@ -2978,7 +3067,7 @@ export default function MysteryQuestBoard({
                           <span>✦</span>
                         </h4>
                         <p className="text-xs text-purple-200/90 font-medium">
-                          Bạn có muốn <strong>Quay Tiếp</strong> (lực quay hiện tại: <strong>{wheelPower}%</strong>) để săn phần thưởng lớn hơn, hay <strong>Dừng Lại An Toàn</strong> nhận ngay <strong>+{baseQuestionPoints || 10}đ</strong> (1x điểm gốc câu hỏi)?
+                          Bạn có muốn <strong>Quay Tiếp</strong> để săn phần thưởng lớn hơn, hay <strong>Dừng Lại An Toàn</strong> nhận ngay <strong>+{baseQuestionPoints || 10}đ</strong> (1x điểm gốc câu hỏi)?
                         </p>
                       </div>
 
@@ -2988,19 +3077,17 @@ export default function MysteryQuestBoard({
                             <button
                               type="button"
                               onClick={() => {
-                                const powerToLock = Math.min(100, Math.max(1, lockedPower ?? wheelPower));
-                                setLockedPower(powerToLock);
-                                setIsWheelSpinningOptimistic(true);
-                                onTarotGambleDecision?.(true, powerToLock);
+                                setIsLocalGambleArming(true);
+                                onTarotGamblePrepare?.();
                               }}
-                              className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-fuchsia-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-300 hover:scale-105 active:scale-95 transition cursor-pointer"
+                              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-amber-300 hover:scale-105 active:scale-95 transition cursor-pointer animate-pulse"
                             >
-                              🎲 QUAY TIẾP ({wheelPower}%)
+                              🎲 QUYẾT ĐỊNH QUAY TIẾP ➔
                             </button>
                             <button
                               type="button"
                               onClick={() => onTarotGambleDecision?.(false)}
-                              className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-900/75 hover:bg-emerald-800/85 text-emerald-100 font-black text-xs uppercase tracking-wider border border-emerald-400/50 hover:scale-105 active:scale-95 transition cursor-pointer"
+                              className="flex-1 py-3 px-4 rounded-xl bg-emerald-900/75 hover:bg-emerald-800/85 text-emerald-100 font-black text-xs sm:text-sm uppercase tracking-wider border border-emerald-400/50 hover:scale-105 active:scale-95 transition cursor-pointer"
                             >
                               🛑 DỪNG LẠI (+{baseQuestionPoints || 10}đ)
                             </button>
@@ -3017,14 +3104,12 @@ export default function MysteryQuestBoard({
                           <button
                             type="button"
                             onClick={() => {
-                              const powerToLock = Math.min(100, Math.max(1, lockedPower ?? wheelPower));
-                              setLockedPower(powerToLock);
-                              setIsWheelSpinningOptimistic(true);
-                              onTarotGambleDecision?.(true, powerToLock);
+                              setIsLocalGambleArming(true);
+                              onTarotGamblePrepare?.();
                             }}
                             className="py-1 px-3 rounded-lg bg-fuchsia-900/40 hover:bg-fuchsia-900/70 border border-fuchsia-400/40 text-fuchsia-200 text-[11px] font-bold transition cursor-pointer"
                           >
-                            ⚡ Admin Quay Tiếp ({wheelPower}%)
+                            ⚡ Admin Quay Tiếp ➔
                           </button>
                           <button
                             type="button"

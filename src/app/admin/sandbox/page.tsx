@@ -3365,6 +3365,32 @@ export default function AdminSandboxPage() {
         addLog(`🛡️ [KHIÊN THẦN] Đã hóa giải ô trừ thành ô cộng điểm! Chuẩn bị bước vào Lượt quay 2!`);
         return;
       }
+      if (e.data?.type === "MYSTERY_TAROT_GAMBLE_PREPARE" || e.data?.action === "mystery_tarot_gamble_prepare") {
+        if (!isOfflineSandbox) {
+          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_prepare" as any, { code });
+          return;
+        }
+        if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
+        const curMystery = roomStateRef.current.mysteryQuestState;
+        const prepareMystery: MysteryQuestState = {
+          ...curMystery,
+          phase: "PUSH_YOUR_LUCK",
+          turnFinishedReason: undefined,
+          tarotState: {
+            ...curMystery.tarotState,
+            isDrawn: false,
+            isRevealPending: false,
+            isWheelSpinning: false,
+            isGamblingWaitingSpin: true,
+          },
+        };
+        const nextRoomState = { ...roomStateRef.current, mysteryQuestState: prepareMystery };
+        setRoomState(nextRoomState);
+        roomStateRef.current = nextRoomState;
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: prepareMystery });
+        addLog(`⭐ [ĐÁNH CƯỢC] Đã mở lại Vòng Quay Tarot! Hãy canh thanh lực Ping-pong để Quay Tiếp!`);
+        return;
+      }
       if (e.data?.type === "MYSTERY_TAROT_GAMBLE_DECISION" || e.data?.action === "mystery_tarot_gamble_decision") {
         const spinAgain = Boolean(e.data?.spinAgain);
         const powerPercent = typeof e.data?.powerPercent === "number" ? e.data.powerPercent : 50;
@@ -9082,6 +9108,13 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current?.emit("admin:mystery:ancient_tarot_respin" as any, { code });
                         } else {
                           window.postMessage({ type: "MYSTERY_TAROT_RESPIN", action: "mystery_tarot_respin" }, "*");
+                        }
+                      }}
+                      onTarotGamblePrepare={() => {
+                        if (!isOfflineSandbox) {
+                          adminSocketRef.current?.emit("admin:mystery:ancient_tarot_gamble_prepare" as any, { code });
+                        } else {
+                          window.postMessage({ type: "MYSTERY_TAROT_GAMBLE_PREPARE", action: "mystery_tarot_gamble_prepare" }, "*");
                         }
                       }}
                       onTarotGambleDecision={(spinAgain, powerPercent) => {

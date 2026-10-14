@@ -6614,6 +6614,28 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("room:state", refreshedState);
     };
 
+    const executeMysteryTarotGamblePrepare = async (room: any, questState: any) => {
+      if (!questState.tarotState || !questState.tarotState.isGambling) return;
+
+      const prepareState: MysteryQuestState = {
+        ...questState,
+        phase: "PUSH_YOUR_LUCK",
+        turnFinishedReason: undefined,
+        tarotState: {
+          ...questState.tarotState,
+          isDrawn: false,
+          isRevealPending: false,
+          isWheelSpinning: false,
+          isGamblingWaitingSpin: true,
+        },
+      };
+
+      roomMysteryQuests.set(room.id, prepareState);
+      io.to(`room:${room.code}`).emit("game:mystery:update", prepareState);
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
+    };
+
     const executeMysteryTarotGambleDecision = async (
       room: any,
       questState: any,
@@ -6692,6 +6714,7 @@ export function registerSocketHandlers(io: IO) {
           isDrawn: false,
           isRevealPending: false,
           isGambling: false,
+          isGamblingWaitingSpin: false,
         },
       };
 
@@ -6721,6 +6744,7 @@ export function registerSocketHandlers(io: IO) {
             isDrawn: true,
             isRevealPending: true,
             isGambling: Boolean(gambleResult.isGambleAgain),
+            isGamblingWaitingSpin: false,
           },
         };
 
@@ -6877,6 +6901,58 @@ export function registerSocketHandlers(io: IO) {
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
 
       await executeMysteryTarotRespin(room, questState);
+    });
+
+    socket.on("ancient-tarot-gamble-prepare", async ({ code }: { code?: string } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room: any = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true },
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotGamblePrepare(room, questState);
+    });
+
+    socket.on("game:mystery:ancient_tarot_gamble_prepare", async ({ code }: { code?: string } = {}) => {
+      const playerId = playerSockets.get(socket.id);
+      let room: any = null;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true },
+        });
+        if (player?.room) room = player.room;
+      }
+      if (!room && code) {
+        room = await getAdminRoom(socket, code);
+      }
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotGamblePrepare(room, questState);
+    });
+
+    socket.on("admin:mystery:ancient_tarot_gamble_prepare", async ({ code }: { code?: string } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
+
+      const questState = roomMysteryQuests.get(room.id);
+      if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
+
+      await executeMysteryTarotGamblePrepare(room, questState);
     });
 
     socket.on("ancient-tarot-gamble-decision", async ({ spinAgain = false, powerPercent = 50, code }: { spinAgain?: boolean; powerPercent?: number; code?: string } = {}) => {

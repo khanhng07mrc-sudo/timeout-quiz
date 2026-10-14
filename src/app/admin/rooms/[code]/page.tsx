@@ -1504,6 +1504,7 @@ export default function AdminRoomPage() {
                 onSpinTarotWheel={(powerPercent) => emit("admin:mystery:spin_tarot_wheel" as any, { code, powerPercent })}
                 onTarotReveal={() => emit("admin:mystery:ancient_tarot_reveal", { code })}
                 onTarotRespin={() => emit("admin:mystery:ancient_tarot_respin", { code })}
+                onTarotGamblePrepare={() => emit("admin:mystery:ancient_tarot_gamble_prepare", { code })}
                 onTarotGambleDecision={(spinAgain, powerPercent) => emit("admin:mystery:ancient_tarot_gamble_decision", { spinAgain, powerPercent, code })}
                 onSurvivalChoice={(choice) => emit("admin:mystery:survival_choice", { choice, code })}
                 onAdjustScore={(teamId, delta, setScore) => {

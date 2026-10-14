@@ -45,48 +45,40 @@ select, option, optgroup {
 /* Custom styled surfaces with strong visibility (Holographic Translucent Glass) */
 /* Custom styled surfaces with strong visibility (Holographic Translucent Glass - 60FPS GPU Optimized) */
 .quiz-card {
-  background-color: rgba(19, 22, 38, 0.45);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(139, 92, 246, 0.25);
+  background-color: #121528;
+  border: 1px solid rgba(139, 92, 246, 0.22);
   border-radius: 1.5rem;
-  box-shadow: 0 15px 35px -10px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 25px rgba(139, 92, 246, 0.08);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  box-shadow: 0 10px 25px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   transform: translateZ(0);
-  will-change: transform;
 }
 
 .quiz-card:hover {
-  background-color: rgba(25, 29, 51, 0.65);
-  border-color: rgba(6, 182, 212, 0.5);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.8), 0 0 30px rgba(6, 182, 212, 0.18);
+  background-color: #161a32;
+  border-color: rgba(6, 182, 212, 0.4);
+  box-shadow: 0 14px 30px -8px rgba(0, 0, 0, 0.7);
 }
 
 .quiz-card-interactive {
-  background-color: rgba(19, 22, 38, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(139, 92, 246, 0.28);
+  background-color: #13172e;
+  border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 1.5rem;
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
-  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
   position: relative;
   overflow: hidden;
   transform: translateZ(0);
-  will-change: transform;
 }
 
 .quiz-card-interactive:hover {
-  background-color: rgba(25, 29, 51, 0.75);
-  border-color: rgba(168, 85, 247, 0.7);
-  transform: translateY(-4px) scale(1.008) translateZ(0);
-  box-shadow: 0 22px 45px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(168, 85, 247, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background-color: #181d3a;
+  border-color: rgba(168, 85, 247, 0.6);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .input-box {
-  background-color: rgba(13, 15, 28, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background-color: #0d1020;
   border: 1.5px solid rgba(139, 92, 246, 0.3);
   color: #f8fafc;
   border-radius: 1rem;
@@ -95,9 +87,9 @@ select, option, optgroup {
 
 .input-box:focus {
   outline: none;
-  background-color: rgba(13, 15, 28, 0.85);
+  background-color: #11152a;
   border-color: #06b6d4;
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.25), 0 0 25px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.2);
 }
 
 /* ── HỆ THỐNG NÚT 3D CYBER GLASS ĐỒNG BỘ 100% (3D UNIFIED CYBER GLASS BUTTONS) ── */
@@ -118,10 +110,7 @@ select, option, optgroup {
   border: 1px solid rgba(216, 180, 254, 0.5);
   /* 3D Mechanical Depth */
   box-shadow: 0 6px 0 #3b1473, 0 14px 26px -2px rgba(124, 58, 237, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
-  will-change: transform, box-shadow;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
   user-select: none;
 }
@@ -129,7 +118,7 @@ select, option, optgroup {
 .btn-3d-cyber-purple:hover,
 .btn-chamfer:hover {
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #3b1473, 0 18px 32px rgba(124, 58, 237, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 0 25px rgba(168, 85, 247, 0.5);
+  box-shadow: 0 8px 0 #3b1473, 0 18px 32px rgba(124, 58, 237, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.65);
   filter: brightness(1.1);
 }
 
@@ -149,14 +138,11 @@ select, option, optgroup {
   justify-content: center;
   font-weight: 800;
   color: #e0f2fe;
-  background: linear-gradient(135deg, rgba(8, 145, 178, 0.92) 0%, rgba(14, 116, 144, 0.92) 100%);
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.96) 0%, rgba(14, 116, 144, 0.96) 100%);
   border: 1px solid rgba(103, 232, 249, 0.6);
   /* 3D Mechanical Depth */
   box-shadow: 0 6px 0 #0e4e63, 0 14px 26px -2px rgba(6, 182, 212, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
   transform: translate3d(0, 0, 0);
-  will-change: transform, box-shadow;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
   user-select: none;
 }
@@ -165,7 +151,7 @@ select, option, optgroup {
 .btn-prism:hover {
   color: #ffffff;
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #0e4e63, 0 18px 32px rgba(6, 182, 212, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 0 25px rgba(6, 182, 212, 0.5);
+  box-shadow: 0 8px 0 #0e4e63, 0 18px 32px rgba(6, 182, 212, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.65);
   filter: brightness(1.1);
 }
 
@@ -185,14 +171,11 @@ select, option, optgroup {
   justify-content: center;
   font-weight: 800;
   color: #e2e8f0;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.95) 100%);
-  border: 1px solid rgba(148, 163, 184, 0.45);
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid rgba(148, 163, 184, 0.4);
   /* 3D Mechanical Depth */
-  box-shadow: 0 6px 0 #0a0f1d, 0 14px 26px -2px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 0 #0a0f1d, 0 14px 26px -2px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   transform: translate3d(0, 0, 0);
-  will-change: transform, box-shadow;
   transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.16s cubic-bezier(0.16, 1, 0.3, 1), filter 0.16s ease;
   user-select: none;
 }
@@ -200,9 +183,9 @@ select, option, optgroup {
 .btn-3d-cyber-slate:hover,
 .btn-glass:hover {
   color: #ffffff;
-  border-color: rgba(168, 85, 247, 0.7);
+  border-color: rgba(168, 85, 247, 0.6);
   transform: translate3d(0, -2px, 0);
-  box-shadow: 0 8px 0 #0a0f1d, 0 18px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 0 20px rgba(168, 85, 247, 0.35);
+  box-shadow: 0 8px 0 #0a0f1d, 0 18px 32px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   filter: brightness(1.1);
 }
 
@@ -217,45 +200,40 @@ select, option, optgroup {
   border-radius: 9999px;
   position: relative;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  background: rgba(20, 23, 43, 0.6);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1.5px solid rgba(168, 85, 247, 0.7);
+  background: #14172b;
+  border: 1.5px solid rgba(168, 85, 247, 0.6);
   color: #e9d5ff;
-  box-shadow: 0 5px 0 #581c87, 0 10px 20px rgba(168, 85, 247, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 5px 0 #581c87, 0 10px 20px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .btn-crest:hover {
-  background: rgba(30, 34, 63, 0.85);
+  background: #1c213d;
   border-color: #d8b4fe;
-  box-shadow: 0 7px 0 #581c87, 0 15px 30px rgba(168, 85, 247, 0.6), 0 0 25px rgba(168, 85, 247, 0.5);
+  box-shadow: 0 7px 0 #581c87, 0 15px 25px rgba(0, 0, 0, 0.6);
   transform: translateY(-2px);
 }
 
 .btn-crest:active {
   transform: translateY(3px);
-  box-shadow: 0 2px 0 #581c87, 0 4px 10px rgba(168, 85, 247, 0.3);
+  box-shadow: 0 2px 0 #581c87, 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 /* ── THẺ ĐỘT PHÁ CÔNG NGHỆ BO GÓC ĐỒNG BỘ (HOLOGRAPHIC ROUNDED CYBER DECK) ── */
 .hologram-deck-card {
   position: relative;
-  background: linear-gradient(135deg, rgba(20, 24, 46, 0.55) 0%, rgba(13, 16, 32, 0.68) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: #111528;
+  border: 1px solid rgba(139, 92, 246, 0.25);
   border-radius: 1.25rem;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+  box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
   transform: translateZ(0);
-  will-change: transform;
 }
 
 .hologram-deck-card:hover {
-  background: linear-gradient(135deg, rgba(30, 36, 70, 0.75) 0%, rgba(18, 22, 48, 0.85) 100%);
-  border-color: rgba(6, 182, 212, 0.65);
-  transform: translateY(-4px) translateZ(0);
-  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.85), 0 0 25px rgba(6, 182, 212, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  background: #161b34;
+  border-color: rgba(6, 182, 212, 0.5);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .hologram-deck-card::before {
@@ -269,45 +247,13 @@ select, option, optgroup {
   pointer-events: none;
 }
 
-/* ── SÀN ĐẤU LƯỚI KHÔNG GIAN 3D TỐI ƯU 60FPS (ZERO-LAG 3D CYBER ARENA FLOOR) ── */
+/* ── SÀN ĐẤU LƯỚI KHÔNG GIAN 3D ĐÃ TỐI ƯU HÓA HOÀN TOÀN ── */
 .cyber-arena-grid {
-  position: absolute;
-  bottom: -120px;
-  left: -25%;
-  right: -25%;
-  height: 65vh;
-  background-image: 
-    linear-gradient(to right, rgba(139, 92, 246, 0.22) 1.5px, transparent 1.5px),
-    linear-gradient(to bottom, rgba(6, 182, 212, 0.22) 1.5px, transparent 1.5px);
-  background-size: 64px 64px;
-  transform: perspective(400px) rotateX(68deg) translateZ(0);
-  transform-origin: center bottom;
-  mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 85%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 85%);
-  pointer-events: none;
-  contain: strict;
-  will-change: transform;
-}
-
-/* Hiệu ứng hạt bụi tinh tú lượng tử chuyển động lơ lửng vũ trụ (Stardust motes) */
-@keyframes stardustFloat {
-  0% {
-    transform: translateY(0px) translateX(0px);
-    opacity: 0.25;
-  }
-  50% {
-    transform: translateY(-28px) translateX(14px);
-    opacity: 0.75;
-  }
-  100% {
-    transform: translateY(0px) translateX(0px);
-    opacity: 0.25;
-  }
+  display: none;
 }
 
 .stardust-mote {
-  animation: stardustFloat 9s ease-in-out infinite;
-  will-change: transform, opacity;
+  display: none;
 }
 
 /* Hiệu ứng 3D Kính Quang Học Xoay (Holographic 3D Glass Rotation) */

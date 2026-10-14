@@ -108,7 +108,7 @@ export default function PowerupBar({
       {/* Confirmation & Function Detail Modal */}
       {confirmingCard && activeMeta && (
         <div
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/85 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
           onClick={() => setConfirmingCard(null)}
         >
           <div

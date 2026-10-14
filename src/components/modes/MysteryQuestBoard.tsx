@@ -677,7 +677,7 @@ export default function MysteryQuestBoard({
           </div>
 
           <div
-            className="flex items-center gap-2 px-2.5 py-1 rounded-xl border-2 shadow-xl backdrop-blur-md"
+            className="flex items-center gap-2 px-2.5 py-1 rounded-xl border-2 shadow-xl"
             style={{
               borderColor: currentTurnTeamColor,
               backgroundColor: `${currentTurnTeamColor}22`,
@@ -730,7 +730,7 @@ export default function MysteryQuestBoard({
 
       {/* ── Quick Rules Banner (3 Bước Cốt Lõi) - Ẩn trên màn hình Hội trường (Display) để tối ưu hiển thị ── */}
       {!isDisplay && (
-        <div className="relative z-10 my-2 p-2 sm:p-2.5 rounded-xl bg-black/50 border border-amber-400/30 backdrop-blur-md shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2">
+        <div className="relative z-10 my-2 p-2 sm:p-2.5 rounded-xl bg-black/50 border border-amber-400/30 shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-sm">📖</span>
             <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-amber-300">
@@ -787,7 +787,7 @@ export default function MysteryQuestBoard({
                SURVIVAL DILEMMA CHOICE (Trả lời sai, đội có điểm & còn tim)
                ───────────────────────────────────────────────────────────── */
             <div className="w-full max-w-4xl mx-auto space-y-2 sm:space-y-3 animate-slide-up">
-              <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-red-950/80 via-black/80 to-purple-950/80 border border-red-500/50 text-center backdrop-blur-md shadow-xl">
+              <div className="p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-red-950/80 via-black/80 to-purple-950/80 border border-red-500/50 text-center shadow-xl">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/20 text-red-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1 animate-pulse">
                   <span>💀</span> TRẢ LỜI CHƯA CHÍNH XÁC! LỰA CHỌN ĐÁNH ĐỔI SINH TỬ
                 </div>
@@ -918,7 +918,7 @@ export default function MysteryQuestBoard({
             </div>
           ) : (
           <div className="w-full max-w-4xl mx-auto space-y-2 sm:space-y-3 animate-slide-up">
-            <div className="p-2.5 sm:p-3 rounded-xl bg-black/60 border border-amber-500/40 text-center backdrop-blur-md shadow-xl">
+            <div className="p-2.5 sm:p-3 rounded-xl bg-black/60 border border-amber-500/40 text-center shadow-xl">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] sm:text-xs font-black uppercase tracking-wider mb-1">
                 <span>⭐</span> TRẢ LỜI CHÍNH XÁC! LỰA CHỌN QUYẾT ĐỊNH
               </div>
@@ -1157,7 +1157,7 @@ export default function MysteryQuestBoard({
             )}
             {/* VARIANT 1: MEMORY PAIRS HUD */}
             {miniGameType === "MEMORY_PAIRS" && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 backdrop-blur-md shadow-xl">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-indigo-400/50 shadow-xl">
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-black text-indigo-300 uppercase tracking-wider text-[11px]">
                     {isPenaltySurvivalMode
@@ -1217,7 +1217,7 @@ export default function MysteryQuestBoard({
 
             {/* MEMORY PAIRS SECOND CHANCE MODAL */}
             {miniGameType === "MEMORY_PAIRS" && !isPenaltySurvivalMode && memoryPairsState?.promptSecondChance && (
-              <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl backdrop-blur-xl animate-bounce-in text-center space-y-2 z-30">
+              <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl animate-bounce-in text-center space-y-2 z-30">
                 <div className="text-3xl animate-pulse">🔀</div>
                 <h4 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wider">
                   HẾT 4 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
@@ -1250,7 +1250,7 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 2: ONE SHOT DOORS HUD */}
             {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 backdrop-blur-md shadow-xl text-center space-y-1">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 shadow-xl text-center space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-black text-amber-300 uppercase tracking-wider text-[11px]">
                     🚪 5 CÁNH CỬA BÍ MẬT (2 GIAI ĐOẠN)
@@ -1305,7 +1305,7 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 4: TAROT DESTINY HUD */}
             {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 backdrop-blur-md shadow-xl text-center">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-purple-400/50 shadow-xl text-center">
                 <div className="text-xs font-black text-purple-300 uppercase tracking-wider mb-0.5">
                   🔮 BÀI TAROT — ĐỊNH MỆNH CHỌN LÁ
                 </div>
@@ -1317,7 +1317,7 @@ export default function MysteryQuestBoard({
 
             {/* VARIANT 3: PUSH YOUR LUCK HUD (The Classic Pot) */}
             {(miniGameType === "PUSH_YOUR_LUCK" || miniGameType === "RADAR_WINDOWS") && (
-              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border-2 border-amber-400/50 backdrop-blur-md shadow-2xl relative overflow-hidden">
+              <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border-2 border-amber-400/50 shadow-2xl relative overflow-hidden">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-300">
                     <span>💰</span> HŨ ĐIỂM TÍCH LŨY HIỆN TẠI
@@ -2205,7 +2205,7 @@ export default function MysteryQuestBoard({
             <div className="max-w-2xl mx-auto py-1.5">
               {!isDrawn ? (
                 /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 22 Major Arcana ── */
-                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4 space-y-2" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 backdrop-blur-xl shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4 space-y-2" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
                   {/* Mystical Starfield & Astral Nebula Aura */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(139,92,246,0.22),rgba(15,10,35,0.6)_55%,transparent_80%)] pointer-events-none" />
                   <div className="absolute inset-0 opacity-35 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px), radial-gradient(#e0e7ff 0.6px, transparent 0.6px)", backgroundSize: "36px 36px, 24px 24px", backgroundPosition: "0 0, 14px 18px" }} />
@@ -2488,7 +2488,7 @@ export default function MysteryQuestBoard({
                 </div>
               ) : (
                 /* ── Trạng thái ĐÃ DỪNG KIM: Hiển thị Lá Bài Tarot Cổ Xưa (Suspense Hoặc Đã Mở) ── */
-                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4" : "p-4 sm:p-6"} rounded-3xl bg-gradient-to-b from-[#070410]/95 via-[#110924]/95 to-[#050309]/98 border-2 border-purple-500/50 backdrop-blur-xl shadow-[0_0_55px_rgba(88,28,135,0.5)] animate-fade-in relative overflow-hidden`}>
+                <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-4" : "p-4 sm:p-6"} rounded-3xl bg-gradient-to-b from-[#070410]/95 via-[#110924]/95 to-[#050309]/98 border-2 border-purple-500/50 shadow-[0_0_55px_rgba(88,28,135,0.5)] animate-fade-in relative overflow-hidden`}>
                   {/* Ambient constellation backdrop */}
                   <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px)", backgroundSize: "28px 28px" }} />
 
@@ -2634,7 +2634,7 @@ export default function MysteryQuestBoard({
 
                   {/* ── Gamble Options when isGambling (after reveal) ── */}
                   {!isPendingReveal && tarotState?.isGambling && (
-                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/75 border-2 border-fuchsia-500/60 backdrop-blur-md shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
+                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/75 border-2 border-fuchsia-500/60 shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
                       <div className="space-y-1">
                         <h4 className="text-sm font-black text-fuchsia-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
                           <span>✦</span>
@@ -3224,7 +3224,7 @@ export default function MysteryQuestBoard({
 
       {/* ── Modal Chọn Đội Cướp Điểm (STEAL_TARGET_SELECT) ── */}
       {phase === "STEAL_TARGET_SELECT" && mysteryState.pendingSteal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 animate-fade-in">
           <div className="glass bg-gradient-to-br from-rose-950/95 via-purple-950/95 to-slate-950/95 border-2 border-rose-500 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-[0_0_60px_rgba(244,63,94,0.4)] animate-bounce-in space-y-4">
             <div className="w-16 h-16 mx-auto rounded-full bg-rose-500/20 border-2 border-rose-400 flex items-center justify-center text-3xl shadow-inner animate-pulse">
               {mysteryState.pendingSteal.tileIcon || "🗡️"}
@@ -3396,7 +3396,7 @@ export default function MysteryQuestBoard({
 
       {/* ── Modal Chỉnh Sửa Điểm Thủ Công (Admin / MC) ── */}
       {showScoreEditModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-[#14162a] border border-amber-400/50 rounded-2xl p-5 shadow-2xl text-white space-y-4">
             <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
@@ -3504,7 +3504,7 @@ export default function MysteryQuestBoard({
       )}
       {/* ── Modal Chi Tiết Luật Chơi Minigame ── */}
       {showRulesModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 animate-fade-in">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-5 animate-fade-in">
           <div className="w-full max-w-2xl bg-gradient-to-b from-slate-900 via-indigo-950/95 to-slate-950 border-2 border-amber-400/80 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-white/10 pb-3 shrink-0">

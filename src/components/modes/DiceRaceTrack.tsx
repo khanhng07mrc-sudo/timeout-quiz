@@ -399,7 +399,7 @@ export default function DiceRaceTrack({
   // ═══════════════════════════════════════════════════════════════════════════
   if (mode === "mini" && !forceFullInMini) {
     return (
-      <div className="w-full rounded-2xl border-2 border-amber-500/40 p-2 sm:p-2.5 shadow-xl bg-[#0f111e]/95 backdrop-blur-md transition-all">
+      <div className="w-full rounded-2xl border-2 border-amber-500/40 p-2 sm:p-2.5 shadow-xl bg-[#0f111e]/98 transition-all">
         <div className="flex items-center justify-between gap-2 mb-1.5">
           <div className="flex items-center gap-2">
             <span className="text-lg">🎲</span>

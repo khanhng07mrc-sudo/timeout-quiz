@@ -44,7 +44,7 @@ export default function TieBreakerOverlay({
   // ═════════════════════════════════════════════════════════════════════════
   if (tieBreaker.status === "INTRO") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl p-4 text-center animate-fade-in overflow-hidden">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-hidden">
         {/* Glow ambient background */}
         <div className="absolute inset-0 bg-gradient-to-t from-red-950/60 via-purple-950/40 to-amber-950/50 pointer-events-none" />
         
@@ -107,7 +107,7 @@ export default function TieBreakerOverlay({
   if (tieBreaker.status === "LUCKY_DRAW" || (tieBreaker.status === "COMPLETED" && tieBreaker.luckyDraw)) {
     const draw = tieBreaker.luckyDraw!;
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl p-4 text-center animate-fade-in overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-y-auto">
         <div className="relative z-10 max-w-4xl mx-auto space-y-6 my-auto py-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-widest animate-pulse shadow-lg">
             <span>🎁</span> VÒNG BỐC THĂM ĐỊNH MỆNH <span>👑</span>
@@ -181,7 +181,7 @@ export default function TieBreakerOverlay({
   // ═════════════════════════════════════════════════════════════════════════
   if (tieBreaker.status === "COMPLETED") {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/95 backdrop-blur-xl p-4 text-center animate-fade-in overflow-hidden">
+      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-hidden">
         <div className="relative z-10 max-w-2xl mx-auto space-y-4 animate-bounce-in">
           <div className="text-6xl sm:text-8xl animate-bounce">👑</div>
           <div className="inline-block px-4 py-1.5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-300 text-xs font-black uppercase tracking-widest">
@@ -216,7 +216,7 @@ export default function TieBreakerOverlay({
   const isAnswerRevealed = tieBreaker.status === "ANSWER_REVEALED";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-black/95 backdrop-blur-xl p-3 sm:p-6 text-center animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-[#060813]/98 p-3 sm:p-6 text-center animate-fade-in overflow-y-auto">
       {/* Top Header */}
       <div className="w-full max-w-4xl mx-auto flex items-center justify-between gap-2 pt-2">
         <div className="flex items-center gap-2">

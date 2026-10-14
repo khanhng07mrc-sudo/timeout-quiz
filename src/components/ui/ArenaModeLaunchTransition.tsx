@@ -27,18 +27,6 @@ const getModeVideoPath = (m: string) => {
   return "/transitions/classic.webm";
 };
 
-const ALL_TRANSITION_VIDEOS = [
-  "/transitions/tower_defense.webm",
-  "/transitions/gold_mine.webm",
-  "/transitions/grid_caro.webm",
-  "/transitions/mystery_quest.webm",
-  "/transitions/speed_race.webm",
-  "/transitions/battle_royale.webm",
-  "/transitions/boss_raid.webm",
-  "/transitions/auction_stealth.webm",
-  "/transitions/classic.webm",
-];
-
 export default function ArenaModeLaunchTransition({
   isOpen,
   isReady = false,
@@ -62,16 +50,6 @@ export default function ArenaModeLaunchTransition({
 
   useEffect(() => {
     setMounted(true);
-    // Warm cache preload video files in background so they play instantly with 0ms latency
-    if (typeof document !== "undefined") {
-      ALL_TRANSITION_VIDEOS.forEach((vPath) => {
-        const link = document.createElement("link");
-        link.rel = "prefetch";
-        link.as = "video";
-        link.href = vPath;
-        document.head.appendChild(link);
-      });
-    }
   }, []);
 
   const triggerOutro = useCallback(() => {
@@ -213,10 +191,10 @@ export default function ArenaModeLaunchTransition({
         />
       </div>
 
-      {/* ── 4. CYAN WARP FLASH BURST (200ms hé lộ bàn đấu mượt mà, triệt tiêu giật hình) ── */}
+      {/* ── 4. HÉ LỘ BÀN ĐẤU DỊU MẮT (Fade out mượt mà, không chớp nháy gây chói mắt) ── */}
       <div
-        className={`absolute inset-0 pointer-events-none transition-opacity duration-250 ${
-          isOutro ? "opacity-35 bg-cyan-300" : "opacity-0"
+        className={`absolute inset-0 pointer-events-none transition-opacity duration-280 ${
+          isOutro ? "opacity-0" : "opacity-100"
         }`}
       />
 
@@ -228,7 +206,7 @@ export default function ArenaModeLaunchTransition({
           opacity: isOutro ? 0 : 1,
         }}
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/15 border border-cyan-400/50 text-cyan-300 font-mono text-[11px] font-black tracking-widest uppercase shadow-[0_0_20px_rgba(6,182,212,0.35)] backdrop-blur-md">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-950/80 border border-cyan-400/40 text-cyan-300 font-mono text-[11px] font-black tracking-widest uppercase shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
           <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
           {isOutro ? "MỞ CỔNG ĐẤU TRƯỜNG" : "KHỞI ĐỘNG ĐẤU TRƯỜNG ARENA"}
         </div>

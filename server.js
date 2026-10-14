@@ -4259,8 +4259,8 @@ function calculateTarotWheelSpin({
   options
 }) {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
-  const minTurnsAngle = 4 * 360;
-  const maxExtraAngle = 5 * 360;
+  const minTurnsAngle = 1.15 * 360;
+  const maxExtraAngle = (3 - 1.15) * 360;
   const extraAngle = Math.round((clampedPower - 1) / 99 * maxExtraAngle);
   const jitter = Math.floor(Math.random() * 7) - 3;
   let totalDelta = minTurnsAngle + extraAngle + jitter;
@@ -4278,7 +4278,7 @@ function calculateTarotWheelSpin({
   const landedIndex = Math.floor(pointerAngle / segAngle) % segCount;
   const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode, options);
   const landedSegment = effectiveSegments[landedIndex];
-  const spinDurationMs = Math.round(17500 + (clampedPower - 1) / 99 * 5e3);
+  const spinDurationMs = Math.round(15e3 + (clampedPower - 1) / 99 * 5e3);
   return {
     targetAngle,
     spinDurationMs,
@@ -11447,7 +11447,7 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:mystery:update", settledState);
         const refreshedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", refreshedState);
-      }, result.spinDurationMs + 250);
+      }, Math.max(result.spinDurationMs, 19200) + 250);
     };
     const executeMysteryTarotReveal = async (room, questState) => {
       if (!questState.tarotState || !questState.tarotState.isRevealPending) return;
@@ -11617,7 +11617,7 @@ function registerSocketHandlers(io2) {
         io2.to(`room:${room.code}`).emit("game:mystery:update", settledGambleState);
         const refreshedState = await buildRoomState(room.id);
         io2.to(`room:${room.code}`).emit("room:state", refreshedState);
-      }, dur + 250);
+      }, Math.max(dur, 19200) + 250);
     };
     const executeMysteryDrawTarot = async (room, questState, team) => {
       await executeMysterySpinTarotWheel(room, questState, team, 50);

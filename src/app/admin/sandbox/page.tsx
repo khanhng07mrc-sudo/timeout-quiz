@@ -3270,7 +3270,7 @@ export default function AdminSandboxPage() {
           setRoomState(nextRoomState);
           syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
           addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
-        }, spinDurationMs + 200);
+        }, Math.max(spinDurationMs, 19200) + 200);
         return;
       }
       if (e.data?.type === "MYSTERY_TAROT_REVEAL" || e.data?.action === "mystery_tarot_reveal") {
@@ -3414,7 +3414,7 @@ export default function AdminSandboxPage() {
             setRoomState(nextRoomState);
             syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
             addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
-          }, (spinDurationMs || 20000) + 200);
+          }, Math.max(spinDurationMs || 20000, 19200) + 200);
         } else {
           let updatedTeams = [...roomStateRef.current.teams];
           if (scoreDeltas && scoreDeltas.length > 0) {

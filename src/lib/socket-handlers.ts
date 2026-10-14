@@ -6520,7 +6520,7 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:mystery:update", settledState);
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
-      }, result.spinDurationMs + 250);
+      }, Math.max(result.spinDurationMs, 19200) + 250);
     };
 
     const executeMysteryTarotReveal = async (room: any, questState: any) => {
@@ -6728,7 +6728,7 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:mystery:update", settledGambleState);
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
-      }, dur + 250);
+      }, Math.max(dur, 19200) + 250);
     };
 
     const executeMysteryDrawTarot = async (room: any, questState: any, team: any) => {

@@ -851,7 +851,7 @@ class SoundManager {
    * Âm ngân huyền bí khi kim Vòng Quay Tarot dừng hẳn tại ô định mệnh
    */
   public playWheelStopChime() {
-    this.stopWheelSpinMusic(200);
+    // Để bản nhạc Chiếc Nón Kỳ Diệu phát tự nhiên đến hết nốt cuối (không ngắt ngang)
     if (this.isMuted) return;
     const ctx = this.getWheelAudioCtx();
     if (!ctx) return;

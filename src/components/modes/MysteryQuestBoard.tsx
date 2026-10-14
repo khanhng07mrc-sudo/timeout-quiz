@@ -329,7 +329,6 @@ export default function MysteryQuestBoard({
       setIsWheelCssTransitioning(false);
       setClientWheelAngle(target);
       setIsPointerTicking(false);
-      soundManager.stopWheelSpinMusic(200);
       return;
     }
 
@@ -2535,7 +2534,7 @@ export default function MysteryQuestBoard({
                     const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
                     const activeSpinSec = (
                       (tarotState?.spinDurationMs ??
-                        Math.round(17500 + ((Math.max(1, effectivePower) - 1) / 99) * 5000)) /
+                        Math.round(15000 + ((Math.max(1, effectivePower) - 1) / 99) * 5000)) /
                       1000
                     ).toFixed(1);
 

@@ -4882,7 +4882,7 @@ export function getTarotSegmentDisplayLabel(
 
 /**
  * Tính toán góc quay vật lý và ô trúng thưởng dựa trên lực nạp (Power Percent 1-100%).
- * Chuẩn Chiếc Nón Kỳ Diệu: Xoay từ 4 đến 9 vòng (1440° – 3240°) tùy lực trong khoảng 17.5s – 22.5s (17500ms – 22500ms).
+ * Chuẩn Chiếc Nón Kỳ Diệu: Xoay từ trên 1 vòng (5% -> ~1.2 vòng = 440°) đến tối đa 3 vòng (100% -> 1080°) trong 15s – 20s.
  */
 export function calculateTarotWheelSpin({
   powerPercent,
@@ -4908,9 +4908,9 @@ export function calculateTarotWheelSpin({
   landedIndex: number;
 } {
   const clampedPower = Math.max(1, Math.min(100, Math.round(powerPercent)));
-  // Lực 1% -> 4 vòng (1440°), Lực 100% -> 9 vòng (3240°)
-  const minTurnsAngle = 4 * 360; // 1440°
-  const maxExtraAngle = 5 * 360; // +1800° (tối đa 9 vòng = 3240°)
+  // Lực tối thiểu ~1.15 vòng (414°), lực tối đa đúng 3.0 vòng (1080°)
+  const minTurnsAngle = 1.15 * 360; // 414° (trên 1 vòng)
+  const maxExtraAngle = (3.0 - 1.15) * 360; // 666° (đạt tối đa đúng 3.0 vòng = 1080°)
   const extraAngle = Math.round(((clampedPower - 1) / 99) * maxExtraAngle);
   const jitter = Math.floor(Math.random() * 7) - 3;
   let totalDelta = minTurnsAngle + extraAngle + jitter;
@@ -4931,8 +4931,8 @@ export function calculateTarotWheelSpin({
   const landedIndex = Math.floor(pointerAngle / segAngle) % segCount;
   const effectiveSegments = getEffectiveTarotWheelSegments(hasSunMagnet, isSurvivalMode, options);
   const landedSegment = effectiveSegments[landedIndex];
-  // Thời gian quay từ 17.5s (17500ms) đến 22.5s (22500ms) tùy theo lực quay (1% -> 100%)
-  const spinDurationMs = Math.round(17500 + ((clampedPower - 1) / 99) * 5000);
+  // Thời gian quay từ 15.0s (15000ms) đến 20.0s (20000ms) tùy theo lực quay (1% -> 100%)
+  const spinDurationMs = Math.round(15000 + ((clampedPower - 1) / 99) * 5000);
 
   return {
     targetAngle,

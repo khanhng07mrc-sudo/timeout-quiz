@@ -6198,27 +6198,72 @@ function restoreGameStateSnapshot(room) {
     roomEliminationGhostStats.set(room.id, new Map(snapshot.ghostStats));
   }
 }
+function isSandboxRoomEntity(room) {
+  if (!room) return false;
+  return Boolean(
+    room.name?.includes("Sandbox") || room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || room.code?.startsWith("sb_") || roomSandboxActiveTeam.has(room.id)
+  );
+}
+var teamScoreLocks = /* @__PURE__ */ new Map();
+var playerScoreLocks = /* @__PURE__ */ new Map();
+var submissionLocks = /* @__PURE__ */ new Map();
 async function applyScoreDeltaToTeam(teamId, delta) {
-  const current = await prisma.team.findUnique({ where: { id: teamId }, select: { score: true } });
-  const oldScore = current?.score ?? 0;
-  const newScore = Math.max(0, oldScore + delta);
-  const effectiveDelta = newScore - oldScore;
-  await prisma.team.update({
-    where: { id: teamId },
-    data: { score: newScore }
+  while (teamScoreLocks.has(teamId)) {
+    try {
+      await teamScoreLocks.get(teamId);
+    } catch {
+    }
+  }
+  let resolveLock;
+  const lockPromise = new Promise((res) => {
+    resolveLock = res;
   });
-  return { oldScore, newScore, effectiveDelta };
+  teamScoreLocks.set(teamId, lockPromise);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const current = await tx.team.findUnique({ where: { id: teamId }, select: { score: true } });
+      const oldScore = current?.score ?? 0;
+      const newScore = Math.max(0, oldScore + delta);
+      const effectiveDelta = newScore - oldScore;
+      await tx.team.update({
+        where: { id: teamId },
+        data: { score: newScore }
+      });
+      return { oldScore, newScore, effectiveDelta };
+    });
+  } finally {
+    teamScoreLocks.delete(teamId);
+    resolveLock();
+  }
 }
 async function applyScoreDeltaToPlayer(playerId, delta) {
-  const current = await prisma.player.findUnique({ where: { id: playerId }, select: { score: true } });
-  const oldScore = current?.score ?? 0;
-  const newScore = Math.max(0, oldScore + delta);
-  const effectiveDelta = newScore - oldScore;
-  await prisma.player.update({
-    where: { id: playerId },
-    data: { score: newScore }
+  while (playerScoreLocks.has(playerId)) {
+    try {
+      await playerScoreLocks.get(playerId);
+    } catch {
+    }
+  }
+  let resolveLock;
+  const lockPromise = new Promise((res) => {
+    resolveLock = res;
   });
-  return { oldScore, newScore, effectiveDelta };
+  playerScoreLocks.set(playerId, lockPromise);
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const current = await tx.player.findUnique({ where: { id: playerId }, select: { score: true } });
+      const oldScore = current?.score ?? 0;
+      const newScore = Math.max(0, oldScore + delta);
+      const effectiveDelta = newScore - oldScore;
+      await tx.player.update({
+        where: { id: playerId },
+        data: { score: newScore }
+      });
+      return { oldScore, newScore, effectiveDelta };
+    });
+  } finally {
+    playerScoreLocks.delete(playerId);
+    resolveLock();
+  }
 }
 function getNextUniqueQuestion(roomId, rawQuestions, preferredIndex, targetPoints) {
   if (!rawQuestions || rawQuestions.length === 0) return null;
@@ -7618,7 +7663,7 @@ function registerSocketHandlers(io2) {
         }
         const authHeader = socket.handshake.auth?.token || socket.handshake.headers["authorization"];
         const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
-        const isSandboxRoom = room.name?.startsWith("[Sandbox]") || Boolean(room.config?.isSandbox) || room.code?.startsWith("sb_");
+        const isSandboxRoom = isSandboxRoomEntity(room);
         const isHostKeyValid = isSandboxRoom || !room.hostKey ? true : hostKey === room.hostKey;
         if (!isAdminTokenValid && !isHostKeyValid) {
           return callback?.({
@@ -8090,7 +8135,7 @@ function registerSocketHandlers(io2) {
           effTeamId = effTeamId || questState.currentTurnTeamId;
         }
       }
-      if ((room.name?.startsWith("[Sandbox]") || room.config?.isSandbox) && effTeamId) {
+      if (isSandboxRoomEntity(room) && effTeamId) {
         roomSandboxActiveTeam.set(room.id, effTeamId);
       }
       await processAnswerSubmission({
@@ -12157,7 +12202,7 @@ function registerSocketHandlers(io2) {
       if (!effectiveTeamId && (playerId.startsWith("p_sb_") || playerId.startsWith("sb_") || player.name.includes("Tester"))) {
         const activeSb = roomSandboxActiveTeam.get(room.id);
         effectiveTeamId = activeSb || null;
-        if (!effectiveTeamId && room.name?.startsWith("[Sandbox]")) {
+        if (!effectiveTeamId && isSandboxRoomEntity(room)) {
           const match = playerId.match(/_t(\d+)/);
           if (match) {
             const rawIdx = parseInt(match[1], 10);
@@ -12656,7 +12701,7 @@ async function hasUnfinalizedHumanParticipants(room, questionId, finSet) {
     where: { roomId: room.id, isHost: false },
     include: { team: true }
   });
-  const isSandbox = Boolean(room.name?.startsWith("[Sandbox]"));
+  const isSandbox = isSandboxRoomEntity(room);
   const sandboxActiveTeamId = isSandbox ? roomSandboxActiveTeam.get(room.id) : void 0;
   for (const partId of activeParticipants) {
     if (isSandbox && sandboxActiveTeamId && partId === sandboxActiveTeamId) {
@@ -12859,9 +12904,7 @@ async function processAnswerSubmissionImpl({
     return;
   }
   const activeQ = roomActiveQuestions.get(room.id);
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id) || socket?.handshake?.query?.sandbox === "1"
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room) || socket?.handshake?.query?.sandbox === "1";
   if (activeQ?.timerPending && !isAdminOverride) {
     if (isSandboxRoom) {
       activeQ.timerPending = false;
@@ -13173,7 +13216,32 @@ async function processAnswerSubmissionImpl({
       safeTeamId = tExists.id;
     }
   }
+  const subLockKey = `${room.id}:${questionId}:${safeTeamId || safePlayerId || "unknown"}`;
+  while (submissionLocks.has(subLockKey)) {
+    try {
+      await submissionLocks.get(subLockKey);
+    } catch {
+    }
+  }
+  let resolveSubLock;
+  const subLockPromise = new Promise((res) => {
+    resolveSubLock = res;
+  });
+  submissionLocks.set(subLockKey, subLockPromise);
   try {
+    if (!existingAnswer) {
+      if (isTeamMode && safeTeamId) {
+        existingAnswer = await prisma.answer.findFirst({
+          where: { roomId: room.id, questionId, teamId: safeTeamId },
+          orderBy: { submittedAt: "desc" }
+        });
+      } else if (safePlayerId) {
+        existingAnswer = await prisma.answer.findFirst({
+          where: { roomId: room.id, questionId, playerId: safePlayerId },
+          orderBy: { submittedAt: "desc" }
+        });
+      }
+    }
     if (existingAnswer) {
       await prisma.answer.update({
         where: { id: existingAnswer.id },
@@ -13231,6 +13299,9 @@ async function processAnswerSubmissionImpl({
         console.error("[processAnswerSubmission] Fallback create failed:", innerErr);
       }
     }
+  } finally {
+    submissionLocks.delete(subLockKey);
+    resolveSubLock();
   }
   if (socket) {
     socket.emit("game:answer:ack", {
@@ -13552,9 +13623,7 @@ async function finalizeTournamentQuestion(io2, roomId, roomCode, questionId) {
   if (!tournament || !room || !question) return;
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
   if (!currentMatch) return;
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
   const t1Ans = currentMatch.team1Id ? await prisma.answer.findFirst({
     where: { roomId, questionId, teamId: currentMatch.team1Id },
     orderBy: { submittedAt: "desc" }
@@ -13716,9 +13785,7 @@ async function finalizeGridCaroQuestion(io2, roomId, roomCode, questionId) {
   });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!gridState || !room || !question) return;
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
   const currentTeamId = gridState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
   const cell = gridState.selectedCellId ? gridState.cells.find((c) => c.id === gridState.selectedCellId) : null;
@@ -13793,9 +13860,7 @@ async function finalizeDiceRaceQuestion(io2, roomId, roomCode, questionId) {
   });
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!diceState || !room || !question) return;
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
   const currentTeamId = diceState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
   const hasHuman = currentTeam?.players?.some((p) => !isPlayerBot(p)) ?? true;
@@ -13852,9 +13917,7 @@ async function finalizeWagerQuestion(io2, roomId, roomCode, questionId) {
       answerMap.set(ans.teamId, ans);
     }
   }
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
   let otherCorrectCount = 0;
   for (const team of room.teams) {
     if (team.id !== lastWagerTeamId) {
@@ -14676,7 +14739,7 @@ async function buildRoomState(roomId) {
   if (!room) throw new Error("Room not found");
   const config = room.config;
   const rawValidPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
-  const isSandboxRoom = room.name?.includes("[Sandbox]") || room.code?.startsWith("sb_") || Boolean(room.config && room.config?.isSandbox);
+  const isSandboxRoom = isSandboxRoomEntity(room);
   let validPlayers = rawValidPlayers;
   if (isSandboxRoom) {
     const hasPrimaryTester = rawValidPlayers.some((p) => p.id === `sb_${room.code}_t0` || p.name === "B\u1EA1n (Tester)");
@@ -14908,9 +14971,7 @@ async function resolveQuestionTeamScores(io2, roomId, questionId) {
   const teamCardsMap = roomQuestionTeamCards.get(qKey);
   const teamScoresUpdates = [];
   const teamSummaries = [];
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
   for (const team of room.teams) {
     const teamAnswers = answers.filter((a) => a.teamId === team.id).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
     const humanMembers = team.players.filter(

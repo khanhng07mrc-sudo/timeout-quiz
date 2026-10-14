@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
       room = await prisma.room.create({
         data: {
           code,
-          name: `Sandbox: ${cleanName} (4 Đội)`,
+          name: `[Sandbox] ${cleanName} (4 Đội)`,
           hostId: effectiveHostId,
           hostKey,
           quizBankId: quizBank?.id || null,
@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
         room = await prisma.room.create({
           data: {
             code,
-            name: `Sandbox: ${cleanName} (4 Đội)`,
+            name: `[Sandbox] ${cleanName} (4 Đội)`,
             hostId: effectiveHostId,
             hostKey,
             quizBankId: quizBank?.id || null,

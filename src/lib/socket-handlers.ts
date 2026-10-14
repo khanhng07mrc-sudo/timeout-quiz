@@ -299,41 +299,93 @@ function restoreGameStateSnapshot(room: any) {
   }
 }
 
+export function isSandboxRoomEntity(room: any): boolean {
+  if (!room) return false;
+  return Boolean(
+    room.name?.includes("Sandbox") ||
+    room.name?.startsWith("[Sandbox]") ||
+    (room.config as any)?.isSandbox ||
+    room.code?.startsWith("sb_") ||
+    roomSandboxActiveTeam.has(room.id)
+  );
+}
+
+// In-memory Mutex locks to ensure strictly serialized score updates per team/player
+const teamScoreLocks = new Map<string, Promise<void>>();
+const playerScoreLocks = new Map<string, Promise<void>>();
+const submissionLocks = new Map<string, Promise<void>>();
+
 /**
  * Áp dụng thay đổi điểm số cho Đội, đảm bảo quy định:
  * "Điểm số của các đội xuyên suốt cuộc chơi luôn >= 0, nếu có một phép trừ có thể khiến điểm về âm, hệ thống chuyển điểm về 0 thay vì âm."
+ * Được bọc trong Mutex + Prisma Transaction để triệt tiêu hoàn toàn Race Condition mất điểm khi nhiều máy nộp bài cùng lúc.
  */
 async function applyScoreDeltaToTeam(
   teamId: string,
   delta: number
 ): Promise<{ oldScore: number; newScore: number; effectiveDelta: number }> {
-  const current = await prisma.team.findUnique({ where: { id: teamId }, select: { score: true } });
-  const oldScore = current?.score ?? 0;
-  const newScore = Math.max(0, oldScore + delta);
-  const effectiveDelta = newScore - oldScore;
-  await prisma.team.update({
-    where: { id: teamId },
-    data: { score: newScore },
-  });
-  return { oldScore, newScore, effectiveDelta };
+  while (teamScoreLocks.has(teamId)) {
+    try {
+      await teamScoreLocks.get(teamId);
+    } catch {}
+  }
+
+  let resolveLock!: () => void;
+  const lockPromise = new Promise<void>((res) => { resolveLock = res; });
+  teamScoreLocks.set(teamId, lockPromise);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const current = await tx.team.findUnique({ where: { id: teamId }, select: { score: true } });
+      const oldScore = current?.score ?? 0;
+      const newScore = Math.max(0, oldScore + delta);
+      const effectiveDelta = newScore - oldScore;
+      await tx.team.update({
+        where: { id: teamId },
+        data: { score: newScore },
+      });
+      return { oldScore, newScore, effectiveDelta };
+    });
+  } finally {
+    teamScoreLocks.delete(teamId);
+    resolveLock();
+  }
 }
 
 /**
  * Áp dụng thay đổi điểm số cho Thí sinh cá nhân, đảm bảo quy định điểm số luôn >= 0.
+ * Được bọc trong Mutex + Prisma Transaction chống Race Condition.
  */
 async function applyScoreDeltaToPlayer(
   playerId: string,
   delta: number
 ): Promise<{ oldScore: number; newScore: number; effectiveDelta: number }> {
-  const current = await prisma.player.findUnique({ where: { id: playerId }, select: { score: true } });
-  const oldScore = current?.score ?? 0;
-  const newScore = Math.max(0, oldScore + delta);
-  const effectiveDelta = newScore - oldScore;
-  await prisma.player.update({
-    where: { id: playerId },
-    data: { score: newScore },
-  });
-  return { oldScore, newScore, effectiveDelta };
+  while (playerScoreLocks.has(playerId)) {
+    try {
+      await playerScoreLocks.get(playerId);
+    } catch {}
+  }
+
+  let resolveLock!: () => void;
+  const lockPromise = new Promise<void>((res) => { resolveLock = res; });
+  playerScoreLocks.set(playerId, lockPromise);
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const current = await tx.player.findUnique({ where: { id: playerId }, select: { score: true } });
+      const oldScore = current?.score ?? 0;
+      const newScore = Math.max(0, oldScore + delta);
+      const effectiveDelta = newScore - oldScore;
+      await tx.player.update({
+        where: { id: playerId },
+        data: { score: newScore },
+      });
+      return { oldScore, newScore, effectiveDelta };
+    });
+  } finally {
+    playerScoreLocks.delete(playerId);
+    resolveLock();
+  }
 }
 
 /**
@@ -2000,10 +2052,7 @@ export function registerSocketHandlers(io: IO) {
         const authHeader = (socket.handshake.auth?.token as string) || (socket.handshake.headers["authorization"] as string);
         const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
         // 2. Check if hostKey matches room.hostKey or if room is a Sandbox room
-        const isSandboxRoom =
-          room.name?.startsWith("[Sandbox]") ||
-          Boolean((room.config as any)?.isSandbox) ||
-          room.code?.startsWith("sb_");
+        const isSandboxRoom = isSandboxRoomEntity(room);
         const isHostKeyValid = isSandboxRoom || !room.hostKey ? true : (hostKey === room.hostKey);
 
         if (!isAdminTokenValid && !isHostKeyValid) {
@@ -2606,7 +2655,7 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      if ((room.name?.startsWith("[Sandbox]") || (room.config as any)?.isSandbox) && effTeamId) {
+      if (isSandboxRoomEntity(room) && effTeamId) {
         roomSandboxActiveTeam.set(room.id, effTeamId);
       }
 
@@ -7538,7 +7587,7 @@ export function registerSocketHandlers(io: IO) {
       if (!effectiveTeamId && (playerId.startsWith("p_sb_") || playerId.startsWith("sb_") || player.name.includes("Tester"))) {
         const activeSb = roomSandboxActiveTeam.get(room.id);
         effectiveTeamId = activeSb || null;
-        if (!effectiveTeamId && room.name?.startsWith("[Sandbox]")) {
+        if (!effectiveTeamId && isSandboxRoomEntity(room)) {
           const match = playerId.match(/_t(\d+)/);
           if (match) {
             const rawIdx = parseInt(match[1], 10);
@@ -8122,7 +8171,7 @@ async function hasUnfinalizedHumanParticipants(
     include: { team: true },
   });
 
-  const isSandbox = Boolean(room.name?.startsWith("[Sandbox]"));
+  const isSandbox = isSandboxRoomEntity(room);
   const sandboxActiveTeamId = isSandbox ? roomSandboxActiveTeam.get(room.id) : undefined;
 
   for (const partId of activeParticipants) {
@@ -8396,12 +8445,7 @@ async function processAnswerSubmissionImpl({
   }
 
   const activeQ = roomActiveQuestions.get(room.id);
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id) ||
-    socket?.handshake?.query?.sandbox === "1"
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room) || socket?.handshake?.query?.sandbox === "1";
 
   if (activeQ?.timerPending && !isAdminOverride) {
     if (isSandboxRoom) {
@@ -8792,7 +8836,32 @@ async function processAnswerSubmissionImpl({
     }
   }
 
+  const subLockKey = `${room.id}:${questionId}:${safeTeamId || safePlayerId || "unknown"}`;
+  while (submissionLocks.has(subLockKey)) {
+    try {
+      await submissionLocks.get(subLockKey);
+    } catch {}
+  }
+  let resolveSubLock!: () => void;
+  const subLockPromise = new Promise<void>((res) => { resolveSubLock = res; });
+  submissionLocks.set(subLockKey, subLockPromise);
+
   try {
+    // Re-verify if an answer was created by a concurrent teammate while waiting for the lock
+    if (!existingAnswer) {
+      if (isTeamMode && safeTeamId) {
+        existingAnswer = await prisma.answer.findFirst({
+          where: { roomId: room.id, questionId, teamId: safeTeamId },
+          orderBy: { submittedAt: "desc" },
+        });
+      } else if (safePlayerId) {
+        existingAnswer = await prisma.answer.findFirst({
+          where: { roomId: room.id, questionId, playerId: safePlayerId },
+          orderBy: { submittedAt: "desc" },
+        });
+      }
+    }
+
     if (existingAnswer) {
       await prisma.answer.update({
         where: { id: existingAnswer.id },
@@ -8849,6 +8918,9 @@ async function processAnswerSubmissionImpl({
         console.error("[processAnswerSubmission] Fallback create failed:", innerErr);
       }
     }
+  } finally {
+    submissionLocks.delete(subLockKey);
+    resolveSubLock();
   }
 
   // 1. Send positive acknowledgment (Ack) to the submitting player
@@ -9248,11 +9320,7 @@ async function finalizeTournamentQuestion(io: IO, roomId: string, roomCode: stri
   const currentMatch = tournament.matches.find((m) => m.id === tournament.currentMatchId);
   if (!currentMatch) return;
 
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   const t1Ans = currentMatch.team1Id
     ? await prisma.answer.findFirst({
@@ -9453,11 +9521,7 @@ async function finalizeGridCaroQuestion(io: IO, roomId: string, roomCode: string
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!gridState || !room || !question) return;
 
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   const currentTeamId = gridState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
@@ -9548,11 +9612,7 @@ async function finalizeDiceRaceQuestion(io: IO, roomId: string, roomCode: string
   const question = await prisma.question.findUnique({ where: { id: questionId } });
   if (!diceState || !room || !question) return;
 
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   const currentTeamId = diceState.currentTurnTeamId;
   const currentTeam = room.teams.find((t) => t.id === currentTeamId);
@@ -9625,11 +9685,7 @@ async function finalizeWagerQuestion(io: IO, roomId: string, roomCode: string, q
     }
   }
 
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   // 3. Đếm số đội KHÁC (không phải đội cược) trả lời ĐÚNG
   let otherCorrectCount = 0;
@@ -10641,7 +10697,7 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
 
   // Filter out any ghost host/admin dummy players and deduplicate sandbox tester clones
   const rawValidPlayers = room.players.filter((p) => !p.isHost && p.name !== "Host" && p.name !== "Admin Host");
-  const isSandboxRoom = room.name?.includes("[Sandbox]") || room.code?.startsWith("sb_") || Boolean(room.config && (room.config as any)?.isSandbox);
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   let validPlayers = rawValidPlayers;
   if (isSandboxRoom) {
@@ -10954,11 +11010,7 @@ async function resolveQuestionTeamScores(
   const teamScoresUpdates: ScoreUpdate[] = [];
   const teamSummaries: TeamRevealSummary[] = [];
 
-  const isSandboxRoom = Boolean(
-    room.name?.startsWith("[Sandbox]") ||
-    (room.config as any)?.isSandbox ||
-    roomSandboxActiveTeam.has(room.id)
-  );
+  const isSandboxRoom = isSandboxRoomEntity(room);
 
   for (const team of room.teams) {
     const teamAnswers = answers

@@ -17,6 +17,8 @@ import type {
   GameIntermissionPayload,
   TournamentState,
   MysteryQuestState,
+  TieBreakerState,
+  TieBreakerTeam,
 } from "@/types";
 import { CARD_METADATA, quantizeOlympiaTimeLimit } from "@/types";
 import Link from "next/link";
@@ -25,6 +27,7 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import { soundManager } from "@/lib/sound-manager";
 import {
   generateMysteryStageForTurn,
@@ -216,6 +219,7 @@ export default function AdminSandboxPage() {
     explanation?: string;
   } | null>(null);
   const [showMcCheatSheet, setShowMcCheatSheet] = useState(true);
+  const [sandboxTieBreaker, setSandboxTieBreaker] = useState<TieBreakerState | null>(null);
   const adminQuestionDataRef = useRef<{
     questionId: string;
     options: any[];
@@ -1209,6 +1213,13 @@ export default function AdminSandboxPage() {
 
     sock.on("game:ended", () => {
       addLog(`Trận đấu kết thúc!`);
+    });
+
+    sock.on("game:tie_breaker:state" as any, (tbState: TieBreakerState | null) => {
+      setSandboxTieBreaker(tbState);
+      if (tbState) {
+        addLog(`⚔️ [Tie-Breaker] Cập nhật trạng thái: ${tbState.status}`);
+      }
     });
   }, [botAutoEnabled, initBotSockets, addLog, saveSandboxSession, clearSandboxSession]);
 
@@ -5939,6 +5950,93 @@ export default function AdminSandboxPage() {
     addLog(`Chỉnh điểm đội ${teamId}: delta=${delta ?? "N/A"}, setScore=${setScore ?? "N/A"}`);
   };
 
+  // ── Auto-advance Tie-Breaker Intro -> Question ───────────────────────────
+  useEffect(() => {
+    if (sandboxTieBreaker?.status === "INTRO") {
+      const t = setTimeout(() => {
+        setSandboxTieBreaker((prev) =>
+          prev?.status === "INTRO" ? { ...prev, status: "QUESTION_ACTIVE" } : prev
+        );
+      }, 3500);
+      return () => clearTimeout(t);
+    }
+  }, [sandboxTieBreaker?.status]);
+
+  // ── Toggle Tie-Breaker (Sudden Death) Simulation ─────────────────────────
+  const handleToggleTestTieBreaker = () => {
+    if (sandboxTieBreaker) {
+      setSandboxTieBreaker(null);
+      addLog("⚔️ Đã đóng màn hình Test Tie-Breaker");
+      return;
+    }
+
+    const sortedTeams = [...stableTeams].sort((a, b) => b.score - a.score);
+    const topTeams = sortedTeams.length >= 2 ? sortedTeams.slice(0, 2) : stableTeams.slice(0, 2);
+    const tiedTeams: TieBreakerTeam[] = topTeams.map((t) => ({
+      id: t.id,
+      name: t.name,
+      color: t.color || "#6366f1",
+      avatar: t.avatar,
+      score: Math.max(t.score, 100),
+    }));
+
+    const mockQuestions = [
+      {
+        id: "TB_Q1",
+        content: "Thủ đô của quốc gia nào được mệnh danh là 'Thành phố Ánh Sáng'?",
+        options: [
+          { id: "A", text: "Paris (Pháp)" },
+          { id: "B", text: "Rome (Ý)" },
+          { id: "C", text: "Tokyo (Nhật Bản)" },
+          { id: "D", text: "London (Anh)" },
+        ],
+        correctOptionId: "A",
+        explanation: "Thành phố nổi tiếng với tháp Eiffel và dòng sông Seine thơ mộng.",
+        timeLimit: 15,
+      },
+      {
+        id: "TB_Q2",
+        content: "Đại dương nào có diện tích lớn nhất trên Trái Đất?",
+        options: [
+          { id: "A", text: "Đại Tây Dương" },
+          { id: "B", text: "Thái Bình Dương" },
+          { id: "C", text: "Ấn Độ Dương" },
+          { id: "D", text: "Bắc Băng Dương" },
+        ],
+        correctOptionId: "B",
+        explanation: "Chiếm khoảng một phần ba bề mặt Trái Đất.",
+        timeLimit: 15,
+      },
+      {
+        id: "TB_Q3",
+        content: "Bảng tuần hoàn các nguyên tố hóa học đầu tiên do nhà khoa học nào phát minh ra?",
+        options: [
+          { id: "A", text: "Dmitri Mendeleev" },
+          { id: "B", text: "Marie Curie" },
+          { id: "C", text: "Albert Einstein" },
+          { id: "D", text: "Isaac Newton" },
+        ],
+        correctOptionId: "A",
+        explanation: "Nhà hóa học người Nga sinh năm 1834 phát minh ra bảng tuần hoàn.",
+        timeLimit: 15,
+      },
+    ];
+
+    const initialTB: TieBreakerState = {
+      roomId: code || "sandbox_tb",
+      roomCode: code || "SANDBOX",
+      status: "INTRO",
+      tiedTeams,
+      questions: mockQuestions,
+      questionIndex: 0,
+      maxQuestions: 3,
+      currentQuestion: mockQuestions[0],
+      attemptedTeamIds: [],
+    };
+    setSandboxTieBreaker(initialTB);
+    addLog(`⚔️ Đã kích hoạt mô phỏng Tie-Breaker Đột Tử giữa [${tiedTeams[0]?.name}] và [${tiedTeams[1]?.name}]`);
+  };
+
   // ── Bot / Active Team Manual Actions ────────────────────────────────────────
   const handleWagerLaunchQuestion = () => {
     if (isOfflineSandbox) {
@@ -6701,6 +6799,21 @@ export default function AdminSandboxPage() {
                 >
                   <span>✏️</span>
                   <span>Sửa điểm</span>
+                </button>
+
+                {/* 4b2. Test Tie-Breaker (Sudden Death) */}
+                <button
+                  type="button"
+                  onClick={handleToggleTestTieBreaker}
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition flex items-center gap-1 whitespace-nowrap cursor-pointer ${
+                    sandboxTieBreaker
+                      ? "bg-red-600 border-red-400 text-white shadow-lg animate-pulse"
+                      : "bg-red-600/30 hover:bg-red-600/50 border-red-500/50 text-red-300"
+                  }`}
+                  title="Kích hoạt mô phỏng câu hỏi phụ đột tử (Sudden Death buzz & Lucky Draw) để phân định ngôi vô địch"
+                >
+                  <span>⚔️</span>
+                  <span>{sandboxTieBreaker ? "Đang Test Đột Tử" : "Test Tie-Breaker"}</span>
                 </button>
 
                 {/* 4c. MC Direct Answer Submission Trigger */}
@@ -9477,6 +9590,180 @@ export default function AdminSandboxPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Tie-Breaker (Sudden Death) Overlay ───────────────────────────── */}
+      {sandboxTieBreaker && (
+        <TieBreakerOverlay
+          role="ADMIN"
+          tieBreaker={sandboxTieBreaker}
+          playerTeamId={activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id}
+          onClose={() => setSandboxTieBreaker(null)}
+          onBuzz={() => {
+            const currentTId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id;
+            const currentT = stableTeams.find((t) => t.id === currentTId) || stableTeams[0];
+            setSandboxTieBreaker((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                status: "BUZZER_LOCKED",
+                buzzedTeamId: currentT.id,
+                buzzedTeamName: currentT.name,
+                buzzedTeamColor: currentT.color || "#6366f1",
+              };
+            });
+            addLog(`🔔 [Tie-Breaker] Đội ${currentT.name} đã bấm chuông giành quyền!`);
+          }}
+          onAnswer={(optionId) => {
+            setSandboxTieBreaker((prev) => {
+              if (!prev || !prev.currentQuestion) return null;
+              const isCorrect = prev.currentQuestion.correctOptionId === optionId;
+              if (isCorrect) {
+                const champName = prev.buzzedTeamName || prev.tiedTeams[0]?.name || "Quán Quân";
+                const champId = prev.buzzedTeamId || prev.tiedTeams[0]?.id;
+                addLog(`🎉 [Tie-Breaker] Đội ${champName} trả lời chính xác -> ĐOẠT NGÔI QUÁN QUÂN!`);
+                return {
+                  ...prev,
+                  status: "COMPLETED",
+                  championTeamId: champId,
+                  championTeamName: champName,
+                };
+              } else {
+                addLog(`❌ [Tie-Breaker] ${prev.buzzedTeamName || "Đội"} trả lời sai câu hỏi phụ.`);
+                const newAttempted = [...prev.attemptedTeamIds, prev.buzzedTeamId!].filter(Boolean);
+                if (newAttempted.length >= prev.tiedTeams.length) {
+                  if (prev.questionIndex + 1 < prev.maxQuestions) {
+                    const nextIdx = prev.questionIndex + 1;
+                    return {
+                      ...prev,
+                      status: "QUESTION_ACTIVE",
+                      questionIndex: nextIdx,
+                      currentQuestion: prev.questions?.[nextIdx],
+                      buzzedTeamId: undefined,
+                      buzzedTeamName: undefined,
+                      buzzedTeamColor: undefined,
+                      attemptedTeamIds: [],
+                    };
+                  } else {
+                    return {
+                      ...prev,
+                      status: "LUCKY_DRAW",
+                      luckyDraw: {
+                        envelopes: [
+                          { id: 1, isOpened: false, isChampion: false },
+                          { id: 2, isOpened: false, isChampion: true },
+                          { id: 3, isOpened: false, isChampion: false },
+                        ],
+                      },
+                    };
+                  }
+                }
+                return {
+                  ...prev,
+                  status: "QUESTION_ACTIVE",
+                  buzzedTeamId: undefined,
+                  buzzedTeamName: undefined,
+                  buzzedTeamColor: undefined,
+                  attemptedTeamIds: newAttempted,
+                };
+              }
+            });
+          }}
+          onLuckyPick={(envId) => {
+            setSandboxTieBreaker((prev) => {
+              if (!prev || !prev.luckyDraw) return null;
+              const currentTId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id;
+              const currentT = stableTeams.find((t) => t.id === currentTId) || stableTeams[0];
+              const updatedEnvelopes = prev.luckyDraw.envelopes.map((env) =>
+                env.id === envId
+                  ? { ...env, isOpened: true, pickedByTeamId: currentT.id, pickedByTeamName: currentT.name }
+                  : env
+              );
+              const chosen = updatedEnvelopes.find((e) => e.id === envId);
+              if (chosen?.isChampion) {
+                addLog(`👑 [Tie-Breaker Bốc thăm] Đội ${currentT.name} bốc trúng Vương Miện Quán Quân!`);
+                return {
+                  ...prev,
+                  status: "COMPLETED",
+                  championTeamId: currentT.id,
+                  championTeamName: currentT.name,
+                  luckyDraw: { envelopes: updatedEnvelopes },
+                };
+              } else {
+                const otherT = prev.tiedTeams.find((t) => t.id !== currentT.id) || prev.tiedTeams[0];
+                addLog(`🥈 [Tie-Breaker Bốc thăm] Đội ${currentT.name} bốc Á Quân. Quán Quân thuộc về ${otherT.name}!`);
+                return {
+                  ...prev,
+                  status: "COMPLETED",
+                  championTeamId: otherT.id,
+                  championTeamName: otherT.name,
+                  luckyDraw: { envelopes: updatedEnvelopes },
+                };
+              }
+            });
+          }}
+          onAdminAction={(action, winnerTeamId) => {
+            if (adminSocketRef.current?.connected && code) {
+              adminSocketRef.current.emit("admin:tie_breaker:advance" as any, { code, action, winnerTeamId });
+            }
+            if (action === "NEXT_QUESTION") {
+              setSandboxTieBreaker((prev) => {
+                if (!prev) return null;
+                const nextIdx = prev.questionIndex + 1;
+                if (nextIdx < prev.maxQuestions) {
+                  return {
+                    ...prev,
+                    status: "QUESTION_ACTIVE",
+                    questionIndex: nextIdx,
+                    currentQuestion: prev.questions?.[nextIdx],
+                    buzzedTeamId: undefined,
+                    buzzedTeamName: undefined,
+                    buzzedTeamColor: undefined,
+                    attemptedTeamIds: [],
+                  };
+                } else {
+                  return {
+                    ...prev,
+                    status: "LUCKY_DRAW",
+                    luckyDraw: {
+                      envelopes: [
+                        { id: 1, isOpened: false, isChampion: false },
+                        { id: 2, isOpened: false, isChampion: true },
+                        { id: 3, isOpened: false, isChampion: false },
+                      ],
+                    },
+                  };
+                }
+              });
+            } else if (action === "START_LUCKY_DRAW") {
+              setSandboxTieBreaker((prev) => {
+                if (!prev) return null;
+                return {
+                  ...prev,
+                  status: "LUCKY_DRAW",
+                  luckyDraw: {
+                    envelopes: [
+                      { id: 1, isOpened: false, isChampion: false },
+                      { id: 2, isOpened: false, isChampion: true },
+                      { id: 3, isOpened: false, isChampion: false },
+                    ],
+                  },
+                };
+              });
+            } else if (action === "FORCE_CHAMPION") {
+              setSandboxTieBreaker((prev) => {
+                if (!prev) return null;
+                const target = prev.tiedTeams.find((t) => t.id === winnerTeamId) || prev.tiedTeams[0];
+                return {
+                  ...prev,
+                  status: "COMPLETED",
+                  championTeamId: target.id,
+                  championTeamName: target.name,
+                };
+              });
+            }
+          }}
+        />
       )}
 
       {/* ── Game Mode Rules Modal ─────────────────────────────────────────── */}

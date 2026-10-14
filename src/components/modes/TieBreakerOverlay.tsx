@@ -12,6 +12,7 @@ interface TieBreakerOverlayProps {
   onAnswer?: (optionId: string) => void;
   onLuckyPick?: (envelopeId: number) => void;
   onAdminAction?: (action: "NEXT_QUESTION" | "START_LUCKY_DRAW" | "FORCE_CHAMPION", winnerTeamId?: string) => void;
+  onClose?: () => void;
 }
 
 export default function TieBreakerOverlay({
@@ -22,6 +23,7 @@ export default function TieBreakerOverlay({
   onAnswer,
   onLuckyPick,
   onAdminAction,
+  onClose,
 }: TieBreakerOverlayProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasBuzzed, setHasBuzzed] = useState(false);
@@ -45,6 +47,15 @@ export default function TieBreakerOverlay({
   if (tieBreaker.status === "INTRO") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-hidden">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition cursor-pointer"
+          >
+            ✕ Đóng
+          </button>
+        )}
         {/* Glow ambient background */}
         <div className="absolute inset-0 bg-gradient-to-t from-red-950/60 via-purple-950/40 to-amber-950/50 pointer-events-none" />
         
@@ -108,6 +119,15 @@ export default function TieBreakerOverlay({
     const draw = tieBreaker.luckyDraw!;
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-y-auto">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition cursor-pointer"
+          >
+            ✕ Đóng
+          </button>
+        )}
         <div className="relative z-10 max-w-4xl mx-auto space-y-6 my-auto py-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-300 text-xs sm:text-sm font-black uppercase tracking-widest animate-pulse shadow-lg">
             <span>🎁</span> VÒNG BỐC THĂM ĐỊNH MỆNH <span>👑</span>
@@ -182,6 +202,15 @@ export default function TieBreakerOverlay({
   if (tieBreaker.status === "COMPLETED") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#060813]/98 p-4 text-center animate-fade-in overflow-hidden">
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-20 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition cursor-pointer"
+          >
+            ✕ Đóng
+          </button>
+        )}
         <div className="relative z-10 max-w-2xl mx-auto space-y-4 animate-bounce-in">
           <div className="text-6xl sm:text-8xl animate-bounce">👑</div>
           <div className="inline-block px-4 py-1.5 rounded-full bg-amber-500/30 border border-amber-400 text-amber-300 text-xs font-black uppercase tracking-widest">
@@ -243,6 +272,15 @@ export default function TieBreakerOverlay({
               {t.name}
             </span>
           ))}
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="ml-2 px-2.5 py-1 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 text-xs font-bold border border-red-500/40 transition cursor-pointer"
+            >
+              ✕ Đóng
+            </button>
+          )}
         </div>
       </div>
 

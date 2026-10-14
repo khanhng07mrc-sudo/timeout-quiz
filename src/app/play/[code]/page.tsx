@@ -1122,12 +1122,46 @@ export default function PlayPage() {
     socket.on("game:paused", () => setRoomState((s) => s ? { ...s, status: "PAUSED" } : s));
     socket.on("game:resumed", () => setRoomState((s) => s ? { ...s, status: "PLAYING" } : s));
 
+    // Smart Session Recovery for Mobile Phones (Sleep, Screen Lock, Background Tab, App Switching)
+    const handleVisibilityOrFocus = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        if (!socket.connected) {
+          setIsReconnecting(true);
+          socket.connect();
+        } else {
+          syncClockWithServer(socket);
+          joinRoom();
+        }
+        // Immediately recalibrate authoritative countdown on wake
+        setTimer((prev) => {
+          if (!prev?.endsAt) return prev;
+          const auth = calculateAuthoritativeTimer(prev.endsAt, prev.total, prev.remaining);
+          return { ...prev, remaining: Math.max(0, auth.remaining) };
+        });
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("focus", handleVisibilityOrFocus);
+      window.addEventListener("online", handleVisibilityOrFocus);
+    }
+
     return () => {
       if (retryJoinTimerRef.current) {
         clearTimeout(retryJoinTimerRef.current);
         retryJoinTimerRef.current = null;
       }
       window.removeEventListener("message", handlePostMessage);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("focus", handleVisibilityOrFocus);
+        window.removeEventListener("online", handleVisibilityOrFocus);
+      }
       socket.disconnect();
     };
   }, [code, router]);

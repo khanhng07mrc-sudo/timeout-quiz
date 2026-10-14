@@ -305,13 +305,19 @@ export async function GET(req: NextRequest) {
     const filter = (searchParams.get("filter") || searchParams.get("type") || "all").toLowerCase();
     const user = getCurrentUserFromRequest(req);
 
+    const sandboxNameConditions = [
+      { name: { startsWith: "[Sandbox]" } },
+      { name: { contains: "Sandbox" } },
+      { code: { startsWith: "sb_" } },
+    ];
+
     let baseWhere: any = undefined;
     if (user && user.userId !== "master-admin") {
       baseWhere = {
         OR: [
           { hostId: user.userId },
           { hostId: "demo-host-id" },
-          { name: { startsWith: "[Sandbox]" } },
+          ...sandboxNameConditions,
           ...(hostId && hostId !== "demo-host-id" && hostId !== user.userId ? [{ hostId }] : []),
         ],
       };
@@ -319,7 +325,7 @@ export async function GET(req: NextRequest) {
       baseWhere = {
         OR: [
           { hostId },
-          { name: { startsWith: "[Sandbox]" } },
+          ...sandboxNameConditions,
         ],
       };
     }
@@ -328,18 +334,12 @@ export async function GET(req: NextRequest) {
     if (filter === "official") {
       filterConditions.push({
         NOT: {
-          OR: [
-            { name: { startsWith: "[Sandbox]" } },
-            { code: { startsWith: "sb_" } },
-          ],
+          OR: sandboxNameConditions,
         },
       });
     } else if (filter === "sandbox") {
       filterConditions.push({
-        OR: [
-          { name: { startsWith: "[Sandbox]" } },
-          { code: { startsWith: "sb_" } },
-        ],
+        OR: sandboxNameConditions,
       });
     }
 

@@ -598,6 +598,9 @@ export default function MysteryQuestBoard({
       }
 
       // Check if this move was already attempted in this round (anti-abuse rule)
+      const isHazardKey = (k?: string | null) =>
+        Boolean(k && (k.startsWith("PAIR_BOMB") || k.startsWith("PAIR_TRAP") || k === "PAIR_THE_TOWER" || k === "PAIR_THE_KNIGHT" || k === "PAIR_THE_DEVIL" || k === "PAIR_THE_HANGED_MAN"));
+
       if (!memoryPairsState?.isBombRescueActive) {
         const priorFlippedId = memoryPairsState?.firstFlippedTileId;
         if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
@@ -609,23 +612,19 @@ export default function MysteryQuestBoard({
           }
 
           const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
-          // ONLY set optimistic matched pair key for REWARD cards!
-          // Penalty cards (PAIR_BOMB, PAIR_TRAP) are NOT matching reward pairs!
-          if (first && first.pairKey && first.pairKey === tile.pairKey && first.type === "REWARD" && first.pairKey !== "PAIR_BOMB" && first.pairKey !== "PAIR_TRAP") {
-            setOptimisticMatchedPairKey(tile.pairKey);
+          // Set optimistic matched pair key for any matching pair (rewards, The Fool, etc.) except hazards!
+          if (first && first.pairKey && first.pairKey === tile.pairKey && !isHazardKey(first.pairKey)) {
+            setOptimisticMatchedPairKey(first.pairKey);
           }
         }
       } else {
-        // Trong lượt giải cứu:
-        // Nếu bom ở lá 2, đối tác so sánh là lá 1; nếu bom ở lá 1, đối tác so sánh là lá 2!
-        const partnerTileId = memoryPairsState?.secondFlippedTileId
-          ? memoryPairsState?.firstFlippedTileId
-          : memoryPairsState?.secondFlippedTileId;
-        if (partnerTileId && Number(partnerTileId) !== Number(tile.id)) {
-          const partner = tiles.find((t) => Number(t.id) === Number(partnerTileId));
-          if (partner && partner.pairKey && partner.pairKey === tile.pairKey && partner.type === "REWARD" && partner.pairKey !== "PAIR_BOMB" && partner.pairKey !== "PAIR_TRAP") {
-            setOptimisticMatchedPairKey(tile.pairKey);
-          }
+        // Trong lượt giải cứu: lá 3 có thể trùng khớp với lá 1 HOẶC lá 2!
+        const priorIds = [memoryPairsState?.firstFlippedTileId, memoryPairsState?.secondFlippedTileId].filter(Boolean);
+        const matchingPrior = tiles.find(
+          (t) => priorIds.some((id) => Number(id) === Number(t.id)) && t.pairKey && t.pairKey === tile.pairKey && !isHazardKey(t.pairKey)
+        );
+        if (matchingPrior?.pairKey) {
+          setOptimisticMatchedPairKey(matchingPrior.pairKey);
         }
       }
       lastClickedTileIdRef.current = tile.id;

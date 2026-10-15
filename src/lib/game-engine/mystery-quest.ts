@@ -2744,19 +2744,22 @@ export function handleFlipCard({
       );
 
       const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
-      const cardsInTurn = [card1, card2, card3].filter(Boolean) as MysteryTile[];
 
-      // Tìm lá bài là twin tiêu cực kích hoạt rescue:
-      const penaltyTwinIndex = cardsInTurn.findIndex((c) => getPenaltyKey(c) === oldPenaltyKey || c.pairKey === oldPenaltyKey);
-      const otherTwoCards = cardsInTurn.filter((_, idx) => idx !== (penaltyTwinIndex !== -1 ? penaltyTwinIndex : 0));
-      const [rescueA, rescueB] = otherTwoCards;
+      // Kiểm tra tất cả các cặp có thể trùng khớp giữa 3 lá bài (1-3, 2-3, 1-2):
+      // Ưu tiên cao nhất là ghép trúng cặp bài hợp lệ để giải cứu (lá 3 trùng lá 1 hoặc lá 2)!
+      let matchedPair: [MysteryTile, MysteryTile] | null = null;
+      if (card1 && card3 && card1.pairKey && card1.pairKey === card3.pairKey) {
+        matchedPair = [card1, card3];
+      } else if (card2 && card3 && card2.pairKey && card2.pairKey === card3.pairKey) {
+        matchedPair = [card2, card3];
+      } else if (card1 && card2 && card1.pairKey && card1.pairKey === card2.pairKey) {
+        matchedPair = [card1, card2];
+      }
 
-      // KIỂM TRA 2 LÁ CÒN LẠI CÓ TRÙNG KHỚP NHAU KHÔNG:
-      const isRescueMatch = Boolean(rescueA && rescueB && rescueA.pairKey === rescueB.pairKey);
-
-      if (isRescueMatch && rescueA) {
+      if (matchedPair) {
+        const [rescueA, _rescueB] = matchedPair;
         // ─────────────────────────────────────────────────────────────────────
-        // 2 LÁ CÒN LẠI TRÙNG KHỚP! Ưu tiên thực hiện chức năng của cặp mới (hủy phạt cặp cũ):
+        // CẶP TRÙNG KHỚP ĐƯỢC TÌM THẤY! Ưu tiên thực hiện chức năng của cặp mới (hủy phạt cặp cũ):
         // ─────────────────────────────────────────────────────────────────────
         if (isPenaltyTile(rescueA)) {
           // Cặp mới lại là một cặp tiêu cực mới! Thực hiện phạt theo cặp mới, hủy cặp cũ:
@@ -2951,6 +2954,9 @@ export function handleFlipCard({
 
     const firstId = Number(memState.firstFlippedTileId);
     const secondId = numTileId;
+    if (firstId === secondId) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
     const pairMoveKey = `${Math.min(firstId, secondId)}-${Math.max(firstId, secondId)}`;
     const attemptedPairs = memState.attemptedPairs || [];
 
@@ -3055,57 +3061,15 @@ export function handleFlipCard({
       }
     }
 
-    // TH 2.3: Card 2 trùng loại phạt với 1 lá phạt đã có từ trước trong các lượt trước (khác firstTile)!
-    if (secondTilePenaltyKey) {
-      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
-      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
-      const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
-      );
-      if (matchingPriorBomb) {
-        // Card 2 hoàn tất cặp phạt với lá từ lượt trước!
-        // Kích hoạt giải cứu: người chơi được tăng thêm quyền lật lá thứ 3 trong lượt!
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = secondTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0,
-        };
-      }
-    }
-
-    // TH 2.4: Một trong 2 lá là lá phạt đơn lẻ (chưa từng xuất hiện trước đó) hoặc lá The Fool!
-    if (firstTilePenaltyKey || secondTilePenaltyKey || isNeutralTile(firstTile) || isNeutralTile(tile)) {
-      memState.attemptsUsed += 1;
-      const penaltyOrNeutralTile = (firstTilePenaltyKey || isNeutralTile(firstTile)) ? firstTile! : tile;
-      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, penaltyOrNeutralTile.id]));
-      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), penaltyOrNeutralTile.id]));
-      memState.isMismatchResolving = true;
-
-      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-      const currentRound = memState.round || 1;
-
-      if (isRoundOver) {
-        if (currentRound === 1) {
-          memState.promptSecondChance = true;
-          state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
-        } else {
-          return handleRound2Failure();
-        }
-      }
-
-      state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
-    }
-
-    // TH 2.5: Cả 2 lá đều là lá thường
-    memState.attemptsUsed += 1;
+    // ═════════════════════════════════════════════════════════════════════════
+    // TH 2.3: GHÉP CẶP TRÙNG KHỚP THÀNH CÔNG (MATCH FOUND)!
+    // Bất kể là Cặp Thưởng, The Fool (Chàng Khờ), hay Cặp Thoát Hiểm!
+    // PHẢI KIỂM TRA TRƯỚC CÁC TRƯỜNG HỢP MISMATCH ĐƠN LẺ ĐỂ LẬT ĐÚNG LUÔN ĐƯỢC CÔNG NHẬN!
+    // ═════════════════════════════════════════════════════════════════════════
     const isMatch = Boolean(firstTile && firstTile.pairKey && firstTile.pairKey === tile.pairKey);
 
     if (isMatch && firstTile) {
+      memState.attemptsUsed += 1;
       // MATCH FOUND! (Thưởng điểm theo cặp bài)
       memState.matchedPairKey = firstTile.pairKey;
       state.memoryPairsState = { ...memState };
@@ -3244,9 +3208,41 @@ export function handleFlipCard({
         stolenPoints,
         temperanceBonusRecipients,
       };
-    } else {
-      // Mismatch giữa 2 lá thường!
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    // CÁC TRƯỜNG HỢP KHÔNG TRÙNG KHỚP (MISMATCH):
+    // ═════════════════════════════════════════════════════════════════════════
+
+    // TH 2.4: Card 2 trùng loại phạt với 1 lá phạt đã có từ trước trong các lượt trước (khác firstTile)!
+    if (secondTilePenaltyKey) {
+      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
+      const matchingPriorBomb = state.tiles.find(
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+      );
+      if (matchingPriorBomb) {
+        // Card 2 hoàn tất cặp phạt với lá từ lượt trước!
+        // Kích hoạt giải cứu: người chơi được tăng thêm quyền lật lá thứ 3 trong lượt!
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = secondTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0,
+        };
+      }
+    }
+
+    // TH 2.5: Một trong 2 lá là lá phạt đơn lẻ (chưa từng xuất hiện trước đó) hoặc lá The Fool!
+    if (firstTilePenaltyKey || secondTilePenaltyKey || isNeutralTile(firstTile) || isNeutralTile(tile)) {
+      memState.attemptsUsed += 1;
+      const penaltyOrNeutralTile = (firstTilePenaltyKey || isNeutralTile(firstTile)) ? firstTile! : tile;
+      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, penaltyOrNeutralTile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), penaltyOrNeutralTile.id]));
       memState.isMismatchResolving = true;
+
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
       const currentRound = memState.round || 1;
 
@@ -3263,6 +3259,25 @@ export function handleFlipCard({
       state.memoryPairsState = { ...memState };
       return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
+
+    // TH 2.6: Cả 2 lá đều là lá thường không trùng khớp
+    memState.attemptsUsed += 1;
+    memState.isMismatchResolving = true;
+    const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+    const currentRound = memState.round || 1;
+
+    if (isRoundOver) {
+      if (currentRound === 1) {
+        memState.promptSecondChance = true;
+        state.memoryPairsState = { ...memState };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      } else {
+        return handleRound2Failure();
+      }
+    }
+
+    state.memoryPairsState = { ...memState };
+    return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

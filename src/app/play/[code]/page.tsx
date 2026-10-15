@@ -63,7 +63,13 @@ export default function PlayPage() {
   const [matchStarting, setMatchStarting] = useState<{ seconds: number; endsAt?: number; total?: number } | null>(null);
   const [questionPrepare, setQuestionPrepare] = useState<GamePreparePayload | null>(null);
   const [intermission, setIntermission] = useState<GameIntermissionPayload | null>(null);
-  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    if (typeof window !== "undefined") {
+      const isSb = new URLSearchParams(window.location.search).get("sandbox") === "1" || window.self !== window.top;
+      return !isSb; // True in real play (bật âm tất cả), False in sandbox
+    }
+    return true;
+  });
   const [showRulesModal, setShowRulesModal] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
   const [isSandbox, setIsSandbox] = useState(() => {
@@ -90,7 +96,7 @@ export default function PlayPage() {
   const [usedCardTypes, setUsedCardTypes] = useState<import("@/types").CardType[]>([]);
   const [sharedPowerupLocked, setSharedPowerupLocked] = useState<boolean>(false);
   const [sharedPowerupLockedTeamName, setSharedPowerupLockedTeamName] = useState<string | undefined>(undefined);
-  const soundEnabledRef = useRef(false);
+  const soundEnabledRef = useRef(true);
 
   const myTeamIdRef = useRef<string | undefined>(undefined);
   const playerIdRef = useRef<string>("");
@@ -198,13 +204,30 @@ export default function PlayPage() {
   }, [timer?.endsAt, timer?.total]);
 
   useEffect(() => {
-    // Default sound MUTED on player devices to prevent room echo
-    soundManager.setMuted(true);
-
     const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
-    const isSandboxParam = searchParams?.get("sandbox") === "1" || (typeof window !== "undefined" && window.self !== window.top);
+    const isSandboxParam = Boolean(searchParams?.get("sandbox") === "1" || (typeof window !== "undefined" && window.self !== window.top));
     isSandboxRef.current = isSandboxParam;
-    if (isSandboxParam) setIsSandbox(true);
+    setIsSandbox(isSandboxParam);
+
+    if (isSandboxParam) {
+      // Sandbox: Contestant audio is MUTED by default (âm thanh chỉ kích hoạt trên màn hình Display)
+      soundManager.setMuted(true);
+      setSoundEnabled(false);
+      soundEnabledRef.current = false;
+    } else {
+      // Chơi chính: Bật âm thanh tất cả máy thí sinh theo yêu cầu
+      soundManager.setMuted(false);
+      setSoundEnabled(true);
+      soundEnabledRef.current = true;
+
+      const unlockAudio = () => {
+        soundManager.unlockAudio();
+        window.removeEventListener("pointerdown", unlockAudio);
+        window.removeEventListener("keydown", unlockAudio);
+      };
+      window.addEventListener("pointerdown", unlockAudio, { once: true });
+      window.addEventListener("keydown", unlockAudio, { once: true });
+    }
     const paramTeamId = searchParams?.get("teamId") || "";
     const paramTeamIndex = searchParams?.get("teamIndex");
     const paramName = searchParams?.get("name") || "";

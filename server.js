@@ -2668,10 +2668,10 @@ function handleFlipCard({
           newScore: team.score || 0
         };
         memState.isMismatchResolving = true;
-        const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-        const currentRound2 = memState.round || 1;
-        if (isRoundOver) {
-          if (currentRound2 === 1) {
+        const isRoundOver2 = memState.attemptsUsed >= memState.maxAttempts;
+        const currentRound3 = memState.round || 1;
+        if (isRoundOver2) {
+          if (currentRound3 === 1) {
             memState.promptSecondChance = true;
             state.memoryPairsState = { ...memState };
             return {
@@ -2747,7 +2747,7 @@ function handleFlipCard({
         let bombType = "BOMB_DARK";
         if (penaltyKey === "PAIR_THE_DEVIL" || penaltyKey === "PAIR_BOMB_DARK") bombType = "BOMB_DARK";
         else if (penaltyKey === "PAIR_THE_HANGED_MAN" || penaltyKey === "PAIR_BOMB_CHARITY") bombType = "BOMB_CHARITY";
-        else bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, { currentRound, riskTier });
+        else bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, { currentRound: currentRound2, riskTier });
         const outcome = resolveBombOutcome({
           bombType,
           team,
@@ -2797,12 +2797,16 @@ function handleFlipCard({
         (t) => Number(t.id) === numTileId || card1 && Number(t.id) === Number(card1.id) || card2 && Number(t.id) === Number(card2.id) ? { ...t, isOpened: true } : { ...t }
       );
       const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
-      const cardsInTurn = [card1, card2, card3].filter(Boolean);
-      const penaltyTwinIndex = cardsInTurn.findIndex((c) => getPenaltyKey(c) === oldPenaltyKey || c.pairKey === oldPenaltyKey);
-      const otherTwoCards = cardsInTurn.filter((_, idx) => idx !== (penaltyTwinIndex !== -1 ? penaltyTwinIndex : 0));
-      const [rescueA, rescueB] = otherTwoCards;
-      const isRescueMatch = Boolean(rescueA && rescueB && rescueA.pairKey === rescueB.pairKey);
-      if (isRescueMatch && rescueA) {
+      let matchedPair = null;
+      if (card1 && card3 && card1.pairKey && card1.pairKey === card3.pairKey) {
+        matchedPair = [card1, card3];
+      } else if (card2 && card3 && card2.pairKey && card2.pairKey === card3.pairKey) {
+        matchedPair = [card2, card3];
+      } else if (card1 && card2 && card1.pairKey && card1.pairKey === card2.pairKey) {
+        matchedPair = [card1, card2];
+      }
+      if (matchedPair) {
+        const [rescueA, _rescueB] = matchedPair;
         if (isPenaltyTile(rescueA)) {
           return executePenalty({ penaltyKey: rescueA.pairKey, cancelOldKey: oldPenaltyKey });
         }
@@ -2963,6 +2967,9 @@ function handleFlipCard({
     }
     const firstId = Number(memState.firstFlippedTileId);
     const secondId = numTileId;
+    if (firstId === secondId) {
+      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    }
     const pairMoveKey = `${Math.min(firstId, secondId)}-${Math.max(firstId, secondId)}`;
     const attemptedPairs = memState.attemptedPairs || [];
     if (!memState.isBombRescueActive) {
@@ -3026,10 +3033,10 @@ function handleFlipCard({
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
         memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], firstTile.id, tile2.id]));
         memState.isMismatchResolving = true;
-        const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-        const currentRound2 = memState.round || 1;
-        if (isRoundOver) {
-          if (currentRound2 === 1) {
+        const isRoundOver2 = memState.attemptsUsed >= memState.maxAttempts;
+        const currentRound3 = memState.round || 1;
+        if (isRoundOver2) {
+          if (currentRound3 === 1) {
             memState.promptSecondChance = true;
             state.memoryPairsState = { ...memState };
             return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
@@ -3041,46 +3048,9 @@ function handleFlipCard({
         return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
       }
     }
-    if (secondTilePenaltyKey) {
-      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
-      memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], tile2.id]));
-      const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
-      );
-      if (matchingPriorBomb) {
-        memState.isBombRescueActive = true;
-        memState.activePenaltyPairKey = secondTilePenaltyKey;
-        state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0
-        };
-      }
-    }
-    if (firstTilePenaltyKey || secondTilePenaltyKey || isNeutralTile(firstTile) || isNeutralTile(tile2)) {
-      memState.attemptsUsed += 1;
-      const penaltyOrNeutralTile = firstTilePenaltyKey || isNeutralTile(firstTile) ? firstTile : tile2;
-      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, penaltyOrNeutralTile.id]));
-      memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], penaltyOrNeutralTile.id]));
-      memState.isMismatchResolving = true;
-      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-      const currentRound2 = memState.round || 1;
-      if (isRoundOver) {
-        if (currentRound2 === 1) {
-          memState.promptSecondChance = true;
-          state.memoryPairsState = { ...memState };
-          return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
-        } else {
-          return handleRound2Failure();
-        }
-      }
-      state.memoryPairsState = { ...memState };
-      return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
-    }
-    memState.attemptsUsed += 1;
     const isMatch = Boolean(firstTile && firstTile.pairKey && firstTile.pairKey === tile2.pairKey);
     if (isMatch && firstTile) {
+      memState.attemptsUsed += 1;
       memState.matchedPairKey = firstTile.pairKey;
       state.memoryPairsState = { ...memState };
       state.tiles = state.tiles.map(
@@ -3202,12 +3172,34 @@ function handleFlipCard({
         stolenPoints,
         temperanceBonusRecipients
       };
-    } else {
+    }
+    if (secondTilePenaltyKey) {
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
+      memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], tile2.id]));
+      const matchingPriorBomb = state.tiles.find(
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+      );
+      if (matchingPriorBomb) {
+        memState.isBombRescueActive = true;
+        memState.activePenaltyPairKey = secondTilePenaltyKey;
+        state.memoryPairsState = { ...memState };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: false,
+          scorePenalty: 0
+        };
+      }
+    }
+    if (firstTilePenaltyKey || secondTilePenaltyKey || isNeutralTile(firstTile) || isNeutralTile(tile2)) {
+      memState.attemptsUsed += 1;
+      const penaltyOrNeutralTile = firstTilePenaltyKey || isNeutralTile(firstTile) ? firstTile : tile2;
+      memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, penaltyOrNeutralTile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], penaltyOrNeutralTile.id]));
       memState.isMismatchResolving = true;
-      const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
-      const currentRound2 = memState.round || 1;
-      if (isRoundOver) {
-        if (currentRound2 === 1) {
+      const isRoundOver2 = memState.attemptsUsed >= memState.maxAttempts;
+      const currentRound3 = memState.round || 1;
+      if (isRoundOver2) {
+        if (currentRound3 === 1) {
           memState.promptSecondChance = true;
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
@@ -3218,6 +3210,21 @@ function handleFlipCard({
       state.memoryPairsState = { ...memState };
       return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
+    memState.attemptsUsed += 1;
+    memState.isMismatchResolving = true;
+    const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+    const currentRound2 = memState.round || 1;
+    if (isRoundOver) {
+      if (currentRound2 === 1) {
+        memState.promptSecondChance = true;
+        state.memoryPairsState = { ...memState };
+        return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
+      } else {
+        return handleRound2Failure();
+      }
+    }
+    state.memoryPairsState = { ...memState };
+    return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
   }
   if (normType === "ONE_SHOT_DOORS") {
     const osState = state.oneShotState || {

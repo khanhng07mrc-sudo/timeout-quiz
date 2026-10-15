@@ -315,6 +315,11 @@ export default function AdminSandboxPage() {
   const currentTeam = stableTeams[activeTeamIndex] || stableTeams[0];
 
   useEffect(() => {
+    // Trong sandbox: Chỉ kích hoạt âm thanh cho màn hình hiển thị (Display preview iframe), host page tắt âm để không bị vọng âm
+    soundManager.setMuted(true);
+  }, []);
+
+  useEffect(() => {
     if (currentTeam?.id) {
       activeTeamIdRef.current = currentTeam.id;
     }

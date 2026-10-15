@@ -2773,8 +2773,12 @@ function handleFlipCard({
         }
         if (winCard.givesHeart) {
           const heartsRecord = { ...state.teamHearts || {} };
-          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-          state.teamHearts = heartsRecord;
+          const maxHearts = state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
         }
         let finalDelta = 0;
         let victimTeamId;
@@ -3006,8 +3010,12 @@ function handleFlipCard({
       }
       if (firstTile.givesHeart) {
         const heartsRecord = { ...state.teamHearts || {} };
-        heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-        state.teamHearts = heartsRecord;
+        const maxHearts = state.initialHeartsPerTeam ?? 3;
+        const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+        if (curHearts < maxHearts) {
+          heartsRecord[team.id] = curHearts + 1;
+          state.teamHearts = heartsRecord;
+        }
       }
       let victimTeamId;
       let victimTeamName;
@@ -3396,8 +3404,12 @@ function handleFlipCard({
         }
         if (tile2.givesHeart) {
           const heartsRecord = { ...state.teamHearts || {} };
-          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-          state.teamHearts = heartsRecord;
+          const maxHearts = state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
         }
         const hasExtraPot2 = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
         const extraPotBonus2 = hasExtraPot2 ? 5 : 0;
@@ -4123,6 +4135,12 @@ function handleOneShotDoorsDecision({
   const extraPotBonus = hasExtraPot ? 5 : 0;
   const multiplier = state.potMultiplier || 1;
   if (decision === "TAKE_100_BASE") {
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
     osState.phase = "RESOLVED";
     osState.allRevealed = true;
     state.tiles.forEach((t) => {
@@ -4134,7 +4152,8 @@ function handleOneShotDoorsDecision({
     state.turnFinishedReason = "TOOK_BASE_POINTS";
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
-    const rewardText = extraPotBonus > 0 ? `\u{1F389} Ch\u1ED1t nh\u1EADn an to\xE0n! Quy\u1EBFt \u0111\u1ECBnh d\u1EEBng l\u1EA1i nh\u1EADn tr\u1ECDn v\u1EB9n 100% \u0111i\u1EC3m g\u1ED1c (+${state.baseQuestionPoints || 10}\u0111) v\xE0 +${extraPotBonus}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} Ch\u1ED1t nh\u1EADn an to\xE0n! Quy\u1EBFt \u0111\u1ECBnh d\u1EEBng l\u1EA1i nh\u1EADn tr\u1ECDn v\u1EB9n 100% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (+${finalDelta} \u0111i\u1EC3m)!`;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
+    const rewardText = extraPotBonus > 0 ? `\u{1F6E1}\uFE0F Ch\u1ED1t nh\u1EADn an to\xE0n! Ti\xEAu hao 1 \u2764\uFE0F \u0111\u1EC3 nh\u1EADn tr\u1ECDn v\u1EB9n 100% \u0111i\u1EC3m g\u1ED1c (+${state.baseQuestionPoints || 10}\u0111) v\xE0 +${extraPotBonus}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m, c\xF2n ${remainingHearts} \u2764\uFE0F)!` : `\u{1F6E1}\uFE0F Ch\u1ED1t nh\u1EADn an to\xE0n! Ti\xEAu hao 1 \u2764\uFE0F \u0111\u1EC3 nh\u1EADn tr\u1ECDn v\u1EB9n 100% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (+${finalDelta} \u0111i\u1EC3m, c\xF2n ${remainingHearts} \u2764\uFE0F)!`;
     state.storyResult = {
       teamId: team.id,
       teamName: team.name,
@@ -4357,8 +4376,12 @@ function handleOneShotDoorsDecision({
     }
     if (chosenTile.givesHeart) {
       const heartsRecord = { ...state.teamHearts || {} };
-      heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-      state.teamHearts = heartsRecord;
+      const maxHearts = state.initialHeartsPerTeam ?? 3;
+      const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+      if (curHearts < maxHearts) {
+        heartsRecord[team.id] = curHearts + 1;
+        state.teamHearts = heartsRecord;
+      }
     }
     let victimTeamId;
     let victimTeamName;
@@ -8189,7 +8212,7 @@ function registerSocketHandlers(io2) {
         callback({ clientTime, serverTime: Date.now() });
       }
     });
-    socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
+    socket.on("room:join", async ({ code, playerName, playerId, teamId, passcode }, callback) => {
       try {
         const isSandbox = Boolean(socket.handshake.query?.sandbox === "1") || Boolean(playerName?.includes("\u{1F916}")) || Boolean(playerName?.includes("(Tester)"));
         if (!isSandbox) {
@@ -8234,6 +8257,21 @@ function registerSocketHandlers(io2) {
         }
         if (room.status === "FINISHED") {
           return callback({ success: false, error: "Tr\u1EADn \u0111\u1EA5u \u0111\xE3 k\u1EBFt th\xFAc" });
+        }
+        const roomCfg = typeof room.config === "object" && room.config !== null ? room.config : {};
+        const isExistingPlayer = Boolean(playerId && room.players?.some((p) => p.id === playerId));
+        if (roomCfg.isLocked && !isSandbox && !isExistingPlayer) {
+          return callback({ success: false, error: "Ph\xF2ng thi hi\u1EC7n \u0111ang b\u1ECB kh\xF3a b\u1EDFi Qu\u1EA3n tr\xF2" });
+        }
+        if (roomCfg.passcode && !isSandbox && !isExistingPlayer) {
+          const expectedPass = String(roomCfg.passcode).trim();
+          const providedPass = String(passcode || "").trim();
+          if (!providedPass) {
+            return callback({ success: false, error: "Vui l\xF2ng nh\u1EADp m\u1EADt kh\u1EA9u ph\xF2ng thi", requiresPasscode: true });
+          }
+          if (providedPass !== expectedPass) {
+            return callback({ success: false, error: "M\u1EADt kh\u1EA9u ph\xF2ng kh\xF4ng ch\xEDnh x\xE1c", requiresPasscode: true });
+          }
         }
         if (playerId && pendingDisconnects.has(playerId)) {
           clearTimeout(pendingDisconnects.get(playerId));
@@ -9180,6 +9218,19 @@ function registerSocketHandlers(io2) {
       const currentQ = questions[room.currentQuestion];
       if (!currentQ) return;
       await finalizeBuzzAnswer(io2, room.id, room.code, currentQ.id, isCorrect);
+    });
+    socket.on("admin:room:toggle_lock", async ({ code } = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+      const currentConfig = typeof room.config === "object" && room.config !== null ? room.config : {};
+      const newLocked = !Boolean(currentConfig.isLocked);
+      const updatedConfig = { ...currentConfig, isLocked: newLocked };
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: updatedConfig }
+      });
+      const refreshedState = await buildRoomState(room.id);
+      io2.to(`room:${room.code}`).emit("room:state", refreshedState);
     });
     socket.on("admin:buzz:start_answer", async (payload) => {
       const room = await getAdminRoom(socket);

@@ -2761,10 +2761,17 @@ export function handleFlipCard({
             },
           };
         }
+        let winCardHeartMaxed = false;
         if (winCard.givesHeart) {
           const heartsRecord = { ...(state.teamHearts || {}) };
-          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-          state.teamHearts = heartsRecord;
+          const maxHearts = state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          } else {
+            winCardHeartMaxed = true;
+          }
         }
 
         let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
@@ -2842,6 +2849,9 @@ export function handleFlipCard({
 
         if (stolenPoints && victimTeamName) {
           rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
+        }
+        if (winCardHeartMaxed) {
+          rewardText += ` (❤️ Đã đạt tối đa ${state.initialHeartsPerTeam ?? 3} tim - không hồi thêm)`;
         }
         if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
           const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
@@ -3092,10 +3102,17 @@ export function handleFlipCard({
           },
         };
       }
+      let firstTileHeartMaxed = false;
       if (firstTile.givesHeart) {
         const heartsRecord = { ...(state.teamHearts || {}) };
-        heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-        state.teamHearts = heartsRecord;
+        const maxHearts = state.initialHeartsPerTeam ?? 3;
+        const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+        if (curHearts < maxHearts) {
+          heartsRecord[team.id] = curHearts + 1;
+          state.teamHearts = heartsRecord;
+        } else {
+          firstTileHeartMaxed = true;
+        }
       }
 
       let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
@@ -3172,6 +3189,9 @@ export function handleFlipCard({
         : `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
       if (stolenPoints && victimTeamName) {
         rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
+      }
+      if (firstTileHeartMaxed) {
+        rewardText += ` (❤️ Đã đạt tối đa ${state.initialHeartsPerTeam ?? 3} tim - không hồi thêm)`;
       }
       if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
         const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
@@ -3608,10 +3628,17 @@ export function handleFlipCard({
             },
           };
         }
+        let tileHeartMaxed = false;
         if (tile.givesHeart) {
           const heartsRecord = { ...(state.teamHearts || {}) };
-          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-          state.teamHearts = heartsRecord;
+          const maxHearts = state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          } else {
+            tileHeartMaxed = true;
+          }
         }
 
         let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
@@ -3690,6 +3717,9 @@ export function handleFlipCard({
           rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
         }
 
+        if (tileHeartMaxed) {
+          rewardText += ` (❤️ Đã đạt tối đa ${state.initialHeartsPerTeam ?? 3} tim - không hồi thêm)`;
+        }
         if (stolenPoints && victimTeamName) {
           rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
         }
@@ -4613,9 +4643,17 @@ export function handleOneShotDoorsDecision({
   const multiplier = state.potMultiplier || 1;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // BƯỚC 2 - LỰA CHỌN A: CHỐT NHẬN 100% ĐIỂM GỐC NGAY (0 TIM, KẾT THÚC LƯỢT)
+  // BƯỚC 2 - LỰA CHỌN A: CHỐT NHẬN 100% ĐIỂM GỐC NGAY (TRỪ 1 TIM, KẾT THÚC LƯỢT)
   // ─────────────────────────────────────────────────────────────────────────
   if (decision === "TAKE_100_BASE") {
+    // Trừ 1 Tim của đội nếu đội còn Tim
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
+
     osState.phase = "RESOLVED";
     osState.allRevealed = true;
     state.tiles.forEach((t) => {
@@ -4629,10 +4667,11 @@ export function handleOneShotDoorsDecision({
 
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
 
     const rewardText = extraPotBonus > 0
-      ? `🎉 Chốt nhận an toàn! Quyết định dừng lại nhận trọn vẹn 100% điểm gốc (+${state.baseQuestionPoints || 10}đ) và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
-      : `🎉 Chốt nhận an toàn! Quyết định dừng lại nhận trọn vẹn 100% điểm gốc câu hỏi (+${finalDelta} điểm)!`;
+      ? `🛡️ Chốt nhận an toàn! Tiêu hao 1 ❤️ để nhận trọn vẹn 100% điểm gốc (+${state.baseQuestionPoints || 10}đ) và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm, còn ${remainingHearts} ❤️)!`
+      : `🛡️ Chốt nhận an toàn! Tiêu hao 1 ❤️ để nhận trọn vẹn 100% điểm gốc câu hỏi (+${finalDelta} điểm, còn ${remainingHearts} ❤️)!`;
 
     state.storyResult = {
       teamId: team.id,
@@ -4920,10 +4959,17 @@ export function handleOneShotDoorsDecision({
         },
       };
     }
+    let chosenTileHeartMaxed = false;
     if (chosenTile.givesHeart) {
       const heartsRecord = { ...(state.teamHearts || {}) };
-      heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-      state.teamHearts = heartsRecord;
+      const maxHearts = state.initialHeartsPerTeam ?? 3;
+      const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+      if (curHearts < maxHearts) {
+        heartsRecord[team.id] = curHearts + 1;
+        state.teamHearts = heartsRecord;
+      } else {
+        chosenTileHeartMaxed = true;
+      }
     }
 
     let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
@@ -5000,6 +5046,9 @@ export function handleOneShotDoorsDecision({
       rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
     }
 
+    if (chosenTileHeartMaxed) {
+      rewardText += ` (❤️ Đã đạt tối đa ${state.initialHeartsPerTeam ?? 3} tim - không hồi thêm)`;
+    }
     if (stolenPoints && victimTeamName) {
       rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
     }
@@ -5084,6 +5133,8 @@ export function handleAncientTarotDraw({
     riskTier,
     isSurvivalMode,
     timesStolenInCycle: state.timesStolenInCycle,
+    currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
+    maxHearts: state.initialHeartsPerTeam ?? 3,
   });
 
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText } = effectResult;
@@ -5565,6 +5616,8 @@ export function resolveWheelCardEffect({
   isSurvivalMode = false,
   timesStolenInCycle = {},
   shieldTransformedCardKey,
+  currentHearts = 1,
+  maxHearts = 3,
 }: {
   cardKey: AncientTarotCardKey;
   basePoints: number;
@@ -5576,6 +5629,8 @@ export function resolveWheelCardEffect({
   isSurvivalMode?: boolean;
   timesStolenInCycle?: Record<string, number>;
   shieldTransformedCardKey?: AncientTarotCardKey;
+  currentHearts?: number;
+  maxHearts?: number;
 }): {
   drawnCard: AncientTarotDrawnCard;
   finalScoreDelta: number;
@@ -5888,7 +5943,10 @@ export function resolveWheelCardEffect({
       if (cardKey === "THE_EMPEROR") {
         rewardText = `🛡️ ${seg.nameVi} (${seg.nameEn}): Uy quyền Hoàng Đế! Nhận trọn vẹn +${basePoints}đ (x1) và được kích hoạt Khiên Thần hộ thể!`;
       } else if (cardKey === "STRENGTH") {
-        rewardText = `❤️ ${seg.nameVi} (${seg.nameEn}): Ý chí kiên cường! Nhận trọn vẹn +${basePoints}đ (x1) và hồi phục thêm 1 Trái Tim sinh mệnh!`;
+        const curHearts = currentHearts;
+        rewardText = curHearts >= maxHearts
+          ? `❤️ ${seg.nameVi} (${seg.nameEn}): Ý chí kiên cường! Nhận trọn vẹn +${basePoints}đ (x1) (Đã đạt tối đa ❤️ ${maxHearts} - không hồi thêm)!`
+          : `❤️ ${seg.nameVi} (${seg.nameEn}): Ý chí kiên cường! Nhận trọn vẹn +${basePoints}đ (x1) và hồi phục thêm 1 Trái Tim sinh mệnh!`;
       } else if (dynamicReason === "DOMINANT_CAPPED") {
         rewardText = `⚖️ ${seg.nameVi}: Cán Cân Định Mệnh! Đội đang dẫn đầu nhận thưởng an toàn +${basePoints}đ thay vì cướp điểm của đội yếu hơn!`;
       }
@@ -6297,6 +6355,8 @@ export function handleAncientTarotSpinWheel({
     isSurvivalMode,
     timesStolenInCycle: state.timesStolenInCycle,
     shieldTransformedCardKey,
+    currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
+    maxHearts: state.initialHeartsPerTeam ?? 3,
   });
 
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
@@ -6391,8 +6451,12 @@ export function handleAncientTarotSpinWheel({
   }
   if (drawnCard.key === "STRENGTH" && !isSurvivalMode) {
     const heartsRecord = { ...(state.teamHearts || {}) };
-    heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
-    state.teamHearts = heartsRecord;
+    const maxHearts = state.initialHeartsPerTeam ?? 3;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    if (curHearts < maxHearts) {
+      heartsRecord[team.id] = curHearts + 1;
+      state.teamHearts = heartsRecord;
+    }
   }
 
   state.potPoints = 0;
@@ -6557,6 +6621,8 @@ export function handleAncientTarotGambleDecision({
     isGambleSpin: true,
     isSurvivalMode: false,
     timesStolenInCycle: state.timesStolenInCycle,
+    currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
+    maxHearts: state.initialHeartsPerTeam ?? 3,
   });
 
   const { drawnCard, finalScoreDelta, isBomb, scorePenalty, scoreDeltas, rewardText, isGambleTrigger } = effectResult;

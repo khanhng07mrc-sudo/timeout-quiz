@@ -1394,7 +1394,7 @@ export default function MysteryQuestBoard({
                 </div>
                 {oneShotState?.phase === "STAGE_1_DECISION" ? (
                   <p className="text-[11px] text-yellow-300 font-bold leading-snug">
-                    Radar Tầng 1 đã quét! Bạn có quyền chốt nhận 100% điểm gốc ngay (0 ❤️) hoặc tiếp tục chọn 2 trong 4 cửa!
+                    Radar Tầng 1 đã quét! Bạn có quyền chốt nhận 100% điểm gốc ngay (-1 ❤️) hoặc tiếp tục chọn 2 trong 4 cửa!
                   </p>
                 ) : oneShotState?.phase === "SELECT_2" ? (
                   <p className="text-[11px] text-yellow-300 font-bold leading-snug">
@@ -1843,7 +1843,7 @@ export default function MysteryQuestBoard({
                       {!isGreen && !isYellow && <span>🔴 ĐÈN ĐỎ: Radar phát hiện có từ 2 kíp nổ trở lên trong 4 cửa này!</span>}
                     </div>
                     <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                      Bạn có thể chọn <strong>Nhận ngay 100% điểm gốc</strong> và kết thúc lượt an toàn, HOẶC <strong>Tiếp tục chọn 2 cửa</strong> để tiến vào vòng trong!
+                      Bạn có thể chọn <strong>Nhận ngay 100% điểm gốc (-1 ❤️)</strong> và kết thúc lượt an toàn, HOẶC <strong>Tiếp tục chọn 2 cửa</strong> để tiến vào vòng trong!
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                       <button
@@ -1853,7 +1853,7 @@ export default function MysteryQuestBoard({
                         className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
                       >
                         <span>💰</span>
-                        <span>Nhận 100% Điểm (+{baseQuestionPoints || 10}đ)</span>
+                        <span>Nhận 100% Điểm (+{baseQuestionPoints || 10}đ | -1 ❤️)</span>
                       </button>
                       <button
                         type="button"

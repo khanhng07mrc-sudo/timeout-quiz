@@ -1676,7 +1676,7 @@ export function registerSocketHandlers(io: IO) {
     });
 
     // ── Join Room ────────────────────────────────────────────────────────────
-    socket.on("room:join", async ({ code, playerName, playerId, teamId }, callback) => {
+    socket.on("room:join", async ({ code, playerName, playerId, teamId, passcode }: any, callback) => {
       try {
         const isSandbox =
           Boolean(socket.handshake.query?.sandbox === "1") ||
@@ -1728,6 +1728,26 @@ export function registerSocketHandlers(io: IO) {
         }
         if (room.status === "FINISHED") {
           return callback({ success: false, error: "Trận đấu đã kết thúc" });
+        }
+
+        const roomCfg = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+        const isExistingPlayer = Boolean(playerId && room.players?.some((p: any) => p.id === playerId));
+
+        // 1. Kiểm tra Khóa phòng (Host Lock)
+        if (roomCfg.isLocked && !isSandbox && !isExistingPlayer) {
+          return callback({ success: false, error: "Phòng thi hiện đang bị khóa bởi Quản trò" });
+        }
+
+        // 2. Kiểm tra Mật khẩu phòng (Passcode)
+        if (roomCfg.passcode && !isSandbox && !isExistingPlayer) {
+          const expectedPass = String(roomCfg.passcode).trim();
+          const providedPass = String((socket.handshake.query?.passcode as string) || (arguments[0]?.passcode as string) || "").trim();
+          if (!providedPass) {
+            return callback({ success: false, error: "Vui lòng nhập mật khẩu phòng thi", requiresPasscode: true });
+          }
+          if (providedPass !== expectedPass) {
+            return callback({ success: false, error: "Mật khẩu phòng không chính xác", requiresPasscode: true });
+          }
         }
 
         // Cancel any pending disconnect timer for this playerId
@@ -2933,6 +2953,24 @@ export function registerSocketHandlers(io: IO) {
       if (!currentQ) return;
 
       await finalizeBuzzAnswer(io, room.id, room.code, currentQ.id, isCorrect);
+    });
+
+    // ── Admin: Room Toggle Lock ───────────────────────────────────────────────
+    socket.on("admin:room:toggle_lock", async ({ code }: any = {}) => {
+      const room = await getAdminRoom(socket, code);
+      if (!room) return;
+
+      const currentConfig = (typeof room.config === "object" && room.config !== null) ? (room.config as any) : {};
+      const newLocked = !Boolean(currentConfig.isLocked);
+      const updatedConfig = { ...currentConfig, isLocked: newLocked };
+
+      await prisma.room.update({
+        where: { id: room.id },
+        data: { config: updatedConfig },
+      });
+
+      const refreshedState = await buildRoomState(room.id);
+      io.to(`room:${room.code}`).emit("room:state", refreshedState);
     });
 
     // ── Admin: Buzz Start Answer ──────────────────────────────────────────────

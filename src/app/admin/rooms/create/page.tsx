@@ -86,6 +86,8 @@ export default function CreateRoomPage() {
 
   // Step 1: Basic settings
   const [roomName, setRoomName] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [isLockedInitially, setIsLockedInitially] = useState(false);
   const [mode, setMode] = useState("CLASSIC");
   const [teamMode, setTeamMode] = useState<"INDIVIDUAL" | "TEAM">("TEAM");
   const [bouncebackQuestionsPerTurn, setBouncebackQuestionsPerTurn] = useState(1);
@@ -286,6 +288,8 @@ export default function CreateRoomPage() {
             matchMaxQuestions: isCustomQuestionCount ? Math.max(1, Number(matchMaxQuestions) || 12) : 0,
             questionAllocationStrategy,
             mysteryQuestTurnsPerTeam: mode === "MYSTERY_QUEST" ? mysteryQuestTurnsPerTeam : 2,
+            passcode: passcode.trim() || undefined,
+            isLocked: isLockedInitially,
           },
         }),
       });
@@ -357,6 +361,49 @@ export default function CreateRoomPage() {
               placeholder="Quiz Trí Tuệ Khởi Đầu Năm..."
               className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/60 backdrop-blur-md border border-purple-500/30 text-white text-base focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
             />
+          </div>
+
+          {/* Mật khẩu phòng (Passcode) & Khóa phòng */}
+          <div className="p-4 rounded-2xl bg-[#0e1022]/70 border border-purple-500/25 backdrop-blur-md space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-semibold text-slate-200 flex items-center gap-1.5">
+                <span>🔐</span>
+                <span>Bảo mật phòng thi (Mật khẩu / Khóa phòng)</span>
+              </label>
+              <span className="text-[11px] text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-500/30">
+                Nâng cao
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Thiết lập mật khẩu hoặc khóa phòng để ngăn người lạ vào tự do. Quản trò có thể khóa/mở phòng bất kỳ lúc nào trong trận đấu.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                  Mật khẩu phòng (Passcode tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  placeholder="VD: 1234 hoặc PASS2026"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 transition"
+                  maxLength={20}
+                />
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-black/30 border border-white/10">
+                <div>
+                  <span className="text-xs font-bold text-white block">Khóa phòng khi tạo</span>
+                  <span className="text-[10px] text-slate-400">Chặn thí sinh vào cho tới khi mở</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={isLockedInitially}
+                  onChange={(e) => setIsLockedInitially(e.target.checked)}
+                  className="w-5 h-5 accent-purple-600 rounded cursor-pointer"
+                />
+              </div>
+            </div>
           </div>
 
           <div>

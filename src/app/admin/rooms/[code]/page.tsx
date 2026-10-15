@@ -689,6 +689,11 @@ export default function AdminRoomPage() {
     setTimeout(() => setCopiedHostLink(false), 3000);
   };
 
+  const handleToggleLock = () => {
+    if (!socketRef.current) return;
+    socketRef.current.emit("admin:room:toggle_lock", { code });
+  };
+
   const handleDelete = async () => {
     if (!confirm(`Xóa phòng "${roomState?.name ?? code}"? Hành động này không thể hoàn tác!`)) return;
     setDeleteLoading(true);
@@ -745,7 +750,7 @@ export default function AdminRoomPage() {
       if (hostKey) headers["x-host-key"] = hostKey;
 
       const res = await fetch(`/api/rooms/${code}`, {
-        method: "PATCH",
+        method: "PUT",
         headers,
         body: JSON.stringify({ quizBankId: bankId || null }),
       });
@@ -839,6 +844,16 @@ export default function AdminRoomPage() {
                 Trả lời qua MC
               </span>
             )}
+            {roomState?.config.isLocked && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 inline-flex items-center gap-1.5 animate-pulse">
+                🔒 Đã khóa phòng
+              </span>
+            )}
+            {roomState?.config.passcode && (
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 inline-flex items-center gap-1.5">
+                🔑 Pass: {roomState.config.passcode}
+              </span>
+            )}
           </div>
           <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
             Mã: <span className="font-mono font-bold text-white">{code}</span>
@@ -846,6 +861,18 @@ export default function AdminRoomPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap sm:justify-end">
+          <button
+            onClick={handleToggleLock}
+            title={roomState?.config.isLocked ? "Mở khóa phòng cho thí sinh vào" : "Khóa phòng - chặn thí sinh lạ vào"}
+            className={`px-3.5 py-2 rounded-xl border font-medium text-sm transition-colors flex items-center gap-1.5 whitespace-nowrap shadow-sm shrink-0 ${
+              roomState?.config.isLocked
+                ? "bg-rose-500/20 border-rose-500/50 text-rose-300 hover:bg-rose-500/30"
+                : "glass border-border hover:border-amber-400 text-muted-foreground hover:text-white"
+            }`}
+          >
+            <span>{roomState?.config.isLocked ? "🔒" : "🔓"}</span>
+            <span className="whitespace-nowrap">{roomState?.config.isLocked ? "Đã khóa phòng" : "Khóa phòng"}</span>
+          </button>
           <button
             onClick={handleCopyHostLink}
             title="Sao chép link điều khiển bí mật có chứa Host Key"

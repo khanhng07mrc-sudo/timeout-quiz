@@ -14,6 +14,7 @@ const NAV_ITEMS: { href: string; icon: SystemIconName; label: string; desc: stri
   { href: "/admin/rooms", icon: "rooms", label: "Phòng đấu chính", desc: "Quản lý trận đấu" },
   { href: "/admin/sandbox", icon: "sandbox", label: "Sandbox Studio", desc: "Test độc lập trên máy" },
   { href: "/display", icon: "display", label: "Màn hình chiếu", desc: "TV & Máy chiếu" },
+  { href: "/play", icon: "device", label: "Vào thi đấu", desc: "Thí sinh & Thiết bị" },
 ];
 
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {

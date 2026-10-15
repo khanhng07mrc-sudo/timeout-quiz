@@ -6978,48 +6978,54 @@ export default function AdminSandboxPage() {
                       <span>Phao đáp án</span>
                     </button>
                     {showMcCheatSheet && (
-                      <div className="absolute top-full mt-1.5 right-0 w-80 p-3 rounded-2xl bg-[#151728]/95 border border-amber-500/40 shadow-2xl backdrop-blur-md z-50 text-xs space-y-2 animate-fade-in text-white text-left">
-                        <div className="flex items-center justify-between border-b border-amber-500/20 pb-1.5">
-                          <div className="flex items-center gap-1.5 font-black text-amber-300">
-                            <span>🔑</span>
-                            <span>Phao đáp án & Lời giải MC</span>
+                      <>
+                        <div
+                          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
+                          onClick={() => setShowMcCheatSheet(false)}
+                        />
+                        <div className="absolute top-full mt-1.5 left-0 sm:left-auto sm:right-0 w-84 max-w-[90vw] p-3 rounded-2xl bg-[#151728]/98 border border-amber-500/50 shadow-2xl backdrop-blur-xl z-50 text-xs space-y-2 animate-fade-in text-white text-left ring-1 ring-amber-400/20">
+                          <div className="flex items-center justify-between border-b border-amber-500/20 pb-1.5">
+                            <div className="flex items-center gap-1.5 font-black text-amber-300">
+                              <span>🔑</span>
+                              <span>Phao đáp án & Lời giải MC</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setShowMcCheatSheet(false)}
+                              className="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-white/10 cursor-pointer"
+                            >
+                              ✕
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setShowMcCheatSheet(false)}
-                            className="text-slate-400 hover:text-white text-xs px-1 cursor-pointer"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="space-y-1.5">
-                          <div className="flex items-start gap-1.5">
-                            <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
-                            <span className="font-bold text-emerald-300">
-                              {(() => {
-                                if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
-                                  const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
-                                  if (correctOpts.length > 0) return correctOpts.map((o: any) => o.text).join(", ");
-                                }
-                                if (adminQuestionData.answer) {
-                                  return Array.isArray(adminQuestionData.answer)
-                                    ? adminQuestionData.answer.join(", ")
-                                    : String(adminQuestionData.answer);
-                                }
-                                return "Chưa có đáp án cấu hình";
-                              })()}
-                            </span>
-                          </div>
-                          {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                          <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
                             <div className="flex items-start gap-1.5">
-                              <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
-                              <span className="text-amber-100/90 leading-relaxed text-[11px]">
-                                {adminQuestionData.explanation || currentQuestion.question.hint}
+                              <span className="font-semibold text-amber-200 shrink-0">Đáp án chuẩn:</span>
+                              <span className="font-bold text-emerald-300">
+                                {(() => {
+                                  if (adminQuestionData.options && Array.isArray(adminQuestionData.options)) {
+                                    const correctOpts = adminQuestionData.options.filter((o: any) => o.isCorrect);
+                                    if (correctOpts.length > 0) return correctOpts.map((o: any) => o.text).join(", ");
+                                  }
+                                  if (adminQuestionData.answer) {
+                                    return Array.isArray(adminQuestionData.answer)
+                                      ? adminQuestionData.answer.join(", ")
+                                      : String(adminQuestionData.answer);
+                                  }
+                                  return "Chưa có đáp án cấu hình";
+                                })()}
                               </span>
                             </div>
-                          )}
+                            {(adminQuestionData.explanation || currentQuestion.question.hint) && (
+                              <div className="flex items-start gap-1.5">
+                                <span className="font-semibold text-amber-200 shrink-0">💡 Giải thích MC:</span>
+                                <span className="text-amber-100/90 leading-relaxed text-[11px]">
+                                  {adminQuestionData.explanation || currentQuestion.question.hint}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 )}

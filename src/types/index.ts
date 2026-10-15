@@ -625,6 +625,9 @@ export interface GameConfig {
   autoTimerStart?: boolean;
   initialTeamScore?: number;
   questionAllocationStrategy?: "ORIGINAL_POINTS" | "BLOOM_BALANCED";
+  // Room security
+  passcode?: string;
+  isLocked?: boolean;
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -1324,6 +1327,7 @@ export interface JoinResult {
   teamId?: string;
   roomState?: RoomState;
   error?: string;
+  requiresPasscode?: boolean;
 }
 
 export interface TeamRevealSummary {
@@ -1582,7 +1586,8 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   "admin:question:get_data": (payload?: { code?: string }) => void;
   "time:sync": (clientTime: number, callback: (result: { clientTime: number; serverTime: number }) => void) => void;
-  "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string }, callback: (result: JoinResult) => void) => void;
+  "room:join": (payload: { code: string; playerName: string; playerId?: string; teamId?: string; passcode?: string }, callback: (result: JoinResult) => void) => void;
+  "admin:room:toggle_lock": (payload: { code: string }) => void;
   "room:leave": () => void;
   "game:answer:submit": (payload: { questionId: string; answer: string | string[]; teamId?: string; playerId?: string; clientAnsweredAt?: number }) => void;
   "game:buzz": (payload?: { clientBuzzedAt?: number }) => void;

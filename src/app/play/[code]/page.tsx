@@ -520,12 +520,14 @@ export default function PlayPage() {
       }
       const currentPid = playerIdRef.current || savedPlayerId;
       const currentName = paramName || sessionStorage.getItem("playerName") || localStorage.getItem("playerName") || playerName;
+      const savedPasscode = searchParams?.get("passcode") || (typeof window !== "undefined" ? sessionStorage.getItem(`room_passcode_${code}`) : null) || undefined;
 
       socket.emit("room:join", {
         code,
         playerName: currentName,
         playerId: currentPid,
         teamId: myTeamIdRef.current || (paramTeamId ? paramTeamId : undefined),
+        passcode: savedPasscode,
       }, (result) => {
         if (result.success) {
           setErrorMessage(null);
@@ -552,12 +554,15 @@ export default function PlayPage() {
           const err = result.error ?? "Không thể vào phòng thi";
           setErrorMessage(err);
 
-          // Security & Stability: Nếu phòng vĩnh viễn không tồn tại hoặc đã kết thúc/đã đầy, dừng retry để tránh DDoS server
+          // Security & Stability: Nếu phòng vĩnh viễn không tồn tại, đã kết thúc, đã khóa hoặc sai mật khẩu, dừng retry để tránh DDoS server
           const isFatalRoomError =
             err.includes("không tồn tại") ||
             err.includes("Không tìm thấy phòng") ||
             err.includes("đã kết thúc") ||
-            err.includes("đạt giới hạn");
+            err.includes("đạt giới hạn") ||
+            err.includes("Mật khẩu") ||
+            err.includes("mật khẩu") ||
+            err.includes("khóa");
 
           if (isFatalRoomError) {
             setIsReconnecting(false);
@@ -1409,24 +1414,73 @@ export default function PlayPage() {
   ) : null;
 
   if (errorMessage && !roomState) {
+    const isPasscodeError = errorMessage.toLowerCase().includes("mật khẩu");
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="glass rounded-2xl p-6 max-w-sm text-center border border-red-500/30 space-y-3">
-          <div className="text-3xl">⚠️</div>
+        <div className="glass rounded-2xl p-6 max-w-sm text-center border border-red-500/30 space-y-4">
+          <div className="text-3xl">{isPasscodeError ? "🔐" : "⚠️"}</div>
           <p className="text-sm font-bold text-red-300">{errorMessage}</p>
-          <button
-            onClick={() => {
-              if (socketRef.current) {
-                if (!socketRef.current.connected) socketRef.current.connect();
-                joinRoomRef.current();
-              } else {
-                window.location.reload();
-              }
-            }}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer"
-          >
-            Thử kết nối lại
-          </button>
+          {isPasscodeError && (
+            <div className="space-y-2 text-left">
+              <label className="text-xs font-semibold text-slate-300">Nhập mật khẩu phòng:</label>
+              <input
+                type="password"
+                placeholder="Mật khẩu phòng..."
+                className="w-full px-3 py-2 rounded-xl bg-slate-900/90 border border-purple-500/50 text-white text-sm focus:outline-none focus:border-purple-400"
+                id="inline-passcode-input"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) {
+                      sessionStorage.setItem(`room_passcode_${code}`, val);
+                      if (socketRef.current) {
+                        if (!socketRef.current.connected) socketRef.current.connect();
+                        joinRoomRef.current();
+                      }
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById("inline-passcode-input") as HTMLInputElement;
+                  const val = input?.value.trim();
+                  if (val) {
+                    sessionStorage.setItem(`room_passcode_${code}`, val);
+                    if (socketRef.current) {
+                      if (!socketRef.current.connected) socketRef.current.connect();
+                      joinRoomRef.current();
+                    }
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold text-xs cursor-pointer shadow-md"
+              >
+                Xác nhận mật khẩu
+              </button>
+            </div>
+          )}
+          <div className="flex gap-2 justify-center pt-2">
+            <button
+              onClick={() => {
+                if (socketRef.current) {
+                  if (!socketRef.current.connected) socketRef.current.connect();
+                  joinRoomRef.current();
+                } else {
+                  window.location.reload();
+                }
+              }}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs cursor-pointer"
+            >
+              Thử kết nối lại
+            </button>
+            <button
+              onClick={() => router.push("/play")}
+              className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs cursor-pointer"
+            >
+              Về sảnh thi đấu
+            </button>
+          </div>
         </div>
       </div>
     );

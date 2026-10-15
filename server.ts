@@ -15,9 +15,13 @@ async function ensureDatabaseSchema() {
     for (const m of modes) {
       await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {});
     }
-    console.log("[DB] GameMode enum verified/synchronized with database.");
+    await prisma.$executeRawUnsafe(`ALTER TYPE "QuestionType" ADD VALUE IF NOT EXISTS 'CLOZE_DROPDOWN'`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "mediaPlaybackMode" TEXT DEFAULT 'AFTER_PLAY'`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "allowManualGrading" BOOLEAN DEFAULT false`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingCriteria" TEXT`).catch(() => {});
+    console.log("[DB] GameMode and Question schema verified/synchronized with database.");
   } catch (err) {
-    console.warn("[DB] Note on enum sync:", err);
+    console.warn("[DB] Note on schema sync:", err);
   }
 }
 

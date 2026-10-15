@@ -7919,18 +7919,26 @@ async function getAdminRoom(socket, payloadCode) {
     }
   }
   if (!roomId && payloadCode) {
-    const rByPayload = await prisma.room.findUnique({
-      where: { code: payloadCode },
-      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-    });
+    let rByPayload = null;
+    try {
+      rByPayload = await prisma.room.findUnique({
+        where: { code: payloadCode },
+        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+      });
+    } catch {
+      rByPayload = await prisma.room.findUnique({
+        where: { code: payloadCode },
+        include: { quizBank: true }
+      }).catch(() => null);
+    }
     if (rByPayload) {
       roomId = rByPayload.id;
-      adminSockets.set(socket.id, roomId);
+      adminSockets.set(socket.id, rByPayload.id);
       socket.join(`room:${payloadCode}`);
       socket.join(`room:${payloadCode}:admin`);
-      roomCache.set(roomId, rByPayload);
+      roomCache.set(rByPayload.id, rByPayload);
       if (rByPayload.quizBank?.questions) {
-        roomQuestionsCache.set(roomId, rByPayload.quizBank.questions);
+        roomQuestionsCache.set(rByPayload.id, rByPayload.quizBank.questions);
       }
       restoreGameStateSnapshot(rByPayload);
       return rByPayload;
@@ -7941,16 +7949,24 @@ async function getAdminRoom(socket, payloadCode) {
       if (roomName.startsWith("room:") && roomName.endsWith(":admin")) {
         const extractedCode = roomName.replace("room:", "").replace(":admin", "");
         if (extractedCode) {
-          const rByCode = await prisma.room.findUnique({
-            where: { code: extractedCode },
-            include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-          });
+          let rByCode = null;
+          try {
+            rByCode = await prisma.room.findUnique({
+              where: { code: extractedCode },
+              include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+            });
+          } catch {
+            rByCode = await prisma.room.findUnique({
+              where: { code: extractedCode },
+              include: { quizBank: true }
+            }).catch(() => null);
+          }
           if (rByCode) {
             roomId = rByCode.id;
-            adminSockets.set(socket.id, roomId);
-            roomCache.set(roomId, rByCode);
+            adminSockets.set(socket.id, rByCode.id);
+            roomCache.set(rByCode.id, rByCode);
             if (rByCode.quizBank?.questions) {
-              roomQuestionsCache.set(roomId, rByCode.quizBank.questions);
+              roomQuestionsCache.set(rByCode.id, rByCode.quizBank.questions);
             }
             restoreGameStateSnapshot(rByCode);
             return rByCode;
@@ -7971,10 +7987,18 @@ async function getAdminRoom(socket, payloadCode) {
         if (!cached.quizBank) cached.quizBank = { questions: qCached };
         else cached.quizBank.questions = qCached;
       } else {
-        const r2 = await prisma.room.findUnique({
-          where: { id: roomId },
-          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-        });
+        let r2 = null;
+        try {
+          r2 = await prisma.room.findUnique({
+            where: { id: roomId },
+            include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+          });
+        } catch {
+          r2 = await prisma.room.findUnique({
+            where: { id: roomId },
+            include: { quizBank: true }
+          }).catch(() => null);
+        }
         if (r2) {
           roomCache.set(roomId, r2);
           if (r2.quizBank?.questions) roomQuestionsCache.set(roomId, r2.quizBank.questions);
@@ -7986,10 +8010,18 @@ async function getAdminRoom(socket, payloadCode) {
     restoreGameStateSnapshot(cached);
     return cached;
   }
-  const r = await prisma.room.findUnique({
-    where: { id: roomId },
-    include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-  });
+  let r = null;
+  try {
+    r = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+    });
+  } catch {
+    r = await prisma.room.findUnique({
+      where: { id: roomId },
+      include: { quizBank: true }
+    }).catch(() => null);
+  }
   if (r) {
     roomCache.set(roomId, r);
     if (r.quizBank?.questions) {
@@ -8169,18 +8201,34 @@ function registerSocketHandlers(io2) {
             }
           }
         }
-        const room = await prisma.room.findUnique({
-          where: { code },
-          include: {
-            teams: {
-              orderBy: { createdAt: "asc" },
-              include: { players: true, powerupCards: true }
-            },
-            players: true,
-            powerupCards: { where: { teamId: null } },
-            quizBank: { include: { questions: { orderBy: { order: "asc" } } } }
-          }
-        });
+        let room = null;
+        try {
+          room = await prisma.room.findUnique({
+            where: { code },
+            include: {
+              teams: {
+                orderBy: { createdAt: "asc" },
+                include: { players: true, powerupCards: true }
+              },
+              players: true,
+              powerupCards: { where: { teamId: null } },
+              quizBank: { include: { questions: { orderBy: { order: "asc" } } } }
+            }
+          });
+        } catch {
+          room = await prisma.room.findUnique({
+            where: { code },
+            include: {
+              teams: {
+                orderBy: { createdAt: "asc" },
+                include: { players: true, powerupCards: true }
+              },
+              players: true,
+              powerupCards: { where: { teamId: null } },
+              quizBank: true
+            }
+          }).catch(() => null);
+        }
         if (!room) {
           return callback({ success: false, error: "Kh\xF4ng t\xECm th\u1EA5y ph\xF2ng ch\u01A1i" });
         }
@@ -8478,10 +8526,18 @@ function registerSocketHandlers(io2) {
             callback = arg2;
           }
         }
-        const room = await prisma.room.findUnique({
-          where: { code },
-          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-        });
+        let room = null;
+        try {
+          room = await prisma.room.findUnique({
+            where: { code },
+            include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+          });
+        } catch {
+          room = await prisma.room.findUnique({
+            where: { code },
+            include: { quizBank: true }
+          }).catch(() => null);
+        }
         if (!room) {
           return callback?.({ success: false, error: "Ph\xF2ng kh\xF4ng t\u1ED3n t\u1EA1i" });
         }
@@ -8722,10 +8778,18 @@ function registerSocketHandlers(io2) {
     socket.on("display:join", async (code) => {
       socket.join(`room:${code}`);
       socket.join(`room:${code}:display`);
-      const room = await prisma.room.findUnique({
-        where: { code },
-        include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
-      });
+      let room = null;
+      try {
+        room = await prisma.room.findUnique({
+          where: { code },
+          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } }
+        });
+      } catch {
+        room = await prisma.room.findUnique({
+          where: { code },
+          include: { quizBank: true }
+        }).catch(() => null);
+      }
       if (room) {
         restoreGameStateSnapshot(room);
         const state = await buildRoomState(room.id);
@@ -16639,9 +16703,17 @@ async function ensureDatabaseSchema() {
       await prisma.$executeRawUnsafe(`ALTER TYPE "GameMode" ADD VALUE IF NOT EXISTS '${m}'`).catch(() => {
       });
     }
-    console.log("[DB] GameMode enum verified/synchronized with database.");
+    await prisma.$executeRawUnsafe(`ALTER TYPE "QuestionType" ADD VALUE IF NOT EXISTS 'CLOZE_DROPDOWN'`).catch(() => {
+    });
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "mediaPlaybackMode" TEXT DEFAULT 'AFTER_PLAY'`).catch(() => {
+    });
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "allowManualGrading" BOOLEAN DEFAULT false`).catch(() => {
+    });
+    await prisma.$executeRawUnsafe(`ALTER TABLE "Question" ADD COLUMN IF NOT EXISTS "gradingCriteria" TEXT`).catch(() => {
+    });
+    console.log("[DB] GameMode and Question schema verified/synchronized with database.");
   } catch (err) {
-    console.warn("[DB] Note on enum sync:", err);
+    console.warn("[DB] Note on schema sync:", err);
   }
 }
 process.on("unhandledRejection", (reason, promise) => {

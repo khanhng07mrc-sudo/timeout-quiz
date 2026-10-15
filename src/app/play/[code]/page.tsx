@@ -243,11 +243,25 @@ export default function PlayPage() {
           setActiveTeamId(teamId);
           setSelectedTeamId(teamId);
           if (teamName) setActivePlayerName(teamName);
+          setErrorMessage(null);
+          setConnected(true);
+
+          // Synchronize all teams' answers into in-memory store so each machine is independent
+          if (e.data.allTeamAnswers && typeof e.data.allTeamAnswers === "object") {
+            Object.entries(e.data.allTeamAnswers).forEach(([tid, ans]) => {
+              if (ans !== undefined && ans !== null) {
+                teamAnswersRef.current.set(tid, ans as any);
+              }
+            });
+          }
 
           if (currentAns !== undefined && currentAns !== null) {
             teamAnswersRef.current.set(teamId, currentAns);
           }
-          const savedTeamAns = teamAnswersRef.current.get(teamId) ?? null;
+          const savedTeamAns = (currentAns !== undefined && currentAns !== null)
+            ? currentAns
+            : (teamAnswersRef.current.get(teamId) ?? null);
+
           setSubmittedAnswer(savedTeamAns);
           setAnswered(savedTeamAns !== null && savedTeamAns !== undefined);
 
@@ -257,49 +271,41 @@ export default function PlayPage() {
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
 
-          if (socketRef.current?.connected) {
-            socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId }, (res: any) => {
-              if (!res?.success && isSandboxRef.current) {
-                socketRef.current?.emit("room:join", {
-                  code,
-                  playerName: "Bạn (Tester)",
-                  playerId: teamPlayerId,
-                  teamId,
-                }, (result) => {
-                  if (result?.success && result.roomState) {
-                    setRoomState(result.roomState);
-                    if (
-                      result.roomState.mode === "MYSTERY_QUEST" &&
-                      result.roomState.mysteryQuestState &&
-                      result.roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
-                    ) {
-                      setCurrentQuestion(null);
-                      setRevealPayload(null);
-                      setTimer(null);
-                      setAnswered(false);
-                    }
-                  }
-                });
-              }
-            });
+          // Instantly sync question, timer, and reveal state from sandbox host if provided
+          if (e.data.currentQuestion !== undefined) {
+            setCurrentQuestion(e.data.currentQuestion);
           }
+          if (e.data.timer !== undefined) {
+            setTimer(e.data.timer);
+          }
+          if (e.data.revealPayload !== undefined) {
+            setRevealPayload(e.data.revealPayload);
+          }
+
+          // Instantly adopt roomState without waiting for network round-trip
           setRoomState((prev) => {
-            if (!prev) return prev;
-            const pName = "Bạn (Tester)";
-            const exists = prev.players.some((p) => p.id === teamPlayerId);
+            const base = e.data.roomState || prev;
+            if (!base) return prev;
+            const pName = teamName || "Bạn (Tester)";
+            const exists = base.players.some((p: any) => p.id === teamPlayerId);
             let updatedPlayers: any[];
             if (exists) {
-              updatedPlayers = prev.players.map((p) =>
+              updatedPlayers = base.players.map((p: any) =>
                 p.id === teamPlayerId ? { ...p, teamId, name: pName } : p
               );
             } else {
               updatedPlayers = [
-                ...prev.players,
+                ...base.players,
                 { id: teamPlayerId, name: pName, score: 0, teamId, isHost: true, isOnline: true },
               ];
             }
-            return { ...prev, players: updatedPlayers };
+            return { ...base, players: updatedPlayers };
           });
+
+          // Inform backend in background (fire-and-forget, 0ms blocking)
+          if (socketRef.current?.connected) {
+            socketRef.current.emit("player:select:team", { teamId, playerId: teamPlayerId });
+          }
         }
         return;
       }

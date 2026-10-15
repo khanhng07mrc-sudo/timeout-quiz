@@ -6375,7 +6375,16 @@ export default function AdminSandboxPage() {
     }
 
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-    const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
+    const targetAnswer = isOfflineSandbox
+      ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+      : (teamSelectedAnswers[targetTeam.id] || null);
+
+    const allAnswers = isOfflineSandbox
+      ? Object.fromEntries(
+          Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+        )
+      : teamSelectedAnswers;
+
     playerIframeRef.current?.contentWindow?.postMessage(
       {
         type: "SWITCH_ACTIVE_TEAM",
@@ -6383,6 +6392,11 @@ export default function AdminSandboxPage() {
         teamName: targetName,
         teamIndex: idx,
         currentAnswer: targetAnswer,
+        allTeamAnswers: allAnswers,
+        roomState,
+        currentQuestion,
+        timer,
+        revealPayload,
         payload: {
           teamId: targetTeam.id,
           teamName: targetName,
@@ -8505,9 +8519,16 @@ export default function AdminSandboxPage() {
                       syncToIframes();
                     }
                     const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
-                    if (targetTeam && (isOfflineSandbox || activeTeamIndex > 0)) {
+                    if (targetTeam) {
                       const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-                      const targetAnswer = isOfflineSandbox ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null) : null;
+                      const targetAnswer = isOfflineSandbox
+                        ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+                        : (teamSelectedAnswers[targetTeam.id] || null);
+                      const allAnswers = isOfflineSandbox
+                        ? Object.fromEntries(
+                            Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+                          )
+                        : teamSelectedAnswers;
                       playerIframeRef.current?.contentWindow?.postMessage(
                         {
                           type: "SWITCH_ACTIVE_TEAM",
@@ -8515,6 +8536,11 @@ export default function AdminSandboxPage() {
                           teamName: tName,
                           teamIndex: activeTeamIndex,
                           currentAnswer: targetAnswer,
+                          allTeamAnswers: allAnswers,
+                          roomState,
+                          currentQuestion,
+                          timer,
+                          revealPayload,
                           payload: {
                             teamId: targetTeam.id,
                             teamName: tName,

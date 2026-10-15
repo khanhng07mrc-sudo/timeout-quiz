@@ -148,9 +148,6 @@ model Question {
   timeLimit  Int          @default(30)
   mediaUrl   String?
   mediaType  String?
-  mediaPlaybackMode String? @default("AFTER_PLAY")
-  allowManualGrading Boolean @default(false)
-  gradingCriteria String? @db.Text
   hint       String?      @db.Text
   order      Int          @default(0)
   isTieBreaker Boolean    @default(false)

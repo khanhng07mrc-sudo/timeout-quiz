@@ -11,7 +11,25 @@ export type QuestionType =
   | "FILL_BLANK"
   | "ESSAY"
   | "MATCHING"
-  | "DRAG_DROP";
+  | "DRAG_DROP"
+  | "CLOZE_DROPDOWN";
+
+export interface MatchingPair {
+  id: string;
+  left: string;
+  right: string;
+}
+
+export interface ClozeBlankOption {
+  id: string;
+  text: string;
+  isCorrect: boolean;
+}
+
+export interface ClozeBlank {
+  blankId: number;
+  options: ClozeBlankOption[];
+}
 
 export type CardType =
   | "FIFTY_FIFTY"
@@ -540,6 +558,10 @@ export interface Question {
   timeLimit: number;
   mediaUrl?: string;
   mediaType?: "image" | "audio" | "video";
+  mediaPlaybackMode?: "AFTER_PLAY" | "PARALLEL";
+  allowManualGrading?: boolean;
+  gradingCriteria?: string;
+  clozeBlanks?: ClozeBlank[];
   hint?: string;
   order: number;
   bloomLevel?: BloomLevel;
@@ -987,6 +1009,34 @@ export interface TarotWheelSegment {
   isShieldTransformed?: boolean;
 }
 
+export type TeamNoticeType =
+  | "ACTIVE_REWARD"
+  | "ACTIVE_PENALTY_BOMB"
+  | "ACTIVE_STEAL_SUCCESS"
+  | "ACTIVE_STEAL_FALLBACK"
+  | "ACTIVE_GAMBLE_STOP"
+  | "ACTIVE_SURVIVAL_ESCAPE"
+  | "ACTIVE_SURVIVAL_FAIL"
+  | "VICTIM_STOLEN_CHARIOT"
+  | "VICTIM_STOLEN_DEATH"
+  | "VICTIM_PROTECTED_SHIELD"
+  | "RECIPIENT_CHARITY_GIFT"
+  | "RECIPIENT_DARK_BOMB_SHARE"
+  | "RECIPIENT_TEMPERANCE_ASSIST"
+  | "NEUTRAL";
+
+export interface TeamPrivateNotice {
+  recipientTeamId: string;
+  recipientTeamName?: string;
+  title: string;
+  message: string;
+  delta: number;
+  noticeType: TeamNoticeType;
+  actorTeamName?: string;
+  templateId: string;
+  timestamp: number;
+}
+
 export type TeamRiskTier = "UNDERDOG" | "NEUTRAL" | "DOMINANT";
 
 export interface MysteryQuestState {
@@ -1081,6 +1131,7 @@ export interface MysteryQuestState {
     oldScore: number;
     newScore: number;
   };
+  teamNotices?: Record<string, TeamPrivateNotice>;
   // Dữ liệu riêng cho từng biến thể:
   memoryPairsState?: {
     firstFlippedTileId?: number | null;

@@ -54,6 +54,7 @@ import {
   startSurvivalPenaltyMinigame,
   getInitialMemoryPairsState,
 } from "./game-engine/mystery-quest";
+import { generatePrivateTeamNotices } from "./game-engine/mystery-quest-notices";
 import { isPowerupAllowedForMode, isSharedPowerup, DEFAULT_SHARED_POWERUP_PROBABILITY } from "./game-engine/powerups";
 import { allocateQuestionsForMatch, calculateModeDerivedConfig } from "./game-engine/question-allocator";
 import { shuffleArray, getTargetTotalQuestions } from "./utils";
@@ -5509,6 +5510,28 @@ export function registerSocketHandlers(io: IO) {
           ]);
         }
 
+        if (updatedState.phase === "TURN_SUMMARY" || updatedState.turnFinishedReason) {
+          try {
+            const allCurrentTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+            const notices = generatePrivateTeamNotices({
+              questState: updatedState,
+              allTeams: allCurrentTeams,
+              currentTeamId: team.id,
+              actorName: team.name,
+              scoreDeltas: [
+                ...(victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : []),
+                ...(darkBombRecipients ? darkBombRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
+                ...(recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : []),
+                ...(scorePenalty > 0 && !darkBombRecipients && !recipientTeamId ? [{ teamId: team.id, delta: -scorePenalty }] : []),
+                ...(finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
+              ],
+            });
+            updatedState.teamNotices = notices;
+          } catch (err) {
+            console.error("[MysteryQuestNotices] error in executeMysteryFlip:", err);
+          }
+        }
+
         // ── Audio Trigger determination ──
         const normType = normalizeMiniGameType(updatedState.miniGameType);
         let audioTrigger: "CORRECT" | "WRONG" | "NONE" = "NONE";
@@ -5585,6 +5608,21 @@ export function registerSocketHandlers(io: IO) {
         team,
         allTeams,
       });
+
+      try {
+        const notices = generatePrivateTeamNotices({
+          questState: updatedState,
+          allTeams,
+          currentTeamId: team.id,
+          actorName: team.name,
+          scoreDeltas: [
+            ...(victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : [{ teamId: team.id, delta: finalScoreDelta }]),
+          ],
+        });
+        updatedState.teamNotices = notices;
+      } catch (err) {
+        console.error("[MysteryQuestNotices] error in executeMysteryCashOut:", err);
+      }
 
       // Save in-memory quest state and emit immediately for 0ms UI transition
       roomMysteryQuests.set(room.id, updatedState);
@@ -5693,6 +5731,26 @@ export function registerSocketHandlers(io: IO) {
         swapRemovedDoorId,
         swapAddedDoorId,
       });
+
+      if (updatedState.phase === "TURN_SUMMARY" || updatedState.turnFinishedReason) {
+        try {
+          const notices = generatePrivateTeamNotices({
+            questState: updatedState,
+            allTeams,
+            currentTeamId: team.id,
+            actorName: team.name,
+            scoreDeltas: [
+              ...(victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : []),
+              ...(darkBombRecipients ? darkBombRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
+              ...(recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : []),
+              ...(finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
+            ],
+          });
+          updatedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryDoorsDecision:", err);
+        }
+      }
 
       roomMysteryQuests.set(room.id, updatedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
@@ -5961,6 +6019,20 @@ export function registerSocketHandlers(io: IO) {
               oldScore: team.score || 0,
               newScore: (team.score || 0) + basePts,
             };
+
+            try {
+              const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+              const notices = generatePrivateTeamNotices({
+                questState: activeQuest,
+                allTeams,
+                currentTeamId: team.id,
+                actorName: team.name,
+                scoreDeltas: [{ teamId: team.id, delta: basePts }],
+              });
+              activeQuest.teamNotices = notices;
+            } catch (err) {
+              console.error("[MysteryQuestNotices] error in executeMysteryChooseAction:", err);
+            }
           }
         }
 
@@ -6063,6 +6135,19 @@ export function registerSocketHandlers(io: IO) {
             oldScore: team.score || 0,
             newScore: team.score || 0,
           };
+
+          try {
+            const notices = generatePrivateTeamNotices({
+              questState: activeQuest,
+              allTeams,
+              currentTeamId: team.id,
+              actorName: team.name,
+              scoreDeltas: [{ teamId: team.id, delta: 0 }],
+            });
+            activeQuest.teamNotices = notices;
+          } catch (err) {
+            console.error("[MysteryQuestNotices] error in executeMysterySurvivalChoice:", err);
+          }
         } else if (choice === "RISK_SURVIVAL") {
           activeQuest.baseQuestionPoints = basePts;
           startSurvivalPenaltyMinigame({
@@ -6528,8 +6613,9 @@ export function registerSocketHandlers(io: IO) {
       const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
 
+      let pendingDeltas: Array<{ teamId: string; delta: number }> = [];
       if (!isGamble && !isShieldRespin) {
-        const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
+        pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
 
         const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
@@ -6581,6 +6667,23 @@ export function registerSocketHandlers(io: IO) {
               tarotGambleState: undefined,
             }),
       };
+
+      if (nextPhase === "TURN_SUMMARY") {
+        try {
+          const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+          const actorTeam = allTeams.find((t) => t.id === revealedState.currentTurnTeamId);
+          const notices = generatePrivateTeamNotices({
+            questState: revealedState,
+            allTeams,
+            currentTeamId: revealedState.currentTurnTeamId,
+            actorName: actorTeam?.name || "Đội bạn",
+            scoreDeltas: pendingDeltas,
+          });
+          revealedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryTarotReveal:", err);
+        }
+      }
 
       roomMysteryQuests.set(room.id, revealedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", revealedState);
@@ -6683,6 +6786,20 @@ export function registerSocketHandlers(io: IO) {
         if (scoreUpdates.length > 0) {
           io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
         }
+
+        try {
+          const notices = generatePrivateTeamNotices({
+            questState: gambleResult.updatedState,
+            allTeams,
+            currentTeamId: targetTeamId,
+            actorName: teamRef.name,
+            scoreDeltas: gambleResult.scoreDeltas || [],
+          });
+          gambleResult.updatedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryTarotGambleDecision:", err);
+        }
+
         roomMysteryQuests.set(room.id, gambleResult.updatedState);
         io.to(`room:${room.code}`).emit("game:mystery:update", gambleResult.updatedState);
         const refreshedState = await buildRoomState(room.id);
@@ -8517,6 +8634,38 @@ function evaluateAnswerCorrectness(
     isAutoCorrect =
       correctOrder.length === cleanSubmitted.length &&
       correctOrder.every((id: string, idx: number) => id === cleanSubmitted[idx]);
+  } else if (question.type === "CLOZE_DROPDOWN") {
+    const blanks = ((question as any).clozeBlanks || options || []) as any[];
+    if (blanks.length > 0) {
+      let subMap: Record<string, string> = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subMap = submittedAnswer as any;
+      } else if (Array.isArray(submittedAnswer)) {
+        submittedAnswer.forEach((v: any, i: number) => { subMap[String(i + 1)] = typeof v === "string" ? v : v?.id; });
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
+        try { subMap = JSON.parse(ansArray[0]); } catch {}
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+        try {
+          const arr = JSON.parse(ansArray[0]);
+          if (Array.isArray(arr)) arr.forEach((v: any, i: number) => { subMap[String(i + 1)] = typeof v === "string" ? v : v?.id; });
+        } catch {}
+      } else {
+        ansArray.forEach((v: any, i: number) => { subMap[String(i + 1)] = v; });
+      }
+
+      let allCorrect = true;
+      for (const blank of blanks) {
+        const correctOpt = blank.options?.find((o: any) => o.isCorrect);
+        const userChoice = subMap[String(blank.blankId)] || subMap[blank.blankId];
+        if (!correctOpt || (userChoice !== correctOpt.id && userChoice !== correctOpt.text)) {
+          allCorrect = false;
+          break;
+        }
+      }
+      isAutoCorrect = allCorrect;
+    } else {
+      isAutoCorrect = false;
+    }
   }
 
   return { isAutoCorrect, answerText };

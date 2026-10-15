@@ -12,6 +12,43 @@ export async function GET(req: NextRequest) {
   const queryOwnerId = searchParams.get("ownerId");
   const effectiveOwnerId = user?.userId || queryOwnerId;
 
+  // Dọn dẹp tự động các bộ đề rác 0 câu hỏi bị tạo trùng lặp do lỗi sync cũ
+  try {
+    const allBanksWithCounts = await prisma.quizBank.findMany({
+      include: { _count: { select: { questions: true } } },
+    });
+    const titleToNonEmpty = new Map<string, string>();
+    for (const b of allBanksWithCounts) {
+      if ((b._count?.questions ?? 0) > 0) {
+        titleToNonEmpty.set(b.title.trim().toLowerCase(), b.id);
+      }
+    }
+    const ghostBankIdsToDelete: string[] = [];
+    const seenEmptyTitles = new Set<string>();
+
+    for (const b of allBanksWithCounts) {
+      const qCount = b._count?.questions ?? 0;
+      if (qCount === 0) {
+        const normTitle = b.title.trim().toLowerCase();
+        if (titleToNonEmpty.has(normTitle) && titleToNonEmpty.get(normTitle) !== b.id) {
+          ghostBankIdsToDelete.push(b.id);
+        } else if (seenEmptyTitles.has(normTitle)) {
+          ghostBankIdsToDelete.push(b.id);
+        } else {
+          seenEmptyTitles.add(normTitle);
+        }
+      }
+    }
+
+    if (ghostBankIdsToDelete.length > 0) {
+      await prisma.quizBank.deleteMany({
+        where: { id: { in: ghostBankIdsToDelete } },
+      });
+    }
+  } catch (cleanErr) {
+    console.warn("[GET /api/quiz-bank] Ghost cleanup error:", cleanErr);
+  }
+
   const banks = await prisma.quizBank.findMany({
     where: effectiveOwnerId
       ? {
@@ -63,6 +100,18 @@ export async function POST(req: NextRequest) {
 
     const cleanedTitle = sanitizeInput(title, 100);
     const cleanedDesc = description ? sanitizeInput(description, 300) : null;
+
+    // Tránh tạo trùng lặp nếu đã có bộ đề cùng tên của cùng owner
+    const existingSameTitle = await prisma.quizBank.findFirst({
+      where: {
+        title: cleanedTitle,
+        ownerId: effectiveOwnerId,
+      },
+      include: { _count: { select: { questions: true } } },
+    });
+    if (existingSameTitle) {
+      return NextResponse.json({ bank: existingSameTitle }, { status: 200 });
+    }
 
     const bank = await prisma.quizBank.create({
       data: {

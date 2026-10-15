@@ -4642,8 +4642,9 @@ function resolveWheelCardEffect({
       const opponentsWithPoints = otherTeams.filter((t) => (t.score || 0) > 0);
       const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
       if (eligibleOpponents.length === 0) {
-        const rewardReason = isChariot ? `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111\xE3 t\u1EEBng b\u1ECB c\u01B0\u1EDBp trong v\xF2ng v\xE0 \u0111\u01B0\u1EE3c mi\u1EC5n nhi\u1EC5m tr\u01B0\u1EDBc Chi\u1EBFn Xa!` : `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7 (\u0111\xE3 b\u1ECB c\u01B0\u1EDBp \u0111\u1EE7 2 l\u1EA7n)!`;
-        const rewardText = opponentsWithPoints.length > 0 ? `\u{1F6E1}\uFE0F ${seg.nameVi}: ${rewardReason} \u0110\u1ED9i b\u1EA1n nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${nominalSteal}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!` : `\u2728 ${seg.nameVi}: Ch\u01B0a c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o c\xF3 \u0111i\u1EC3m \u0111\u1EC3 c\u01B0\u1EDBp! \u0110\u1ED9i b\u1EA1n nh\u1EADn th\u01B0\u1EDFng an to\xE0n +${nominalSteal}\u0111 t\u1EEB H\u1EC7 Th\u1ED1ng!`;
+        const fallbackReward = Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
+        const rewardReason = isChariot ? `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111\xE3 t\u1EEBng b\u1ECB c\u01B0\u1EDBp trong v\xF2ng v\xE0 \u0111\u01B0\u1EE3c mi\u1EC5n nhi\u1EC5m tr\u01B0\u1EDBc Chi\u1EBFn Xa!` : `C\xE1c \u0111\u1ED1i th\u1EE7 c\xF3 \u0111i\u1EC3m \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7!`;
+        const rewardText = opponentsWithPoints.length > 0 ? `\u{1F6E1}\uFE0F ${seg.nameVi}: ${rewardReason} T\u1EA5t c\u1EA3 \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u c\xF3 khi\xEAn, H\u1EC7 Th\u1ED1ng ch\u1EC9 tr\u1EE3 c\u1EA5p n\u1EEDa s\u1ED1 \u0111i\u1EC3m g\u1ED1c (+${fallbackReward}\u0111)!` : `\u2728 ${seg.nameVi}: Ch\u01B0a c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o c\xF3 \u0111i\u1EC3m \u0111\u1EC3 c\u01B0\u1EDBp! H\u1EC7 Th\u1ED1ng ch\u1EC9 tr\u1EE3 c\u1EA5p n\u1EEDa s\u1ED1 \u0111i\u1EC3m g\u1ED1c (+${fallbackReward}\u0111)!`;
         return {
           drawnCard: {
             key: cardKey,
@@ -4652,12 +4653,12 @@ function resolveWheelCardEffect({
             icon: seg.icon,
             roman: seg.roman,
             group: "COMMON",
-            scoreDelta: nominalSteal
+            scoreDelta: fallbackReward
           },
-          finalScoreDelta: nominalSteal,
+          finalScoreDelta: fallbackReward,
           scorePenalty: 0,
           isBomb: false,
-          scoreDeltas: [{ teamId: team.id, delta: nominalSteal }],
+          scoreDeltas: [{ teamId: team.id, delta: fallbackReward }],
           rewardText
         };
       }
@@ -5301,6 +5302,381 @@ function synchronizeMysteryStageWithQuestionPoints({
   }
   return { ...state };
 }
+
+// src/lib/game-engine/mystery-quest-notices.ts
+var NOTICE_TEMPLATES = {
+  // 1. Đội đang chơi nhận điểm thưởng (+points)
+  ACTIVE_REWARD: [
+    { id: "ACT_REW_01", noticeType: "ACTIVE_REWARD", title: "TH\u01AF\u1EDENG L\u1EDAN X\u1EE8NG \u0110\xC1NG!", text: "MC xin ch\xFAc m\u1EEBng {actor}! M\u1ED9t pha x\u1EED l\xFD v\xF4 c\xF9ng \u0111\u1EB3ng c\u1EA5p mang v\u1EC1 tr\u1ECDn v\u1EB9n +{points}\u0111 cho \u0111\u1ED9i!" },
+    { id: "ACT_REW_02", noticeType: "ACTIVE_REWARD", title: "V\u1EACN MAY B\xD9NG N\u1ED4!", text: "Tuy\u1EC7t v\u1EDDi {actor}! Th\u1EA7n may m\u1EAFn \u0111\xE3 m\u1EC9m c\u01B0\u1EDDi r\u1EF1c r\u1EE1, c\u1ED9ng ngay +{points}\u0111 v\xE0o k\xE9t s\u1EAFt c\u1EE7a b\u1EA1n!" },
+    { id: "ACT_REW_03", noticeType: "ACTIVE_REWARD", title: "C\xDA B\u1EE8T PH\xC1 NGO\u1EA0N M\u1EE4C!", text: "Kh\xE1n gi\u1EA3 \u0111ang v\u1ED7 tay kh\xF4ng ng\u1EDBt! {actor} v\u1EEBa b\u1ECF t\xFAi th\xEAm +{points}\u0111 qu\xFD gi\xE1 trong s\u1EF1 ng\u01B0\u1EE1ng m\u1ED9 c\u1EE7a c\xE1c \u0111\u1ED1i th\u1EE7!" },
+    { id: "ACT_REW_04", noticeType: "ACTIVE_REWARD", title: "B\xC0N TAY V\xC0NG!", text: "L\u1EF1a ch\u1ECDn qu\xE1 chu\u1EA9n x\xE1c! {actor} nh\u1EADn tr\u1ECDn g\xF3i ph\u1EA7n th\u01B0\u1EDFng +{points}\u0111 t\u1EEB th\u1EED th\xE1ch \u0111\u1ECBnh m\u1EC7nh!" },
+    { id: "ACT_REW_05", noticeType: "ACTIVE_REWARD", title: "\u0110I\u1EC2M S\u1ED0 R\u1EF0C S\xC1NG!", text: "M\u1ED9t b\u01B0\u1EDBc ti\u1EBFn d\xE0i tr\xEAn b\u1EA3ng x\u1EBFp h\u1EA1ng! {actor} \u0111\xE3 xu\u1EA5t s\u1EAFc ghi th\xEAm +{points}\u0111 v\xE0o t\u1ED5ng \u0111i\u1EC3m!" },
+    { id: "ACT_REW_06", noticeType: "ACTIVE_REWARD", title: "KHAI TI\u1EC6C CHI\u1EBEN TH\u1EAENG!", text: "Kh\xF4ng th\u1EC3 ng\u0103n c\u1EA3n {actor} l\xFAc n\xE0y! Ph\u1EA7n th\u01B0\u1EDFng +{points}\u0111 ho\xE0n to\xE0n x\u1EE9ng \u0111\xE1ng v\u1EDBi b\u1EA3n l\u0129nh c\u1EE7a c\xE1c b\u1EA1n!" },
+    { id: "ACT_REW_07", noticeType: "ACTIVE_REWARD", title: "\u0110\u1EA0I C\xC1T \u0110\u1EA0I L\u1EE2I!", text: "C\u1EA3 tr\u01B0\u1EDDng quay nh\u01B0 n\u1ED5 tung! {actor} v\u1EEBa g\u1EB7t h\xE1i th\xE0nh c\xF4ng r\u1EF1c r\u1EE1 v\u1EDBi +{points}\u0111 th\u01B0\u1EDFng n\xF3ng!" },
+    { id: "ACT_REW_08", noticeType: "ACTIVE_REWARD", title: "B\u1EA2N L\u0128NH D\u1EAAN L\u1ED0I!", text: "M\u1ED9t quy\u1EBFt \u0111\u1ECBnh s\xE1ng su\u1ED1t mang l\u1EA1i tr\xE1i ng\u1ECDt: +{points}\u0111 \u0111\xE3 ch\xEDnh th\u1EE9c thu\u1ED9c v\u1EC1 {actor}!" },
+    { id: "ACT_REW_09", noticeType: "ACTIVE_REWARD", title: "M\u01AFA \u0110I\u1EC2M TH\u01AF\u1EDENG!", text: "C\u01A1n m\u01B0a \u0111i\u1EC3m th\u01B0\u1EDFng r\u01A1i tr\xFAng {actor}! Nh\u1EADn ngay +{points}\u0111 \u0111\u1EC3 c\u1EE7ng c\u1ED1 v\u1ECB th\u1EBF tr\xEAn \u0111\u1EA5u tr\u01B0\u1EDDng!" },
+    { id: "ACT_REW_10", noticeType: "ACTIVE_REWARD", title: "QU\u1EA2 TH\u1EA6N TRAO TAY!", text: "B\xED m\u1EADt \u0111\xE3 \u0111\u01B0\u1EE3c gi\u1EA3i m\xE3 tr\u1ECDn v\u1EB9n! {actor} th\xE2u t\xF3m xu\u1EA5t s\u1EAFc +{points}\u0111 t\u1EEB tay th\u1EA7n h\u1ED9 m\u1EC7nh!" },
+    { id: "ACT_REW_11", noticeType: "ACTIVE_REWARD", title: "C\xDA \u0110\xC1NH CH\xCDNH X\xC1C!", text: "Pha ra \u0111\xF2n kh\xF4ng ch\xEA v\xE0o \u0111\xE2u \u0111\u01B0\u1EE3c! {actor} b\u1ECF t\xFAi ng\u1ECDt ng\xE0o +{points}\u0111 trong ti\u1EBFng reo h\xF2 ph\u1EA5n kh\xEDch!" },
+    { id: "ACT_REW_12", noticeType: "ACTIVE_REWARD", title: "\u0110\u1ED8T PH\xC1 N\u0102NG L\u01AF\u1EE2NG!", text: "N\u0103ng l\u01B0\u1EE3ng b\xF9ng n\u1ED5! {actor} n\u1EA1p ngay +{points}\u0111 v\xE0o t\xE0i kho\u1EA3n, s\u1EB5n s\xE0ng b\u1EE9t t\u1ED1c v\u1EC1 \u0111\xEDch!" },
+    { id: "ACT_REW_13", noticeType: "ACTIVE_REWARD", title: "V\u01AF\u1EE2T TH\u1EEC TH\xC1CH TH\xC0NH C\xD4NG!", text: "Th\u1EED th\xE1ch kh\xF3 nh\u1EB1n c\u0169ng ph\u1EA3i ch\xE0o thua! {actor} \u1EB5m tr\u1ECDn ph\u1EA7n th\u01B0\u1EDFng +{points}\u0111 \u0111\u1EA7y ki\xEAu h\xE3nh!" },
+    { id: "ACT_REW_14", noticeType: "ACTIVE_REWARD", title: "TI\u1EBEP L\u1EECA VINH QUANG!", text: "Chi\u1EBFn th\u1EAFng ti\u1EBFp n\u1ED1i chi\u1EBFn th\u1EAFng! {actor} rinh th\xEAm +{points}\u0111 \u0111i\u1EC3m th\u01B0\u1EDFng c\u1EF1c k\u1EF3 \u1EA5n t\u01B0\u1EE3ng!" },
+    { id: "ACT_REW_15", noticeType: "ACTIVE_REWARD", title: "V\u1EACN KH\xCD HANH TH\xD4NG!", text: "Tr\u1EDDi ban v\u1EADn \u0111\u1ECF! {actor} v\u1EEBa r\u01B0\u1EDBc v\u1EC1 k\xE9t s\u1EAFt +{points}\u0111 th\u1EA7n t\xE0i tr\u01B0\u1EDBc \xE1nh m\u1EAFt th\xE8m thu\u1ED3ng c\u1EE7a \u0111\u1ED1i ph\u01B0\u01A1ng!" }
+  ],
+  // 2. Đội đang chơi dính bẫy nổ hoặc bị trừ điểm
+  ACTIVE_PENALTY_BOMB: [
+    { id: "ACT_PEN_01", noticeType: "ACTIVE_PENALTY_BOMB", title: "TAI N\u1EA0N KH\xD3 \u0110\u1EE0!", text: "\xD4i kh\xF4ng! {actor} v\u1EEBa b\u01B0\u1EDBc h\u1EE5t v\xE0o b\u1EABy ph\u1EE5c k\xEDch, t\u1ED5n th\u1EA5t \u0111au \u0111\u1EDBn -{points}\u0111! H\xE3y l\u1EA5y l\u1EA1i b\xECnh t\u0129nh nh\xE9!" },
+    { id: "ACT_PEN_02", noticeType: "ACTIVE_PENALTY_BOMB", title: "BOM PH\xC1T N\u1ED4!", text: "Kh\xF3i m\xF9 bao ph\u1EE7 tr\u01B0\u1EDDng quay! Qu\u1EA3 bom ph\xE1t n\u1ED5 khi\u1EBFn {actor} \u0111\xE1nh r\u01A1i -{points}\u0111 \u0111\u1EA7y ti\u1EBFc nu\u1ED1i!" },
+    { id: "ACT_PEN_03", noticeType: "ACTIVE_PENALTY_BOMB", title: "C\xDA TR\u01AF\u1EE2T CH\xC2N!", text: "M\u1ED9t ph\xFAt s\u01A1 s\u1EA9y c\u1EE7a {actor}! Chi\u1EBFc b\u1EABy ng\u1EA7m \u0111\xE3 t\u01B0\u1EDBc \u0111i -{points}\u0111 t\u1EEB t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n!" },
+    { id: "ACT_PEN_04", noticeType: "ACTIVE_PENALTY_BOMB", title: "\u0110\u1ECANH M\u1EC6NH TR\xCAU NG\u01AF\u01A0I!", text: "Qu\xE1 \u0111en \u0111\u1EE7i cho {actor}! C\u1EA1m b\u1EABy b\u1EA5t ng\u1EDD k\xEDch ho\u1EA1t khi\u1EBFn b\u1EA1n m\u1EA5t tr\u1EAFng -{points}\u0111 trong ch\u1EDBp m\u1EAFt!" },
+    { id: "ACT_PEN_05", noticeType: "ACTIVE_PENALTY_BOMB", title: "M\u1ED8T CH\xDAT S\xD3NG GI\xD3!", text: "\u0110\u01B0\u1EDDng \u0111\u1EBFn vinh quang kh\xF4ng bao gi\u1EDD tr\u1EA3i hoa h\u1ED3ng! {actor} v\u1EEBa ch\u1ECBu t\u1ED5n th\u1EA5t -{points}\u0111, c\u1ED1 g\u1EAFng \u1EDF c\xE2u ti\u1EBFp theo!" },
+    { id: "ACT_PEN_06", noticeType: "ACTIVE_PENALTY_BOMB", title: "B\u1EAAY S\u1EACP B\u1EA4T NG\u1EDC!", text: "Tia s\xE9t gi\xE1ng xu\u1ED1ng! {actor} l\xE3nh tr\u1ECDn \u0111\xF2n ph\u1EA1t tr\u1EEB -{points}\u0111! \u0110\u1EEBng n\u1EA3n l\xF2ng, tr\u1EADn \u0111\u1EA5u v\u1EABn c\xF2n d\xE0i!" },
+    { id: "ACT_PEN_07", noticeType: "ACTIVE_PENALTY_BOMB", title: "C\xDA S\u1ED0C T\u1EA0I TR\u01AF\u1EDCNG QUAY!", text: "Ti\u1EBFng n\u1ED5 vang r\u1EC1n khi\u1EBFn kh\xE1n gi\u1EA3 gi\u1EADt m\xECnh! {actor} ng\u1EADm ng\xF9i \u0111\u1EC3 l\u1EA1i -{points}\u0111 t\u1EA1i \u0111\u1EA5u tr\u01B0\u1EDDng!" },
+    { id: "ACT_PEN_08", noticeType: "ACTIVE_PENALTY_BOMB", title: "B\u01AF\u1EDAC \u0110I T\xC1O B\u1EA0O!", text: "Li\u1EC1u th\xEC \u0103n nhi\u1EC1u nh\u01B0ng l\u1EA7n n\xE0y may m\u1EAFn ch\u01B0a m\u1EC9m c\u01B0\u1EDDi v\u1EDBi {actor}: T\u1ED5n th\u1EA5t -{points}\u0111 \u0111i\u1EC3m s\u1ED1!" },
+    { id: "ACT_PEN_09", noticeType: "ACTIVE_PENALTY_BOMB", title: "KH\xD3I \u0110\u1ED8C B\xD9NG PH\xC1T!", text: "L\xE0n kh\xF3i \u0111en nu\u1ED1t ch\u1EEDng \u0111i\u1EC3m s\u1ED1! {actor} b\u1ECB cu\u1ED1n bay -{points}\u0111 trong s\u1EF1 th\xF3t tim c\u1EE7a \u0111\u1ED3ng \u0111\u1ED9i!" },
+    { id: "ACT_PEN_10", noticeType: "ACTIVE_PENALTY_BOMB", title: "TH\u1EEC TH\xC1CH B\u1EA2N L\u0128NH!", text: "V\u1EA5p ng\xE3 l\xE0 \u0111\u1EC3 \u0111\u1EE9ng d\u1EADy m\u1EA1nh m\u1EBD h\u01A1n! {actor} v\u1EEBa b\u1ECB tr\u1EEB -{points}\u0111, h\xE3y bi\u1EBFn \xE1p l\u1EF1c th\xE0nh \u0111\u1ED9ng l\u1EF1c!" },
+    { id: "ACT_PEN_11", noticeType: "ACTIVE_PENALTY_BOMB", title: "C\u1EA0M B\u1EAAY NG\xC0N N\u0102M!", text: "C\u1ED5 v\u1EADt gi\u1EA5u b\u1EABy ng\u1EA7m! {actor} v\xF4 t\xECnh k\xEDch ho\u1EA1t c\u01A1 quan c\u1ED5 x\u01B0a, hao h\u1EE5t -{points}\u0111 \u0111i\u1EC3m qu\xFD b\xE1u!" },
+    { id: "ACT_PEN_12", noticeType: "ACTIVE_PENALTY_BOMB", title: "C\xDA PH\u1EA2N \u0110\xD2N \u0110AU \u0110\u1EDAN!", text: "\u0110\xF2n tr\u1EEBng ph\u1EA1t \u0111\u1ECBnh m\u1EC7nh! {actor} b\u1ECB gi\u1EA3m tr\u1EEB -{points}\u0111, h\xE3y si\u1EBFt ch\u1EB7t tay nhau \u0111\u1EC3 ph\u1EE5c th\xF9!" },
+    { id: "ACT_PEN_13", noticeType: "ACTIVE_PENALTY_BOMB", title: "B\xC3O T\u1ED0 GH\xC9 TH\u0102M!", text: "C\u01A1n b\xE3o b\u1EA5t ng\u1EDD c\xE0n qu\xE9t qu\u1EF9 \u0111i\u1EC3m! {actor} r\u01A1i v\xE0o v\xF9ng hi\u1EC3m \u0111\u1ECBa, m\u1EA5t -{points}\u0111!" },
+    { id: "ACT_PEN_14", noticeType: "ACTIVE_PENALTY_BOMB", title: "GI\u1EDC PH\xDAT C\u0102NG TH\u1EB2NG!", text: "Kh\xE1n \u0111\xE0i l\u1EB7ng \u0111i trong gi\xE2y l\xE1t! {actor} v\u1EEBa chia tay -{points}\u0111, c\u1EA7n m\u1ED9t c\xFA l\u1ED9i ng\u01B0\u1EE3c d\xF2ng ngay sau \u0111\xE2y!" },
+    { id: "ACT_PEN_15", noticeType: "ACTIVE_PENALTY_BOMB", title: "B\xC0I H\u1ECCC C\u1EE6A \u0110\u1ECANH M\u1EC6NH!", text: "\u0110\u1ECBnh m\u1EC7nh g\u1EEDi g\u1EAFm b\xE0i h\u1ECDc \u0111\u1EAFt gi\xE1! {actor} b\u1ECB tr\u1EEB -{points}\u0111, nh\u01B0ng c\u01A1 h\u1ED9i l\u1EADt k\xE8o v\u1EABn r\u1ED9ng m\u1EDF ph\xEDa tr\u01B0\u1EDBc!" }
+  ],
+  // 3. Đội đang chơi cướp điểm thành công từ đối thủ
+  ACTIVE_STEAL_SUCCESS: [
+    { id: "ACT_STL_01", noticeType: "ACTIVE_STEAL_SUCCESS", title: "C\xDA RA TAY HO\xC0N H\u1EA2O!", text: "Xu\u1EA5t s\u1EAFc tuy\u1EC7t \u0111\u1EC9nh! {actor} \u0111\xE3 c\u01B0\u1EDBp ng\u1ECDt ng\xE0o +{points}\u0111 t\u1EEB tay \u0111\u1ED1i th\u1EE7 {victim}!" },
+    { id: "ACT_STL_02", noticeType: "ACTIVE_STEAL_SUCCESS", title: "\u0110O\u1EA0T M\u1EC6NH NGO\u1EA0N M\u1EE4C!", text: "Pha \u0111\u1ED9t k\xEDch th\u1EA7n t\u1ED1c! {actor} v\u1EEBa h\xFAt tr\u1ECDn +{points}\u0111 t\u1EEB kho b\xE1u c\u1EE7a {victim} mang v\u1EC1 k\xE9t s\u1EAFt c\u1EE7a m\xECnh!" },
+    { id: "ACT_STL_03", noticeType: "ACTIVE_STEAL_SUCCESS", title: "CHI\u1EBEN L\u1EE2I PH\u1EA8M KH\u1EE6NG!", text: "C\u1EA3 tr\u01B0\u1EDDng quay ng\u1EE1 ng\xE0ng! {actor} t\u01B0\u1EDBc \u0111i +{points}\u0111 t\u1EEB {victim}, t\u1EA1o b\u01B0\u1EDBc ngo\u1EB7t l\u1EDBn cho cu\u1ED9c \u0111ua!" },
+    { id: "ACT_STL_04", noticeType: "ACTIVE_STEAL_SUCCESS", title: "B\xC0N TAY \u0110\u1EA0O T\u1EB6C!", text: "Kh\xF4ng m\u1ED9t \u0111\u1ED9ng t\xE1c th\u1EEBa! {actor} cu\u1ED7m tr\u1ECDn v\u1EB9n +{points}\u0111 t\u1EEB {victim} tr\u01B0\u1EDBc s\u1EF1 b\u1EA5t l\u1EF1c c\u1EE7a \u0111\u1ED1i ph\u01B0\u01A1ng!" },
+    { id: "ACT_STL_05", noticeType: "ACTIVE_STEAL_SUCCESS", title: "C\xDA \u0110\xC1NH S\u1EA4M S\xC9T!", text: "\u0110\xF2n \u0111\xE1nh ch\xED m\u1EA1ng! {actor} \u0111\xE3 r\xFAt c\u1EA1n +{points}\u0111 c\u1EE7a {victim}, \u0111\u01B0a \u0111\u1ED9i m\xECnh v\u01B0\u01A1n l\xEAn m\u1EA1nh m\u1EBD!" },
+    { id: "ACT_STL_06", noticeType: "ACTIVE_STEAL_SUCCESS", title: "C\u01AF\u1EDAP \u0110I\u1EC2M CH\u1EDAP NHO\xC1NG!", text: "Nhanh nh\u01B0 ch\u1EDBp! {actor} \u0111\xE3 k\u1ECBp chuy\u1EC3n th\u1EB3ng +{points}\u0111 t\u1EEB t\xE0i kho\u1EA3n {victim} sang \u0111\u1ED9i m\xECnh!" },
+    { id: "ACT_STL_07", noticeType: "ACTIVE_STEAL_SUCCESS", title: "TH\u1EA6N T\u1ED0C CHI\u1EBEM \u0110O\u1EA0T!", text: "Chi\u1EBFn thu\u1EADt qu\xE1 cao tay! {actor} khi\u1EBFn {victim} ph\u1EA3i ng\u1EADm ng\xF9i d\xE2ng t\u1EB7ng +{points}\u0111!" },
+    { id: "ACT_STL_08", noticeType: "ACTIVE_STEAL_SUCCESS", title: "B\u1EE8T PH\xC1 B\u1EB0NG \u0110O\u1EA0T M\u1EC6NH!", text: "Gia t\u0103ng c\xE1ch bi\u1EC7t ngo\u1EA1n m\u1EE5c! {actor} v\u1EEBa thu ho\u1EA1ch th\xEAm +{points}\u0111 t\u1EEB t\xFAi c\u1EE7a \u0111\u1ED1i th\u1EE7 {victim}!" },
+    { id: "ACT_STL_09", noticeType: "ACTIVE_STEAL_SUCCESS", title: "T\xC0I N\u0102NG \u0110\u1EA0O T\u1EB6C \u0110\u1EC8NH CAO!", text: "\u0110\xFAng l\xFAc, \u0111\xFAng th\u1EDDi \u0111i\u1EC3m! {actor} b\u1EBB kh\xF3a th\xE0nh c\xF4ng kho \u0111i\u1EC3m c\u1EE7a {victim}, \u1EB5m tr\u1ECDn +{points}\u0111!" },
+    { id: "ACT_STL_10", noticeType: "ACTIVE_STEAL_SUCCESS", title: "C\xDA S\u1ED0C CHO \u0110\u1ED0I TH\u1EE6!", text: "{victim} ch\u1EC9 bi\u1EBFt th\u1ED1t l\xEAn ti\u1EBFc nu\u1ED1i khi ch\u1EE9ng ki\u1EBFn {actor} mang v\u1EC1 +{points}\u0111 chi\u1EBFn l\u1EE3i ph\u1EA9m!" },
+    { id: "ACT_STL_11", noticeType: "ACTIVE_STEAL_SUCCESS", title: "XOAY CHUY\u1EC2N C\u1EE4C DI\u1EC6N!", text: "C\u1EE5c di\u1EC7n \u0111\u1EA3o chi\u1EC1u! {actor} t\u01B0\u1EDBc l\u1EA5y +{points}\u0111 t\u1EEB {victim}, c\u1EE7ng c\u1ED1 v\u1EEFng ch\u1EAFc ng\xF4i v\u1ECB c\u1EE7a m\xECnh!" },
+    { id: "ACT_STL_12", noticeType: "ACTIVE_STEAL_SUCCESS", title: "C\xDA R\xDAT RU\u1ED8T TH\u1EA6N S\u1EA6U!", text: "Th\u1EA7n ch\u1EBFt vung l\u01B0\u1EE1i h\xE1i! {actor} thu v\u1EC1 tr\u1ECDn v\u1EB9n +{points}\u0111 tr\xEDch xu\u1EA5t tr\u1EF1c ti\u1EBFp t\u1EEB \u0111\u1ED1i th\u1EE7 {victim}!" },
+    { id: "ACT_STL_13", noticeType: "ACTIVE_STEAL_SUCCESS", title: "CHI\u1EBEN K\xCA \u0110O\u1EA0T \u0110I\u1EC2M!", text: "M\xF3ng vu\u1ED1t s\u1EAFc b\xE9n! {actor} qu\u1EAFp ngay +{points}\u0111 t\u1EEB \u0111\u1ED1i th\u1EE7 {victim} bay v\xFAt l\xEAn d\u1EABn \u0111\u1EA7u!" },
+    { id: "ACT_STL_14", noticeType: "ACTIVE_STEAL_SUCCESS", title: "V\u1EEAA C\u1ED8NG V\u1EEAA TR\u1EEA \u0110\u1ED0I PH\u01AF\u01A0NG!", text: "Ni\u1EC1m vui nh\xE2n \u0111\xF4i! {actor} v\u1EEBa t\u0103ng +{points}\u0111, v\u1EEBa khi\u1EBFn \u0111\u1ED1i th\u1EE7 {victim} t\u1EE5t l\xF9i \u0111\xE1ng k\u1EC3!" },
+    { id: "ACT_STL_15", noticeType: "ACTIVE_STEAL_SUCCESS", title: "M\xC0N TR\xCCNH DI\u1EC4N \u0110\u1EC8NH CH\xD3P!", text: "Kh\xE1n \u0111\xE0i \u0111\u1EE9ng d\u1EADy v\u1ED7 tay! C\xFA c\u01B0\u1EDBp \u0111i\u1EC3m +{points}\u0111 t\u1EEB {victim} c\u1EE7a {actor} x\u1EE9ng \u0111\xE1ng \u0111i\u1EC3m 10 ngh\u1EC7 thu\u1EADt!" }
+  ],
+  // 4. Đội đang chơi cướp nhưng đối thủ có khiên/miễn nhiễm -> Nhận fallback 50% từ Quỹ
+  ACTIVE_STEAL_FALLBACK: [
+    { id: "ACT_FB_01", noticeType: "ACTIVE_STEAL_FALLBACK", title: "\u0110\u1ED0I TH\u1EE6 B\u1EA2O V\u1EC6 CH\u1EB6T CH\u1EBC!", text: "C\xE1c \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang c\xF3 khi\xEAn b\u1EA3o h\u1ED9 ho\u1EB7c mi\u1EC5n nhi\u1EC5m! Qu\u1EF9 H\u1EC7 Th\u1ED1ng chi tr\u1EA3 c\xF4ng b\u1EB1ng 50% \u0111i\u1EC3m g\u1ED1c (+{points}\u0111) cho {actor}!" },
+    { id: "ACT_FB_02", noticeType: "ACTIVE_STEAL_FALLBACK", title: "R\xC0O CH\u1EAEN KI\xCAN C\u1ED0!", text: "Kh\xF4ng th\u1EC3 xuy\xEAn th\u1EE7ng ph\xF2ng tuy\u1EBFn \u0111\u1ED1i ph\u01B0\u01A1ng! Theo quy ch\u1EBF, {actor} nh\u1EADn n\xF3ng n\u1EEDa s\u1ED1 \u0111i\u1EC3m c\xE2u (+{points}\u0111) t\u1EEB h\u1EC7 th\u1ED1ng!" },
+    { id: "ACT_FB_03", noticeType: "ACTIVE_STEAL_FALLBACK", title: "PH\xD2NG TH\u1EE6 K\xCDN K\u1EBC!", text: "\u0110\u1ED1i th\u1EE7 \u0111\xE3 k\u1ECBp d\u1EF1ng khi\xEAn! Nh\u01B0ng \u0111\u1EEBng bu\u1ED3n, {actor} v\u1EABn \u0111\u01B0\u1EE3c h\u1EC7 th\u1ED1ng r\xF3t ng\xE2n s\xE1ch an to\xE0n +{points}\u0111!" },
+    { id: "ACT_FB_04", noticeType: "ACTIVE_STEAL_FALLBACK", title: "C\xD4NG B\u1EB0NG TUY\u1EC6T \u0110\u1ED0I!", text: "Khi kh\xF4ng c\xF3 m\u1EE5c ti\xEAu h\u1EE3p l\u1EC7 \u0111\u1EC3 c\u01B0\u1EDBp, {actor} nh\u1EADn an to\xE0n 50% \u0111i\u1EC3m g\u1ED1c (+{points}\u0111) v\u1EC1 kho d\u1EF1 tr\u1EEF!" },
+    { id: "ACT_FB_05", noticeType: "ACTIVE_STEAL_FALLBACK", title: "B\u1EA2O V\u1EC6 TO\xC0N DI\u1EC6N!", text: "B\u1EE9c t\u01B0\u1EDDng mi\u1EC5n nhi\u1EC5m ph\xE1t huy t\xE1c d\u1EE5ng! {actor} v\u1EABn b\u1ECF t\xFAi ngon l\xE0nh +{points}\u0111 h\u1ED7 tr\u1EE3 t\u1EEB tr\u1ECDng t\xE0i!" },
+    { id: "ACT_FB_06", noticeType: "ACTIVE_STEAL_FALLBACK", title: "TR\xC1NH XUNG \u0110\u1ED8T TR\u1EF0C TI\u1EBEP!", text: "\u0110\u1ED1i th\u1EE7 th\u1EDF ph\xE0o nh\u1EB9 nh\xF5m, c\xF2n {actor} v\u1EABn m\u1EC9m c\u01B0\u1EDDi v\u1EDBi +{points}\u0111 an to\xE0n t\u1EEB Qu\u1EF9 Tr\u1EADn \u0110\u1EA5u!" },
+    { id: "ACT_FB_07", noticeType: "ACTIVE_STEAL_FALLBACK", title: "TI\u1EC0N TH\u01AF\u1EDENG H\xD2A B\xCCNH!", text: "Kh\xF4ng c\xF3 ai b\u1ECB th\u01B0\u01A1ng t\xEDch! {actor} vui v\u1EBB nh\u1EADn th\u01B0\u1EDFng h\xF2a b\xECnh 50% \u0111i\u1EC3m c\xE2u (+{points}\u0111) t\u1EEB ban t\u1ED5 ch\u1EE9c!" },
+    { id: "ACT_FB_08", noticeType: "ACTIVE_STEAL_FALLBACK", title: "KHI\xCAN TH\u1EA6N NG\u0102N B\u01AF\u1EDAC!", text: "L\u1EF1c l\u01B0\u1EE3ng ph\xF2ng v\u1EC7 c\u1EE7a \u0111\u1ED1i ph\u01B0\u01A1ng qu\xE1 m\u1EA1nh! {actor} quay sang nh\u1EADn n\xF3ng +{points}\u0111 b\u1EA3o \u0111\u1EA3m t\u1EEB h\u1EC7 th\u1ED1ng!" },
+    { id: "ACT_FB_09", noticeType: "ACTIVE_STEAL_FALLBACK", title: "QUY T\u1EAEC C\xD4NG B\u1EB0NG L\xCAN TI\u1EBENG!", text: "\u0110\xFAng theo lu\u1EADt ch\u01A1i gameshow: {actor} mang v\u1EC1 \u0111\xFAng 1/2 s\u1ED1 \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (+{points}\u0111)!" },
+    { id: "ACT_FB_10", noticeType: "ACTIVE_STEAL_FALLBACK", title: "THU HO\u1EA0CH AN TO\xC0N!", text: "Kh\xF4ng m\u1EA5t c\xF4ng tranh \u0111o\u1EA1t! {actor} nh\u1EADn th\u1EB3ng +{points}\u0111 t\u1EEB Qu\u1EF9 Trung \u01AF\u01A1ng v\xE0o b\u1EA3ng \u0111i\u1EC3m!" },
+    { id: "ACT_FB_11", noticeType: "ACTIVE_STEAL_FALLBACK", title: "K\xC9O L\u1EA0I \u0110I\u1EC2M S\u1ED0!", text: "D\xF9 \u0111\u1ED1i th\u1EE7 mi\u1EC5n nhi\u1EC5m, b\xE0n tay may m\u1EAFn v\u1EABn gi\xFAp {actor} g\u1EB7t h\xE1i +{points}\u0111 th\u01B0\u1EDFng an to\xE0n!" },
+    { id: "ACT_FB_12", noticeType: "ACTIVE_STEAL_FALLBACK", title: "\u0110\u1ED0I TH\u1EE6 THO\xC1T N\u1EA0N!", text: "\u0110\u1ED1i ph\u01B0\u01A1ng h\xFA v\xEDa tho\xE1t n\u1EA1n, c\xF2n {actor} v\u1EABn c\xF3 qu\xE0: +{points}\u0111 tinh th\u1EA7n t\u1EEB h\u1EC7 th\u1ED1ng!" },
+    { id: "ACT_FB_13", noticeType: "ACTIVE_STEAL_FALLBACK", title: "H\xC0I H\xD2A TH\u1EBE TR\u1EACN!", text: "B\u1EA3o to\xE0n t\xECnh \u0111o\xE0n k\u1EBFt! {actor} nh\u1EADn tr\u1ECDn +{points}\u0111 t\u1EEB ng\xE2n qu\u1EF9 tr\xF2 ch\u01A1i m\xE0 kh\xF4ng l\xE0m ph\u1EADt l\xF2ng ai!" },
+    { id: "ACT_FB_14", noticeType: "ACTIVE_STEAL_FALLBACK", title: "KH\xD4NG V\u1EC0 TAY TR\u1EAENG!", text: "Tuy\u1EC7t \u0111\u1ED1i kh\xF4ng ra v\u1EC1 tay kh\xF4ng! {actor} l\u0129nh th\u01B0\u1EDFng tr\u1ECDn v\u1EB9n n\u1EEDa \u0111i\u1EC3m c\xE2u (+{points}\u0111) t\u1EEB h\u1EC7 th\u1ED1ng!" },
+    { id: "ACT_FB_15", noticeType: "ACTIVE_STEAL_FALLBACK", title: "C\xC2N B\u1EB0NG \u0110\u1ECANH M\u1EC6NH!", text: "Lu\u1EADt c\xF4ng b\u1EB1ng \u0111\u01B0\u1EE3c th\u1EF1c thi! {actor} b\u1ECF t\xFAi +{points}\u0111 nh\u1EB9 nh\xE0ng, ti\u1EBFp t\u1EE5c h\xE0nh tr\xECnh s\u0103n c\xFAp!" }
+  ],
+  // 5. Đội đang chơi dừng lại nhận thưởng an toàn từ cánh cổng cược
+  ACTIVE_GAMBLE_STOP: [
+    { id: "ACT_GMB_01", noticeType: "ACTIVE_GAMBLE_STOP", title: "D\u1EEANG L\u1EA0I T\u1EC8NH T\xC1O!", text: "Bi\u1EBFt \u0111\u1EE7 l\xE0 h\u1EA1nh ph\xFAc! {actor} ch\u1ECDn d\u1EEBng l\u1EA1i b\u1EA3o to\xE0n th\xE0nh qu\u1EA3 +{points}\u0111 an to\xE0n tuy\u1EC7t \u0111\u1ED1i!" },
+    { id: "ACT_GMB_02", noticeType: "ACTIVE_GAMBLE_STOP", title: "QUY\u1EBET \u0110\u1ECANH TH\xD4NG MINH!", text: "C\xE1i \u0111\u1EA7u l\u1EA1nh c\u1EE7a nh\xE0 v\xF4 \u0111\u1ECBch! {actor} ch\u1ED1t h\u1EA1 ngay +{points}\u0111, kh\xF4ng cho r\u1EE7i ro c\xF3 c\u01A1 h\u1ED9i xu\u1EA5t hi\u1EC7n!" },
+    { id: "ACT_GMB_03", noticeType: "ACTIVE_GAMBLE_STOP", title: "B\u1EA2O TO\xC0N CHI\u1EBEN L\u1EE2I PH\u1EA8M!", text: "Pha x\u1EED l\xFD ch\u1EAFc nh\u01B0 b\u1EAFp! {actor} c\u1EA5t ngay +{points}\u0111 v\xE0o h\xF2m v\xE0 kh\xE9p l\u1EA1i c\xE1nh c\u1ED5ng \u0111\xE1nh c\u01B0\u1EE3c!" },
+    { id: "ACT_GMB_04", noticeType: "ACTIVE_GAMBLE_STOP", title: "B\u1EA2N L\u0128NH T\u1EF0 CH\u1EE6!", text: "Kh\xF4ng b\u1ECB c\xE1m d\u1ED7 khu\u1EA5t ph\u1EE5c! {actor} h\xE0i l\xF2ng mang v\u1EC1 +{points}\u0111 \u0111i\u1EC3m th\u01B0\u1EDFng ch\u1EAFc ch\u1EAFn!" },
+    { id: "ACT_GMB_05", noticeType: "ACTIVE_GAMBLE_STOP", title: "TI\xCDCH TI\u1EC2U TH\xC0NH \u0110\u1EA0I!", text: "Ch\u1EADm m\xE0 ch\u1EAFc! {actor} gom th\xEAm +{points}\u0111 an to\xE0n, x\xE2y ch\u1EAFc n\u1EC1n m\xF3ng chi\u1EBFn th\u1EAFng!" },
+    { id: "ACT_GMB_06", noticeType: "ACTIVE_GAMBLE_STOP", title: "C\u1EECA AN TO\xC0N \u0110\xC3 KH\xC9P!", text: "MC xin nhi\u1EC7t li\u1EC7t ch\xFAc m\u1EEBng quy\u1EBFt \u0111\u1ECBnh s\xE1ng su\u1ED1t c\u1EE7a {actor}: Nh\u1EADn tr\u1ECDn v\u1EB9n +{points}\u0111!" },
+    { id: "ACT_GMB_07", noticeType: "ACTIVE_GAMBLE_STOP", title: "\u0110\xD3NG N\u1EAEP KHO B\xC1U!", text: "\u0110\xE3 kh\xF3a k\xE9t s\u1EAFt th\xE0nh c\xF4ng! {actor} an to\xE0n v\u1EDBi +{points}\u0111 trong s\u1EF1 th\xE1n ph\u1EE5c c\u1EE7a kh\xE1n gi\u1EA3!" },
+    { id: "ACT_GMB_08", noticeType: "ACTIVE_GAMBLE_STOP", title: "CHI\u1EBEN THU\u1EACT B\u1EACC TH\u1EA6Y!", text: "Bi\u1EBFt ti\u1EBFn bi\u1EBFt tho\xE1i \u0111\xFAng l\xFAc! {actor} rinh v\u1EC1 +{points}\u0111 ng\u1ECDt ng\xE0o m\xE0 kh\xF4ng m\u1EA3y may s\u1EE9t m\u1EBB!" },
+    { id: "ACT_GMB_09", noticeType: "ACTIVE_GAMBLE_STOP", title: "AN TO\xC0N L\xC0 B\u1EA0N!", text: "Ph\u01B0\u01A1ng ch\xE2m \u0103n ch\u1EAFc m\u1EB7c b\u1EC1n! {actor} nh\u1EADn n\xF3ng +{points}\u0111 v\xE0 nh\u01B0\u1EDDng l\u01B0\u1EE3t ch\u01A1i trong \xEAm \u0111\u1EB9p!" },
+    { id: "ACT_GMB_10", noticeType: "ACTIVE_GAMBLE_STOP", title: "CH\u1ED0T \u0110\u01A0N TH\u1EAENG L\u1EE2I!", text: "Ch\u1ED1t \u0111\u01A1n th\xE0nh c\xF4ng r\u1EF1c r\u1EE1! {actor} \u0111\xFAt t\xFAi +{points}\u0111 \u0111i\u1EC3m s\u1ED1 v\u1EEFng ch\u1EAFc!" },
+    { id: "ACT_GMB_11", noticeType: "ACTIVE_GAMBLE_STOP", title: "R\xDAT QU\xC2N H\u1EE2P L\xDD!", text: "Lui binh \u0111\xFAng th\u1EDDi kh\u1EAFc quy\u1EBFt \u0111\u1ECBnh! {actor} b\u1EA3o v\u1EC7 nguy\xEAn v\u1EB9n +{points}\u0111 danh gi\xE1!" },
+    { id: "ACT_GMB_12", noticeType: "ACTIVE_GAMBLE_STOP", title: "T\u1EC8NH T\xC1O V\xC0 CH\xCDNH X\xC1C!", text: "Kh\xF4ng sa \u0111\xE0 v\xE0o may r\u1EE7i! {actor} mang +{points}\u0111 v\u1EC1 nh\xE0 trong n\u1EE5 c\u01B0\u1EDDi m\xE3n nguy\u1EC7n!" },
+    { id: "ACT_GMB_13", noticeType: "ACTIVE_GAMBLE_STOP", title: "V\u1EEENG TAY L\xC1I!", text: "Tay l\xE1i l\u1EE5a tr\xE1nh m\u1ECDi \u1ED5 g\xE0! {actor} k\u1EBFt th\xFAc l\u01B0\u1EE3t ch\u01A1i m\u0129 m\xE3n v\u1EDBi +{points}\u0111 tr\u1ECDn g\xF3i!" },
+    { id: "ACT_GMB_14", noticeType: "ACTIVE_GAMBLE_STOP", title: "CHI\u1EBEN L\u01AF\u1EE2C D\xC0I H\u01A0I!", text: "Nh\xECn xa tr\xF4ng r\u1ED9ng! {actor} l\u1EA5y ch\u1EAFc +{points}\u0111 \u0111\u1EC3 d\u1ED3n s\u1EE9c cho c\xE1c th\u1EED th\xE1ch l\u1EDBn h\u01A1n ph\xEDa tr\u01B0\u1EDBc!" },
+    { id: "ACT_GMB_15", noticeType: "ACTIVE_GAMBLE_STOP", title: "B\xC0I H\u1ECCC V\xC0NG V\u1EC0 T\xCDNH TO\xC1N!", text: "M\u1ED9t pha d\u1EEBng b\u01B0\u1EDBc m\u1EABu m\u1EF1c! {actor} ghi th\xEAm +{points}\u0111 v\xE0o b\u1EA3ng v\xE0ng th\xE0nh t\xEDch!" }
+  ],
+  // 6. Đội đang chơi vượt qua chế độ sinh tử an toàn (Thoát hiểm)
+  ACTIVE_SURVIVAL_ESCAPE: [
+    { id: "ACT_SRV_ESC_01", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "THO\xC1T HI\u1EC2M NGO\u1EA0N M\u1EE4C!", text: "Th\u1EA7n k\u1EF3 \u0111\u1EBFn kh\xF3 tin! {actor} \u0111\xE3 b\u01B0\u1EDBc qua C\u1EEDa Sinh T\u1EED nguy\xEAn v\u1EB9n, b\u1EA3o to\xE0n tuy\u1EC7t \u0111\u1ED1i \u0111i\u1EC3m s\u1ED1 v\xE0 tim!" },
+    { id: "ACT_SRV_ESC_02", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "S\u1ED0NG S\xD3T K\u1EF2 DI\u1EC6U!", text: "C\u1EA3 kh\xE1n ph\xF2ng n\xEDn th\u1EDF r\u1ED3i v\u1EE1 \xF2a! {actor} \u0111\xE3 s\u1ED1ng s\xF3t sau th\u1EED th\xE1ch Sinh T\u1EED \u0111\u1EA7y cam go!" },
+    { id: "ACT_SRV_ESC_03", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "B\xC0N TAY \u0110\u1ECANH M\u1EC6NH!", text: "B\xECnh y\xEAn tho\xE1t n\u1EA1n! {actor} \u0111\xE3 ch\u1ECDn \u0111\xFAng c\xE1nh c\u1EEDa th\u1EA7n k\u1EF3, \u0111i\u1EC3m s\u1ED1 v\xE0 sinh m\u1EA1ng \u0111\u01B0\u1EE3c gi\u1EEF v\u1EEFng!" },
+    { id: "ACT_SRV_ESC_04", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "PH\xC9P M\xC0U XU\u1EA4T HI\u1EC6N!", text: "M\u1ED9t ph\xE9p m\xE0u gi\u1EEFa hi\u1EC3m nguy! {actor} xu\u1EA5t s\u1EAFc v\u01B0\u1EE3t qua b\u1EABy t\u1EED th\u1EA7n m\xE0 kh\xF4ng m\u1EA5t m\u1ED9t gi\u1ECDt m\u1ED3 h\xF4i!" },
+    { id: "ACT_SRV_ESC_05", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "B\u01AF\u1EDAC CH\xC2N T\u1EEC T\u1EBE!", text: "V\u1EADn may c\u1EE7a k\u1EBB d\u0169ng c\u1EA3m! {actor} an to\xE0n b\u01B0\u1EDBc ra kh\u1ECFi khu v\u1EF1c nguy hi\u1EC3m trong tr\xE0ng ph\xE1o tay gi\xF2n gi\xE3!" },
+    { id: "ACT_SRV_ESC_06", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "H\xDA V\xCDA V\u1EC0 \u0110\xCDCH!", text: "Tim \u0111\u1EADp ch\xE2n run nh\u01B0ng k\u1EBFt qu\u1EA3 ng\u1ECDt ng\xE0o! {actor} b\u1EA3o v\u1EC7 nguy\xEAn v\u1EB9n h\xE0nh trang thi \u0111\u1EA5u!" },
+    { id: "ACT_SRV_ESC_07", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "V\u01AF\u1EE2T B\xC3O B\xCCNH AN!", text: "C\u01A1n b\xE3o Sinh T\u1EED kh\xF4ng th\u1EC3 qu\u1EADt ng\xE3 {actor}! \u0110i\u1EC3m s\u1ED1 c\u1EE7a b\u1EA1n v\u1EABn \u0111\u1EE9ng v\u1EEFng nh\u01B0 b\xE0n th\u1EA1ch!" },
+    { id: "ACT_SRV_ESC_08", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "C\xDA L\xC1CH KHE C\u1EECA H\u1EB8P!", text: "Khe c\u1EEDa h\u1EB9p 20% \u0111\xE3 m\u1EDF ra cho {actor}! C\xFA \u0111\xE0o tho\xE1t ngo\u1EA1n m\u1EE5c x\u1EE9ng \u0111\xE1ng l\u01B0u v\xE0o l\u1ECBch s\u1EED!" },
+    { id: "ACT_SRV_ESC_09", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "T\xC1I SINH T\u1EEA HI\u1EC2M NGUY!", text: "B\u1EA3n l\u0129nh ki\xEAn c\u01B0\u1EDDng \u0111\xE3 c\u1EE9u {actor}! To\xE0n b\u1ED9 \u0111i\u1EC3m s\u1ED1 \u0111\u01B0\u1EE3c ni\xEAm phong an to\xE0n tuy\u1EC7t \u0111\u1ED1i!" },
+    { id: "ACT_SRV_ESC_10", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "\xC1NH S\xC1NG N\u01A0I \u0110\xC1Y V\u1EF0C!", text: "\xC1nh s\xE1ng hy v\u1ECDng \u0111\xE3 d\u1EABn l\u1ED1i {actor} tho\xE1t kh\u1ECFi b\xF3ng t\u1ED1i Sinh T\u1EED trong gang t\u1EA5c!" },
+    { id: "ACT_SRV_ESC_11", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "V\u1EACN \u0110\u1ECE \u0110\u1EC8NH CAO!", text: "Ai b\u1EA3o tr\u1EA3 l\u1EDDi sai l\xE0 m\u1EA5t t\u1EA5t c\u1EA3? {actor} v\u1EEBa ch\u1EE9ng minh v\u1EADn may \u0111\u1EC9nh cao c\u1EE7a m\xECnh!" },
+    { id: "ACT_SRV_ESC_12", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "B\u1EA2O TO\xC0N TR\u1ECCN V\u1EB8N!", text: "Kh\xF4ng x\xE2y x\u01B0\u1EDBc m\u1ED9t ch\xFAt n\xE0o! {actor} ng\u1EA9ng cao \u0111\u1EA7u b\u01B0\u1EDBc ti\u1EBFp v\xE0o ch\u1EB7ng \u0111ua sinh t\u1EED!" },
+    { id: "ACT_SRV_ESC_13", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "N\u1EE4 C\u01AF\u1EDCI CHI\u1EBEN BINH!", text: "Chi\u1EBFn binh b\u1EA5t t\u1EED {actor} v\u01B0\u1EE3t qua c\u1EA1m b\u1EABy trong s\u1EF1 th\xE1n ph\u1EE5c c\u1EE7a to\xE0n th\u1EC3 \u0111\u1ED1i th\u1EE7!" },
+    { id: "ACT_SRV_ESC_14", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "\u0110\u1EA8Y L\xD9I TAI H\u1ECCA!", text: "Tai \u01B0\u01A1ng tan bi\u1EBFn! {actor} b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n s\u1ED1 tim v\xE0 \u0111i\u1EC3m s\u1ED1 qu\xFD gi\xE1!" },
+    { id: "ACT_SRV_ESC_15", noticeType: "ACTIVE_SURVIVAL_ESCAPE", title: "C\xDA THO\xC1T TIM \u0110\u1EACP NHANH!", text: "Tr\u1EADn h\xFA v\xEDa \u0111\xE1ng nh\u1EDB! {actor} an to\xE0n tuy\u1EC7t \u0111\u1ED1i, s\u1EB5n s\xE0ng ph\u1EA3n c\xF4ng \u1EDF v\xF2ng sau!" }
+  ],
+  // 7. Đội đang chơi gục ngã ở chế độ sinh tử (Thất bại)
+  ACTIVE_SURVIVAL_FAIL: [
+    { id: "ACT_SRV_FAL_01", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "G\u1EE4C NG\xC3 TR\u01AF\u1EDAC C\u1EECA T\u1EEC!", text: "R\u1EA5t ti\u1EBFc cho {actor}! V\xF2ng quay Sinh T\u1EED kh\u1EAFc nghi\u1EC7t \u0111\xE3 k\xEDch ho\u1EA1t b\u1EABy ph\u1EA1t tr\u1EEB -{points}\u0111!" },
+    { id: "ACT_SRV_FAL_02", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "\u0110\u1ECANH M\u1EC6NH NGHI\u1EC6T NG\xC3!", text: "M\u1ED9t c\xFA s\u1ED1c l\u1EDBn! {actor} kh\xF4ng th\u1EC3 v\u01B0\u1EE3t qua c\u1EA1m b\u1EABy sinh t\u1EED v\xE0 b\u1ECB tr\u1EEB -{points}\u0111!" },
+    { id: "ACT_SRV_FAL_03", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "C\xC1NH C\u1EECA KH\xC9P L\u1EA0I!", text: "C\xE1nh c\u1EEDa hy v\u1ECDng \u0111\xE3 \u0111\xF3ng s\u1EADp! {actor} nh\u1EADn \xE1n ph\u1EA1t -{points}\u0111 t\u1EEB \u0111\u1EA5u tr\u01B0\u1EDDng sinh t\u1EED!" },
+    { id: "ACT_SRV_FAL_04", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "T\u1ED4N TH\u1EA4T N\u1EB6NG N\u1EC0!", text: "C\xE1i gi\xE1 ph\u1EA3i tr\u1EA3 cho s\u1EF1 s\u01A1 s\u1EA9y! {actor} b\u1ECB t\u01B0\u1EDBc \u0111i -{points}\u0111, c\u1ED1 g\u1EAFng g\u01B0\u1EE3ng d\u1EADy \u1EDF v\xF2ng sau!" },
+    { id: "ACT_SRV_FAL_05", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "S\xD3NG GI\xD3 CU\u1ED0N TR\xD4I!", text: "C\u01A1n th\u1ECBnh n\u1ED9 c\u1EE7a Sinh T\u1EED \u0111\xE3 qu\xE9t qua {actor}! \u0110i\u1EC3m s\u1ED1 b\u1ECB hao h\u1EE5t -{points}\u0111!" },
+    { id: "ACT_SRV_FAL_06", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "B\xC0I TO\xC1N KH\xD3 C\u1EE6A S\u1ED0 PH\u1EACN!", text: "Th\u1EA7n may m\u1EAFn \u0111\xE3 ngo\u1EA3nh m\u1EB7t l\u1EA7n n\xE0y! {actor} ch\u1ECBu t\u1ED5n th\u01B0\u01A1ng -{points}\u0111 t\u1EEB c\u1EA1m b\u1EABy!" },
+    { id: "ACT_SRV_FAL_07", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "H\u1EE8NG CH\u1ECAU TR\u1EEA \u0110I\u1EC2M!", text: "\u0110\xF2n ph\u1EA1t kh\xF4ng th\u1EC3 n\xE9 tr\xE1nh! {actor} b\u1ECB gi\u1EA3m -{points}\u0111, cu\u1ED9c \u0111ua l\u1EA1i th\xEAm ph\u1EA7n ch\xF4ng gai!" },
+    { id: "ACT_SRV_FAL_08", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "K\xC9O L\xD9I B\u1EA2NG \u0110I\u1EC2M!", text: "V\u1EA5p ng\xE3 \u0111au \u0111\u1EDBn n\u01A1i t\u1EED \u0111\u1ECBa! {actor} ng\u1EADm ng\xF9i \u0111\u1EC3 r\u01A1i -{points}\u0111 t\u1EA1i v\xF2ng ch\u01A1i n\xE0y!" },
+    { id: "ACT_SRV_FAL_09", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "B\u1EA2N L\u0128NH D\u01AF\u1EDAI TH\u1EEC TH\xC1CH!", text: "Th\u1EA5t b\u1EA1i l\xE0 m\u1EB9 th\xE0nh c\xF4ng! D\xF9 b\u1ECB tr\u1EEB -{points}\u0111, h\xE3y gi\u1EEF v\u1EEFng tinh th\u1EA7n th\xE9p nh\xE9 {actor}!" },
+    { id: "ACT_SRV_FAL_10", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "\u0110\xCAM T\u1ED0I TR\u01AF\u1EDAC B\xCCNH MINH!", text: "Kho\u1EA3nh kh\u1EAFc kh\xF3 kh\u0103n nh\u1EA5t c\u1EE7a {actor}! M\u1EA5t -{points}\u0111 nh\u01B0ng c\u01A1 h\u1ED9i l\u1ED9i ng\u01B0\u1EE3c d\xF2ng v\u1EABn c\xF2n!" },
+    { id: "ACT_SRV_FAL_11", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "\xC1P L\u1EF0C \u0110\xC8 N\u1EB6NG!", text: "C\u1EA1m b\u1EABy sinh t\u1EED \u0111\xE3 si\u1EBFt ch\u1EB7t! {actor} b\u1ECB kh\u1EA5u tr\u1EEB -{points}\u0111 v\xE0o t\xE0i kho\u1EA3n \u0111i\u1EC3m s\u1ED1!" },
+    { id: "ACT_SRV_FAL_12", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "C\xDA S\u1EA8Y CH\xC2N \u0110\xC1NG TI\u1EBEC!", text: "Ch\u1EC9 thi\u1EBFu m\u1ED9t ch\xFAt may m\u1EAFn n\u1EEFa th\xF4i! {actor} \u0111\xE0nh ch\u1EA5p nh\u1EADn kho\u1EA3n ph\u1EA1t -{points}\u0111!" },
+    { id: "ACT_SRV_FAL_13", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "L\u1EDCI C\u1EA2NH T\u1EC8NH \u0110ANH TH\xC9P!", text: "L\u1EDDi c\u1EA3nh b\xE1o gay g\u1EAFt t\u1EEB \u0111\u1EA5u tr\u01B0\u1EDDng! {actor} hao h\u1EE5t -{points}\u0111, c\u1EA7n c\u1EA9n tr\u1ECDng h\u01A1n \u1EDF c\xE2u h\u1ECFi t\u1EDBi!" },
+    { id: "ACT_SRV_FAL_14", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "V\u01AF\u1EE2T KH\xD3 KH\u0102N \u0110\u1EC2 TR\u01AF\u1EDENG TH\xC0NH!", text: "T\u1ED5n th\u1EA5t -{points}\u0111 kh\xF4ng th\u1EC3 d\u1EADp t\u1EAFt ng\u1ECDn l\u1EEDa quy\u1EBFt t\xE2m c\u1EE7a {actor}!" },
+    { id: "ACT_SRV_FAL_15", noticeType: "ACTIVE_SURVIVAL_FAIL", title: "CH\u1ECAU PH\u1EA0T V\xC0 TI\u1EBEP B\u01AF\u1EDAC!", text: "Ch\u1EA5p nh\u1EADn h\xECnh ph\u1EA1t -{points}\u0111 v\xE0 h\u01B0\u1EDBng v\u1EC1 ph\xEDa tr\u01B0\u1EDBc! Ch\u1EB7ng \u0111\u01B0\u1EDDng v\u1EABn c\xF2n nhi\u1EC1u b\u1EA5t ng\u1EDD!" }
+  ],
+  // 8. Đội bị cướp điểm bởi lá CHIẾN XA VII (-50% điểm gốc)
+  VICTIM_STOLEN_CHARIOT: [
+    { id: "VIC_CHA_01", noticeType: "VICTIM_STOLEN_CHARIOT", title: "CHI\u1EBEN XA QU\xC9T QUA!", text: "MC kh\u1EA9n c\u1EA5p b\xE1o tin: C\u1ED7 Chi\u1EBFn Xa d\u0169ng m\xE3nh c\u1EE7a {actor} v\u1EEBa c\xE0n qu\xE9t qua, cu\u1ED1n ph\u0103ng {points}\u0111 c\u1EE7a \u0111\u1ED9i b\u1EA1n!" },
+    { id: "VIC_CHA_02", noticeType: "VICTIM_STOLEN_CHARIOT", title: "B\u1ECA C\u01AF\u1EDAP \u0110I\u1EC2M CH\u1EDAP NHO\xC1NG!", text: "\u1ED0i gi\u1EDDi \u01A1i! Chi\u1EBFn Xa th\u1EA7n t\u1ED1c c\u1EE7a {actor} v\u1EEBa ph\xF3ng v\xE8o qua v\xE0 t\u01B0\u1EDBc m\u1EA5t {points}\u0111 t\u1EEB kho \u0111i\u1EC3m c\u1EE7a b\u1EA1n!" },
+    { id: "VIC_CHA_03", noticeType: "VICTIM_STOLEN_CHARIOT", title: "M\u1ED8T C\xDA \u0110\u1ED8T K\xCDCH B\u1EA4T NG\u1EDC!", text: "{actor} \u0111\xE3 nh\u1EAFm tr\xFAng \u0111\u1ED9i b\u1EA1n! L\xE1 b\xE0i Chi\u1EBFn Xa \u0111\xE3 l\u1EA5y \u0111i {points}\u0111 c\u1EE7a b\u1EA1n mang v\u1EC1 k\xE9t s\u1EAFt c\u1EE7a h\u1ECD!" },
+    { id: "VIC_CHA_04", noticeType: "VICTIM_STOLEN_CHARIOT", title: "HAO H\u1EE4T CHI\u1EBEN THU\u1EACT!", text: "Tin bu\u1ED3n t\u1EEB \u0111\u1EA5u tr\u01B0\u1EDDng: \u0110\u1ED9i b\u1EA1n v\u1EEBa b\u1ECB {actor} 'm\u01B0\u1EE3n t\u1EA1m' {points}\u0111 b\u1EB1ng s\u1EE9c m\u1EA1nh c\u1ED7 Chi\u1EBFn Xa!" },
+    { id: "VIC_CHA_05", noticeType: "VICTIM_STOLEN_CHARIOT", title: "B\xC1NH XE CU\u1ED0N \u0110I\u1EC2M!", text: "B\xE1nh xe Chi\u1EBFn Xa l\u0103n qua kh\xF4ng ch\u1EEBa l\u1EA1i g\xEC! B\u1EA1n b\u1ECB tr\u1EEB {points}\u0111 chuy\u1EC3n th\u1EB3ng sang t\xE0i kho\u1EA3n {actor}!" },
+    { id: "VIC_CHA_06", noticeType: "VICTIM_STOLEN_CHARIOT", title: "TAI N\u1EA0N NGO\xC0I L\u01AF\u1EE2T!", text: "\u0110ang ng\u1ED3i y\xEAn c\u0169ng b\u1ECB d\xEDnh \u0111\xF2n! {actor} d\xF9ng Chi\u1EBFn Xa gh\xE9 th\u0103m v\xE0 mang \u0111i {points}\u0111 c\u1EE7a b\u1EA1n!" },
+    { id: "VIC_CHA_07", noticeType: "VICTIM_STOLEN_CHARIOT", title: "C\xDA T\u1EACP K\xCDCH B\u1EA4T NG\u1EDC!", text: "Th\u1EADt kh\xF4ng may! \u0110\u1ED9i b\u1EA1n tr\u1EDF th\xE0nh m\u1EE5c ti\xEAu c\u1EE7a c\u1ED7 Chi\u1EBFn Xa do {actor} \u0111i\u1EC1u khi\u1EC3n: M\u1EA5t -{points}\u0111!" },
+    { id: "VIC_CHA_08", noticeType: "VICTIM_STOLEN_CHARIOT", title: "S\xD3C V\xCC B\u1ECA T\u01AF\u1EDAC \u0110I\u1EC2M!", text: "M\u1ED9t phen h\xFA v\xEDa! {actor} \u0111\xE3 k\xEDch ho\u1EA1t Chi\u1EBFn Xa v\xE0 r\xFAt b\u1EDBt {points}\u0111 t\u1EEB kho b\xE1u c\u1EE7a \u0111\u1ED9i b\u1EA1n!" },
+    { id: "VIC_CHA_09", noticeType: "VICTIM_STOLEN_CHARIOT", title: "C\u1EA6N PH\u1EE4C TH\xD9 G\u1EA4P!", text: "B\u1ECB {actor} l\u1EA5y m\u1EA5t {points}\u0111 b\u1EB1ng Chi\u1EBFn Xa r\u1ED3i! H\xE3y m\xE0i s\u1EAFc v\u0169 kh\xED \u0111\u1EC3 ph\u1EE5c th\xF9 ngay v\xF2ng t\u1EDBi!" },
+    { id: "VIC_CHA_10", noticeType: "VICTIM_STOLEN_CHARIOT", title: "B\xC3O CHI\u1EBEN XA C\xC0N QU\xC9T!", text: "C\u01A1n l\u1ED1c Chi\u1EBFn Xa c\u1EE7a {actor} \u0111\xE3 th\u1ED5i bay {points}\u0111 c\u1EE7a \u0111\u1ED9i b\u1EA1n trong s\u1EF1 ng\u1EE1 ng\xE0ng c\u1EE7a kh\xE1n gi\u1EA3!" },
+    { id: "VIC_CHA_11", noticeType: "VICTIM_STOLEN_CHARIOT", title: "M\u1EA4T M\xC1C B\u1EA4T \u0110\u1EAEC D\u0128!", text: "\u0110\u1ED9i b\u1EA1n v\u1EEBa b\u1ECB tr\u1EEB {points}\u0111 do {actor} b\u1ED1c tr\xFAng Chi\u1EBFn Xa! Gi\u1EDD b\u1EA1n \u0111\xE3 nh\u1EADn \u0111\u01B0\u1EE3c quy\u1EC1n mi\u1EC5n nhi\u1EC5m c\u01B0\u1EDBp!" },
+    { id: "VIC_CHA_12", noticeType: "VICTIM_STOLEN_CHARIOT", title: "\u0110\xD2N \u0110\xC1NH C\u1EE6A K\u1EBA D\u1EAAN \u0110\u1EA6U!", text: "{actor} \u0111\xE3 t\u1EADn d\u1EE5ng s\u1EE9c m\u1EA1nh c\u1ED7 xe chi\u1EBFn \u0111\u1EC3 t\u01B0\u1EDBc \u0111i {points}\u0111 c\u1EE7a b\u1EA1n! \u0110\u1EEBng bu\u1ED3n, \u0111\u01B0\u1EDDng d\xE0i m\u1EDBi bi\u1EBFt ng\u1EF1a hay!" },
+    { id: "VIC_CHA_13", noticeType: "VICTIM_STOLEN_CHARIOT", title: "B\xC0N TAY C\xD4NG L\xDD \u0110\xC2U R\u1ED2I?", text: "Chi\u1EBFn Xa c\u1EE7a {actor} qu\xE1 hung h\xE3n, \u0111\u1ED9i b\u1EA1n b\u1ECB tr\u1EEB -{points}\u0111! H\xE3y ch\u1EDD th\u1EDDi c\u01A1 l\u1EADt ng\u01B0\u1EE3c v\xE1n c\u1EDD!" },
+    { id: "VIC_CHA_14", noticeType: "VICTIM_STOLEN_CHARIOT", title: "T\u1ED4N TH\u1EA4T \u0110I\u1EC2M S\u1ED0!", text: "S\u1ED1 \u0111i\u1EC3m -{points}\u0111 \u0111\xE3 b\u1ED1c h\u01A1i kh\u1ECFi t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n v\xE0 bay th\u1EB3ng sang \u0111\u1ED9i {actor}!" },
+    { id: "VIC_CHA_15", noticeType: "VICTIM_STOLEN_CHARIOT", title: "H\xC3Y BI\u1EBEN \u0110AU TH\u01AF\u01A0NG TH\xC0NH S\u1EE8C M\u1EA0NH!", text: "B\u1ECB {actor} cu\u1ED7m m\u1EA5t {points}\u0111 \u01B0? \u0110\u1EEBng lo l\u1EAFng, c\u01A1 h\u1ED9i tr\u1EA3 \u0111\u0169a s\u1EBD \u0111\u1EBFn ngay trong l\u01B0\u1EE3t ch\u01A1i ti\u1EBFp theo!" }
+  ],
+  // 9. Đội bị cướp điểm bởi lá THẦN CHẾT XIII (-100% hoặc -50% điểm gốc)
+  VICTIM_STOLEN_DEATH: [
+    { id: "VIC_DTH_01", noticeType: "VICTIM_STOLEN_DEATH", title: "L\u01AF\u1EE0I H\xC1I T\u1EEC TH\u1EA6N!", text: "Ti\u1EBFng chu\xF4ng t\u1EED th\u1EA7n vang l\xEAn! {actor} \u0111\xE3 tri\u1EC7u h\u1ED3i Th\u1EA7n Ch\u1EBFt XIII, tr\u1EA3m m\u1EA5t -{points}\u0111 t\u1EEB t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n!" },
+    { id: "VIC_DTH_02", noticeType: "VICTIM_STOLEN_DEATH", title: "C\xDA S\u1ED0C L\u1EDAN T\u1EA0I \u0110\u1EA4U TR\u01AF\u1EDCNG!", text: "M\u1ED9t c\xFA s\u1ED1c c\u1EF1c l\u1EDBn! {actor} r\xFAt tr\xFAng l\xE1 Th\u1EA7n Ch\u1EBFt v\xE0 h\xFAt c\u1EA1n {points}\u0111 t\u1EEB b\u1EA1n. \u0110au \u0111\u1EDBn nh\u01B0ng cu\u1ED9c ch\u01A1i v\u1EABn ti\u1EBFp di\u1EC5n!" },
+    { id: "VIC_DTH_03", noticeType: "VICTIM_STOLEN_DEATH", title: "\u0110O\u1EA0T M\u1EC6NH T\xC0I KHO\u1EA2N!", text: "Th\u1EA7n Ch\u1EBFt kh\xF4ng tha cho ai! \u0110\u1ED9i b\u1EA1n b\u1ECB {actor} \u0111o\u1EA1t m\u1EC7nh t\u01B0\u1EDBc \u0111i tr\u1ECDn v\u1EB9n {points}\u0111 chuy\u1EC3n sang qu\u1EF9 c\u1EE7a h\u1ECD!" },
+    { id: "VIC_DTH_04", noticeType: "VICTIM_STOLEN_DEATH", title: "B\xC3O T\xC1P GI\xC1NG XU\u1ED0NG!", text: "\u0110\xF2n tr\u1EEBng ph\u1EA1t kh\u1ED1c li\u1EC7t t\u1EEB Th\u1EA7n Ch\u1EBFt! B\u1EA1n v\u1EEBa b\u1ECB {actor} tr\u1EEB s\u1EA1ch {points}\u0111 trong ch\u1EDBp m\u1EAFt!" },
+    { id: "VIC_DTH_05", noticeType: "VICTIM_STOLEN_DEATH", title: "R\xDAT RU\u1ED8T KHO B\xC1U!", text: "L\u01B0\u1EE1i h\xE1i vung l\xEAn trong \u0111\xEAm t\u1ED1i! {actor} \u0111\xE3 l\u1EA5y \u0111i {points}\u0111 t\u1EEB tay \u0111\u1ED9i b\u1EA1n! C\u1ED1 l\xEAn n\xE0o c\xE1c chi\u1EBFn binh!" },
+    { id: "VIC_DTH_06", noticeType: "VICTIM_STOLEN_DEATH", title: "C\u01A0N \xC1C M\u1ED8NG TH\u1EF0C S\u1EF0!", text: "M\u1ED9t c\u01A1n \xE1c m\u1ED9ng ngo\xE0i l\u01B0\u1EE3t ch\u01A1i! {actor} tri\u1EC7u h\u1ED3i Th\u1EA7n Ch\u1EBFt t\u01B0\u1EDBc m\u1EA5t {points}\u0111 c\u1EE7a \u0111\u1ED9i b\u1EA1n!" },
+    { id: "VIC_DTH_07", noticeType: "VICTIM_STOLEN_DEATH", title: "M\u1EA4T M\xC1C N\u1EB6NG N\u1EC0!", text: "T\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n v\u1EEBa hao h\u1EE5t -{points}\u0111 v\xEC l\xE1 Th\u1EA7n Ch\u1EBFt c\u1EE7a {actor}! Gi\u1EDD b\u1EA1n \u0111\xE3 c\xF3 khi\xEAn b\u1EA3o h\u1ED9 t\u1ED1i \u0111a!" },
+    { id: "VIC_DTH_08", noticeType: "VICTIM_STOLEN_DEATH", title: "\u0110\u1ECANH M\u1EC6NH KH\u1EAEC NGHI\u1EC6T!", text: "L\xE1 b\xE0i \u0111\xE1ng s\u1EE3 nh\u1EA5t \u0111\xE3 g\u1ECDi t\xEAn \u0111\u1ED9i b\u1EA1n! {actor} h\xFAt v\u1EC1 +{points}\u0111 t\u1EEB kho \u0111i\u1EC3m c\u1EE7a b\u1EA1n!" },
+    { id: "VIC_DTH_09", noticeType: "VICTIM_STOLEN_DEATH", title: "H\xC3Y \u0110\u1EE8NG D\u1EACY!", text: "B\u1ECB Th\u1EA7n Ch\u1EBFt gh\xE9 th\u0103m v\xE0 m\u1EA5t -{points}\u0111 cho {actor}, nh\u01B0ng ng\u1ECDn l\u1EEDa chi\u1EBFn \u0111\u1EA5u c\u1EE7a b\u1EA1n kh\xF4ng bao gi\u1EDD t\u1EAFt!" },
+    { id: "VIC_DTH_10", noticeType: "VICTIM_STOLEN_DEATH", title: "C\xDA TR\u1EA2M CH\xCD M\u1EA0NG!", text: "L\u01B0\u1EE1i h\xE1i l\u1EA1nh l\xF9ng \u0111\xE3 l\u1EA5y \u0111i {points}\u0111 c\u1EE7a b\u1EA1n trao cho {actor}! C\u1EA3 h\u1ED9i tr\u01B0\u1EDDng l\u1EB7ng \u0111i v\xEC b\u1EA5t ng\u1EDD!" },
+    { id: "VIC_DTH_11", noticeType: "VICTIM_STOLEN_DEATH", title: "H\xDA C\u1EA0N N\u0102NG L\u01AF\u1EE2NG!", text: "N\u0103ng l\u01B0\u1EE3ng b\u1ECB r\xFAt c\u1EA1n! {actor} v\u1EEBa th\u1EF1c hi\u1EC7n c\xFA c\u01B0\u1EDBp {points}\u0111 ngo\u1EA1n m\u1EE5c t\u1EEB \u0111\u1ED9i b\u1EA1n!" },
+    { id: "VIC_DTH_12", noticeType: "VICTIM_STOLEN_DEATH", title: "\xC1P \u0110\u1EA2O T\xC2M L\xDD!", text: "\u0110\u1EEBng \u0111\u1EC3 b\u1ECB dao \u0111\u1ED9ng! D\xF9 b\u1ECB {actor} l\u1EA5y m\u1EA5t {points}\u0111, quy\u1EC1n t\u1EF1 quy\u1EBFt v\u1EABn n\u1EB1m trong tay b\u1EA1n \u1EDF c\xE1c v\xF2ng t\u1EDBi!" },
+    { id: "VIC_DTH_13", noticeType: "VICTIM_STOLEN_DEATH", title: "B\xD3NG MA TR\u01AF\u1EDCNG QUAY!", text: "B\xF3ng ma Th\u1EA7n Ch\u1EBFt \u0111\xE3 ch\u1ECDn \u0111\u1ED9i b\u1EA1n l\xE0m n\u1EA1n nh\xE2n: B\u1ECB tr\u1EEB -{points}\u0111 chuy\u1EC3n sang k\xE9t s\u1EAFt c\u1EE7a {actor}!" },
+    { id: "VIC_DTH_14", noticeType: "VICTIM_STOLEN_DEATH", title: "T\u1ED4N TH\u1EA4T KH\xD3 QU\xCAN!", text: "M\u1ED9t k\u1EF7 ni\u1EC7m nh\u1EDB \u0111\u1EDDi! {actor} v\u1EEBa c\u01B0\u1EDBp \u0111i {points}\u0111 c\u1EE7a \u0111\u1ED9i b\u1EA1n b\u1EB1ng l\xE1 b\xE0i t\u1EED th\u1EA7n XIII!" },
+    { id: "VIC_DTH_15", noticeType: "VICTIM_STOLEN_DEATH", title: "CHU\u1EA8N B\u1ECA PH\u1EE4C TH\xD9!", text: "Kho\u1EA3nh kh\u1EAFc \u0111au \u0111\u1EDBn b\u1ECB tr\u1EEB -{points}\u0111 b\u1EDFi {actor} s\u1EBD l\xE0 \u0111\u1ED9ng l\u1EF1c l\u1EDBn nh\u1EA5t \u0111\u1EC3 b\u1EA1n b\xF9ng n\u1ED5 ph\u1EE5c th\xF9!" }
+  ],
+  // 10. Đội được bảo vệ an toàn bởi Khiên Hộ Mệnh khi bị nhắm cướp
+  VICTIM_PROTECTED_SHIELD: [
+    { id: "VIC_PRT_01", noticeType: "VICTIM_PROTECTED_SHIELD", title: "KHI\xCAN TH\u1EA6N B\u1EA2O V\u1EC6!", text: "Th\u1EADt h\xFA v\xEDa! {actor} \u0111\u1ECBnh c\u01B0\u1EDBp \u0111i\u1EC3m c\u1EE7a b\u1EA1n nh\u01B0ng Khi\xEAn Mi\u1EC5n Nhi\u1EC5m \u0111\xE3 k\u1ECBp th\u1EDDi ch\u1EB7n \u0111\u1EE9ng, b\u1EA3o to\xE0n 0\u0111 m\u1EA5t m\xE1t!" },
+    { id: "VIC_PRT_02", noticeType: "VICTIM_PROTECTED_SHIELD", title: "PH\xD2NG TH\u1EE6 TUY\u1EC6T \u0110\u1ED0I!", text: "C\xFA c\u01B0\u1EDBp c\u1EE7a {actor} b\u1EA5t th\xE0nh! B\u1EE9c t\u01B0\u1EDDng ki\xEAn c\u1ED1 \u0111\xE3 b\u1EA3o v\u1EC7 tr\u1ECDn v\u1EB9n \u0111i\u1EC3m s\u1ED1 c\u1EE7a \u0111\u1ED9i b\u1EA1n an to\xE0n tuy\u1EC7t \u0111\u1ED1i!" },
+    { id: "VIC_PRT_03", noticeType: "VICTIM_PROTECTED_SHIELD", title: "B\u1EBA G\xC3Y \u0110\xD2N T\u1EA4N C\xD4NG!", text: "Kh\xF4ng d\u1EC5 x\u01A1i \u0111\xE2u nh\xE9 {actor}! Khi\xEAn h\u1ED9 m\u1EC7nh c\u1EE7a b\u1EA1n \u0111\xE3 b\u1EADt n\u1EA3y \u0111\xF2n c\u01B0\u1EDBp \u0111i\u1EC3m ra ngo\xE0i!" },
+    { id: "VIC_PRT_04", noticeType: "VICTIM_PROTECTED_SHIELD", title: "THO\xC1T HI\u1EC2M AN TO\xC0N!", text: "M\u1ED9t pha b\u1EA3o v\u1EC7 ngo\u1EA1n m\u1EE5c! Nh\u1EDD c\u01A1 ch\u1EBF ch\u1ED1ng c\u01B0\u1EDBp li\xEAn ho\xE0n, \u0111\u1ED9i b\u1EA1n ho\xE0n to\xE0n b\xECnh an v\xF4 s\u1EF1!" },
+    { id: "VIC_PRT_05", noticeType: "VICTIM_PROTECTED_SHIELD", title: "R\xC0O CH\u1EAEN TH\xC9P!", text: "{actor} \u0111\xE0nh b\u1EA5t l\u1EF1c tr\u01B0\u1EDBc t\u1EA5m khi\xEAn th\xE9p c\u1EE7a b\u1EA1n! \u0110i\u1EC3m s\u1ED1 c\u1EE7a \u0111\u1ED9i b\u1EA1n kh\xF4ng s\u1EE9t m\u1EBB m\u1ED9t ly!" },
+    { id: "VIC_PRT_06", noticeType: "VICTIM_PROTECTED_SHIELD", title: "TI\xCAU TAN \xC2M M\u01AFU C\u01AF\u1EDAP \u0110I\u1EC2M!", text: "K\u1EBF ho\u1EA1ch c\u01B0\u1EDBp \u0111i\u1EC3m c\u1EE7a {actor} ph\xE1 s\u1EA3n ho\xE0n to\xE0n! \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c b\u1EA3o v\u1EC7 an to\xE0n 100%!" },
+    { id: "VIC_PRT_07", noticeType: "VICTIM_PROTECTED_SHIELD", title: "V\u1EACN MAY C\u1EE6A K\u1EBA C\u1EA8N TR\u1ECCNG!", text: "S\u1EF1 ph\xF2ng b\u1ECB chu \u0111\xE1o \u0111\xE3 c\u1EE9u b\u1EA1n m\u1ED9t b\xE0n thua tr\xF4ng th\u1EA5y tr\u01B0\u1EDBc \u0111\xF2n t\u1EA5n c\xF4ng c\u1EE7a {actor}!" },
+    { id: "VIC_PRT_08", noticeType: "VICTIM_PROTECTED_SHIELD", title: "B\u1EE8C T\u01AF\u1EDCNG MA THU\u1EACT!", text: "L\u1EF1c c\u1EA3n v\xF4 h\xECnh \u0111\xE3 b\u1EA3o v\u1EC7 kho b\xE1u c\u1EE7a b\u1EA1n tr\u01B0\u1EDBc \xE1nh m\u1EAFt th\xE8m thu\u1ED3ng c\u1EE7a {actor}!" },
+    { id: "VIC_PRT_09", noticeType: "VICTIM_PROTECTED_SHIELD", title: "C\xD4NG B\u1EB0NG \u0110\u01AF\u1EE2C TH\u1EF0C THI!", text: "Lu\u1EADt b\u1EA3o v\u1EC7 ng\u01B0\u1EDDi y\u1EBFu th\u1EBF \u0111\xE3 ph\xE1t huy t\xE1c d\u1EE5ng! {actor} kh\xF4ng th\u1EC3 ch\u1EA1m v\xE0o \u0111i\u1EC3m s\u1ED1 c\u1EE7a b\u1EA1n!" },
+    { id: "VIC_PRT_10", noticeType: "VICTIM_PROTECTED_SHIELD", title: "B\u1EA4T KH\u1EA2 X\xC2M PH\u1EA0M!", text: "L\xE3nh \u0111\u1ECBa c\u1EE7a b\u1EA1n l\xE0 b\u1EA5t kh\u1EA3 x\xE2m ph\u1EA1m! {actor} ng\u1EADm ng\xF9i tay tr\u1EAFng r\u1EDDi \u0111i!" },
+    { id: "VIC_PRT_11", noticeType: "VICTIM_PROTECTED_SHIELD", title: "B\xC0O CH\u1EAEN TO\xC0N DI\u1EC6N!", text: "T\u1EA5m khi\xEAn t\u1ECFa s\xE1ng r\u1EF1c r\u1EE1! \u0110\u1ED9i b\u1EA1n gi\u1EEF v\u1EEFng tr\u1ECDn v\u1EB9n s\u1ED1 \u0111i\u1EC3m m\xE0 kh\xF4ng m\u1EA5t m\u1ED9t c\u1EAFc!" },
+    { id: "VIC_PRT_12", noticeType: "VICTIM_PROTECTED_SHIELD", title: "KHI\xCAN N\u1EA2Y C\u1EF0C M\u1EA0NH!", text: "\u0110\xF2n \u0111\xE1nh c\u1EE7a {actor} b\u1ECB d\u1ED9i ng\u01B0\u1EE3c tr\u1EDF l\u1EA1i! \u0110\u1ED9i b\u1EA1n ung dung b\u1EA3o to\xE0n t\xE0i s\u1EA3n!" },
+    { id: "VIC_PRT_13", noticeType: "VICTIM_PROTECTED_SHIELD", title: "TH\u1EA6N B\u1EA2O H\u1ED8 \u0110\u1EE8NG B\xCAN!", text: "Th\u1EA7n b\u1EA3o h\u1ED9 \u0111\xE3 gi\u01A1 cao c\xE1nh tay ch\u1EDF che! {actor} \u0111\xE0nh chuy\u1EC3n sang nh\u1EADn th\u01B0\u1EDFng t\u1EEB h\u1EC7 th\u1ED1ng!" },
+    { id: "VIC_PRT_14", noticeType: "VICTIM_PROTECTED_SHIELD", title: "AN T\xC2M B\u1EA2O V\u1EC6!", text: "B\u1EA1n ho\xE0n to\xE0n c\xF3 th\u1EC3 th\u1EDF ph\xE0o nh\u1EB9 nh\xF5m: Kho b\xE1u \u0111i\u1EC3m s\u1ED1 v\u1EABn v\u1EB9n nguy\xEAn kh\xF4ng \u0111\u1ED5i!" },
+    { id: "VIC_PRT_15", noticeType: "VICTIM_PROTECTED_SHIELD", title: "PH\xD2NG TUY\u1EBEN KI\xCAN C\u1ED0!", text: "Chi\u1EBFn l\u0169y kh\xF4ng th\u1EC3 \u0111\xE1nh s\u1EADp! {actor} \u0111\xE0nh b\xF3 tay tr\u01B0\u1EDBc h\u1EC7 th\u1ED1ng ph\xF2ng v\u1EC7 c\u1EE7a b\u1EA1n!" }
+  ],
+  // 11. Đội Top 1 được nhận quà tặng từ Bom Từ Thiện (+points)
+  RECIPIENT_CHARITY_GIFT: [
+    { id: "REC_CHA_01", noticeType: "RECIPIENT_CHARITY_GIFT", title: "L\u1ED8C TR\xCAN TR\u1EDCI R\u01A0I XU\u1ED0NG!", text: "Tin vui b\u1EA5t ng\u1EDD! {actor} v\u1EEBa d\xEDnh Bom T\u1EEB Thi\u1EC7n v\xE0 bu\u1ED9c ph\u1EA3i trao t\u1EB7ng tr\u1ECDn g\xF3i +{points}\u0111 cho \u0111\u1ED9i b\u1EA1n!" },
+    { id: "REC_CHA_02", noticeType: "RECIPIENT_CHARITY_GIFT", title: "NG\u1ED2I KH\xD4NG C\u0168NG C\xD3 QU\xC0!", text: "T\u1EA5m l\xF2ng v\xE0ng b\u1EA5t \u0111\u1EAFc d\u0129! {actor} n\u1ED5 bom v\xE0 chuy\u1EC3n th\u1EB3ng +{points}\u0111 v\xE0o t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n. \u0110\u1EEBng qu\xEAn g\u1EEDi l\u1EDDi c\u1EA3m \u01A1n!" },
+    { id: "REC_CHA_03", noticeType: "RECIPIENT_CHARITY_GIFT", title: "M\xD3N QU\xC0 C\u1EE6A NG\u01AF\u1EDCI TREO NG\u01AF\u1EE2C!", text: "L\xE1 b\xE0i Ng\u01B0\u1EDDi Treo Ng\u01B0\u1EE3c c\u1EE7a {actor} \u0111\xE3 h\xE0o ph\xF3ng t\u1EB7ng kh\xF4ng cho \u0111\u1ED9i b\u1EA1n +{points}\u0111 qu\xFD b\xE1u!" },
+    { id: "REC_CHA_04", noticeType: "RECIPIENT_CHARITY_GIFT", title: "BOM T\u1EEA THI\u1EC6N PH\xC1T L\u1ED8C!", text: "C\u01A1n m\u01B0a v\xE0ng r\u01A1i tr\xFAng \u0111\u1EC9nh \u0111\u1EA7u! {actor} chia s\u1EBB tr\u1ECDn v\u1EB9n +{points}\u0111 cho \u0111\u1ED9i d\u1EABn \u0111\u1EA7u l\xE0 b\u1EA1n!" },
+    { id: "REC_CHA_05", noticeType: "RECIPIENT_CHARITY_GIFT", title: "GIA T\u0102NG C\xC1CH BI\u1EC6T MI\u1EC4N PH\xCD!", text: "Kh\xF4ng c\u1EA7n t\u1ED1n m\u1ED9t gi\u1ECDt m\u1ED3 h\xF4i! Kho \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i b\u1EA1n v\u1EEBa t\u0103ng v\u1ECDt +{points}\u0111 nh\u1EDD s\u1EF1 hy sinh c\u1EE7a {actor}!" },
+    { id: "REC_CHA_06", noticeType: "RECIPIENT_CHARITY_GIFT", title: "M\xD3N H\u1EDCI B\u1EA4T NG\u1EDC!", text: "M\xF3n h\u1EDDi l\u1EDBn nh\u1EA5t tr\u1EADn \u0111\u1EA5u! {actor} n\u1ED5 bom t\u1EEB thi\u1EC7n, \u0111\u1ED9i b\u1EA1n hoan h\u1EF7 \u0111\xF3n nh\u1EADn +{points}\u0111 v\xE0o k\xE9t s\u1EAFt!" },
+    { id: "REC_CHA_07", noticeType: "RECIPIENT_CHARITY_GIFT", title: "PH\u1EA6N TH\u01AF\u1EDENG CHO NG\u01AF\u1EDCI D\u1EAAN \u0110\u1EA6U!", text: "Ng\xF4i \u0111\u1EA7u b\u1EA3ng nh\u1EADn \u0111\u1EB7c \xE2n! {actor} ph\u1EA3i c\u1EAFn r\u0103ng trao t\u1EB7ng +{points}\u0111 cho \u0111\u1ED9i b\u1EA1n theo lu\u1EADt ch\u01A1i!" },
+    { id: "REC_CHA_08", noticeType: "RECIPIENT_CHARITY_GIFT", title: "L\u1ED8C B\u1EA4T T\u1EACN H\u01AF\u1EDENG!", text: "\u0110\u01B0\u1EE3c \u0111\u1ED1i th\u1EE7 t\u1EB7ng \u0111i\u1EC3m ngo\xE0i l\u01B0\u1EE3t ch\u01A1i! Nh\u1EADn ngay +{points}\u0111 t\u1EEB {actor} v\xE0 g\u1EEDi cho h\u1ECD m\u1ED9t n\u1EE5 c\u01B0\u1EDDi \u1EA5m \xE1p nh\xE9!" },
+    { id: "REC_CHA_09", noticeType: "RECIPIENT_CHARITY_GIFT", title: "BOM N\u1ED4 H\xD3A PH\xC1O HOA!", text: "Bom c\u1EE7a {actor} n\u1ED5 nh\u01B0ng ph\xE1o hoa l\u1EA1i n\u1EDF r\u1ED9 b\xEAn b\u1EA1n: T\xE0i kho\u1EA3n nh\u1EA3y s\u1ED1 +{points}\u0111 c\u1EF1c k\u1EF3 ph\u1EA5n kh\u1EDFi!" },
+    { id: "REC_CHA_10", noticeType: "RECIPIENT_CHARITY_GIFT", title: "C\u1EE8NG C\xC1P NG\xD4I V\u01AF\u01A0NG!", text: "Ng\xF4i v\u1ECB s\u1ED1 1 c\xE0ng th\xEAm v\u1EEFng ch\xE3i! {actor} v\u1EEBa c\u1ED1ng n\u1EA1p th\xEAm +{points}\u0111 v\xE0o kho b\xE1u c\u1EE7a \u0111\u1ED9i b\u1EA1n!" },
+    { id: "REC_CHA_11", noticeType: "RECIPIENT_CHARITY_GIFT", title: "S\u1EF0 TI\u1EBEP S\u1EE8C B\u1EA4T NG\u1EDC!", text: "Ti\u1EBFp th\xEAm l\u1EEDa cho ng\xF4i \u0111\u1EA7u! {actor} \u0111\xE3 gi\xFAp b\u1EA1n n\u1EDBi r\u1ED9ng kho\u1EA3ng c\xE1ch b\u1EB1ng m\xF3n qu\xE0 +{points}\u0111!" },
+    { id: "REC_CHA_12", noticeType: "RECIPIENT_CHARITY_GIFT", title: "KHO B\xC1U T\u1EF0 \u0110\u1ED8NG \u0110\u1EA6Y L\xCAN!", text: "\u0110i\u1EC3m s\u1ED1 t\u1EF1 \u0111\u1ED9ng nh\u1EA3y v\u1ECDt! {actor} \u0111\xE3 ho\xE0n th\xE0nh xu\u1EA5t s\u1EAFc nhi\u1EC7m v\u1EE5 'shipper' giao t\u1EADn tay b\u1EA1n +{points}\u0111!" },
+    { id: "REC_CHA_13", noticeType: "RECIPIENT_CHARITY_GIFT", title: "M\xD3N QU\xC0 C\u1EE6A \u0110\u1ECANH M\u1EC6NH!", text: "\u0110\u1ECBnh m\u1EC7nh s\u1EAFp \u0111\u1EB7t qu\xE1 ng\u1ECDt ng\xE0o! B\u1EA1n nh\u1EADn tr\u1ECDn +{points}\u0111 t\u1EEB tai n\u1EA1n t\u1EEB thi\u1EC7n c\u1EE7a {actor}!" },
+    { id: "REC_CHA_14", noticeType: "RECIPIENT_CHARITY_GIFT", title: "L\u1ED8C \u0110\u1EBEN T\u1EACN C\u1EECA!", text: "M\u1EDF c\u1EEDa \u0111\xF3n th\u1EA7n t\xE0i! {actor} v\u1EEBa k\xFD g\u1EEDi tr\u1ECDn g\xF3i +{points}\u0111 v\xE0o t\xE0i kho\u1EA3n c\u1EE7a \u0111\u1ED9i b\u1EA1n!" },
+    { id: "REC_CHA_15", noticeType: "RECIPIENT_CHARITY_GIFT", title: "NI\u1EC0M VUI NH\xC2N \u0110\xD4I!", text: "V\u1EEBa gi\u1EEF v\u1EEFng ng\xF4i v\u1ECB v\u1EEBa \u0111\u01B0\u1EE3c t\u1EB7ng qu\xE0! C\u1EA3m \u01A1n {actor} v\xEC m\xF3n qu\xE0 +{points}\u0111 v\xF4 c\xF9ng h\xE0o ph\xF3ng!" }
+  ],
+  // 12. Đội nhận được +5đ chia lộc từ Bom Hắc Ám
+  RECIPIENT_DARK_BOMB_SHARE: [
+    { id: "REC_DRK_01", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "B\xD3NG T\u1ED0I CHIA L\u1ED8C!", text: "{actor} v\xF4 t\xECnh k\xEDch ho\u1EA1t Bom H\u1EAFc \xC1m khi\u1EBFn \u0111i\u1EC3m s\u1ED1 ph\xE1t n\u1ED5, b\u1EA1n may m\u1EAFn nh\u1EB7t \u0111\u01B0\u1EE3c +{points}\u0111 chia l\u1ED9c!" },
+    { id: "REC_DRK_02", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "H\u01AF\u1EDENG S\xC1I T\u1EEA TAI N\u1EA0N!", text: "H\u01B0\u1EDFng s\xE1i t\u1EEB tai n\u1EA1n c\u1EE7a \u0111\u1ED1i th\u1EE7! {actor} n\u1ED5 tung trong l\xE0n kh\xF3i \u0111en, \u0111\u1EC3 l\u1EA1i cho \u0111\u1ED9i b\u1EA1n +{points}\u0111 th\u01A1m l\u1EEBng!" },
+    { id: "REC_DRK_03", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "\xC1C QU\u1EF6 BAN PH\xC1T!", text: "\xC1c qu\u1EF7 XV \u0111\xE3 r\xFAt c\u1EA1n n\u0103ng l\u01B0\u1EE3ng c\u1EE7a {actor} v\xE0 ph\xE2n ph\xE1t c\xF4ng b\u1EB1ng +{points}\u0111 cho \u0111\u1ED9i c\u1EE7a b\u1EA1n!" },
+    { id: "REC_DRK_04", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "M\xD3N QU\xC0 T\u1EEA V\u1EE4 N\u1ED4!", text: "V\u1EE5 n\u1ED5 b\xF3ng t\u1ED1i l\xE0m v\u0103ng ra nh\u1EEFng \u0111\u1ED3ng \u0111i\u1EC3m v\xE0ng! \u0110\u1ED9i b\u1EA1n nhanh tay nh\u1EB7t \u0111\u01B0\u1EE3c +{points}\u0111 v\xE0o t\xFAi!" },
+    { id: "REC_DRK_05", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "CHIA \u0110\u1EC0U T\u1ED4N TH\u1EA4T!", text: "\u0110\u1ED1i th\u1EE7 ch\u1ECBu \u0111\xF2n, b\u1EA1n nh\u1EADn qu\xE0! {actor} v\u1EEBa ph\xE2n ph\xE1t \u0111\u1EC1u \u0111\u1EB7n +{points}\u0111 cho \u0111\u1ED9i b\u1EA1n!" },
+    { id: "REC_DRK_06", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "TI\u1EC0N V\u0102NG KH\u1ECEI K\xC9T!", text: "K\xE9t s\u1EAFt c\u1EE7a {actor} b\u1ECB n\u1ED5 tung! B\u1EA1n v\u1EEBa nh\u1EADn \u0111\u01B0\u1EE3c ph\u1EA7n chia +{points}\u0111 t\u1EEB ban tr\u1ECDng t\xE0i!" },
+    { id: "REC_DRK_07", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "L\u1ED8C H\u1EAEC \xC1M R\u01A0I V\xC0O T\xDAI!", text: "D\xF9 b\xF3ng t\u1ED1i bao tr\xF9m {actor}, nh\u01B0ng \xE1nh s\xE1ng +{points}\u0111 l\u1EA1i chi\u1EBFu r\u1ECDi v\xE0o t\xE0i kho\u1EA3n c\u1EE7a b\u1EA1n!" },
+    { id: "REC_DRK_08", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "\u0110\u01AF\u1EE2C CHIA PH\u1EA6N B\u1EA4T NG\u1EDC!", text: "B\u1EA5t ng\u1EDD nh\u1EADn th\xEAm +{points}\u0111 h\u1ED7 tr\u1EE3 t\u1EEB v\u1EE5 n\u1ED5 bom c\u1EE7a {actor}! \u0110\u1ED9i b\u1EA1n t\xEDch l\u0169y th\xEAm \u0111i\u1EC3m qu\xFD b\xE1u!" },
+    { id: "REC_DRK_09", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "C\xD4NG B\u1EB0NG X\xC3 H\u1ED8I!", text: "S\u1EE9c m\u1EA1nh chia l\u1ED9c c\u1EE7a Bom H\u1EAFc \xC1m: R\xFAt \u0111i\u1EC3m ng\u01B0\u1EDDi gi\xE0u chia cho b\u1EA1n +{points}\u0111 ng\u1ECDt ng\xE0o!" },
+    { id: "REC_DRK_10", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "T\xCDCH TI\u1EC2U TH\xC0NH \u0110\u1EA0I!", text: "Th\xEAm +{points}\u0111 l\xE0 th\xEAm c\u01A1 h\u1ED9i chi\u1EBFn th\u1EAFng! C\u1EA3m \u01A1n m\xF3n qu\xE0 ph\xE2n chia t\u1EEB {actor}!" },
+    { id: "REC_DRK_11", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "L\u1ED8C PH\xC2N PH\xC1T TO\xC0N S\xC2N!", text: "C\u1EA3 \u0111\u1EA5u tr\u01B0\u1EDDng c\xF9ng h\u01B0\u1EDFng l\u1ED9c! \u0110\u1ED9i b\u1EA1n v\u1EEBa \u0111\u01B0\u1EE3c c\u1ED9ng th\xEAm +{points}\u0111 t\u1EEB c\xFA s\u1EA3y ch\xE2n c\u1EE7a {actor}!" },
+    { id: "REC_DRK_12", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "\u0110I\u1EC2M R\u01A0I TR\xDANG T\xDAI!", text: "Kh\xF4ng t\xECm c\u0169ng t\u1EF1 t\u1EDBi! {actor} h\xE0o ph\xF3ng ph\xE1t t\xE1n \u0111i\u1EC3m s\u1ED1, b\u1EA1n \u0111\xFAt t\xFAi ngay +{points}\u0111!" },
+    { id: "REC_DRK_13", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "PH\xDAC L\u1EE2I T\u1EEA HI\u1EC2M \u0110\u1ECAA!", text: "T\u1EEB c\u1EA1m b\u1EABy c\u1EE7a ng\u01B0\u1EDDi kh\xE1c n\u1EA3y sinh ph\xFAc l\u1EE3i cho b\u1EA1n: Nh\u1EADn li\u1EC1n tay +{points}\u0111 an vui!" },
+    { id: "REC_DRK_14", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "B\xC0N TAY CHIA \u0110I\u1EC2M!", text: "Tr\u1ECDng t\xE0i \u0111\xE3 chuy\u1EC3n giao th\xE0nh c\xF4ng ph\u1EA7n chia +{points}\u0111 t\u1EEB v\u1EE5 n\u1ED5 c\u1EE7a {actor} sang b\u1EA1n!" },
+    { id: "REC_DRK_15", noticeType: "RECIPIENT_DARK_BOMB_SHARE", title: "TH\xCAM \u0110\u1ED2NG TH\xCAM VUI!", text: "C\xF3 th\xEAm +{points}\u0111 \u0111\u1ED9ng vi\xEAn tinh th\u1EA7n! H\xE3y chu\u1EA9n b\u1ECB b\xF9ng n\u1ED5 \u1EDF l\u01B0\u1EE3t ch\u01A1i k\u1EBF ti\u1EBFp!" }
+  ],
+  // 13. Đội chót bảng nhận được +5đ trợ cấp hòa hợp từ lá ĐIỀU ĐỘ XIV
+  RECIPIENT_TEMPERANCE_ASSIST: [
+    { id: "REC_TEM_01", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "\u0110I\u1EC0U \u0110\u1ED8 BAN PH\u01AF\u1EDAC!", text: "N\u0103ng l\u01B0\u1EE3ng dung h\xF2a c\u1EE7a l\xE1 \u0110i\u1EC1u \u0110\u1ED9 v\u1EEBa ban ph\u01B0\u1EDBc! Qu\u1EF9 h\u1EC7 th\u1ED1ng v\u1EEBa r\xF3t n\xF3ng +{points}\u0111 tr\u1EE3 c\u1EA5p ti\u1EBFp s\u1EE9c cho b\u1EA1n!" },
+    { id: "REC_TEM_02", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "TI\u1EBEP S\u1EE8C L\u1ED8I NG\u01AF\u1EE2C D\xD2NG!", text: "\u0110\u1EEBng n\u1EA3n l\xF2ng! S\u1EF1 \u0111i\u1EC1u \u0111\u1ED9 v\xE0 c\xE2n b\u1EB1ng c\u1EE7a v\u0169 tr\u1EE5 v\u1EEBa g\u1EEDi t\u1EB7ng \u0111\u1ED9i b\u1EA1n +{points}\u0111 kh\xEDch l\u1EC7 \u0111\u1EC3 b\u1EE9t ph\xE1!" },
+    { id: "REC_TEM_03", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "D\xD2NG N\u01AF\u1EDAC H\xD2A B\xCCNH!", text: "L\xE1 b\xE0i \u0110i\u1EC1u \u0110\u1ED9 c\u1EE7a {actor} \u0111\xE3 m\u1EDF ra d\xF2ng n\u01B0\u1EDBc c\u1EE9u tr\u1EE3: \u0110\u1ED9i b\u1EA1n nh\u1EADn th\xEAm +{points}\u0111 n\xE2ng \u0111\u1EE1 tinh th\u1EA7n!" },
+    { id: "REC_TEM_04", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "TR\u1EE2 C\u1EA4P \u0110\u1ECANH M\u1EC6NH!", text: "Qu\u1EF9 Tr\u1EADn \u0110\u1EA5u v\u1EEBa xu\u1EA5t kho +{points}\u0111 vi\u1EC7n tr\u1EE3 cho \u0111\u1ED9i b\u1EA1n! H\xE3y bi\u1EBFn ngu\u1ED3n n\u0103ng l\u01B0\u1EE3ng n\xE0y th\xE0nh s\u1EE9c m\u1EA1nh l\u1EADt k\xE8o!" },
+    { id: "REC_TEM_05", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "V\xD2NG TAY N\xC2NG \u0110\u1EE0!", text: "C\xE1n c\xE2n tr\u1EADn \u0111\u1EA5u \u0111ang n\xE2ng \u0111\u1EE1 b\u1EA1n! Nh\u1EADn ngay +{points}\u0111 h\xF2a h\u1EE3p \u0111\u1EC3 r\xFAt ng\u1EAFn kho\u1EA3ng c\xE1ch v\u1EDBi c\xE1c \u0111\u1ED1i th\u1EE7!" },
+    { id: "REC_TEM_06", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "TI\u1EBENG G\u1ECCI H\u1ED2I SINH!", text: "C\u01A1 h\u1ED9i l\u1ED9i ng\u01B0\u1EE3c d\xF2ng v\u1EABn c\xF2n nguy\xEAn! B\u1EA1n v\u1EEBa \u0111\u01B0\u1EE3c ti\u1EBFp s\u1EE9c th\xEAm +{points}\u0111 t\u1EEB v\u0169 tr\u1EE5 \u0111i\u1EC1u \u0111\u1ED9!" },
+    { id: "REC_TEM_07", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "C\xC2N B\u1EB0NG TH\u1EBE TR\u1EACN!", text: "S\u1EF1 dung h\xF2a gi\u1EEFa hai b\xECnh n\u01B0\u1EDBc th\xE1nh mang l\u1EA1i cho \u0111\u1ED9i b\u1EA1n +{points}\u0111 qu\xFD gi\xE1! T\u1EF1 tin ti\u1EBFn l\xEAn!" },
+    { id: "REC_TEM_08", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "M\xD3N QU\xC0 NH\xC2N \xC1I!", text: "M\u1ED9t c\u1EED ch\u1EC9 \u0111\u1EB9p t\u1EEB lu\u1EADt ch\u01A1i Tarot: \u0110\u1ED9i b\u1EA1n nh\u1EADn n\xF3ng +{points}\u0111 tr\u1EE3 c\u1EA5p t\u1EEB Qu\u1EF9 Trung \u01AF\u01A1ng!" },
+    { id: "REC_TEM_09", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "TH\xCAM N\u0102NG L\u01AF\u1EE2NG T\xCDCH C\u1EF0C!", text: "Kh\xED th\u1EBF chi\u1EBFn \u0111\u1EA5u d\xE2ng cao! Kho \u0111i\u1EC3m c\u1EE7a b\u1EA1n v\u1EEBa \u0111\u01B0\u1EE3c b\u01A1m th\xEAm +{points}\u0111 tr\xE0n \u0111\u1EA7y hy v\u1ECDng!" },
+    { id: "REC_TEM_10", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "M\u1EDE L\u1ED0I T\u01AF\u01A0NG LAI!", text: "V\u0169 tr\u1EE5 g\u1EEDi t\xEDn hi\u1EC7u t\xEDch c\u1EF1c: +{points}\u0111 \u0111\xE3 \u0111\u01B0\u1EE3c g\u1EEDi \u0111\u1EBFn b\u1EA1n, s\u1EB5n s\xE0ng cho c\xFA b\u1EE9t ph\xE1 ngo\u1EA1n m\u1EE5c!" },
+    { id: "REC_TEM_11", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "\u0110I\u1EC0U \u0110\u1ED8 SAN S\u1EBA!", text: "San s\u1EBB y\xEAu th\u01B0\u01A1ng n\u01A1i \u0111\u1EA5u tr\u01B0\u1EDDng! B\u1EA1n v\u1EEBa nh\u1EADn ph\u1EA7n tr\u1EE3 c\u1EA5p +{points}\u0111 m\xE0 kh\xF4ng ai b\u1ECB m\u1EA5t \u0111i\u1EC3m!" },
+    { id: "REC_TEM_12", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "NG\u1ECCN L\u1EECA HY V\u1ECCNG!", text: "Ng\u1ECDn l\u1EEDa hy v\u1ECDng b\xF9ng ch\xE1y tr\u1EDF l\u1EA1i! Nh\u1EADn ngay +{points}\u0111 ti\u1EBFp s\u1EE9c t\u1EEB l\xE1 b\xE0i \u0110i\u1EC1u \u0110\u1ED9 XIV!" },
+    { id: "REC_TEM_13", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "V\xD9NG V\u1EAAY V\u01AF\u01A0N L\xCAN!", text: "Kho\u1EA3ng c\xE1ch \u0111ang d\u1EA7n thu h\u1EB9p! \u0110\u1ED9i b\u1EA1n \u0111\u01B0\u1EE3c c\u1ED9ng th\xEAm +{points}\u0111, h\xE3y t\u1EADn d\u1EE5ng t\u1ED1i \u0111a c\u01A1 h\u1ED9i n\xE0y!" },
+    { id: "REC_TEM_14", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "M\xD3N QU\xC0 TINH TH\u1EA6N \u0110\u1EAEC L\u1EF0C!", text: "M\xF3n qu\xE0 tinh th\u1EA7n tuy\u1EC7t v\u1EDDi! B\u1EA1n c\xF3 th\xEAm +{points}\u0111 v\xE0o h\xE0nh trang \u0111\u1EC3 chu\u1EA9n b\u1ECB cho c\xFA l\u1ED9i ng\u01B0\u1EE3c d\xF2ng!" },
+    { id: "REC_TEM_15", noticeType: "RECIPIENT_TEMPERANCE_ASSIST", title: "V\u1EACN KH\xCD \u0110ANG QUAY L\u1EA0I!", text: "V\u1EADn may b\u1EAFt \u0111\u1EA7u g\xF5 c\u1EEDa! Nh\u1EADn +{points}\u0111 tr\u1EE3 c\u1EA5p t\u1EEB h\u1EC7 th\u1ED1ng v\xE0 chu\u1EA9n b\u1ECB l\xE0m n\xEAn k\u1EF3 t\xEDch!" }
+  ],
+  // 14. Thông báo trung tính (Mất lượt ±0đ)
+  NEUTRAL: [
+    { id: "NEU_01", noticeType: "NEUTRAL", title: "B\u1EA2O TO\xC0N \u0110I\u1EC2M S\u1ED0!", text: "M\u1ED9t l\u01B0\u1EE3t ch\u01A1i b\xECnh y\xEAn! {actor} gi\u1EEF nguy\xEAn s\u1ED1 \u0111i\u1EC3m hi\u1EC7n c\xF3 (\xB10\u0111), chu\u1EA9n b\u1ECB cho th\u1EED th\xE1ch ti\u1EBFp theo!" },
+    { id: "NEU_02", noticeType: "NEUTRAL", title: "B\xCCNH T\u0128NH QUAN S\xC1T!", text: "Kh\xF4ng c\xF3 bi\u1EBFn \u0111\u1ED9ng n\xE0o! {actor} ho\xE0n th\xE0nh l\u01B0\u1EE3t ch\u01A1i v\u1EDBi \u0111i\u1EC3m s\u1ED1 \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n!" },
+    { id: "NEU_03", noticeType: "NEUTRAL", title: "C\u1EA6M CH\xC2N \u0110\u1ED0I TH\u1EE6!", text: "M\u1ED9t v\xE1n c\u1EDD h\xF2a ho\xE3n! \u0110i\u1EC3m s\u1ED1 gi\u1EEF nguy\xEAn (\xB10\u0111), c\u1EE5c di\u1EC7n t\u1EA1m th\u1EDDi kh\xF4ng \u0111\u1ED5i!" },
+    { id: "NEU_04", noticeType: "NEUTRAL", title: "GI\u1EEE NGUY\xCAN PHONG \u0110\u1ED8!", text: "B\u1EA3o to\xE0n th\u1EF1c l\u1EF1c! {actor} kh\xF4ng m\u1EA5t \u0111i\u1EC3m n\xE0o, s\u1EB5n s\xE0ng b\xF9ng n\u1ED5 \u1EDF v\xF2ng \u0111\u1EA5u m\u1EDBi!" },
+    { id: "NEU_05", noticeType: "NEUTRAL", title: "B\xCCNH Y\xCAN V\xD4 S\u1EF0!", text: "S\xF3ng y\xEAn bi\u1EC3n l\u1EB7ng! L\u01B0\u1EE3t ch\u01A1i kh\xE9p l\u1EA1i \xEAm \u0111\u1EC1m v\u1EDBi 0 \u0111i\u1EC3m thay \u0111\u1ED5i!" }
+  ]
+};
+function generateTeamPrivateNotices({
+  questState,
+  allTeams,
+  scoreDeltas = [],
+  noticeCategoryOverride,
+  actorTeamId,
+  currentTeamId: currentTeamIdArg,
+  actorName: actorNameArg,
+  usedTemplateIdsByTeam = {}
+}) {
+  const notices = {};
+  const currentTeamId = currentTeamIdArg || actorTeamId || questState.currentTurnTeamId;
+  const currentTeam = allTeams.find((t) => t.id === currentTeamId);
+  const actorName = actorNameArg || currentTeam?.name || questState.currentTurnTeamName || "\u0110\u1ED9i Ch\u01A1i";
+  const basePoints = questState.baseQuestionPoints || 10;
+  const pickTemplate = (teamId, category) => {
+    if (!usedTemplateIdsByTeam[teamId]) {
+      usedTemplateIdsByTeam[teamId] = /* @__PURE__ */ new Set();
+    }
+    const teamUsedSet = usedTemplateIdsByTeam[teamId];
+    const available = NOTICE_TEMPLATES[category] || NOTICE_TEMPLATES.ACTIVE_REWARD;
+    let unused = available.filter((t) => !teamUsedSet.has(t.id));
+    if (unused.length === 0) {
+      available.forEach((t) => teamUsedSet.delete(t.id));
+      unused = available;
+    }
+    const chosen = unused[Math.floor(Math.random() * unused.length)] || available[0];
+    teamUsedSet.add(chosen.id);
+    return chosen;
+  };
+  const formatText = (text, params) => {
+    return text.replace(/\{actor\}/g, params.actor || actorName).replace(/\{victim\}/g, params.victim || "\u0110\u1ED1i th\u1EE7").replace(/\{points\}/g, String(Math.abs(params.points ?? 0))).replace(/\{basePoints\}/g, String(basePoints));
+  };
+  const activeDeltaObj = scoreDeltas.find((d) => d.teamId === currentTeamId);
+  const activeDelta = activeDeltaObj ? activeDeltaObj.delta : questState.potPoints || 0;
+  let activeCategory = "ACTIVE_REWARD";
+  if (noticeCategoryOverride?.activeTeamNoticeType) {
+    activeCategory = noticeCategoryOverride.activeTeamNoticeType;
+  } else if (questState.isPenaltySurvivalMode) {
+    activeCategory = activeDelta <= 0 && questState.bombExploded ? "ACTIVE_SURVIVAL_FAIL" : "ACTIVE_SURVIVAL_ESCAPE";
+  } else if (questState.bombExploded || activeDelta < 0) {
+    activeCategory = "ACTIVE_PENALTY_BOMB";
+  } else if (questState.turnFinishedReason === "TAROT_WHEEL_SPUN" || questState.turnFinishedReason === "TAROT_DRAWN") {
+    const drawn = questState.tarotState?.drawnCard;
+    if (drawn?.deathSubtype === "STEAL_TOP1" && (drawn?.stolenPoints || 0) > 0) {
+      activeCategory = "ACTIVE_STEAL_SUCCESS";
+    } else if (drawn?.deathSubtype === "STEAL_TOP1" && !drawn?.victimTeamId) {
+      activeCategory = "ACTIVE_STEAL_FALLBACK";
+    } else if (activeDelta > 0) {
+      activeCategory = "ACTIVE_REWARD";
+    } else {
+      activeCategory = "NEUTRAL";
+    }
+  } else if (activeDelta > 0) {
+    activeCategory = "ACTIVE_REWARD";
+  } else {
+    activeCategory = "NEUTRAL";
+  }
+  const activeTemplate = pickTemplate(currentTeamId, activeCategory);
+  const victimName = questState.tarotState?.drawnCard?.victimTeamName || questState.pendingStealVictimName;
+  notices[currentTeamId] = {
+    recipientTeamId: currentTeamId,
+    recipientTeamName: actorName,
+    title: activeTemplate.title,
+    message: formatText(activeTemplate.text, { actor: actorName, victim: victimName, points: activeDelta }),
+    delta: activeDelta,
+    noticeType: activeCategory,
+    actorTeamName: actorName,
+    templateId: activeTemplate.id,
+    timestamp: Date.now()
+  };
+  for (const deltaItem of scoreDeltas) {
+    if (deltaItem.teamId === currentTeamId) continue;
+    const affectedTeam = allTeams.find((t) => t.id === deltaItem.teamId);
+    if (!affectedTeam) continue;
+    let otherCategory = "ACTIVE_REWARD";
+    if (noticeCategoryOverride?.otherTeamNoticeType) {
+      otherCategory = noticeCategoryOverride.otherTeamNoticeType;
+    } else if (deltaItem.delta < 0) {
+      const isDeath = questState.tarotState?.drawnCard?.key === "THE_DEATH" || questState.tarotState?.drawnCard?.key === "DEATH";
+      otherCategory = isDeath ? "VICTIM_STOLEN_DEATH" : "VICTIM_STOLEN_CHARIOT";
+    } else if (deltaItem.delta > 0) {
+      const isCharity = questState.bombExploded?.type === "CHARITY" || questState.tarotState?.drawnCard?.key === "THE_HANGED_MAN";
+      const isDark = questState.bombExploded?.type === "DARK" || questState.tarotState?.drawnCard?.key === "THE_DEVIL";
+      const isTemperance = questState.tarotState?.drawnCard?.key === "TEMPERANCE";
+      if (isCharity) {
+        otherCategory = "RECIPIENT_CHARITY_GIFT";
+      } else if (isDark) {
+        otherCategory = "RECIPIENT_DARK_BOMB_SHARE";
+      } else if (isTemperance) {
+        otherCategory = "RECIPIENT_TEMPERANCE_ASSIST";
+      } else {
+        otherCategory = "RECIPIENT_CHARITY_GIFT";
+      }
+    }
+    const otherTemplate = pickTemplate(affectedTeam.id, otherCategory);
+    notices[affectedTeam.id] = {
+      recipientTeamId: affectedTeam.id,
+      recipientTeamName: affectedTeam.name,
+      title: otherTemplate.title,
+      message: formatText(otherTemplate.text, { actor: actorName, victim: affectedTeam.name, points: deltaItem.delta }),
+      delta: deltaItem.delta,
+      noticeType: otherCategory,
+      actorTeamName: actorName,
+      templateId: otherTemplate.id,
+      timestamp: Date.now()
+    };
+  }
+  if (questState.tarotState?.drawnCard?.deathSubtype === "STEAL_TOP1" && questState.tarotState?.drawnCard?.victimTeamId && (questState.tarotState?.drawnCard?.stolenPoints || 0) === 0) {
+    const protectedTeamId = questState.tarotState.drawnCard.victimTeamId;
+    const protectedTeam = allTeams.find((t) => t.id === protectedTeamId);
+    if (protectedTeam && !notices[protectedTeamId]) {
+      const shieldTemplate = pickTemplate(protectedTeamId, "VICTIM_PROTECTED_SHIELD");
+      notices[protectedTeamId] = {
+        recipientTeamId: protectedTeamId,
+        recipientTeamName: protectedTeam.name,
+        title: shieldTemplate.title,
+        message: formatText(shieldTemplate.text, { actor: actorName, victim: protectedTeam.name, points: 0 }),
+        delta: 0,
+        noticeType: "VICTIM_PROTECTED_SHIELD",
+        actorTeamName: actorName,
+        templateId: shieldTemplate.id,
+        timestamp: Date.now()
+      };
+    }
+  }
+  return notices;
+}
+var generatePrivateTeamNotices = generateTeamPrivateNotices;
 
 // src/lib/game-engine/powerups.ts
 var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
@@ -10675,6 +11051,27 @@ function registerSocketHandlers(io2) {
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
           ]);
         }
+        if (updatedState.phase === "TURN_SUMMARY" || updatedState.turnFinishedReason) {
+          try {
+            const allCurrentTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+            const notices = generatePrivateTeamNotices({
+              questState: updatedState,
+              allTeams: allCurrentTeams,
+              currentTeamId: team.id,
+              actorName: team.name,
+              scoreDeltas: [
+                ...victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : [],
+                ...darkBombRecipients ? darkBombRecipients.map((r) => ({ teamId: r.teamId, delta: r.points })) : [],
+                ...recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : [],
+                ...scorePenalty > 0 && !darkBombRecipients && !recipientTeamId ? [{ teamId: team.id, delta: -scorePenalty }] : [],
+                ...finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []
+              ]
+            });
+            updatedState.teamNotices = notices;
+          } catch (err) {
+            console.error("[MysteryQuestNotices] error in executeMysteryFlip:", err);
+          }
+        }
         const normType = normalizeMiniGameType(updatedState.miniGameType);
         let audioTrigger = "NONE";
         if (normType === "MEMORY_PAIRS") {
@@ -10741,6 +11138,20 @@ function registerSocketHandlers(io2) {
         team,
         allTeams
       });
+      try {
+        const notices = generatePrivateTeamNotices({
+          questState: updatedState,
+          allTeams,
+          currentTeamId: team.id,
+          actorName: team.name,
+          scoreDeltas: [
+            ...victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : [{ teamId: team.id, delta: finalScoreDelta }]
+          ]
+        });
+        updatedState.teamNotices = notices;
+      } catch (err) {
+        console.error("[MysteryQuestNotices] error in executeMysteryCashOut:", err);
+      }
       roomMysteryQuests.set(room.id, updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:cashed_out", {
@@ -10826,6 +11237,25 @@ function registerSocketHandlers(io2) {
         swapRemovedDoorId,
         swapAddedDoorId
       });
+      if (updatedState.phase === "TURN_SUMMARY" || updatedState.turnFinishedReason) {
+        try {
+          const notices = generatePrivateTeamNotices({
+            questState: updatedState,
+            allTeams,
+            currentTeamId: team.id,
+            actorName: team.name,
+            scoreDeltas: [
+              ...victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : [],
+              ...darkBombRecipients ? darkBombRecipients.map((r) => ({ teamId: r.teamId, delta: r.points })) : [],
+              ...recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : [],
+              ...finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []
+            ]
+          });
+          updatedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryDoorsDecision:", err);
+        }
+      }
       roomMysteryQuests.set(room.id, updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
       if (victimTeamId && stolenPoints && stolenPoints > 0) {
@@ -11050,6 +11480,19 @@ function registerSocketHandlers(io2) {
               oldScore: team.score || 0,
               newScore: (team.score || 0) + basePts
             };
+            try {
+              const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+              const notices = generatePrivateTeamNotices({
+                questState: activeQuest,
+                allTeams,
+                currentTeamId: team.id,
+                actorName: team.name,
+                scoreDeltas: [{ teamId: team.id, delta: basePts }]
+              });
+              activeQuest.teamNotices = notices;
+            } catch (err) {
+              console.error("[MysteryQuestNotices] error in executeMysteryChooseAction:", err);
+            }
           }
         }
         if (chosenAction === "PLAY_MINIGAME") {
@@ -11132,6 +11575,18 @@ function registerSocketHandlers(io2) {
             oldScore: team.score || 0,
             newScore: team.score || 0
           };
+          try {
+            const notices = generatePrivateTeamNotices({
+              questState: activeQuest,
+              allTeams,
+              currentTeamId: team.id,
+              actorName: team.name,
+              scoreDeltas: [{ teamId: team.id, delta: 0 }]
+            });
+            activeQuest.teamNotices = notices;
+          } catch (err) {
+            console.error("[MysteryQuestNotices] error in executeMysterySurvivalChoice:", err);
+          }
         } else if (choice === "RISK_SURVIVAL") {
           activeQuest.baseQuestionPoints = basePts;
           startSurvivalPenaltyMinigame({
@@ -11487,8 +11942,9 @@ function registerSocketHandlers(io2) {
       const drawnCard = questState.tarotState.drawnCard;
       const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
+      let pendingDeltas = [];
       if (!isGamble && !isShieldRespin) {
-        const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
+        pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
         const scoreUpdates = [];
         for (const item of pendingDeltas) {
@@ -11528,6 +11984,22 @@ function registerSocketHandlers(io2) {
           tarotGambleState: void 0
         }
       };
+      if (nextPhase === "TURN_SUMMARY") {
+        try {
+          const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
+          const actorTeam = allTeams.find((t) => t.id === revealedState.currentTurnTeamId);
+          const notices = generatePrivateTeamNotices({
+            questState: revealedState,
+            allTeams,
+            currentTeamId: revealedState.currentTurnTeamId,
+            actorName: actorTeam?.name || "\u0110\u1ED9i b\u1EA1n",
+            scoreDeltas: pendingDeltas
+          });
+          revealedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryTarotReveal:", err);
+        }
+      }
       roomMysteryQuests.set(room.id, revealedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", revealedState);
       const refreshedState = await buildRoomState(room.id);
@@ -11611,6 +12083,18 @@ function registerSocketHandlers(io2) {
         }
         if (scoreUpdates.length > 0) {
           io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
+        try {
+          const notices = generatePrivateTeamNotices({
+            questState: gambleResult.updatedState,
+            allTeams,
+            currentTeamId: targetTeamId,
+            actorName: teamRef.name,
+            scoreDeltas: gambleResult.scoreDeltas || []
+          });
+          gambleResult.updatedState.teamNotices = notices;
+        } catch (err) {
+          console.error("[MysteryQuestNotices] error in executeMysteryTarotGambleDecision:", err);
         }
         roomMysteryQuests.set(room.id, gambleResult.updatedState);
         io2.to(`room:${room.code}`).emit("game:mystery:update", gambleResult.updatedState);
@@ -13132,6 +13616,47 @@ function evaluateAnswerCorrectness(question, submittedAnswer) {
     }
     const cleanSubmitted = submittedOrder.map((x) => typeof x === "string" ? x : String(x?.id || x));
     isAutoCorrect = correctOrder.length === cleanSubmitted.length && correctOrder.every((id, idx) => id === cleanSubmitted[idx]);
+  } else if (question.type === "CLOZE_DROPDOWN") {
+    const blanks = question.clozeBlanks || options || [];
+    if (blanks.length > 0) {
+      let subMap = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subMap = submittedAnswer;
+      } else if (Array.isArray(submittedAnswer)) {
+        submittedAnswer.forEach((v, i) => {
+          subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
+        });
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
+        try {
+          subMap = JSON.parse(ansArray[0]);
+        } catch {
+        }
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+        try {
+          const arr = JSON.parse(ansArray[0]);
+          if (Array.isArray(arr)) arr.forEach((v, i) => {
+            subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
+          });
+        } catch {
+        }
+      } else {
+        ansArray.forEach((v, i) => {
+          subMap[String(i + 1)] = v;
+        });
+      }
+      let allCorrect = true;
+      for (const blank of blanks) {
+        const correctOpt = blank.options?.find((o) => o.isCorrect);
+        const userChoice = subMap[String(blank.blankId)] || subMap[blank.blankId];
+        if (!correctOpt || userChoice !== correctOpt.id && userChoice !== correctOpt.text) {
+          allCorrect = false;
+          break;
+        }
+      }
+      isAutoCorrect = allCorrect;
+    } else {
+      isAutoCorrect = false;
+    }
   }
   return { isAutoCorrect, answerText };
 }

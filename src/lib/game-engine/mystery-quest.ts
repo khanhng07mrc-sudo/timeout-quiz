@@ -5421,16 +5421,17 @@ export function resolveWheelCardEffect({
       // 2. Lọc đối thủ hợp lệ theo giới hạn của từng lá bài
       const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
 
-      // 3. Nếu không có đối thủ nào hợp lệ để cướp -> thưởng an toàn từ Hệ thống
+      // 3. Nếu không có đối thủ nào hợp lệ để cướp -> thưởng an toàn từ Hệ thống (quy tắc: mọi đối thủ đều có khiên, hệ thống chỉ tính nửa số điểm gốc)
       if (eligibleOpponents.length === 0) {
+        const fallbackReward = Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
         const rewardReason = isChariot
           ? `Các đối thủ có điểm đều đã từng bị cướp trong vòng và được miễn nhiễm trước Chiến Xa!`
-          : `Các đối thủ có điểm đều đang được Khiên Miễn Nhiễm Cướp bảo vệ (đã bị cướp đủ 2 lần)!`;
+          : `Các đối thủ có điểm đều đang được Khiên Miễn Nhiễm Cướp bảo vệ!`;
 
         const rewardText =
           opponentsWithPoints.length > 0
-            ? `🛡️ ${seg.nameVi}: ${rewardReason} Đội bạn nhận thưởng an toàn +${nominalSteal}đ từ Hệ Thống!`
-            : `✨ ${seg.nameVi}: Chưa có đối thủ nào có điểm để cướp! Đội bạn nhận thưởng an toàn +${nominalSteal}đ từ Hệ Thống!`;
+            ? `🛡️ ${seg.nameVi}: ${rewardReason} Tất cả đối thủ đều có khiên, Hệ Thống chỉ trợ cấp nửa số điểm gốc (+${fallbackReward}đ)!`
+            : `✨ ${seg.nameVi}: Chưa có đối thủ nào có điểm để cướp! Hệ Thống chỉ trợ cấp nửa số điểm gốc (+${fallbackReward}đ)!`;
 
         return {
           drawnCard: {
@@ -5440,12 +5441,12 @@ export function resolveWheelCardEffect({
             icon: seg.icon,
             roman: seg.roman,
             group: "COMMON",
-            scoreDelta: nominalSteal,
+            scoreDelta: fallbackReward,
           },
-          finalScoreDelta: nominalSteal,
+          finalScoreDelta: fallbackReward,
           scorePenalty: 0,
           isBomb: false,
-          scoreDeltas: [{ teamId: team.id, delta: nominalSteal }],
+          scoreDeltas: [{ teamId: team.id, delta: fallbackReward }],
           rewardText,
         };
       }

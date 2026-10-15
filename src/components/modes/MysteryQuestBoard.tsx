@@ -1489,6 +1489,44 @@ export default function MysteryQuestBoard({
         {/* Phase: TURN_SUMMARY */}
         {phase === "TURN_SUMMARY" && (
           <div className="w-full max-w-xl mx-auto text-center animate-slide-up space-y-2">
+            {/* Targeted Private Notice for current player's team */}
+            {myTeamId && mysteryState.teamNotices && mysteryState.teamNotices[myTeamId] && (
+              <div
+                className={`p-4 rounded-2xl border-2 shadow-2xl text-left animate-slide-up space-y-1.5 ${
+                  mysteryState.teamNotices[myTeamId].delta > 0
+                    ? "bg-gradient-to-r from-emerald-950/90 via-slate-900/90 to-emerald-950/90 border-emerald-400 text-emerald-100"
+                    : mysteryState.teamNotices[myTeamId].delta < 0
+                    ? "bg-gradient-to-r from-rose-950/90 via-slate-900/90 to-rose-950/90 border-rose-400 text-rose-100"
+                    : "bg-gradient-to-r from-cyan-950/90 via-slate-900/90 to-indigo-950/90 border-cyan-400 text-cyan-100"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg">
+                      {mysteryState.teamNotices[myTeamId].delta > 0
+                        ? "🎉"
+                        : mysteryState.teamNotices[myTeamId].delta < 0
+                        ? "⚠️"
+                        : "🛡️"}
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      {mysteryState.teamNotices[myTeamId].title}
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs font-black px-2 py-0.5 rounded-full bg-black/50 border border-white/10">
+                    {mysteryState.teamNotices[myTeamId].delta > 0
+                      ? `+${mysteryState.teamNotices[myTeamId].delta}đ`
+                      : mysteryState.teamNotices[myTeamId].delta < 0
+                      ? `${mysteryState.teamNotices[myTeamId].delta}đ`
+                      : "±0đ"}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm font-medium leading-relaxed">
+                  {mysteryState.teamNotices[myTeamId].message}
+                </p>
+              </div>
+            )}
+
             {turnFinishedReason === "QUESTION_FAILED" ? (
               <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-b from-slate-900/95 to-black/95 border-2 border-rose-500/80 shadow-2xl space-y-1.5">
                 <div className="text-3xl sm:text-4xl animate-bounce">❌</div>

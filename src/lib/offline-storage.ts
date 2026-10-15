@@ -1401,7 +1401,20 @@ export const offlineStorage = {
         this.saveLocalBank(DEFAULT_OFFLINE_BANK);
         return [DEFAULT_OFFLINE_BANK];
       }
-      const list: OfflineQuizBank[] = JSON.parse(data);
+      let list: OfflineQuizBank[] = JSON.parse(data);
+      // Sanitize: Clear rogue needsSync on any bank with 0 questions or non-local banks
+      let modified = false;
+      list = list.map((b) => {
+        const qCount = b.questions?.length ?? b._count?.questions ?? 0;
+        if (b.needsSync && (qCount === 0 || !b.isLocalOnly)) {
+          modified = true;
+          return { ...b, needsSync: false, isLocalOnly: false };
+        }
+        return b;
+      });
+      if (modified) {
+        localStorage.setItem(LOCAL_BANKS_KEY, JSON.stringify(list));
+      }
       if (!list.some((b) => b.id === DEFAULT_OFFLINE_BANK.id)) {
         list.unshift(DEFAULT_OFFLINE_BANK);
       }
@@ -1420,11 +1433,13 @@ export const offlineStorage = {
     if (!this.isBrowser()) return;
     try {
       const list = this.getLocalBanks().filter((b) => b.id !== bank.id);
+      const isLocal = bank.isLocalOnly !== undefined ? bank.isLocalOnly : false;
+      const needsSync = bank.needsSync !== undefined ? bank.needsSync : (isLocal && (bank.questions?.length ?? bank._count?.questions ?? 0) > 0);
       const updated: OfflineQuizBank = {
         ...bank,
         _count: { questions: bank.questions?.length ?? bank._count?.questions ?? 0 },
-        isLocalOnly: bank.isLocalOnly ?? true,
-        needsSync: true,
+        isLocalOnly: isLocal,
+        needsSync,
       };
       list.unshift(updated);
       localStorage.setItem(LOCAL_BANKS_KEY, JSON.stringify(list));
@@ -1493,7 +1508,11 @@ export const offlineStorage = {
       return { synced: 0, failed: 0 };
     }
 
-    const banks = this.getLocalBanks().filter((b) => b.needsSync && b.id !== DEFAULT_OFFLINE_BANK.id);
+    // Only sync banks that are genuinely local-only, have questions, and need sync
+    const banks = this.getLocalBanks().filter((b) => {
+      const qCount = b.questions?.length ?? b._count?.questions ?? 0;
+      return b.needsSync && b.isLocalOnly && qCount > 0 && b.id !== DEFAULT_OFFLINE_BANK.id;
+    });
     let synced = 0;
     let failed = 0;
 
@@ -1521,7 +1540,7 @@ export const offlineStorage = {
               }).catch(() => {});
             }
           }
-          // Mark as synced
+          // Mark as synced and clear needsSync
           bank.needsSync = false;
           bank.isLocalOnly = false;
           this.saveLocalBank(bank);

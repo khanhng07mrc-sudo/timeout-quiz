@@ -25,6 +25,13 @@ interface QuestionItem {
   points: number;
   timeLimit: number;
   hint?: string;
+  mediaUrl?: string;
+  mediaType?: "IMAGE" | "AUDIO" | "VIDEO";
+  mediaPlaybackMode?: "AFTER_PLAY" | "PARALLEL";
+  pairs?: { left: string; right: string }[];
+  steps?: string[];
+  allowManualGrading?: boolean;
+  gradingCriteria?: string;
 }
 
 interface QuizBank {
@@ -96,12 +103,39 @@ export default function QuizBankPage() {
   const [qTimeLimit, setQTimeLimit] = useState(30);
   const [qHint, setQHint] = useState("");
   const [qAnswer, setQAnswer] = useState("");
+  const [qAllowManualGrading, setQAllowManualGrading] = useState(false);
+  const [qGradingCriteria, setQGradingCriteria] = useState("");
   const [qOptions, setQOptions] = useState([
     { id: "A", text: "", isCorrect: true },
     { id: "B", text: "", isCorrect: false },
     { id: "C", text: "", isCorrect: false },
     { id: "D", text: "", isCorrect: false },
   ]);
+  const [qPairs, setQPairs] = useState([
+    { id: "p1", left: "", right: "" },
+    { id: "p2", left: "", right: "" },
+    { id: "p3", left: "", right: "" },
+  ]);
+  const [qSteps, setQSteps] = useState([
+    { id: "step_1", text: "" },
+    { id: "step_2", text: "" },
+    { id: "step_3", text: "" },
+  ]);
+  const [qClozeBlanks, setQClozeBlanks] = useState([
+    {
+      blankId: 1,
+      options: [
+        { id: "b1_1", text: "", isCorrect: true },
+        { id: "b1_2", text: "", isCorrect: false },
+        { id: "b1_3", text: "", isCorrect: false },
+      ],
+    },
+  ]);
+
+  const [qMediaType, setQMediaType] = useState<"NONE" | "IMAGE" | "VIDEO" | "AUDIO">("NONE");
+  const [qMediaUrl, setQMediaUrl] = useState("");
+  const [qMediaPlaybackMode, setQMediaPlaybackMode] = useState<"AFTER_PLAY" | "PARALLEL">("AFTER_PLAY");
+  const [qUploadingMedia, setQUploadingMedia] = useState(false);
 
   // Edit Question Modal State
   const [showEditQModal, setShowEditQModal] = useState(false);
@@ -112,13 +146,190 @@ export default function QuizBankPage() {
   const [editQTimeLimit, setEditQTimeLimit] = useState(30);
   const [editQHint, setEditQHint] = useState("");
   const [editQAnswer, setEditQAnswer] = useState("");
+  const [editQAllowManualGrading, setEditQAllowManualGrading] = useState(false);
+  const [editQGradingCriteria, setEditQGradingCriteria] = useState("");
   const [editQOptions, setEditQOptions] = useState([
     { id: "A", text: "", isCorrect: true },
     { id: "B", text: "", isCorrect: false },
     { id: "C", text: "", isCorrect: false },
     { id: "D", text: "", isCorrect: false },
   ]);
+  const [editQPairs, setEditQPairs] = useState([
+    { id: "p1", left: "", right: "" },
+    { id: "p2", left: "", right: "" },
+    { id: "p3", left: "", right: "" },
+  ]);
+  const [editQSteps, setEditQSteps] = useState([
+    { id: "step_1", text: "" },
+    { id: "step_2", text: "" },
+    { id: "step_3", text: "" },
+  ]);
+  const [editQClozeBlanks, setEditQClozeBlanks] = useState([
+    {
+      blankId: 1,
+      options: [
+        { id: "b1_1", text: "", isCorrect: true },
+        { id: "b1_2", text: "", isCorrect: false },
+        { id: "b1_3", text: "", isCorrect: false },
+      ],
+    },
+  ]);
+  const [editQMediaType, setEditQMediaType] = useState<"NONE" | "IMAGE" | "VIDEO" | "AUDIO">("NONE");
+  const [editQMediaUrl, setEditQMediaUrl] = useState("");
+  const [editQMediaPlaybackMode, setEditQMediaPlaybackMode] = useState<"AFTER_PLAY" | "PARALLEL">("AFTER_PLAY");
+  const [editQUploadingMedia, setEditQUploadingMedia] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
+
+  const handleFileUpload = async (file: File, isEdit: boolean) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    if (isEdit) setEditQUploadingMedia(true);
+    else setQUploadingMedia(true);
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        if (isEdit) {
+          setEditQMediaUrl(data.url);
+          setEditQMediaType(data.mediaType.toUpperCase());
+        } else {
+          setQMediaUrl(data.url);
+          setQMediaType(data.mediaType.toUpperCase());
+        }
+      } else {
+        alert(data.error || "Không thể tải tệp lên máy chủ");
+      }
+    } catch (err: any) {
+      alert("Lỗi tải tệp: " + (err.message || String(err)));
+    } finally {
+      if (isEdit) setEditQUploadingMedia(false);
+      else setQUploadingMedia(false);
+    }
+  };
+
+  // MC Options helper
+  const addOption = (isEdit: boolean) => {
+    const list = isEdit ? editQOptions : qOptions;
+    if (list.length >= 10) return;
+    const nextLetter = String.fromCharCode(65 + list.length);
+    const updated = [...list, { id: nextLetter, text: "", isCorrect: false }];
+    if (isEdit) setEditQOptions(updated);
+    else setQOptions(updated);
+  };
+
+  const removeOption = (idx: number, isEdit: boolean) => {
+    const list = isEdit ? editQOptions : qOptions;
+    if (list.length <= 2) return;
+    const filtered = list.filter((_, i) => i !== idx);
+    const reindexed = filtered.map((o, i) => ({ ...o, id: String.fromCharCode(65 + i) }));
+    if (isEdit) setEditQOptions(reindexed);
+    else setQOptions(reindexed);
+  };
+
+  // Matching Pairs helper
+  const addPair = (isEdit: boolean) => {
+    const list = isEdit ? editQPairs : qPairs;
+    if (list.length >= 8) return;
+    const updated = [...list, { id: `p${list.length + 1}`, left: "", right: "" }];
+    if (isEdit) setEditQPairs(updated);
+    else setQPairs(updated);
+  };
+
+  const removePair = (idx: number, isEdit: boolean) => {
+    const list = isEdit ? editQPairs : qPairs;
+    if (list.length <= 2) return;
+    const filtered = list.filter((_, i) => i !== idx);
+    const reindexed = filtered.map((p, i) => ({ ...p, id: `p${i + 1}` }));
+    if (isEdit) setEditQPairs(reindexed);
+    else setQPairs(reindexed);
+  };
+
+  // Drag Drop Steps helper
+  const addStep = (isEdit: boolean) => {
+    const list = isEdit ? editQSteps : qSteps;
+    if (list.length >= 8) return;
+    const updated = [...list, { id: `step_${list.length + 1}`, text: "" }];
+    if (isEdit) setEditQSteps(updated);
+    else setQSteps(updated);
+  };
+
+  const removeStep = (idx: number, isEdit: boolean) => {
+    const list = isEdit ? editQSteps : qSteps;
+    if (list.length <= 2) return;
+    const filtered = list.filter((_, i) => i !== idx);
+    const reindexed = filtered.map((s, i) => ({ ...s, id: `step_${i + 1}` }));
+    if (isEdit) setEditQSteps(reindexed);
+    else setQSteps(reindexed);
+  };
+
+  // Cloze Dropdown helper
+  const addClozeBlank = (isEdit: boolean) => {
+    const list = isEdit ? editQClozeBlanks : qClozeBlanks;
+    if (list.length >= 6) return;
+    const bId = list.length + 1;
+    const updated = [
+      ...list,
+      {
+        blankId: bId,
+        options: [
+          { id: `b${bId}_1`, text: "", isCorrect: true },
+          { id: `b${bId}_2`, text: "", isCorrect: false },
+          { id: `b${bId}_3`, text: "", isCorrect: false },
+        ],
+      },
+    ];
+    if (isEdit) setEditQClozeBlanks(updated);
+    else setQClozeBlanks(updated);
+  };
+
+  const removeClozeBlank = (blankIdx: number, isEdit: boolean) => {
+    const list = isEdit ? editQClozeBlanks : qClozeBlanks;
+    if (list.length <= 1) return;
+    const filtered = list.filter((_, i) => i !== blankIdx);
+    const reindexed = filtered.map((b, i) => ({
+      ...b,
+      blankId: i + 1,
+      options: b.options.map((o, oi) => ({ ...o, id: `b${i + 1}_${oi + 1}` })),
+    }));
+    if (isEdit) setEditQClozeBlanks(reindexed);
+    else setQClozeBlanks(reindexed);
+  };
+
+  const addClozeOption = (blankIdx: number, isEdit: boolean) => {
+    const list = isEdit ? editQClozeBlanks : qClozeBlanks;
+    const blank = list[blankIdx];
+    if (!blank || blank.options.length >= 6) return;
+    const newOptId = `b${blank.blankId}_${blank.options.length + 1}`;
+    const updated = list.map((b, bi) =>
+      bi === blankIdx
+        ? {
+            ...b,
+            options: [...b.options, { id: newOptId, text: "", isCorrect: false }],
+          }
+        : b
+    );
+    if (isEdit) setEditQClozeBlanks(updated);
+    else setQClozeBlanks(updated);
+  };
+
+  const removeClozeOption = (blankIdx: number, optIdx: number, isEdit: boolean) => {
+    const list = isEdit ? editQClozeBlanks : qClozeBlanks;
+    const blank = list[blankIdx];
+    if (!blank || blank.options.length <= 2) return;
+    const filtered = blank.options.filter((_, oi) => oi !== optIdx);
+    // ensure at least one correct
+    const hasCorrect = filtered.some((o) => o.isCorrect);
+    if (!hasCorrect && filtered.length > 0) filtered[0].isCorrect = true;
+    const updated = list.map((b, bi) => (bi === blankIdx ? { ...b, options: filtered } : b));
+    if (isEdit) setEditQClozeBlanks(updated);
+    else setQClozeBlanks(updated);
+  };
 
   const getAuthHeaders = (extra: Record<string, string> = {}) => {
     const token = typeof window !== "undefined" ? (localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token")) : null;
@@ -177,6 +388,7 @@ export default function QuizBankPage() {
           ...bank,
           questions: data.questions,
           isLocalOnly: false,
+          needsSync: false,
         });
       }
     } catch {
@@ -261,21 +473,46 @@ export default function QuizBankPage() {
     const rawPoints = Math.max(10, Math.round((Number(qPoints) || 10) / 10) * 10);
     const payload: any = {
       type: qType,
-      content: qContent,
+      content: qContent.trim(),
       points: rawPoints,
-      timeLimit: Number(qTimeLimit),
-      hint: qHint || null,
+      timeLimit: Number(qTimeLimit) || 30,
+      hint: qHint.trim() || null,
+      mediaUrl: qMediaType !== "NONE" && qMediaUrl.trim() ? qMediaUrl.trim() : null,
+      mediaType: qMediaType !== "NONE" ? qMediaType.toLowerCase() : null,
+      mediaPlaybackMode: qMediaType === "VIDEO" || qMediaType === "AUDIO" ? qMediaPlaybackMode : "AFTER_PLAY",
+      allowManualGrading: qType === "FILL_BLANK" ? qAllowManualGrading : false,
+      gradingCriteria: qType === "FILL_BLANK" && qAllowManualGrading && qGradingCriteria.trim() ? qGradingCriteria.trim() : null,
     };
 
     if (qType === "MC_SINGLE" || qType === "MC_MULTI") {
       payload.options = qOptions.filter((o) => o.text.trim() !== "");
+      payload.pairs = null;
+      payload.answer = null;
     } else if (qType === "TRUE_FALSE") {
       payload.options = [
         { id: "true", text: "Đúng (True)", isCorrect: qAnswer === "true" },
         { id: "false", text: "Sai (False)", isCorrect: qAnswer === "false" },
       ];
-    } else if (qType === "FILL_BLANK" || qType === "ESSAY") {
+      payload.pairs = null;
       payload.answer = qAnswer;
+    } else if (qType === "FILL_BLANK" || qType === "ESSAY") {
+      payload.options = null;
+      payload.pairs = null;
+      payload.answer = qAnswer.trim();
+    } else if (qType === "MATCHING") {
+      payload.pairs = qPairs.filter((p) => p.left.trim() !== "" || p.right.trim() !== "");
+      payload.options = null;
+      payload.answer = null;
+    } else if (qType === "DRAG_DROP") {
+      payload.options = qSteps
+        .filter((s) => s.text.trim() !== "")
+        .map((s, idx) => ({ id: `step_${idx + 1}`, text: s.text.trim(), isCorrect: true }));
+      payload.pairs = null;
+      payload.answer = null;
+    } else if (qType === "CLOZE_DROPDOWN") {
+      payload.options = qClozeBlanks;
+      payload.pairs = null;
+      payload.answer = JSON.stringify(qClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
     }
 
     try {
@@ -289,6 +526,11 @@ export default function QuizBankPage() {
         setQContent("");
         setQHint("");
         setQAnswer("");
+        setQAllowManualGrading(false);
+        setQGradingCriteria("");
+        setQMediaUrl("");
+        setQMediaType("NONE");
+        setQMediaPlaybackMode("AFTER_PLAY");
         selectBank(selectedBank);
       }
     } catch (e) {
@@ -344,21 +586,39 @@ export default function QuizBankPage() {
     setEditQTimeLimit(q.timeLimit || 30);
     setEditQHint(q.hint || "");
     setEditQAnswer(q.answer || "");
+    setEditQAllowManualGrading(!!(q as any).allowManualGrading);
+    setEditQGradingCriteria((q as any).gradingCriteria || "");
 
+    // Media
+    const mUrl = q.mediaUrl || "";
+    setEditQMediaUrl(mUrl);
+    if (q.mediaType) {
+      const mt = q.mediaType.toUpperCase();
+      setEditQMediaType(mt === "VIDEO" || mt === "AUDIO" || mt === "IMAGE" ? (mt as any) : "NONE");
+    } else if (mUrl) {
+      if (mUrl.match(/\.(mp4|webm)/i) || mUrl.includes("youtube.com") || mUrl.includes("youtu.be")) {
+        setEditQMediaType("VIDEO");
+      } else if (mUrl.match(/\.(mp3|wav|ogg)/i)) {
+        setEditQMediaType("AUDIO");
+      } else {
+        setEditQMediaType("IMAGE");
+      }
+    } else {
+      setEditQMediaType("NONE");
+    }
+    setEditQMediaPlaybackMode(((q as any).mediaPlaybackMode as any) || "AFTER_PLAY");
+
+    // Options for MC
     if (q.options && q.options.length > 0) {
       const existing = q.options.map((opt, idx) => ({
         id: opt.id || String.fromCharCode(65 + idx),
         text: opt.text || "",
         isCorrect: !!opt.isCorrect,
       }));
-      while (existing.length < 4) {
-        existing.push({
-          id: String.fromCharCode(65 + existing.length),
-          text: "",
-          isCorrect: false,
-        });
-      }
-      setEditQOptions(existing);
+      setEditQOptions(existing.length >= 2 ? existing : [
+        { id: "A", text: "", isCorrect: true },
+        { id: "B", text: "", isCorrect: false },
+      ]);
     } else {
       setEditQOptions([
         { id: "A", text: "", isCorrect: true },
@@ -367,6 +627,54 @@ export default function QuizBankPage() {
         { id: "D", text: "", isCorrect: false },
       ]);
     }
+
+    // Matching pairs
+    if (q.pairs && Array.isArray(q.pairs) && q.pairs.length > 0) {
+      setEditQPairs(q.pairs.map((p: any, idx: number) => ({
+        id: p.id || `p${idx + 1}`,
+        left: p.left || "",
+        right: p.right || "",
+      })));
+    } else {
+      setEditQPairs([
+        { id: "p1", left: "", right: "" },
+        { id: "p2", left: "", right: "" },
+        { id: "p3", left: "", right: "" },
+      ]);
+    }
+
+    // Drag drop steps
+    if (q.type === "DRAG_DROP" && q.options && q.options.length > 0) {
+      setEditQSteps(q.options.map((s, idx) => ({
+        id: s.id || `step_${idx + 1}`,
+        text: s.text || "",
+      })));
+    } else {
+      setEditQSteps([
+        { id: "step_1", text: "" },
+        { id: "step_2", text: "" },
+        { id: "step_3", text: "" },
+      ]);
+    }
+
+    // Cloze blanks
+    if (q.type === "CLOZE_DROPDOWN" && (q as any).clozeBlanks && Array.isArray((q as any).clozeBlanks)) {
+      setEditQClozeBlanks((q as any).clozeBlanks);
+    } else if (q.type === "CLOZE_DROPDOWN" && q.options && Array.isArray(q.options)) {
+      setEditQClozeBlanks(q.options as any);
+    } else {
+      setEditQClozeBlanks([
+        {
+          blankId: 1,
+          options: [
+            { id: "b1_1", text: "", isCorrect: true },
+            { id: "b1_2", text: "", isCorrect: false },
+            { id: "b1_3", text: "", isCorrect: false },
+          ],
+        },
+      ]);
+    }
+
     setShowEditQModal(true);
   };
 
@@ -382,20 +690,42 @@ export default function QuizBankPage() {
       points: rawPoints,
       timeLimit: Number(editQTimeLimit) || 30,
       hint: editQHint.trim() || null,
+      mediaUrl: editQMediaType !== "NONE" && editQMediaUrl.trim() ? editQMediaUrl.trim() : null,
+      mediaType: editQMediaType !== "NONE" ? editQMediaType.toLowerCase() : null,
+      mediaPlaybackMode: editQMediaType === "VIDEO" || editQMediaType === "AUDIO" ? editQMediaPlaybackMode : "AFTER_PLAY",
+      allowManualGrading: editQType === "FILL_BLANK" ? editQAllowManualGrading : false,
+      gradingCriteria: editQType === "FILL_BLANK" && editQAllowManualGrading && editQGradingCriteria.trim() ? editQGradingCriteria.trim() : null,
     };
 
     if (editQType === "MC_SINGLE" || editQType === "MC_MULTI") {
       payload.options = editQOptions.filter((o) => o.text.trim() !== "");
+      payload.pairs = null;
       payload.answer = null;
     } else if (editQType === "TRUE_FALSE") {
       payload.options = [
         { id: "true", text: "Đúng (True)", isCorrect: editQAnswer === "true" },
         { id: "false", text: "Sai (False)", isCorrect: editQAnswer === "false" },
       ];
+      payload.pairs = null;
       payload.answer = editQAnswer;
     } else if (editQType === "FILL_BLANK" || editQType === "ESSAY") {
       payload.options = null;
+      payload.pairs = null;
       payload.answer = editQAnswer.trim();
+    } else if (editQType === "MATCHING") {
+      payload.pairs = editQPairs.filter((p) => p.left.trim() !== "" || p.right.trim() !== "");
+      payload.options = null;
+      payload.answer = null;
+    } else if (editQType === "DRAG_DROP") {
+      payload.options = editQSteps
+        .filter((s) => s.text.trim() !== "")
+        .map((s, idx) => ({ id: `step_${idx + 1}`, text: s.text.trim(), isCorrect: true }));
+      payload.pairs = null;
+      payload.answer = null;
+    } else if (editQType === "CLOZE_DROPDOWN") {
+      payload.options = editQClozeBlanks;
+      payload.pairs = null;
+      payload.answer = JSON.stringify(editQClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
     }
 
     try {
@@ -1031,25 +1361,91 @@ export default function QuizBankPage() {
                       <p className="font-semibold text-foreground">
                         {i + 1}. {q.content}
                       </p>
-                      {q.options && q.options.length > 0 && (
+                      {/* Multimedia Badge */}
+                      {q.mediaUrl && (
+                        <div className="flex items-center gap-1.5 text-xs text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-lg w-fit">
+                          <span>
+                            {q.mediaType === "VIDEO" || q.mediaUrl.match(/\.(mp4|webm)/i) || q.mediaUrl.includes("youtube.com") || q.mediaUrl.includes("youtu.be")
+                              ? "🎬 Video"
+                              : q.mediaType === "AUDIO" || q.mediaUrl.match(/\.(mp3|wav|ogg)/i)
+                              ? "🎵 Audio"
+                              : "🖼️ Hình ảnh"}
+                          </span>
+                          {(q.mediaType === "VIDEO" || q.mediaType === "AUDIO") && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              • {q.mediaPlaybackMode === "PARALLEL" ? "Đếm song song" : "Phát xong mới đếm"}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Options for MC & DRAG_DROP */}
+                      {q.type !== "MATCHING" && q.type !== "CLOZE_DROPDOWN" && q.options && q.options.length > 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                          {q.options.map((opt) => (
+                          {q.options.map((opt, optIdx) => (
                             <div
-                              key={opt.id}
+                              key={opt.id || optIdx}
                               className={`p-2 rounded-lg text-xs font-medium border ${
-                                opt.isCorrect
+                                q.type === "DRAG_DROP"
+                                  ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
+                                  : opt.isCorrect
                                   ? "border-green-500/60 bg-green-500/10 text-green-300"
                                   : "border-border text-muted-foreground"
                               }`}
                             >
-                              <span className="font-bold mr-1">{opt.id}.</span> {opt.text}
+                              <span className="font-bold mr-1">
+                                {q.type === "DRAG_DROP" ? `#${optIdx + 1}.` : `${opt.id || String.fromCharCode(65 + optIdx)}.`}
+                              </span>{" "}
+                              {opt.text}
                             </div>
                           ))}
                         </div>
                       )}
+
+                      {/* Matching Pairs */}
+                      {q.type === "MATCHING" && q.pairs && (q.pairs as any).length > 0 && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                          {(q.pairs as any[]).map((p: any, pIdx: number) => (
+                            <div
+                              key={p.id || pIdx}
+                              className="p-2 rounded-lg text-xs font-medium border border-cyan-500/30 bg-cyan-500/10 text-cyan-200 flex items-center justify-between"
+                            >
+                              <span className="font-semibold text-slate-200">{p.left}</span>
+                              <span className="text-cyan-400 font-bold mx-1">⟷</span>
+                              <span className="text-cyan-300">{p.right}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Cloze Dropdowns */}
+                      {q.type === "CLOZE_DROPDOWN" && q.options && (q.options as any).length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {(q.options as any[]).map((blank: any, bIdx: number) => {
+                            const correctOpt = blank.options?.find((o: any) => o.isCorrect);
+                            return (
+                              <div
+                                key={blank.blankId || bIdx}
+                                className="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-purple-500/30 bg-purple-500/10 text-purple-200 flex items-center gap-1.5"
+                              >
+                                <span className="font-bold text-purple-400">[{blank.blankId || bIdx + 1}]</span>
+                                <span>Đáp án: <strong className="text-green-300">{correctOpt?.text || "Chưa đặt"}</strong></span>
+                                <span className="text-[10px] text-muted-foreground">({blank.options?.length || 0} lựa chọn)</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Answer for Fill in blank / Essay */}
                       {q.answer && (
-                        <div className="text-xs text-cyan-300 mt-1">
-                          Đáp án đúng: <span className="font-mono">{q.answer}</span>
+                        <div className="text-xs text-cyan-300 mt-1 flex items-center gap-2">
+                          <span>Đáp án chuẩn: <span className="font-mono">{q.answer}</span></span>
+                          {(q as any).allowManualGrading && (
+                            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 font-semibold text-[10px]">
+                              ✍️ MC chấm tay
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1118,24 +1514,34 @@ export default function QuizBankPage() {
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleCreateQuestion}
-            className="glass rounded-2xl p-6 w-full max-w-xl space-y-4 border border-border my-8"
+            className="glass rounded-2xl p-6 w-full max-w-2xl space-y-4 border border-border my-8 max-h-[90vh] overflow-y-auto"
           >
-            <h3 className="text-xl font-bold">Thêm câu hỏi mới</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-xl font-bold">Thêm câu hỏi mới</h3>
+              <button
+                type="button"
+                onClick={() => setShowNewQModal(false)}
+                className="text-muted-foreground hover:text-foreground text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1">Loại câu hỏi</label>
                 <select
                   value={qType}
                   onChange={(e) => setQType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 >
-                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án</option>
-                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án</option>
+                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
+                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
                   <option value="TRUE_FALSE">Đúng / Sai</option>
-                  <option value="FILL_BLANK">Điền từ</option>
-                  <option value="ESSAY">Tự luận</option>
-                  <option value="MATCHING">Nối cặp tương ứng</option>
-                  <option value="DRAG_DROP">Kéo thả / Sắp xếp thứ tự</option>
+                  <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
+                  <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
+                  <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
+                  <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
                 </select>
               </div>
               <div>
@@ -1147,116 +1553,584 @@ export default function QuizBankPage() {
                     setQPoints(pts);
                     setQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
                   }}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 >
                   <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
                   <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
                   <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
                   <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
                 </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc chính thức</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc</p>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
+                <label className="block text-xs font-medium mb-1">Thời gian trả lời (giây)</label>
                 <input
                   type="number"
+                  min={5}
+                  max={300}
                   value={qTimeLimit}
                   onChange={(e) => setQTimeLimit(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Nội dung câu hỏi *</label>
+              <label className="block text-sm font-medium mb-1">
+                Nội dung câu hỏi *
+                {qType === "CLOZE_DROPDOWN" && (
+                  <span className="text-xs text-purple-400 font-normal ml-2">
+                    (Dùng [1], [2], [3]... tại vị trí cần đục lỗ)
+                  </span>
+                )}
+              </label>
               <textarea
                 required
                 value={qContent}
                 onChange={(e) => setQContent(e.target.value)}
-                placeholder="Nhập nội dung câu hỏi..."
+                placeholder={
+                  qType === "CLOZE_DROPDOWN"
+                    ? "Ví dụ: Thủ đô của Việt Nam là [1], còn trung tâm kinh tế phía Nam là [2]."
+                    : "Nhập nội dung câu hỏi..."
+                }
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring"
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring text-sm"
               />
             </div>
 
-            {/* Answer inputs according to question type */}
+            {/* 1 & 2: Multiple Choice (MC_SINGLE / MC_MULTI) - 2 to 10 options */}
             {(qType === "MC_SINGLE" || qType === "MC_MULTI") && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Các phương án lựa chọn</label>
-                {qOptions.map((opt, idx) => (
-                  <div key={opt.id} className="flex items-center gap-2">
-                    <input
-                      type={qType === "MC_SINGLE" ? "radio" : "checkbox"}
-                      name="correct-option"
-                      checked={opt.isCorrect}
-                      onChange={(e) => {
-                        if (qType === "MC_SINGLE") {
-                          setQOptions(qOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
-                        } else {
-                          setQOptions(qOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
-                        }
-                      }}
-                      className="w-4 h-4 cursor-pointer"
-                    />
-                    <span className="font-bold text-sm w-4">{String.fromCharCode(65 + idx)}</span>
-                    <input
-                      type="text"
-                      value={opt.text}
-                      onChange={(e) => {
-                        const newOpts = [...qOptions];
-                        newOpts[idx].text = e.target.value;
-                        setQOptions(newOpts);
-                      }}
-                      placeholder={`Lựa chọn ${String.fromCharCode(65 + idx)}`}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
-                    />
-                  </div>
-                ))}
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                    Các phương án lựa chọn ({qOptions.length}/10 phương án - chọn đáp án đúng)
+                  </label>
+                  {qOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => addOption(false)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm lựa chọn ({String.fromCharCode(65 + qOptions.length)})
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2 pt-1">
+                  {qOptions.map((opt, idx) => (
+                    <div key={opt.id} className="flex items-center gap-2">
+                      <input
+                        type={qType === "MC_SINGLE" ? "radio" : "checkbox"}
+                        name="correct-option-new"
+                        checked={opt.isCorrect}
+                        onChange={(e) => {
+                          if (qType === "MC_SINGLE") {
+                            setQOptions(qOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
+                          } else {
+                            setQOptions(qOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
+                          }
+                        }}
+                        className="w-4 h-4 cursor-pointer text-purple-600"
+                      />
+                      <span className="font-bold text-sm w-5 text-center text-purple-300">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => {
+                          const newOpts = [...qOptions];
+                          newOpts[idx].text = e.target.value;
+                          setQOptions(newOpts);
+                        }}
+                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {qOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeOption(idx, false)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa lựa chọn này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
+            {/* 3: TRUE_FALSE */}
             {qType === "TRUE_FALSE" && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+              <div className="p-3.5 rounded-xl border border-border bg-card/30">
+                <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">
+                  Đáp án đúng
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-card/60">
                     <input
                       type="radio"
-                      name="tf_answer"
+                      name="new_tf_answer"
                       value="true"
                       checked={qAnswer === "true"}
                       onChange={(e) => setQAnswer(e.target.value)}
+                      className="text-purple-600"
                     />
-                    <span>Đúng (True)</span>
+                    <span className="font-medium text-sm text-green-300">Đúng (True)</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-card/60">
                     <input
                       type="radio"
-                      name="tf_answer"
+                      name="new_tf_answer"
                       value="false"
                       checked={qAnswer === "false"}
                       onChange={(e) => setQAnswer(e.target.value)}
+                      className="text-purple-600"
                     />
-                    <span>Sai (False)</span>
+                    <span className="font-medium text-sm text-red-300">Sai (False)</span>
                   </label>
                 </div>
               </div>
             )}
 
+            {/* 4: FILL_BLANK & ESSAY (Merged) */}
             {(qType === "FILL_BLANK" || qType === "ESSAY") && (
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {qType === "FILL_BLANK" ? "Từ/Cụm từ chuẩn đáp án" : "Gợi ý đáp án / Tiêu chí chấm"}
-                </label>
-                <input
-                  type="text"
-                  value={qAnswer}
-                  onChange={(e) => setQAnswer(e.target.value)}
-                  placeholder="Nhập đáp án chuẩn..."
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
-                />
+              <div className="space-y-3 p-3.5 rounded-xl border border-border bg-card/30">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-1">
+                    Các đáp án chuẩn (Phân tách nhiều cách viết bằng dấu chấm phẩy ;)
+                  </label>
+                  <input
+                    type="text"
+                    value={qAnswer}
+                    onChange={(e) => setQAnswer(e.target.value)}
+                    placeholder="VD: Hà Nội; Ha Noi; Hanoi; Thủ đô Hà Nội"
+                    className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Hệ thống sẽ tự động so khớp không phân biệt chữ hoa, chữ thường và dấu khoảng trắng.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={qAllowManualGrading}
+                      onChange={(e) => setQAllowManualGrading(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-600 cursor-pointer"
+                    />
+                    <span className="text-sm font-semibold text-purple-200">
+                      Cho phép MC / Quản trò chấm điểm thủ công (Manual Grading)
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-muted-foreground ml-6">
+                    Bật tùy chọn này cho câu hỏi tự luận mở, đoạn văn ngắn hoặc khi cần MC linh hoạt chấm điểm tại chỗ.
+                  </p>
+                </div>
+
+                {qAllowManualGrading && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
+                      📋 Tiêu chí chấm điểm / Thang điểm Rubric (Hiển thị cho MC tham khảo khi chấm)
+                    </label>
+                    <textarea
+                      value={qGradingCriteria}
+                      onChange={(e) => setQGradingCriteria(e.target.value)}
+                      placeholder="VD: Ý 1 nêu được nguyên nhân (5đ); Ý 2 nêu được giải pháp khắc phục (5đ)..."
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl bg-input border border-amber-500/40 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             )}
+
+            {/* 5: MATCHING (Nối cặp tương ứng A - B) - 2 to 8 pairs */}
+            {qType === "MATCHING" && (
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các cặp nối A - B ({qPairs.length}/8 cặp)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Cột trái nối với Cột phải tương ứng. Hệ thống sẽ tự động xáo trộn vế phải khi vào trận.
+                    </p>
+                  </div>
+                  {qPairs.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => addPair(false)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm cặp #{qPairs.length + 1}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {qPairs.map((p, idx) => (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-purple-300 w-6 text-center">#{idx + 1}</span>
+                      <input
+                        type="text"
+                        value={p.left}
+                        onChange={(e) => {
+                          const updated = [...qPairs];
+                          updated[idx].left = e.target.value;
+                          setQPairs(updated);
+                        }}
+                        placeholder={`Vế trái (Thuật ngữ ${idx + 1})`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      <span className="text-muted-foreground text-sm font-bold">⟷</span>
+                      <input
+                        type="text"
+                        value={p.right}
+                        onChange={(e) => {
+                          const updated = [...qPairs];
+                          updated[idx].right = e.target.value;
+                          setQPairs(updated);
+                        }}
+                        placeholder={`Vế phải (Khái niệm ${idx + 1})`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {qPairs.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removePair(idx, false)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa cặp này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 6: DRAG_DROP (Sắp xếp thứ tự các bước) - 2 to 8 steps */}
+            {qType === "DRAG_DROP" && (
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các bước theo đúng trình tự chuẩn ({qSteps.length}/8 bước)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Nhập thứ tự chuẩn từ 1 đến hết. Khi bắt đầu thi, hệ thống sẽ xáo trộn ngẫu nhiên để thí sinh kéo thả xếp lại.
+                    </p>
+                  </div>
+                  {qSteps.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => addStep(false)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm bước #{qSteps.length + 1}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {qSteps.map((s, idx) => (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <span className="font-bold text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap">
+                        Bước {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={s.text}
+                        onChange={(e) => {
+                          const updated = [...qSteps];
+                          updated[idx].text = e.target.value;
+                          setQSteps(updated);
+                        }}
+                        placeholder={`Nội dung bước ${idx + 1}...`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {qSteps.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeStep(idx, false)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa bước này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 7: CLOZE_DROPDOWN (Đoạn văn đục lỗ menu thả xuống) */}
+            {qType === "CLOZE_DROPDOWN" && (
+              <div className="space-y-3 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các ô trống đục lỗ ({qClozeBlanks.length}/6 ô)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Mỗi ô đục lỗ có danh sách các lựa chọn để thí sinh chọn từ menu thả xuống.
+                    </p>
+                  </div>
+                  {qClozeBlanks.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => addClozeBlank(false)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm ô đục lỗ [{qClozeBlanks.length + 1}]
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {qClozeBlanks.map((blank, bIdx) => (
+                    <div key={blank.blankId} className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-purple-300">
+                          📌 Ô trống [{blank.blankId}] - Các phương án thả xuống
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {blank.options.length < 6 && (
+                            <button
+                              type="button"
+                              onClick={() => addClozeOption(bIdx, false)}
+                              className="text-[11px] text-purple-300 hover:text-purple-200 font-semibold"
+                            >
+                              + Thêm phương án
+                            </button>
+                          )}
+                          {qClozeBlanks.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeClozeBlank(bIdx, false)}
+                              className="text-[11px] text-destructive hover:underline"
+                            >
+                              Xóa ô [{blank.blankId}]
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {blank.options.map((opt, oIdx) => (
+                          <div key={opt.id} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`cloze_correct_${bIdx}`}
+                              checked={opt.isCorrect}
+                              onChange={() => {
+                                const updated = qClozeBlanks.map((b, bi) =>
+                                  bi === bIdx
+                                    ? {
+                                        ...b,
+                                        options: b.options.map((o, oi) => ({
+                                          ...o,
+                                          isCorrect: oi === oIdx,
+                                        })),
+                                      }
+                                    : b
+                                );
+                                setQClozeBlanks(updated);
+                              }}
+                              className="w-3.5 h-3.5 text-purple-600 cursor-pointer"
+                              title="Đánh dấu đây là đáp án đúng"
+                            />
+                            <input
+                              type="text"
+                              value={opt.text}
+                              onChange={(e) => {
+                                const updated = qClozeBlanks.map((b, bi) =>
+                                  bi === bIdx
+                                    ? {
+                                        ...b,
+                                        options: b.options.map((o, oi) =>
+                                          oi === oIdx ? { ...o, text: e.target.value } : o
+                                        ),
+                                      }
+                                    : b
+                                );
+                                setQClozeBlanks(updated);
+                              }}
+                              placeholder={`Phương án ${oIdx + 1}${opt.isCorrect ? " (Đáp án đúng)" : ""}`}
+                              className="flex-1 px-2.5 py-1 rounded bg-input border border-border text-xs"
+                            />
+                            {blank.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeClozeOption(bIdx, oIdx, false)}
+                                className="text-destructive hover:bg-destructive/20 p-1 rounded text-xs"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 🎬 MULTIMEDIA ATTACHMENT SECTION (For ALL Question Types) */}
+            <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎬</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
+                    Đính kèm Đa phương tiện (Tùy chọn)
+                  </span>
+                </div>
+                <select
+                  value={qMediaType}
+                  onChange={(e) => setQMediaType(e.target.value as any)}
+                  className="px-2.5 py-1 rounded-lg bg-input border border-border text-xs font-medium"
+                >
+                  <option value="NONE">Không có đa phương tiện</option>
+                  <option value="IMAGE">🖼️ Hình ảnh minh họa</option>
+                  <option value="VIDEO">🎬 Video clip (MP4 / YouTube)</option>
+                  <option value="AUDIO">🎵 Âm thanh / Giọng nói (MP3 / WAV)</option>
+                </select>
+              </div>
+
+              {qMediaType !== "NONE" && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={qMediaUrl}
+                      onChange={(e) => setQMediaUrl(e.target.value)}
+                      placeholder={
+                        qMediaType === "VIDEO"
+                          ? "Dán link YouTube (https://...) hoặc link file MP4 trực tiếp..."
+                          : qMediaType === "AUDIO"
+                          ? "Dán link audio MP3/WAV trực tiếp..."
+                          : "Dán link ảnh (https://...)..."
+                      }
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-xs"
+                    />
+                    <label className="px-3 py-1.5 rounded-lg bg-purple-600/40 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-xs font-semibold cursor-pointer transition flex items-center gap-1 shrink-0">
+                      <span>{qUploadingMedia ? "⏳ Đang tải..." : "📁 Tải tệp lên"}</span>
+                      <input
+                        type="file"
+                        accept={
+                          qMediaType === "VIDEO"
+                            ? "video/mp4,video/webm"
+                            : qMediaType === "AUDIO"
+                            ? "audio/mp3,audio/wav,audio/ogg"
+                            : "image/*"
+                        }
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file, false);
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {(qMediaType === "VIDEO" || qMediaType === "AUDIO") && (
+                    <div className="p-3 rounded-lg bg-card/60 border border-border space-y-2">
+                      <label className="block text-xs font-bold text-slate-200">
+                        ⏱️ Chế độ phát & Đồng hồ đếm ngược trả lời:
+                      </label>
+                      <div className="space-y-1.5 text-xs">
+                        <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-purple-500/10">
+                          <input
+                            type="radio"
+                            name="new_playback_mode"
+                            value="AFTER_PLAY"
+                            checked={qMediaPlaybackMode === "AFTER_PLAY"}
+                            onChange={() => setQMediaPlaybackMode("AFTER_PLAY")}
+                            className="mt-0.5 text-purple-600"
+                          />
+                          <div>
+                            <span className="font-bold text-purple-200">
+                              Phát xong clip mới bắt đầu đếm ngược thời gian (Chuẩn gameshow như Olympia)
+                            </span>
+                            <p className="text-[11px] text-muted-foreground">
+                              Thí sinh tập trung lắng nghe/quan sát hết nội dung clip trước khi đồng hồ đếm ngược làm bài được kích hoạt.
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-purple-500/10">
+                          <input
+                            type="radio"
+                            name="new_playback_mode"
+                            value="PARALLEL"
+                            checked={qMediaPlaybackMode === "PARALLEL"}
+                            onChange={() => setQMediaPlaybackMode("PARALLEL")}
+                            className="mt-0.5 text-purple-600"
+                          />
+                          <div>
+                            <span className="font-bold text-cyan-200">
+                              Đồng hồ đếm ngược chạy song song ngay khi clip bắt đầu phát
+                            </span>
+                            <p className="text-[11px] text-muted-foreground">
+                              Áp dụng cho thử thách phản xạ nhanh, nhận diện đoạn nhạc hay tình huống khẩn cấp.
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+
+                      <div className="p-2 rounded bg-purple-900/30 border border-purple-500/30 text-[11px] text-purple-300 flex items-center gap-1.5">
+                        <span>📡</span>
+                        <span>
+                          <strong>Đồng bộ qua WebSocket:</strong> Khi MC mở câu hỏi hoặc bấm Phát, video/audio phát đồng loạt trên máy chiếu và máy thí sinh; thanh tua của thí sinh bị khóa để tránh gian lận.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Media Preview */}
+                  {qMediaUrl.trim() && (
+                    <div className="pt-1">
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1">Xem trước tệp:</p>
+                      {qMediaType === "IMAGE" && (
+                        <img
+                          src={qMediaUrl}
+                          alt="Media preview"
+                          className="max-h-40 rounded-lg object-contain border border-border bg-black/40"
+                          onError={(e) => ((e.target as any).style.display = "none")}
+                        />
+                      )}
+                      {qMediaType === "AUDIO" && (
+                        <audio controls src={qMediaUrl} className="w-full h-9 rounded-lg" />
+                      )}
+                      {qMediaType === "VIDEO" && (
+                        qMediaUrl.includes("youtube.com") || qMediaUrl.includes("youtu.be") ? (
+                          <div className="aspect-video max-h-48 rounded-lg overflow-hidden border border-border">
+                            <iframe
+                              src={
+                                qMediaUrl.includes("watch?v=")
+                                  ? qMediaUrl.replace("watch?v=", "embed/")
+                                  : qMediaUrl.includes("youtu.be/")
+                                  ? qMediaUrl.replace("youtu.be/", "www.youtube.com/embed/")
+                                  : qMediaUrl
+                              }
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                          </div>
+                        ) : (
+                          <video controls src={qMediaUrl} className="max-h-48 rounded-lg border border-border" />
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Gợi ý câu hỏi (Hint)</label>
@@ -1264,22 +2138,22 @@ export default function QuizBankPage() {
                 type="text"
                 value={qHint}
                 onChange={(e) => setQHint(e.target.value)}
-                placeholder="Gợi ý nếu đội dùng thẻ gợi ý..."
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                placeholder="Gợi ý nếu đội chơi kích hoạt trợ giúp..."
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
               />
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-2 justify-end pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setShowNewQModal(false)}
-                className="px-4 py-2 rounded-xl border border-border hover:bg-muted"
+                className="px-4 py-2 rounded-xl border border-border hover:bg-muted text-sm font-medium"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold"
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-sm text-white"
               >
                 Lưu câu hỏi
               </button>
@@ -1351,9 +2225,9 @@ export default function QuizBankPage() {
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4 overflow-y-auto">
           <form
             onSubmit={handleUpdateQuestion}
-            className="glass rounded-2xl p-6 w-full max-w-xl space-y-4 border border-border my-8"
+            className="glass rounded-2xl p-6 w-full max-w-2xl space-y-4 border border-border my-8 max-h-[90vh] overflow-y-auto"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-xl font-bold">✏️ Chỉnh sửa câu hỏi</h3>
               <button
                 type="button"
@@ -1364,21 +2238,21 @@ export default function QuizBankPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1">Loại câu hỏi</label>
                 <select
                   value={editQType}
                   onChange={(e) => setEditQType(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 >
-                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án</option>
-                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án</option>
+                  <option value="MC_SINGLE">Trắc nghiệm 1 đáp án (2-10 lựa chọn)</option>
+                  <option value="MC_MULTI">Trắc nghiệm nhiều đáp án (2-10 lựa chọn)</option>
                   <option value="TRUE_FALSE">Đúng / Sai</option>
-                  <option value="FILL_BLANK">Điền từ</option>
-                  <option value="ESSAY">Tự luận</option>
-                  <option value="MATCHING">Nối cặp tương ứng</option>
-                  <option value="DRAG_DROP">Kéo thả / Sắp xếp thứ tự</option>
+                  <option value="FILL_BLANK">Điền từ / Tự luận ngắn</option>
+                  <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
+                  <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
+                  <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
                 </select>
               </div>
               <div>
@@ -1390,116 +2264,584 @@ export default function QuizBankPage() {
                     setEditQPoints(pts);
                     setEditQTimeLimit(pts === 40 ? 60 : pts === 30 ? 30 : pts === 20 ? 20 : 15);
                   }}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 >
                   <option value={10}>10 Điểm (Cơ bản / Ghi nhớ - 15s)</option>
                   <option value={20}>20 Điểm (Trung bình / Thông hiểu - 20s)</option>
                   <option value={30}>30 Điểm (Nâng cao / Vận dụng - 30s)</option>
                   <option value={40}>40 Điểm (Phức tạp / Đa số liệu - 60s)</option>
                 </select>
-                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc chính thức</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Hệ thống chuẩn hóa 4 mức điểm gốc</p>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">Thời gian (giây)</label>
+                <label className="block text-xs font-medium mb-1">Thời gian trả lời (giây)</label>
                 <input
                   type="number"
+                  min={5}
+                  max={300}
                   value={editQTimeLimit}
                   onChange={(e) => setEditQTimeLimit(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                  className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Nội dung câu hỏi *</label>
+              <label className="block text-sm font-medium mb-1">
+                Nội dung câu hỏi *
+                {editQType === "CLOZE_DROPDOWN" && (
+                  <span className="text-xs text-purple-400 font-normal ml-2">
+                    (Dùng [1], [2], [3]... tại vị trí cần đục lỗ)
+                  </span>
+                )}
+              </label>
               <textarea
                 required
                 value={editQContent}
                 onChange={(e) => setEditQContent(e.target.value)}
-                placeholder="Nhập nội dung câu hỏi..."
+                placeholder={
+                  editQType === "CLOZE_DROPDOWN"
+                    ? "Ví dụ: Thủ đô của Việt Nam là [1], còn trung tâm kinh tế phía Nam là [2]."
+                    : "Nhập nội dung câu hỏi..."
+                }
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring"
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring text-sm"
               />
             </div>
 
-            {/* Answer inputs according to question type */}
+            {/* 1 & 2: Multiple Choice (MC_SINGLE / MC_MULTI) - 2 to 10 options */}
             {(editQType === "MC_SINGLE" || editQType === "MC_MULTI") && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium">Các phương án lựa chọn (chọn đáp án đúng)</label>
-                {editQOptions.map((opt, idx) => (
-                  <div key={opt.id} className="flex items-center gap-2">
-                    <input
-                      type={editQType === "MC_SINGLE" ? "radio" : "checkbox"}
-                      name="edit-correct-option"
-                      checked={opt.isCorrect}
-                      onChange={(e) => {
-                        if (editQType === "MC_SINGLE") {
-                          setEditQOptions(editQOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
-                        } else {
-                          setEditQOptions(editQOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
-                        }
-                      }}
-                      className="w-4 h-4 cursor-pointer"
-                    />
-                    <span className="font-bold text-sm w-4">{String.fromCharCode(65 + idx)}</span>
-                    <input
-                      type="text"
-                      value={opt.text}
-                      onChange={(e) => {
-                        const newOpts = [...editQOptions];
-                        newOpts[idx].text = e.target.value;
-                        setEditQOptions(newOpts);
-                      }}
-                      placeholder={`Lựa chọn ${String.fromCharCode(65 + idx)}`}
-                      className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
-                    />
-                  </div>
-                ))}
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                    Các phương án lựa chọn ({editQOptions.length}/10 phương án - chọn đáp án đúng)
+                  </label>
+                  {editQOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => addOption(true)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm lựa chọn ({String.fromCharCode(65 + editQOptions.length)})
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2 pt-1">
+                  {editQOptions.map((opt, idx) => (
+                    <div key={opt.id} className="flex items-center gap-2">
+                      <input
+                        type={editQType === "MC_SINGLE" ? "radio" : "checkbox"}
+                        name="edit-correct-option-group"
+                        checked={opt.isCorrect}
+                        onChange={(e) => {
+                          if (editQType === "MC_SINGLE") {
+                            setEditQOptions(editQOptions.map((o, i) => ({ ...o, isCorrect: i === idx })));
+                          } else {
+                            setEditQOptions(editQOptions.map((o, i) => (i === idx ? { ...o, isCorrect: e.target.checked } : o)));
+                          }
+                        }}
+                        className="w-4 h-4 cursor-pointer text-purple-600"
+                      />
+                      <span className="font-bold text-sm w-5 text-center text-purple-300">
+                        {String.fromCharCode(65 + idx)}
+                      </span>
+                      <input
+                        type="text"
+                        value={opt.text}
+                        onChange={(e) => {
+                          const newOpts = [...editQOptions];
+                          newOpts[idx].text = e.target.value;
+                          setEditQOptions(newOpts);
+                        }}
+                        placeholder={`Nội dung lựa chọn ${String.fromCharCode(65 + idx)}`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {editQOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeOption(idx, true)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa lựa chọn này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
+            {/* 3: TRUE_FALSE */}
             {editQType === "TRUE_FALSE" && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Đáp án đúng</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
+              <div className="p-3.5 rounded-xl border border-border bg-card/30">
+                <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-2">
+                  Đáp án đúng
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-card/60">
                     <input
                       type="radio"
-                      name="edit_tf_answer"
+                      name="edit_tf_answer_val"
                       value="true"
                       checked={editQAnswer === "true"}
                       onChange={(e) => setEditQAnswer(e.target.value)}
+                      className="text-purple-600"
                     />
-                    <span>Đúng (True)</span>
+                    <span className="font-medium text-sm text-green-300">Đúng (True)</span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-card/60">
                     <input
                       type="radio"
-                      name="edit_tf_answer"
+                      name="edit_tf_answer_val"
                       value="false"
                       checked={editQAnswer === "false"}
                       onChange={(e) => setEditQAnswer(e.target.value)}
+                      className="text-purple-600"
                     />
-                    <span>Sai (False)</span>
+                    <span className="font-medium text-sm text-red-300">Sai (False)</span>
                   </label>
                 </div>
               </div>
             )}
 
+            {/* 4: FILL_BLANK & ESSAY (Merged) */}
             {(editQType === "FILL_BLANK" || editQType === "ESSAY") && (
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  {editQType === "FILL_BLANK" ? "Từ/Cụm từ chuẩn đáp án" : "Gợi ý đáp án / Tiêu chí chấm"}
-                </label>
-                <input
-                  type="text"
-                  value={editQAnswer}
-                  onChange={(e) => setEditQAnswer(e.target.value)}
-                  placeholder="Nhập đáp án chuẩn..."
-                  className="w-full px-3 py-2 rounded-xl bg-input border border-border"
-                />
+              <div className="space-y-3 p-3.5 rounded-xl border border-border bg-card/30">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-purple-300 mb-1">
+                    Các đáp án chuẩn (Phân tách nhiều cách viết bằng dấu chấm phẩy ;)
+                  </label>
+                  <input
+                    type="text"
+                    value={editQAnswer}
+                    onChange={(e) => setEditQAnswer(e.target.value)}
+                    placeholder="VD: Hà Nội; Ha Noi; Hanoi; Thủ đô Hà Nội"
+                    className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Hệ thống sẽ tự động so khớp không phân biệt chữ hoa, chữ thường và dấu khoảng trắng.
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={editQAllowManualGrading}
+                      onChange={(e) => setEditQAllowManualGrading(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-600 cursor-pointer"
+                    />
+                    <span className="text-sm font-semibold text-purple-200">
+                      Cho phép MC / Quản trò chấm điểm thủ công (Manual Grading)
+                    </span>
+                  </label>
+                  <p className="text-[11px] text-muted-foreground ml-6">
+                    Bật tùy chọn này cho câu hỏi tự luận mở, đoạn văn ngắn hoặc khi cần MC linh hoạt chấm điểm tại chỗ.
+                  </p>
+                </div>
+
+                {editQAllowManualGrading && (
+                  <div className="pt-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-amber-300 mb-1">
+                      📋 Tiêu chí chấm điểm / Thang điểm Rubric (Hiển thị cho MC tham khảo khi chấm)
+                    </label>
+                    <textarea
+                      value={editQGradingCriteria}
+                      onChange={(e) => setEditQGradingCriteria(e.target.value)}
+                      placeholder="VD: Ý 1 nêu được nguyên nhân (5đ); Ý 2 nêu được giải pháp khắc phục (5đ)..."
+                      rows={2}
+                      className="w-full px-3 py-2 rounded-xl bg-input border border-amber-500/40 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             )}
+
+            {/* 5: MATCHING (Nối cặp tương ứng A - B) - 2 to 8 pairs */}
+            {editQType === "MATCHING" && (
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các cặp nối A - B ({editQPairs.length}/8 cặp)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Cột trái nối với Cột phải tương ứng. Hệ thống sẽ tự động xáo trộn vế phải khi vào trận.
+                    </p>
+                  </div>
+                  {editQPairs.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => addPair(true)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm cặp #{editQPairs.length + 1}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {editQPairs.map((p, idx) => (
+                    <div key={p.id} className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-purple-300 w-6 text-center">#{idx + 1}</span>
+                      <input
+                        type="text"
+                        value={p.left}
+                        onChange={(e) => {
+                          const updated = [...editQPairs];
+                          updated[idx].left = e.target.value;
+                          setEditQPairs(updated);
+                        }}
+                        placeholder={`Vế trái (Thuật ngữ ${idx + 1})`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      <span className="text-muted-foreground text-sm font-bold">⟷</span>
+                      <input
+                        type="text"
+                        value={p.right}
+                        onChange={(e) => {
+                          const updated = [...editQPairs];
+                          updated[idx].right = e.target.value;
+                          setEditQPairs(updated);
+                        }}
+                        placeholder={`Vế phải (Khái niệm ${idx + 1})`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {editQPairs.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removePair(idx, true)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa cặp này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 6: DRAG_DROP (Sắp xếp thứ tự các bước) - 2 to 8 steps */}
+            {editQType === "DRAG_DROP" && (
+              <div className="space-y-2 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các bước theo đúng trình tự chuẩn ({editQSteps.length}/8 bước)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Nhập thứ tự chuẩn từ 1 đến hết. Khi bắt đầu thi, hệ thống sẽ xáo trộn ngẫu nhiên để thí sinh kéo thả xếp lại.
+                    </p>
+                  </div>
+                  {editQSteps.length < 8 && (
+                    <button
+                      type="button"
+                      onClick={() => addStep(true)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm bước #{editQSteps.length + 1}
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-1">
+                  {editQSteps.map((s, idx) => (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <span className="font-bold text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-300 whitespace-nowrap">
+                        Bước {idx + 1}
+                      </span>
+                      <input
+                        type="text"
+                        value={s.text}
+                        onChange={(e) => {
+                          const updated = [...editQSteps];
+                          updated[idx].text = e.target.value;
+                          setEditQSteps(updated);
+                        }}
+                        placeholder={`Nội dung bước ${idx + 1}...`}
+                        className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-sm"
+                      />
+                      {editQSteps.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => removeStep(idx, true)}
+                          className="p-1.5 rounded-lg hover:bg-destructive/20 text-destructive text-xs"
+                          title="Xóa bước này"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 7: CLOZE_DROPDOWN (Đoạn văn đục lỗ menu thả xuống) */}
+            {editQType === "CLOZE_DROPDOWN" && (
+              <div className="space-y-3 p-3.5 rounded-xl border border-border bg-card/30">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-purple-300">
+                      Cấu hình các ô trống đục lỗ ({editQClozeBlanks.length}/6 ô)
+                    </label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Mỗi ô đục lỗ có danh sách các lựa chọn để thí sinh chọn từ menu thả xuống.
+                    </p>
+                  </div>
+                  {editQClozeBlanks.length < 6 && (
+                    <button
+                      type="button"
+                      onClick={() => addClozeBlank(true)}
+                      className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-semibold flex items-center gap-1 transition"
+                    >
+                      + Thêm ô đục lỗ [{editQClozeBlanks.length + 1}]
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3 pt-1">
+                  {editQClozeBlanks.map((blank, bIdx) => (
+                    <div key={blank.blankId} className="p-3 rounded-lg border border-border bg-card/50 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-purple-300">
+                          📌 Ô trống [{blank.blankId}] - Các phương án thả xuống
+                        </span>
+                        <div className="flex items-center gap-2">
+                          {blank.options.length < 6 && (
+                            <button
+                              type="button"
+                              onClick={() => addClozeOption(bIdx, true)}
+                              className="text-[11px] text-purple-300 hover:text-purple-200 font-semibold"
+                            >
+                              + Thêm phương án
+                            </button>
+                          )}
+                          {editQClozeBlanks.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeClozeBlank(bIdx, true)}
+                              className="text-[11px] text-destructive hover:underline"
+                            >
+                              Xóa ô [{blank.blankId}]
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {blank.options.map((opt, oIdx) => (
+                          <div key={opt.id} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`edit_cloze_correct_${bIdx}`}
+                              checked={opt.isCorrect}
+                              onChange={() => {
+                                const updated = editQClozeBlanks.map((b, bi) =>
+                                  bi === bIdx
+                                    ? {
+                                        ...b,
+                                        options: b.options.map((o, oi) => ({
+                                          ...o,
+                                          isCorrect: oi === oIdx,
+                                        })),
+                                      }
+                                    : b
+                                );
+                                setEditQClozeBlanks(updated);
+                              }}
+                              className="w-3.5 h-3.5 text-purple-600 cursor-pointer"
+                              title="Đánh dấu đây là đáp án đúng"
+                            />
+                            <input
+                              type="text"
+                              value={opt.text}
+                              onChange={(e) => {
+                                const updated = editQClozeBlanks.map((b, bi) =>
+                                  bi === bIdx
+                                    ? {
+                                        ...b,
+                                        options: b.options.map((o, oi) =>
+                                          oi === oIdx ? { ...o, text: e.target.value } : o
+                                        ),
+                                      }
+                                    : b
+                                );
+                                setEditQClozeBlanks(updated);
+                              }}
+                              placeholder={`Phương án ${oIdx + 1}${opt.isCorrect ? " (Đáp án đúng)" : ""}`}
+                              className="flex-1 px-2.5 py-1 rounded bg-input border border-border text-xs"
+                            />
+                            {blank.options.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => removeClozeOption(bIdx, oIdx, true)}
+                                className="text-destructive hover:bg-destructive/20 p-1 rounded text-xs"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 🎬 MULTIMEDIA ATTACHMENT SECTION (For ALL Question Types) */}
+            <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🎬</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
+                    Đính kèm Đa phương tiện (Tùy chọn)
+                  </span>
+                </div>
+                <select
+                  value={editQMediaType}
+                  onChange={(e) => setEditQMediaType(e.target.value as any)}
+                  className="px-2.5 py-1 rounded-lg bg-input border border-border text-xs font-medium"
+                >
+                  <option value="NONE">Không có đa phương tiện</option>
+                  <option value="IMAGE">🖼️ Hình ảnh minh họa</option>
+                  <option value="VIDEO">🎬 Video clip (MP4 / YouTube)</option>
+                  <option value="AUDIO">🎵 Âm thanh / Giọng nói (MP3 / WAV)</option>
+                </select>
+              </div>
+
+              {editQMediaType !== "NONE" && (
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editQMediaUrl}
+                      onChange={(e) => setEditQMediaUrl(e.target.value)}
+                      placeholder={
+                        editQMediaType === "VIDEO"
+                          ? "Dán link YouTube (https://...) hoặc link file MP4 trực tiếp..."
+                          : editQMediaType === "AUDIO"
+                          ? "Dán link audio MP3/WAV trực tiếp..."
+                          : "Dán link ảnh (https://...)..."
+                      }
+                      className="flex-1 px-3 py-1.5 rounded-lg bg-input border border-border text-xs"
+                    />
+                    <label className="px-3 py-1.5 rounded-lg bg-purple-600/40 hover:bg-purple-600/60 border border-purple-500/40 text-purple-200 text-xs font-semibold cursor-pointer transition flex items-center gap-1 shrink-0">
+                      <span>{editQUploadingMedia ? "⏳ Đang tải..." : "📁 Tải tệp lên"}</span>
+                      <input
+                        type="file"
+                        accept={
+                          editQMediaType === "VIDEO"
+                            ? "video/mp4,video/webm"
+                            : editQMediaType === "AUDIO"
+                            ? "audio/mp3,audio/wav,audio/ogg"
+                            : "image/*"
+                        }
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileUpload(file, true);
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  {(editQMediaType === "VIDEO" || editQMediaType === "AUDIO") && (
+                    <div className="p-3 rounded-lg bg-card/60 border border-border space-y-2">
+                      <label className="block text-xs font-bold text-slate-200">
+                        ⏱️ Chế độ phát & Đồng hồ đếm ngược trả lời:
+                      </label>
+                      <div className="space-y-1.5 text-xs">
+                        <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-purple-500/10">
+                          <input
+                            type="radio"
+                            name="edit_playback_mode"
+                            value="AFTER_PLAY"
+                            checked={editQMediaPlaybackMode === "AFTER_PLAY"}
+                            onChange={() => setEditQMediaPlaybackMode("AFTER_PLAY")}
+                            className="mt-0.5 text-purple-600"
+                          />
+                          <div>
+                            <span className="font-bold text-purple-200">
+                              Phát xong clip mới bắt đầu đếm ngược thời gian (Chuẩn gameshow như Olympia)
+                            </span>
+                            <p className="text-[11px] text-muted-foreground">
+                              Thí sinh tập trung lắng nghe/quan sát hết nội dung clip trước khi đồng hồ đếm ngược làm bài được kích hoạt.
+                            </p>
+                          </div>
+                        </label>
+                        <label className="flex items-start gap-2 cursor-pointer p-1.5 rounded hover:bg-purple-500/10">
+                          <input
+                            type="radio"
+                            name="edit_playback_mode"
+                            value="PARALLEL"
+                            checked={editQMediaPlaybackMode === "PARALLEL"}
+                            onChange={() => setEditQMediaPlaybackMode("PARALLEL")}
+                            className="mt-0.5 text-purple-600"
+                          />
+                          <div>
+                            <span className="font-bold text-cyan-200">
+                              Đồng hồ đếm ngược chạy song song ngay khi clip bắt đầu phát
+                            </span>
+                            <p className="text-[11px] text-muted-foreground">
+                              Áp dụng cho thử thách phản xạ nhanh, nhận diện đoạn nhạc hay tình huống khẩn cấp.
+                            </p>
+                          </div>
+                        </label>
+                      </div>
+
+                      <div className="p-2 rounded bg-purple-900/30 border border-purple-500/30 text-[11px] text-purple-300 flex items-center gap-1.5">
+                        <span>📡</span>
+                        <span>
+                          <strong>Đồng bộ qua WebSocket:</strong> Khi MC mở câu hỏi hoặc bấm Phát, video/audio phát đồng loạt trên máy chiếu và máy thí sinh; thanh tua của thí sinh bị khóa để tránh gian lận.
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Media Preview */}
+                  {editQMediaUrl.trim() && (
+                    <div className="pt-1">
+                      <p className="text-[11px] font-semibold text-muted-foreground mb-1">Xem trước tệp:</p>
+                      {editQMediaType === "IMAGE" && (
+                        <img
+                          src={editQMediaUrl}
+                          alt="Media preview"
+                          className="max-h-40 rounded-lg object-contain border border-border bg-black/40"
+                          onError={(e) => ((e.target as any).style.display = "none")}
+                        />
+                      )}
+                      {editQMediaType === "AUDIO" && (
+                        <audio controls src={editQMediaUrl} className="w-full h-9 rounded-lg" />
+                      )}
+                      {editQMediaType === "VIDEO" && (
+                        editQMediaUrl.includes("youtube.com") || editQMediaUrl.includes("youtu.be") ? (
+                          <div className="aspect-video max-h-48 rounded-lg overflow-hidden border border-border">
+                            <iframe
+                              src={
+                                editQMediaUrl.includes("watch?v=")
+                                  ? editQMediaUrl.replace("watch?v=", "embed/")
+                                  : editQMediaUrl.includes("youtu.be/")
+                                  ? editQMediaUrl.replace("youtu.be/", "www.youtube.com/embed/")
+                                  : editQMediaUrl
+                              }
+                              className="w-full h-full"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            />
+                          </div>
+                        ) : (
+                          <video controls src={editQMediaUrl} className="max-h-48 rounded-lg border border-border" />
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             <div>
               <label className="block text-sm font-medium mb-1">Gợi ý câu hỏi (Hint)</label>
@@ -1507,23 +2849,23 @@ export default function QuizBankPage() {
                 type="text"
                 value={editQHint}
                 onChange={(e) => setEditQHint(e.target.value)}
-                placeholder="Gợi ý nếu đội dùng thẻ gợi ý..."
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border"
+                placeholder="Gợi ý nếu đội chơi kích hoạt trợ giúp..."
+                className="w-full px-3 py-2 rounded-xl bg-input border border-border text-sm"
               />
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="flex gap-2 justify-end pt-2 border-t border-border">
               <button
                 type="button"
                 onClick={() => setShowEditQModal(false)}
-                className="px-4 py-2 rounded-xl border border-border hover:bg-muted"
+                className="px-4 py-2 rounded-xl border border-border hover:bg-muted text-sm font-medium"
               >
                 Hủy
               </button>
               <button
                 type="submit"
                 disabled={savingQuestion || !editQContent.trim()}
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold transition disabled:opacity-50 cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-sm text-white transition disabled:opacity-50 cursor-pointer"
               >
                 {savingQuestion ? "Đang lưu..." : "Cập nhật câu hỏi"}
               </button>

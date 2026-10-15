@@ -3119,7 +3119,7 @@ export function registerSocketHandlers(io: IO) {
         teamsCount,
         room.quizBank?.questions?.length || 1
       );
-      const prepEndsAt = Date.now() + 3000;
+      const prepEndsAt = Date.now() + 3000 + 250;
       const preparePayload: GamePreparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
@@ -3142,7 +3142,7 @@ export function registerSocketHandlers(io: IO) {
         }
       };
 
-      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3000);
+      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3250);
       roomPrepareStates.set(room.id, {
         type: "PREPARE",
         questionIndex: room.currentQuestion,

@@ -1727,8 +1727,9 @@ export default function AdminSandboxPage() {
 
     // Step 1: 3s prepare countdown
     let prepSeconds = 3;
+    const prepEndsAt = Date.now() + 3000 + 250;
     syncToIframes({
-      questionPrepare: { seconds: prepSeconds, points: pts, primaryTeamId: primaryId, primaryTeamName: primaryName },
+      questionPrepare: { seconds: prepSeconds, points: pts, primaryTeamId: primaryId, primaryTeamName: primaryName, endsAt: prepEndsAt, total: 3 },
       currentQuestion: null,
       timer: null,
     });
@@ -1738,7 +1739,7 @@ export default function AdminSandboxPage() {
       prepSeconds -= 1;
       if (prepSeconds > 0) {
         syncToIframes({
-          questionPrepare: { seconds: prepSeconds, points: pts, primaryTeamId: primaryId, primaryTeamName: primaryName },
+          questionPrepare: { seconds: prepSeconds, points: pts, primaryTeamId: primaryId, primaryTeamName: primaryName, endsAt: prepEndsAt, total: 3 },
         });
       } else {
         clearInterval(prepInterval);

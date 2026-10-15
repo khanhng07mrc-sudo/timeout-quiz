@@ -9604,7 +9604,7 @@ function registerSocketHandlers(io2) {
         teamsCount,
         room.quizBank?.questions?.length || 1
       );
-      const prepEndsAt = Date.now() + 3e3;
+      const prepEndsAt = Date.now() + 3e3 + 250;
       const preparePayload = {
         questionIndex: room.currentQuestion,
         totalQuestions: totalQuestionsCount,
@@ -9625,7 +9625,7 @@ function registerSocketHandlers(io2) {
           io2.to(`room:${room.code}`).emit("game:question", activeQ);
         }
       };
-      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3e3);
+      const prepTimer = setTimeout(launchQuestionAfterPrepare, 3250);
       roomPrepareStates.set(room.id, {
         type: "PREPARE",
         questionIndex: room.currentQuestion,

@@ -1762,7 +1762,7 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, _options) {
 }
 function generateTarotDestinyTiles(basePoints = 20, options) {
   const riskTier = options?.riskTier ?? "NEUTRAL";
-  const pSun = riskTier === "UNDERDOG" ? Math.round(basePoints * 2.5) : basePoints * 2;
+  const pSun = basePoints * 2;
   const pEmperor = Math.round(basePoints * 1.5);
   const pFool = basePoints + 10;
   const pKnight = basePoints;

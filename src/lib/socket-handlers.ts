@@ -266,32 +266,40 @@ async function persistGameStateSnapshot(roomId: string) {
 
 function restoreGameStateSnapshot(room: any) {
   if (!room) return;
-  const snapshot = (room.config as any)?.gameStateSnapshot;
-  if (!snapshot) return;
+  try {
+    const snapshot = (room.config as any)?.gameStateSnapshot;
+    if (!snapshot) return;
 
-  if (snapshot.gridCaroState && !roomGridCaros.has(room.id)) {
-    roomGridCaros.set(room.id, snapshot.gridCaroState);
-  }
-  if (snapshot.diceRaceState && !roomDiceRaces.has(room.id)) {
-    roomDiceRaces.set(room.id, snapshot.diceRaceState);
-  }
-  if (snapshot.wagerState && !roomWagers.has(room.id)) {
-    roomWagers.set(room.id, snapshot.wagerState);
-  }
-  if (snapshot.mysteryQuestState && !roomMysteryQuests.has(room.id)) {
-    roomMysteryQuests.set(room.id, snapshot.mysteryQuestState);
-  }
-  if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
-    roomTournaments.set(room.id, snapshot.tournamentState);
-  }
-  if (snapshot.activeQuestion && !roomActiveQuestions.has(room.id)) {
-    roomActiveQuestions.set(room.id, snapshot.activeQuestion);
-  }
-  if (Array.isArray(snapshot.usedQuestions) && !roomUsedQuestions.has(room.id)) {
-    roomUsedQuestions.set(room.id, new Set<string>(snapshot.usedQuestions));
-  }
-  if (snapshot.ghostStats && !roomEliminationGhostStats.has(room.id)) {
-    roomEliminationGhostStats.set(room.id, new Map(snapshot.ghostStats));
+    if (snapshot.gridCaroState && !roomGridCaros.has(room.id)) {
+      roomGridCaros.set(room.id, snapshot.gridCaroState);
+    }
+    if (snapshot.diceRaceState && !roomDiceRaces.has(room.id)) {
+      roomDiceRaces.set(room.id, snapshot.diceRaceState);
+    }
+    if (snapshot.wagerState && !roomWagers.has(room.id)) {
+      roomWagers.set(room.id, snapshot.wagerState);
+    }
+    if (snapshot.mysteryQuestState && !roomMysteryQuests.has(room.id)) {
+      roomMysteryQuests.set(room.id, snapshot.mysteryQuestState);
+    }
+    if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
+      roomTournaments.set(room.id, snapshot.tournamentState);
+    }
+    if (snapshot.activeQuestion && !roomActiveQuestions.has(room.id)) {
+      roomActiveQuestions.set(room.id, snapshot.activeQuestion);
+    }
+    if (Array.isArray(snapshot.usedQuestions) && !roomUsedQuestions.has(room.id)) {
+      roomUsedQuestions.set(room.id, new Set<string>(snapshot.usedQuestions));
+    }
+    if (snapshot.ghostStats && !roomEliminationGhostStats.has(room.id)) {
+      if (Array.isArray(snapshot.ghostStats)) {
+        roomEliminationGhostStats.set(room.id, new Map(snapshot.ghostStats));
+      } else if (typeof snapshot.ghostStats === "object") {
+        roomEliminationGhostStats.set(room.id, new Map(Object.entries(snapshot.ghostStats)));
+      }
+    }
+  } catch (err) {
+    console.warn("[restoreGameStateSnapshot] Error restoring snapshot:", err);
   }
 }
 
@@ -1687,10 +1695,10 @@ export function registerSocketHandlers(io: IO) {
 
         let player: any = null;
 
-        // 1. Try reconnecting via persistent playerId
+        // 1. Try reconnecting via persistent playerId (search globally to handle moved/recreated rooms)
         if (playerId) {
-          const existingById = await prisma.player.findFirst({
-            where: { id: playerId, roomId: room.id },
+          const existingById = await prisma.player.findUnique({
+            where: { id: playerId },
           });
           if (existingById) {
             // Enforce single active session: disconnect prior active socket if different
@@ -1715,13 +1723,14 @@ export function registerSocketHandlers(io: IO) {
             player = await prisma.player.update({
               where: { id: existingById.id },
               data: {
+                roomId: room.id,
                 name: finalName,
                 socketId: socket.id,
                 ...(teamId ? { teamId } : {}),
               },
             });
 
-            // Clean up any stale disconnected ghost clones with same name
+            // Clean up any stale disconnected ghost clones with same name in this room
             await prisma.player.deleteMany({
               where: {
                 roomId: room.id,
@@ -1768,7 +1777,7 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
-        // 3. Otherwise, check capacity before creating a new player record
+        // 3. Otherwise, check capacity before creating/upserting player record
         if (!player) {
           if (room.players.length >= MAX_PLAYERS_PER_ROOM) {
             return callback({ success: false, error: `Phòng thi đã đạt giới hạn tối đa (${MAX_PLAYERS_PER_ROOM} người tham gia)` });
@@ -1785,12 +1794,19 @@ export function registerSocketHandlers(io: IO) {
           }
 
           const newId = (playerId && playerId.length > 5) ? playerId : `p_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-          player = await prisma.player.create({
-            data: {
+          player = await prisma.player.upsert({
+            where: { id: newId },
+            create: {
               id: newId,
               name: cleanedName,
               socketId: socket.id,
               roomId: room.id,
+              teamId: teamId ?? null,
+            },
+            update: {
+              roomId: room.id,
+              name: cleanedName,
+              socketId: socket.id,
               teamId: teamId ?? null,
             },
           });
@@ -1825,21 +1841,278 @@ export function registerSocketHandlers(io: IO) {
         // Broadcast updated room state so all participants see the online status & team counts
         io.to(`room:${code}`).emit("room:state", roomState);
 
-        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
-        const isPreparing = roomPrepareStates.has(room.id);
-        const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
-        if (roomIntermissions.has(room.id)) {
-          socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (effectiveRoomStatus === "PLAYING" && !isPreparing) {
+        // Safely recover questions, timer and sub-states if PLAYING/INTERMISSION
+        try {
+          const isPreparing = roomPrepareStates.has(room.id);
+          const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
+          if (roomIntermissions.has(room.id)) {
+            socket.emit("game:intermission", roomIntermissions.get(room.id)!);
+          } else if (effectiveRoomStatus === "PLAYING" && !isPreparing) {
+            const isMysteryMinigame = room.mode === "MYSTERY_QUEST" &&
+              roomMysteryQuests.has(room.id) &&
+              roomMysteryQuests.get(room.id)!.phase !== "QUESTION_ACTIVE";
+
+            if (isMysteryMinigame) {
+              socket.emit("game:question:clear");
+            } else if (roomRevealPayloads.has(room.id)) {
+              socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id)!);
+            } else if (room.quizBank?.questions) {
+              const activeQ = roomActiveQuestions.get(room.id);
+              const remaining = roomRemainingTimes.get(`${room.id}:timer`);
+              const endsAt = roomTimerEndsAt.get(room.id) || activeQ?.endsAt;
+              const isTimerRunning =
+                (typeof remaining === "number" && remaining > 0) ||
+                Boolean(endsAt && endsAt > Date.now());
+
+              if (activeQ) {
+                if (isTimerRunning) {
+                  activeQ.timerPending = false;
+                  activeQ.timerStarted = true;
+                  if (endsAt) activeQ.endsAt = endsAt;
+                  activeQ.serverTime = Date.now();
+                }
+                socket.emit("game:question", activeQ);
+                if (isTimerRunning) {
+                  const effRemaining =
+                    typeof remaining === "number" && remaining > 0
+                      ? remaining
+                      : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
+                  socket.emit("game:timer:started", {
+                    timeLimit: activeQ.timeLimit,
+                    endsAt,
+                    serverTime: Date.now(),
+                    questionId: activeQ.question.id,
+                  });
+                  socket.emit("game:timer", {
+                    remaining: effRemaining,
+                    total: activeQ.timeLimit,
+                    endsAt,
+                    serverTime: Date.now(),
+                  });
+                }
+              } else {
+                const currentQuestions = await getRoomQuestions(room.id);
+                const currentQ = currentQuestions[room.currentQuestion] || room.quizBank.questions[room.currentQuestion];
+                if (currentQ) {
+                  const qKey = `${room.id}:${currentQ.id}`;
+                  const primary = roomPrimaryTeams.get(qKey);
+                  const stealBuzzed = roomStealBuzzed.get(qKey);
+                  const buzzFirst = roomBuzzFirst.get(qKey);
+                  const isSteal = roomStealPhase.get(qKey) ?? false;
+                  const config = room.config as any;
+                  const mysteryState = roomMysteryQuests.get(room.id);
+                  const gridState = roomGridCaros.get(room.id);
+                  const diceState = roomDiceRaces.get(room.id);
+                  const tournamentState = roomTournaments.get(room.id);
+                  const activeMatch =
+                    room.mode === "TOURNAMENT" && tournamentState && tournamentState.matches
+                      ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
+                      : undefined;
+
+                  const qState = buildQuestionState(currentQ, {
+                    order:
+                      room.mode === "MYSTERY_QUEST" && mysteryState
+                        ? mysteryState.currentTurnIndex + 1
+                        : currentQ.order,
+                    primaryTeamId:
+                      primary?.teamId ||
+                      (room.mode === "MYSTERY_QUEST"
+                        ? mysteryState?.currentTurnTeamId
+                        : room.mode === "GRID_CARO"
+                        ? gridState?.currentTurnTeamId
+                        : room.mode === "DICE_RACE"
+                        ? diceState?.currentTurnTeamId
+                        : room.mode === "TOURNAMENT"
+                        ? activeMatch?.team1Id
+                        : undefined),
+                    primaryTeamName:
+                      primary?.teamName ||
+                      (room.mode === "MYSTERY_QUEST"
+                        ? mysteryState?.currentTurnTeamName
+                        : room.mode === "GRID_CARO"
+                        ? gridState?.currentTurnTeamName
+                        : room.mode === "DICE_RACE"
+                        ? diceState?.currentTurnTeamName
+                        : room.mode === "TOURNAMENT" && activeMatch
+                        ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
+                        : undefined),
+                    tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
+                    tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
+                    bloomLevel: getBloomLevelFromPoints(currentQ.points),
+                    answerMethod: config?.answerMethod ?? "DEVICE",
+                    isStealPhase: isSteal,
+                    stealBuzzedTeamId: stealBuzzed?.teamId,
+                    stealBuzzedTeamName: stealBuzzed?.teamName,
+                    buzzedTeamId: buzzFirst?.teamId,
+                    buzzedTeamName: buzzFirst?.teamName,
+                    timerPending: !isTimerRunning,
+                    timerStarted: isTimerRunning,
+                  });
+
+                  if (endsAt) {
+                    qState.endsAt = endsAt;
+                    qState.serverTime = Date.now();
+                  }
+
+                  roomActiveQuestions.set(room.id, qState);
+                  socket.emit("game:question", qState);
+
+                  if (isTimerRunning) {
+                    const effRemaining =
+                      typeof remaining === "number" && remaining > 0
+                        ? remaining
+                        : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
+                    socket.emit("game:timer:started", {
+                      timeLimit: qState.timeLimit,
+                      endsAt,
+                      serverTime: Date.now(),
+                      questionId: currentQ.id,
+                    });
+                    socket.emit("game:timer", {
+                      remaining: effRemaining,
+                      total: qState.timeLimit,
+                      endsAt,
+                      serverTime: Date.now(),
+                    });
+                  }
+                }
+              }
+            }
+
+            // Phục hồi sub-states của các game mode đặc thù khi reconnect
+            if (roomDiceRaces.has(room.id)) {
+              socket.emit("game:dice:update", roomDiceRaces.get(room.id)!);
+            }
+            if (roomGridCaros.has(room.id)) {
+              socket.emit("game:grid:update", roomGridCaros.get(room.id)!);
+            }
+            if (roomWagers.has(room.id)) {
+              socket.emit("game:wager:update", roomWagers.get(room.id)!);
+            }
+            if (roomTournaments.has(room.id)) {
+              socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
+            }
+            if (roomMysteryQuests.has(room.id)) {
+              socket.emit("game:mystery:update", roomMysteryQuests.get(room.id)!);
+            }
+            if (roomTieBreakers.has(room.id)) {
+              socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
+            }
+            const currentQ = roomActiveQuestions.get(room.id)?.question || room.quizBank?.questions?.[room.currentQuestion];
+            if (currentQ) {
+              const qKey = `${room.id}:${currentQ.id}`;
+              if (roomStealPhase.get(qKey)) {
+                socket.emit("game:bounceback:open_steal", { questionId: currentQ.id, timeLimit: 5 });
+              }
+              if (roomStealBuzzed.has(qKey)) {
+                socket.emit("game:bounceback:steal_buzzed", roomStealBuzzed.get(qKey)!);
+              }
+            }
+          }
+
+          if (roomPrepareStates.has(room.id)) {
+            const prep = roomPrepareStates.get(room.id)!;
+            const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
+            if (prep.type === "STARTING") {
+              socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
+            } else if (prep.type === "PREPARE" && prep.preparePayload) {
+              socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
+            }
+          }
+        } catch (recoveryErr) {
+          console.warn("[room:join] Non-fatal state recovery error:", recoveryErr);
+        }
+
+        callback({ success: true, playerId: player.id, teamId: player.teamId ?? undefined, roomState });
+      } catch (err: any) {
+        console.error("[room:join] Error joining room:", err);
+        callback({ success: false, error: err?.message ? `Lỗi kết nối máy chủ (${err.message})` : "Lỗi kết nối máy chủ" });
+      }
+    });
+
+    // ── Admin Join ───────────────────────────────────────────────────────────
+    socket.on("admin:join", async (arg1: any, arg2?: any, arg3?: any) => {
+      let callback: any;
+      try {
+        let code = "";
+        let hostKey: string | undefined;
+
+        if (typeof arg1 === "object" && arg1 !== null) {
+          code = arg1.code;
+          hostKey = arg1.hostKey;
+          callback = typeof arg2 === "function" ? arg2 : undefined;
+        } else if (typeof arg1 === "string") {
+          code = arg1;
+          if (typeof arg2 === "string") {
+            hostKey = arg2;
+            callback = typeof arg3 === "function" ? arg3 : undefined;
+          } else if (typeof arg2 === "function") {
+            callback = arg2;
+          }
+        }
+
+        const room = await prisma.room.findUnique({
+          where: { code },
+          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
+        });
+        if (!room) {
+          return callback?.({ success: false, error: "Phòng không tồn tại" });
+        }
+
+        // Verify Host Authorization:
+        // 1. Check if token in handshake/auth is valid Admin/User Token
+        const rawAuthHeader = socket.handshake.auth?.token || socket.handshake.headers["authorization"];
+        const authHeader = typeof rawAuthHeader === "string" ? rawAuthHeader : Array.isArray(rawAuthHeader) ? rawAuthHeader[0] : "";
+        const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "").trim()) : false;
+        // 2. Check if hostKey matches room.hostKey or if room/client is in Sandbox
+        const isSandboxQuery = socket.handshake.query?.sandbox === "1";
+        const isSandboxRoom = isSandboxRoomEntity(room) || isSandboxQuery;
+        const isHostKeyValid = isSandboxRoom || !room.hostKey ? true : (hostKey === room.hostKey);
+
+        if (!isAdminTokenValid && !isHostKeyValid) {
+          return callback?.({
+            success: false,
+            error: "Khóa bảo mật Host không hợp lệ. Vui lòng sử dụng đúng liên kết Host hoặc nhập Master Admin Passcode.",
+            requiresAuth: true,
+          });
+        }
+
+        // Clean up any ghost host players in this room
+        await prisma.player.deleteMany({
+          where: {
+            roomId: room.id,
+            OR: [
+              { isHost: true },
+              { name: "Host" },
+              { name: "Admin Host" },
+            ],
+          },
+        }).catch(() => {});
+
+        adminSockets.set(socket.id, room.id);
+        socket.join(`room:${code}`);
+        socket.join(`room:${code}:admin`);
+
+        restoreGameStateSnapshot(room);
+
+        const roomState = await buildRoomState(room.id);
+        io.to(`room:${code}`).emit("room:state", roomState);
+
+        // Safely recover active questions, timer and sub-states if room is running
+        try {
+          const isPreparing = roomPrepareStates.has(room.id);
+          const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
           const isMysteryMinigame = room.mode === "MYSTERY_QUEST" &&
             roomMysteryQuests.has(room.id) &&
             roomMysteryQuests.get(room.id)!.phase !== "QUESTION_ACTIVE";
 
-          if (isMysteryMinigame) {
+          if (effectiveRoomStatus === "LOBBY") {
             socket.emit("game:question:clear");
-          } else if (roomRevealPayloads.has(room.id)) {
-            socket.emit("game:answer:reveal", roomRevealPayloads.get(room.id)!);
-          } else if (room.quizBank?.questions) {
+          } else if (roomIntermissions.has(room.id)) {
+            socket.emit("game:intermission", roomIntermissions.get(room.id)!);
+          } else if (isMysteryMinigame) {
+            socket.emit("game:question:clear");
+          } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
             const activeQ = roomActiveQuestions.get(room.id);
             const remaining = roomRemainingTimes.get(`${room.id}:timer`);
             const endsAt = roomTimerEndsAt.get(room.id) || activeQ?.endsAt;
@@ -1855,6 +2128,16 @@ export function registerSocketHandlers(io: IO) {
                 activeQ.serverTime = Date.now();
               }
               socket.emit("game:question", activeQ);
+              const rawQ = room.quizBank.questions.find((item: any) => item.id === activeQ.question.id) || room.quizBank.questions[room.currentQuestion];
+              if (rawQ) {
+                socket.emit("admin:question:data", {
+                  questionId: rawQ.id,
+                  options: rawQ.options,
+                  answer: rawQ.answer,
+                  type: rawQ.type,
+                  explanation: rawQ.hint || (rawQ as any).explanation,
+                });
+              }
               if (isTimerRunning) {
                 const effRemaining =
                   typeof remaining === "number" && remaining > 0
@@ -1888,7 +2171,7 @@ export function registerSocketHandlers(io: IO) {
                 const diceState = roomDiceRaces.get(room.id);
                 const tournamentState = roomTournaments.get(room.id);
                 const activeMatch =
-                  room.mode === "TOURNAMENT" && tournamentState
+                  room.mode === "TOURNAMENT" && tournamentState && tournamentState.matches
                     ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
                     : undefined;
 
@@ -1939,6 +2222,13 @@ export function registerSocketHandlers(io: IO) {
 
                 roomActiveQuestions.set(room.id, qState);
                 socket.emit("game:question", qState);
+                socket.emit("admin:question:data", {
+                  questionId: currentQ.id,
+                  options: currentQ.options,
+                  answer: currentQ.answer,
+                  type: currentQ.type,
+                  explanation: currentQ.hint || (currentQ as any).explanation,
+                });
 
                 if (isTimerRunning) {
                   const effRemaining =
@@ -1962,7 +2252,16 @@ export function registerSocketHandlers(io: IO) {
             }
           }
 
-          // Phục hồi sub-states của các game mode đặc thù khi reconnect
+          if (roomPrepareStates.has(room.id)) {
+            const prep = roomPrepareStates.get(room.id)!;
+            const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
+            if (prep.type === "STARTING") {
+              socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
+            } else if (prep.type === "PREPARE" && prep.preparePayload) {
+              socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
+            }
+          }
+
           if (roomDiceRaces.has(room.id)) {
             socket.emit("game:dice:update", roomDiceRaces.get(room.id)!);
           }
@@ -1981,287 +2280,14 @@ export function registerSocketHandlers(io: IO) {
           if (roomTieBreakers.has(room.id)) {
             socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
           }
-          const currentQ = roomActiveQuestions.get(room.id)?.question || room.quizBank?.questions?.[room.currentQuestion];
-          if (currentQ) {
-            const qKey = `${room.id}:${currentQ.id}`;
-            if (roomStealPhase.get(qKey)) {
-              socket.emit("game:bounceback:open_steal", { questionId: currentQ.id, timeLimit: 5 });
-            }
-            if (roomStealBuzzed.has(qKey)) {
-              socket.emit("game:bounceback:steal_buzzed", roomStealBuzzed.get(qKey)!);
-            }
-          }
-        }
-
-        if (roomPrepareStates.has(room.id)) {
-          const prep = roomPrepareStates.get(room.id)!;
-          const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
-          if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
-          } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
-          }
-        }
-
-        callback({ success: true, playerId: player.id, teamId: player.teamId ?? undefined, roomState });
-      } catch (err) {
-        console.error("[room:join]", err);
-        callback({ success: false, error: "Lỗi kết nối máy chủ" });
-      }
-    });
-
-    // ── Admin Join ───────────────────────────────────────────────────────────
-    socket.on("admin:join", async (arg1: any, arg2?: any, arg3?: any) => {
-      let callback: any;
-      try {
-        let code = "";
-        let hostKey: string | undefined;
-
-        if (typeof arg1 === "object" && arg1 !== null) {
-          code = arg1.code;
-          hostKey = arg1.hostKey;
-          callback = typeof arg2 === "function" ? arg2 : undefined;
-        } else if (typeof arg1 === "string") {
-          code = arg1;
-          if (typeof arg2 === "string") {
-            hostKey = arg2;
-            callback = typeof arg3 === "function" ? arg3 : undefined;
-          } else if (typeof arg2 === "function") {
-            callback = arg2;
-          }
-        }
-
-        const room = await prisma.room.findUnique({
-          where: { code },
-          include: { quizBank: { include: { questions: { orderBy: { order: "asc" } } } } },
-        });
-        if (!room) {
-          return callback?.({ success: false, error: "Phòng không tồn tại" });
-        }
-
-        // Verify Host Authorization:
-        // 1. Check if token in handshake/auth is valid Admin/User Token
-        const authHeader = (socket.handshake.auth?.token as string) || (socket.handshake.headers["authorization"] as string);
-        const isAdminTokenValid = authHeader ? verifyAdminToken(authHeader.replace("Bearer ", "")) : false;
-        // 2. Check if hostKey matches room.hostKey or if room is a Sandbox room
-        const isSandboxRoom = isSandboxRoomEntity(room);
-        const isHostKeyValid = isSandboxRoom || !room.hostKey ? true : (hostKey === room.hostKey);
-
-        if (!isAdminTokenValid && !isHostKeyValid) {
-          return callback?.({
-            success: false,
-            error: "Khóa bảo mật Host không hợp lệ. Vui lòng sử dụng đúng liên kết Host hoặc nhập Master Admin Passcode.",
-            requiresAuth: true,
-          });
-        }
-
-        // Clean up any ghost host players in this room
-        await prisma.player.deleteMany({
-          where: {
-            roomId: room.id,
-            OR: [
-              { isHost: true },
-              { name: "Host" },
-              { name: "Admin Host" },
-            ],
-          },
-        }).catch(() => {});
-
-        adminSockets.set(socket.id, room.id);
-        socket.join(`room:${code}`);
-        socket.join(`room:${code}:admin`);
-
-        restoreGameStateSnapshot(room);
-
-        const roomState = await buildRoomState(room.id);
-        io.to(`room:${code}`).emit("room:state", roomState);
-
-        // If the room is in intermission, send intermission payload; otherwise if PLAYING recover question and timer
-        const isPreparing = roomPrepareStates.has(room.id);
-        const effectiveRoomStatus = roomCache.get(room.id)?.status ?? room.status;
-        const isMysteryMinigame = room.mode === "MYSTERY_QUEST" &&
-          roomMysteryQuests.has(room.id) &&
-          roomMysteryQuests.get(room.id)!.phase !== "QUESTION_ACTIVE";
-
-        if (effectiveRoomStatus === "LOBBY") {
-          socket.emit("game:question:clear");
-        } else if (roomIntermissions.has(room.id)) {
-          socket.emit("game:intermission", roomIntermissions.get(room.id)!);
-        } else if (isMysteryMinigame) {
-          socket.emit("game:question:clear");
-        } else if (effectiveRoomStatus === "PLAYING" && room.quizBank?.questions && !isPreparing) {
-          const activeQ = roomActiveQuestions.get(room.id);
-          const remaining = roomRemainingTimes.get(`${room.id}:timer`);
-          const endsAt = roomTimerEndsAt.get(room.id) || activeQ?.endsAt;
-          const isTimerRunning =
-            (typeof remaining === "number" && remaining > 0) ||
-            Boolean(endsAt && endsAt > Date.now());
-
-          if (activeQ) {
-            if (isTimerRunning) {
-              activeQ.timerPending = false;
-              activeQ.timerStarted = true;
-              if (endsAt) activeQ.endsAt = endsAt;
-              activeQ.serverTime = Date.now();
-            }
-            socket.emit("game:question", activeQ);
-            const rawQ = room.quizBank.questions.find((item: any) => item.id === activeQ.question.id) || room.quizBank.questions[room.currentQuestion];
-            if (rawQ) {
-              socket.emit("admin:question:data", {
-                questionId: rawQ.id,
-                options: rawQ.options,
-                answer: rawQ.answer,
-                type: rawQ.type,
-                explanation: rawQ.hint || (rawQ as any).explanation,
-              });
-            }
-            if (isTimerRunning) {
-              const effRemaining =
-                typeof remaining === "number" && remaining > 0
-                  ? remaining
-                  : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
-              socket.emit("game:timer:started", {
-                timeLimit: activeQ.timeLimit,
-                endsAt,
-                serverTime: Date.now(),
-                questionId: activeQ.question.id,
-              });
-              socket.emit("game:timer", {
-                remaining: effRemaining,
-                total: activeQ.timeLimit,
-                endsAt,
-                serverTime: Date.now(),
-              });
-            }
-          } else {
-            const currentQuestions = await getRoomQuestions(room.id);
-            const currentQ = currentQuestions[room.currentQuestion] || room.quizBank.questions[room.currentQuestion];
-            if (currentQ) {
-              const qKey = `${room.id}:${currentQ.id}`;
-              const primary = roomPrimaryTeams.get(qKey);
-              const stealBuzzed = roomStealBuzzed.get(qKey);
-              const buzzFirst = roomBuzzFirst.get(qKey);
-              const isSteal = roomStealPhase.get(qKey) ?? false;
-              const config = room.config as any;
-              const mysteryState = roomMysteryQuests.get(room.id);
-              const gridState = roomGridCaros.get(room.id);
-              const diceState = roomDiceRaces.get(room.id);
-              const tournamentState = roomTournaments.get(room.id);
-              const activeMatch =
-                room.mode === "TOURNAMENT" && tournamentState
-                  ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
-                  : undefined;
-
-              const qState = buildQuestionState(currentQ, {
-                order:
-                  room.mode === "MYSTERY_QUEST" && mysteryState
-                    ? mysteryState.currentTurnIndex + 1
-                    : currentQ.order,
-                primaryTeamId:
-                  primary?.teamId ||
-                  (room.mode === "MYSTERY_QUEST"
-                    ? mysteryState?.currentTurnTeamId
-                    : room.mode === "GRID_CARO"
-                    ? gridState?.currentTurnTeamId
-                    : room.mode === "DICE_RACE"
-                    ? diceState?.currentTurnTeamId
-                    : room.mode === "TOURNAMENT"
-                    ? activeMatch?.team1Id
-                    : undefined),
-                primaryTeamName:
-                  primary?.teamName ||
-                  (room.mode === "MYSTERY_QUEST"
-                    ? mysteryState?.currentTurnTeamName
-                    : room.mode === "GRID_CARO"
-                    ? gridState?.currentTurnTeamName
-                    : room.mode === "DICE_RACE"
-                    ? diceState?.currentTurnTeamName
-                    : room.mode === "TOURNAMENT" && activeMatch
-                    ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
-                    : undefined),
-                tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
-                tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
-                bloomLevel: getBloomLevelFromPoints(currentQ.points),
-                answerMethod: config?.answerMethod ?? "DEVICE",
-                isStealPhase: isSteal,
-                stealBuzzedTeamId: stealBuzzed?.teamId,
-                stealBuzzedTeamName: stealBuzzed?.teamName,
-                buzzedTeamId: buzzFirst?.teamId,
-                buzzedTeamName: buzzFirst?.teamName,
-                timerPending: !isTimerRunning,
-                timerStarted: isTimerRunning,
-              });
-
-              if (endsAt) {
-                qState.endsAt = endsAt;
-                qState.serverTime = Date.now();
-              }
-
-              roomActiveQuestions.set(room.id, qState);
-              socket.emit("game:question", qState);
-              socket.emit("admin:question:data", {
-                questionId: currentQ.id,
-                options: currentQ.options,
-                answer: currentQ.answer,
-                type: currentQ.type,
-                explanation: currentQ.hint || (currentQ as any).explanation,
-              });
-
-              if (isTimerRunning) {
-                const effRemaining =
-                  typeof remaining === "number" && remaining > 0
-                    ? remaining
-                    : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
-                socket.emit("game:timer:started", {
-                  timeLimit: qState.timeLimit,
-                  endsAt,
-                  serverTime: Date.now(),
-                  questionId: currentQ.id,
-                });
-                socket.emit("game:timer", {
-                  remaining: effRemaining,
-                  total: qState.timeLimit,
-                  endsAt,
-                  serverTime: Date.now(),
-                });
-              }
-            }
-          }
-        }
-
-        if (roomPrepareStates.has(room.id)) {
-          const prep = roomPrepareStates.get(room.id)!;
-          const remainingSec = Math.max(1, Math.ceil((prep.targetTimestamp - Date.now()) / 1000));
-          if (prep.type === "STARTING") {
-            socket.emit("game:starting", { seconds: remainingSec, endsAt: prep.targetTimestamp, total: 5 });
-          } else if (prep.type === "PREPARE" && prep.preparePayload) {
-            socket.emit("game:prepare", { ...prep.preparePayload, seconds: remainingSec, endsAt: prep.targetTimestamp, total: prep.preparePayload.total || 3 });
-          }
-        }
-
-        if (roomDiceRaces.has(room.id)) {
-          socket.emit("game:dice:update", roomDiceRaces.get(room.id)!);
-        }
-        if (roomGridCaros.has(room.id)) {
-          socket.emit("game:grid:update", roomGridCaros.get(room.id)!);
-        }
-        if (roomWagers.has(room.id)) {
-          socket.emit("game:wager:update", roomWagers.get(room.id)!);
-        }
-        if (roomTournaments.has(room.id)) {
-          socket.emit("game:tournament:update", roomTournaments.get(room.id)!);
-        }
-        if (roomMysteryQuests.has(room.id)) {
-          socket.emit("game:mystery:update", roomMysteryQuests.get(room.id)!);
-        }
-        if (roomTieBreakers.has(room.id)) {
-          socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id)!);
+        } catch (recoveryErr) {
+          console.warn("[admin:join] Non-fatal state recovery error:", recoveryErr);
         }
 
         callback?.({ success: true, hostKey: room.hostKey, roomState });
-      } catch (err) {
-        console.error("[admin:join]", err);
-        callback?.({ success: false, error: "Lỗi kết nối máy chủ" });
+      } catch (err: any) {
+        console.error("[admin:join] Error joining room:", err);
+        callback?.({ success: false, error: err?.message ? `Lỗi kết nối máy chủ (${err.message})` : "Lỗi kết nối máy chủ" });
       }
     });
 
@@ -5674,9 +5700,11 @@ export function registerSocketHandlers(io: IO) {
       team: any,
       choice: "CASH_OUT" | "PLAY_ROUND_2"
     ) => {
+      const allTeams = await prisma.team.findMany({ where: { roomId: room.id } });
       const { updatedState, finalScoreDelta } = handleMemoryPairsSecondChanceDecision({
         state: questState,
         team,
+        allTeams,
         choice,
       });
 
@@ -5708,7 +5736,7 @@ export function registerSocketHandlers(io: IO) {
       room: any,
       questState: any,
       team: any,
-      decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART",
+      decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2",
       chosenDoorId?: number,
       swapRemovedDoorId?: number,
       swapAddedDoorId?: number
@@ -6121,7 +6149,7 @@ export function registerSocketHandlers(io: IO) {
         activeQuest.survivalDilemmaChoice = choice;
 
         if (choice === "SACRIFICE_HEART") {
-          teamHearts[team.id] = Math.max(0, currentHearts - 1);
+          teamHearts[team.id] = 0; // Mất hết tim!
           activeQuest.teamHearts = teamHearts;
           activeQuest.phase = "TURN_SUMMARY";
           activeQuest.turnFinishedReason = "QUESTION_FAILED";
@@ -6130,7 +6158,7 @@ export function registerSocketHandlers(io: IO) {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `💔 Đội chấp nhận hy sinh 1 ❤️ để bảo toàn toàn bộ điểm số! (Còn ${teamHearts[team.id]} ❤️)`,
+            rewardText: `💔 Đội chấp nhận đánh đổi toàn bộ tim (mất hết ❤️) để bảo toàn nguyên vẹn ${team.score || 0} điểm!`,
             scoreDelta: 0,
             oldScore: team.score || 0,
             newScore: team.score || 0,
@@ -6314,7 +6342,7 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryPairsDecision(room, questState, team, choice);
     });
 
-    socket.on("game:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => {
+    socket.on("game:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => {
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       const player = await prisma.player.findUnique({
@@ -6328,7 +6356,7 @@ export function registerSocketHandlers(io: IO) {
 
       const questState = roomMysteryQuests.get(room.id);
       const osPhase = questState?.oneShotState?.phase;
-      if (!questState || (osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
+      if (!questState || (osPhase !== "STAGE_1_DECISION" && osPhase !== "FINAL_DECISION" && osPhase !== "SWAP_DOOR" && osPhase !== "OPEN_FINAL" && osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
 
       if (questState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa đến lượt quyết định của đội bạn!");
@@ -6341,13 +6369,13 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId);
     });
 
-    socket.on("admin:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId, code }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => {
+    socket.on("admin:mystery:doors_decision", async ({ decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId, code }: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => {
       const room = await getAdminRoom(socket, code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
       const osPhase = questState?.oneShotState?.phase;
-      if (!questState || (osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
+      if (!questState || (osPhase !== "STAGE_1_DECISION" && osPhase !== "FINAL_DECISION" && osPhase !== "SWAP_DOOR" && osPhase !== "OPEN_FINAL" && osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK")) return;
 
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;
@@ -10893,47 +10921,21 @@ async function revealCurrentAnswer(io: IO, roomId: string, roomCode: string, que
         questState.potMultiplier = 1;
         questState.turnFinishedReason = undefined;
 
-        // ĐỘI CHƯA CÓ ĐIỂM NÀO (score <= 0):
-        // Mặc định trừ tim (nếu còn) và TUYỆT ĐỐI KHÔNG ĐƯỢC CHƠI MINIGAME (vì chưa có điểm để trừ)
-        if (currentScore <= 0) {
-          questState.phase = "TURN_SUMMARY";
-          questState.turnFinishedReason = "QUESTION_FAILED";
-          questState.survivalDilemmaPending = false;
+        // KHI TRẢ LỜI SAI:
+        // Nếu còn tim: Chỉ có 1 trong 2 lựa chọn: hoặc giữ nguyên điểm nhưng mất hết tim, hoặc chơi minigame sinh tử!
+        // Nếu đã hết tim (0 tim): Bắt buộc vào thẳng Minigame Sinh Tử!
+        if (currentHearts > 0) {
+          questState.phase = "DECISION_CHOICE";
+          questState.survivalDilemmaPending = true;
+          questState.survivalDilemmaChoice = undefined;
           questState.isPenaltySurvivalMode = false;
-          let rewardText = "";
-          if (currentHearts > 0) {
-            teamHearts[questState.currentTurnTeamId] = Math.max(0, currentHearts - 1);
-            questState.teamHearts = teamHearts;
-            rewardText = `💔 Trả lời chưa chính xác! Chưa có điểm tích lũy, tiêu hao 1 ❤️! (Còn ${teamHearts[questState.currentTurnTeamId]} ❤️)`;
-          } else {
-            rewardText = `💀 Trả lời chưa chính xác! Chưa có điểm tích lũy và đã hết tim, kết thúc lượt!`;
-          }
-          questState.storyResult = {
-            teamId: questState.currentTurnTeamId,
-            teamName: questState.currentTurnTeamName,
-            teamColor: questState.currentTurnTeamColor,
-            rewardText,
-            scoreDelta: 0,
-            oldScore: 0,
-            newScore: 0,
-          };
         } else {
-          // ĐỘI CÓ ĐIỂM (score > 0):
-          if (currentHearts > 0) {
-            // Còn tim: Đứng trước lựa chọn đánh đổi (Dilemma Choice)
-            questState.phase = "DECISION_CHOICE";
-            questState.survivalDilemmaPending = true;
-            questState.survivalDilemmaChoice = undefined;
-            questState.isPenaltySurvivalMode = false;
-          } else {
-            // Đã hết tim: Bắt buộc vào thẳng Minigame Sinh Tử!
-            questState.survivalDilemmaPending = false;
-            startSurvivalPenaltyMinigame({
-              state: questState,
-              team: currentTeam!,
-              allTeams,
-            });
-          }
+          questState.survivalDilemmaPending = false;
+          startSurvivalPenaltyMinigame({
+            state: questState,
+            team: currentTeam!,
+            allTeams,
+          });
         }
 
         roomMysteryQuests.set(room.id, questState);

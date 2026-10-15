@@ -942,6 +942,11 @@ export interface MysteryTile {
   cardReward?: CardType;
   pairKey?: string; // Khóa ghép cặp cho MEMORY_PAIRS
   tarotName?: string; // Tên lá bài cho TAROT_DESTINY
+  tarotCardKey?: AncientTarotCardKey; // Khóa thẻ Tarot archetype tương ứng
+  bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY"; // Loại bom nếu là ô/cặp bom
+  givesShield?: boolean; // Trao khiên bảo vệ
+  givesHeart?: boolean; // Hồi phục tim
+  stealFraction?: number; // Tỷ lệ cướp điểm (0.5 hoặc 1.0)
   isPeeked?: boolean; // Được soi sáng hiển thị trước bởi Mắt Thần
   peekLabel?: string; // Nhãn chức năng hiển thị hé lộ của Mắt Thần
   peekIcon?: string;  // Icon hiển thị hé lộ của Mắt Thần
@@ -1146,13 +1151,29 @@ export interface MysteryQuestState {
     isMismatchResolving?: boolean;
     round?: 1 | 2;
     promptSecondChance?: boolean;
+    faceUpPenaltyTileIds?: number[]; // Các lá phạt/trung lập được lật ngửa cố định trên bàn
+    attemptedPairs?: string[]; // Danh sách các cặp ô đã từng lật trong vòng (chống lặp lại cùng 1 nước đi)
   };
   oneShotState?: {
     chosenTileId?: number;
-    selectedDoorIds?: number[]; // 3 cửa đã chọn ở Giai đoạn 1 (để ra riêng, vẫn úp mặt)
-    penaltyDoorsCount?: number; // Số lượng cánh cửa trừ điểm (0, 1 hoặc 2) trong 3 cửa đã chọn
-    hasBombDetected?: boolean;  // Backward compat (true nếu penaltyDoorsCount > 0)
-    phase?: "SELECTING" | "PENALTY_DECISION" | "STAGE_2_PICK" | "SCANNED" | "RESOLVED";
+    selectedDoorIds?: number[]; // Cửa đang chọn (4 cửa ở bước 1, 2 cửa ở bước 2)
+    discardedDoorIds?: number[]; // Cửa đã bị loại bỏ (có thể dùng để đổi ở bước 3)
+    penaltyDoorsCount?: number; // Số lượng cánh cửa trừ điểm
+    hasBombDetected?: boolean;  // Backward compat
+    phase?:
+      | "SELECT_4"
+      | "STAGE_1_DECISION"
+      | "SELECT_2"
+      | "FINAL_DECISION"
+      | "SWAP_DOOR"
+      | "OPEN_FINAL"
+      | "SELECTING"
+      | "PENALTY_DECISION"
+      | "STAGE_2_PICK"
+      | "SCANNED"
+      | "RESOLVED";
+    radarLight?: "GREEN" | "YELLOW" | "RED"; // Đèn tín hiệu radar: Xanh (0), Vàng (1), Đỏ (>=2)
+    radarLightStep1?: "GREEN" | "YELLOW" | "RED";
     revealedSafeDoorIds?: number[];
     chosenFinalDoorId?: number;
     allRevealed?: boolean;
@@ -1161,7 +1182,7 @@ export interface MysteryQuestState {
     hasSwapped?: boolean;       // Đã đổi 1 lá sang lá khác (chỉ 1 lần duy nhất)
     swapRemovedDoorId?: number; // Cửa bỏ ra
     swapAddedDoorId?: number;   // Cửa thay vào
-    isBasePointsWithMinusHeart?: boolean; // Rút lui nhận điểm gốc câu hỏi và trừ 1 Tim
+    isBasePointsWithMinusHeart?: boolean; // Rút lui nhận 50% điểm gốc và trừ 1 Tim
     bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY"; // Loại bom ngẫu nhiên của Cửa Bom
   };
   tarotState?: {
@@ -1631,8 +1652,8 @@ export interface ClientToServerEvents {
   "admin:mystery:set_minigame_type": (payload: { miniGameType: MysteryMiniGameType; code?: string }) => void;
   "game:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2" }) => void;
   "admin:mystery:pairs_decision": (payload: { choice: "CASH_OUT" | "PLAY_ROUND_2"; code?: string }) => void;
-  "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => void;
-  "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => void;
+  "game:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number }) => void;
+  "admin:mystery:doors_decision": (payload: { decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2"; chosenDoorId?: number; swapRemovedDoorId?: number; swapAddedDoorId?: number; code?: string }) => void;
   "game:mystery:draw_tarot": () => void;
   "admin:mystery:draw_tarot": (payload?: { code?: string }) => void;
   "game:mystery:spin_tarot_wheel": (payload: { powerPercent: number }) => void;

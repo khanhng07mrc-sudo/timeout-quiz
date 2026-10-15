@@ -55,6 +55,8 @@ export default function QuizBankPage() {
   const [showNewBankModal, setShowNewBankModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDesc, setNewDesc] = useState("");
+  const [newBankInitMode, setNewBankInitMode] = useState<"MANUAL" | "AI_STUDIO" | "IMPORT_FILE" | "EMPTY">("MANUAL");
+  const [isCreatingBank, setIsCreatingBank] = useState(false);
 
   // AI Generator Modal State
   const [showAiModal, setShowAiModal] = useState(false);
@@ -443,26 +445,70 @@ export default function QuizBankPage() {
 
   const handleCreateBank = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim() || isCreatingBank) return;
 
+    setIsCreatingBank(true);
     try {
       const res = await fetch("/api/quiz-bank", {
         method: "POST",
         headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
-          title: newTitle,
-          description: newDesc,
+          title: newTitle.trim(),
+          description: newDesc.trim() || undefined,
           ownerId: "demo-host-id",
         }),
       });
+
       if (res.ok) {
+        const data = await res.json();
+        const createdBank: QuizBank = data.bank || {
+          id: `local-${Date.now()}`,
+          title: newTitle.trim(),
+          description: newDesc.trim() || undefined,
+          createdAt: new Date().toISOString(),
+          _count: { questions: 0 },
+        };
+
+        // Cache into local storage
+        offlineStorage.saveLocalBank({
+          id: createdBank.id,
+          title: createdBank.title,
+          description: createdBank.description,
+          createdAt: createdBank.createdAt,
+          questions: [],
+          isLocalOnly: false,
+          needsSync: false,
+        });
+
+        // Optimistically put the new bank on top of the list and select it immediately
+        setBanks((prev) => [createdBank, ...prev.filter((b) => b.id !== createdBank.id)]);
+        setSelectedBank(createdBank);
+        setQuestions([]);
+
+        const chosenMode = newBankInitMode;
         setNewTitle("");
         setNewDesc("");
+        setNewBankInitMode("MANUAL");
         setShowNewBankModal(false);
-        fetchBanks();
+
+        // Seamlessly open the corresponding creation tool without extra clicks
+        if (chosenMode === "MANUAL") {
+          setShowNewQModal(true);
+        } else if (chosenMode === "AI_STUDIO") {
+          setPreviewTargetMode("current");
+          setShowStudioModal(true);
+        } else if (chosenMode === "IMPORT_FILE") {
+          setPreviewTargetMode("current");
+          setShowFileModal(true);
+        }
+      } else {
+        alert("Không thể tạo bộ đề. Vui lòng thử lại!");
       }
     } catch (e) {
       console.error(e);
+      alert("Lỗi kết nối khi tạo bộ đề!");
+    } finally {
+      setIsCreatingBank(false);
     }
   };
 
@@ -1320,10 +1366,85 @@ export default function QuizBankPage() {
                   <span className="text-xs">Đang tải câu hỏi...</span>
                 </div>
               ) : questions.length === 0 ? (
-                <div className="py-12 text-center animate-loaded-reveal">
-                  <p className="text-3xl mb-2">📝</p>
-                  <p className="text-muted-foreground font-medium">Chưa có câu hỏi nào trong bộ này</p>
-                  <p className="text-xs text-muted-foreground mt-1">Bấm nút "Thêm câu hỏi" hoặc dùng tính năng "Import" file để bắt đầu</p>
+                <div className="py-10 px-4 text-center animate-loaded-reveal max-w-2xl mx-auto">
+                  <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-2xl shadow-inner">
+                    📝
+                  </div>
+                  <h3 className="text-base font-bold text-foreground">Bộ đề này chưa có câu hỏi nào</h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+                    Chọn một trong các phương thức dưới đây để bắt đầu thêm câu hỏi vào bộ đề nhanh chóng:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mt-6 text-left">
+                    <button
+                      type="button"
+                      onClick={() => setShowNewQModal(true)}
+                      className="p-4 rounded-xl border border-border/80 bg-card/60 hover:bg-card hover:border-purple-500/50 hover:shadow-lg hover:shadow-purple-500/5 transition-all text-left group cursor-pointer flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="w-9 h-9 rounded-lg bg-blue-500/15 text-blue-400 flex items-center justify-center text-lg mb-2.5 group-hover:scale-110 transition-transform">
+                          ✍️
+                        </div>
+                        <div className="font-semibold text-sm text-foreground group-hover:text-purple-300 transition-colors">
+                          Soạn thủ công
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          Tự tay tạo câu hỏi với 7 dạng thức & đính kèm video/audio/hình ảnh.
+                        </p>
+                      </div>
+                      <span className="mt-3 text-xs font-semibold text-blue-400 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        Bắt đầu soạn →
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewTargetMode("current");
+                        setShowStudioModal(true);
+                      }}
+                      className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 hover:bg-purple-900/30 hover:border-purple-400/60 hover:shadow-lg hover:shadow-purple-500/10 transition-all text-left group cursor-pointer flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="w-9 h-9 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center text-lg mb-2.5 group-hover:scale-110 transition-transform">
+                          ⚡
+                        </div>
+                        <div className="font-semibold text-sm text-foreground group-hover:text-purple-200 transition-colors">
+                          Question Studio AI
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          Tạo đề tự động bằng AI, trích xuất từ tài liệu, sinh hàng loạt câu hỏi.
+                        </p>
+                      </div>
+                      <span className="mt-3 text-xs font-semibold text-purple-300 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        Khởi chạy AI →
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewTargetMode("current");
+                        setShowFileModal(true);
+                      }}
+                      className="p-4 rounded-xl border border-border/80 bg-card/60 hover:bg-card hover:border-emerald-500/50 hover:shadow-lg hover:shadow-emerald-500/5 transition-all text-left group cursor-pointer flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="w-9 h-9 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center text-lg mb-2.5 group-hover:scale-110 transition-transform">
+                          📁
+                        </div>
+                        <div className="font-semibold text-sm text-foreground group-hover:text-emerald-300 transition-colors">
+                          Import File
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          Tải lên từ file Word (.docx), Excel (.xlsx), hoặc văn bản text mẫu.
+                        </p>
+                      </div>
+                      <span className="mt-3 text-xs font-semibold text-emerald-400 inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                        Chọn tệp tải lên →
+                      </span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3 overflow-y-auto max-h-[65vh] animate-loaded-reveal">
@@ -1463,46 +1584,148 @@ export default function QuizBankPage() {
 
       {/* Modal: New Bank */}
       {showNewBankModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
           <form
             onSubmit={handleCreateBank}
-            className="glass rounded-2xl p-6 w-full max-w-md space-y-4 border border-border"
+            className="glass rounded-2xl p-6 w-full max-w-lg space-y-4 border border-border shadow-2xl"
           >
-            <h3 className="text-xl font-bold">Tạo bộ câu hỏi mới</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-white/10">
+              <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <span>✨</span>
+                <span>Tạo bộ câu hỏi mới</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowNewBankModal(false)}
+                className="text-slate-400 hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Tiêu đề bộ đề *</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Tiêu đề bộ đề *
+              </label>
               <input
                 type="text"
                 required
+                autoFocus
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="VD: Kiểm tra kiến thức Khoa học tự nhiên"
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm font-semibold"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium mb-1">Mô tả tóm tắt</label>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-1.5">
+                Mô tả tóm tắt (không bắt buộc)
+              </label>
               <textarea
                 value={newDesc}
                 onChange={(e) => setNewDesc(e.target.value)}
                 placeholder="Mô tả nội dung, chủ đề hoặc mức độ khó..."
-                rows={3}
-                className="w-full px-3 py-2 rounded-xl bg-input border border-border focus:ring-2 focus:ring-ring resize-none"
+                rows={2}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-900/80 border border-slate-700 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none text-xs"
               />
             </div>
-            <div className="flex gap-2 justify-end pt-2">
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                Bạn muốn bắt đầu như thế nào?
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewBankInitMode("MANUAL")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                    newBankInitMode === "MANUAL"
+                      ? "border-purple-500 bg-purple-500/20 shadow-md shadow-purple-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">✍️</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Soạn thủ công</p>
+                    <p className="text-[11px] text-slate-400">Mở ngay form soạn câu hỏi</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewBankInitMode("AI_STUDIO")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                    newBankInitMode === "AI_STUDIO"
+                      ? "border-cyan-500 bg-cyan-500/20 shadow-md shadow-cyan-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">⚡</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Question Studio</p>
+                    <p className="text-[11px] text-slate-400">Tạo đề bằng AI & Tài liệu</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewBankInitMode("IMPORT_FILE")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                    newBankInitMode === "IMPORT_FILE"
+                      ? "border-emerald-500 bg-emerald-500/20 shadow-md shadow-emerald-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">📁</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Nhập từ file</p>
+                    <p className="text-[11px] text-slate-400">Word, Excel, PDF hoặc Text</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewBankInitMode("EMPTY")}
+                  className={`p-3 rounded-xl border text-left transition flex items-start gap-2.5 ${
+                    newBankInitMode === "EMPTY"
+                      ? "border-amber-500 bg-amber-500/20 shadow-md shadow-amber-500/20"
+                      : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
+                  }`}
+                >
+                  <span className="text-xl">📦</span>
+                  <div>
+                    <p className="text-xs font-bold text-white">Chỉ tạo đề trống</p>
+                    <p className="text-[11px] text-slate-400">Chọn đề và thêm câu hỏi sau</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end pt-3 border-t border-white/10">
               <button
                 type="button"
                 onClick={() => setShowNewBankModal(false)}
-                className="px-4 py-2 rounded-xl border border-border hover:bg-muted"
+                className="px-4 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 text-xs font-medium text-slate-300"
               >
                 Hủy
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold"
+                disabled={isCreatingBank || !newTitle.trim()}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:opacity-95 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-500/20 disabled:opacity-50 flex items-center gap-1.5"
               >
-                Tạo mới
+                {isCreatingBank ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Đang tạo...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Tạo & Bắt đầu ngay</span>
+                    <span>→</span>
+                  </>
+                )}
               </button>
             </div>
           </form>

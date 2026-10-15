@@ -58,7 +58,7 @@ interface Props {
   onPairsDecision?: (choice: "CASH_OUT" | "PLAY_ROUND_2") => void;
   onChooseStealTarget?: (targetTeamId: string) => void;
   onDoorsDecision?: (payload: {
-    decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART";
+    decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2";
     chosenDoorId?: number;
     swapRemovedDoorId?: number;
     swapAddedDoorId?: number;
@@ -550,9 +550,16 @@ export default function MysteryQuestBoard({
         return;
       }
 
-      // Check if this click completes a matching pair optimistically
+      // Check if this move was already attempted in this round (anti-abuse rule)
       const priorFlippedId = memoryPairsState?.firstFlippedTileId;
       if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
+        const fId = Number(priorFlippedId);
+        const sId = Number(tile.id);
+        const pairMoveKey = `${Math.min(fId, sId)}-${Math.max(fId, sId)}`;
+        if ((memoryPairsState?.attemptedPairs || []).includes(pairMoveKey)) {
+          return;
+        }
+
         const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
         // ONLY set optimistic matched pair key for REWARD cards!
         // Penalty cards (PAIR_BOMB, PAIR_TRAP) are NOT matching reward pairs!
@@ -634,43 +641,43 @@ export default function MysteryQuestBoard({
     survivalMechanic: string;
   }> = {
     MEMORY_PAIRS: {
-      title: "🃏 LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)",
+      title: "🃏 LẬT CẶP TRÙNG NHAU (16 THẺ - 8 CẶP)",
       badge: "Memory Pairs",
       icon: "🃏",
       steps: [
-        { step: "1. Lật tìm cặp", desc: "Mỗi lượt chọn lật 2 thẻ bí mật để tìm biểu tượng giống nhau.", icon: "🎯" },
-        { step: "2. Bẫy giữ mở", desc: "Thẻ Bẫy Khói / Kíp Nổ bị giữ ngửa trên bàn. Ghép trúng cặp phạt kích hoạt lượt giải cứu (lá thứ 3).", icon: "💣" },
-        { step: "3. Nhận thưởng", desc: "Tối đa 4 lượt (5 lượt nếu có Perk). Ghép trúng cặp thưởng bất kỳ để nhận điểm và chốt lượt an toàn.", icon: "🏆" },
+        { step: "1. Lật tìm cặp", desc: "Mỗi lượt chọn lật 2 thẻ bí mật (5 lượt ở Vòng 1). Không được lặp lại chính xác nước đi đã thử trong vòng.", icon: "🎯" },
+        { step: "2. Bẫy giữ mở", desc: "Thẻ Bẫy Khói / Kíp Nổ bị giữ ngửa trên bàn. Mở thẻ sinh đôi của thẻ phạt đã mở kích hoạt lượt giải cứu (lá thứ 3).", icon: "💣" },
+        { step: "3. Nhận thưởng", desc: "Ghép trúng cặp thưởng bất kỳ để nhận điểm an toàn. Hết 5 lượt Vòng 1: chọn Nhận 1/2 điểm (-1 ❤️) hoặc Sang Vòng 2 (giữ khiên).", icon: "🏆" },
       ],
       rewardMechanic: "Nhân đôi x2, Cướp đối thủ, Kho Báu lớn, Tinh Tú may mắn (+10đ đến +60đ).",
-      riskMechanic: "Cặp Bẫy Khói (mất điểm câu hiện tại, giữ điểm tổng). Cặp Kíp Nổ (kích nổ Bom Hắc Ám / Bom Từ Thiện trừ điểm).",
-      survivalMechanic: "Khi vào Sinh Tử: 1 Cặp Thoát Hiểm duy nhất (20%) & 4 Cặp Bom/Bẫy (80%). Không có cặp cộng điểm.",
+      riskMechanic: "Thất bại sau cả 2 vòng: Trừ 100% Điểm Gốc và trừ 1 ❤️ Tim.",
+      survivalMechanic: "Khi vào Sinh Tử: Bàn 16 thẻ Sudden Death không giới hạn lượt. Lật đến khi gặp cặp đầu tiên: 25% An toàn (Thoát/Khờ) vs 75% Bom/Phạt. Toàn bộ Perk bị vô hiệu hóa.",
     },
     ONE_SHOT_DOORS: {
-      title: "🚪 5 CÁNH CỬA BÍ MẬT (2 GIAI ĐOẠN)",
-      badge: "5 Secret Doors",
+      title: "🚪 8 CÁNH CỬA BÍ MẬT (8 ➔ 4 ➔ 2 ➔ 1)",
+      badge: "8 Secret Doors",
       icon: "🚪",
       steps: [
-        { step: "1. Để ra riêng", desc: "Giai đoạn 1: Chọn 3 trong 5 cánh cửa tiềm năng (2 cửa còn lại bị loại bỏ).", icon: "🚪" },
-        { step: "2. Radar quét bẫy", desc: "Hệ thống báo số lượng bẫy trừ trong 3 cửa đã chọn. Được quyền đổi 1 cửa hoặc rút lui.", icon: "📡" },
-        { step: "3. Mở quyết định", desc: "Giai đoạn 2: Chọn mở 1 trong 3 cửa đã để ra riêng để chốt điểm!", icon: "✨" },
+        { step: "1. Chọn 4 & Radar 1", desc: "Chọn 4 trong 8 cánh cửa. Radar 1 quét số bẫy. Chọn nhận 100% điểm gốc hoặc tiếp tục.", icon: "🚪" },
+        { step: "2. Chọn 2 & Radar 2", desc: "Giữ lại 2 trong 4 cửa. Radar 2 quét số bẫy trong 2 cửa.", icon: "📡" },
+        { step: "3. Đổi & Chốt mở", desc: "Chọn Nhận 50% điểm (-1 ❤️) hoặc BẮT BUỘC ĐỔI 1 cửa với 1 trong 6 cửa đã bị loại trước khi mở chốt!", icon: "✨" },
       ],
-      rewardMechanic: "3 Cửa Thưởng: Đại Thưởng (+2x điểm), Cướp đối thủ (+1x) hoặc Kho Báu (+1.5x), May Mắn (+1x).",
-      riskMechanic: "2 Cửa Bẫy: Cửa Bẫy trừ điểm gốc (-1x) & Cửa Bom Ngẫu Nhiên (Khói / Hắc Ám / Từ Thiện).",
-      survivalMechanic: "Khi vào Sinh Tử: Mở trực tiếp 1 cửa. 1 Cửa Thoát Hiểm (20%) & 4 Cửa Bẫy/Bom (80%).",
+      rewardMechanic: "Cửa Thưởng: Đại Thưởng (+2x điểm), Cướp đối thủ (+1x), Kho Báu (+1.5x), May Mắn (+1x).",
+      riskMechanic: "Cửa Bẫy: Trừ điểm gốc (-1x), Bom Khói, Bom Hắc Ám, Bom Từ Thiện.",
+      survivalMechanic: "Khi vào Sinh Tử: Chọn 4 cửa (Radar báo an toàn/bẫy) ➔ Mở trực tiếp 1 trong 4 cửa (25% An toàn vs 75% Phạt). Toàn bộ Perk bị vô hiệu hóa.",
     },
     PUSH_YOUR_LUCK: {
       title: "📚 LẬT LIỀU TÍCH LŨY NÉ BOM (CHỒNG BÀI VÔ HẠN)",
       badge: "Push Your Luck",
       icon: "📚",
       steps: [
-        { step: "1. Rút tích lũy", desc: "Lá đầu tiên 100% an toàn. Rút tiếp để tích lũy cộng dồn hoặc nhân đôi x2 điểm Hũ.", icon: "💰" },
-        { step: "2. Tỷ lệ bom tăng", desc: "Càng rút sâu nguy cơ dính Bom (Khói, Hắc Ám, Từ Thiện) càng tăng cao theo độ khó câu hỏi.", icon: "⚠️" },
+        { step: "1. Rút tích lũy", desc: "Lá đầu tiên 100% an toàn. Rút tiếp để tích lũy cộng dồn hoặc kích hoạt hiệu ứng Tarot đặc biệt.", icon: "💰" },
+        { step: "2. Tỷ lệ bom tăng", desc: "Càng rút sâu nguy cơ dính Bom (Khói, Hắc Ám, Từ Thiện) càng tăng cao.", icon: "⚠️" },
         { step: "3. Chốt điểm dừng", desc: "Bấm 'CHỐT ĐIỂM' bất kỳ lúc nào để bảo toàn toàn bộ điểm Hũ về tài khoản.", icon: "🛑" },
       ],
-      rewardMechanic: "Cộng dồn điểm thưởng theo câu hỏi (+10đ đến +60đ), Cướp đối thủ, Động cơ Nhân đôi x2.",
+      rewardMechanic: "Cộng dồn điểm thưởng theo câu hỏi (+10đ đến +60đ), Cướp đối thủ, Động cơ Nhân đôi x2, Thẻ Tarot trợ lực.",
       riskMechanic: "Dính Bom sẽ mất sạch điểm Hũ của câu này. Bom Hắc Ám / Từ Thiện còn phạt trừ thêm điểm tổng.",
-      survivalMechanic: "Khi vào Sinh Tử: Rút 1 lá quyết định. 20% Thoát Hiểm an toàn & 80% Bẫy/Bom trừng phạt.",
+      survivalMechanic: "Khi vào Sinh Tử: Bốc đúng 1 lá duy nhất và thực thi ngay lập tức: 25% An toàn (Thoát/Khờ) vs 75% Sụp Đổ/Bom. Toàn bộ Perk bị vô hiệu hóa.",
     },
     TAROT_DESTINY: {
       title: "🔮 VÒNG QUAY TAROT 22 MAJOR ARCANA",
@@ -900,7 +907,7 @@ export default function MysteryQuestBoard({
               </div>
 
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                {/* Phương Án 1: Hy sinh 1 Tim để An Toàn */}
+                {/* Phương Án 1: Mất Hết Tim để Bảo Toàn Điểm Số */}
                 {(() => {
                   const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
                   const currentHearts = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
@@ -911,7 +918,7 @@ export default function MysteryQuestBoard({
                       <div className="space-y-1 sm:space-y-1.5">
                         <div className="text-2xl sm:text-3xl">💔</div>
                         <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wide">
-                          Phương Án 1: Hy Sinh 1 Tim
+                          Phương Án 1: Mất Hết Tim
                         </h4>
                         <div className="py-0.5">
                           <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
@@ -919,7 +926,7 @@ export default function MysteryQuestBoard({
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
-                          Tiêu hao <strong>1 ❤️</strong> để kết thúc lượt ngay bây giờ. Toàn bộ <strong>{currentScore} điểm</strong> được bảo toàn an toàn (Còn lại: <strong className="text-rose-400">❤️ {Math.max(0, currentHearts - 1)}</strong>).
+                          Đánh đổi toàn bộ <strong className="text-rose-400">{currentHearts} ❤️</strong> (về 0 ❤️) để kết thúc lượt ngay bây giờ. Toàn bộ <strong>{currentScore} điểm</strong> được bảo toàn nguyên vẹn.
                         </p>
                       </div>
 
@@ -930,7 +937,7 @@ export default function MysteryQuestBoard({
                             onClick={() => onSurvivalChoice?.("SACRIFICE_HEART")}
                             className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-rose-950/60 border border-rose-400 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
                           >
-                            💔 Hy Sinh 1 ❤️ (Bảo Toàn Điểm)
+                            💔 Mất Hết Tim (Giữ {currentScore}đ)
                           </button>
                         ) : (
                           <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
@@ -956,11 +963,11 @@ export default function MysteryQuestBoard({
                         </h4>
                         <div className="py-0.5">
                           <span className="text-xs sm:text-sm font-black font-mono text-amber-300">
-                            Giữ Nguyên ❤️ {currentHearts}
+                            Bảo Toàn ❤️ {currentHearts}
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
-                          Không mất tim, nhưng bước vào <strong>Minigame Sinh Tử</strong>: Tỷ lệ <span className="text-emerald-400 font-bold">20% Thoát Hiểm 🕊️</span> - <span className="text-rose-400 font-bold">80% Bẫy & Bom 💀</span> (0% thưởng, không perk)!
+                          Không mất tim trước, bước vào <strong>Minigame Sinh Tử</strong>: Tỷ lệ <span className="text-emerald-400 font-bold">25% An Toàn 🕊️/🃏</span> - <span className="text-rose-400 font-bold">75% Bẫy & Bom 💀</span> (Vô hiệu hóa toàn bộ Perk). Nếu an toàn: giữ trọn điểm và tim!
                         </p>
                       </div>
 
@@ -1254,13 +1261,13 @@ export default function MysteryQuestBoard({
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span className="font-black text-indigo-300 uppercase tracking-wider text-[11px]">
                     {isPenaltySurvivalMode
-                      ? "💀 LẬT CẶP SINH TỬ (10 THẺ - 5 CẶP)"
-                      : "🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (12 THẺ - 6 CẶP)"}
+                      ? "💀 LẬT CẶP SINH TỬ (16 THẺ - 8 CẶP - SUDDEN DEATH)"
+                      : "🃏 THỬ THÁCH LẬT CẶP TRÙNG NHAU (16 THẺ - 8 CẶP - 5 LƯỢT)"}
                   </span>
                   <div className="flex items-center gap-2">
                     {memoryPairsState?.isBombRescueActive ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/30 text-amber-300 border border-amber-400 animate-pulse">
-                        ⚠️ LƯỢT GIẢI CỨU (CHỌN 2 LÁ)
+                        ⚠️ LƯỢT GIẢI CỨU (LẬT 2 LÁ)
                       </span>
                     ) : (
                       <span
@@ -1273,36 +1280,36 @@ export default function MysteryQuestBoard({
                         }`}
                       >
                         {isPenaltySurvivalMode
-                          ? "💀 1 LẦN CHƠI DUY NHẤT"
+                          ? "💀 SUDDEN DEATH"
                           : memoryPairsState?.round === 2
                           ? "🔥 VÒNG 2 SINH TỬ"
                           : "✨ VÒNG 1"}
                       </span>
                     )}
                     <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
-                      Lượt lật: {memoryPairsState?.attemptsUsed ?? 0}/{memoryPairsState?.maxAttempts ?? 4}
+                      {isPenaltySurvivalMode
+                        ? `Lượt lật: ${memoryPairsState?.attemptsUsed ?? 0}`
+                        : `Lượt lật: ${memoryPairsState?.attemptsUsed ?? 0}/${memoryPairsState?.maxAttempts ?? 5}`}
                     </span>
                   </div>
                 </div>
                 {memoryPairsState?.isBombRescueActive ? (
                   <p className="text-[11px] text-amber-200 font-bold leading-snug animate-pulse">
-                    {isPenaltySurvivalMode
-                      ? "⚠️ Đã mở trúng 2 lá tiêu cực cùng loại! Hãy chọn 2 lá còn lại giống nhau để thay sang hình phạt mới (hoặc Thoát Hiểm 0đ), nếu không sẽ giữ hình phạt cũ!"
-                      : "⚠️ Đã ghép phải 2 lá của cặp phạt! Mở khóa lượt giải cứu (lá thứ 3): Ghép trúng cặp thưởng để thoát hiểm. Nếu trùng cặp phạt còn lại, hệ thống sẽ hủy cặp cũ và phạt theo cặp mới!"}
+                    🔥 Đã bốc trúng lá tiêu cực cùng cặp từ lượt trước! Mở khóa lượt giải cứu (3 lá): Hãy lật 2 lá tiếp theo — Nếu trùng khớp, bạn sẽ hóa giải bẫy cũ và nhận chức năng cặp mới!
                   </p>
                 ) : isPenaltySurvivalMode ? (
-                  <p className="text-[11px] text-white/80 leading-snug">
-                    💀 Mọi lá khi lật đều luôn để ngửa. Ghép trúng cặp Thoát Hiểm 🕊️ để không bị trừ điểm. Nếu lật đủ 2 lá tiêu cực cùng loại, bạn sẽ phải chọn 2 lá giống nhau để thay hình phạt!
+                  <p className="text-[11px] text-rose-300 font-bold leading-snug">
+                    💀 SUDDEN DEATH: Không giới hạn số lượt! Hãy lật các cặp thẻ để tìm kiếm cơ hội sống sót. Cặp thẻ trùng đầu tiên sẽ định đoạt: 🕊️ Thoát Hiểm / 🃏 Chàng Khờ (bảo toàn điểm & tim) vs 💀 Bẫy & Bom (nhận hình phạt)!
                   </p>
                 ) : (memoryPairsState?.keptBombTileIds && memoryPairsState.keptBombTileIds.length > 0) ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
-                    💣 Cảnh báo: Đã có {memoryPairsState.keptBombTileIds.length} lá phạt bị lộ (#{memoryPairsState.keptBombTileIds.join(", #")}) và giữ nguyên trên bàn! Tránh lật trúng lá cùng loại để né kích nổ phạt!
+                    💣 Cảnh báo: Đã có {memoryPairsState.keptBombTileIds.length} lá phạt/trung lập lộ diện (#{memoryPairsState.keptBombTileIds.join(", #")}) và giữ ngửa trên bàn! Tránh lặp lại chính xác nước đi đã thử!
                   </p>
                 ) : (
                   <p className="text-[11px] text-white/80 leading-snug">
                     {memoryPairsState?.round === 2
-                      ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 4 lượt vẫn không tìm được cặp trùng sẽ dừng chơi và dính ngay 1 BOM trừng phạt!"
-                      : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 4 lượt Vòng 1 sẽ được đảo vị trí và chọn làm lại lần 2!"}
+                      ? "Cảnh báo sinh tử: Đang ở Vòng 2! Nếu sau 5 lượt vẫn không tìm được cặp trùng sẽ bị Trừ 100% Điểm Gốc + Trừ 1 Tim!"
+                      : "Lật 2 thẻ để tìm cặp giống nhau. Cặp trùng đầu tiên sẽ nhận thưởng. Nếu hết 5 lượt Vòng 1 sẽ được chọn kết thúc an toàn hoặc chơi tiếp Vòng 2!"}
                   </p>
                 )}
               </div>
@@ -1313,12 +1320,12 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/95 via-purple-950/95 to-black/95 border-2 border-amber-400/90 shadow-2xl animate-bounce-in text-center space-y-2 z-30">
                 <div className="text-3xl animate-pulse">🔀</div>
                 <h4 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wider">
-                  HẾT 4 LƯỢT VÒNG 1 — CÁC LÁ BÀI ĐÃ ĐƯỢC XÁO TRỘN!
+                  HẾT 5 LƯỢT VÒNG 1 — QUYẾT ĐỊNH VÒNG 2
                 </h4>
                 <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
                   Bạn chưa ghép được cặp nào trong Vòng 1. Không bị mất điểm!
                   <br />
-                  Bạn có cơ hội <strong className="text-yellow-300">làm lại Lần 2 với 4 lượt tiếp theo</strong> (nhưng nếu trượt cả 4 lượt sẽ nhận 1 BOM phạt), hoặc <strong className="text-emerald-300">dừng chơi và nhận điểm câu hỏi (+{baseQuestionPoints || 10}đ, tiêu hao 1 ❤️)</strong>!
+                  Bạn có cơ hội <strong className="text-yellow-300">chơi tiếp Vòng 2 với 5 lượt mới</strong> (giữ nguyên Khiên Thần nếu có; nhưng nếu trượt cả 5 lượt Vòng 2 sẽ bị <strong className="text-rose-400">Trừ 100% Điểm Gốc và trừ 1 ❤️ Tim</strong>), hoặc <strong className="text-emerald-300">dừng chơi và nhận 50% điểm câu hỏi (+{Math.round((baseQuestionPoints || 10) * 0.5)}đ, tiêu hao 1 ❤️)</strong>!
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
                   <button
@@ -1327,7 +1334,7 @@ export default function MysteryQuestBoard({
                     disabled={!canInteract}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-black text-xs border border-emerald-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
-                    💰 DỪNG LẠI & NHẬN +{baseQuestionPoints || 10}Đ CÂU HỎI (-1 ❤️)
+                    💰 DỪNG LẠI & NHẬN +{Math.round((baseQuestionPoints || 10) * 0.5)}Đ (50% GỐC, -1 ❤️)
                   </button>
                   <button
                     type="button"
@@ -1335,7 +1342,7 @@ export default function MysteryQuestBoard({
                     disabled={!canInteract}
                     className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-rose-600 hover:from-purple-500 hover:to-rose-500 text-white font-black text-xs border border-rose-300 shadow-lg cursor-pointer transition hover:scale-105 active:scale-95"
                   >
-                    🔥 CHƠI TIẾP VÒNG 2 (4 LƯỢT TIẾP THEO)
+                    🔥 CHƠI TIẾP VÒNG 2 (5 LƯỢT MỚI)
                   </button>
                 </div>
               </div>
@@ -1346,51 +1353,41 @@ export default function MysteryQuestBoard({
               <div className="w-full max-w-xl mx-auto p-2 sm:p-2.5 rounded-xl bg-black/60 border border-amber-400/50 shadow-xl text-center space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-black text-amber-300 uppercase tracking-wider text-[11px]">
-                    🚪 5 CÁNH CỬA BÍ MẬT (2 GIAI ĐOẠN)
+                    🚪 8 CÁNH CỬA BÍ MẬT (8 ➔ 4 ➔ 2 ➔ 1)
                   </span>
                   <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[10px]">
-                    {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED"
-                      ? "✨ GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 3 CỬA ĐÃ ĐỂ RA RIÊNG"
-                      : oneShotState?.phase === "PENALTY_DECISION"
-                      ? "⚠️ QUYẾT ĐỊNH: ĐỔI LÁ HOẶC RÚT LUI TRỪ 1 TIM"
-                      : `Giai đoạn 1: Để ra riêng (${oneShotState?.selectedDoorIds?.length || 0}/3 cửa)`}
+                    {oneShotState?.phase === "OPEN_FINAL" || oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED"
+                      ? "✨ BƯỚC 4: MỞ 1 TRONG 2 CỬA ĐÃ CHỌN"
+                      : oneShotState?.phase === "FINAL_DECISION" || oneShotState?.phase === "PENALTY_DECISION"
+                      ? "⚠️ BƯỚC 3: QUYẾT ĐỊNH MỞ CỬA / ĐỔI CỬA / RÚT LUI"
+                      : oneShotState?.phase === "STAGE_1_DECISION"
+                      ? "💰 BƯỚC 2: CHỐT 100% GỐC HOẶC CHỌN TIẾP"
+                      : oneShotState?.phase === "SELECT_2"
+                      ? `Bước 2: Chọn 2 trong 4 cửa (${oneShotState?.selectedDoorIds?.length || 0}/2)`
+                      : `Bước 1: Chọn 4 trong 8 cửa (${oneShotState?.selectedDoorIds?.length || 0}/4)`}
                   </span>
                 </div>
-                {oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED" ? (
-                  <div className="space-y-1">
-                    {oneShotState?.hasSwapped ? (
-                      <div className="p-1.5 sm:p-2 rounded-xl bg-purple-950/80 border border-purple-500/80 text-purple-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner">
-                        <span>🔄</span>
-                        <span>Đã hoàn tất đổi lá bí mật! Hệ thống không báo số lá trừ mới. Hãy mở 1 trong 3 cánh cửa!</span>
-                      </div>
-                    ) : (oneShotState?.penaltyDoorsCount ?? 0) === 0 ? (
-                      <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold animate-pulse flex items-center justify-center gap-1.5 shadow-inner">
-                        <span>✨ AN TOÀN TUYỆT ĐỐI:</span>
-                        <span>Trong 3 cánh cửa bạn để ra riêng <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 3 đều là thưởng an toàn)!</span>
-                      </div>
-                    ) : (
-                      <div className="p-1.5 sm:p-2 rounded-xl bg-amber-950/80 border border-amber-500/80 text-amber-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner">
-                        <span>⚠️ CẢNH BÁO:</span>
-                        <span>Trong 3 cánh cửa đã chọn có lá trừ điểm. Hãy chọn mở 1 cánh cửa để thử vận may!</span>
-                      </div>
-                    )}
-                    <p className="text-[11px] text-yellow-300 font-bold leading-snug">
-                      👉 2 cánh cửa còn lại đã bị loại bỏ. Hãy chọn mở 1 trong 3 cánh cửa đang sáng (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới!
-                    </p>
-                  </div>
-                ) : oneShotState?.phase === "PENALTY_DECISION" ? (
-                  <div className="space-y-1">
-                    <div className="p-1.5 sm:p-2 rounded-xl bg-red-950/80 border border-red-500/80 text-red-200 text-xs font-bold animate-pulse flex items-center justify-center gap-1.5 shadow-inner">
-                      <span>⚠️ CẢNH BÁO RADAR:</span>
-                      <span>Phát hiện <strong>{oneShotState?.penaltyDoorsCount || 1} cánh cửa trừ điểm</strong> trong 3 cửa đã chọn!</span>
-                    </div>
-                    <p className="text-[11px] text-yellow-300 font-bold leading-snug">
-                      Chọn 1 trong 2: Đổi 1 trong 3 lá sang lá khác (chỉ 1 lần, không quét lại) HOẶC Rút lui bảo toàn điểm gốc câu hỏi (-1 ❤️).
-                    </p>
-                  </div>
+                {oneShotState?.phase === "STAGE_1_DECISION" ? (
+                  <p className="text-[11px] text-yellow-300 font-bold leading-snug">
+                    Radar Tầng 1 đã quét! Bạn có quyền chốt nhận 100% điểm gốc ngay (0 ❤️) hoặc tiếp tục chọn 2 trong 4 cửa!
+                  </p>
+                ) : oneShotState?.phase === "SELECT_2" ? (
+                  <p className="text-[11px] text-yellow-300 font-bold leading-snug">
+                    Hãy bấm chọn 2 trong 4 cánh cửa đã giữ lại. 4 cánh cửa bị loại trước đó đã được làm mờ!
+                  </p>
+                ) : oneShotState?.phase === "FINAL_DECISION" || oneShotState?.phase === "PENALTY_DECISION" ? (
+                  <p className="text-[11px] text-yellow-300 font-bold leading-snug">
+                    {oneShotState?.radarLight === "GREEN"
+                      ? "🟢 Radar báo Xanh: Cả 2 cửa đều AN TOÀN TUYỆT ĐỐI! Hãy mở cửa hoặc rút lui an toàn."
+                      : `⚠️ Radar báo Động: Có ${oneShotState?.penaltyDoorsCount || 1} cửa bẫy trong 2 cửa này! BẮT BUỘC ĐỔI CỬA trước khi mở!`}
+                  </p>
+                ) : oneShotState?.phase === "OPEN_FINAL" ? (
+                  <p className="text-[11px] text-yellow-300 font-bold leading-snug">
+                    👉 Hãy chọn mở 1 trong 2 cánh cửa đang sáng (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để nhận kết quả!
+                  </p>
                 ) : (
                   <p className="text-[11px] text-white/85 leading-snug">
-                    Giai đoạn 1: Hãy chọn 3 cánh cửa để <strong className="text-amber-300">ĐỂ RA RIÊNG</strong> (vẫn úp xuống, chưa lật). Hệ thống sẽ quét báo số lá trừ, và bạn sẽ chơi tiếp Vòng 2 với 3 cánh cửa này!
+                    Bước 1: Hãy chọn 4 trong 8 cánh cửa để giữ lại. Hệ thống sẽ kích hoạt Radar quét số lượng lá bẫy trước khi bạn quyết định tiếp!
                   </p>
                 )}
               </div>
@@ -1725,162 +1722,272 @@ export default function MysteryQuestBoard({
         ════════════════════════════════════════════════════════════════════ */}
         {(miniGameType === "ONE_SHOT_DOORS" || miniGameType === "DOORS" || miniGameType === "CHESTS") && (
           <div className="max-w-4xl mx-auto py-1">
-            {/* Stage 2 / Penalty Decision Prompt */}
+            {/* Stage 1 / Stage 2 / Final Decision / Survival Prompts */}
             {(() => {
-              const isPenaltyDecision = oneShotState?.phase === "PENALTY_DECISION";
-              const isStage2 = oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED";
-              const penaltyCount = oneShotState?.penaltyDoorsCount ?? 0;
+              const osPhase = oneShotState?.phase;
+              const radarLight1 = oneShotState?.radarLightStep1;
+              const radarLight2 = oneShotState?.radarLight;
               const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
               const activeTeamHearts = mysteryState.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState.initialHeartsPerTeam ?? 1;
               const hasHeartsToSafelyExit = activeTeamHearts > 0;
 
-              if (isPenaltyDecision) {
-                return (
-                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
-                    <div className="text-4xl animate-bounce">⚠️💣</div>
-                    <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">
-                      RADAR QUÉT HOÀN TẤT: CÓ LÁ TRỪ ĐIỂM TRONG 3 CỬA ĐÃ CHỌN!
-                    </h4>
-                    <div className="px-3 py-1.5 rounded-xl bg-red-950/90 border border-red-500/80 text-red-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
-                      <span>⚠️</span>
-                      <span>Radar phát hiện: Có {penaltyCount} cánh cửa trừ điểm (Bẫy trừ gốc hoặc Bẫy bom) trong 3 cửa này!</span>
+              // ── CHẾ ĐỘ SINH TỬ (SURVIVAL MODE) ──
+              if (isPenaltySurvivalMode) {
+                if (osPhase === "SELECT_4" || osPhase === "SELECTING" || !osPhase) {
+                  return (
+                    <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-purple-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
+                      <div className="text-3xl animate-pulse">💀🚪</div>
+                      <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wider">
+                        CỬA SINH TỬ - BƯỚC 1: CHỌN 4 TRONG 8 CÁNH CỬA
+                      </h4>
+                      <div className="px-3 py-1.5 rounded-xl bg-black/60 border border-rose-500/50 text-rose-200 text-xs font-bold flex items-center justify-center gap-2">
+                        <span className="text-emerald-400 font-bold">🕊️ 25% An Toàn (Thoát Hiểm / Chàng Khờ)</span>
+                        <span>•</span>
+                        <span className="text-rose-400 font-bold">💀 75% Bẫy & Bom</span>
+                      </div>
+                      <p className="text-[11px] text-white/80 max-w-md mx-auto">
+                        Hãy chọn 4 cánh cửa bạn tin tưởng nhất. Radar sẽ quét xem có cửa an toàn nào trong đó không! (Đã chọn: <strong className="text-amber-300">{(oneShotState?.selectedDoorIds || []).length}/4</strong>)
+                      </p>
                     </div>
+                  );
+                }
 
-                    {swapStep === "IDLE" && (
-                      <>
-                        <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
-                          Bạn được chọn <strong>1 trong 2 phương án</strong>: Đổi 1 trong 3 lá sang lá khác (chỉ 1 lần, không quét lại) HOẶC Rút lui bảo toàn điểm gốc (-1 ❤️)!
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                          {/* Phương án 1: Đổi 1 lá */}
-                          <button
-                            type="button"
-                            onClick={() => setSwapStep("SELECT_REMOVE")}
-                            disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
-                            className={`px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-amber-900/50 border border-amber-400/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                              oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : "animate-pulse"
-                            }`}
-                          >
-                            <span>🔄</span>
-                            <span>1. Đổi 1 lá (Không quét lại)</span>
-                          </button>
-
-                          {/* Phương án 2: Lấy điểm gốc & Trừ 1 Tim */}
-                          {hasHeartsToSafelyExit ? (
-                            <button
-                              type="button"
-                              onClick={() => onDoorsDecision?.({ decision: "TAKE_BASE_MINUS_HEART" })}
-                              disabled={!canInteract}
-                              className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-emerald-900/50 border border-emerald-400/60 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
-                            >
-                              <span>🛡️</span>
-                              <span>2. Nhận +{baseQuestionPoints || 10}đ (-1 ❤️)</span>
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled
-                              className="px-3 py-2.5 rounded-xl bg-stone-800 text-stone-400 font-bold text-xs uppercase border border-stone-700 cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
-                            >
-                              <span>🔒</span>
-                              <span>Hết Tim (0 ❤️) - Không thể rút lui</span>
-                            </button>
-                          )}
-                        </div>
-
-                        <div className="pt-1">
-                          <button
-                            type="button"
-                            onClick={() => onDoorsDecision?.({ decision: "RISK_OPEN" })}
-                            disabled={!canInteract}
-                            className="text-[11px] text-amber-300/80 hover:text-amber-200 underline font-semibold transition cursor-pointer"
-                          >
-                            🎲 Hoặc: Giữ nguyên 3 lá & Tiến thẳng vào Vòng 2 mở cửa ➔
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {swapStep === "SELECT_REMOVE" && (
-                      <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
-                        <p className="text-xs text-amber-200 font-bold animate-pulse">
-                          👉 BƯỚC 1: Bấm vào 1 trong 3 cánh cửa bạn đã chọn (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để BỎ RA.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setSwapStep("IDLE")}
-                          className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
-                        >
-                          Hủy đổi lá
-                        </button>
+                if (osPhase === "STAGE_2_PICK") {
+                  const isGreen = radarLight1 === "GREEN";
+                  return (
+                    <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-purple-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
+                      <div className="text-3xl animate-pulse">{isGreen ? "🟢✨" : "🔴💥"}</div>
+                      <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wider">
+                        CỬA SINH TỬ - BƯỚC 2: MỞ 1 TRONG 4 CỬA ĐÃ GIỮ!
+                      </h4>
+                      <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 shadow-inner ${
+                        isGreen
+                          ? "bg-emerald-950/80 border-emerald-400 text-emerald-200 animate-pulse"
+                          : "bg-red-950/80 border-red-500 text-red-200 animate-pulse"
+                      }`}>
+                        {isGreen ? (
+                          <span>🟢 RADAR BÁO ĐÈN XANH: Có ít nhất 1 Cửa An Toàn (🕊️ Thoát Hiểm / 🃏 Chàng Khờ) trong 4 cửa bạn giữ!</span>
+                        ) : (
+                          <span>🔴 RADAR BÁO ĐÈN ĐỎ: Cả 4 cửa đều là Bẫy & Bom! Hãy chọn 1 cửa ít thiệt hại nhất!</span>
+                        )}
                       </div>
-                    )}
-
-                    {swapStep === "SELECT_ADD" && (
-                      <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/50 space-y-2">
-                        <p className="text-xs text-cyan-200 font-bold animate-pulse">
-                          👉 BƯỚC 2: Bấm vào 1 trong các cánh cửa chưa chọn bên dưới để THAY VÀO (thay thế cho Cửa #{swapRemovedId}).
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSwapStep("SELECT_REMOVE");
-                            setSwapRemovedId(null);
-                          }}
-                          className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
-                        >
-                          Chọn lại lá bỏ
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
+                      <p className="text-[11px] text-white/90 max-w-md mx-auto">
+                        Bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 4 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở ngay lập tức!
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
               }
 
-              if (isStage2) {
+              // ── CHẾ ĐỘ BÌNH THƯỜNG (NORMAL MODE - 4 BƯỚC) ──
+              // Bước 1: Chọn 4 trong 8 cửa
+              if (osPhase === "SELECT_4" || osPhase === "SELECTING" || !osPhase) {
                 return (
-                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
-                    <div className="text-3xl animate-pulse">🚪✨</div>
-                    <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
-                      GIAI ĐOẠN 2: CHỌN MỞ 1 TRONG 3 CÁNH CỬA ĐÃ ĐỂ RA RIÊNG!
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/90 via-slate-950/90 to-black/95 border-2 border-indigo-500/60 shadow-xl text-center space-y-1.5 max-w-xl mx-auto">
+                    <div className="text-2xl animate-pulse">🚪🔍</div>
+                    <h4 className="text-xs sm:text-sm font-black text-indigo-300 uppercase tracking-wider">
+                      BƯỚC 1: CHỌN 4 TRONG 8 CÁNH CỬA ĐỊNH MỆNH
                     </h4>
-                    {oneShotState?.hasSwapped ? (
-                      <div className="px-3 py-1.5 rounded-xl bg-purple-950/80 border border-purple-500/80 text-purple-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner">
-                        <span>🔄</span>
-                        <span>Đã hoàn tất đổi lá bí mật! Hệ thống không báo số lá trừ mới. Hãy chọn mở 1 trong 3 cánh cửa!</span>
-                      </div>
-                    ) : (oneShotState?.penaltyDoorsCount ?? 0) === 0 ? (
-                      <div className="px-3 py-1.5 rounded-xl bg-emerald-950/80 border border-emerald-500/80 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner animate-pulse">
-                        <span>✨ AN TOÀN TUYỆT ĐỐI:</span>
-                        <span>Trong 3 cánh cửa bạn để ra riêng <strong>KHÔNG CÓ cánh cửa trừ điểm</strong> (Cả 3 đều là thưởng an toàn)!</span>
-                      </div>
-                    ) : (
-                      <div className="px-3 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/80 text-amber-200 text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner">
-                        <span>⚠️ CẢNH BÁO:</span>
-                        <span>Trong 3 cánh cửa đã chọn có lá trừ điểm. Hãy chọn mở 1 cánh cửa để thử vận may!</span>
-                      </div>
-                    )}
-                    <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                      2 cánh cửa còn lại đã bị loại bỏ. Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 3 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở!
+                    <p className="text-[11px] text-white/80 max-w-md mx-auto">
+                      Hãy bấm chọn 4 cánh cửa bạn muốn giữ lại. Radar sẽ quét tín hiệu kíp nổ sau khi chọn đủ 4 cửa! (Đã chọn: <strong className="text-amber-300">{(oneShotState?.selectedDoorIds || []).length}/4</strong>)
                     </p>
                   </div>
                 );
               }
 
-              if (isPenaltySurvivalMode) {
+              // Bước 2: Quyết định giữa Nhận 100% Điểm Gốc ngay HOẶC Tiếp tục chọn 2 cửa
+              if (osPhase === "STAGE_1_DECISION") {
+                const isGreen = radarLight1 === "GREEN";
+                const isYellow = radarLight1 === "YELLOW";
                 return (
-                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-rose-950/95 via-purple-950/90 to-black/95 border-2 border-rose-500 shadow-2xl text-center space-y-2 animate-bounce-in max-w-xl mx-auto">
-                    <div className="text-3xl animate-pulse">💀🕊️</div>
-                    <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wider">
-                      CỬA SINH TỬ: CHỌN DUY NHẤT 1 CÁNH CỬA ĐỂ QUYẾT ĐỊNH VẬN MỆNH!
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
+                    <div className="text-3xl animate-bounce">{isGreen ? "🟢" : isYellow ? "🟡" : "🔴"}</div>
+                    <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">
+                      RADAR QUÉT BƯỚC 1: KẾT QUẢ 4 CỬA ĐÃ CHỌN
                     </h4>
-                    <div className="px-3 py-1.5 rounded-xl bg-black/60 border border-rose-500/50 text-rose-200 text-xs font-bold flex items-center justify-center gap-2">
-                      <span className="text-emerald-400 font-bold">🕊️ 1 Cửa Thoát Hiểm (20%)</span>
-                      <span>•</span>
-                      <span className="text-rose-400 font-bold">💀 4 Cửa Bẫy & Bom (80%)</span>
+                    <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner ${
+                      isGreen
+                        ? "bg-emerald-950/90 border-emerald-400 text-emerald-200"
+                        : isYellow
+                        ? "bg-amber-950/90 border-amber-400 text-amber-200"
+                        : "bg-red-950/90 border-red-500 text-red-200"
+                    }`}>
+                      {isGreen && <span>🟢 ĐÈN XANH: Cả 4 cửa đều hoàn toàn an toàn (0 kíp nổ)!</span>}
+                      {isYellow && <span>🟡 ĐÈN VÀNG: Radar phát hiện có 1 kíp nổ / bẫy trong 4 cửa này!</span>}
+                      {!isGreen && !isYellow && <span>🔴 ĐÈN ĐỎ: Radar phát hiện có từ 2 kíp nổ trở lên trong 4 cửa này!</span>}
                     </div>
+                    <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
+                      Bạn có thể chọn <strong>Nhận ngay 100% điểm gốc</strong> và kết thúc lượt an toàn, HOẶC <strong>Tiếp tục chọn 2 cửa</strong> để tiến vào vòng trong!
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => onDoorsDecision?.({ decision: "TAKE_100_BASE" })}
+                        disabled={!canInteract}
+                        className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span>💰</span>
+                        <span>Nhận 100% Điểm (+{baseQuestionPoints || 10}đ)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDoorsDecision?.({ decision: "PROCEED_TO_SELECT_2" })}
+                        disabled={!canInteract}
+                        className="px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 animate-pulse"
+                      >
+                        <span>🚪</span>
+                        <span>Tiếp Tục Chọn 2 Cửa ➔</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Bước 3: Chọn 2 trong 4 cửa
+              if (osPhase === "SELECT_2") {
+                return (
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-indigo-950/90 via-slate-950/90 to-black/95 border-2 border-indigo-500/60 shadow-xl text-center space-y-1.5 max-w-xl mx-auto">
+                    <div className="text-2xl animate-pulse">🚪⚡</div>
+                    <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
+                      BƯỚC 2: CHỌN 2 TRONG 4 CÁNH CỬA ĐANG SÁNG
+                    </h4>
                     <p className="text-[11px] text-white/80 max-w-md mx-auto">
-                      Bấm chọn 1 trong 5 cánh cửa bên dưới để mở ngay lập tức!
+                      Hãy chọn 2 cánh cửa để tiến hành Radar quét vòng quyết định! 2 cánh cửa không chọn sẽ bị loại bỏ vào khu vực bài bỏ. (Đã chọn: <strong className="text-amber-300">{(oneShotState?.selectedDoorIds || []).length}/2</strong>)
+                    </p>
+                  </div>
+                );
+              }
+
+              // Bước 3/4: Quyết định vòng chung cuộc
+              if (osPhase === "FINAL_DECISION") {
+                const isGreen = radarLight2 === "GREEN";
+                const isYellow = radarLight2 === "YELLOW";
+                return (
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-2.5 animate-bounce-in max-w-xl mx-auto">
+                    <div className="text-3xl animate-bounce">{isGreen ? "🟢✨" : isYellow ? "🟡⚠️" : "🔴💥"}</div>
+                    <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">
+                      RADAR QUÉT CHUNG CUỘC: 2 CỬA CUỐI CÙNG
+                    </h4>
+                    <div className={`px-3 py-1.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 shadow-inner ${
+                      isGreen
+                        ? "bg-emerald-950/90 border-emerald-400 text-emerald-200"
+                        : isYellow
+                        ? "bg-amber-950/90 border-amber-400 text-amber-200"
+                        : "bg-red-950/90 border-red-500 text-red-200"
+                    }`}>
+                      {isGreen && <span>🟢 ĐÈN XANH: Cả 2 cửa đều hoàn toàn an toàn! Hãy chọn 1 cửa để mở!</span>}
+                      {isYellow && <span>🟡 ĐÈN VÀNG: Có 1 kíp nổ trong 2 cửa này! Bắt buộc đổi cửa hoặc rút lui an toàn!</span>}
+                      {!isGreen && !isYellow && <span>🔴 ĐÈN ĐỎ: Cả 2 cửa đều là Bẫy & Bom! Bắt buộc đổi cửa hoặc rút lui an toàn!</span>}
+                    </div>
+
+                    {isGreen ? (
+                      <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
+                        Cả 2 cánh cửa đều an toàn! Bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 2 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở nhận thưởng!
+                      </p>
+                    ) : (
+                      <>
+                        {swapStep === "IDLE" && (
+                          <>
+                            <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                              Chọn <strong>Rút lui an toàn</strong> (nhận 50% điểm gốc, -1 ❤️) HOẶC <strong>Đổi 1 cửa</strong> với 1 trong 6 cửa đã bị loại trước đó!
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              {/* Rút lui an toàn */}
+                              {hasHeartsToSafelyExit ? (
+                                <button
+                                  type="button"
+                                  onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
+                                  disabled={!canInteract}
+                                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                  <span>🛡️</span>
+                                  <span>Rút Lui (+{Math.round((baseQuestionPoints || 10) * 0.5)}đ, -1 ❤️)</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled
+                                  className="px-3 py-2 rounded-xl bg-stone-800 text-stone-400 font-bold text-xs uppercase border border-stone-700 cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
+                                >
+                                  <span>🔒</span>
+                                  <span>Hết Tim - Không Thể Rút Lui</span>
+                                </button>
+                              )}
+
+                              {/* Đổi 1 cửa */}
+                              <button
+                                type="button"
+                                onClick={() => setSwapStep("SELECT_REMOVE")}
+                                disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
+                                className={`px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                                  oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : "animate-pulse"
+                                }`}
+                              >
+                                <span>🔄</span>
+                                <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Đổi 1 Cửa (Với Cửa Bị Loại)"}</span>
+                              </button>
+                            </div>
+                            <div className="pt-0.5">
+                              <button
+                                type="button"
+                                onClick={() => onDoorsDecision?.({ decision: "RISK_OPEN" })}
+                                disabled={!canInteract}
+                                className="text-[10px] text-amber-300/80 hover:text-amber-200 underline font-semibold transition cursor-pointer"
+                              >
+                                🎲 Hoặc: Mở luôn 1 trong 2 cửa hiện tại (Chấp nhận rủi ro) ➔
+                              </button>
+                            </div>
+                          </>
+                        )}
+
+                        {swapStep === "SELECT_REMOVE" && (
+                          <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
+                            <p className="text-xs text-amber-200 font-bold animate-pulse">
+                              👉 BƯỚC 1: Bấm vào 1 trong 2 cánh cửa bạn đã chọn (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để BỎ RA.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setSwapStep("IDLE")}
+                              className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                            >
+                              Hủy đổi cửa
+                            </button>
+                          </div>
+                        )}
+
+                        {swapStep === "SELECT_ADD" && (
+                          <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/50 space-y-2">
+                            <p className="text-xs text-cyan-200 font-bold animate-pulse">
+                              👉 BƯỚC 2: Bấm vào 1 trong các cánh cửa đã bị loại (#{(oneShotState?.discardedDoorIds || []).join(", #")}) bên dưới để THAY VÀO (thay thế Cửa #{swapRemovedId}).
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSwapStep("SELECT_REMOVE");
+                                setSwapRemovedId(null);
+                              }}
+                              className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                            >
+                              Chọn lại cửa bỏ
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              }
+
+              if (osPhase === "OPEN_FINAL") {
+                return (
+                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-1.5 animate-bounce-in max-w-xl mx-auto">
+                    <div className="text-2xl animate-pulse">🚪✨</div>
+                    <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
+                      MỞ CÁNH CỬA QUYẾT ĐỊNH!
+                    </h4>
+                    <p className="text-[11px] text-white/90 max-w-md mx-auto">
+                      Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong các cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở và khám phá kết quả!
                     </p>
                   </div>
                 );
@@ -1892,30 +1999,55 @@ export default function MysteryQuestBoard({
             {/* Global SVG ClipPath for realistic door shape: arched top, pointed shield bottom */}
             <DoorClipPathDefinition />
 
-            <div className="grid grid-cols-5 gap-1 sm:gap-2.5 max-w-4xl mx-auto py-2">
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 sm:gap-2 max-w-5xl mx-auto py-2">
               {tiles.map((tile) => {
                 const effectiveSelectedDoorIds = hasLocalDoorActionRef.current
                   ? optimisticSelectedDoorIds
                   : (oneShotState?.selectedDoorIds || optimisticSelectedDoorIds);
                 const isSelected = Boolean(effectiveSelectedDoorIds.includes(tile.id));
+                const isDiscarded = Boolean((oneShotState?.discardedDoorIds || []).includes(tile.id));
+                const osPhase = oneShotState?.phase;
                 const isChosenFinal = oneShotState?.chosenFinalDoorId === tile.id;
                 const isBomb = tile.type !== "REWARD" && tile.type !== "ESCAPE_SAFE";
                 const isSteal = tile.effectType === "STEAL_POINTS";
                 const isEscapeSafe = tile.type === "ESCAPE_SAFE" || tile.effectType === "ESCAPE_SAFE";
-                const isStage2 = oneShotState?.phase === "STAGE_2_PICK" || oneShotState?.phase === "SCANNED";
-                const isPenaltyDecision = oneShotState?.phase === "PENALTY_DECISION";
+                const isStage2 = osPhase === "STAGE_2_PICK" || osPhase === "SELECT_2" || osPhase === "OPEN_FINAL";
+                const isPenaltyDecision = osPhase === "FINAL_DECISION" || osPhase === "PENALTY_DECISION";
 
-                const isCardOpened = tile.isOpened || ((isStage2 || isPenaltySurvivalMode) && optimisticOpenedIds.has(tile.id));
+                const isCardOpened = tile.isOpened || ((osPhase === "STAGE_2_PICK" || isPenaltySurvivalMode) && optimisticOpenedIds.has(tile.id));
 
                 const handleDoorClick = () => {
                   if (!canInteract || tile.isOpened) return;
 
                   if (isPenaltySurvivalMode) {
+                    if (osPhase === "SELECT_4" || osPhase === "SELECTING" || !osPhase) {
+                      handleTileClick(tile);
+                      return;
+                    }
+                    if (osPhase === "STAGE_2_PICK") {
+                      if (isSelected) {
+                        handleTileClick(tile);
+                      }
+                      return;
+                    }
+                    return;
+                  }
+
+                  // Normal Mode
+                  if (osPhase === "SELECT_4" || osPhase === "SELECTING" || !osPhase) {
+                    if (tile.isPeeked) return;
                     handleTileClick(tile);
                     return;
                   }
 
-                  if (isPenaltyDecision) {
+                  if (osPhase === "SELECT_2") {
+                    if (!isDiscarded) {
+                      handleTileClick(tile);
+                    }
+                    return;
+                  }
+
+                  if (osPhase === "FINAL_DECISION") {
                     if (swapStep === "SELECT_REMOVE") {
                       if (isSelected) {
                         setSwapRemovedId(tile.id);
@@ -1924,7 +2056,7 @@ export default function MysteryQuestBoard({
                       return;
                     }
                     if (swapStep === "SELECT_ADD") {
-                      if (!isSelected && !tile.isPeeked && swapRemovedId) {
+                      if (isDiscarded && swapRemovedId) {
                         onDoorsDecision?.({
                           decision: "SWAP_DOOR",
                           swapRemovedDoorId: swapRemovedId,
@@ -1935,19 +2067,20 @@ export default function MysteryQuestBoard({
                       }
                       return;
                     }
+                    // Green light: open directly
+                    if (swapStep === "IDLE" && oneShotState?.radarLight === "GREEN" && isSelected) {
+                      handleTileClick(tile);
+                      return;
+                    }
                     return;
                   }
 
-                  if (isStage2) {
+                  if (osPhase === "OPEN_FINAL") {
                     if (isSelected) {
                       handleTileClick(tile);
                     }
                     return;
                   }
-
-                  // Phase SELECTING:
-                  if (tile.isPeeked) return;
-                  handleTileClick(tile);
                 };
 
                 if (!isCardOpened) {
@@ -1958,25 +2091,36 @@ export default function MysteryQuestBoard({
                       onClick={handleDoorClick}
                       disabled={
                         !canInteract ||
+                        (isPenaltySurvivalMode && osPhase === "STAGE_2_PICK" && !isSelected) ||
                         (!isPenaltySurvivalMode && (
-                          (isStage2 && !isSelected) ||
-                          (isPenaltyDecision && swapStep === "IDLE") ||
-                          (swapStep === "SELECT_REMOVE" && !isSelected) ||
-                          (swapStep === "SELECT_ADD" && (isSelected || tile.isPeeked)) ||
-                          (!isStage2 && !isPenaltyDecision && tile.isPeeked)
+                          (osPhase === "SELECT_2" && isDiscarded) ||
+                          (osPhase === "STAGE_1_DECISION") ||
+                          (osPhase === "FINAL_DECISION" && swapStep === "IDLE" && oneShotState?.radarLight !== "GREEN") ||
+                          (osPhase === "FINAL_DECISION" && swapStep === "SELECT_REMOVE" && !isSelected) ||
+                          (osPhase === "FINAL_DECISION" && swapStep === "SELECT_ADD" && (!isDiscarded || tile.isPeeked)) ||
+                          (osPhase === "OPEN_FINAL" && !isSelected) ||
+                          (osPhase === "SELECT_4" && tile.isPeeked)
                         ))
                       }
                       style={{ clipPath: "url(#realisticDoorClip)" }}
-                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[28vh] sm:max-h-[32vh] p-0.5 sm:p-2 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
+                      className={`relative aspect-[2/3] sm:aspect-[3/4] max-h-[26vh] sm:max-h-[30vh] p-0.5 sm:p-1.5 flex flex-col items-center justify-between transition-all duration-300 overflow-hidden ${
                         isPenaltySurvivalMode
-                          ? canInteract
+                          ? osPhase === "STAGE_2_PICK"
+                            ? isSelected
+                              ? "scale-105 shadow-[0_0_35px_rgba(239,68,68,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-rose-400"
+                              : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
+                            : isSelected
+                            ? "scale-102 shadow-xl ring-2 ring-rose-400 cursor-pointer"
+                            : canInteract
                             ? "hover:scale-105 shadow-xl hover:shadow-rose-600/50 cursor-pointer group ring-1 ring-rose-500/40"
                             : "opacity-60 cursor-default"
-                          : isStage2
-                          ? isSelected
-                            ? "scale-105 shadow-[0_0_35px_rgba(250,204,21,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-yellow-400"
-                            : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
-                          : isPenaltyDecision
+                          : osPhase === "SELECT_2"
+                          ? isDiscarded
+                            ? "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
+                            : isSelected
+                            ? "scale-105 shadow-[0_0_30px_rgba(250,204,21,0.8)] ring-2 ring-yellow-400 cursor-pointer animate-pulse"
+                            : "hover:scale-103 shadow-lg hover:shadow-yellow-500/50 cursor-pointer ring-1 ring-yellow-400/50"
+                          : osPhase === "FINAL_DECISION"
                           ? swapStep === "SELECT_REMOVE"
                             ? isSelected
                               ? "scale-105 shadow-[0_0_25px_rgba(239,68,68,0.8)] ring-2 ring-red-400 cursor-pointer animate-pulse hover:scale-108"
@@ -1984,14 +2128,24 @@ export default function MysteryQuestBoard({
                             : swapStep === "SELECT_ADD"
                             ? tile.id === swapRemovedId
                               ? "opacity-40 ring-1 ring-red-400 grayscale cursor-not-allowed"
-                              : !isSelected && !tile.isPeeked
+                              : isDiscarded && !tile.isPeeked
                               ? "scale-105 shadow-[0_0_25px_rgba(16,185,129,0.8)] ring-2 ring-emerald-400 cursor-pointer animate-pulse hover:scale-108"
                               : "opacity-35 pointer-events-none cursor-not-allowed"
+                            : isSelected && oneShotState?.radarLight === "GREEN"
+                            ? "scale-105 shadow-[0_0_30px_rgba(16,185,129,0.8)] ring-2 ring-emerald-400 cursor-pointer animate-pulse"
                             : isSelected
                             ? "scale-102 shadow-xl ring-2 ring-amber-400 cursor-default"
+                            : isDiscarded
+                            ? "opacity-30 grayscale cursor-not-allowed"
                             : "opacity-60 cursor-default"
+                          : osPhase === "OPEN_FINAL"
+                          ? isSelected
+                            ? "scale-105 shadow-[0_0_35px_rgba(250,204,21,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-yellow-400"
+                            : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
                           : isSelected
                           ? "scale-102 shadow-xl ring-2 ring-amber-400 cursor-pointer"
+                          : isDiscarded
+                          ? "opacity-30 grayscale cursor-not-allowed"
                           : tile.isPeeked
                           ? "scale-98 opacity-90 ring-2 ring-cyan-400 cursor-not-allowed"
                           : canInteract
@@ -2003,7 +2157,7 @@ export default function MysteryQuestBoard({
                       <RealisticDoorArtwork
                         doorNumber={tile.id}
                         isSelected={isSelected}
-                        isStage2={isStage2}
+                        isStage2={osPhase === "STAGE_2_PICK" || osPhase === "SELECT_2" || osPhase === "OPEN_FINAL"}
                         isPeeked={tile.isPeeked}
                         isOpened={false}
                         canInteract={canInteract}
@@ -2011,56 +2165,80 @@ export default function MysteryQuestBoard({
                       />
 
                       {/* Overlay Header: Door # and Peek Badge */}
-                      <div className="w-full flex items-center justify-between z-10 px-0.5 sm:px-1 pt-0.5 sm:pt-1.5">
-                        <span className="w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-black/80 border border-amber-400/80 text-[8px] sm:text-[10px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md shrink-0">
+                      <div className="w-full flex items-center justify-between z-10 px-0.5 sm:px-1 pt-0.5 sm:pt-1">
+                        <span className="w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 rounded-full bg-black/80 border border-amber-400/80 text-[7.5px] sm:text-[9.5px] font-black text-amber-200 flex items-center justify-center font-mono shadow-md shrink-0">
                           #{tile.id}
                         </span>
                         {tile.isPeeked && (
-                          <span className="text-[5.5px] sm:text-[7.5px] font-black text-cyan-200 px-1 py-0.2 rounded-full bg-cyan-950/95 border border-cyan-400 animate-pulse shadow-md flex items-center gap-0.5 max-w-[85px] truncate">
+                          <span className="text-[5px] sm:text-[7px] font-black text-cyan-200 px-1 py-0.2 rounded-full bg-cyan-950/95 border border-cyan-400 animate-pulse shadow-md flex items-center gap-0.5 max-w-[80px] truncate">
                             <span>👁️</span>
                             <span className="truncate">KHÓA BẪY</span>
                           </span>
                         )}
                         {!tile.isPeeked && (
                           <>
-                            {isStage2 ? (
+                            {isPenaltySurvivalMode ? (
+                              osPhase === "STAGE_2_PICK" ? (
+                                isSelected ? (
+                                  <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-yellow-400 text-black animate-pulse">
+                                    MỞ ✨
+                                  </span>
+                                ) : (
+                                  <span className="text-[5px] sm:text-[6.5px] font-black px-1 py-0.5 rounded-full bg-stone-800 text-stone-400">
+                                    LOẠI ❌
+                                  </span>
+                                )
+                              ) : isSelected ? (
+                                <span className="text-[5.5px] sm:text-[7px] font-black px-1 py-0.2 rounded-full bg-rose-500 text-white font-extrabold truncate max-w-[60px]">
+                                  CHỌN 📦
+                                </span>
+                              ) : null
+                            ) : osPhase === "OPEN_FINAL" || (osPhase === "FINAL_DECISION" && oneShotState?.radarLight === "GREEN") ? (
                               isSelected ? (
-                                <span className="text-[6px] sm:text-[8px] font-black px-1 py-0.5 rounded-full bg-yellow-400 text-black animate-pulse">
+                                <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-yellow-400 text-black animate-pulse">
                                   MỞ ✨
                                 </span>
                               ) : (
-                                <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-stone-800 text-stone-400">
+                                <span className="text-[5px] sm:text-[6.5px] font-black px-1 py-0.5 rounded-full bg-stone-800 text-stone-400">
                                   LOẠI ❌
                                 </span>
                               )
-                            ) : isPenaltyDecision ? (
+                            ) : osPhase === "FINAL_DECISION" ? (
                               swapStep === "SELECT_REMOVE" ? (
                                 isSelected ? (
-                                  <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
+                                  <span className="text-[5px] sm:text-[7px] font-black px-1 py-0.5 rounded-full bg-red-600 text-white animate-pulse">
                                     BỎ ❌
                                   </span>
                                 ) : null
                               ) : swapStep === "SELECT_ADD" ? (
                                 tile.id === swapRemovedId ? (
-                                  <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-stone-700 text-stone-300">
+                                  <span className="text-[5px] sm:text-[7px] font-black px-1 py-0.5 rounded-full bg-stone-700 text-stone-300">
                                     BỎ RA 📤
                                   </span>
-                                ) : !isSelected && !tile.isPeeked ? (
-                                  <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold animate-pulse">
+                                ) : isDiscarded && !tile.isPeeked ? (
+                                  <span className="text-[5px] sm:text-[7px] font-black px-1 py-0.5 rounded-full bg-emerald-500 text-black font-extrabold animate-pulse">
                                     THAY ➕
                                   </span>
                                 ) : null
                               ) : isSelected ? (
-                                <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-amber-500 text-black font-extrabold truncate max-w-[65px]">
+                                <span className="text-[5px] sm:text-[7px] font-black px-1 py-0.5 rounded-full bg-amber-500 text-black font-extrabold truncate max-w-[60px]">
                                   #{tile.id} 📦
+                                </span>
+                              ) : isDiscarded ? (
+                                <span className="text-[5px] sm:text-[6.5px] font-black px-1 py-0.2 rounded-full bg-stone-800/80 text-stone-400">
+                                  BỎ
                                 </span>
                               ) : null
                             ) : isSelected ? (
-                              <span className="text-[5.5px] sm:text-[7.5px] font-black px-1 py-0.5 rounded-full bg-amber-500 text-black font-extrabold truncate max-w-[65px]">
-                                ĐÃ CHỌN #{tile.id} 📦
+                              <span className="text-[5px] sm:text-[7px] font-black px-1 py-0.5 rounded-full bg-amber-500 text-black font-extrabold truncate max-w-[60px]">
+                                ĐÃ CHỌN 📦
+                              </span>
+                            ) : isDiscarded ? (
+                              <span className="text-[5px] sm:text-[6.5px] font-black px-1 py-0.2 rounded-full bg-stone-800/80 text-stone-400">
+                                LOẠI
                               </span>
                             ) : canInteract ? (
-                              <span className="text-[6px] sm:text-[8px] font-black text-yellow-300 animate-pulse">
+                              <span className="text-[5.5px] sm:text-[7.5px] font-black text-yellow-300 animate-pulse">
                                 CHỌN ✨
                               </span>
                             ) : null}
@@ -3186,7 +3364,7 @@ export default function MysteryQuestBoard({
           const shouldDimBoard = Boolean(memoryPairsState?.promptSecondChance);
 
           return (
-            <div className={`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 gap-2 max-w-2xl mx-auto py-1 transition-opacity duration-300 ${
+            <div className={`grid grid-cols-4 gap-2 sm:gap-2.5 max-w-xl mx-auto py-1 transition-opacity duration-300 ${
               shouldDimBoard ? "opacity-40 pointer-events-none grayscale-30" : ""
             }`}>
               {tiles.map((tile) => {
@@ -3200,18 +3378,33 @@ export default function MysteryQuestBoard({
                   Number(memoryPairsState?.secondFlippedTileId) === Number(tile.id) ||
                   Number(memoryPairsState?.thirdFlippedTileId) === Number(tile.id);
                 const isCardOpened = tile.isOpened || optimisticOpenedIds.has(tile.id) || isKeptPenalty || isCurrentFlipped;
+
+                const priorFlippedId = memoryPairsState?.firstFlippedTileId;
+                let isAlreadyAttemptedPair = false;
+                if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
+                  const fId = Number(priorFlippedId);
+                  const sId = Number(tile.id);
+                  const pairMoveKey = `${Math.min(fId, sId)}-${Math.max(fId, sId)}`;
+                  if ((memoryPairsState?.attemptedPairs || []).includes(pairMoveKey)) {
+                    isAlreadyAttemptedPair = true;
+                  }
+                }
+                const isTileDisabled = isPairsLocked || isAlreadyAttemptedPair;
+
                 if (!isCardOpened) {
                   return (
                     <button
                       key={tile.id}
                       type="button"
                       onClick={() => handleTileClick(tile)}
-                      disabled={isPairsLocked}
+                      disabled={isTileDisabled}
                       className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 transition-all duration-300 ${
-                        !isPairsLocked
+                        !isTileDisabled
                           ? tile.isPeeked
                             ? "bg-gradient-to-b from-indigo-900/90 to-slate-950 border-emerald-400/80 ring-2 ring-emerald-400/40 hover:scale-102 shadow-xl group cursor-pointer"
                             : "bg-gradient-to-b from-indigo-900/80 to-slate-950 border-indigo-400/60 hover:border-amber-400 hover:scale-102 shadow-xl group cursor-pointer"
+                          : isAlreadyAttemptedPair
+                          ? "bg-rose-950/30 border-rose-500/40 opacity-45 cursor-not-allowed pointer-events-none"
                           : "bg-black/40 border-white/10 opacity-75 cursor-not-allowed pointer-events-none"
                       }`}
                     >
@@ -3219,20 +3412,24 @@ export default function MysteryQuestBoard({
                         <span className="w-4 h-4 rounded-full bg-black/60 border border-white/20 text-[9px] font-black text-white flex items-center justify-center font-mono">
                           #{tile.id}
                         </span>
-                        {tile.isPeeked && (
+                        {isAlreadyAttemptedPair ? (
+                          <span className="text-[7.5px] font-black text-rose-300 px-1 py-0.2 rounded bg-rose-950/90 border border-rose-500 shadow-md">
+                            🔒 ĐÃ THỬ
+                          </span>
+                        ) : tile.isPeeked ? (
                           <span className="text-[7px] font-black text-emerald-300 px-1.5 py-0.2 rounded bg-emerald-950/90 border border-emerald-400 animate-pulse shadow-md">
                             👁️ {tile.peekLabel || "AN TOÀN"} ✨
                           </span>
-                        )}
+                        ) : null}
                       </div>
 
-                      <div className="text-xl sm:text-2xl my-auto transition-transform duration-300 group-hover:scale-110 drop-shadow-md">
+                      <div className={`text-xl sm:text-2xl my-auto transition-transform duration-300 drop-shadow-md ${isAlreadyAttemptedPair ? "opacity-30 grayscale" : "group-hover:scale-110"}`}>
                         🃏
                       </div>
 
                       <div className="w-full text-center">
-                        <span className="text-[9px] sm:text-[10px] font-black text-white block truncate">
-                          {tile.label}
+                        <span className={`text-[9px] sm:text-[10px] font-black block truncate ${isAlreadyAttemptedPair ? "text-rose-400/70" : "text-white"}`}>
+                          {isAlreadyAttemptedPair ? "ĐÃ THỬ" : tile.label}
                         </span>
                       </div>
                     </button>

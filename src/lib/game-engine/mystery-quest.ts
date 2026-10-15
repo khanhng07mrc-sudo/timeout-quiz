@@ -549,10 +549,11 @@ export function getInitialMemoryPairsState(promo?: MysteryQuestState["promoPerk"
     secondFlippedTileId: null,
     thirdFlippedTileId: null,
     keptBombTileIds: [],
+    faceUpPenaltyTileIds: [],
     isBombRescueActive: false,
     activePenaltyPairKey: null,
     attemptsUsed: 0,
-    maxAttempts: perkType === "EXTRA_ATTEMPT_PROMO" ? 5 : 4,
+    maxAttempts: perkType === "EXTRA_ATTEMPT_PROMO" ? 6 : 5,
     matchedPairKey: null,
     isMismatchResolving: false,
     round: 1,
@@ -742,8 +743,357 @@ export function shuffleMemoryPairsTiles(tiles: MysteryTile[]): MysteryTile[] {
   }));
 }
 
+export interface TarotMinigameArchetype {
+  key: AncientTarotCardKey;
+  nameVi: string;
+  nameEn: string;
+  icon: string;
+  type: MysteryTileType;
+  effectType: MysteryTileEffectType;
+  storyTitle: string;
+  storyDescription: string;
+  deltaMultiplier: number;
+  deltaPoints: number;
+  isNegative: boolean;
+  isBomb?: boolean;
+  bombType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
+  givesShield?: boolean;
+  givesHeart?: boolean;
+  isSteal?: boolean;
+  stealFraction?: number;
+}
+
+export function getTarotMinigameArchetypePool(
+  basePoints: number = 20,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+    riskTier?: TeamRiskTier;
+  }
+): {
+  defaultPlus: TarotMinigameArchetype;
+  defaultMinus: TarotMinigameArchetype;
+  candidates: TarotMinigameArchetype[];
+} {
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+  const currentRound = options?.currentRound ?? 1;
+  const pBase = basePoints;
+  const pSun = basePoints * 2; // Capped strictly at 2x max ceiling
+  const pMedium = Math.round(basePoints * 1.5);
+  const pHalf = roundToMultipleOfFive(basePoints * 0.5);
+
+  const canSteal = currentRound >= 2 && Boolean(
+    options?.teams &&
+    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pHalf)
+  );
+
+  // 1. DEFAULT FIXED +1x: The Magician (Pháp Sư Khởi Nguyên)
+  const defaultPlus: TarotMinigameArchetype = {
+    key: "THE_MAGICIAN",
+    nameVi: "Pháp Sư Khởi Nguyên",
+    nameEn: "The Magician",
+    icon: "🪄",
+    type: "REWARD",
+    effectType: "BONUS_POINTS",
+    storyTitle: `🪄 Pháp Sư +${pBase}đ`,
+    storyDescription: `Pháp sư ban phước: Nhận an toàn +${pBase} điểm cơ bản!`,
+    deltaMultiplier: 1.0,
+    deltaPoints: pBase,
+    isNegative: false,
+  };
+
+  // 2. DEFAULT FIXED -1x: The Tower (Tháp Bẫy Sụp Đổ)
+  const towerPenalty = riskTier === "UNDERDOG" ? 0 : pBase;
+  const defaultMinus: TarotMinigameArchetype = {
+    key: "THE_TOWER",
+    nameVi: "Tháp Bẫy Sụp Đổ",
+    nameEn: "The Tower",
+    icon: "⚡",
+    type: "TRAP",
+    effectType: "LOSE_POINTS",
+    storyTitle: `⚡ Tháp Bẫy -${towerPenalty}đ`,
+    storyDescription: riskTier === "UNDERDOG"
+      ? "Tháp sụp đổ nhưng đội yếu thế được thần hộ mệnh bảo hộ (0đ phạt)!"
+      : `Dính bẫy tháp sụp đổ: Trừ -${towerPenalty} điểm cơ bản!`,
+    deltaMultiplier: riskTier === "UNDERDOG" ? 0 : -1.0,
+    deltaPoints: -towerPenalty,
+    isNegative: true,
+  };
+
+  // 12 CANDIDATES IN POOL:
+  const candidates: TarotMinigameArchetype[] = [
+    // 1. THE_SUN: +2x Base points (Strict 2x ceiling)
+    {
+      key: "THE_SUN",
+      nameVi: "Mặt Trời Vinh Quang",
+      nameEn: "The Sun",
+      icon: "☀️",
+      type: "REWARD",
+      effectType: "MULTIPLY_X2",
+      storyTitle: `☀️ Mặt Trời +${pSun}đ`,
+      storyDescription: `Ánh dương rực rỡ: Nhân đôi đại thưởng x2 điểm gốc (+${pSun}đ)!`,
+      deltaMultiplier: 2.0,
+      deltaPoints: pSun,
+      isNegative: false,
+    },
+    // 2. THE_EMPEROR: Shield Protection (+0.5x base)
+    {
+      key: "THE_EMPEROR",
+      nameVi: "Hoàng Đế Quyền Uy",
+      nameEn: "The Emperor",
+      icon: "🛡️",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: `🛡️ Khiên Thần +${pHalf}đ`,
+      storyDescription: `Uy quyền tối thượng: Trang bị 1 Khiên Thần phòng ngự và nhận +${pHalf}đ!`,
+      deltaMultiplier: 0.5,
+      deltaPoints: pHalf,
+      isNegative: false,
+      givesShield: true,
+    },
+    // 3. STRENGTH: Heart Recovery (+0.5x base)
+    {
+      key: "STRENGTH",
+      nameVi: "Sức Mạnh Phục Hồi",
+      nameEn: "Strength",
+      icon: "❤️",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: `❤️ Hồi 1 Tim +${pHalf}đ`,
+      storyDescription: `Nghị lực kiên cường: Hồi phục 1 Trái Tim phòng thủ và nhận +${pHalf}đ!`,
+      deltaMultiplier: 0.5,
+      deltaPoints: pHalf,
+      isNegative: false,
+      givesHeart: true,
+    },
+    // 4. THE_CHARIOT: Steal 50% base points (or +0.5x if cannot steal)
+    {
+      key: "THE_CHARIOT",
+      nameVi: "Cỗ Xe Đoạt Bảo",
+      nameEn: "The Chariot",
+      icon: "🗡️",
+      type: "REWARD",
+      effectType: canSteal ? "STEAL_POINTS" : "BONUS_POINTS",
+      storyTitle: canSteal ? `🗡️ Cướp 50% (+${pHalf}đ)` : `🗡️ Chiến Xa +${pHalf}đ`,
+      storyDescription: canSteal
+        ? `Đột kích chớp nhoáng: Cướp 50% điểm cơ bản (+${pHalf}đ) từ một đối thủ!`
+        : `Chiến xa viễn chinh: Nhận an toàn +${pHalf} điểm thưởng!`,
+      deltaMultiplier: 0.5,
+      deltaPoints: pHalf,
+      isNegative: false,
+      isSteal: canSteal,
+      stealFraction: 0.5,
+    },
+    // 5. THE_DEATH: Steal 100% (or 50% if stolen) or +1x if cannot steal
+    {
+      key: "THE_DEATH",
+      nameVi: "Thần Chết Đoạt Mệnh",
+      nameEn: "The Death",
+      icon: "💀",
+      type: "REWARD",
+      effectType: canSteal ? "STEAL_POINTS" : "BONUS_POINTS",
+      storyTitle: canSteal ? `💀 Đoạt Mệnh +${pBase}đ` : `💀 Phán Xét +${pBase}đ`,
+      storyDescription: canSteal
+        ? `Lưỡi hái định mệnh: Đoạt lấy +${pBase} điểm cơ bản từ đối thủ Top 1!`
+        : `Thần Chết chuyển hóa phước lành: Nhận an toàn +${pBase} điểm!`,
+      deltaMultiplier: 1.0,
+      deltaPoints: pBase,
+      isNegative: false,
+      isSteal: canSteal,
+      stealFraction: 1.0,
+    },
+    // 6. THE_FOOL: ±0đ Neutral
+    {
+      key: "THE_FOOL",
+      nameVi: "Kẻ Khờ Lãng Du",
+      nameEn: "The Fool",
+      icon: "🃏",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: "🃏 Kẻ Khờ ±0đ",
+      storyDescription: "Vô thưởng vô phạt: Giữ nguyên thế trận an toàn tuyệt đối (±0đ)!",
+      deltaMultiplier: 0,
+      deltaPoints: 0,
+      isNegative: false,
+    },
+    // 7. WHEEL_OF_FORTUNE: +1.5x Base points
+    {
+      key: "WHEEL_OF_FORTUNE",
+      nameVi: "Vòng Quay Định Mệnh",
+      nameEn: "Wheel of Fortune",
+      icon: "🎡",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: `🎡 Định Mệnh +${pMedium}đ`,
+      storyDescription: `Bánh xe luân chuyển: Thưởng may mắn +1.5x điểm cơ bản (+${pMedium}đ)!`,
+      deltaMultiplier: 1.5,
+      deltaPoints: pMedium,
+      isNegative: false,
+    },
+    // 8. THE_HIGH_PRIESTESS: +1x Base points
+    {
+      key: "THE_HIGH_PRIESTESS",
+      nameVi: "Nữ Tu Trí Tuệ",
+      nameEn: "The High Priestess",
+      icon: "🔮",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: `🔮 Nữ Tu +${pBase}đ`,
+      storyDescription: `Trực giác sáng suốt: Ban phước bình an nhận đủ +${pBase} điểm!`,
+      deltaMultiplier: 1.0,
+      deltaPoints: pBase,
+      isNegative: false,
+    },
+    // 9. TEMPERANCE: +1.5x Base points
+    {
+      key: "TEMPERANCE",
+      nameVi: "Tiết Độ Hài Hòa",
+      nameEn: "Temperance",
+      icon: "⚖️",
+      type: "REWARD",
+      effectType: "BONUS_POINTS",
+      storyTitle: `⚖️ Tiết Độ +${pMedium}đ`,
+      storyDescription: `Dung hợp năng lượng: Cân bằng thế trận nhận +1.5x điểm cơ bản (+${pMedium}đ)!`,
+      deltaMultiplier: 1.5,
+      deltaPoints: pMedium,
+      isNegative: false,
+    },
+    // 10. THE_DEVIL: Dark Bomb (Bom Hắc Ám - trừ chia đều đối thủ)
+    {
+      key: "THE_DEVIL",
+      nameVi: "Ác Ma Hắc Ám",
+      nameEn: "The Devil",
+      icon: "🌑",
+      type: "BOMB_DARK",
+      effectType: "LOSE_POINTS",
+      storyTitle: `🌑 Bom Tối -${pBase}đ`,
+      storyDescription: `Năng lượng hắc ám bùng phát: Phạt trừ -${pBase}đ chia đều cho các đối thủ!`,
+      deltaMultiplier: -1.0,
+      deltaPoints: -pBase,
+      isNegative: true,
+      isBomb: true,
+      bombType: "BOMB_DARK",
+    },
+    // 11. THE_HANGED_MAN: Charity Bomb (Bom Từ Thiện - chuyển tặng Top 1)
+    {
+      key: "THE_HANGED_MAN",
+      nameVi: "Kẻ Treo Ngược",
+      nameEn: "The Hanged Man",
+      icon: "🎁",
+      type: "BOMB_CHARITY",
+      effectType: "LOSE_POINTS",
+      storyTitle: "🎁 Bom Tặng",
+      storyDescription: "Hy sinh bất đắc dĩ: Phạt trừ điểm chuyển tặng trọn vẹn cho Top 1!",
+      deltaMultiplier: 0,
+      deltaPoints: 0,
+      isNegative: true,
+      isBomb: true,
+      bombType: "BOMB_CHARITY",
+    },
+    // 12. SMOKE_BOMB: Smoke Bomb (Bom Khói - mất sạch điểm câu này 0đ)
+    {
+      key: "THE_KNIGHT",
+      nameVi: "Hiệp Sĩ Khói Mù",
+      nameEn: "The Knight",
+      icon: "💨",
+      type: "BOMB_SMOKE",
+      effectType: "LOSE_POT_POINTS",
+      storyTitle: "💨 Bom Khói 0đ",
+      storyDescription: "Khói mù bao phủ: Mất sạch điểm câu hỏi hiện tại (0đ), bảo toàn tổng điểm!",
+      deltaMultiplier: 0,
+      deltaPoints: 0,
+      isNegative: true,
+      isBomb: true,
+      bombType: "BOMB_SMOKE",
+    },
+  ];
+
+  return { defaultPlus, defaultMinus, candidates };
+}
+
 /**
- * Generates tiles specifically for Variant 1: MEMORY_PAIRS (10 tiles = 5 pairs).
+ * Generates the 8 archetypes conforming strictly to:
+ * 1. Slot 1: Default Fixed +1x (The Magician)
+ * 2. Slot 2: Default Fixed -1x (The Tower; Underdog = 0đ)
+ * 3. Slot 3: The Fool (±0đ) - ALWAYS 1 SLOT FOR NEUTRAL / BALANCE REGARDLESS OF CONTEXT!
+ * 4. Number of negative slots is strictly 2 - 3 depending on round and situation:
+ *    - Round 1 OR Underdog: Exactly 2 negative slots (The Tower + Smoke Bomb 0đ).
+ *    - Round 2+ (Neutral / Dominant): Exactly 3 negative slots (The Tower + 2 Iconic Bombs).
+ * 5. High Multiplier is strictly capped at 2x max ceiling.
+ */
+export function generateTarotQuotaArchetypes(
+  basePoints: number = 20,
+  options?: {
+    currentRound?: number;
+    teams?: MysteryTeamRef[];
+    currentTeamId?: string;
+    riskTier?: TeamRiskTier;
+  }
+): {
+  defaultPlus: TarotMinigameArchetype;
+  defaultMinus: TarotMinigameArchetype;
+  quotaArchetypes: TarotMinigameArchetype[];
+  allEightArchetypes: TarotMinigameArchetype[];
+} {
+  const { defaultPlus, defaultMinus, candidates } = getTarotMinigameArchetypePool(basePoints, options);
+  const currentRound = options?.currentRound ?? 1;
+  const riskTier = options?.riskTier ?? "NEUTRAL";
+
+  const getCard = (key: AncientTarotCardKey): TarotMinigameArchetype => {
+    return candidates.find((c) => c.key === key) || candidates[0];
+  };
+
+  // 1. ALWAYS 1 SLOT FOR NEUTRAL / BALANCE (The Fool ±0đ)
+  const slotFool = getCard("THE_FOOL");
+
+  // 2. High Multiplier (Max 1 card: The Sun 2x, Wheel 1.5x, or Temperance 1.5x)
+  const highMultPool = [getCard("THE_SUN"), getCard("WHEEL_OF_FORTUNE"), getCard("TEMPERANCE")];
+  const slotHigh = highMultPool[Math.floor(Math.random() * highMultPool.length)];
+
+  // 3. Support / Vitality (The Emperor Shield or Strength Heart)
+  const supportPool = [getCard("THE_EMPEROR"), getCard("STRENGTH")];
+  const slotSupport = supportPool[Math.floor(Math.random() * supportPool.length)];
+
+  let quotaArchetypes: TarotMinigameArchetype[];
+
+  if (currentRound <= 1 || riskTier === "UNDERDOG") {
+    // ═════════════════════════════════════════════════════════════════════════
+    // ROUND 1 HOẶC UNDERDOG: ĐÚNG 2 SLOT TRỪ (Tower + Smoke Bomb 0đ)
+    // ═════════════════════════════════════════════════════════════════════════
+    const slotHazard2 = getCard("THE_KNIGHT"); // Smoke Bomb 0đ
+    const slotSafe1 = getCard("THE_HIGH_PRIESTESS"); // +1x
+    const slotSafe2 = getCard("TEMPERANCE"); // +1.5x
+    quotaArchetypes = [slotFool, slotHazard2, slotHigh, slotSupport, slotSafe1, slotSafe2];
+  } else {
+    // ═════════════════════════════════════════════════════════════════════════
+    // ROUND 2+ (NEUTRAL / DOMINANT): ĐÚNG 3 SLOT TRỪ (Tower + 2 Bombs)
+    // ═════════════════════════════════════════════════════════════════════════
+    const slotHazard2 = Math.random() < 0.5 ? getCard("THE_DEVIL") : getCard("THE_HANGED_MAN");
+    const slotHazard3 = slotHazard2.key === "THE_DEVIL" ? getCard("THE_HANGED_MAN") : getCard("THE_KNIGHT");
+
+    // Steal slot (Chariot 50% or Death 100%, fallback Priestess if cannot steal)
+    const stealCard = Math.random() < 0.6 ? getCard("THE_CHARIOT") : getCard("THE_DEATH");
+    const slotSteal = stealCard && stealCard.isSteal ? stealCard : getCard("THE_HIGH_PRIESTESS");
+
+    quotaArchetypes = [slotFool, slotHazard2, slotHazard3, slotHigh, slotSupport, slotSteal];
+  }
+
+  const allEightArchetypes = [defaultPlus, defaultMinus, ...quotaArchetypes];
+
+  return {
+    defaultPlus,
+    defaultMinus,
+    quotaArchetypes,
+    allEightArchetypes,
+  };
+}
+
+/**
+ * Generates tiles specifically for Variant 1: MEMORY_PAIRS (16 tiles = 8 pairs, 4x4 grid).
+ * Rules:
+ * - 8 pairs created according to the 8 Slot Quotas.
+ * - Duplicated to 16 cards, filling a 4x4 grid with zero empty spaces.
  */
 export function generateMemoryPairsTiles(
   basePoints: number = 20,
@@ -754,198 +1104,33 @@ export function generateMemoryPairsTiles(
     riskTier?: TeamRiskTier;
   }
 ): MysteryTile[] {
-  interface PairDef {
-    pairKey: string;
-    icon: string;
-    type: MysteryTileType;
-    storyTitle: string;
-    storyDescription: string;
-    effectType: MysteryTileEffectType;
-    deltaPoints: number;
-  }
-
-  const riskTier = options?.riskTier ?? "NEUTRAL";
-  const pBonusTop = basePoints * 2; // Siêu Thưởng Nhân Đôi (+20đ / +40đ / +60đ)
-  const pBonusHigh = riskTier === "UNDERDOG" ? basePoints * 2 : Math.round(basePoints * 1.5); // Đội yếu thế nhận kho báu lớn hơn
-  const pBonusMed = basePoints; // Thưởng Trung Bình Tinh Tú (+10đ / +20đ / +30đ)
-  const pSteal = basePoints; // Cặp Hải Tặc Đoạt Bảo (Cướp đúng điểm gốc câu hỏi)
-  const pPenalty = riskTier === "UNDERDOG" ? 0 : basePoints; // Cặp Kíp Nổ Hắc Ám: Đội yếu thế không bị trừ âm tổng điểm
-
-  const currentRound = options?.currentRound ?? 1;
-  const canSteal = currentRound >= 2 && Boolean(
-    options?.teams &&
-    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
-  );
-
-  const stealOrBonusPair: PairDef = canSteal
-    ? {
-        pairKey: "PAIR_STEAL",
-        icon: "🗡️",
-        type: "REWARD",
-        storyTitle: `🗡️ Cướp +${pSteal}đ`,
-        storyDescription: `Ghép trúng cặp cướp: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
-        effectType: "STEAL_POINTS",
-        deltaPoints: pSteal,
-      }
-    : {
-        pairKey: "PAIR_SHIELD",
-        icon: "🛡️",
-        type: "REWARD",
-        storyTitle: `🛡️ Khiên +${pSteal}đ`,
-        storyDescription: `Ghép trúng cặp khiên: Nhận an toàn +${pSteal} điểm thưởng!`,
-        effectType: "BONUS_POINTS",
-        deltaPoints: pSteal,
-      };
-
-  // Cặp Kíp Nổ / Bom: Tinh chỉnh theo bối cảnh đội (UNDERDOG / DOMINANT / NEUTRAL)
-  const bombPairDef: PairDef = riskTier === "UNDERDOG"
-    ? {
-        pairKey: "PAIR_BOMB",
-        icon: "💨",
-        type: "BOMB_SMOKE",
-        storyTitle: "💨 Kíp Nổ Khói 0đ",
-        storyDescription: "May mắn thoát hiểm! Kíp nổ chỉ giải phóng khói mù (0đ phạt tổng điểm)!",
-        effectType: "LOSE_POT_POINTS",
-        deltaPoints: 0,
-      }
-    : riskTier === "DOMINANT"
-    ? {
-        pairKey: "PAIR_BOMB",
-        icon: "🌑",
-        type: "BOMB_DARK",
-        storyTitle: `🌑 Kíp Nổ Hắc Ám -${pPenalty}đ`,
-        storyDescription: "Ghép trúng cặp kíp nổ hắc ám: Rút điểm chia đều cho các đối thủ!",
-        effectType: "LOSE_POINTS",
-        deltaPoints: -pPenalty,
-      }
-    : {
-        pairKey: "PAIR_BOMB",
-        icon: "💣",
-        type: "BOMB_MAJOR",
-        storyTitle: `💣 Kíp Nổ -${pPenalty}đ`,
-        storyDescription: "Ghép trúng cặp kíp nổ: Kích nổ bom hắc ám hủy diệt tổng điểm!",
-        effectType: "LOSE_POINTS",
-        deltaPoints: -pPenalty,
-      };
-
-  // Cặp Ngọc May Mắn (Thưởng tích cực dùng ở Round 1 để thay thế 1 cặp tiêu cực, bảo đảm tiêu cực < 20%)
-  const luckyGemPair: PairDef = {
-    pairKey: "PAIR_LUCKY_GEM",
-    icon: "🔮",
-    type: "REWARD",
-    storyTitle: `🔮 Ngọc Thần +${pBonusMed}đ`,
-    storyDescription: `Tìm thấy cặp ngọc thần phước lành: Nhận an toàn +${pBonusMed} điểm thưởng!`,
-    effectType: "BONUS_POINTS",
-    deltaPoints: pBonusMed,
-  };
-
-  // Danh sách 6 cặp thẻ (12 lá):
-  // - Round 1: 5 cặp tích cực + 1 cặp tiêu cực = 10 lá tích cực / 2 lá tiêu cực (2/12 = 16.7% < 20% tiêu cực!)
-  // - Round 2+: 4 cặp tích cực + 2 cặp tiêu cực = 8 lá tích cực / 4 lá tiêu cực (4/12 = 33.3% mức gốc, kèm tinh chỉnh loại bom)
-  const pairs: PairDef[] = currentRound <= 1
-    ? [
-        {
-          pairKey: "PAIR_MULTIPLY",
-          icon: "🚀",
-          type: "REWARD",
-          storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
-          storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
-          effectType: "MULTIPLY_X2",
-          deltaPoints: pBonusTop,
-        },
-        stealOrBonusPair,
-        {
-          pairKey: "PAIR_TREASURE",
-          icon: "💎",
-          type: "REWARD",
-          storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
-          storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pBonusHigh,
-        },
-        {
-          pairKey: "PAIR_STAR",
-          icon: "⭐",
-          type: "REWARD",
-          storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
-          storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pBonusMed,
-        },
-        luckyGemPair,
-        // Cặp tiêu cực duy nhất ở Round 1 (2/12 lá)
-        riskTier === "UNDERDOG"
-          ? {
-              pairKey: "PAIR_TRAP",
-              icon: "💨",
-              type: "BOMB_SMOKE",
-              storyTitle: "💨 Bẫy Khói 0đ",
-              storyDescription: "Kích hoạt bẫy khói: Mất điểm tích lũy câu này (0đ), bảo toàn tổng điểm!",
-              effectType: "LOSE_POT_POINTS",
-              deltaPoints: 0,
-            }
-          : bombPairDef,
-      ]
-    : [
-        {
-          pairKey: "PAIR_MULTIPLY",
-          icon: "🚀",
-          type: "REWARD",
-          storyTitle: `🚀 Nhân Đôi +${pBonusTop}đ`,
-          storyDescription: `Kích hoạt nhân đôi: Nhận nóng +${pBonusTop} điểm thưởng!`,
-          effectType: "MULTIPLY_X2",
-          deltaPoints: pBonusTop,
-        },
-        stealOrBonusPair,
-        {
-          pairKey: "PAIR_TREASURE",
-          icon: "💎",
-          type: "REWARD",
-          storyTitle: `💎 Kho Báu +${pBonusHigh}đ`,
-          storyDescription: `Tìm thấy cặp ngọc quý: Nhận ngay +${pBonusHigh} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pBonusHigh,
-        },
-        {
-          pairKey: "PAIR_STAR",
-          icon: "⭐",
-          type: "REWARD",
-          storyTitle: `⭐ May Mắn +${pBonusMed}đ`,
-          storyDescription: `Tìm thấy cặp sao may mắn: Nhận an toàn +${pBonusMed} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pBonusMed,
-        },
-        {
-          pairKey: "PAIR_TRAP",
-          icon: "💨",
-          type: "BOMB_SMOKE",
-          storyTitle: "💨 Bẫy Khói 0đ",
-          storyDescription: `Kích hoạt bẫy khói độc: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ)!`,
-          effectType: "LOSE_POT_POINTS",
-          deltaPoints: 0,
-        },
-        bombPairDef,
-      ];
+  const { allEightArchetypes } = generateTarotQuotaArchetypes(basePoints, options);
 
   const tileItems: Omit<MysteryTile, "id" | "label">[] = [];
-  pairs.forEach((p) => {
-    // Add 2 copies for each pair (total 12 cards)
+  allEightArchetypes.forEach((arch) => {
+    const pairKey = `PAIR_${arch.key}`;
+    // Duplicate 2 cards per pair
     for (let c = 0; c < 2; c++) {
       tileItems.push({
-        icon: p.icon,
+        icon: arch.icon,
         isOpened: false,
-        type: p.type,
-        storyTitle: p.storyTitle,
-        storyDescription: p.storyDescription,
-        effectType: p.effectType,
-        deltaPoints: p.deltaPoints,
-        pairKey: p.pairKey,
+        type: arch.type,
+        storyTitle: arch.storyTitle,
+        storyDescription: arch.storyDescription,
+        effectType: arch.effectType,
+        deltaPoints: arch.deltaPoints,
+        pairKey,
+        tarotCardKey: arch.key,
+        bombDoorType: arch.bombType,
+        givesShield: arch.givesShield,
+        givesHeart: arch.givesHeart,
+        stealFraction: arch.stealFraction,
       });
     }
   });
 
-  // Shuffle items
-  const shuffled = tileItems.sort(() => Math.random() - 0.5);
+  // Shuffle all 16 items
+  const shuffled = [...tileItems].sort(() => Math.random() - 0.5);
   return shuffled.map((item, idx) => ({
     ...item,
     id: idx + 1,
@@ -957,7 +1142,11 @@ export function generateMemoryPairsTiles(
  * Tạo 10 thẻ (5 cặp) cho MEMORY_PAIRS trong Chế độ Sinh Tử (khi trả lời sai):
  * - Chính xác 20% = 1 cặp Thoát Hiểm An Toàn 🕊️ (2 lá)
  * - Chính xác 80% = 4 cặp Bẫy / Bom 💀 (8 lá: Bẫy trừ gốc, Bom Khói, Bom Hắc Ám, Bom Từ Thiện)
- * - Tuyệt đối 0% cặp cộng điểm
+/**
+ * Tạo 16 thẻ (8 cặp, lưới 4x4) cho MEMORY_PAIRS trong Chế độ Sinh Tử (khi trả lời sai):
+ * - 25% An toàn (2 cặp): 1 Cặp Thoát Hiểm 🕊️ + 1 Cặp Chàng Khờ 🃏
+ * - 75% Bẫy/Bom (6 cặp): 2 Cặp Tòa Tháp ⚡ (-1x), 1 Cặp Bom Khói 💨 (-50%), 2 Cặp Bom Tối 🌑 (-1x), 1 Cặp Bom Từ Thiện 🎁
+ * - Khớp lưới 4x4 hoàn hảo, không còn ô trống thừa thãi!
  */
 export function generateSurvivalMemoryPairsTiles(
   basePoints: number = 20,
@@ -977,8 +1166,9 @@ export function generateSurvivalMemoryPairsTiles(
     storyDescription: string;
     effectType: MysteryTileEffectType;
     deltaPoints: number;
+    tarotCardKey?: AncientTarotCardKey;
   }> = [
-    // 1. Cặp Thoát Hiểm (20% - 1 cặp)
+    // 1. Cặp Thoát Hiểm An Toàn (🕊️)
     {
       pairKey: "PAIR_ESCAPE",
       icon: "🕊️",
@@ -988,29 +1178,52 @@ export function generateSurvivalMemoryPairsTiles(
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
     },
-    // 2. Cặp Bẫy Trừ Gốc
+    // 2. Cặp Chàng Khờ (🃏 The Fool - Safe 0đ)
     {
-      pairKey: "PAIR_TRAP_BASE",
-      icon: "⚠️",
-      type: "BOMB_MINOR",
-      storyTitle: `⚠️ Bẫy Trừ -${pPenalty}đ`,
-      storyDescription: `Ghép trúng bẫy tử thần: Bị trừ ${pPenalty} điểm gốc câu hỏi!`,
+      pairKey: "PAIR_THE_FOOL",
+      icon: "🃏",
+      type: "ESCAPE_SAFE",
+      storyTitle: "0. Chàng Khờ (The Fool)",
+      storyDescription: "Vô ưu vô lo! Thoát nạn bình an vô sự mà không chịu bất kỳ hình phạt nào (±0đ)!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+      tarotCardKey: "THE_FOOL",
+    },
+    // 3. Cặp Tòa Tháp Sụp Đổ #1 (⚡ -1x)
+    {
+      pairKey: "PAIR_THE_TOWER_1",
+      icon: "⚡",
+      type: "TRAP",
+      storyTitle: `XVI. Tòa Tháp (The Tower) -${pPenalty}đ`,
+      storyDescription: `Sấm sét giáng xuống! Ghép trúng Tòa Tháp: Bị trừ ${pPenalty} điểm (100% điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
+      tarotCardKey: "THE_TOWER",
     },
-    // 3. Cặp Bom Khói (Trừ 50% điểm gốc)
+    // 4. Cặp Tòa Tháp Sụp Đổ #2 (⚡ -1x)
+    {
+      pairKey: "PAIR_THE_TOWER_2",
+      icon: "⚡",
+      type: "TRAP",
+      storyTitle: `XVI. Tòa Tháp (The Tower) -${pPenalty}đ`,
+      storyDescription: `Cột trụ đổ sập! Ghép trúng Tòa Tháp: Bị trừ ${pPenalty} điểm (100% điểm gốc câu hỏi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      tarotCardKey: "THE_TOWER",
+    },
+    // 5. Cặp Bom Khói (💨 -50%)
     {
       pairKey: "PAIR_BOMB_SMOKE",
       icon: "💨",
       type: "BOMB_SMOKE",
       storyTitle: `💨 Bom Khói -${pSmokePenalty}đ`,
-      storyDescription: `Ghép trúng bẫy khói: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
+      storyDescription: `Ghép trúng bẫy khói mù: Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${pSmokePenalty}đ)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
     },
-    // 4. Cặp Bom Hắc Ám (Bom Tối - trừ điểm gốc câu hỏi)
+    // 6. Cặp Bom Tối #1 (🌑 -1x)
     {
-      pairKey: "PAIR_BOMB_DARK",
+      pairKey: "PAIR_BOMB_DARK_1",
       icon: "🌑",
       type: "BOMB_DARK",
       storyTitle: `🌑 Bom Tối -${pPenalty}đ`,
@@ -1018,7 +1231,17 @@ export function generateSurvivalMemoryPairsTiles(
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
     },
-    // 5. Cặp Bom Từ Thiện
+    // 7. Cặp Bom Tối #2 (🌑 -1x)
+    {
+      pairKey: "PAIR_BOMB_DARK_2",
+      icon: "🌑",
+      type: "BOMB_DARK",
+      storyTitle: `🌑 Bom Tối -${pPenalty}đ`,
+      storyDescription: `Hố đen năng lượng! Chế độ Sinh Tử phạt trừ ${pPenalty} điểm gốc câu hỏi!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+    },
+    // 8. Cặp Bom Từ Thiện (🎁)
     {
       pairKey: "PAIR_BOMB_CHARITY",
       icon: "🎁",
@@ -1042,6 +1265,7 @@ export function generateSurvivalMemoryPairsTiles(
         effectType: p.effectType,
         deltaPoints: p.deltaPoints,
         pairKey: p.pairKey,
+        tarotCardKey: p.tarotCardKey,
         isPeeked: false,
       });
     }
@@ -1060,10 +1284,17 @@ export function generateSurvivalMemoryPairsTiles(
  * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (3 doors).
  */
 /**
- * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (5 Cánh Cửa Bí Mật).
- * - 3 Cửa Thưởng: Hoàng Gia (+2x), Đoạt Bảo (+1x) / Kho Báu (+1.5x), Tinh Tú (+1x)
- * - 2 Cửa Trừ: Cửa Trừ Điểm Gốc (-1x) & Cửa Bom Ngẫu Nhiên (Khói / Hắc Ám / Từ Thiện)
- * - Mắt Thần (PEEK_PROMO): Tự động phát hiện vị trí Cửa Trừ Điểm Gốc và khóa không cho chọn.
+ * Generates tiles specifically for Variant 2: ONE_SHOT_DOORS (8 Cánh Cửa Bí Mật).
+ * Conforms strictly to the 8 Slot Quotas:
+ * - Slot 1: Default Fixed +1x (The Magician)
+ * - Slot 2: Default Fixed -1x (The Tower; Underdog = 0đ)
+ * - Slot 3: High Multiplier (Max 1 card: The Sun 2x, Wheel 1.5x, or Temperance 1.5x)
+ * - Slot 4: Support / Vitality (Max 1 card: The Emperor Shield or Strength Heart)
+ * - Slot 5: Rival Interaction / Steal (Round 1: +1x Priestess; Round 2+: Chariot 50% or Death 100%)
+ * - Slot 6: Neutral / Balance (The Fool ±0đ or Priestess +1x)
+ * - Slot 7: Safe Common Reward (Priestess +1x, Wheel +1.5x, or Temperance +1.5x)
+ * - Slot 8: Controlled Hazard (Round 1: 0 bombs -> Safe reward; Round 2+: Exactly 1 iconic bomb)
+ * Total = 8 doors.
  */
 export function generateOneShotDoorsTiles(
   basePoints: number = 20,
@@ -1075,186 +1306,40 @@ export function generateOneShotDoorsTiles(
     riskTier?: TeamRiskTier;
   }
 ): MysteryTile[] {
-  interface DoorDef {
-    icon: string;
-    type: MysteryTileType;
-    storyTitle: string;
-    storyDescription: string;
-    effectType: MysteryTileEffectType;
-    deltaPoints: number;
-    isBasePenalty?: boolean;
-    isBombDoor?: boolean;
-    bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
-  }
-
-  const riskTier = options?.riskTier ?? "NEUTRAL";
-  const currentRound = options?.currentRound ?? 1;
-  const currentTeam = options?.teams?.find((t) => t.id === options?.currentTeamId);
-  const currentTeamScore = currentTeam?.score || 0;
-
-  const pHigh = basePoints * 2; // Cửa Hoàng Gia: 20đ với câu 10đ, 40đ với 20đ, 60đ với 30đ
-  const pSteal = basePoints; // Cửa Đoạt Bảo: Cướp đúng điểm gốc câu hỏi (10đ/20đ/30đ)
-  const pTreasure = riskTier === "UNDERDOG" ? basePoints * 2 : Math.round(basePoints * 1.5); // Kho Báu thay thế nếu không có đối thủ đủ điểm cướp
-  const pNormal = basePoints; // Cửa Tinh Tú: +10đ/+20đ/+30đ
-  const pPenalty = riskTier === "UNDERDOG" ? 0 : basePoints; // Cửa Trừ Gốc: Đội yếu thế không bị trừ âm tổng điểm
-
-  const canSteal = currentRound >= 2 && Boolean(
-    options?.teams &&
-    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pSteal)
-  );
-
-  const stealOrBonusDoor: DoorDef = canSteal
-    ? {
-        icon: "🗡️",
-        type: "REWARD",
-        storyTitle: `🗡️ Cướp +${pSteal}đ`,
-        storyDescription: `Kích hoạt cướp: Cướp +${pSteal}đ từ một đối thủ đủ điều kiện!`,
-        effectType: "STEAL_POINTS",
-        deltaPoints: pSteal,
-      }
-    : {
-        icon: "💎",
-        type: "REWARD",
-        storyTitle: `💎 Kho Báu +${pTreasure}đ`,
-        storyDescription: `Mở ra kho báu: Nhận an toàn +${pTreasure} điểm thưởng!`,
-        effectType: "BONUS_POINTS",
-        deltaPoints: pTreasure,
-      };
-
-  // Cửa Bom Ngẫu Nhiên: Tích hợp cân bằng động theo Round & Thế trận
-  const selectedBombType = rollBombTypeForMinigame("ONE_SHOT_DOORS", currentTeamScore, {
-    currentRound,
-    riskTier,
-  });
-
-  // Cửa Khiên Thần May Mắn: Thưởng an toàn thay thế Cửa Bẫy ở Round 1 để bảo đảm chỉ 1/5 cửa tiêu cực (20%)
-  const luckyShieldDoor: DoorDef = {
-    icon: "🛡️",
-    type: "REWARD",
-    storyTitle: `🛡️ Khiên Thần +${pNormal}đ`,
-    storyDescription: `Mở trúng cánh cửa phước lành: Nhận an toàn +${pNormal} điểm thưởng!`,
-    effectType: "BONUS_POINTS",
-    deltaPoints: pNormal,
-  };
-
-  // Cửa Bẫy Trừ Gốc: Ở Round 2+, đội Yếu Thế (UNDERDOG) được bảo toàn điểm số (0đ phạt)
-  const baseTrapDoor: DoorDef = riskTier === "UNDERDOG"
-    ? {
-        icon: "💨",
-        type: "BOMB_SMOKE",
-        storyTitle: "💨 Cửa Khói Thoát Hiểm 0đ",
-        storyDescription: "May mắn thoát hiểm! Cửa bẫy chỉ giải phóng khói mù (0đ phạt tổng điểm)!",
-        effectType: "LOSE_POT_POINTS",
-        deltaPoints: 0,
-        isBasePenalty: true,
-      }
-    : {
-        icon: "⚠️",
-        type: "BOMB_MINOR",
-        storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
-        storyDescription: `Dính bẫy phạt: Trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
-        effectType: "LOSE_POINTS",
-        deltaPoints: -pPenalty,
-        isBasePenalty: true,
-      };
-
-  // Cửa Bom Duy Nhất / Ngẫu Nhiên: Đội UNDERDOG luôn được hưởng Bom Khói 0đ
-  const bombDoorDef: DoorDef = {
-    icon: "💣",
-    type: "BOMB_MAJOR",
-    storyTitle: "💣 Cửa Bom",
-    storyDescription: "Dính bẫy ngầm ma thuật: Kích nổ bom bất ngờ mang hiệu ứng đặc biệt!",
-    effectType: "LOSE_POINTS",
-    deltaPoints: riskTier === "UNDERDOG" ? 0 : -pPenalty,
-    isBombDoor: true,
-    bombDoorType: selectedBombType,
-  };
-
-  // Danh sách 5 cánh cửa:
-  // - Round 1: 4 cửa tích cực + 1 cửa tiêu cực = 1/5 = 20% tiêu cực (đúng quy chuẩn < 20%)
-  // - Round 2+: 3 cửa tích cực + 2 cửa tiêu cực = 2/5 = 40% tiêu cực (mức gốc, kèm tinh chỉnh thế trận)
-  const doors: DoorDef[] = currentRound <= 1
-    ? [
-        // 1. Cửa Hoàng Gia (+2x basePoints)
-        {
-          icon: "👑",
-          type: "REWARD",
-          storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
-          storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pHigh,
-        },
-        // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
-        stealOrBonusDoor,
-        // 3. Cửa Tinh Tú (+1x basePoints)
-        {
-          icon: "⭐",
-          type: "REWARD",
-          storyTitle: `⭐ May Mắn +${pNormal}đ`,
-          storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pNormal,
-        },
-        // 4. Cửa Khiên Thần May Mắn (Tích cực ở Round 1)
-        luckyShieldDoor,
-        // 5. Cửa Tiêu Cực duy nhất ở Round 1 (1/5 cửa = 20%)
-        bombDoorDef,
-      ]
-    : [
-        // 1. Cửa Hoàng Gia (+2x basePoints)
-        {
-          icon: "👑",
-          type: "REWARD",
-          storyTitle: `👑 Đại Thưởng +${pHigh}đ`,
-          storyDescription: `Mở đúng cánh cửa vinh quang: Nhận ngay +${pHigh} điểm thưởng siêu cấp!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pHigh,
-        },
-        // 2. Cửa Đoạt Bảo / Kho Báu (+1x steal hoặc +1.5x)
-        stealOrBonusDoor,
-        // 3. Cửa Tinh Tú (+1x basePoints)
-        {
-          icon: "⭐",
-          type: "REWARD",
-          storyTitle: `⭐ May Mắn +${pNormal}đ`,
-          storyDescription: `Mở trúng cánh cửa may mắn: Nhận an toàn +${pNormal} điểm thưởng!`,
-          effectType: "BONUS_POINTS",
-          deltaPoints: pNormal,
-        },
-        // 4. Cửa Bẫy Trừ Điểm Gốc (-1x basePoints hoặc Thoát hiểm nếu UNDERDOG)
-        baseTrapDoor,
-        // 5. Cửa Bẫy Bom Ngẫu Nhiên
-        bombDoorDef,
-      ];
-
-  const shuffled = [...doors].sort(() => Math.random() - 0.5);
+  const { allEightArchetypes } = generateTarotQuotaArchetypes(basePoints, options);
   const hasPeekPerk = options?.promoPerk && getPerkType(options.promoPerk) === "PEEK_PROMO";
 
-  return shuffled.map((d, idx) => {
-    const isPeekedDoor = Boolean(hasPeekPerk && d.isBasePenalty);
+  const shuffled = [...allEightArchetypes].sort(() => Math.random() - 0.5);
+
+  return shuffled.map((arch, idx) => {
+    const isPeekedDoor = Boolean(hasPeekPerk && arch.key === "THE_TOWER");
     return {
       id: idx + 1,
       label: `Cửa #${idx + 1}`,
-      icon: d.icon,
+      icon: arch.icon,
       isOpened: false,
-      type: d.type,
-      storyTitle: d.storyTitle,
-      storyDescription: d.storyDescription,
-      effectType: d.effectType,
-      deltaPoints: d.deltaPoints,
+      type: arch.type,
+      storyTitle: arch.storyTitle,
+      storyDescription: arch.storyDescription,
+      effectType: arch.effectType,
+      deltaPoints: arch.deltaPoints,
+      tarotCardKey: arch.key,
+      bombDoorType: arch.bombType,
+      givesShield: arch.givesShield,
+      givesHeart: arch.givesHeart,
+      stealFraction: arch.stealFraction,
       isPeeked: isPeekedDoor,
-      peekLabel: isPeekedDoor ? `⚠️ Cửa Bẫy -${pPenalty}đ` : undefined,
-      peekIcon: isPeekedDoor ? "⚠️" : undefined,
-      bombDoorType: d.bombDoorType,
+      peekLabel: isPeekedDoor ? `⚡ Tháp Bẫy -${Math.abs(arch.deltaPoints)}đ` : undefined,
+      peekIcon: isPeekedDoor ? "⚡" : undefined,
     };
   });
 }
 
 /**
- * Tạo 5 cánh cửa cho Chế độ Sinh Tử (khi trả lời sai):
- * - Chính xác 20% = 1 Cửa Thoát Hiểm An Toàn (Giữ điểm, bảo toàn tim)
- * - Chính xác 80% = 4 Cửa Bẫy / Bom (Bẫy trừ điểm gốc, Bom Khói -50% gốc, Bom Hắc Ám, Bom Từ Thiện)
- * - Tuyệt đối 0% cửa cộng điểm
+ * Tạo 8 cánh cửa cho ONE_SHOT_DOORS trong Chế độ Sinh Tử (khi trả lời sai):
+ * - 25% An toàn (2 cửa): 1 Cửa Thoát Hiểm An Toàn 🕊️ + 1 Cửa Chàng Khờ 🃏 (±0đ)
+ * - 75% Bẫy/Bom (6 cửa): 2 Cửa Tòa Tháp ⚡ (-1x), 1 Cửa Bom Khói 💨 (-50%), 2 Cửa Bom Tối 🌑 (-1x), 1 Cửa Bom Từ Thiện 🎁
+ * - Khớp lưới 8 cửa hoàn hảo, không còn ô trống thừa thãi!
  */
 export function generateSurvivalOneShotDoorsTiles(
   basePoints: number = 20,
@@ -1273,11 +1358,12 @@ export function generateSurvivalOneShotDoorsTiles(
     storyDescription: string;
     effectType: MysteryTileEffectType;
     deltaPoints: number;
+    tarotCardKey?: AncientTarotCardKey;
     isBasePenalty?: boolean;
     isBombDoor?: boolean;
     bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY";
   }> = [
-    // 1. Cửa Thoát Hiểm An Toàn (20% - 1 cửa duy nhất)
+    // 1. Cửa Thoát Hiểm An Toàn (🕊️)
     {
       icon: "🕊️",
       type: "ESCAPE_SAFE",
@@ -1286,17 +1372,39 @@ export function generateSurvivalOneShotDoorsTiles(
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
     },
-    // 2. Cửa Bẫy Trừ Điểm Gốc
+    // 2. Cửa Chàng Khờ (🃏 The Fool - Safe 0đ)
     {
-      icon: "⚠️",
-      type: "BOMB_MINOR",
-      storyTitle: `⚠️ Cửa Bẫy -${pPenalty}đ`,
-      storyDescription: `Dính bẫy phạt sinh tử: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
+      icon: "🃏",
+      type: "ESCAPE_SAFE",
+      storyTitle: "0. Chàng Khờ (The Fool)",
+      storyDescription: "Vô ưu vô lo! Mở đúng cánh cửa Kẻ Khờ, thoát nạn an toàn tuyệt đối mà không mất điểm hay tim (±0đ)!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+      tarotCardKey: "THE_FOOL",
+    },
+    // 3. Cửa Tòa Tháp Sụp Đổ #1 (⚡ -1x)
+    {
+      icon: "⚡",
+      type: "TRAP",
+      storyTitle: `XVI. Tòa Tháp (The Tower) -${pPenalty}đ`,
+      storyDescription: `Sấm sét giáng xuống! Dính bẫy Tòa Tháp: Bị trừ ${pPenalty} điểm (100% điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
       isBasePenalty: true,
+      tarotCardKey: "THE_TOWER",
     },
-    // 3. Cửa Bom Khói (Trừ 50% điểm gốc)
+    // 4. Cửa Tòa Tháp Sụp Đổ #2 (⚡ -1x)
+    {
+      icon: "⚡",
+      type: "TRAP",
+      storyTitle: `XVI. Tòa Tháp (The Tower) -${pPenalty}đ`,
+      storyDescription: `Cột trụ đổ sập! Dính bẫy Tòa Tháp: Bị trừ ${pPenalty} điểm (100% điểm gốc câu hỏi)!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      isBasePenalty: true,
+      tarotCardKey: "THE_TOWER",
+    },
+    // 5. Cửa Bom Khói (💨 -50%)
     {
       icon: "💨",
       type: "BOMB_SMOKE",
@@ -1307,7 +1415,7 @@ export function generateSurvivalOneShotDoorsTiles(
       isBombDoor: true,
       bombDoorType: "BOMB_SMOKE",
     },
-    // 4. Cửa Bom Hắc Ám (Bom Tối - trừ điểm gốc câu hỏi)
+    // 6. Cửa Bom Hắc Ám #1 (🌑 -1x)
     {
       icon: "🌑",
       type: "BOMB_DARK",
@@ -1318,7 +1426,18 @@ export function generateSurvivalOneShotDoorsTiles(
       isBombDoor: true,
       bombDoorType: "BOMB_DARK",
     },
-    // 5. Cửa Bom Từ Thiện (Tặng Top 1)
+    // 7. Cửa Bom Hắc Ám #2 (🌑 -1x)
+    {
+      icon: "🌑",
+      type: "BOMB_DARK",
+      storyTitle: `🌑 Bom Tối -${pPenalty}đ`,
+      storyDescription: `Hố đen năng lượng! Chế độ Sinh Tử phạt trừ ${pPenalty} điểm gốc câu hỏi!`,
+      effectType: "LOSE_POINTS",
+      deltaPoints: -pPenalty,
+      isBombDoor: true,
+      bombDoorType: "BOMB_DARK",
+    },
+    // 8. Cửa Bom Từ Thiện (🎁)
     {
       icon: "🎁",
       type: "BOMB_CHARITY",
@@ -1343,7 +1462,9 @@ export function generateSurvivalOneShotDoorsTiles(
     storyDescription: d.storyDescription,
     effectType: d.effectType,
     deltaPoints: d.deltaPoints,
-    isPeeked: false,
+    tarotCardKey: d.tarotCardKey,
+    isBasePenalty: d.isBasePenalty,
+    isBombDoor: d.isBombDoor,
     bombDoorType: d.bombDoorType,
   }));
 }
@@ -1686,8 +1807,8 @@ export function generateNextPushYourLuckCard({
 
 /**
  * Tạo lá bài cho PUSH_YOUR_LUCK trong Chế độ Sinh Tử (khi trả lời sai):
- * - Chính xác 20% = Lá Thoát Hiểm An Toàn 🕊️ (Giữ điểm, bảo toàn tim)
- * - Chính xác 80% = Lá Bẫy / Bom 💀 (Bẫy trừ gốc, Bom Khói, Bom Hắc Ám, Bom Từ Thiện)
+ * - 25% An Toàn: 12.5% Lá Thoát Hiểm 🕊️ + 12.5% Chàng Khờ 🃏 (±0đ)
+ * - 75% Bẫy / Bom: 25% Tòa Tháp ⚡ (-1x), 12.5% Bom Khói 💨 (-50%), 25% Bom Tối 🌑 (-1x), 12.5% Bom Từ Thiện 🎁
  * - Tuyệt đối 0% lá cộng điểm
  */
 export function generateSurvivalPushYourLuckCard({
@@ -1710,8 +1831,8 @@ export function generateSurvivalPushYourLuckCard({
   const pSmokePenalty = roundToMultipleOfFive(basePoints * 0.5);
   const rand = Math.random();
 
-  // 20% Thoát Hiểm An Toàn
-  if (rand < 0.20) {
+  // 1. 12.5% Thoát Hiểm An Toàn (🕊️)
+  if (rand < 0.125) {
     return {
       id,
       label,
@@ -1719,28 +1840,46 @@ export function generateSurvivalPushYourLuckCard({
       isOpened: false,
       type: "ESCAPE_SAFE",
       storyTitle: "🕊️ Thoát Hiểm",
-      storyDescription: "Thần may mắn mỉm cười! Lật trúng lá Thoát Hiểm ngoạn mục, bảo toàn nguyên vẹn điểm số và tim!",
+      storyDescription: "Thần may mắn mỉm cười! Rút trúng lá Thoát Hiểm ngoạn mục, bảo toàn nguyên vẹn điểm số và tim!",
       effectType: "BONUS_POINTS",
       deltaPoints: 0,
     };
   }
 
-  // 80% Bẫy / Bom (chia 4 loại đều nhau: 20% mỗi loại)
-  if (rand < 0.40) {
-    // Bẫy Trừ Gốc
+  // 2. 12.5% Chàng Khờ (🃏 The Fool - Safe 0đ)
+  if (rand < 0.25) {
     return {
       id,
       label,
-      icon: "⚠️",
+      icon: "🃏",
+      isOpened: false,
+      type: "ESCAPE_SAFE",
+      storyTitle: "0. Chàng Khờ (The Fool)",
+      storyDescription: "Vô ưu vô lo! Rút trúng lá Chàng Khờ, thoát nạn an toàn tuyệt đối mà không mất điểm hay tim (±0đ)!",
+      effectType: "BONUS_POINTS",
+      deltaPoints: 0,
+      tarotCardKey: "THE_FOOL",
+    };
+  }
+
+  // 3. 25% Tòa Tháp Sụp Đổ (⚡ -1x)
+  if (rand < 0.50) {
+    return {
+      id,
+      label,
+      icon: "⚡",
       isOpened: false,
       type: "TRAP",
-      storyTitle: `⚠️ Bẫy Trừ -${pPenalty}đ`,
-      storyDescription: `Dính phải bẫy tử thần: Bị trừ ${pPenalty} điểm (đúng bằng điểm gốc câu hỏi)!`,
+      storyTitle: `XVI. Tòa Tháp (The Tower) -${pPenalty}đ`,
+      storyDescription: `Sấm sét giáng xuống! Rút phải Tòa Tháp sụp đổ: Bị trừ ${pPenalty} điểm (100% điểm gốc câu hỏi)!`,
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
+      tarotCardKey: "THE_TOWER",
     };
-  } else if (rand < 0.60) {
-    // Bom Khói (trừ 50% điểm gốc)
+  }
+
+  // 4. 12.5% Bom Khói (💨 -50%)
+  if (rand < 0.625) {
     return {
       id,
       label,
@@ -1752,8 +1891,10 @@ export function generateSurvivalPushYourLuckCard({
       effectType: "LOSE_POINTS",
       deltaPoints: -pSmokePenalty,
     };
-  } else if (rand < 0.80) {
-    // Bom Hắc Ám (Bom Tối - trừ điểm gốc câu hỏi)
+  }
+
+  // 5. 25% Bom Tối (🌑 -1x)
+  if (rand < 0.875) {
     return {
       id,
       label,
@@ -1765,20 +1906,20 @@ export function generateSurvivalPushYourLuckCard({
       effectType: "LOSE_POINTS",
       deltaPoints: -pPenalty,
     };
-  } else {
-    // Bom Từ Thiện
-    return {
-      id,
-      label,
-      icon: "🎁",
-      isOpened: false,
-      type: "BOMB_CHARITY",
-      storyTitle: "🎁 Bom Tặng",
-      storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
-      effectType: "LOSE_POINTS",
-      deltaPoints: 0,
-    };
   }
+
+  // 6. 12.5% Bom Từ Thiện (🎁)
+  return {
+    id,
+    label,
+    icon: "🎁",
+    isOpened: false,
+    type: "BOMB_CHARITY",
+    storyTitle: "🎁 Bom Tặng",
+    storyDescription: "Lòng tốt bất đắc dĩ: Phạt theo mức thấp hơn giữa 50% điểm đội và 1.5x điểm câu, chuyển tặng cho Top 1!",
+    effectType: "LOSE_POINTS",
+    deltaPoints: 0,
+  };
 }
 
 /**
@@ -1913,10 +2054,11 @@ export function generateMysteryStageForTurn({
         secondFlippedTileId: null,
         thirdFlippedTileId: null,
         keptBombTileIds: [],
+        faceUpPenaltyTileIds: [],
         isBombRescueActive: false,
         activePenaltyPairKey: null,
         attemptsUsed: 0,
-        maxAttempts: promoPerk === "EXTRA_ATTEMPT_PROMO" ? 5 : 4,
+        maxAttempts: getPerkType(promoPerk) === "EXTRA_ATTEMPT_PROMO" ? 6 : 5,
         matchedPairKey: null,
         isMismatchResolving: false,
         round: 1,
@@ -1929,9 +2071,12 @@ export function generateMysteryStageForTurn({
       oneShotState = {
         chosenTileId: undefined,
         selectedDoorIds: [],
+        discardedDoorIds: [],
         penaltyDoorsCount: undefined,
         hasBombDetected: false,
-        phase: "SELECTING",
+        phase: "SELECT_4",
+        radarLight: undefined,
+        radarLightStep1: undefined,
         revealedSafeDoorIds: [],
         chosenFinalDoorId: undefined,
         allRevealed: false,
@@ -2039,9 +2184,12 @@ export function startSurvivalPenaltyMinigame({
       state.oneShotState = {
         chosenTileId: undefined,
         selectedDoorIds: [],
+        discardedDoorIds: [],
         penaltyDoorsCount: undefined,
         hasBombDetected: false,
-        phase: "SELECTING",
+        radarLight: undefined,
+        radarLightStep1: undefined,
+        phase: "SELECT_4",
         revealedSafeDoorIds: [],
         chosenFinalDoorId: undefined,
         allRevealed: false,
@@ -2072,10 +2220,12 @@ export function startSurvivalPenaltyMinigame({
         secondFlippedTileId: null,
         thirdFlippedTileId: null,
         keptBombTileIds: [],
+        faceUpPenaltyTileIds: [],
         isBombRescueActive: false,
         activePenaltyPairKey: null,
         attemptsUsed: 0,
-        maxAttempts: 4,
+        maxAttempts: 999, // Sudden Death: không giới hạn lượt cho tới khi ghép trúng cặp đầu tiên!
+        attemptedPairs: [],
         matchedPairKey: null,
         isMismatchResolving: false,
         round: 1,
@@ -2172,15 +2322,20 @@ export function handleFlipCard({
 
     // ═════════════════════════════════════════════════════════════════════════
     // CHẾ ĐỘ SINH TỬ (SURVIVAL PENALTY MODE) - LẬT CẶP KHI TRẢ LỜI SAI:
-    // - 1 lần chơi duy nhất (Vòng 1, tối đa 4 lượt, không có second chance)
-    // - Tất cả lá khi lật lên đều luôn để ngửa trên bàn (isOpened = true)
-    // - Ghép trúng cặp Thoát Hiểm (PAIR_ESCAPE) -> Thoát hiểm (0đ, không trừ gì cả)
-    // - Gom trúng 2 lá tiêu cực cùng loại -> Kích hoạt lượt giải cứu để chọn 2 lá
-    //   đổi sang hình phạt mới (nếu ghép được 2 lá giống nhau), nếu không sẽ giữ hình phạt cũ!
+    // - Sudden Death: Không giới hạn lượt, chơi cho đến khi ghép trúng CẶP ĐẦU TIÊN!
+    // - Ghép trúng Cặp Thoát Hiểm 🕊️ hoặc Chàng Khờ 🃏 -> Thoát hiểm (0đ phạt, bảo toàn tim)!
+    // - Ghép trúng Cặp Bẫy/Bom -> Thực thi hình phạt ngay lập tức và kết thúc lượt!
+    // - Toàn bộ Perk bị vô hiệu hoá.
     // ═════════════════════════════════════════════════════════════════════════
     if (state.isPenaltySurvivalMode) {
       const isEscapeTile = (t: MysteryTile | undefined | null) =>
-        Boolean(t && (t.pairKey === "PAIR_ESCAPE" || t.type === "ESCAPE_SAFE"));
+        Boolean(
+          t &&
+            (t.pairKey === "PAIR_ESCAPE" ||
+              t.pairKey === "PAIR_THE_FOOL" ||
+              t.tarotCardKey === "THE_FOOL" ||
+              t.type === "ESCAPE_SAFE")
+        );
 
       const executeSurvivalEscape = () => {
         state.tiles.forEach((t) => { t.isOpened = true; });
@@ -2192,7 +2347,7 @@ export function handleFlipCard({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#10b981",
-          rewardText: "🕊️ Thoát Hiểm Thành Công! Mở trúng cặp Thoát Hiểm An Toàn, bảo toàn nguyên vẹn điểm số và tim (0đ)!",
+          rewardText: "🕊️ Kỳ Tích Sinh Tử! Bạn đã ghép thành công cặp Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
           scoreDelta: 0,
           oldScore,
           newScore: oldScore,
@@ -2205,22 +2360,11 @@ export function handleFlipCard({
         };
       };
 
-      const executeSurvivalPenalty = (penaltyKey: string, cancelOldKey?: string | null) => {
+      const executeSurvivalPenalty = (penaltyKey: string) => {
         state.tiles.forEach((t) => { t.isOpened = true; });
 
-        const getCancelName = (k: string) => {
-          if (k === "PAIR_BOMB_DARK") return "Bom Tối";
-          if (k === "PAIR_BOMB_SMOKE") return "Bom Khói";
-          if (k === "PAIR_BOMB_CHARITY") return "Bom Tặng";
-          if (k === "PAIR_TRAP_BASE") return "Bẫy Trừ Gốc";
-          return "Hình Phạt";
-        };
-
-        const cancelPrefix = cancelOldKey
-          ? `⚠️ ĐÃ HỦY BỎ ${getCancelName(cancelOldKey).toUpperCase()} CŨ! Thực hiện phạt theo cặp mới: `
-          : "";
-
-        if (penaltyKey === "PAIR_TRAP_BASE") {
+        const isTower = penaltyKey?.includes("THE_TOWER") || penaltyKey === "PAIR_TRAP_BASE";
+        if (isTower) {
           const basePts = state.baseQuestionPoints || 10;
           const penalty = Math.min(team.score || 0, basePts);
           state.potPoints = 0;
@@ -2232,7 +2376,7 @@ export function handleFlipCard({
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `${cancelPrefix}💀 Ghép trúng Bẫy Trừ Gốc! Bị phạt trừ -${penalty} điểm gốc câu hỏi!`,
+            rewardText: `⚡ Ghép trúng Cặp Tòa Tháp Sụp Đổ! Chế độ Sinh Tử phạt trừ ${penalty} điểm (100% điểm gốc câu hỏi)!`,
             scoreDelta: -penalty,
             oldScore,
             newScore,
@@ -2248,14 +2392,14 @@ export function handleFlipCard({
         let bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" = "BOMB_DARK";
         if (penaltyKey === "PAIR_BOMB_SMOKE") bombType = "BOMB_SMOKE";
         else if (penaltyKey === "PAIR_BOMB_CHARITY") bombType = "BOMB_CHARITY";
-        else if (penaltyKey === "PAIR_BOMB_DARK") bombType = "BOMB_DARK";
+        else if (penaltyKey === "PAIR_BOMB_DARK" || penaltyKey?.startsWith("PAIR_BOMB_DARK")) bombType = "BOMB_DARK";
 
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
-          storyDescription: `${cancelPrefix}Ghép trúng ${
-            penaltyKey === "PAIR_BOMB_SMOKE" ? "Bom Khói" : penaltyKey === "PAIR_BOMB_CHARITY" ? "Bom Tặng" : "Bom Tối"
+          storyDescription: `Ghép trúng ${
+            bombType === "BOMB_SMOKE" ? "Bom Khói" : bombType === "BOMB_CHARITY" ? "Bom Tặng" : "Bom Tối"
           }!`,
           baseQuestionPoints: state.baseQuestionPoints,
           isSurvivalPenalty: true,
@@ -2271,7 +2415,7 @@ export function handleFlipCard({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+          rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
           scoreDelta: -outcome.penalty,
           oldScore,
           newScore,
@@ -2288,88 +2432,14 @@ export function handleFlipCard({
         };
       };
 
-      // Đánh dấu mở lá hiện tại và luôn giữ ngửa
+      // Đánh dấu mở lá hiện tại
       state.tiles = state.tiles.map((t) =>
         Number(t.id) === numTileId ? { ...t, isOpened: true } : t
       );
-      memState.keptBombTileIds = Array.from(new Set([...(memState.keptBombTileIds || []), tile.id]));
       state.lastFlippedTile = tile;
 
-      // ── GIAI ĐOẠN 1: ĐANG TRONG LƯỢT GIẢI CỨU (isBombRescueActive) ──
-      // Người chơi đã dính 1 cặp tiêu cực (activePenaltyPairKey).
-      // Bây giờ người chơi phải chọn 2 lá: nếu 2 lá giống nhau -> thay hình phạt mới (hoặc Thoát Hiểm 0đ), nếu không -> giữ hình phạt cũ!
-      if (memState.isBombRescueActive) {
-        if (!memState.firstFlippedTileId) {
-          // Lật lá thứ 1 của lượt giải cứu
-          memState.firstFlippedTileId = tile.id;
-          state.memoryPairsState = { ...memState };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: false,
-            scorePenalty: 0,
-          };
-        }
-
-        if (Number(memState.firstFlippedTileId) === numTileId) {
-          return { updatedState: state, isBomb: false, scorePenalty: 0 };
-        }
-
-        // Lật lá thứ 2 của lượt giải cứu
-        memState.secondFlippedTileId = tile.id;
-        const rescueCard1 = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
-        const rescueCard2 = tile;
-
-        memState.firstFlippedTileId = null;
-        memState.secondFlippedTileId = null;
-        memState.isBombRescueActive = false;
-
-        const isMatch = Boolean(rescueCard1 && rescueCard2 && rescueCard1.pairKey === rescueCard2.pairKey);
-        const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB_DARK";
-
-        if (isMatch && rescueCard1) {
-          if (isEscapeTile(rescueCard1)) {
-            // Trùng 2 lá Thoát Hiểm!
-            return executeSurvivalEscape();
-          } else {
-            // Trùng 2 lá tiêu cực mới -> Thay sang hình phạt mới, hủy hình phạt cũ!
-            return executeSurvivalPenalty(rescueCard1.pairKey!, oldPenaltyKey);
-          }
-        } else {
-          // Không chọn được 2 lá giống nhau -> Giữ nguyên hình phạt cũ!
-          return executeSurvivalPenalty(oldPenaltyKey);
-        }
-      }
-
-      // ── GIAI ĐOẠN 2: LƯỢT CHƠI BÌNH THƯỜNG TRONG SINH TỬ ──
-      // Bước 2.1: Lật lá thứ 1 của lượt
+      // Bước 1: Lật lá thứ 1
       if (!memState.firstFlippedTileId) {
-        // Kiểm tra xem lá thứ 1 này có trùng pairKey với một lá NÀO ĐÓ ĐÃ MỞ TỪ TRƯỚC không:
-        const matchingPriorTile = state.tiles.find(
-          (t) => Number(t.id) !== numTileId && t.isOpened && t.pairKey === tile.pairKey
-        );
-
-        if (matchingPriorTile) {
-          // Trùng với một lá đã mở trước đó!
-          if (isEscapeTile(tile)) {
-            // Đã tìm thấy đủ 2 lá Thoát Hiểm!
-            return executeSurvivalEscape();
-          } else {
-            // Gom đủ 2 lá tiêu cực cùng loại!
-            // Kích hoạt giải cứu, người chơi sẽ chọn 2 lá ở lượt sau để đổi hình phạt!
-            memState.activePenaltyPairKey = tile.pairKey;
-            memState.isBombRescueActive = true;
-            memState.firstFlippedTileId = null;
-            memState.secondFlippedTileId = null;
-            state.memoryPairsState = { ...memState };
-            return {
-              updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-              isBomb: false,
-              scorePenalty: 0,
-            };
-          }
-        }
-
-        // Chưa trùng với lá nào đã mở, lưu lại và chờ lá thứ 2
         memState.firstFlippedTileId = tile.id;
         state.memoryPairsState = { ...memState };
         return {
@@ -2379,7 +2449,7 @@ export function handleFlipCard({
         };
       }
 
-      // Bước 2.2: Lật lá thứ 2 của lượt
+      // Bước 2: Lật lá thứ 2
       if (Number(memState.firstFlippedTileId) === numTileId) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
@@ -2388,67 +2458,49 @@ export function handleFlipCard({
       const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
       const secondTile = tile;
 
-      // Reset ID để chuẩn bị cho lượt tiếp theo
-      memState.firstFlippedTileId = null;
-      memState.secondFlippedTileId = null;
+      memState.attemptsUsed += 1;
+      const isMatch = Boolean(firstTile && secondTile && firstTile.pairKey === secondTile.pairKey);
 
-      // Kiểm tra TH1: 2 lá vừa lật TRÙNG NHAU (firstTile & secondTile)
-      if (firstTile && firstTile.pairKey === secondTile.pairKey) {
+      if (isMatch && firstTile) {
+        // Cặp đầu tiên đã ghép trúng!
+        memState.matchedPairKey = firstTile.pairKey;
         if (isEscapeTile(firstTile)) {
-          // Ghép trúng cặp Thoát Hiểm!
           return executeSurvivalEscape();
         } else {
-          // Ghép trúng 2 lá tiêu cực cùng loại trong cùng một lượt!
-          // QUY TẮC MỚI: Đã lật đúng 2 lá trừ cùng loại trong cùng một lượt thì không hỏi lá thứ 3/lượt giải cứu nữa mà thực thi ngay!
           return executeSurvivalPenalty(firstTile.pairKey || "PAIR_BOMB_DARK");
         }
       }
 
-      // Kiểm tra TH2: secondTile trùng với một lá ĐÃ MỞ TỪ CÁC LƯỢT TRƯỚC ĐÓ (khác firstTile)
-      const priorMatchingSecond = state.tiles.find(
-        (t) => Number(t.id) !== numTileId && Number(t.id) !== Number(firstTile?.id) && t.isOpened && t.pairKey === secondTile.pairKey
-      );
-      if (priorMatchingSecond) {
-        if (isEscapeTile(secondTile)) {
-          return executeSurvivalEscape();
-        } else {
-          memState.activePenaltyPairKey = secondTile.pairKey;
-          memState.isBombRescueActive = true;
-          state.memoryPairsState = { ...memState };
-          return {
-            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-            isBomb: false,
-            scorePenalty: 0,
-          };
-        }
-      }
-
-      // TH3: Không tạo thành cặp trùng nào trong lượt này
-      memState.attemptsUsed += 1;
+      // Không trùng khớp: Reset 2 lá úp lại, người chơi tiếp tục thử lượt sau (Sudden Death)
+      memState.isMismatchResolving = true;
       state.memoryPairsState = { ...memState };
-
-      if (memState.attemptsUsed >= memState.maxAttempts) {
-        // Hết 4 lượt mà không ghép được cặp nào -> Phạt Bom Tối (trừ điểm gốc câu hỏi)
-        return executeSurvivalPenalty(memState.activePenaltyPairKey || "PAIR_BOMB_DARK");
-      }
-
-      // Vẫn còn lượt: Cả 2 lá giữ nguyên ngửa trên bàn, tiếp tục lượt sau
       return {
         updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
         isBomb: false,
         scorePenalty: 0,
-        shouldResetMismatchedCards: false,
+        shouldResetMismatchedCards: true,
       };
     }
 
-    const isTrapTile = (t: MysteryTile | undefined | null) => Boolean(t && t.pairKey === "PAIR_TRAP");
-    const isBombTile = (t: MysteryTile | undefined | null) =>
-      Boolean(t && (t.pairKey === "PAIR_BOMB" || (t.type !== "REWARD" && t.pairKey !== "PAIR_TRAP")));
-    const isPenaltyTile = (t: MysteryTile | undefined | null) => isTrapTile(t) || isBombTile(t);
-    const getPenaltyKey = (t: MysteryTile | undefined | null): "PAIR_TRAP" | "PAIR_BOMB" | null => {
+    const isPenaltyTile = (t: MysteryTile | undefined | null): boolean => {
+      if (!t) return false;
+      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return false;
+      if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
+      if (t.pairKey?.startsWith("PAIR_BOMB") || t.pairKey?.startsWith("PAIR_TRAP")) return true;
+      if (t.pairKey === "PAIR_THE_TOWER" || t.pairKey === "PAIR_THE_KNIGHT" || t.pairKey === "PAIR_THE_DEVIL" || t.pairKey === "PAIR_THE_HANGED_MAN") return true;
+      if (t.type !== "REWARD" && t.type !== "ESCAPE_SAFE") return true;
+      if (t.deltaPoints && t.deltaPoints < 0) return true;
+      return false;
+    };
+
+    const isNeutralTile = (t: MysteryTile | undefined | null): boolean => {
+      if (!t) return false;
+      return t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL" || (t.deltaPoints === 0 && t.type === "REWARD");
+    };
+
+    const getPenaltyKey = (t: MysteryTile | undefined | null): string | null => {
       if (!t) return null;
-      if (t.pairKey === "PAIR_TRAP") return "PAIR_TRAP";
-      if (t.pairKey === "PAIR_BOMB" || t.type !== "REWARD") return "PAIR_BOMB";
+      if (isPenaltyTile(t)) return t.pairKey || "PAIR_BOMB";
       return null;
     };
 
@@ -2460,14 +2512,22 @@ export function handleFlipCard({
       penaltyKey,
       cancelOldKey,
     }: {
-      penaltyKey: "PAIR_TRAP" | "PAIR_BOMB";
-      cancelOldKey?: "PAIR_TRAP" | "PAIR_BOMB" | null;
+      penaltyKey: string;
+      cancelOldKey?: string | null;
     }) => {
       memState.isBombRescueActive = false;
       state.memoryPairsState = { ...memState };
 
+      const getPenaltyName = (k: string) => {
+        if (k === "PAIR_THE_KNIGHT" || k === "PAIR_BOMB_SMOKE" || k === "PAIR_TRAP") return "BOM KHÓI";
+        if (k === "PAIR_THE_TOWER" || k === "PAIR_TRAP_BASE") return "THÁP BẪY SỤP ĐỔ";
+        if (k === "PAIR_THE_DEVIL" || k === "PAIR_BOMB_DARK") return "BOM HẮC ÁM";
+        if (k === "PAIR_THE_HANGED_MAN" || k === "PAIR_BOMB_CHARITY") return "BOM TỪ THIỆN";
+        return "BẪY PHẠT";
+      };
+
       const cancelPrefix = cancelOldKey
-        ? `⚠️ ĐÃ HỦY BỎ CẶP ${cancelOldKey === "PAIR_TRAP" ? "BẪY KHÓI" : "KÍP NỔ"} CŨ! Thực hiện phạt theo cặp mới: `
+        ? `⚠️ ĐÃ HỦY BỎ ${getPenaltyName(cancelOldKey)} CŨ! Thực hiện phạt theo cặp mới: `
         : "";
 
       // Kiểm tra khiên thần bảo vệ (chỉ có hiệu lực đúng 1 lần duy nhất trong minigame)
@@ -2475,6 +2535,7 @@ export function handleFlipCard({
         state.hasShield = false;
         memState.activePenaltyPairKey = null;
         memState.keptBombTileIds = [];
+        memState.faceUpPenaltyTileIds = [];
         memState.isBombRescueActive = false;
         state.potPoints = 0;
         state.storyResult = {
@@ -2494,12 +2555,12 @@ export function handleFlipCard({
         };
       }
 
-      if (penaltyKey === "PAIR_TRAP") {
-        // Cặp Bẫy Khói: Mất điểm câu hỏi hiện tại, bảo toàn tổng điểm (delta = 0)
+      if (penaltyKey === "PAIR_THE_KNIGHT" || penaltyKey === "PAIR_BOMB_SMOKE" || penaltyKey === "PAIR_TRAP") {
+        // Cặp Bom Khói: Mất điểm câu hỏi hiện tại (0đ), bảo toàn tổng điểm (delta = 0)
         state.bombExploded = {
           type: "SMOKE",
-          title: "💨 CẶP BẪY KHÓI ĐỘC PHÁT NỔ!",
-          description: "Kích hoạt bẫy khói độc: Toàn bộ điểm tích lũy của câu hỏi này bị xóa sạch (0đ)!",
+          title: "💨 BOM KHÓI PHÁT NỔ!",
+          description: "Kích hoạt Bom Khói: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ), bảo toàn tổng điểm!",
           penaltyText: "Mất điểm câu hiện tại, tổng điểm được bảo toàn.",
         };
         state.phase = "TURN_SUMMARY";
@@ -2512,7 +2573,7 @@ export function handleFlipCard({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}💨 Cặp Bẫy Khói Độc kích hoạt! Mất toàn bộ điểm câu hỏi này (0đ), bảo toàn tổng điểm!`,
+          rewardText: `${cancelPrefix}💨 Bom Khói kích hoạt! Mất toàn bộ điểm câu hỏi này (0đ), bảo toàn tổng điểm!`,
           scoreDelta: 0,
           oldScore,
           newScore,
@@ -2524,20 +2585,49 @@ export function handleFlipCard({
           scorePenalty: 0,
           finalScoreDelta: 0,
         };
+      } else if (penaltyKey === "PAIR_THE_TOWER" || penaltyKey === "PAIR_TRAP_BASE") {
+        // Cặp The Tower / Bẫy Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu Underdog: 0đ)
+        const penalty = riskTier === "UNDERDOG" ? 0 : (state.baseQuestionPoints || 10);
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        const oldScore = team.score || 0;
+        const newScore = Math.max(0, oldScore - penalty);
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText: penalty === 0
+            ? `${cancelPrefix}⚡ Ghép trúng Tháp Bẫy Sụp Đổ! Nhờ thế trận yếu thế, thần hộ mệnh bảo hộ né phạt an toàn (0đ)!`
+            : `${cancelPrefix}⚡ Ghép trúng Tháp Bẫy Sụp Đổ! Bị phạt trừ -${penalty} điểm gốc câu hỏi!`,
+          scoreDelta: -penalty,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: true,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
+        };
       } else {
-        // Cặp Kíp Nổ / Bom: Tinh chỉnh loại bom phù hợp theo Round & Bối cảnh từng đội (UNDERDOG / DOMINANT / NEUTRAL)
-        const bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, {
-          currentRound,
-          riskTier,
-        });
+        // Cặp Bom Hắc Ám / Bom Từ Thiện / Bom khác
+        let bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" = "BOMB_DARK";
+        if (penaltyKey === "PAIR_THE_DEVIL" || penaltyKey === "PAIR_BOMB_DARK") bombType = "BOMB_DARK";
+        else if (penaltyKey === "PAIR_THE_HANGED_MAN" || penaltyKey === "PAIR_BOMB_CHARITY") bombType = "BOMB_CHARITY";
+        else bombType = rollBombTypeForMinigame("MEMORY_PAIRS", team.score || 0, { currentRound, riskTier });
+
         const outcome = resolveBombOutcome({
           bombType,
           team,
           allTeams,
-          storyDescription: `${cancelPrefix}Ghép trúng Cặp Kíp Nổ!`,
+          storyDescription: `${cancelPrefix}Ghép trúng Cặp ${getPenaltyName(penaltyKey)}!`,
           baseQuestionPoints: state.baseQuestionPoints,
           isSurvivalPenalty: false,
         });
+
         state.bombExploded = outcome.bombExploded;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
@@ -2569,7 +2659,7 @@ export function handleFlipCard({
     };
 
     // ─────────────────────────────────────────────────────────────────────────
-    // STEP 3: Lật lá bài thứ 3 (trong lượt giải cứu bom)
+    // STEP 3: Lật lá bài thứ 3 (trong lượt giải cứu bom khi bốc trúng lá tiêu cực cùng cặp từ lượt trước)
     // ─────────────────────────────────────────────────────────────────────────
     if (memState.isBombRescueActive && memState.firstFlippedTileId && memState.secondFlippedTileId && !memState.thirdFlippedTileId) {
       if (Number(tile.id) === Number(memState.firstFlippedTileId) || Number(tile.id) === Number(memState.secondFlippedTileId)) {
@@ -2578,98 +2668,64 @@ export function handleFlipCard({
 
       const card1 = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
       const card2 = state.tiles.find((t) => Number(t.id) === Number(memState.secondFlippedTileId));
+      const card3 = tile;
 
-      // SANITY CHECK BẢO VỆ PHÒNG THỦ:
-      // Xác minh xem card1 và card2 có thực sự tạo thành cặp phạt hợp lệ kích hoạt giải cứu bom hay không!
-      const k1 = getPenaltyKey(card1);
-      const k2 = getPenaltyKey(card2);
-      const hasPriorMatch1 = Boolean(k1 && previouslyKeptBombs.some((id) => Number(id) !== Number(card1?.id) && getPenaltyKey(state.tiles.find((t) => Number(t.id) === Number(id))) === k1));
-      const hasPriorMatch2 = Boolean(k2 && previouslyKeptBombs.some((id) => Number(id) !== Number(card2?.id) && getPenaltyKey(state.tiles.find((t) => Number(t.id) === Number(id))) === k2));
-      const isValidRescueContext = Boolean(
-        card1 && card2 && (
-          (k1 && k2 && k1 === k2) ||
-          hasPriorMatch1 ||
-          hasPriorMatch2
-        )
+      memState.thirdFlippedTileId = tile.id;
+      memState.attemptsUsed += 1;
+      state.lastFlippedTile = tile;
+
+      // Đánh dấu mở cả 3 lá
+      state.tiles = state.tiles.map((t) =>
+        Number(t.id) === numTileId ||
+        (card1 && Number(t.id) === Number(card1.id)) ||
+        (card2 && Number(t.id) === Number(card2.id))
+          ? { ...t, isOpened: true }
+          : { ...t }
       );
 
-      if (!isValidRescueContext) {
-        // State bị desync / rác từ ván trước hoặc hai lá phạt khác loại: HỦY NGAY RESCUE ĐỂ TRÁNH NỔ BOM OAN!
-        memState.isBombRescueActive = false;
-        memState.activePenaltyPairKey = null;
-        memState.firstFlippedTileId = null;
-        memState.secondFlippedTileId = null;
-        memState.thirdFlippedTileId = null;
-        state.memoryPairsState = { ...memState };
-      } else {
-        memState.thirdFlippedTileId = tile.id;
-        memState.attemptsUsed += 1;
-        state.lastFlippedTile = tile;
-
-        const card3 = tile;
-
-        // Đánh dấu mở cả 3 lá
-        state.tiles = state.tiles.map((t) =>
-          Number(t.id) === numTileId ||
-          (card1 && Number(t.id) === Number(card1.id)) ||
-          (card2 && Number(t.id) === Number(card2.id))
-            ? { ...t, isOpened: true }
-            : { ...t }
-        );
-
-      const oldPenaltyKey = (memState.activePenaltyPairKey || "PAIR_BOMB") as "PAIR_TRAP" | "PAIR_BOMB";
-      const otherPenaltyKey: "PAIR_TRAP" | "PAIR_BOMB" = oldPenaltyKey === "PAIR_TRAP" ? "PAIR_BOMB" : "PAIR_TRAP";
-
-      // ───────────────────────────────────────────────────────────────────────
-      // KIỂM TRA ĐẶC BIỆT THEO YÊU CẦU:
-      // "trường hợp cặp bài trùng lại là cặp bài phạt còn lại, lúc này, hệ thống thực hiện phạt theo cặp mới, cặp cũ bị huỷ bỏ"
-      // ───────────────────────────────────────────────────────────────────────
-      const isCard3OtherPenalty = getPenaltyKey(card3) === otherPenaltyKey;
-      let matchedOtherPenalty = false;
-
-      if (isCard3OtherPenalty) {
-        // Tìm xem có lá nào khác cũng là otherPenaltyKey đã mở trên bàn không (trong previouslyKeptBombs, hoặc card1, card2)
-        const priorOtherBombTile = state.tiles.find(
-          (t) =>
-            Number(t.id) !== Number(card3.id) &&
-            getPenaltyKey(t) === otherPenaltyKey &&
-            (previouslyKeptBombs.includes(t.id) ||
-              (card1 && Number(t.id) === Number(card1.id)) ||
-              (card2 && Number(t.id) === Number(card2.id)))
-        );
-        if (priorOtherBombTile) {
-          matchedOtherPenalty = true;
-        }
-      }
-
-      if (matchedOtherPenalty) {
-        // TRÙNG CẶP BÀI PHẠT CÒN LẠI!
-        // Cặp cũ bị hủy bỏ, thực hiện phạt theo cặp mới (otherPenaltyKey)!
-        return executePenalty({ penaltyKey: otherPenaltyKey, cancelOldKey: oldPenaltyKey });
-      }
-
-      // ───────────────────────────────────────────────────────────────────────
-      // KIỂM TRA GIẢI CỨU THÀNH CÔNG: Ghép trúng cặp bài thưởng
-      // ───────────────────────────────────────────────────────────────────────
+      const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
       const cardsInTurn = [card1, card2, card3].filter(Boolean) as MysteryTile[];
-      const rewardCards = cardsInTurn.filter((c) => !isPenaltyTile(c));
-      const isRescueSuccess = rewardCards.length === 2 && rewardCards[0].pairKey === rewardCards[1].pairKey;
 
-      if (isRescueSuccess) {
-        const winCard = rewardCards[0];
+      // Tìm lá bài là twin tiêu cực kích hoạt rescue:
+      const penaltyTwinIndex = cardsInTurn.findIndex((c) => c.pairKey === oldPenaltyKey);
+      const otherTwoCards = cardsInTurn.filter((_, idx) => idx !== (penaltyTwinIndex !== -1 ? penaltyTwinIndex : 0));
+      const [rescueA, rescueB] = otherTwoCards;
+
+      // KIỂM TRA 2 LÁ CÒN LẠI CÓ TRÙNG KHỚP NHAU KHÔNG:
+      const isRescueMatch = Boolean(rescueA && rescueB && rescueA.pairKey === rescueB.pairKey);
+
+      if (isRescueMatch && rescueA) {
+        // ─────────────────────────────────────────────────────────────────────
+        // 2 LÁ CÒN LẠI TRÙNG KHỚP! Ưu tiên thực hiện chức năng của cặp mới (hủy phạt cặp cũ):
+        // ─────────────────────────────────────────────────────────────────────
+        if (isPenaltyTile(rescueA)) {
+          // Cặp mới lại là một cặp tiêu cực mới! Thực hiện phạt theo cặp mới, hủy cặp cũ:
+          return executePenalty({ penaltyKey: rescueA.pairKey!, cancelOldKey: oldPenaltyKey });
+        }
+
+        // Cặp mới là cặp TÍCH CỰC hoặc TRUNG LẬP (The Fool):
+        const winCard = rescueA;
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         state.memoryPairsState = { ...memState };
-        state.tiles = state.tiles.map((t) =>
-          t.pairKey === winCard.pairKey ? { ...t, isOpened: true } : { ...t }
-        );
+
+        if (winCard.givesShield) {
+          state.hasShield = true;
+        }
+        if (winCard.givesHeart) {
+          const heartsRecord = { ...(state.teamHearts || {}) };
+          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
+          state.teamHearts = heartsRecord;
+        }
 
         let finalDelta = 0;
         let victimTeamId: string | undefined;
         let victimTeamName: string | undefined;
         let stolenPoints: number | undefined;
 
-        if (winCard.effectType === "STEAL_POINTS") {
+        if (winCard.tarotCardKey === "THE_FOOL" || winCard.pairKey === "PAIR_THE_FOOL") {
+          finalDelta = 0;
+        } else if (winCard.effectType === "STEAL_POINTS") {
           const stealAmount = winCard.deltaPoints || state.baseQuestionPoints || 10;
           const eligibleTeams = (allTeams || []).filter(
             (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
@@ -2716,9 +2772,12 @@ export function handleFlipCard({
         const newScore = oldScore + finalDelta;
         const baseReward = finalDelta - extraPotBonus - (stolenPoints || 0);
 
-        let rewardText = extraPotBonus > 0
-          ? `🎉 Thoát hiểm ngoạn mục! Hóa giải cặp phạt và ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
-          : `🎉 Thoát hiểm ngoạn mục! Hóa giải cặp phạt và ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+        let rewardText = winCard.tarotCardKey === "THE_FOOL"
+          ? `🃏 Hóa giải bẫy thành công! Ghép trúng cặp Kẻ Khờ, bảo toàn thế trận an toàn tuyệt đối (±0đ)!`
+          : extraPotBonus > 0
+          ? `🎉 Thoát hiểm ngoạn mục! Hóa giải bẫy phạt và ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+          : `🎉 Thoát hiểm ngoạn mục! Hóa giải bẫy phạt và ghép chính xác cặp ${winCard.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
+
         if (stolenPoints && victimTeamName) {
           rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
         }
@@ -2743,11 +2802,12 @@ export function handleFlipCard({
           stolenPoints,
         };
       } else {
-        // Giải cứu thất bại: phạt theo cặp phạt ban đầu (oldPenaltyKey)
+        // ─────────────────────────────────────────────────────────────────────
+        // 2 LÁ CÒN LẠI KHÔNG TRÙNG KHỚP: Phạt theo cặp tiêu cực trước đó!
+        // ─────────────────────────────────────────────────────────────────────
         return executePenalty({ penaltyKey: oldPenaltyKey });
       }
     }
-  }
 
     // ─────────────────────────────────────────────────────────────────────────
     // STEP 1: Lật lá bài thứ 1 của lượt
@@ -2763,16 +2823,21 @@ export function handleFlipCard({
       const tilePenaltyKey = getPenaltyKey(tile);
       if (tilePenaltyKey) {
         memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+        memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
         // Kiểm tra xem trong previouslyKeptBombs có lá nào CÙNG LOẠI tilePenaltyKey không:
         const matchingPriorBomb = state.tiles.find(
           (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === tilePenaltyKey
         );
         if (matchingPriorBomb) {
-          // Ngay ở lá thứ 1, người chơi đã làm lộ lá thứ 2 của cặp phạt tilePenaltyKey!
-          // Kích hoạt giải cứu cho cặp phạt này!
+          // Ngay ở lá thứ 1, người chơi đã làm lộ lá thứ 2 của cặp phạt tilePenaltyKey từ lượt trước!
+          // Kích hoạt giải cứu cho cặp phạt này: lượt tăng lên 3 lá!
           memState.isBombRescueActive = true;
           memState.activePenaltyPairKey = tilePenaltyKey;
         }
+      } else if (isNeutralTile(tile)) {
+        // Lá The Fool trung lập: giữ ngửa cố định trên bàn
+        memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+        memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
       }
 
       state.memoryPairsState = { ...memState };
@@ -2783,26 +2848,28 @@ export function handleFlipCard({
       };
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // STEP 2: Lật lá bài thứ 2 của lượt
-    // ─────────────────────────────────────────────────────────────────────────
-    if (Number(memState.firstFlippedTileId) === numTileId) {
+    const firstId = Number(memState.firstFlippedTileId);
+    const secondId = numTileId;
+    const pairMoveKey = `${Math.min(firstId, secondId)}-${Math.max(firstId, secondId)}`;
+    const attemptedPairs = memState.attemptedPairs || [];
+
+    if (attemptedPairs.includes(pairMoveKey)) {
+      // Đã từng lật chính xác bộ đôi ô này trong vòng! Chống lạm dụng lặp lại nước đi!
       return { updatedState: state, isBomb: false, scorePenalty: 0 };
     }
 
+    memState.attemptedPairs = [...attemptedPairs, pairMoveKey];
     memState.secondFlippedTileId = tile.id;
     state.lastFlippedTile = tile;
 
     const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
 
-    // Đánh dấu mở cả 2 lá trong lượt này một cách bất biến
+    // Đánh dấu mở cả 2 lá trong lượt này
     state.tiles = state.tiles.map((t) =>
       Number(t.id) === numTileId || (firstTile && Number(t.id) === Number(firstTile.id))
         ? { ...t, isOpened: true }
         : { ...t }
     );
-
-
 
     // TH 2.1: Đang trong lượt giải cứu (Card 1 đã kích hoạt giải cứu với 1 lá đã mở trước đó)
     // -> Giữ nguyên, mở khóa chờ lật tiếp lá thứ 3!
@@ -2818,18 +2885,53 @@ export function handleFlipCard({
     const firstTilePenaltyKey = getPenaltyKey(firstTile);
     const secondTilePenaltyKey = getPenaltyKey(tile);
 
-    // TH 2.1: Cả 2 lá trong cùng lượt này đều là lá phạt!
+    // Helper khi hết 5 lượt ở Vòng 2 mà không ghép được cặp bài nào -> Trừ 100% điểm gốc + Trừ 1 Tim:
+    const handleRound2Failure = () => {
+      const basePenalty = state.baseQuestionPoints || 10;
+
+      // Trừ 1 Tim của đội nếu còn Tim
+      const heartsRecord = { ...(state.teamHearts || {}) };
+      const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+      if (currentHearts > 0) {
+        heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+        state.teamHearts = heartsRecord;
+      }
+      const remainingHearts = state.teamHearts?.[team.id] ?? 0;
+
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "MAX_ATTEMPTS";
+      state.potPoints = 0;
+      const oldScore = team.score || 0;
+      const newScore = Math.max(0, oldScore - basePenalty);
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `⏱️ Hết cả 2 vòng (10 lượt) mà không ghép được cặp bài nào! Bị phạt trừ 100% điểm gốc câu hỏi (-${basePenalty}đ) và trừ 1 ❤️ Tim (Còn ${remainingHearts} ❤️)!`,
+        scoreDelta: -basePenalty,
+        oldScore,
+        newScore,
+      };
+      return {
+        updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+        isBomb: true,
+        scorePenalty: basePenalty,
+        finalScoreDelta: -basePenalty,
+      };
+    };
+
+    // TH 2.2: Cả 2 lá trong CÙNG LƯỢT NÀY đều là lá phạt!
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
         // Cả 2 lá TRÙNG CÙNG MỘT CẶP PHẠT trong cùng một lượt!
-        // QUY TẮC MỚI: một khi trong cùng một lượt mà đã lật đúng 2 lá trừ cùng loại thì không hỏi lá thứ 3 nữa mà thực thi ngay!
+        // Quy tắc: Đã lật trúng cả 2 lá tiêu cực cùng cặp trong cùng một lượt -> Phạt ngay lập tức!
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
-        // Hai lá phạt THUỘC 2 LOẠI KHÁC NHAU (1 Bẫy Khói + 1 Kíp Nổ Hắc Ám)!
-        // Theo luật: "lá bom/bẫy thứ hai phải trùng khớp lá đã lật trước đó thì mới kích hoạt cơ chế, còn nếu nó là hai lá thuộc loại phạt khác nhau, thì chưa áp dụng"
-        // Thêm cả 2 lá vào keptBombTileIds để giữ mở trên bàn, nhưng CHƯA áp dụng phạt hay giải cứu!
+        // Hai lá phạt THUỘC 2 LOẠI KHÁC NHAU!
+        // Thêm cả 2 lá vào keptBombTileIds để giữ mở ngửa trên bàn, nhưng CHƯA áp dụng phạt!
         memState.attemptsUsed += 1;
         memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, firstTile!.id, tile.id]));
+        memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), firstTile!.id, tile.id]));
         memState.isMismatchResolving = true;
 
         const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
@@ -2841,7 +2943,7 @@ export function handleFlipCard({
             state.memoryPairsState = { ...memState };
             return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
           } else {
-            return executePenalty({ penaltyKey: "PAIR_BOMB" });
+            return handleRound2Failure();
           }
         }
 
@@ -2850,15 +2952,16 @@ export function handleFlipCard({
       }
     }
 
-    // TH 2.2: Card 2 (tile) trùng loại phạt với 1 lá phạt đã có từ trước trong các lượt trước (khác firstTile)!
+    // TH 2.3: Card 2 trùng loại phạt với 1 lá phạt đã có từ trước trong các lượt trước (khác firstTile)!
     if (secondTilePenaltyKey) {
       memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
       const matchingPriorBomb = state.tiles.find(
         (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
       );
       if (matchingPriorBomb) {
-        // Đã trùng cặp phạt secondTilePenaltyKey với lá từ lượt trước!
-        // Kích hoạt giải cứu, mở khóa chờ lật tiếp lá thứ 3!
+        // Card 2 hoàn tất cặp phạt với lá từ lượt trước!
+        // Kích hoạt giải cứu: người chơi được tăng thêm quyền lật lá thứ 3 trong lượt!
         memState.isBombRescueActive = true;
         memState.activePenaltyPairKey = secondTilePenaltyKey;
         state.memoryPairsState = { ...memState };
@@ -2870,11 +2973,12 @@ export function handleFlipCard({
       }
     }
 
-    // TH 2.4: Một trong 2 lá là lá phạt đơn lẻ (chưa từng xuất hiện trước đó), lá còn lại là lá thường!
-    if (firstTilePenaltyKey || secondTilePenaltyKey) {
+    // TH 2.4: Một trong 2 lá là lá phạt đơn lẻ (chưa từng xuất hiện trước đó) hoặc lá The Fool!
+    if (firstTilePenaltyKey || secondTilePenaltyKey || isNeutralTile(firstTile) || isNeutralTile(tile)) {
       memState.attemptsUsed += 1;
-      const penaltyTile = firstTilePenaltyKey ? firstTile! : tile;
-      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, penaltyTile.id]));
+      const penaltyOrNeutralTile = (firstTilePenaltyKey || isNeutralTile(firstTile)) ? firstTile! : tile;
+      memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, penaltyOrNeutralTile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), penaltyOrNeutralTile.id]));
       memState.isMismatchResolving = true;
 
       const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
@@ -2886,7 +2990,7 @@ export function handleFlipCard({
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
-          return executePenalty({ penaltyKey: "PAIR_BOMB" });
+          return handleRound2Failure();
         }
       }
 
@@ -2894,7 +2998,7 @@ export function handleFlipCard({
       return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
     }
 
-    // TH 2.5: Cả 2 lá đều là lá thường (không dính phạt)
+    // TH 2.5: Cả 2 lá đều là lá thường
     memState.attemptsUsed += 1;
     const isMatch = Boolean(firstTile && firstTile.pairKey && firstTile.pairKey === tile.pairKey);
 
@@ -2908,12 +3012,23 @@ export function handleFlipCard({
           : { ...t }
       );
 
+      if (firstTile.givesShield) {
+        state.hasShield = true;
+      }
+      if (firstTile.givesHeart) {
+        const heartsRecord = { ...(state.teamHearts || {}) };
+        heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
+        state.teamHearts = heartsRecord;
+      }
+
       let victimTeamId: string | undefined;
       let victimTeamName: string | undefined;
       let stolenPoints: number | undefined;
       let finalDelta = 0;
 
-      if (firstTile.effectType === "STEAL_POINTS") {
+      if (firstTile.tarotCardKey === "THE_FOOL" || firstTile.pairKey === "PAIR_THE_FOOL") {
+        finalDelta = 0;
+      } else if (firstTile.effectType === "STEAL_POINTS") {
         const stealAmount = firstTile.deltaPoints || state.baseQuestionPoints || 10;
         const eligibleTeams = (allTeams || []).filter(
           (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
@@ -2960,7 +3075,9 @@ export function handleFlipCard({
       const newScore = oldScore + finalDelta;
       const baseReward = finalDelta - extraPotBonus - (stolenPoints || 0);
 
-      let rewardText = extraPotBonus > 0
+      let rewardText = firstTile.tarotCardKey === "THE_FOOL"
+        ? `🃏 Ghép trúng cặp Kẻ Khờ Lãng Du! Giữ nguyên thế trận an toàn tuyệt đối (±0đ)!`
+        : extraPotBonus > 0
         ? `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${baseReward}đ và +${extraPotBonus}đ từ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
         : `🎉 Ghép thành công ${firstTile.storyTitle}! Nhận trọn vẹn +${finalDelta} điểm!`;
       if (stolenPoints && victimTeamName) {
@@ -2998,7 +3115,7 @@ export function handleFlipCard({
           state.memoryPairsState = { ...memState };
           return { updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } }, isBomb: false, scorePenalty: 0, shouldResetMismatchedCards: true };
         } else {
-          return executePenalty({ penaltyKey: "PAIR_BOMB" });
+          return handleRound2Failure();
         }
       }
 
@@ -3034,102 +3151,154 @@ export function handleFlipCard({
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE) - ONE-SHOT SURVIVAL: Chọn 1 cửa duy nhất
+    // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE) - 2 BƯỚC KỊCH TÍNH (8 CỬA):
+    // Bước 1: Chọn 4 trong 8 cửa. Radar quét: 🟢 Xanh (có ít nhất 1 cửa an toàn 🕊️/🃏), 🔴 Đỏ (toàn bẫy/bom).
+    // Bước 2: Chọn mở 1 trong 4 cửa đã giữ. Thoát hiểm hoặc nhận hình phạt ngay lập tức!
+    // Toàn bộ Perk bị vô hiệu hoá.
     // ─────────────────────────────────────────────────────────────────────────
     if (state.isPenaltySurvivalMode) {
-      osState.chosenFinalDoorId = tileId;
-      osState.phase = "RESOLVED";
-      osState.allRevealed = true;
-      state.tiles.forEach((t) => { t.isOpened = true; });
+      if (osState.phase === "SELECT_4" || osState.phase === "SELECTING" || !osState.phase) {
+        const selected = osState.selectedDoorIds || [];
+        if (selected.includes(tileId)) {
+          osState.selectedDoorIds = selected.filter((id) => id !== tileId);
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+        }
+        if (selected.length >= 4) {
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+        }
+        selected.push(tileId);
+        osState.selectedDoorIds = [...selected];
+        if (selected.length < 4) {
+          return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+        }
 
-      if (tile.type === "ESCAPE_SAFE") {
-        state.potPoints = 0;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "SURVIVAL_ESCAPE";
-        const oldScore = team.score || 0;
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#10b981",
-          rewardText: "🕊️ May mắn tuyệt đỉnh! Bạn đã chọn trúng CỬA THOÁT HIỂM AN TOÀN, bảo toàn nguyên vẹn điểm số và tim!",
-          scoreDelta: 0,
-          oldScore,
-          newScore: oldScore,
-        };
-        return { updatedState: { ...state, tiles: [...state.tiles] }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        // Đã chọn đủ 4 cửa! 4 cửa còn lại chuyển vào nhóm loại bỏ (discardedDoorIds):
+        const discarded = state.tiles.filter((t) => !selected.includes(t.id)).map((t) => t.id);
+        osState.discardedDoorIds = discarded;
+
+        // Radar quét 4 cửa đã chọn:
+        const chosenTiles = state.tiles.filter((t) => selected.includes(t.id));
+        const hasSafe = chosenTiles.some(
+          (t) => t.type === "ESCAPE_SAFE" || t.tarotCardKey === "THE_FOOL" || t.pairKey === "THE_FOOL"
+        );
+        osState.radarLight = hasSafe ? "GREEN" : "RED";
+        osState.radarLightStep1 = osState.radarLight;
+        osState.phase = "STAGE_2_PICK";
+
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
 
-      const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType) || tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY";
-      if (isRandomBomb) {
-        const bombType = (tile as any).bombDoorType || (tile.type === "BOMB_SMOKE" ? "BOMB_SMOKE" : tile.type === "BOMB_DARK" ? "BOMB_DARK" : tile.type === "BOMB_CHARITY" ? "BOMB_CHARITY" : "BOMB_CHARITY");
-        const outcome = resolveBombOutcome({
-          bombType,
-          team,
-          allTeams,
-          storyDescription: tile.storyDescription || "Mở trúng Cửa Bẫy Bom Sinh Tử!",
-          baseQuestionPoints: state.baseQuestionPoints,
-          isSurvivalPenalty: true,
-        });
-        state.potPoints = 0;
-        state.bombExploded = outcome.bombExploded;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "SURVIVAL_FAILED";
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - outcome.penalty);
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
-          scoreDelta: -outcome.penalty,
-          oldScore,
-          newScore,
-        };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles] },
-          isBomb: true,
-          scorePenalty: outcome.penalty,
-          finalScoreDelta: -outcome.penalty,
-          giftedPoints: outcome.giftedPoints,
-          recipientTeamId: outcome.recipientTeamId,
-          recipientTeamName: outcome.recipientTeamName,
-          darkBombRecipients: outcome.darkBombRecipients,
-        };
-      } else {
-        const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
-        state.potPoints = 0;
-        state.phase = "TURN_SUMMARY";
-        state.turnFinishedReason = "SURVIVAL_FAILED";
-        const oldScore = team.score || 0;
-        const newScore = Math.max(0, oldScore - penalty);
-        state.storyResult = {
-          teamId: team.id,
-          teamName: team.name,
-          teamColor: team.color || "#ef4444",
-          rewardText: `⚠️ Dính Cửa Bẫy Trừ Điểm Gốc Sinh Tử! Bị trừ -${penalty} điểm!`,
-          scoreDelta: -penalty,
-          oldScore,
-          newScore,
-        };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles] },
-          isBomb: true,
-          scorePenalty: penalty,
-          finalScoreDelta: -penalty,
-        };
+      if (osState.phase === "STAGE_2_PICK") {
+        const selected = osState.selectedDoorIds || [];
+        if (!selected.includes(tileId)) {
+          return { updatedState: state, isBomb: false, scorePenalty: 0 };
+        }
+
+        osState.chosenFinalDoorId = tileId;
+        osState.phase = "RESOLVED";
+        osState.allRevealed = true;
+        state.tiles.forEach((t) => { t.isOpened = true; });
+
+        const isSafe = tile.type === "ESCAPE_SAFE" || tile.tarotCardKey === "THE_FOOL" || tile.pairKey === "THE_FOOL";
+        if (isSafe) {
+          state.potPoints = 0;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_ESCAPE";
+          const oldScore = team.score || 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#10b981",
+            rewardText: "🕊️ May mắn tuyệt đỉnh! Bạn đã mở đúng CỬA AN TOÀN, bảo toàn nguyên vẹn điểm số và tim!",
+            scoreDelta: 0,
+            oldScore,
+            newScore: oldScore,
+          };
+          return { updatedState: { ...state, tiles: [...state.tiles] }, isBomb: false, scorePenalty: 0, finalScoreDelta: 0 };
+        }
+
+        // Bẫy hoặc Bom:
+        const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType) || tile.type === "BOMB_SMOKE" || tile.type === "BOMB_DARK" || tile.type === "BOMB_CHARITY";
+        if (isRandomBomb) {
+          const bombType = (tile as any).bombDoorType || (tile.type === "BOMB_SMOKE" ? "BOMB_SMOKE" : tile.type === "BOMB_DARK" ? "BOMB_DARK" : "BOMB_CHARITY");
+          const outcome = resolveBombOutcome({
+            bombType,
+            team,
+            allTeams,
+            storyDescription: tile.storyDescription || "Mở trúng Cửa Bẫy Bom Sinh Tử!",
+            baseQuestionPoints: state.baseQuestionPoints,
+            isSurvivalPenalty: true,
+          });
+          state.potPoints = 0;
+          state.bombExploded = outcome.bombExploded;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_FAILED";
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - outcome.penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText}`,
+            scoreDelta: -outcome.penalty,
+            oldScore,
+            newScore,
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: true,
+            scorePenalty: outcome.penalty,
+            finalScoreDelta: -outcome.penalty,
+            giftedPoints: outcome.giftedPoints,
+            recipientTeamId: outcome.recipientTeamId,
+            recipientTeamName: outcome.recipientTeamName,
+            darkBombRecipients: outcome.darkBombRecipients,
+          };
+        } else {
+          const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
+          state.potPoints = 0;
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "SURVIVAL_FAILED";
+          const oldScore = team.score || 0;
+          const newScore = Math.max(0, oldScore - penalty);
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#ef4444",
+            rewardText: `⚠️ Dính Cửa Bẫy Trừ Điểm Gốc Sinh Tử! Bị trừ -${penalty} điểm!`,
+            scoreDelta: -penalty,
+            oldScore,
+            newScore,
+          };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles] },
+            isBomb: true,
+            scorePenalty: penalty,
+            finalScoreDelta: -penalty,
+          };
+        }
       }
     }
 
-    // Giai đoạn 1: Chọn 3 trong 5 cửa để ĐỂ RA RIÊNG (vẫn úp mặt, chưa lật)
-    if (osState.phase === "SELECTING" || !osState.phase) {
-      // Cửa bị Mắt Thần khóa (Cửa bẫy trừ gốc) tuyệt đối không cho chọn!
+    const isDoorNegative = (t: MysteryTile): boolean => {
+      if (t.tarotCardKey === "THE_FOOL") return false;
+      if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
+      if (t.type !== "REWARD" && t.type !== "ESCAPE_SAFE") return true;
+      if (t.deltaPoints && t.deltaPoints < 0) return true;
+      if (t.bombDoorType) return true;
+      return false;
+    };
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BƯỚC 1: Chọn 4 trong 8 cánh cửa
+    // ─────────────────────────────────────────────────────────────────────────
+    if (osState.phase === "SELECT_4" || osState.phase === "SELECTING" || !osState.phase) {
       if (tile.isPeeked) {
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
 
       const selected = osState.selectedDoorIds || [];
       if (selected.includes(tileId)) {
-        // Cho phép bỏ chọn nếu đang chọn dở
         osState.selectedDoorIds = selected.filter((id) => id !== tileId);
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
@@ -3137,63 +3306,103 @@ export function handleFlipCard({
       selected.push(tileId);
       osState.selectedDoorIds = [...selected];
 
-      if (selected.length < 3) {
-        // Đang chờ chọn đủ 3 cửa để ra riêng
+      if (selected.length < 4) {
         return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
       }
 
-      // Đã chọn đủ 3 cửa để ra riêng!
-      // Cả 5 cánh cửa vẫn úp mặt (isOpened: false), chưa lật!
-      // Radar quét xem trong 3 cánh cửa đã chọn có bao nhiêu cánh cửa trừ điểm (Bẫy bom hoặc Bẫy trừ gốc):
+      // Đã chọn đủ 4 cửa! 4 cửa còn lại chuyển vào nhóm loại bỏ (discardedDoorIds):
+      osState.discardedDoorIds = state.tiles.filter((t) => !selected.includes(t.id)).map((t) => t.id);
+
+      // Radar quét 4 cửa đã chọn:
       const selectedTiles = state.tiles.filter((t) => selected.includes(t.id));
-      const penaltyCount = selectedTiles.filter((t) => t.type !== "REWARD" || (t.deltaPoints && t.deltaPoints < 0)).length;
+      const penaltyCount = selectedTiles.filter(isDoorNegative).length;
       osState.penaltyDoorsCount = penaltyCount;
       osState.hasBombDetected = penaltyCount > 0;
+      osState.radarLightStep1 = penaltyCount === 0 ? "GREEN" : penaltyCount === 1 ? "YELLOW" : "RED";
 
-      if (penaltyCount === 0) {
-        // 0 lá trừ: Chuyển thẳng sang Giai đoạn 2 (Mở 1 trong 3 lá)
-        osState.phase = "STAGE_2_PICK";
-      } else {
-        // Có lá trừ (> 0): Chuyển sang lựa chọn: Đổi 1 lá HOẶC Lấy điểm gốc (-1 Tim)
-        osState.phase = "PENALTY_DECISION";
-      }
+      // Chuyển sang Bước 2: Lựa chọn giữa Nhận 100% điểm gốc ngay HOẶC Tiếp tục chọn cửa:
+      osState.phase = "STAGE_1_DECISION";
 
       return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
     }
 
-    // Giai đoạn 2: Người chơi PHẢI CHỌN GIỮA 1 TRONG 3 CỬA ĐÃ ĐỂ RA RIÊNG! (2 cửa còn lại bị loại bỏ)
-    if (osState.phase === "STAGE_2_PICK" || osState.phase === "SCANNED") {
+    // ─────────────────────────────────────────────────────────────────────────
+    // BƯỚC 2: Chọn 2 trong 4 cánh cửa đã giữ
+    // ─────────────────────────────────────────────────────────────────────────
+    if (osState.phase === "SELECT_2") {
+      const keptFourDoorIds = state.tiles
+        .filter((t) => !(osState.discardedDoorIds || []).includes(t.id))
+        .map((t) => t.id);
+
+      if (!keptFourDoorIds.includes(tileId)) {
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+      }
+
       const selected = osState.selectedDoorIds || [];
-      // CHỈ CHO PHÉP chọn 1 trong 3 cánh cửa đã để ra riêng! (2 cánh cửa còn lại đã bị loại bỏ)
+      if (selected.includes(tileId)) {
+        osState.selectedDoorIds = selected.filter((id) => id !== tileId);
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+      }
+
+      selected.push(tileId);
+      osState.selectedDoorIds = [...selected];
+
+      if (selected.length < 2) {
+        return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+      }
+
+      // Đã chọn đủ 2 cửa! 2 cửa không chọn đưa vào discardedDoorIds (tổng 6 cửa bị loại):
+      const newlyDiscarded = keptFourDoorIds.filter((id) => !selected.includes(id));
+      osState.discardedDoorIds = Array.from(new Set([...(osState.discardedDoorIds || []), ...newlyDiscarded]));
+
+      // Radar quét 2 cửa đã chọn:
+      const finalSelectedTiles = state.tiles.filter((t) => selected.includes(t.id));
+      const penaltyCount2 = finalSelectedTiles.filter(isDoorNegative).length;
+      osState.penaltyDoorsCount = penaltyCount2;
+      osState.hasBombDetected = penaltyCount2 > 0;
+      osState.radarLight = penaltyCount2 === 0 ? "GREEN" : penaltyCount2 === 1 ? "YELLOW" : "RED";
+
+      // Chuyển sang Bước 3: Quyết định mở cửa hoặc rút lui an toàn:
+      osState.phase = "FINAL_DECISION";
+
+      return { updatedState: { ...state }, isBomb: false, scorePenalty: 0 };
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // BƯỚC 3 & 4: Mở 1 trong 2 cánh cửa đã chọn (nếu Đèn Xanh hoặc sau khi Đổi Cửa)
+    // ─────────────────────────────────────────────────────────────────────────
+    if (
+      osState.phase === "OPEN_FINAL" ||
+      osState.phase === "STAGE_2_PICK" ||
+      osState.phase === "SCANNED" ||
+      (osState.phase === "FINAL_DECISION" && osState.radarLight === "GREEN")
+    ) {
+      const selected = osState.selectedDoorIds || [];
       if (!selected.includes(tileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
-      // Người chơi bấm mở 1 trong 3 cánh cửa đã để ra riêng!
+      // Người chơi mở cánh cửa đã chọn:
       osState.chosenFinalDoorId = tileId;
       osState.phase = "RESOLVED";
       osState.allRevealed = true;
+      state.tiles.forEach((t) => { t.isOpened = true; });
 
-      // Lật mở toàn bộ 5 cánh cửa để hé lộ tất cả
-      state.tiles.forEach((t) => {
-        t.isOpened = true;
-      });
-
-      const isNegative = tile.type !== "REWARD" || (tile.deltaPoints && tile.deltaPoints < 0);
+      const isNegative = isDoorNegative(tile);
 
       if (isNegative) {
-        if (state.hasShield) {
+        if (state.hasShield && !state.isPenaltySurvivalMode) {
           state.hasShield = false;
           tile.isOpened = true;
           osState.chosenFinalDoorId = undefined;
-          osState.phase = "STAGE_2_PICK";
+          osState.phase = "OPEN_FINAL";
           osState.allRevealed = false;
           osState.selectedDoorIds = (osState.selectedDoorIds || []).filter((id) => id !== tileId);
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${tile.id} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được bảo toàn điểm số và chọn lại 1 cánh cửa khác!`,
+            rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${tile.id} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được bảo toàn điểm số và chọn lại cánh cửa còn lại!`,
             scoreDelta: 0,
             oldScore: team.score || 0,
             newScore: team.score || 0,
@@ -3206,14 +3415,15 @@ export function handleFlipCard({
           };
         }
 
-        // Kiểm tra loại cửa phạt: Cửa Trừ Gốc hay Cửa Bom Ngẫu Nhiên
-        const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType);
+        const isRandomBomb = tile.type === "BOMB_MAJOR" || Boolean((tile as any).bombDoorType) || tile.tarotCardKey === "THE_DEVIL" || tile.tarotCardKey === "THE_HANGED_MAN" || tile.tarotCardKey === "THE_KNIGHT";
 
         if (isRandomBomb) {
-          const bombType = (tile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0, {
-            currentRound,
-            riskTier,
-          });
+          let bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" = "BOMB_DARK";
+          if (tile.tarotCardKey === "THE_KNIGHT" || tile.type === "BOMB_SMOKE") bombType = "BOMB_SMOKE";
+          else if (tile.tarotCardKey === "THE_HANGED_MAN" || tile.type === "BOMB_CHARITY") bombType = "BOMB_CHARITY";
+          else if (tile.tarotCardKey === "THE_DEVIL" || tile.type === "BOMB_DARK") bombType = "BOMB_DARK";
+          else bombType = (tile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0, { currentRound, riskTier });
+
           const outcome = resolveBombOutcome({
             bombType,
             team,
@@ -3222,6 +3432,7 @@ export function handleFlipCard({
             baseQuestionPoints: state.baseQuestionPoints,
             isSurvivalPenalty: state.isPenaltySurvivalMode,
           });
+
           state.potPoints = 0;
           state.bombExploded = outcome.bombExploded;
           state.phase = "TURN_SUMMARY";
@@ -3251,10 +3462,8 @@ export function handleFlipCard({
             darkBombRecipients: outcome.darkBombRecipients,
           };
         } else {
-          // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu UNDERDOG thì 0đ phạt)
-          const penalty = tile.deltaPoints !== undefined
-            ? Math.abs(tile.deltaPoints)
-            : (riskTier === "UNDERDOG" ? 0 : (state.baseQuestionPoints || 10));
+          // The Tower / Bẫy Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu UNDERDOG thì 0đ phạt)
+          const penalty = riskTier === "UNDERDOG" ? 0 : Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10);
           state.potPoints = 0;
           state.bombExploded = {
             type: penalty === 0 ? "SMOKE" : "MINOR",
@@ -3262,7 +3471,7 @@ export function handleFlipCard({
             description: tile.storyDescription,
             penaltyText: penalty === 0
               ? "May mắn né phạt! Điểm số được bảo toàn nguyên vẹn."
-              : `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
+              : `Mở trúng Cửa Bẫy Tháp! Bị trừ ${penalty} điểm từ tổng điểm.`,
           };
           state.phase = "TURN_SUMMARY";
           state.turnFinishedReason = "BOMB_HIT";
@@ -3275,8 +3484,8 @@ export function handleFlipCard({
             teamName: team.name,
             teamColor: team.color || "#ef4444",
             rewardText: penalty === 0
-              ? "💨 Mở trúng Cửa Khói! May mắn né bẫy phạt, bảo toàn tổng điểm (0đ)!"
-              : `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
+              ? "💨 Mở trúng Cửa Tháp nhưng đội yếu thế né bẫy phạt thành công, bảo toàn tổng điểm (0đ)!"
+              : `💥 Mở trúng Cửa Bẫy Tháp! Bị trừ -${penalty} điểm!`,
             scoreDelta: -penalty,
             oldScore,
             newScore,
@@ -3291,86 +3500,98 @@ export function handleFlipCard({
         }
       } else {
         // CỬA AN TOÀN / PHẦN THƯỞNG
-      const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
-      const extraPotBonus = hasExtraPot ? 5 : 0;
-      const multiplier = state.potMultiplier || 1;
-
-      if (tile.effectType === "STEAL_POINTS") {
-        const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
-        if (eligibleTeams.length > 0) {
-          state.phase = "STEAL_TARGET_SELECT";
-          state.pendingSteal = {
-            stolenPoints: stealAmount,
-            eligibleTeamIds: eligibleTeams.map((t) => t.id),
-            tileTitle: tile.storyTitle,
-            tileIcon: tile.icon,
-          };
-          return {
-            updatedState: { ...state },
-            isBomb: false,
-            scorePenalty: 0,
-            finalScoreDelta: extraPotBonus,
-          };
+        if (tile.givesShield) {
+          state.hasShield = true;
         }
-      }
-
-      const baseReward = tile.deltaPoints || state.baseQuestionPoints || 10;
-      let finalDelta = (baseReward * multiplier) + extraPotBonus;
-      let victimTeamId: string | undefined;
-      let victimTeamName: string | undefined;
-      let stolenPoints: number | undefined;
-
-      if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
-        const promoSteal = calculatePromoSteal5({
-          activeTeamId: team.id,
-          allTeams,
-        });
-        if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
-          victimTeamId = promoSteal.victimTeamId;
-          victimTeamName = promoSteal.victimTeamName;
-          stolenPoints = promoSteal.stolenPoints;
-          finalDelta += promoSteal.stolenPoints;
+        if (tile.givesHeart) {
+          const heartsRecord = { ...(state.teamHearts || {}) };
+          heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
+          state.teamHearts = heartsRecord;
         }
+
+        const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
+        const extraPotBonus = hasExtraPot ? 5 : 0;
+        const multiplier = state.potMultiplier || 1;
+
+        if (tile.effectType === "STEAL_POINTS") {
+          const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
+          const eligibleTeams = (allTeams || []).filter(
+            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
+          );
+          if (eligibleTeams.length > 0) {
+            state.phase = "STEAL_TARGET_SELECT";
+            state.pendingSteal = {
+              stolenPoints: stealAmount,
+              eligibleTeamIds: eligibleTeams.map((t) => t.id),
+              tileTitle: tile.storyTitle,
+              tileIcon: tile.icon,
+            };
+            return {
+              updatedState: { ...state },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: extraPotBonus,
+            };
+          }
+        }
+
+        const baseReward = tile.tarotCardKey === "THE_FOOL" ? 0 : (tile.deltaPoints || state.baseQuestionPoints || 10);
+        let finalDelta = tile.tarotCardKey === "THE_FOOL" ? 0 : ((baseReward * multiplier) + extraPotBonus);
+        let victimTeamId: string | undefined;
+        let victimTeamName: string | undefined;
+        let stolenPoints: number | undefined;
+
+        if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
+          const promoSteal = calculatePromoSteal5({
+            activeTeamId: team.id,
+            allTeams,
+          });
+          if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
+            victimTeamId = promoSteal.victimTeamId;
+            victimTeamName = promoSteal.victimTeamName;
+            stolenPoints = promoSteal.stolenPoints;
+            finalDelta += promoSteal.stolenPoints;
+          }
+        }
+
+        state.potPoints = 0;
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "DOOR_CHOSEN";
+
+        const oldScore = team.score || 0;
+        const newScore = oldScore + finalDelta;
+
+        let rewardText = tile.tarotCardKey === "THE_FOOL"
+          ? `🃏 MỞ CỬA KẺ KHỜ! Giữ nguyên thế trận an toàn tuyệt đối (±0đ)!`
+          : extraPotBonus > 0
+          ? `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận +${baseReward * multiplier}đ và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+          : `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận trọn vẹn +${finalDelta} điểm thưởng!`;
+
+        if (stolenPoints && victimTeamName) {
+          rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
+        }
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#ef4444",
+          rewardText,
+          scoreDelta: finalDelta,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state },
+          isBomb: false,
+          scorePenalty: 0,
+          finalScoreDelta: finalDelta,
+          victimTeamId,
+          victimTeamName,
+          stolenPoints,
+        };
       }
-
-      state.potPoints = 0;
-      state.phase = "TURN_SUMMARY";
-      state.turnFinishedReason = "DOOR_CHOSEN";
-
-      const oldScore = team.score || 0;
-      const newScore = oldScore + finalDelta;
-
-      let rewardText = extraPotBonus > 0
-        ? `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận +${baseReward * multiplier}đ và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
-        : `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận trọn vẹn +${finalDelta} điểm thưởng!`;
-      if (stolenPoints && victimTeamName) {
-        rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
-      }
-
-      state.storyResult = {
-        teamId: team.id,
-        teamName: team.name,
-        teamColor: team.color || "#ef4444",
-        rewardText,
-        scoreDelta: finalDelta,
-        oldScore,
-        newScore,
-      };
-
-      return {
-        updatedState: { ...state },
-        isBomb: false,
-        scorePenalty: 0,
-        finalScoreDelta: finalDelta,
-        victimTeamId,
-        victimTeamName,
-        stolenPoints,
-      };
     }
-  }
     return { updatedState: state, isBomb: false, scorePenalty: 0 };
   }
 
@@ -3412,7 +3633,7 @@ export function handleFlipCard({
 
     if (isBomb) {
       // Shield Protection Check:
-      if (state.hasShield) {
+      if (state.hasShield && !state.isPenaltySurvivalMode) {
         state.hasShield = false;
         tile.isOpened = true;
         state.storyResult = {
@@ -3576,51 +3797,107 @@ export function handleFlipCard({
   state.cardsFlippedCount++;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE): Lá Thoát Hiểm hoặc Bẫy Phạt
+  // CHẾ ĐỘ SINH TỬ (SURVIVAL MODE): Chỉ bốc 1 lá là thực thi kết quả / hình phạt ngay lập tức!
+  // Toàn bộ Perk bị vô hiệu hoá.
   // ─────────────────────────────────────────────────────────────────────────
-  if (tile.type === "ESCAPE_SAFE") {
+  if (state.isPenaltySurvivalMode) {
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "SURVIVAL_ESCAPE";
     const oldScore = team.score || 0;
-    state.storyResult = {
-      teamId: team.id,
-      teamName: team.name,
-      teamColor: team.color || "#10b981",
-      rewardText: `🕊️ ${tile.storyTitle}: ${tile.storyDescription}`,
-      scoreDelta: 0,
-      oldScore,
-      newScore: oldScore,
-    };
-    return {
-      updatedState: { ...state },
-      isBomb: false,
-      scorePenalty: 0,
-      finalScoreDelta: 0,
-    };
-  }
 
-  if (state.isPenaltySurvivalMode && (tile.type === "TRAP" || tile.effectType === "LOSE_POINTS")) {
-    const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
-    state.potPoints = 0;
-    state.phase = "TURN_SUMMARY";
-    state.turnFinishedReason = "SURVIVAL_FAILED";
-    const oldScore = team.score || 0;
-    state.storyResult = {
-      teamId: team.id,
-      teamName: team.name,
-      teamColor: team.color || "#ef4444",
-      rewardText: `⚠️ ${tile.storyTitle}: Dính bẫy phạt sinh tử (-${penalty}đ)!`,
-      scoreDelta: -penalty,
-      oldScore,
-      newScore: Math.max(0, oldScore - penalty),
-    };
-    return {
-      updatedState: { ...state },
-      isBomb: true,
-      scorePenalty: penalty,
-      finalScoreDelta: -penalty,
-    };
+    const isSafe = tile.type === "ESCAPE_SAFE" || tile.tarotCardKey === "THE_FOOL" || tile.pairKey === "THE_FOOL";
+    if (isSafe) {
+      state.turnFinishedReason = "SURVIVAL_ESCAPE";
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#10b981",
+        rewardText: `🕊️ ${tile.storyTitle}: ${tile.storyDescription || "Thoát hiểm ngoạn mục! Bảo toàn nguyên vẹn điểm số và tim!"}`,
+        scoreDelta: 0,
+        oldScore,
+        newScore: oldScore,
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: 0,
+      };
+    }
+
+    // Bẫy hoặc Bom trong Chế độ Sinh Tử:
+    const isBomb =
+      tile.type === "BOMB_SMOKE" ||
+      tile.type === "BOMB_DARK" ||
+      tile.type === "BOMB_CHARITY" ||
+      tile.type === "BOMB_MINOR" ||
+      tile.type === "BOMB_MAJOR";
+
+    if (isBomb) {
+      const bombTypeMapped: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" =
+        tile.type === "BOMB_SMOKE" || tile.type === "BOMB_MINOR"
+          ? "BOMB_SMOKE"
+          : tile.type === "BOMB_DARK" || tile.type === "BOMB_DOOM"
+          ? "BOMB_DARK"
+          : "BOMB_CHARITY";
+
+      const bombOutcome = resolveBombOutcome({
+        bombType: bombTypeMapped,
+        team,
+        allTeams,
+        storyDescription: tile.storyDescription,
+        baseQuestionPoints: state.baseQuestionPoints,
+        isSurvivalPenalty: true,
+      });
+
+      state.bombExploded = bombOutcome.bombExploded;
+      state.turnFinishedReason = "SURVIVAL_FAILED";
+      const finalDelta = -bombOutcome.penalty;
+      const newScore = Math.max(0, oldScore + finalDelta);
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `💥 ${tile.storyTitle}: ${bombOutcome.penaltyText}`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: bombOutcome.penalty,
+        finalScoreDelta: finalDelta,
+        recipientTeamId: bombOutcome.recipientTeamId,
+        giftedPoints: bombOutcome.giftedPoints,
+        darkBombRecipients: bombOutcome.darkBombRecipients,
+      };
+    } else {
+      // The Tower (-1x base points) hoặc Bẫy Trừ Gốc:
+      const penalty = Math.min(team.score || 0, Math.abs(tile.deltaPoints || state.baseQuestionPoints || 10));
+      state.turnFinishedReason = "SURVIVAL_FAILED";
+      const finalDelta = -penalty;
+      const newScore = Math.max(0, oldScore + finalDelta);
+
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#ef4444",
+        rewardText: `⚠️ ${tile.storyTitle}: Dính bẫy phạt sinh tử (-${penalty}đ)!`,
+        scoreDelta: finalDelta,
+        oldScore,
+        newScore,
+      };
+
+      return {
+        updatedState: { ...state },
+        isBomb: true,
+        scorePenalty: penalty,
+        finalScoreDelta: finalDelta,
+      };
+    }
   }
 
   // Handle Bombs
@@ -3923,10 +4200,12 @@ export function handleCashOut({
 export function handleMemoryPairsSecondChanceDecision({
   state,
   team,
+  allTeams = [],
   choice,
 }: {
   state: MysteryQuestState;
   team: MysteryTeamRef;
+  allTeams?: MysteryTeamRef[];
   choice: "CASH_OUT" | "PLAY_ROUND_2";
 }): {
   updatedState: MysteryQuestState;
@@ -3940,13 +4219,13 @@ export function handleMemoryPairsSecondChanceDecision({
   if (choice === "CASH_OUT") {
     // Trừ 1 Tim của đội khi chọn dừng lại nhận điểm câu hỏi sau vòng 1 thất bại
     const heartsRecord = { ...(state.teamHearts || {}) };
-    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 2;
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
     if (currentHearts > 0) {
       heartsRecord[team.id] = Math.max(0, currentHearts - 1);
       state.teamHearts = heartsRecord;
     }
 
-    const award = state.baseQuestionPoints || 10;
+    const award = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "PAIR_MATCHED";
     state.potPoints = 0;
@@ -3961,7 +4240,7 @@ export function handleMemoryPairsSecondChanceDecision({
       teamId: team.id,
       teamName: team.name,
       teamColor: team.color || "#ef4444",
-      rewardText: `🛡️ Dừng lại bảo toàn! Tiêu hao 1 ❤️ để nhận trọn vẹn +${award} điểm câu hỏi (Còn ${remainingHearts} ❤️)!`,
+      rewardText: `🛡️ Dừng lại an toàn! Tiêu hao 1 ❤️ để nhận 50% điểm câu hỏi (+${award}đ, Còn ${remainingHearts} ❤️)!`,
       scoreDelta: award,
       oldScore,
       newScore,
@@ -3972,25 +4251,43 @@ export function handleMemoryPairsSecondChanceDecision({
       finalScoreDelta: award,
     };
   } else {
-    // Chơi tiếp Vòng 2: 4 lượt mới, reset sạch cache và randomize lại toàn bộ bàn cờ từ đầu
+    // Chơi tiếp Vòng 2: 5 lượt mới, reset sạch cache và randomize lại toàn bộ vị trí, icon, chức năng các cặp thẻ
+    // Lưu ý đặc biệt theo yêu cầu: DÙ RESET TẤT CẢ NHƯNG TUYỆT ĐỐI KHÔNG RESET KHIÊN (giữ nguyên trạng thái khiên hiện có)
+    const preservedShield = Boolean(state.hasShield);
+
     memState.round = 2;
-    memState.maxAttempts = 4;
+    memState.maxAttempts = getPerkType(state.promoPerk) === "EXTRA_ATTEMPT_PROMO" ? 6 : 5;
     memState.attemptsUsed = 0;
     memState.promptSecondChance = false;
     memState.firstFlippedTileId = null;
     memState.secondFlippedTileId = null;
     memState.thirdFlippedTileId = null;
-    memState.keptBombTileIds = []; // Xóa sạch lá phạt của Vòng 1 để không bị dính cache sang Vòng 2
+    memState.keptBombTileIds = [];
+    memState.faceUpPenaltyTileIds = [];
+    memState.attemptedPairs = [];
     memState.isBombRescueActive = false;
     memState.activePenaltyPairKey = null;
     memState.isMismatchResolving = false;
     memState.matchedPairKey = null;
 
-    // Đảm bảo tất cả các thẻ úp lại và đã được xáo trộn ngẫu nhiên hoàn toàn
-    state.tiles = shuffleMemoryPairsTiles(state.tiles);
-    // Đảm bảo quy tắc: Mỗi minigame đội chỉ có tối đa 1 khiên duy nhất.
-    // Nếu khiên đã bị dùng/hấp thụ ở Vòng 1 thì sang Vòng 2 tuyệt đối KHÔNG được hồi lại!
-    state.hasShield = state.hasShield === true;
+    // Sinh 16 thẻ mới hoàn toàn theo Tarot Quotas Vòng 2
+    const basePts = state.baseQuestionPoints || 20;
+    const consecutiveBombs = state.consecutiveBombsByTeam?.[team.id] ?? 0;
+    const riskTier = evaluateTeamRiskTier({
+      team,
+      allTeams,
+      consecutiveBombs,
+      currentRound: 2,
+    });
+    state.tiles = generateMemoryPairsTiles(basePts, {
+      currentRound: 2,
+      teams: allTeams,
+      currentTeamId: team.id,
+      riskTier,
+    });
+
+    // Giữ nguyên trạng thái khiên (không bị reset mất hoặc hồi lại vô lý)
+    state.hasShield = preservedShield;
     state.memoryPairsState = { ...memState };
 
     return {
@@ -4116,10 +4413,12 @@ export function handleChooseStealTarget({
 }
 
 /**
- * Handles decisions for 5 Cánh Cửa Bí Mật (ONE_SHOT_DOORS):
- * - "SWAP_DOOR": Đổi 1 trong 3 lá đã chọn sang 1 lá khác (chỉ 1 lần duy nhất, không quét lại số lá trừ).
- * - "TAKE_BASE_MINUS_HEART" / "SAFE_EXIT": Rút lui nhận điểm câu hỏi gốc và bị trừ 1 Tim.
- * - "RISK_OPEN": Mở 1 trong 3 cánh cửa đã chọn để nhận kết quả.
+ * Handles decisions for 8 Cánh Cửa Bí Mật (ONE_SHOT_DOORS):
+ * - "TAKE_100_BASE": Bước 2: Chốt nhận 100% điểm gốc câu hỏi ngay (0 tim, kết thúc lượt).
+ * - "PROCEED_TO_SELECT_2": Bước 2: Tiếp tục chọn 2 trong 4 cánh cửa đã giữ.
+ * - "SWAP_DOOR": Bước 3: Đổi 1 trong 2 lá đã chọn sang 1 lá khác từ 6 cửa đã loại (bắt buộc khi gặp Vàng/Đỏ).
+ * - "SAFE_EXIT" / "TAKE_BASE_MINUS_HEART": Bước 3: Rút lui nhận 50% điểm câu hỏi gốc và bị trừ 1 Tim.
+ * - "RISK_OPEN": Bước 3 & 4: Mở 1 trong 2 cánh cửa đã chọn để nhận kết quả.
  */
 export function handleOneShotDoorsDecision({
   state,
@@ -4133,7 +4432,7 @@ export function handleOneShotDoorsDecision({
   state: MysteryQuestState;
   team: MysteryTeamRef;
   allTeams?: MysteryTeamRef[];
-  decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART";
+  decision: "SAFE_EXIT" | "RISK_OPEN" | "SWAP_DOOR" | "TAKE_BASE_MINUS_HEART" | "TAKE_100_BASE" | "PROCEED_TO_SELECT_2";
   chosenDoorId?: number;
   swapRemovedDoorId?: number;
   swapAddedDoorId?: number;
@@ -4157,63 +4456,29 @@ export function handleOneShotDoorsDecision({
     revealedSafeDoorIds: [],
     chosenFinalDoorId: undefined,
     allRevealed: false,
+    discardedDoorIds: [],
   };
   state.oneShotState = osState;
+
+  const currentRound = state.currentRound || 1;
+  const consecutiveBombs = state.consecutiveBombsByTeam?.[team.id] ?? 0;
+  const riskTier = evaluateTeamRiskTier({
+    team,
+    allTeams,
+    consecutiveBombs,
+    currentRound,
+  });
 
   const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
   const extraPotBonus = hasExtraPot ? 5 : 0;
   const multiplier = state.potMultiplier || 1;
 
   // ─────────────────────────────────────────────────────────────────────────
-  // PHƯƠNG ÁN 1: ĐỔI 1 TRONG 3 LÁ ĐÃ CHỌN SANG 1 LÁ KHÁC (1 LẦN DUY NHẤT)
-  // ĐẶC BIỆT: HỆ THỐNG KHÔNG BÁO LẠI SỐ LÁ TRỪ MỚI (để tránh người chơi né)!
+  // BƯỚC 2 - LỰA CHỌN A: CHỐT NHẬN 100% ĐIỂM GỐC NGAY (0 TIM, KẾT THÚC LƯỢT)
   // ─────────────────────────────────────────────────────────────────────────
-  if (decision === "SWAP_DOOR") {
-    if (osState.hasSwapped) {
-      // Đã đổi 1 lần rồi thì không cho đổi tiếp
-      return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
-    }
-
-    const currentSelected = [...(osState.selectedDoorIds || [])];
-    if (swapRemovedDoorId && swapAddedDoorId) {
-      // Thay thế lá cũ bằng lá mới
-      const newSelected = currentSelected
-        .filter((id) => id !== swapRemovedDoorId)
-        .concat(swapAddedDoorId);
-
-      osState.selectedDoorIds = newSelected;
-      osState.hasSwapped = true;
-      osState.swapRemovedDoorId = swapRemovedDoorId;
-      osState.swapAddedDoorId = swapAddedDoorId;
-      // Tuyệt đối không báo lại số lá trừ mới theo yêu cầu:
-      osState.penaltyDoorsCount = undefined;
-      osState.hasBombDetected = false;
-      osState.phase = "STAGE_2_PICK";
-    }
-
-    return {
-      updatedState: { ...state },
-      finalScoreDelta: 0,
-      isBomb: false,
-      scorePenalty: 0,
-    };
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // PHƯƠNG ÁN 2: LẤY ĐIỂM GỐC NHƯNG BỊ TRỪ 1 TIM (RÚT LUI AN TOÀN)
-  // ─────────────────────────────────────────────────────────────────────────
-  if (decision === "TAKE_BASE_MINUS_HEART" || decision === "SAFE_EXIT") {
-    // Trừ 1 Tim của đội nếu đội còn Tim
-    const heartsRecord = { ...(state.teamHearts || {}) };
-    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
-    if (currentHearts > 0) {
-      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
-      state.teamHearts = heartsRecord;
-    }
-
+  if (decision === "TAKE_100_BASE") {
     osState.phase = "RESOLVED";
     osState.allRevealed = true;
-    osState.isBasePointsWithMinusHeart = true;
     state.tiles.forEach((t) => {
       t.isOpened = true;
     });
@@ -4225,11 +4490,10 @@ export function handleOneShotDoorsDecision({
 
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
-    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
 
     const rewardText = extraPotBonus > 0
-      ? `🛡️ Rút lui bảo toàn! Chấp nhận tiêu hao 1 ❤️ để nhận an toàn +${state.baseQuestionPoints || 10}đ câu hỏi và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm, còn ${remainingHearts} ❤️)!`
-      : `🛡️ Rút lui bảo toàn! Chấp nhận tiêu hao 1 ❤️ để nhận an toàn trọn vẹn +${finalDelta} điểm câu hỏi (Còn ${remainingHearts} ❤️)!`;
+      ? `🎉 Chốt nhận an toàn! Quyết định dừng lại nhận trọn vẹn 100% điểm gốc (+${state.baseQuestionPoints || 10}đ) và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
+      : `🎉 Chốt nhận an toàn! Quyết định dừng lại nhận trọn vẹn 100% điểm gốc câu hỏi (+${finalDelta} điểm)!`;
 
     state.storyResult = {
       teamId: team.id,
@@ -4250,10 +4514,114 @@ export function handleOneShotDoorsDecision({
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // MỞ 1 TRONG 3 CÁNH CỬA ĐÃ CHỌN (GIAI ĐOẠN 2)
+  // BƯỚC 2 - LỰA CHỌN B: TIẾP TỤC CHỌN 2 TRONG 4 CỬA ĐÃ GIỮ
   // ─────────────────────────────────────────────────────────────────────────
-  if (decision === "RISK_OPEN" && !chosenDoorId && osState.phase === "PENALTY_DECISION") {
-    osState.phase = "STAGE_2_PICK";
+  if (decision === "PROCEED_TO_SELECT_2") {
+    osState.phase = "SELECT_2";
+    osState.selectedDoorIds = [];
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: 0,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BƯỚC 3 - PHƯƠNG ÁN 1: ĐỔI 1 TRONG 2 CỬA SANG 1 TRONG 6 CỬA ĐÃ LOẠI
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "SWAP_DOOR") {
+    if (osState.hasSwapped) {
+      // Đã đổi 1 lần rồi thì không cho đổi tiếp
+      return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+    }
+
+    const currentSelected = [...(osState.selectedDoorIds || [])];
+    const currentDiscarded = [...(osState.discardedDoorIds || [])];
+
+    if (swapRemovedDoorId && swapAddedDoorId) {
+      const newSelected = currentSelected
+        .filter((id) => id !== swapRemovedDoorId)
+        .concat(swapAddedDoorId);
+
+      const newDiscarded = currentDiscarded
+        .filter((id) => id !== swapAddedDoorId)
+        .concat(swapRemovedDoorId);
+
+      osState.selectedDoorIds = newSelected;
+      osState.discardedDoorIds = newDiscarded;
+      osState.hasSwapped = true;
+      osState.swapRemovedDoorId = swapRemovedDoorId;
+      osState.swapAddedDoorId = swapAddedDoorId;
+      osState.penaltyDoorsCount = undefined;
+      osState.hasBombDetected = false;
+      osState.phase = "OPEN_FINAL";
+    }
+
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: 0,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BƯỚC 3 - PHƯƠNG ÁN 2: RÚT LUI AN TOÀN NHẬN 50% ĐIỂM GỐC VÀ TRỪ 1 TIM
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "TAKE_BASE_MINUS_HEART" || decision === "SAFE_EXIT") {
+    // Trừ 1 Tim của đội nếu đội còn Tim
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    const currentHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts > 0) {
+      heartsRecord[team.id] = Math.max(0, currentHearts - 1);
+      state.teamHearts = heartsRecord;
+    }
+
+    osState.phase = "RESOLVED";
+    osState.allRevealed = true;
+    osState.isBasePointsWithMinusHeart = true;
+    state.tiles.forEach((t) => {
+      t.isOpened = true;
+    });
+
+    const halfBase = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+    const finalDelta = halfBase + extraPotBonus;
+    state.potPoints = 0;
+    state.phase = "TURN_SUMMARY";
+    state.turnFinishedReason = "TOOK_BASE_POINTS";
+
+    const oldScore = team.score || 0;
+    const newScore = oldScore + finalDelta;
+    const remainingHearts = state.teamHearts?.[team.id] ?? 0;
+
+    const rewardText = extraPotBonus > 0
+      ? `🛡️ Rút lui an toàn! Chấp nhận tiêu hao 1 ❤️ để nhận 50% điểm gốc (+${halfBase}đ) và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm, còn ${remainingHearts} ❤️)!`
+      : `🛡️ Rút lui an toàn! Chấp nhận tiêu hao 1 ❤️ để nhận 50% điểm gốc câu hỏi (+${finalDelta} điểm, còn ${remainingHearts} ❤️)!`;
+
+    state.storyResult = {
+      teamId: team.id,
+      teamName: team.name,
+      teamColor: team.color || "#ef4444",
+      rewardText,
+      scoreDelta: finalDelta,
+      oldScore,
+      newScore,
+    };
+
+    return {
+      updatedState: { ...state },
+      finalScoreDelta: finalDelta,
+      isBomb: false,
+      scorePenalty: 0,
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BƯỚC 3 & 4: MỞ 1 TRONG 2 CÁNH CỬA ĐÃ CHỌN
+  // ─────────────────────────────────────────────────────────────────────────
+  if (decision === "RISK_OPEN" && !chosenDoorId && (osState.phase === "FINAL_DECISION" || osState.phase === "PENALTY_DECISION")) {
+    osState.phase = "OPEN_FINAL";
     return {
       updatedState: { ...state },
       finalScoreDelta: 0,
@@ -4275,17 +4643,26 @@ export function handleOneShotDoorsDecision({
     t.isOpened = true;
   });
 
-  const isNegative = chosenTile.type !== "REWARD" || (chosenTile.deltaPoints && chosenTile.deltaPoints < 0);
+  const isDoorNegative = (t: MysteryTile): boolean => {
+    if (t.tarotCardKey === "THE_FOOL") return false;
+    if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
+    if (t.type !== "REWARD" && t.type !== "ESCAPE_SAFE") return true;
+    if (t.deltaPoints && t.deltaPoints < 0) return true;
+    if (t.bombDoorType) return true;
+    return false;
+  };
+
+  const isNegative = isDoorNegative(chosenTile);
 
   if (isNegative) {
-    if (state.hasShield) {
+    if (state.hasShield && !state.isPenaltySurvivalMode) {
       state.hasShield = false;
       chosenTile.isOpened = true;
       if (osState.selectedDoorIds) {
         osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
       }
       osState.chosenFinalDoorId = undefined;
-      osState.phase = "STAGE_2_PICK";
+      osState.phase = "OPEN_FINAL";
       osState.allRevealed = false;
       state.tiles.forEach((t) => {
         if (t.id !== doorIdToOpen) t.isOpened = false;
@@ -4294,7 +4671,7 @@ export function handleOneShotDoorsDecision({
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${doorIdToOpen} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được chọn lại 1 trong các cánh cửa còn lại!`,
+        rewardText: `🛡️ KHIÊN THẦN ĐÃ HẤP THỤ BẪY PHẠT! Cửa bẫy #${doorIdToOpen} đã bị vô hiệu hóa an toàn (0đ phạt). Đội bạn được chọn lại cánh cửa còn lại!`,
         scoreDelta: 0,
         oldScore: team.score || 0,
         newScore: team.score || 0,
@@ -4307,10 +4684,15 @@ export function handleOneShotDoorsDecision({
       };
     }
 
-    const isRandomBomb = chosenTile.type === "BOMB_MAJOR" || Boolean((chosenTile as any).bombDoorType);
+    const isRandomBomb = chosenTile.type === "BOMB_MAJOR" || Boolean((chosenTile as any).bombDoorType) || chosenTile.tarotCardKey === "THE_DEVIL" || chosenTile.tarotCardKey === "THE_HANGED_MAN" || chosenTile.tarotCardKey === "THE_KNIGHT";
 
     if (isRandomBomb) {
-      const bombType = (chosenTile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0);
+      let bombType: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY" = "BOMB_DARK";
+      if (chosenTile.tarotCardKey === "THE_KNIGHT" || chosenTile.type === "BOMB_SMOKE") bombType = "BOMB_SMOKE";
+      else if (chosenTile.tarotCardKey === "THE_HANGED_MAN" || chosenTile.type === "BOMB_CHARITY") bombType = "BOMB_CHARITY";
+      else if (chosenTile.tarotCardKey === "THE_DEVIL" || chosenTile.type === "BOMB_DARK") bombType = "BOMB_DARK";
+      else bombType = (chosenTile as any).bombDoorType || rollBombTypeForMinigame("ONE_SHOT_DOORS", team.score || 0, { currentRound, riskTier });
+
       const outcome = resolveBombOutcome({
         bombType,
         team,
@@ -4348,14 +4730,16 @@ export function handleOneShotDoorsDecision({
         darkBombRecipients: outcome.darkBombRecipients,
       };
     } else {
-      // Cửa Trừ Gốc: Trừ đúng điểm gốc câu hỏi
-      const penalty = Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);
+      // The Tower / Bẫy Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu UNDERDOG thì 0đ phạt)
+      const penalty = riskTier === "UNDERDOG" ? 0 : Math.abs(chosenTile.deltaPoints || state.baseQuestionPoints || 10);
       state.potPoints = 0;
       state.bombExploded = {
-        type: "MINOR",
+        type: penalty === 0 ? "SMOKE" : "MINOR",
         title: chosenTile.storyTitle,
         description: chosenTile.storyDescription,
-        penaltyText: `Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm từ tổng điểm.`,
+        penaltyText: penalty === 0
+          ? "May mắn né phạt! Điểm số được bảo toàn nguyên vẹn."
+          : `Mở trúng Cửa Bẫy Tháp! Bị trừ ${penalty} điểm từ tổng điểm.`,
       };
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "BOMB_HIT";
@@ -4367,7 +4751,9 @@ export function handleOneShotDoorsDecision({
         teamId: team.id,
         teamName: team.name,
         teamColor: team.color || "#ef4444",
-        rewardText: `💥 Mở trúng Cửa Bẫy Trừ Gốc! Bị trừ ${penalty} điểm!`,
+        rewardText: penalty === 0
+          ? "💨 Mở trúng Cửa Tháp nhưng đội yếu thế né bẫy phạt thành công, bảo toàn tổng điểm (0đ)!"
+          : `💥 Mở trúng Cửa Bẫy Tháp! Bị trừ -${penalty} điểm!`,
         scoreDelta: -penalty,
         oldScore,
         newScore,
@@ -4381,6 +4767,16 @@ export function handleOneShotDoorsDecision({
       };
     }
   } else {
+    // CỬA AN TOÀN / PHẦN THƯỞNG
+    if (chosenTile.givesShield) {
+      state.hasShield = true;
+    }
+    if (chosenTile.givesHeart) {
+      const heartsRecord = { ...(state.teamHearts || {}) };
+      heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
+      state.teamHearts = heartsRecord;
+    }
+
     let victimTeamId: string | undefined;
     let victimTeamName: string | undefined;
     let stolenPoints: number | undefined;
@@ -4409,7 +4805,8 @@ export function handleOneShotDoorsDecision({
         finalDelta = (stealAmount * multiplier) + extraPotBonus;
       }
     } else {
-      finalDelta = ((chosenTile.deltaPoints ?? (state.baseQuestionPoints || 10)) * multiplier) + extraPotBonus;
+      const baseReward = chosenTile.tarotCardKey === "THE_FOOL" ? 0 : (chosenTile.deltaPoints ?? (state.baseQuestionPoints || 10));
+      finalDelta = chosenTile.tarotCardKey === "THE_FOOL" ? 0 : ((baseReward * multiplier) + extraPotBonus);
     }
 
     if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
@@ -4432,7 +4829,9 @@ export function handleOneShotDoorsDecision({
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
 
-    let rewardText = `🎉 ĐOÁN ĐÚNG XUẤT SẮC! Mở trúng cánh cửa an toàn #${chosenTile.id}: Nhận trọn vẹn +${finalDelta} điểm!`;
+    let rewardText = chosenTile.tarotCardKey === "THE_FOOL"
+      ? `🃏 Mở trúng Cửa Kẻ Khờ (±0đ): Thế trận được bảo toàn an toàn tuyệt đối!`
+      : `🎉 ĐOÁN ĐÚNG XUẤT SẮC! Mở trúng cánh cửa an toàn #${chosenTile.id}: Nhận trọn vẹn +${finalDelta} điểm!`;
     if (stolenPoints && victimTeamName) {
       rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
     }

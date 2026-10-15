@@ -497,10 +497,14 @@ export function calculatePromoSteal5({
   activeTeamId,
   allTeams,
   timesStolenInCycle = {},
+  teamShields,
+  currentTurnIndex = 0,
 }: {
   activeTeamId: string;
   allTeams: MysteryTeamRef[];
   timesStolenInCycle?: Record<string, number>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  currentTurnIndex?: number;
 }): {
   victimTeamId?: string;
   victimTeamName?: string;
@@ -515,13 +519,21 @@ export function calculatePromoSteal5({
     return { stolenPoints: 5, isFromBank: true };
   }
 
-  // Loại trừ các đội đã bị cướp >= 2 lần trong chu kỳ hiện tại (Miễn nhiễm)
-  const eligibleOpponents = opponents.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+  // Loại trừ các đội đã bị cướp >= 2 lần trong chu kỳ hoặc đang được Khiên Hoàng Đế bảo vệ
+  const eligibleOpponents = opponents.filter((t) => {
+    if ((timesStolenInCycle[t.id] ?? 0) >= 2) return false;
+    const shield = teamShields?.[t.id];
+    if (shield && currentTurnIndex >= shield.activeFromTurnIndex && currentTurnIndex <= shield.expiresAfterTurnIndex) {
+      return false;
+    }
+    return true;
+  });
+
   if (eligibleOpponents.length === 0) {
     return {
       stolenPoints: 5,
       isFromBank: true,
-      protectionNote: "Các đối thủ đều đang được Khiên Miễn Nhiễm Cướp bảo vệ! Nhận 5đ từ Quỹ Hệ Thống.",
+      protectionNote: "Các đối thủ đều đang được Khiên Hoàng Đế bảo vệ! Bạn nhận +5đ an toàn từ Hệ Thống.",
     };
   }
 
@@ -837,7 +849,7 @@ export function getTarotMinigameArchetypePool(
       deltaPoints: pSun,
       isNegative: false,
     },
-    // 2. THE_EMPEROR: Shield Protection (+0.5x base)
+    // 2. THE_EMPEROR: Shield Protection (+1x base points)
     {
       key: "THE_EMPEROR",
       nameVi: "Hoàng Đế Quyền Uy",
@@ -845,14 +857,14 @@ export function getTarotMinigameArchetypePool(
       icon: "🛡️",
       type: "REWARD",
       effectType: "BONUS_POINTS",
-      storyTitle: `🛡️ Khiên Thần +${pHalf}đ`,
-      storyDescription: `Uy quyền tối thượng: Trang bị 1 Khiên Thần phòng ngự và nhận +${pHalf}đ!`,
-      deltaMultiplier: 0.5,
-      deltaPoints: pHalf,
+      storyTitle: `🛡️ Khiên Thần +${pBase}đ`,
+      storyDescription: `Uy quyền tối thượng: Trang bị 1 Khiên Thần phòng ngự và nhận trọn vẹn +${pBase}đ!`,
+      deltaMultiplier: 1.0,
+      deltaPoints: pBase,
       isNegative: false,
       givesShield: true,
     },
-    // 3. STRENGTH: Heart Recovery (+0.5x base)
+    // 3. STRENGTH: Heart Recovery (+1x base points)
     {
       key: "STRENGTH",
       nameVi: "Sức Mạnh Phục Hồi",
@@ -860,10 +872,10 @@ export function getTarotMinigameArchetypePool(
       icon: "❤️",
       type: "REWARD",
       effectType: "BONUS_POINTS",
-      storyTitle: `❤️ Hồi 1 Tim +${pHalf}đ`,
-      storyDescription: `Nghị lực kiên cường: Hồi phục 1 Trái Tim phòng thủ và nhận +${pHalf}đ!`,
-      deltaMultiplier: 0.5,
-      deltaPoints: pHalf,
+      storyTitle: `❤️ Hồi 1 Tim +${pBase}đ`,
+      storyDescription: `Nghị lực kiên cường: Hồi phục 1 Trái Tim phòng thủ và nhận trọn vẹn +${pBase}đ!`,
+      deltaMultiplier: 1.0,
+      deltaPoints: pBase,
       isNegative: false,
       givesHeart: true,
     },
@@ -945,7 +957,7 @@ export function getTarotMinigameArchetypePool(
       deltaPoints: pBase,
       isNegative: false,
     },
-    // 9. TEMPERANCE: +1.5x Base points
+    // 9. TEMPERANCE: +1.5x Base points for active team, +0.5x for all other teams (Dung hợp hài hòa)
     {
       key: "TEMPERANCE",
       nameVi: "Tiết Độ Hài Hòa",
@@ -953,8 +965,8 @@ export function getTarotMinigameArchetypePool(
       icon: "⚖️",
       type: "REWARD",
       effectType: "BONUS_POINTS",
-      storyTitle: `⚖️ Tiết Độ +${pMedium}đ`,
-      storyDescription: `Dung hợp năng lượng: Cân bằng thế trận nhận +1.5x điểm cơ bản (+${pMedium}đ)!`,
+      storyTitle: `⚖️ Tiết Độ +${pMedium}đ (Các đội khác +${pHalf}đ)`,
+      storyDescription: `Dung hợp hài hòa: Bạn nhận +1.5x (+${pMedium}đ), đồng thời ban phước chia sẻ +0.5x (+${pHalf}đ) cho tất cả các đối thủ!`,
       deltaMultiplier: 1.5,
       deltaPoints: pMedium,
       isNegative: false,
@@ -1047,11 +1059,11 @@ export function generateTarotQuotaArchetypes(
   // 1. ALWAYS 1 SLOT FOR NEUTRAL / BALANCE (The Fool ±0đ)
   const slotFool = getCard("THE_FOOL");
 
-  // 2. High Multiplier (Max 1 card: The Sun 2x, Wheel 1.5x, or Temperance 1.5x)
-  const highMultPool = [getCard("THE_SUN"), getCard("WHEEL_OF_FORTUNE"), getCard("TEMPERANCE")];
+  // 2. High Multiplier (Max 1 card: The Sun 2x or Wheel 1.5x)
+  const highMultPool = [getCard("THE_SUN"), getCard("WHEEL_OF_FORTUNE")];
   const slotHigh = highMultPool[Math.floor(Math.random() * highMultPool.length)];
 
-  // 3. Support / Vitality (The Emperor Shield or Strength Heart)
+  // 3. Support / Vitality: Hộ Thể (The Emperor Shield +1x or Strength Heart +1x)
   const supportPool = [getCard("THE_EMPEROR"), getCard("STRENGTH")];
   const slotSupport = supportPool[Math.floor(Math.random() * supportPool.length)];
 
@@ -1059,22 +1071,26 @@ export function generateTarotQuotaArchetypes(
 
   if (currentRound <= 1 || riskTier === "UNDERDOG") {
     // ═════════════════════════════════════════════════════════════════════════
-    // ROUND 1 HOẶC UNDERDOG: ĐÚNG 2 SLOT TRỪ (Tower + Smoke Bomb 0đ)
+    // ROUND 1 HOẶC UNDERDOG: ĐÚNG 2 SLOT TRỪ (Tower -1x + Smoke Bomb 0đ) -> 25% rủi ro
     // ═════════════════════════════════════════════════════════════════════════
     const slotHazard2 = getCard("THE_KNIGHT"); // Smoke Bomb 0đ
     const slotSafe1 = getCard("THE_HIGH_PRIESTESS"); // +1x
-    const slotSafe2 = getCard("TEMPERANCE"); // +1.5x
+    const slotSafe2 = getCard("TEMPERANCE"); // +1x
     quotaArchetypes = [slotFool, slotHazard2, slotHigh, slotSupport, slotSafe1, slotSafe2];
   } else {
     // ═════════════════════════════════════════════════════════════════════════
-    // ROUND 2+ (NEUTRAL / DOMINANT): ĐÚNG 3 SLOT TRỪ (Tower + 2 Bombs)
+    // ROUND 2+ (NEUTRAL / DOMINANT): ĐÚNG 3 SLOT TRỪ (Tower + 2 Bombs) -> 37.5% rủi ro
     // ═════════════════════════════════════════════════════════════════════════
     const slotHazard2 = Math.random() < 0.5 ? getCard("THE_DEVIL") : getCard("THE_HANGED_MAN");
     const slotHazard3 = slotHazard2.key === "THE_DEVIL" ? getCard("THE_HANGED_MAN") : getCard("THE_KNIGHT");
 
-    // Steal slot (Chariot 50% or Death 100%, fallback Priestess if cannot steal)
+    // Steal slot (Chariot 50% or Death 100%, fallback Priestess/Temperance +1x if cannot steal)
     const stealCard = Math.random() < 0.6 ? getCard("THE_CHARIOT") : getCard("THE_DEATH");
-    const slotSteal = stealCard && stealCard.isSteal ? stealCard : getCard("THE_HIGH_PRIESTESS");
+    const slotSteal = stealCard && stealCard.isSteal
+      ? stealCard
+      : Math.random() < 0.5
+      ? getCard("THE_HIGH_PRIESTESS")
+      : getCard("TEMPERANCE");
 
     quotaArchetypes = [slotFool, slotHazard2, slotHazard3, slotHigh, slotSupport, slotSteal];
   }
@@ -1964,6 +1980,7 @@ export function generateMysteryStageForTurn({
   teamHearts,
   timesStolenInCycle,
   consecutiveBombsByTeam,
+  teamShields,
 }: {
   turnIndex: number;
   currentTeam: MysteryTeamRef;
@@ -1977,6 +1994,7 @@ export function generateMysteryStageForTurn({
   teamHearts?: Record<string, number>;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
 }): MysteryQuestState {
   const computedInitialHearts = initialHeartsPerTeam !== undefined ? initialHeartsPerTeam : Math.round(turnsPerTeam / 3);
   let resolvedTeamHearts: Record<string, number> = {};
@@ -1985,6 +2003,21 @@ export function generateMysteryStageForTurn({
   } else {
     for (const t of teams) {
       resolvedTeamHearts[t.id] = computedInitialHearts;
+    }
+  }
+
+  // CƠ CHẾ KHIÊN HOÀNG ĐẾ (THE_EMPEROR): Đánh giá khiên còn hiệu lực cho đội hiện tại
+  const updatedTeamShields: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }> = {};
+  let hasActiveShield = false;
+  if (teamShields) {
+    for (const [tid, s] of Object.entries(teamShields)) {
+      const shield = s as { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string };
+      if (turnIndex <= shield.expiresAfterTurnIndex) {
+        updatedTeamShields[tid] = shield;
+        if (tid === currentTeam.id && turnIndex >= shield.activeFromTurnIndex) {
+          hasActiveShield = true;
+        }
+      }
     }
   }
 
@@ -2126,7 +2159,8 @@ export function generateMysteryStageForTurn({
     phase: "QUESTION_ACTIVE",
     baseQuestionPoints: effectiveBasePoints,
     promoPerk,
-    hasShield: getPerkType(promoPerk) === "SHIELD_PROMO",
+    hasShield: hasActiveShield || getPerkType(promoPerk) === "SHIELD_PROMO",
+    teamShields: updatedTeamShields,
     currentTeamRiskTier,
     timesStolenInCycle: updatedTimesStolen,
     consecutiveBombsByTeam: consecutiveBombsByTeam ? { ...consecutiveBombsByTeam } : {},
@@ -2268,6 +2302,11 @@ export function handleFlipCard({
   recipientTeamName?: string;
   giftedPoints?: number;
   darkBombRecipients?: Array<{
+    teamId: string;
+    teamName: string;
+    points: number;
+  }>;
+  temperanceBonusRecipients?: Array<{
     teamId: string;
     teamName: string;
     points: number;
@@ -2711,11 +2750,34 @@ export function handleFlipCard({
 
         if (winCard.givesShield) {
           state.hasShield = true;
+          const teamsCount = Math.max(1, allTeams?.length || 2);
+          const curTurn = state.currentTurnIndex || 0;
+          state.teamShields = {
+            ...(state.teamShields || {}),
+            [team.id]: {
+              activeFromTurnIndex: curTurn + 1,
+              expiresAfterTurnIndex: curTurn + teamsCount,
+              sourceCard: "THE_EMPEROR",
+            },
+          };
         }
         if (winCard.givesHeart) {
           const heartsRecord = { ...(state.teamHearts || {}) };
           heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
           state.teamHearts = heartsRecord;
+        }
+
+        let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
+        if (winCard.tarotCardKey === "TEMPERANCE" || winCard.pairKey === "PAIR_TEMPERANCE") {
+          const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+          const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+          if (otherTeams.length > 0) {
+            temperanceBonusRecipients = otherTeams.map((t) => ({
+              teamId: t.id,
+              teamName: t.name,
+              points: pHalf,
+            }));
+          }
         }
 
         let finalDelta = 0;
@@ -2781,6 +2843,10 @@ export function handleFlipCard({
         if (stolenPoints && victimTeamName) {
           rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
         }
+        if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+          const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+          rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
+        }
 
         state.storyResult = {
           teamId: team.id,
@@ -2800,6 +2866,7 @@ export function handleFlipCard({
           victimTeamId,
           victimTeamName,
           stolenPoints,
+          temperanceBonusRecipients,
         };
       } else {
         // ─────────────────────────────────────────────────────────────────────
@@ -3014,11 +3081,34 @@ export function handleFlipCard({
 
       if (firstTile.givesShield) {
         state.hasShield = true;
+        const teamsCount = Math.max(1, allTeams?.length || 2);
+        const curTurn = state.currentTurnIndex || 0;
+        state.teamShields = {
+          ...(state.teamShields || {}),
+          [team.id]: {
+            activeFromTurnIndex: curTurn + 1,
+            expiresAfterTurnIndex: curTurn + teamsCount,
+            sourceCard: "THE_EMPEROR",
+          },
+        };
       }
       if (firstTile.givesHeart) {
         const heartsRecord = { ...(state.teamHearts || {}) };
         heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
         state.teamHearts = heartsRecord;
+      }
+
+      let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
+      if (firstTile.tarotCardKey === "TEMPERANCE" || firstTile.pairKey === "PAIR_TEMPERANCE") {
+        const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+        const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+        if (otherTeams.length > 0) {
+          temperanceBonusRecipients = otherTeams.map((t) => ({
+            teamId: t.id,
+            teamName: t.name,
+            points: pHalf,
+          }));
+        }
       }
 
       let victimTeamId: string | undefined;
@@ -3083,6 +3173,10 @@ export function handleFlipCard({
       if (stolenPoints && victimTeamName) {
         rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
       }
+      if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+        const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+        rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
+      }
 
       state.storyResult = {
         teamId: team.id,
@@ -3102,6 +3196,7 @@ export function handleFlipCard({
         victimTeamId,
         victimTeamName,
         stolenPoints,
+        temperanceBonusRecipients,
       };
     } else {
       // Mismatch giữa 2 lá thường!
@@ -3502,11 +3597,34 @@ export function handleFlipCard({
         // CỬA AN TOÀN / PHẦN THƯỞNG
         if (tile.givesShield) {
           state.hasShield = true;
+          const teamsCount = Math.max(1, allTeams?.length || 2);
+          const curTurn = state.currentTurnIndex || 0;
+          state.teamShields = {
+            ...(state.teamShields || {}),
+            [team.id]: {
+              activeFromTurnIndex: curTurn + 1,
+              expiresAfterTurnIndex: curTurn + teamsCount,
+              sourceCard: "THE_EMPEROR",
+            },
+          };
         }
         if (tile.givesHeart) {
           const heartsRecord = { ...(state.teamHearts || {}) };
           heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
           state.teamHearts = heartsRecord;
+        }
+
+        let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
+        if (tile.tarotCardKey === "TEMPERANCE") {
+          const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+          const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+          if (otherTeams.length > 0) {
+            temperanceBonusRecipients = otherTeams.map((t) => ({
+              teamId: t.id,
+              teamName: t.name,
+              points: pHalf,
+            }));
+          }
         }
 
         const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
@@ -3567,6 +3685,11 @@ export function handleFlipCard({
           ? `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận +${baseReward * multiplier}đ và +${extraPotBonus}đ Quỹ thưởng (Tổng +${finalDelta} điểm)!`
           : `🎉 MỞ CỬA THÀNH CÔNG! ${tile.storyTitle} Nhận trọn vẹn +${finalDelta} điểm thưởng!`;
 
+        if (tile.tarotCardKey === "TEMPERANCE" && temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+          const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+          rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
+        }
+
         if (stolenPoints && victimTeamName) {
           rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
         }
@@ -3589,6 +3712,7 @@ export function handleFlipCard({
           victimTeamId,
           victimTeamName,
           stolenPoints,
+          temperanceBonusRecipients,
         };
       }
     }
@@ -4325,21 +4449,35 @@ export function handleChooseStealTarget({
   const hasExtraPot = getPerkType(state.promoPerk) === "EXTRA_POT_PROMO";
   const extraPotBonus = hasExtraPot ? 5 : 0;
 
-  // QUY TẮC BẢO VỆ CHỐNG CƯỚP LIÊN HOÀN
+  // QUY TẮC BẢO VỆ CHỐNG CƯỚP LIÊN HOÀN & KHIÊN HOÀNG ĐẾ
   if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
   const timesStolen = victimTeamId ? (state.timesStolenInCycle[victimTeamId] || 0) : 0;
   let stolenPoints = rawStolenPoints;
   let isHalfProtected = false;
 
-  if (victimTeamId && timesStolen === 1) {
+  const curTurn = state.currentTurnIndex || 0;
+  const victimShield = victimTeamId ? state.teamShields?.[victimTeamId] : undefined;
+  const isEmperorShieldActive = Boolean(
+    victimShield && curTurn >= victimShield.activeFromTurnIndex && curTurn <= victimShield.expiresAfterTurnIndex
+  );
+
+  if (isEmperorShieldActive && victimTeamId) {
+    if (state.teamShields) {
+      delete state.teamShields[victimTeamId]; // Tiêu hao khiên
+    }
+    stolenPoints = 0;
+  } else if (victimTeamId && timesStolen === 1) {
     stolenPoints = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
     isHalfProtected = true;
   }
+
   if (victimTeamId) {
     state.timesStolenInCycle[victimTeamId] = timesStolen + 1;
   }
 
-  const protectionNote = isHalfProtected
+  const protectionNote = isEmperorShieldActive
+    ? ` (🛡️ KHIÊN HOÀNG ĐẾ: Đội ${victimTeamName} đã kích hoạt Khiên Thần chặn đứng vụ cướp điểm, 0đ mất mát!)`
+    : isHalfProtected
     ? ` (Khiên Chống Vắt Kiệt: Đội ${victimTeamName} đã bị cướp lần 2 trong vòng, chỉ bị trừ 50%!)`
     : "";
 
@@ -4448,6 +4586,7 @@ export function handleOneShotDoorsDecision({
   recipientTeamName?: string;
   giftedPoints?: number;
   darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
+  temperanceBonusRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
 } {
   const osState = state.oneShotState || {
     selectedDoorIds: [],
@@ -4770,11 +4909,34 @@ export function handleOneShotDoorsDecision({
     // CỬA AN TOÀN / PHẦN THƯỞNG
     if (chosenTile.givesShield) {
       state.hasShield = true;
+      const teamsCount = Math.max(1, allTeams?.length || 2);
+      const curTurn = state.currentTurnIndex || 0;
+      state.teamShields = {
+        ...(state.teamShields || {}),
+        [team.id]: {
+          activeFromTurnIndex: curTurn + 1,
+          expiresAfterTurnIndex: curTurn + teamsCount,
+          sourceCard: "THE_EMPEROR",
+        },
+      };
     }
     if (chosenTile.givesHeart) {
       const heartsRecord = { ...(state.teamHearts || {}) };
       heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
       state.teamHearts = heartsRecord;
+    }
+
+    let temperanceBonusRecipients: Array<{ teamId: string; teamName: string; points: number }> | undefined;
+    if (chosenTile.tarotCardKey === "TEMPERANCE") {
+      const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+      const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
+      if (otherTeams.length > 0) {
+        temperanceBonusRecipients = otherTeams.map((t) => ({
+          teamId: t.id,
+          teamName: t.name,
+          points: pHalf,
+        }));
+      }
     }
 
     let victimTeamId: string | undefined;
@@ -4832,6 +4994,12 @@ export function handleOneShotDoorsDecision({
     let rewardText = chosenTile.tarotCardKey === "THE_FOOL"
       ? `🃏 Mở trúng Cửa Kẻ Khờ (±0đ): Thế trận được bảo toàn an toàn tuyệt đối!`
       : `🎉 ĐOÁN ĐÚNG XUẤT SẮC! Mở trúng cánh cửa an toàn #${chosenTile.id}: Nhận trọn vẹn +${finalDelta} điểm!`;
+
+    if (chosenTile.tarotCardKey === "TEMPERANCE" && temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+      const pHalf = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+      rewardText += ` (⚖️ Tiết Độ dung hợp: Ban phước chia sẻ +${pHalf}đ cho tất cả đối thủ còn lại!)`;
+    }
+
     if (stolenPoints && victimTeamName) {
       rewardText += ` (🗡️ Đạo Tặc đánh cắp +${stolenPoints}đ từ Đội ${victimTeamName}!)`;
     }
@@ -4854,6 +5022,7 @@ export function handleOneShotDoorsDecision({
       victimTeamId,
       victimTeamName,
       stolenPoints,
+      temperanceBonusRecipients,
     };
   }
 }
@@ -5213,31 +5382,35 @@ export function getTarotSegmentDisplayLabel(
     return { mainLabel: `+${basePoints}`, colorType: "POSITIVE" };
   }
 
-  // a) 4 lá +1x: I Magician, II High Priestess, V Hierophant, IX Hermit
+  // a) Lá +1x: I Magician, II High Priestess, V Hierophant, IX Hermit, IV Emperor, VIII Strength
   if (
     seg.key === "THE_MAGICIAN" ||
     seg.key === "THE_HIGH_PRIESTESS" ||
     seg.key === "THE_HIEROPHANT" ||
-    seg.key === "THE_HERMIT"
+    seg.key === "THE_HERMIT" ||
+    seg.key === "THE_EMPEROR" ||
+    seg.key === "STRENGTH"
   ) {
     return { mainLabel: `+${basePoints}`, colorType: "POSITIVE" };
   }
 
-  // b) 4 lá +1.5x: III Empress, IV Emperor, VIII Strength, XX Judgement
+  // b) Lá +1.5x: III Empress, XX Judgement
   if (
     seg.key === "THE_EMPRESS" ||
-    seg.key === "THE_EMPEROR" ||
-    seg.key === "STRENGTH" ||
     seg.key === "JUDGEMENT"
   ) {
-    const pts = Math.round(basePoints * 1.5);
+    const pts = roundToMultipleOfFive(basePoints * 1.5);
     return { mainLabel: `+${pts}`, colorType: "POSITIVE" };
   }
 
-  // c) 4 lá +2x: VI Lovers, XIV Temperance, XIX Sun, XXI World
+  // c) Lá XIV Temperance (Tiết Độ: +1.5x đội chính, +0.5x đối thủ):
+  if (seg.key === "TEMPERANCE") {
+    return { mainLabel: "SẺ CHIA", colorType: "SPECIAL" };
+  }
+
+  // d) 3 lá +2x: VI Lovers, XIX Sun, XXI World
   if (
     seg.key === "THE_LOVERS" ||
-    seg.key === "TEMPERANCE" ||
     seg.key === "THE_SUN" ||
     seg.key === "THE_WORLD"
   ) {
@@ -5579,23 +5752,23 @@ export function resolveWheelCardEffect({
     MAJOR_ARCANA_WHEEL_SEGMENTS.find((s) => s.key === cardKey) ||
     MAJOR_ARCANA_WHEEL_SEGMENTS[0];
 
-  // 10 nhóm hiệu ứng cố định chuẩn 22 lá Major Arcana (4 lá +1x, 4 lá +1.5x, 4 lá +2x):
+  // 10 nhóm hiệu ứng cố định chuẩn 22 lá Major Arcana:
   const isNeutral = cardKey === "THE_FOOL" || cardKey === "JUSTICE"; // 2 lá ±0đ
   const isSunSmall =
     cardKey === "THE_MAGICIAN" ||
     cardKey === "THE_HIGH_PRIESTESS" ||
     cardKey === "THE_HIEROPHANT" ||
-    cardKey === "THE_HERMIT"; // 4 lá +1x
+    cardKey === "THE_HERMIT" ||
+    cardKey === "THE_EMPEROR" ||
+    cardKey === "STRENGTH"; // +1x Điểm gốc (THE_EMPEROR kèm Khiên, STRENGTH kèm Tim)
   const isSunMedium =
     cardKey === "THE_EMPRESS" ||
-    cardKey === "THE_EMPEROR" ||
-    cardKey === "STRENGTH" ||
-    cardKey === "JUDGEMENT"; // 4 lá +1.5x
+    cardKey === "JUDGEMENT"; // +1.5x
+  const isSunTemperance = cardKey === "TEMPERANCE"; // lá Tiết Độ: +1.5x cho đội quay, +0.5x sẻ chia đối thủ
   const isSunLarge =
     cardKey === "THE_LOVERS" ||
-    cardKey === "TEMPERANCE" ||
     cardKey === "THE_SUN" ||
-    cardKey === "THE_WORLD"; // 4 lá +2x
+    cardKey === "THE_WORLD"; // 3 lá +2x
   const isSunRandom = cardKey === "WHEEL_OF_FORTUNE"; // 1 lá Ngẫu nhiên x1/x1.5/x2
   const isGamble = cardKey === "THE_STAR" || cardKey === "THE_MOON"; // 2 lá Đánh cược quay thêm
   const isSteal2x = cardKey === "THE_CHARIOT" || cardKey === "THE_DEATH" || cardKey === "DEATH"; // 2 lá Cướp 2x
@@ -5607,6 +5780,7 @@ export function resolveWheelCardEffect({
     | "NEUTRAL"
     | "SUN_SMALL"
     | "SUN_MEDIUM"
+    | "SUN_TEMPERANCE"
     | "SUN_LARGE"
     | "SUN_RANDOM"
     | "GAMBLE"
@@ -5623,6 +5797,8 @@ export function resolveWheelCardEffect({
     effectiveEffectType = "SUN_SMALL";
   } else if (isSunMedium) {
     effectiveEffectType = "SUN_MEDIUM";
+  } else if (isSunTemperance) {
+    effectiveEffectType = "SUN_TEMPERANCE";
   } else if (isSunLarge) {
     effectiveEffectType = "SUN_LARGE";
   } else if (isSunRandom) {
@@ -5709,7 +5885,11 @@ export function resolveWheelCardEffect({
 
     case "SUN_SMALL": {
       let rewardText = `✨ ${seg.nameVi} (${seg.nameEn}): Điềm lành soi chiếu! Nhận trọn vẹn +${basePoints}đ (x1) an toàn!`;
-      if (dynamicReason === "DOMINANT_CAPPED") {
+      if (cardKey === "THE_EMPEROR") {
+        rewardText = `🛡️ ${seg.nameVi} (${seg.nameEn}): Uy quyền Hoàng Đế! Nhận trọn vẹn +${basePoints}đ (x1) và được kích hoạt Khiên Thần hộ thể!`;
+      } else if (cardKey === "STRENGTH") {
+        rewardText = `❤️ ${seg.nameVi} (${seg.nameEn}): Ý chí kiên cường! Nhận trọn vẹn +${basePoints}đ (x1) và hồi phục thêm 1 Trái Tim sinh mệnh!`;
+      } else if (dynamicReason === "DOMINANT_CAPPED") {
         rewardText = `⚖️ ${seg.nameVi}: Cán Cân Định Mệnh! Đội đang dẫn đầu nhận thưởng an toàn +${basePoints}đ thay vì cướp điểm của đội yếu hơn!`;
       }
 
@@ -5728,6 +5908,32 @@ export function resolveWheelCardEffect({
         isBomb: false,
         scoreDeltas: [{ teamId: team.id, delta: basePoints }],
         rewardText,
+      };
+    }
+
+    case "SUN_TEMPERANCE": {
+      const scoreDelta = roundToMultipleOfFive(basePoints * 1.5);
+      const pHalf = roundToMultipleOfFive(basePoints * 0.5);
+      const otherRecipients = otherTeams.map((t) => ({ teamId: t.id, teamName: t.name, points: pHalf }));
+      const scoreDeltas = [
+        { teamId: team.id, delta: scoreDelta },
+        ...otherRecipients.map((r) => ({ teamId: r.teamId, delta: r.points })),
+      ];
+      return {
+        drawnCard: {
+          key: cardKey,
+          nameVi: seg.nameVi,
+          nameEn: seg.nameEn,
+          icon: seg.icon,
+          roman: seg.roman,
+          group: "COMMON",
+          scoreDelta,
+        },
+        finalScoreDelta: scoreDelta,
+        scorePenalty: 0,
+        isBomb: false,
+        scoreDeltas,
+        rewardText: `⚖️ ${seg.nameVi} (${seg.nameEn}): Tiết Độ dung hòa! Đội bạn nhận trọn vẹn +${scoreDelta}đ (x1.5), đồng thời sẻ chia phước lành +${pHalf}đ (x0.5) cho tất cả đối thủ!`,
       };
     }
 
@@ -6168,6 +6374,25 @@ export function handleAncientTarotSpinWheel({
     } else {
       effectiveScoreDeltas.push({ teamId: team.id, delta: 5 });
     }
+  }
+
+  if (drawnCard.key === "THE_EMPEROR" && !isSurvivalMode) {
+    state.hasShield = true;
+    const teamsCount = Math.max(1, allTeams?.length || 2);
+    const curTurn = state.currentTurnIndex || 0;
+    state.teamShields = {
+      ...(state.teamShields || {}),
+      [team.id]: {
+        activeFromTurnIndex: curTurn + 1,
+        expiresAfterTurnIndex: curTurn + teamsCount,
+        sourceCard: "THE_EMPEROR",
+      },
+    };
+  }
+  if (drawnCard.key === "STRENGTH" && !isSurvivalMode) {
+    const heartsRecord = { ...(state.teamHearts || {}) };
+    heartsRecord[team.id] = (heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1) + 1;
+    state.teamHearts = heartsRecord;
   }
 
   state.potPoints = 0;

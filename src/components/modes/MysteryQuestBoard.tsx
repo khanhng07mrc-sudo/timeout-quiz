@@ -126,6 +126,7 @@ export default function MysteryQuestBoard({
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
+  const [isHandFlicking, setIsHandFlicking] = useState<boolean>(false);
   const wheelRef = useRef<HTMLDivElement>(null);
   const needleRef = useRef<HTMLDivElement>(null);
   const wheelPrevAngleRef = useRef<number>(0);
@@ -374,6 +375,10 @@ export default function MysteryQuestBoard({
       if (!tarotState?.targetAngle || tarotState?.targetAngle === 0) {
         setIsWheelZoomedIn(false);
         setWheelZoomDurationMs(800);
+        setNeedleDeflectionDeg(0);
+        if (needleRef.current) {
+          needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+        }
       }
       return;
     }
@@ -385,15 +390,24 @@ export default function MysteryQuestBoard({
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
+    let flickTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
-    // 1. Snap wheel to startAngle directly on DOM without trigger re-renders
+    // 1. Khởi tạo kim thẳng đứng 0 độ tuyệt đối và bánh xe ở góc startAngle
     if (wheelRef.current) {
       wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
     }
     if (needleRef.current) {
       needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
     }
+    setNeedleDeflectionDeg(0);
+
+    // Kích hoạt động tác bàn tay gẩy nhẹ chốt kim loại sang bên trong 500ms đầu
+    setIsHandFlicking(true);
+    soundManager.playWheelPegTick(0.05);
+    flickTimer = setTimeout(() => {
+      setIsHandFlicking(false);
+    }, 650);
 
     // 2. Dynamic Camera Zoom Rig (Phóng to 2.05x cận cảnh chuẩn 12h kịch tính):
     // "lúc ban đầu quay đủ cả vòng ngoài, sau 3s đầu tiên, dần phóng về sát khu vực kim quay, dừng phóng ở khoảng giây thứ 10"
@@ -433,17 +447,27 @@ export default function MysteryQuestBoard({
         soundManager.playWheelPegTick(rawProgress);
       }
 
-      // Vật lý Kim Flipper: Định luật Hooke đàn hồi & Dao động tắt dần (Damped Harmonic Oscillation)
-      const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
+      // Vật lý Kim Flipper: Động tác gẩy tay 500ms đầu & Dao động tắt dần
       let needleAngle = 0;
-      if (normAngle < 3.2) {
-        // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
-        needleAngle = -22 * (1 - normAngle / 3.2);
+      if (elapsed < 500) {
+        const flickFrac = elapsed / 500;
+        if (flickFrac < 0.45) {
+          needleAngle = -22 * (flickFrac / 0.45);
+        } else {
+          const releaseFrac = (flickFrac - 0.45) / 0.55;
+          needleAngle = -22 * (1 - releaseFrac) + 10 * Math.sin(releaseFrac * Math.PI * 2) * (1 - releaseFrac);
+        }
       } else {
-        // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
-        const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
-        if (dt < 0.12) {
-          needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
+        const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
+        if (normAngle < 3.2) {
+          // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
+          needleAngle = -22 * (1 - normAngle / 3.2);
+        } else {
+          // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
+          const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
+          if (dt < 0.12) {
+            needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
+          }
         }
       }
 
@@ -489,6 +513,7 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
+      if (flickTimer) clearTimeout(flickTimer);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -2553,13 +2578,13 @@ export default function MysteryQuestBoard({
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
                   <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 p-0 overflow-visible`}>
-                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 2.1x đẩy vòng quay lên & hiện trọn vẹn nội dung ô ── */}
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 1.9x neo đỉnh 12h (50% 0%) & đẩy 90px để trọn vẹn kim và nan quạt trúng ── */}
                     <div
                       className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 16%",
+                        transformOrigin: "50% 0%",
                         transform: isWheelZoomedIn
-                          ? "scale(2.1) translateY(-52px)"
+                          ? "scale(1.9) translateY(90px)"
                           : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
@@ -2624,6 +2649,52 @@ export default function MysteryQuestBoard({
                         <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
                       </svg>
                     </div>
+
+                    {/* Animated Hand Flicking the Peg / Needle at Wheel Spin Start */}
+                    {isHandFlicking && (
+                      <div
+                        className="absolute -top-7 left-[52%] z-50 pointer-events-none transition-all duration-300 ease-out"
+                        style={{
+                          filter: "drop-shadow(0px 8px 16px rgba(0,0,0,0.9))",
+                          animation: "handFlickMotion 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards",
+                        }}
+                      >
+                        <style>{`
+                          @keyframes handFlickMotion {
+                            0% { transform: translate(35px, -12px) rotate(15deg); opacity: 0; }
+                            25% { transform: translate(8px, 0px) rotate(-8deg); opacity: 1; }
+                            45% { transform: translate(-14px, 4px) rotate(-24deg); opacity: 1; }
+                            75% { transform: translate(-4px, 12px) rotate(-10deg); opacity: 0.8; }
+                            100% { transform: translate(25px, 20px) rotate(10deg); opacity: 0; }
+                          }
+                        `}</style>
+                        <svg width="68" height="68" viewBox="0 0 68 68" fill="none">
+                          <defs>
+                            <linearGradient id="gloveFlickGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="#ffffff" />
+                              <stop offset="50%" stopColor="#f1f5f9" />
+                              <stop offset="100%" stopColor="#cbd5e1" />
+                            </linearGradient>
+                            <linearGradient id="goldCuffGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#f59e0b" />
+                              <stop offset="50%" stopColor="#fef08a" />
+                              <stop offset="100%" stopColor="#d97706" />
+                            </linearGradient>
+                          </defs>
+                          <g transform="rotate(18, 34, 34)">
+                            {/* Gold Cuff */}
+                            <rect x="42" y="44" width="22" height="14" rx="4" fill="url(#goldCuffGrad)" stroke="#78350f" strokeWidth="1.5" />
+                            {/* Glove Base */}
+                            <path d="M44 46 C38 40, 32 34, 26 26 C23 22, 18 18, 12 18 C9 18, 7 20, 7 23 C7 26, 11 30, 16 34 L28 46 C34 52, 40 54, 46 50 Z" fill="url(#gloveFlickGrad)" stroke="#94a3b8" strokeWidth="1.6" strokeLinejoin="round" />
+                            {/* Index Finger in flicking gesture */}
+                            <path d="M26 26 L10 14 C7.5 12, 4.5 14, 5 17 C5.5 19.5, 9 22, 14 26 L24 32" fill="url(#gloveFlickGrad)" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" />
+                            {/* Metallic spark trails */}
+                            <path d="M4 11 Q12 7 20 12" stroke="#fde047" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 4" />
+                            <circle cx="5" cy="11" r="2.5" fill="#fef08a" />
+                          </g>
+                        </svg>
+                      </div>
+                    )}
 
                     {/* ── Stage Floor Shadow ── */}
                     <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
@@ -2807,18 +2878,24 @@ export default function MysteryQuestBoard({
                                       strokeWidth="0.8"
                                       filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.6))"
                                     />
-                                    <text
-                                      x={cx + 9}
-                                      y={signChar === "+" ? cy - 158 : cy - 159}
-                                      textAnchor="middle"
-                                      dominantBaseline="central"
-                                      fontSize="11.5"
-                                      fontWeight="900"
-                                      fill="#0f172a"
-                                      className="font-black select-none pointer-events-none"
-                                    >
-                                      {signChar}
-                                    </text>
+                                    {/* Vector nét chuẩn tâm 100% không phụ thuộc font chữ */}
+                                    {signChar === "+" ? (
+                                      <path
+                                        d={`M ${cx + 9 - 3.2} ${cy - 158.5} L ${cx + 9 + 3.2} ${cy - 158.5} M ${cx + 9} ${cy - 158.5 - 3.2} L ${cx + 9} ${cy - 158.5 + 3.2}`}
+                                        stroke="#0f172a"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        className="pointer-events-none"
+                                      />
+                                    ) : (
+                                      <path
+                                        d={`M ${cx + 9 - 3.2} ${cy - 158.5} L ${cx + 9 + 3.2} ${cy - 158.5}`}
+                                        stroke="#0f172a"
+                                        strokeWidth="2.2"
+                                        strokeLinecap="round"
+                                        className="pointer-events-none"
+                                      />
+                                    )}
                                   </g>
                                 ) : (
                                   <svg

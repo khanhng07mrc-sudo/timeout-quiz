@@ -943,6 +943,7 @@ export default function AdminSandboxPage() {
 
     sock.on("room:state", (state) => {
       setRoomState(state);
+      syncToIframes({ roomState: state });
       if (state?.status === "LOBBY") {
         setCurrentQuestion(null);
         setRevealPayload(null);
@@ -1055,7 +1056,11 @@ export default function AdminSandboxPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
-      addLog(`📊 Bảng xếp hạng giữa hiệp (Chặng câu #${p ? p.nextQuestionIndex : ""})`);
+      const afterQ = (p?.previousQuestionIndex !== undefined)
+        ? (p.previousQuestionIndex + 1)
+        : (p?.nextQuestionIndex !== undefined ? p.nextQuestionIndex : (roomStateRef.current?.currentQuestionIndex !== undefined ? roomStateRef.current.currentQuestionIndex + 1 : 1));
+      const totalQ = p?.totalQuestions ? ` / ${p.totalQuestions}` : "";
+      addLog(`📊 Bảng xếp hạng giữa hiệp (Sau câu #${afterQ}${totalQ})`);
     });
     sock.on("elimination:revival", (payload) => {
       addLog(`✨ [Hồi sinh] Đội ${payload.revivedTeamName} đã được HỒI SINH ngoạn mục với ${payload.revivedScore}đ!`);
@@ -1175,7 +1180,8 @@ export default function AdminSandboxPage() {
 
     sock.on("game:answer:reveal", (rev) => {
       setRevealPayload(rev);
-      addLog(`Đáp án đã công bố! Câu: ${rev.questionId}`);
+      const qNum = ((rev as any)?.questionIndex ?? roomStateRef.current?.currentQuestionIndex ?? (currentQuestionRef.current as any)?.index ?? 0) + 1;
+      addLog(`Đáp án đã công bố! (Câu hỏi số #${qNum})`);
     });
 
     sock.on("game:question:clear", () => {
@@ -1270,7 +1276,9 @@ export default function AdminSandboxPage() {
           const upd = scores.find((s) => s.teamId === t.id);
           return upd ? { ...t, score: upd.score } : t;
         });
-        return { ...prev, teams: updatedTeams };
+        const nextState = { ...prev, teams: updatedTeams };
+        syncToIframes({ roomState: nextState });
+        return nextState;
       });
     });
 
@@ -2628,6 +2636,7 @@ export default function AdminSandboxPage() {
           victimTeamId,
           victimTeamName,
           stolenPoints,
+          temperanceBonusRecipients,
           shouldResetMismatchedCards,
         } = handleMysteryFlipCard({
           state: curMystery,
@@ -2664,9 +2673,12 @@ export default function AdminSandboxPage() {
             );
           }
         } else if (finalScoreDelta && finalScoreDelta > 0) {
-          updatedTeams = updatedTeams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
-          );
+          const temperanceMap = new Map((temperanceBonusRecipients || []).map((r) => [r.teamId, r.points]));
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
+            if (temperanceMap.has(t.id)) return { ...t, score: t.score + (temperanceMap.get(t.id) || 0) };
+            return t;
+          });
         } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
           updatedTeams = updatedTeams.map((t) =>
             t.id === activeTeam.id ? { ...t, score: t.score + updatedState.potPoints } : t
@@ -2787,6 +2799,7 @@ export default function AdminSandboxPage() {
           recipientTeamId,
           giftedPoints,
           darkBombRecipients,
+          temperanceBonusRecipients,
         } = handleMysteryDoorsDecision({
           state: curMystery,
           team: activeTeam,
@@ -2821,9 +2834,12 @@ export default function AdminSandboxPage() {
           const recipientTeam = roomStateRef.current.teams.find((t) => t.id === recipientTeamId);
           addLog(`🎁 [${activeTeam.name}] dính Bom Từ Thiện: Chuyển ${giftedPoints}đ cho [${recipientTeam?.name || "Top 1"}]!`);
         } else if (finalScoreDelta !== 0) {
-          updatedTeams = updatedTeams.map((t) =>
-            t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + finalScoreDelta) } : t
-          );
+          const temperanceMap = new Map((temperanceBonusRecipients || []).map((r) => [r.teamId, r.points]));
+          updatedTeams = updatedTeams.map((t) => {
+            if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score + finalScoreDelta) };
+            if (temperanceMap.has(t.id)) return { ...t, score: t.score + (temperanceMap.get(t.id) || 0) };
+            return t;
+          });
         }
 
         if (updatedState.teamHearts) {

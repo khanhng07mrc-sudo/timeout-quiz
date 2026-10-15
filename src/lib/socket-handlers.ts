@@ -5532,6 +5532,7 @@ export function registerSocketHandlers(io: IO) {
           darkBombRecipients,
           victimTeamId,
           stolenPoints,
+          temperanceBonusRecipients,
         } = handleFlipCard({
           state: freshState,
           tileId,
@@ -5590,9 +5591,18 @@ export function registerSocketHandlers(io: IO) {
           }
         } else if (finalScoreDelta && finalScoreDelta > 0) {
           const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
-          io.to(`room:${room.code}`).emit("game:score:update", [
+          const updates: Array<{ teamId: string; score: number; delta: number }> = [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-          ]);
+          ];
+          if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+            for (const rec of temperanceBonusRecipients) {
+              if (rec.points > 0) {
+                const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+                updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+              }
+            }
+          }
+          io.to(`room:${room.code}`).emit("game:score:update", updates);
         } else if (updatedState.turnFinishedReason === "ALL_CLEARED") {
           const deltaRes = await applyScoreDeltaToTeam(team.id, updatedState.potPoints);
           io.to(`room:${room.code}`).emit("game:score:update", [
@@ -5814,6 +5824,7 @@ export function registerSocketHandlers(io: IO) {
         recipientTeamId,
         giftedPoints,
         darkBombRecipients,
+        temperanceBonusRecipients,
       } = handleOneShotDoorsDecision({
         state: questState,
         team,
@@ -5835,6 +5846,7 @@ export function registerSocketHandlers(io: IO) {
               ...(victimTeamId && stolenPoints ? [{ teamId: victimTeamId, delta: -stolenPoints }, { teamId: team.id, delta: finalScoreDelta || stolenPoints }] : []),
               ...(darkBombRecipients ? darkBombRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
               ...(recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : []),
+              ...(temperanceBonusRecipients ? temperanceBonusRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
               ...(finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
             ],
           });
@@ -5895,13 +5907,23 @@ export function registerSocketHandlers(io: IO) {
           console.error("[MysteryDoorsDecision] charity bomb delta error:", err);
         });
       } else if (finalScoreDelta !== 0) {
-        applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
-          io.to(`room:${room.code}`).emit("game:score:update", [
+        (async () => {
+          const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
+          const updates: Array<{ teamId: string; score: number; delta: number }> = [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
-          ]);
+          ];
+          if (temperanceBonusRecipients && temperanceBonusRecipients.length > 0) {
+            for (const rec of temperanceBonusRecipients) {
+              if (rec.points > 0) {
+                const recDelta = await applyScoreDeltaToTeam(rec.teamId, rec.points);
+                updates.push({ teamId: rec.teamId, score: recDelta.newScore, delta: recDelta.effectiveDelta });
+              }
+            }
+          }
+          io.to(`room:${room.code}`).emit("game:score:update", updates);
           const refreshedState = await buildRoomState(room.id);
           io.to(`room:${room.code}`).emit("room:state", refreshedState);
-        }).catch((err) => {
+        })().catch((err) => {
           console.error("[MysteryDoorsDecision] score delta error:", err);
         });
       } else {
@@ -6302,7 +6324,7 @@ export function registerSocketHandlers(io: IO) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (!questState || questState.phase === "TURN_SUMMARY") return;
 
       if (questState.currentTurnTeamId !== player.teamId) {
         socket.emit("error", "Chưa đến lượt lật bài của đội bạn!");
@@ -6320,7 +6342,7 @@ export function registerSocketHandlers(io: IO) {
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
 
       const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (!questState || questState.phase === "TURN_SUMMARY") return;
 
       const team = await prisma.team.findUnique({ where: { id: questState.currentTurnTeamId } });
       if (!team) return;

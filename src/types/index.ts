@@ -1083,6 +1083,7 @@ export interface MysteryQuestState {
         icon: string;
       };
   hasShield?: boolean;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
   currentTeamRiskTier?: TeamRiskTier;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;

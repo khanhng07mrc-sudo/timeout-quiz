@@ -5627,7 +5627,7 @@ export function registerSocketHandlers(io: IO) {
               { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
             ]);
           }
-        } else if (finalScoreDelta && finalScoreDelta > 0) {
+        } else if (finalScoreDelta !== undefined && finalScoreDelta !== 0) {
           const deltaRes = await applyScoreDeltaToTeam(team.id, finalScoreDelta);
           const updates: Array<{ teamId: string; score: number; delta: number }> = [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
@@ -5661,7 +5661,7 @@ export function registerSocketHandlers(io: IO) {
                 ...(darkBombRecipients ? darkBombRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
                 ...(recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : []),
                 ...(scorePenalty > 0 && !darkBombRecipients && !recipientTeamId ? [{ teamId: team.id, delta: -scorePenalty }] : []),
-                ...(finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
+                ...(finalScoreDelta !== undefined && finalScoreDelta !== 0 && !victimTeamId && !isBomb ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
               ],
             });
             updatedState.teamNotices = notices;
@@ -5825,7 +5825,7 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
 
       // Background DB persistence and room state refresh
-      if (finalScoreDelta > 0) {
+      if (finalScoreDelta !== 0) {
         applyScoreDeltaToTeam(team.id, finalScoreDelta).then(async (deltaRes) => {
           io.to(`room:${room.code}`).emit("game:score:update", [
             { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
@@ -5885,7 +5885,7 @@ export function registerSocketHandlers(io: IO) {
               ...(darkBombRecipients ? darkBombRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
               ...(recipientTeamId && giftedPoints ? [{ teamId: recipientTeamId, delta: giftedPoints }] : []),
               ...(temperanceBonusRecipients ? temperanceBonusRecipients.map((r: any) => ({ teamId: r.teamId, delta: r.points })) : []),
-              ...(finalScoreDelta && finalScoreDelta > 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
+              ...(finalScoreDelta !== undefined && finalScoreDelta !== 0 && !victimTeamId ? [{ teamId: team.id, delta: finalScoreDelta }] : []),
             ],
           });
           updatedState.teamNotices = notices;
@@ -6061,6 +6061,26 @@ export function registerSocketHandlers(io: IO) {
     };
 
     async function executeMysteryAdvanceTurn(room: any, questState: any) {
+      // Clear and apply pending tarot scores if MC advanced before reveal finished
+      if (roomTarotPendingScores.has(room.id)) {
+        const pendingDeltas = roomTarotPendingScores.get(room.id) || [];
+        roomTarotPendingScores.delete(room.id);
+        const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
+        for (const item of pendingDeltas) {
+          if (item.delta !== 0) {
+            const deltaRes = await applyScoreDeltaToTeam(item.teamId, item.delta);
+            scoreUpdates.push({
+              teamId: item.teamId,
+              score: deltaRes.newScore,
+              delta: deltaRes.effectiveDelta,
+            });
+          }
+        }
+        if (scoreUpdates.length > 0) {
+          io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
+        }
+      }
+
       // Immediately clear previous question state across display and player devices (0ms latency)
       stopQuestionTimer(room.id);
       roomActiveQuestions.delete(room.id);
@@ -6748,18 +6768,19 @@ export function registerSocketHandlers(io: IO) {
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
 
-        // Quy định mới: Các chức năng đã hiện rõ trên ô vòng quay, nên tự động lật bài sau 0.5s (500ms)
+        // Tự động lật bài sau 2.2s (khớp 650ms bay + 1500ms đính icon trên client)
         setTimeout(async () => {
           const currentQuest = roomMysteryQuests.get(room.id);
           if (currentQuest && currentQuest.tarotState?.isRevealPending) {
             await executeMysteryTarotReveal(room, currentQuest);
           }
-        }, 500);
-      }, Math.max(result.spinDurationMs, 19200) + 250);
+        }, 2200);
+      }, result.spinDurationMs + 100);
     };
 
     const executeMysteryTarotReveal = async (room: any, questState: any) => {
-      if (!questState.tarotState || !questState.tarotState.isRevealPending) return;
+      if (!questState.tarotState) return;
+      if (!questState.tarotState.isRevealPending && questState.phase !== "PUSH_YOUR_LUCK") return;
 
       const drawnCard = questState.tarotState.drawnCard;
       const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
@@ -6769,6 +6790,10 @@ export function registerSocketHandlers(io: IO) {
       if (!isGamble && !isShieldRespin) {
         pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
+
+        if (pendingDeltas.length === 0 && drawnCard?.scoreDelta && questState.currentTurnTeamId) {
+          pendingDeltas = [{ teamId: questState.currentTurnTeamId, delta: drawnCard.scoreDelta }];
+        }
 
         const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
         for (const item of pendingDeltas) {
@@ -7019,7 +7044,14 @@ export function registerSocketHandlers(io: IO) {
         io.to(`room:${room.code}`).emit("game:mystery:update", settledGambleState);
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
-      }, Math.max(dur, 19200) + 250);
+
+        setTimeout(async () => {
+          const currentQuest = roomMysteryQuests.get(room.id);
+          if (currentQuest && currentQuest.tarotState?.isRevealPending) {
+            await executeMysteryTarotReveal(room, currentQuest);
+          }
+        }, 2200);
+      }, dur + 100);
     };
 
     const executeMysteryDrawTarot = async (room: any, questState: any, team: any) => {

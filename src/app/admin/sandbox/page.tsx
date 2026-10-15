@@ -2672,10 +2672,10 @@ export default function AdminSandboxPage() {
               t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
             );
           }
-        } else if (finalScoreDelta && finalScoreDelta > 0) {
+        } else if (finalScoreDelta !== undefined && finalScoreDelta !== 0) {
           const temperanceMap = new Map((temperanceBonusRecipients || []).map((r) => [r.teamId, r.points]));
           updatedTeams = updatedTeams.map((t) => {
-            if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
+            if (t.id === activeTeam.id) return { ...t, score: Math.max(0, t.score + finalScoreDelta) };
             if (temperanceMap.has(t.id)) return { ...t, score: t.score + (temperanceMap.get(t.id) || 0) };
             return t;
           });
@@ -2954,9 +2954,9 @@ export default function AdminSandboxPage() {
             updatedTeams = updatedTeams.map((t) =>
               t.id === activeTeam.id ? { ...t, score: Math.max(0, (t.score || 0) - scorePenalty) } : t
             );
-          } else if (finalScoreDelta && finalScoreDelta > 0) {
+          } else if (finalScoreDelta !== undefined && finalScoreDelta !== 0) {
             updatedTeams = updatedTeams.map((t) =>
-              t.id === activeTeam.id ? { ...t, score: (t.score || 0) + finalScoreDelta } : t
+              t.id === activeTeam.id ? { ...t, score: Math.max(0, (t.score || 0) + finalScoreDelta) } : t
             );
           }
         }
@@ -3260,6 +3260,7 @@ export default function AdminSandboxPage() {
             isRevealPending: false,
           },
         };
+        (spinningMystery as any)._pendingScoreDeltas = scoreDeltas;
 
         const spinningRoomState: RoomState = {
           ...currentRoomState,
@@ -3286,13 +3287,13 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
           addLog(`🎡 [${activeTeam.name}] QUAY VÒNG TAROT (Lực ${powerPercent}%): Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
 
-          // Quy định mới: Tự động lật bài sau 0.5s (500ms)
+          // Tự động lật bài sau 2.2s (khớp 650ms bay + 1500ms đính icon trên client)
           setTimeout(() => {
             if (roomStateRef.current?.mysteryQuestState?.tarotState?.isRevealPending) {
               window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
             }
-          }, 500);
-        }, Math.max(spinDurationMs, 19200) + 200);
+          }, 2200);
+        }, spinDurationMs + 100);
         return;
       }
       if (e.data?.type === "MYSTERY_TAROT_REVEAL" || e.data?.action === "mystery_tarot_reveal") {
@@ -3305,7 +3306,10 @@ export default function AdminSandboxPage() {
         const drawnCard = curMystery.tarotState?.drawnCard;
         const isShieldRespin = Boolean(curMystery.tarotState?.isShieldRespin);
         const isGamble = !curMystery.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
-        const pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
+        let pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
+        if (pendingDeltas.length === 0 && drawnCard?.scoreDelta && curMystery.currentTurnTeamId) {
+          pendingDeltas = [{ teamId: curMystery.currentTurnTeamId, delta: drawnCard.scoreDelta }];
+        }
 
         let updatedTeams = [...roomStateRef.current.teams];
         if (!isGamble && !isShieldRespin && pendingDeltas.length > 0) {
@@ -3442,6 +3446,7 @@ export default function AdminSandboxPage() {
               isGambling: false,
             },
           };
+          (spinningMystery as any)._pendingScoreDeltas = scoreDeltas;
           const spinningRoomState = { ...roomStateRef.current, mysteryQuestState: spinningMystery };
           roomStateRef.current = spinningRoomState;
           setRoomState(spinningRoomState);
@@ -3462,7 +3467,13 @@ export default function AdminSandboxPage() {
             setRoomState(nextRoomState);
             syncToIframes({ roomState: nextRoomState, mysteryQuestState: settledMystery });
             addLog(`🎲 [${activeTeam.name}] QUAY THÊM TAROT: Dừng tại [${landedSegment.nameVi}] (Chờ lật bài)!`);
-          }, Math.max(spinDurationMs || 20000, 19200) + 200);
+
+            setTimeout(() => {
+              if (roomStateRef.current?.mysteryQuestState?.tarotState?.isRevealPending) {
+                window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
+              }
+            }, 2200);
+          }, (spinDurationMs || 20000) + 100);
         } else {
           let updatedTeams = [...roomStateRef.current.teams];
           if (scoreDeltas && scoreDeltas.length > 0) {

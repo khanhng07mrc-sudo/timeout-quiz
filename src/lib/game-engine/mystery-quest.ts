@@ -2573,8 +2573,6 @@ export function handleFlipCard({
       if (state.hasShield) {
         state.hasShield = false;
         memState.activePenaltyPairKey = null;
-        memState.keptBombTileIds = [];
-        memState.faceUpPenaltyTileIds = [];
         memState.isBombRescueActive = false;
         state.potPoints = 0;
         state.storyResult = {
@@ -2586,11 +2584,34 @@ export function handleFlipCard({
           oldScore: team.score || 0,
           newScore: team.score || 0,
         };
+        memState.isMismatchResolving = true;
+
+        const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+        const currentRound = memState.round || 1;
+
+        if (isRoundOver) {
+          if (currentRound === 1) {
+            memState.promptSecondChance = true;
+            state.memoryPairsState = { ...memState };
+            return {
+              updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: 0,
+              shouldResetMismatchedCards: true,
+            };
+          } else {
+            return handleRound2Failure();
+          }
+        }
+
+        state.memoryPairsState = { ...memState };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
           finalScoreDelta: 0,
+          shouldResetMismatchedCards: true,
         };
       }
 
@@ -2726,7 +2747,7 @@ export function handleFlipCard({
       const cardsInTurn = [card1, card2, card3].filter(Boolean) as MysteryTile[];
 
       // Tìm lá bài là twin tiêu cực kích hoạt rescue:
-      const penaltyTwinIndex = cardsInTurn.findIndex((c) => c.pairKey === oldPenaltyKey);
+      const penaltyTwinIndex = cardsInTurn.findIndex((c) => getPenaltyKey(c) === oldPenaltyKey || c.pairKey === oldPenaltyKey);
       const otherTwoCards = cardsInTurn.filter((_, idx) => idx !== (penaltyTwinIndex !== -1 ? penaltyTwinIndex : 0));
       const [rescueA, rescueB] = otherTwoCards;
 
@@ -2746,6 +2767,7 @@ export function handleFlipCard({
         const winCard = rescueA;
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
+        memState.activePenaltyPairKey = null;
         state.memoryPairsState = { ...memState };
 
         if (winCard.givesShield) {
@@ -2882,6 +2904,8 @@ export function handleFlipCard({
         // ─────────────────────────────────────────────────────────────────────
         // 2 LÁ CÒN LẠI KHÔNG TRÙNG KHỚP: Phạt theo cặp tiêu cực trước đó!
         // ─────────────────────────────────────────────────────────────────────
+        memState.isBombRescueActive = false;
+        memState.activePenaltyPairKey = null;
         return executePenalty({ penaltyKey: oldPenaltyKey });
       }
     }
@@ -2930,12 +2954,13 @@ export function handleFlipCard({
     const pairMoveKey = `${Math.min(firstId, secondId)}-${Math.max(firstId, secondId)}`;
     const attemptedPairs = memState.attemptedPairs || [];
 
-    if (attemptedPairs.includes(pairMoveKey)) {
-      // Đã từng lật chính xác bộ đôi ô này trong vòng! Chống lạm dụng lặp lại nước đi!
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    if (!memState.isBombRescueActive) {
+      if (attemptedPairs.includes(pairMoveKey)) {
+        // Đã từng lật chính xác bộ đôi ô này trong vòng! Chống lạm dụng lặp lại nước đi!
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+      memState.attemptedPairs = [...attemptedPairs, pairMoveKey];
     }
-
-    memState.attemptedPairs = [...attemptedPairs, pairMoveKey];
     memState.secondFlippedTileId = tile.id;
     state.lastFlippedTile = tile;
 
@@ -3002,6 +3027,7 @@ export function handleFlipCard({
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
         // Cả 2 lá TRÙNG CÙNG MỘT CẶP PHẠT trong cùng một lượt!
         // Quy tắc: Đã lật trúng cả 2 lá tiêu cực cùng cặp trong cùng một lượt -> Phạt ngay lập tức!
+        memState.attemptsUsed += 1;
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
         // Hai lá phạt THUỘC 2 LOẠI KHÁC NHAU!

@@ -2656,8 +2656,6 @@ function handleFlipCard({
       if (state.hasShield) {
         state.hasShield = false;
         memState.activePenaltyPairKey = null;
-        memState.keptBombTileIds = [];
-        memState.faceUpPenaltyTileIds = [];
         memState.isBombRescueActive = false;
         state.potPoints = 0;
         state.storyResult = {
@@ -2669,11 +2667,31 @@ function handleFlipCard({
           oldScore: team.score || 0,
           newScore: team.score || 0
         };
+        memState.isMismatchResolving = true;
+        const isRoundOver = memState.attemptsUsed >= memState.maxAttempts;
+        const currentRound2 = memState.round || 1;
+        if (isRoundOver) {
+          if (currentRound2 === 1) {
+            memState.promptSecondChance = true;
+            state.memoryPairsState = { ...memState };
+            return {
+              updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+              isBomb: false,
+              scorePenalty: 0,
+              finalScoreDelta: 0,
+              shouldResetMismatchedCards: true
+            };
+          } else {
+            return handleRound2Failure();
+          }
+        }
+        state.memoryPairsState = { ...memState };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: false,
           scorePenalty: 0,
-          finalScoreDelta: 0
+          finalScoreDelta: 0,
+          shouldResetMismatchedCards: true
         };
       }
       if (penaltyKey === "PAIR_THE_KNIGHT" || penaltyKey === "PAIR_BOMB_SMOKE" || penaltyKey === "PAIR_TRAP") {
@@ -2780,7 +2798,7 @@ function handleFlipCard({
       );
       const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
       const cardsInTurn = [card1, card2, card3].filter(Boolean);
-      const penaltyTwinIndex = cardsInTurn.findIndex((c) => c.pairKey === oldPenaltyKey);
+      const penaltyTwinIndex = cardsInTurn.findIndex((c) => getPenaltyKey(c) === oldPenaltyKey || c.pairKey === oldPenaltyKey);
       const otherTwoCards = cardsInTurn.filter((_, idx) => idx !== (penaltyTwinIndex !== -1 ? penaltyTwinIndex : 0));
       const [rescueA, rescueB] = otherTwoCards;
       const isRescueMatch = Boolean(rescueA && rescueB && rescueA.pairKey === rescueB.pairKey);
@@ -2791,6 +2809,7 @@ function handleFlipCard({
         const winCard = rescueA;
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
+        memState.activePenaltyPairKey = null;
         state.memoryPairsState = { ...memState };
         if (winCard.givesShield) {
           state.hasShield = true;
@@ -2909,6 +2928,8 @@ function handleFlipCard({
           temperanceBonusRecipients
         };
       } else {
+        memState.isBombRescueActive = false;
+        memState.activePenaltyPairKey = null;
         return executePenalty({ penaltyKey: oldPenaltyKey });
       }
     }
@@ -2944,10 +2965,12 @@ function handleFlipCard({
     const secondId = numTileId;
     const pairMoveKey = `${Math.min(firstId, secondId)}-${Math.max(firstId, secondId)}`;
     const attemptedPairs = memState.attemptedPairs || [];
-    if (attemptedPairs.includes(pairMoveKey)) {
-      return { updatedState: state, isBomb: false, scorePenalty: 0 };
+    if (!memState.isBombRescueActive) {
+      if (attemptedPairs.includes(pairMoveKey)) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+      memState.attemptedPairs = [...attemptedPairs, pairMoveKey];
     }
-    memState.attemptedPairs = [...attemptedPairs, pairMoveKey];
     memState.secondFlippedTileId = tile2.id;
     state.lastFlippedTile = tile2;
     const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
@@ -2996,6 +3019,7 @@ function handleFlipCard({
     };
     if (firstTilePenaltyKey && secondTilePenaltyKey) {
       if (firstTilePenaltyKey === secondTilePenaltyKey) {
+        memState.attemptsUsed += 1;
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
         memState.attemptsUsed += 1;
@@ -11737,6 +11761,8 @@ function registerSocketHandlers(io2) {
         if (normType === "MEMORY_PAIRS") {
           if (updatedState.memoryPairsState?.matchedPairKey) {
             audioTrigger = isBomb ? "WRONG" : "CORRECT";
+          } else if (isBomb) {
+            audioTrigger = "WRONG";
           } else {
             audioTrigger = "NONE";
           }
@@ -11768,10 +11794,10 @@ function registerSocketHandlers(io2) {
               if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
               if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
               if (cur.memoryPairsState.isBombRescueActive) return;
-              const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
+              const { firstFlippedTileId, secondFlippedTileId, thirdFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
               const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
               cur.tiles = cur.tiles.map((t) => {
-                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId) || Number(t.id) === Number(thirdFlippedTileId);
                 if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
                   return { ...t, isOpened: false };
                 }

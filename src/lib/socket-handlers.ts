@@ -5679,6 +5679,8 @@ export function registerSocketHandlers(io: IO) {
             // Chỉ phát khi lật được cặp trùng nhau:
             // Nếu cặp cộng điểm -> phát đúng, nếu cặp trừ điểm (bom) -> phát sai!
             audioTrigger = isBomb ? "WRONG" : "CORRECT";
+          } else if (isBomb) {
+            audioTrigger = "WRONG";
           } else {
             // Flip lẻ hoặc flip lệch 2 lá không khớp: TUYỆT ĐỐI KHÔNG CÓ NHẠC!
             audioTrigger = "NONE";
@@ -5714,10 +5716,12 @@ export function registerSocketHandlers(io: IO) {
               if (!cur || !cur.memoryPairsState || cur.currentTurnIndex !== turnIndexSnapshot) return;
               if (!cur.memoryPairsState.isMismatchResolving && !cur.memoryPairsState.promptSecondChance) return;
               if (cur.memoryPairsState.isBombRescueActive) return; // Nếu đang trong lượt giải cứu bom, các lá phạt giữ nguyên ngửa!
-              const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
+              const { firstFlippedTileId, secondFlippedTileId, thirdFlippedTileId, keptBombTileIds } = cur.memoryPairsState;
               const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
               cur.tiles = cur.tiles.map((t: any) => {
-                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+                const isTurnTile = Number(t.id) === Number(firstFlippedTileId) ||
+                                   Number(t.id) === Number(secondFlippedTileId) ||
+                                   Number(t.id) === Number(thirdFlippedTileId);
                 if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
                   return { ...t, isOpened: false };
                 }

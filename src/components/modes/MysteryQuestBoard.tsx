@@ -213,6 +213,7 @@ export default function MysteryQuestBoard({
         const serverHasActiveFlip = Boolean(
           memoryPairsState?.firstFlippedTileId ||
           memoryPairsState?.secondFlippedTileId ||
+          memoryPairsState?.thirdFlippedTileId ||
           memoryPairsState?.isMismatchResolving ||
           memoryPairsState?.isBombRescueActive
         );
@@ -232,6 +233,7 @@ export default function MysteryQuestBoard({
         const currentAttemptIds = new Set<number>();
         if (memoryPairsState?.firstFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.firstFlippedTileId));
         if (memoryPairsState?.secondFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.secondFlippedTileId));
+        if (memoryPairsState?.thirdFlippedTileId) currentAttemptIds.add(Number(memoryPairsState.thirdFlippedTileId));
         if (lastClickedTileIdRef.current) currentAttemptIds.add(Number(lastClickedTileIdRef.current));
         const kept = new Set((memoryPairsState?.keptBombTileIds || []).map(Number));
 
@@ -274,7 +276,7 @@ export default function MysteryQuestBoard({
       }
       return merged;
     });
-  }, [tiles, memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId, memoryPairsState?.secondFlippedTileId, memoryPairsState?.isMismatchResolving, memoryPairsState?.isBombRescueActive, memoryPairsState?.keptBombTileIds, memoryPairsState?.promptSecondChance, phase, optimisticMatchedPairKey, miniGameType]);
+  }, [tiles, memoryPairsState?.matchedPairKey, memoryPairsState?.firstFlippedTileId, memoryPairsState?.secondFlippedTileId, memoryPairsState?.thirdFlippedTileId, memoryPairsState?.isMismatchResolving, memoryPairsState?.isBombRescueActive, memoryPairsState?.keptBombTileIds, memoryPairsState?.promptSecondChance, phase, optimisticMatchedPairKey, miniGameType]);
 
   useEffect(() => {
     if (memoryPairsState?.matchedPairKey) {
@@ -337,7 +339,26 @@ export default function MysteryQuestBoard({
     };
   }, []);
 
-  // Tự động lật bài sau 1.5s khi bài xuất hiện ở trạng thái chờ mở (dành cho người xem vào trễ sau khi vòng quay đã dừng)
+  // Tarot Fly -> Attached -> Revealed animation pipeline (immune to isWheelSpinning cleanup)
+  useEffect(() => {
+    if (tarotFlyPhase === "FLYING") {
+      const flyTimer = setTimeout(() => {
+        setTarotFlyPhase("ATTACHED");
+        soundManager.playPowerup();
+      }, 650);
+      return () => clearTimeout(flyTimer);
+    }
+    if (tarotFlyPhase === "ATTACHED") {
+      const attachedTimer = setTimeout(() => {
+        setTarotFlyPhase("REVEALED");
+        setIsWheelSpinningOptimistic(false);
+        onTarotReveal?.();
+      }, 1500);
+      return () => clearTimeout(attachedTimer);
+    }
+  }, [tarotFlyPhase, onTarotReveal]);
+
+  // Fallback for late joiners or already drawn pending cards
   useEffect(() => {
     if (
       tarotState?.isDrawn &&
@@ -347,13 +368,16 @@ export default function MysteryQuestBoard({
       !isWheelSpinningOptimistic
     ) {
       setTarotFlyPhase("ATTACHED");
-      const timer = setTimeout(() => {
-        setTarotFlyPhase("REVEALED");
-        onTarotReveal?.();
-      }, 1500);
-      return () => clearTimeout(timer);
     }
-  }, [tarotState?.isDrawn, tarotState?.isRevealPending, tarotFlyPhase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic, onTarotReveal]);
+  }, [tarotState?.isDrawn, tarotState?.isRevealPending, tarotFlyPhase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic]);
+
+  // Synchronize REVEALED state if phase moves to TURN_SUMMARY
+  useEffect(() => {
+    if (phase === "TURN_SUMMARY" && (miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS")) {
+      setTarotFlyPhase("REVEALED");
+      setIsWheelSpinningOptimistic(false);
+    }
+  }, [phase, miniGameType]);
 
   // Synchronize Tarot Wheel angle, Chiếc Nón Kỳ Diệu BGM & peg-click audio ("tạch-tạch-tạch")
   useEffect(() => {
@@ -502,21 +526,8 @@ export default function MysteryQuestBoard({
         }
 
         // ── KHÔNG ZOOM OUT! Vòng quay giữ nguyên cận cảnh 12h và fade đi ──
-        // Bước 1: Kích hoạt hiệu ứng Icon bay ra từ kim 12h
+        // Kích hoạt hiệu ứng Icon bay ra từ kim 12h
         setTarotFlyPhase("FLYING");
-
-        // Bước 2: Sau 650ms, icon đáp xuống và gắn chặt lên mặt sau lá bài Tarot
-        flyTimer = setTimeout(() => {
-          setTarotFlyPhase("ATTACHED");
-          soundManager.playPowerup();
-
-          // Bước 3: Gắn lên lá bài để đó đúng 1.5s (1500ms) thì tự động lật bài!
-          attachedTimer = setTimeout(() => {
-            setTarotFlyPhase("REVEALED");
-            setIsWheelSpinningOptimistic(false);
-            onTarotReveal?.();
-          }, 1500);
-        }, 650);
       }
     };
 
@@ -525,8 +536,6 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
-      if (flyTimer) clearTimeout(flyTimer);
-      if (attachedTimer) clearTimeout(attachedTimer);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -589,20 +598,34 @@ export default function MysteryQuestBoard({
       }
 
       // Check if this move was already attempted in this round (anti-abuse rule)
-      const priorFlippedId = memoryPairsState?.firstFlippedTileId;
-      if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
-        const fId = Number(priorFlippedId);
-        const sId = Number(tile.id);
-        const pairMoveKey = `${Math.min(fId, sId)}-${Math.max(fId, sId)}`;
-        if ((memoryPairsState?.attemptedPairs || []).includes(pairMoveKey)) {
-          return;
-        }
+      if (!memoryPairsState?.isBombRescueActive) {
+        const priorFlippedId = memoryPairsState?.firstFlippedTileId;
+        if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
+          const fId = Number(priorFlippedId);
+          const sId = Number(tile.id);
+          const pairMoveKey = `${Math.min(fId, sId)}-${Math.max(fId, sId)}`;
+          if ((memoryPairsState?.attemptedPairs || []).includes(pairMoveKey)) {
+            return;
+          }
 
-        const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
-        // ONLY set optimistic matched pair key for REWARD cards!
-        // Penalty cards (PAIR_BOMB, PAIR_TRAP) are NOT matching reward pairs!
-        if (first && first.pairKey && first.pairKey === tile.pairKey && first.type === "REWARD" && first.pairKey !== "PAIR_BOMB" && first.pairKey !== "PAIR_TRAP") {
-          setOptimisticMatchedPairKey(tile.pairKey);
+          const first = tiles.find((t) => Number(t.id) === Number(priorFlippedId));
+          // ONLY set optimistic matched pair key for REWARD cards!
+          // Penalty cards (PAIR_BOMB, PAIR_TRAP) are NOT matching reward pairs!
+          if (first && first.pairKey && first.pairKey === tile.pairKey && first.type === "REWARD" && first.pairKey !== "PAIR_BOMB" && first.pairKey !== "PAIR_TRAP") {
+            setOptimisticMatchedPairKey(tile.pairKey);
+          }
+        }
+      } else {
+        // Trong lượt giải cứu:
+        // Nếu bom ở lá 2, đối tác so sánh là lá 1; nếu bom ở lá 1, đối tác so sánh là lá 2!
+        const partnerTileId = memoryPairsState?.secondFlippedTileId
+          ? memoryPairsState?.firstFlippedTileId
+          : memoryPairsState?.secondFlippedTileId;
+        if (partnerTileId && Number(partnerTileId) !== Number(tile.id)) {
+          const partner = tiles.find((t) => Number(t.id) === Number(partnerTileId));
+          if (partner && partner.pairKey && partner.pairKey === tile.pairKey && partner.type === "REWARD" && partner.pairKey !== "PAIR_BOMB" && partner.pairKey !== "PAIR_TRAP") {
+            setOptimisticMatchedPairKey(tile.pairKey);
+          }
         }
       }
       lastClickedTileIdRef.current = tile.id;
@@ -1305,7 +1328,7 @@ export default function MysteryQuestBoard({
                   <div className="flex items-center gap-2">
                     {memoryPairsState?.isBombRescueActive ? (
                       <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/30 text-amber-300 border border-amber-400 animate-pulse">
-                        ⚠️ LƯỢT GIẢI CỨU (LẬT 2 LÁ)
+                        ⚠️ LƯỢT GIẢI CỨU (LẬT 3 LÁ)
                       </span>
                     ) : (
                       <span
@@ -1333,7 +1356,11 @@ export default function MysteryQuestBoard({
                 </div>
                 {memoryPairsState?.isBombRescueActive ? (
                   <p className="text-[11px] text-amber-200 font-bold leading-snug animate-pulse">
-                    🔥 Đã bốc trúng lá tiêu cực cùng cặp từ lượt trước! Mở khóa lượt giải cứu (3 lá): Hãy lật 2 lá tiếp theo — Nếu trùng khớp, bạn sẽ hóa giải bẫy cũ và nhận chức năng cặp mới!
+                    {memoryPairsState?.secondFlippedTileId ? (
+                      <>🔥 Dính lá tiêu cực cùng loại ở lá thứ 2! Được thêm 1 lần lật: Hãy lật lá thứ 3 — Nếu lá 3 trùng khớp lá 1 thì theo chức năng cặp 1 - 3, nếu khác nhau thì theo cặp tiêu cực trước đó!</>
+                    ) : (
+                      <>🔥 Dính lá tiêu cực cùng loại ở lá thứ 1! Được thêm 1 lần lật (lật 3 lá): Hãy lật 2 lá tiếp theo — Nếu lá 2 và 3 trùng khớp nhau thì theo chức năng cặp 2 - 3, nếu khác nhau thì theo cặp tiêu cực trước đó!</>
+                    )}
                   </p>
                 ) : isPenaltySurvivalMode ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
@@ -2438,14 +2465,15 @@ export default function MysteryQuestBoard({
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (() => {
           const isGambleWaiting = Boolean(tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
           const isDrawn = Boolean(
+            phase === "TURN_SUMMARY" ||
+            tarotFlyPhase === "ATTACHED" ||
+            tarotFlyPhase === "REVEALED" ||
             (tarotState?.isDrawn &&
               tarotState?.drawnCard &&
               !tarotState?.isWheelSpinning &&
               !isWheelSpinningOptimistic &&
               !isGambleWaiting &&
-              tarotFlyPhase !== "FLYING") ||
-              tarotFlyPhase === "ATTACHED" ||
-              tarotFlyPhase === "REVEALED"
+              tarotFlyPhase !== "FLYING")
           );
           const drawnCard = tarotState?.drawnCard;
 
@@ -2550,7 +2578,7 @@ export default function MysteryQuestBoard({
           };
 
           const cardVisual = getEntityVisuals(drawnCard?.key);
-          const isPendingReveal = Boolean(tarotState?.isRevealPending);
+          const isPendingReveal = Boolean(tarotState?.isRevealPending && phase !== "TURN_SUMMARY" && tarotFlyPhase !== "REVEALED");
           const canActOnTarot = Boolean(isMyTurn || isAdmin);
 
           return (

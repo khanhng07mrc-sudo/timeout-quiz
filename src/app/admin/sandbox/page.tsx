@@ -2710,10 +2710,12 @@ export default function AdminSandboxPage() {
             const cur = { ...roomStateRef.current.mysteryQuestState };
             const curMem = { ...cur.memoryPairsState! };
             if (curMem.isBombRescueActive) return;
-            const { firstFlippedTileId, secondFlippedTileId, keptBombTileIds } = curMem;
+            const { firstFlippedTileId, secondFlippedTileId, thirdFlippedTileId, keptBombTileIds } = curMem;
             const keptBombsSet = new Set((keptBombTileIds || []).map(Number));
             cur.tiles = cur.tiles.map((t) => {
-              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) || Number(t.id) === Number(secondFlippedTileId);
+              const isTurnTile = Number(t.id) === Number(firstFlippedTileId) ||
+                                 Number(t.id) === Number(secondFlippedTileId) ||
+                                 Number(t.id) === Number(thirdFlippedTileId);
               if (isTurnTile && !keptBombsSet.has(Number(t.id))) {
                 return { ...t, isOpened: false };
               }

@@ -126,6 +126,7 @@ export default function MysteryQuestBoard({
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
+  const [tarotFlyPhase, setTarotFlyPhase] = useState<"IDLE" | "FLYING" | "ATTACHED" | "REVEALED">("IDLE");
   const wheelRef = useRef<HTMLDivElement>(null);
   const needleRef = useRef<HTMLDivElement>(null);
   const wheelPrevAngleRef = useRef<number>(0);
@@ -303,12 +304,15 @@ export default function MysteryQuestBoard({
     setSwapRemovedId(null);
   }, [currentTurnIndex, miniGameType, oneShotState?.phase]);
 
-  // Reset optimistic spin state when turn changes or card is revealed
+  // Reset optimistic spin state when turn changes or gamble round changes
   useEffect(() => {
     setIsWheelSpinningOptimistic(false);
     setLockedPower(null);
     setIsLocalGambleArming(false);
-  }, [currentTurnIndex, miniGameType, tarotState?.isDrawn]);
+    setTarotFlyPhase("IDLE");
+    setIsWheelZoomedIn(false);
+    setWheelZoomDurationMs(800);
+  }, [currentTurnIndex, miniGameType, tarotState?.isGamblingWaitingSpin]);
 
   useEffect(() => {
     if (tarotState?.isWheelSpinning) {
@@ -333,15 +337,23 @@ export default function MysteryQuestBoard({
     };
   }, []);
 
-  // Tự động lật bài sau 0.5s (500ms) khi bài xuất hiện trên màn hình
+  // Tự động lật bài sau 1.5s khi bài xuất hiện ở trạng thái chờ mở (dành cho người xem vào trễ sau khi vòng quay đã dừng)
   useEffect(() => {
-    if (tarotState?.isDrawn && tarotState?.isRevealPending) {
+    if (
+      tarotState?.isDrawn &&
+      tarotState?.isRevealPending &&
+      tarotFlyPhase === "IDLE" &&
+      !tarotState?.isWheelSpinning &&
+      !isWheelSpinningOptimistic
+    ) {
+      setTarotFlyPhase("ATTACHED");
       const timer = setTimeout(() => {
+        setTarotFlyPhase("REVEALED");
         onTarotReveal?.();
-      }, 500);
+      }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [tarotState?.isDrawn, tarotState?.isRevealPending, onTarotReveal]);
+  }, [tarotState?.isDrawn, tarotState?.isRevealPending, tarotFlyPhase, tarotState?.isWheelSpinning, isWheelSpinningOptimistic, onTarotReveal]);
 
   // Synchronize Tarot Wheel angle, Chiếc Nón Kỳ Diệu BGM & peg-click audio ("tạch-tạch-tạch")
   useEffect(() => {
@@ -371,7 +383,7 @@ export default function MysteryQuestBoard({
         wheelRef.current.style.transform = `rotate(${target}deg)`;
       }
       wheelSpinAudioTargetRef.current = null;
-      if (!tarotState?.targetAngle || tarotState?.targetAngle === 0) {
+      if (!tarotState?.isWheelSpinning && !isWheelSpinningOptimistic && tarotFlyPhase === "IDLE") {
         setIsWheelZoomedIn(false);
         setWheelZoomDurationMs(800);
         setNeedleDeflectionDeg(0);
@@ -389,6 +401,8 @@ export default function MysteryQuestBoard({
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
+    let flyTimer: ReturnType<typeof setTimeout> | null = null;
+    let attachedTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
     // 1. Khởi tạo kim thẳng đứng 0 độ tuyệt đối và bánh xe ở góc startAngle
@@ -402,7 +416,7 @@ export default function MysteryQuestBoard({
     // Tiếng gõ chốt khởi động nhẹ nhàng
     soundManager.playWheelPegTick(0.05);
 
-    // 2. Dynamic Camera Zoom Rig (Phóng to 1.85x cận cảnh chuẩn 12h kịch tính):
+    // 2. Dynamic Camera Zoom Rig (Phóng to 1.65x cận cảnh chuẩn 12h kịch tính):
     // Phóng dần từ giây thứ 3 đến giây thứ 10
     setIsWheelZoomedIn(false);
     setWheelZoomDurationMs(7000);
@@ -486,6 +500,23 @@ export default function MysteryQuestBoard({
           finishedChimePlayed = true;
           soundManager.playWheelStopChime();
         }
+
+        // ── KHÔNG ZOOM OUT! Vòng quay giữ nguyên cận cảnh 12h và fade đi ──
+        // Bước 1: Kích hoạt hiệu ứng Icon bay ra từ kim 12h
+        setTarotFlyPhase("FLYING");
+
+        // Bước 2: Sau 650ms, icon đáp xuống và gắn chặt lên mặt sau lá bài Tarot
+        flyTimer = setTimeout(() => {
+          setTarotFlyPhase("ATTACHED");
+          soundManager.playPowerup();
+
+          // Bước 3: Gắn lên lá bài để đó đúng 1.5s (1500ms) thì tự động lật bài!
+          attachedTimer = setTimeout(() => {
+            setTarotFlyPhase("REVEALED");
+            setIsWheelSpinningOptimistic(false);
+            onTarotReveal?.();
+          }, 1500);
+        }, 650);
       }
     };
 
@@ -494,6 +525,8 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
+      if (flyTimer) clearTimeout(flyTimer);
+      if (attachedTimer) clearTimeout(attachedTimer);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -2405,11 +2438,14 @@ export default function MysteryQuestBoard({
         {(miniGameType === "TAROT_DESTINY" || miniGameType === "TAROT_CARDS") && (() => {
           const isGambleWaiting = Boolean(tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
           const isDrawn = Boolean(
-            tarotState?.isDrawn &&
+            (tarotState?.isDrawn &&
               tarotState?.drawnCard &&
               !tarotState?.isWheelSpinning &&
               !isWheelSpinningOptimistic &&
-              !isGambleWaiting
+              !isGambleWaiting &&
+              tarotFlyPhase !== "FLYING") ||
+              tarotFlyPhase === "ATTACHED" ||
+              tarotFlyPhase === "REVEALED"
           );
           const drawnCard = tarotState?.drawnCard;
 
@@ -2519,12 +2555,70 @@ export default function MysteryQuestBoard({
 
           return (
             <div className={`w-full ${isDisplay ? "max-w-3xl" : "max-w-2xl"} mx-auto py-1.5`}>
+              <style>{`
+                @keyframes tarotFlyDown {
+                  0% {
+                    top: 14%;
+                    transform: translate(-50%, -50%) scale(0.85);
+                    opacity: 0;
+                    filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.6));
+                  }
+                  30% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1.4);
+                    filter: drop-shadow(0 0 30px rgba(251, 191, 36, 1)) drop-shadow(0 0 45px rgba(168, 85, 247, 0.9));
+                  }
+                  100% {
+                    top: 50%;
+                    transform: translate(-50%, -50%) scale(1.05);
+                    opacity: 1;
+                    filter: drop-shadow(0 0 35px rgba(251, 191, 36, 1));
+                  }
+                }
+                @keyframes tarotSealGlow {
+                  0%, 100% {
+                    transform: scale(1.0);
+                    filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.7));
+                  }
+                  50% {
+                    transform: scale(1.06);
+                    filter: drop-shadow(0 0 35px rgba(251, 191, 36, 1)) drop-shadow(0 0 50px rgba(168, 85, 247, 0.9));
+                  }
+                }
+              `}</style>
               {!isDrawn ? (
                 /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 3D Chiếc Nón Kỳ Diệu ── */
                 <div className={`flex flex-col items-center justify-center ${isDisplay ? "p-3 sm:p-5 space-y-2.5" : "p-4 sm:p-6 space-y-3"} rounded-3xl bg-gradient-to-b from-[#06040d]/95 via-[#0d081d]/95 to-[#040308]/98 border-2 border-purple-500/40 shadow-[0_0_55px_rgba(88,28,135,0.45)] relative overflow-hidden group`}>
                   {/* Mystical Starfield & Astral Nebula Aura */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(139,92,246,0.22),rgba(15,10,35,0.6)_55%,transparent_80%)] pointer-events-none" />
                   <div className="absolute inset-0 opacity-35 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px), radial-gradient(#e0e7ff 0.6px, transparent 0.6px)", backgroundSize: "36px 36px, 24px 24px", backgroundPosition: "0 0, 14px 18px" }} />
+
+                  {/* ── Flying Arcana Icon from 12 o'clock Needle to Card Center ── */}
+                  {tarotFlyPhase === "FLYING" && (
+                    <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
+                      <div
+                        className="absolute left-1/2 flex flex-col items-center justify-center"
+                        style={{
+                          animation: "tarotFlyDown 0.65s cubic-bezier(0.2, 0.8, 0.25, 1) forwards",
+                        }}
+                      >
+                        <div className="relative flex items-center justify-center">
+                          <div className="absolute w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 via-fuchsia-500 to-purple-600 blur-xl opacity-80 animate-pulse" />
+                          <div className="absolute w-16 h-16 rounded-full border-2 border-amber-300/80 animate-ping" />
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-b from-[#1a0f35] to-[#0a0515] border-2 border-amber-300 shadow-[0_0_30px_rgba(251,191,36,0.95)] flex items-center justify-center p-2.5">
+                            <TarotArcanaSvgIcon
+                              cardKey={drawnCard?.key || "THE_SUN"}
+                              strokeColor="#fde68a"
+                              className="w-full h-full drop-shadow-[0_0_8px_rgba(251,191,36,0.9)]"
+                            />
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-200 mt-2 bg-black/85 px-3 py-0.5 rounded-full border border-amber-400/50 shadow-lg">
+                          ✦ {getPureArcanaNameVi(drawnCard?.nameVi)} ✦
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Header Title */}
                   {(() => {
@@ -2557,15 +2651,15 @@ export default function MysteryQuestBoard({
                   })()}
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
-                  <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-1" : "w-[300px] h-[300px] sm:w-[370px] sm:h-[370px] md:w-[430px] md:h-[430px] lg:w-[460px] lg:h-[460px] my-1"} mx-auto flex items-center justify-center z-10 p-0 overflow-hidden rounded-full`}>
-                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100%, 3s-10s phóng to 1.85x neo đỉnh 12h, đẩy nhẹ lên trên (-14px) ── */}
+                  <div className={`relative aspect-square w-full ${isDisplay ? "max-w-[320px] sm:max-w-[380px] md:max-w-[430px] lg:max-w-[460px] my-1" : "max-w-[280px] sm:max-w-[330px] md:max-w-[380px] lg:max-w-[410px] my-1"} mx-auto flex items-center justify-center z-10 p-0 overflow-visible transition-all duration-700 ${tarotFlyPhase === "FLYING" ? "opacity-0 pointer-events-none scale-95" : "opacity-100"}`}>
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100%, 3s-10s phóng to 1.65x neo đỉnh 12h (50% 0%) & đẩy 68px để trọn vẹn kim và nan quạt trúng ── */}
                     <div
                       className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 6%",
+                        transformOrigin: "50% 0%",
                         transform: isWheelZoomedIn
-                          ? "scale(1.85) translateY(18px)"
-                          : "scale(1.0) translateY(-14px)",
+                          ? "scale(1.65) translateY(68px)"
+                          : "scale(1.0) translateY(0px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
                         transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
@@ -2974,13 +3068,7 @@ export default function MysteryQuestBoard({
 
                     return (
                       <>
-                        {/* Status banner when spinning */}
-                        {isSpinningActive && (
-                          <div className="z-10 py-1.5 px-5 rounded-full bg-purple-950/85 border border-purple-400/50 text-xs sm:text-sm font-black text-amber-200 tracking-wider flex items-center gap-2 animate-pulse shadow-[0_0_25px_rgba(168,85,247,0.5)] my-1.5">
-                            <span className="text-base animate-spin">🌀</span>
-                            <span>VÒNG QUAY ĐỊNH MỆNH ĐANG XOAY...</span>
-                          </div>
-                        )}
+
 
                         {/* Controls container - smoothly collapsed when spinning to free space for the wheel */}
                         <div
@@ -3124,7 +3212,9 @@ export default function MysteryQuestBoard({
                   <div className="text-center mb-2 sm:mb-3 z-10">
                     {isPendingReveal ? (
                       <span className="inline-block px-3.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] border bg-purple-950/80 text-amber-200 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse">
-                        ✦ ẤN CHỨNG MAJOR ARCANA • CHỜ KHAI MỞ ✦
+                        {tarotFlyPhase === "ATTACHED"
+                          ? "✦ ẤN CHỨNG MAJOR ARCANA • ĐÃ PHONG ẤN LÊN LÁ BÀI ✦"
+                          : "✦ ẤN CHỨNG MAJOR ARCANA • CHỜ KHAI MỞ ✦"}
                       </span>
                     ) : (
                       <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
@@ -3176,11 +3266,24 @@ export default function MysteryQuestBoard({
                     <div className="my-auto flex flex-col items-center justify-center relative py-2 z-10">
                       <div className="absolute w-28 h-28 sm:w-32 sm:h-32 rounded-full border border-amber-300/20 animate-pulse pointer-events-none" />
                       <div className="absolute w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-purple-500/10 blur-md pointer-events-none" />
-                      <TarotArcanaSvgIcon
-                        cardKey={drawnCard?.key || "THE_FOOL"}
-                        strokeColor="#fde68a"
-                        className={`${isDisplay ? "w-20 h-20 sm:w-24 sm:h-24" : "w-24 h-24 sm:w-28 sm:h-28"} animate-bounce-in`}
-                      />
+                      <div
+                        className={`relative p-2.5 rounded-full transition-all duration-500 ${
+                          tarotFlyPhase === "ATTACHED"
+                            ? "bg-amber-500/20 border-2 border-amber-300/90 shadow-[0_0_35px_rgba(251,191,36,0.95)]"
+                            : ""
+                        }`}
+                        style={
+                          tarotFlyPhase === "ATTACHED"
+                            ? { animation: "tarotSealGlow 1.5s ease-in-out infinite" }
+                            : undefined
+                        }
+                      >
+                        <TarotArcanaSvgIcon
+                          cardKey={drawnCard?.key || "THE_FOOL"}
+                          strokeColor="#fde68a"
+                          className={`${isDisplay ? "w-20 h-20 sm:w-24 sm:h-24" : "w-24 h-24 sm:w-28 sm:h-28"} ${tarotFlyPhase === "ATTACHED" ? "animate-pulse" : "animate-bounce-in"}`}
+                        />
+                      </div>
                     </div>
 
                     {/* Footer: Card Name and Suspense / Revealed Delta */}
@@ -3190,7 +3293,7 @@ export default function MysteryQuestBoard({
                       </h3>
                       {isPendingReveal ? (
                         <div className="inline-flex items-center justify-center px-3.5 py-1 rounded-full text-[11px] font-black shadow-lg bg-[#1a0f35]/90 border border-amber-400/70 text-amber-200 animate-pulse">
-                          <span>✦ {canActOnTarot && !isDisplay ? "BẤM ĐỂ LẬT BÀI" : "CHỜ KHAI MỞ ĐỊNH MỆNH"} ✦</span>
+                          <span>✦ {tarotFlyPhase === "ATTACHED" ? "ẤN CHỨNG ĐÃ GẮN • ĐANG KHAI MỞ..." : canActOnTarot && !isDisplay ? "BẤM ĐỂ LẬT BÀI" : "CHỜ KHAI MỞ ĐỊNH MỆNH"} ✦</span>
                         </div>
                       ) : (
                         <div className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs sm:text-sm font-black font-mono shadow-lg bg-black/75 border border-white/25">

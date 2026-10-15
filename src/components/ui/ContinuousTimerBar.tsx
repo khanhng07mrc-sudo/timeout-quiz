@@ -26,9 +26,14 @@ export const ContinuousTimerBar = React.memo(function ContinuousTimerBar({
 }: ContinuousTimerBarProps) {
   const barRef = useRef<HTMLDivElement>(null);
   const stableEndsAtRef = useRef<number | null>(null);
+  const lastEndsAtRef = useRef<number | null>(null);
+  const lastPctRef = useRef<number>(100);
 
+  // Only update stableEndsAt if endsAt is meaningfully different (new question/timer session)
   if (endsAt && endsAt > 0) {
-    stableEndsAtRef.current = endsAt;
+    if (!stableEndsAtRef.current || Math.abs(endsAt - stableEndsAtRef.current) > 1500) {
+      stableEndsAtRef.current = endsAt;
+    }
   } else if (!stableEndsAtRef.current && total > 0) {
     stableEndsAtRef.current = Date.now() + getServerClockOffset() + total * 1000;
   }
@@ -44,17 +49,25 @@ export const ContinuousTimerBar = React.memo(function ContinuousTimerBar({
       return;
     }
 
+    if (lastEndsAtRef.current !== effectiveEndsAt) {
+      lastEndsAtRef.current = effectiveEndsAt;
+      lastPctRef.current = 100;
+    }
+
     let animId: number;
 
     const tick = () => {
       if (!barRef.current) return;
       const now = Date.now() + getServerClockOffset();
       const msRemaining = Math.max(0, effectiveEndsAt - now);
-      const pct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
+      const rawPct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
+      // Monotonic clamp: percent can NEVER increase during countdown
+      const safePct = Math.min(lastPctRef.current, rawPct);
+      lastPctRef.current = safePct;
 
-      barRef.current.style.width = `${pct}%`;
+      barRef.current.style.width = `${safePct}%`;
 
-      if (msRemaining > 0 && !isPaused) {
+      if (safePct > 0 && !isPaused) {
         animId = requestAnimationFrame(tick);
       }
     };
@@ -107,9 +120,13 @@ export const ContinuousTimerRing = React.memo(function ContinuousTimerRing({
   const size = (radius + strokeWidth) * 2;
   const center = radius + strokeWidth;
   const stableEndsAtRef = useRef<number | null>(null);
+  const lastEndsAtRef = useRef<number | null>(null);
+  const lastPctRef = useRef<number>(100);
 
   if (endsAt && endsAt > 0) {
-    stableEndsAtRef.current = endsAt;
+    if (!stableEndsAtRef.current || Math.abs(endsAt - stableEndsAtRef.current) > 1500) {
+      stableEndsAtRef.current = endsAt;
+    }
   } else if (!stableEndsAtRef.current && total > 0) {
     stableEndsAtRef.current = Date.now() + getServerClockOffset() + total * 1000;
   }
@@ -125,17 +142,25 @@ export const ContinuousTimerRing = React.memo(function ContinuousTimerRing({
       return;
     }
 
+    if (lastEndsAtRef.current !== effectiveEndsAt) {
+      lastEndsAtRef.current = effectiveEndsAt;
+      lastPctRef.current = 100;
+    }
+
     let animId: number;
 
     const tick = () => {
       if (!circleRef.current) return;
       const now = Date.now() + getServerClockOffset();
       const msRemaining = Math.max(0, effectiveEndsAt - now);
-      const pct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
+      const rawPct = Math.max(0, Math.min(100, (msRemaining / (total * 1000)) * 100));
+      // Monotonic clamp: percent can NEVER increase during countdown
+      const safePct = Math.min(lastPctRef.current, rawPct);
+      lastPctRef.current = safePct;
 
-      circleRef.current.style.strokeDashoffset = `${circumference * (1 - pct / 100)}`;
+      circleRef.current.style.strokeDashoffset = `${circumference * (1 - safePct / 100)}`;
 
-      if (msRemaining > 0 && !isPaused) {
+      if (safePct > 0 && !isPaused) {
         animId = requestAnimationFrame(tick);
       }
     };

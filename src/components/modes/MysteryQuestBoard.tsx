@@ -3710,56 +3710,67 @@ export default function MysteryQuestBoard({
                 }
 
                 // Revealed Tile
-              const isSteal = tile.effectType === "STEAL_POINTS";
-              return (
-                <div
-                  key={tile.id}
-                  className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
-                    isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
-                  } ${
-                    isEscapeSafe
-                      ? "bg-gradient-to-b from-emerald-950 via-teal-950 to-black border-emerald-400 text-emerald-200"
-                      : isBomb
-                      ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
-                      : isSteal
-                      ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
-                      : "bg-gradient-to-b from-indigo-950 via-purple-950 to-black border-emerald-400 text-emerald-200"
-                  }`}
-                >
-                  <div className="w-full flex items-center justify-between">
-                    <span className="text-[9px] font-mono font-bold opacity-70">#{tile.id}</span>
-                    <span
-                      className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
-                        isMatched
-                          ? isEscapeSafe
-                            ? "bg-emerald-400 text-black font-extrabold"
-                            : isSteal
-                            ? "bg-rose-500 text-white font-extrabold"
-                            : "bg-yellow-400 text-black font-extrabold"
-                          : isEscapeSafe
-                          ? "bg-emerald-400 text-black font-extrabold"
-                          : isBomb
-                          ? "bg-red-500/30 text-red-300"
-                          : isSteal
-                          ? "bg-rose-500/30 text-rose-300"
-                          : "bg-emerald-500/30 text-emerald-300"
-                      }`}
-                    >
-                      {isMatched
-                        ? isEscapeSafe
-                          ? "THOÁT! 🕊️"
-                          : isSteal
-                          ? "CƯỚP! 🗡️"
-                          : "CẶP! ⭐"
-                        : isEscapeSafe
-                        ? "THOÁT HIỂM 🕊️"
+                const isSteal = tile.effectType === "STEAL_POINTS";
+                const isFool = tile.tarotCardKey === "THE_FOOL" || tile.pairKey === "PAIR_THE_FOOL";
+                return (
+                  <div
+                    key={tile.id}
+                    className={`relative aspect-[4/3] max-h-[10.5vh] sm:max-h-[12.5vh] rounded-xl p-1.5 flex flex-col items-center justify-between border-2 shadow-2xl transition-all duration-200 ${
+                      isMatched ? "ring-2 ring-yellow-400 scale-102 z-10" : ""
+                    } ${
+                      isEscapeSafe
+                        ? "bg-gradient-to-b from-emerald-950 via-teal-950 to-black border-emerald-400 text-emerald-200"
+                        : isFool
+                        ? "bg-gradient-to-b from-amber-950 via-stone-950 to-black border-amber-500 text-amber-200"
                         : isBomb
-                        ? "BOM"
+                        ? "bg-gradient-to-b from-red-950 via-stone-950 to-black border-red-500 text-red-200"
                         : isSteal
-                        ? "CƯỚP 🗡️"
-                        : "THƯỞNG"}
-                    </span>
-                  </div>
+                        ? "bg-gradient-to-b from-rose-950 via-purple-950 to-black border-rose-400 text-rose-200"
+                        : "bg-gradient-to-b from-indigo-950 via-purple-950 to-black border-emerald-400 text-emerald-200"
+                    }`}
+                  >
+                    <div className="w-full flex items-center justify-between">
+                      <span className="text-[9px] font-mono font-bold opacity-70">#{tile.id}</span>
+                      <span
+                        className={`text-[8px] font-black uppercase px-1 py-0.2 rounded ${
+                          isMatched
+                            ? isEscapeSafe
+                              ? "bg-emerald-400 text-black font-extrabold"
+                              : isFool
+                              ? "bg-amber-400 text-black font-extrabold"
+                              : isSteal
+                              ? "bg-rose-500 text-white font-extrabold"
+                              : "bg-yellow-400 text-black font-extrabold"
+                            : isEscapeSafe
+                            ? "bg-emerald-400 text-black font-extrabold"
+                            : isFool
+                            ? "bg-amber-500/30 text-amber-300 border border-amber-500/40"
+                            : isBomb
+                            ? "bg-red-500/30 text-red-300"
+                            : isSteal
+                            ? "bg-rose-500/30 text-rose-300"
+                            : "bg-emerald-500/30 text-emerald-300"
+                        }`}
+                      >
+                        {isMatched
+                          ? isEscapeSafe
+                            ? "THOÁT! 🕊️"
+                            : isFool
+                            ? "BẪY KHỜ! 🃏"
+                            : isSteal
+                            ? "CƯỚP! 🗡️"
+                            : "CẶP! ⭐"
+                          : isEscapeSafe
+                          ? "THOÁT HIỂM 🕊️"
+                          : isFool
+                          ? "BẪY 🃏"
+                          : isBomb
+                          ? "BOM"
+                          : isSteal
+                          ? "CƯỚP 🗡️"
+                          : "THƯỞNG"}
+                      </span>
+                    </div>
 
                   <div className="my-auto text-center drop-shadow-xl flex items-center justify-center">
                     <MinigameSvgIcon nameOrEmoji={tile.icon} className="w-7 h-7 sm:w-9 sm:h-9" />

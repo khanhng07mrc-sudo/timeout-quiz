@@ -915,19 +915,19 @@ export function getTarotMinigameArchetypePool(
       isSteal: canSteal,
       stealFraction: 1.0,
     },
-    // 6. THE_FOOL: ±0đ Neutral
+    // 6. THE_FOOL: ±0đ Neutral / Trap
     {
       key: "THE_FOOL",
       nameVi: "Kẻ Khờ Lãng Du",
       nameEn: "The Fool",
       icon: "🃏",
-      type: "REWARD",
-      effectType: "BONUS_POINTS",
-      storyTitle: "🃏 Kẻ Khờ ±0đ",
-      storyDescription: "Vô thưởng vô phạt: Giữ nguyên thế trận an toàn tuyệt đối (±0đ)!",
+      type: "TRAP",
+      effectType: "LOSE_POINTS",
+      storyTitle: "🃏 Kẻ Khờ ±0đ (Bẫy Trung Lập)",
+      storyDescription: "Vô ưu lãng du: Là bẫy trung lập không trừ điểm (±0đ) nhưng khiến bạn mất lượt an toàn!",
       deltaMultiplier: 0,
       deltaPoints: 0,
-      isNegative: false,
+      isNegative: true,
     },
     // 7. WHEEL_OF_FORTUNE: +1.5x Base points
     {
@@ -2438,7 +2438,7 @@ export function handleFlipCard({
 
     const isPenaltyTile = (t: MysteryTile | undefined | null): boolean => {
       if (!t) return false;
-      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return false;
+      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return true;
       if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
       if (t.pairKey?.startsWith("PAIR_BOMB") || t.pairKey?.startsWith("PAIR_TRAP")) return true;
       if (t.pairKey === "PAIR_THE_TOWER" || t.pairKey === "PAIR_THE_KNIGHT" || t.pairKey === "PAIR_THE_DEVIL" || t.pairKey === "PAIR_THE_HANGED_MAN") return true;
@@ -2449,7 +2449,7 @@ export function handleFlipCard({
 
     const isNeutralTile = (t: MysteryTile | undefined | null): boolean => {
       if (!t) return false;
-      return t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL" || (t.deltaPoints === 0 && t.type === "REWARD");
+      return (t.deltaPoints === 0 && t.type === "REWARD");
     };
 
     const getPenaltyKey = (t: MysteryTile | undefined | null): string | null => {
@@ -2473,6 +2473,7 @@ export function handleFlipCard({
       state.memoryPairsState = { ...memState };
 
       const getPenaltyName = (k: string) => {
+        if (k === "PAIR_THE_FOOL") return "BẪY KẺ KHỜ";
         if (k === "PAIR_THE_KNIGHT" || k === "PAIR_BOMB_SMOKE" || k === "PAIR_TRAP") return "BOM KHÓI";
         if (k === "PAIR_THE_TOWER" || k === "PAIR_TRAP_BASE") return "THÁP BẪY SỤP ĐỔ";
         if (k === "PAIR_THE_DEVIL" || k === "PAIR_BOMB_DARK") return "BOM HẮC ÁM";
@@ -2527,6 +2528,32 @@ export function handleFlipCard({
           scorePenalty: 0,
           finalScoreDelta: 0,
           shouldResetMismatchedCards: true,
+        };
+      }
+
+      if (penaltyKey === "PAIR_THE_FOOL") {
+        // Cặp Kẻ Khờ: Bẫy trung lập không trừ điểm (±0đ), nhưng kết thúc lượt chơi (Turn Over)!
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = oldScore;
+
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#f59e0b",
+          rewardText: `${cancelPrefix}🃏 Bẫy Kẻ Khờ kích hoạt! Bạn không bị trừ điểm (±0đ), nhưng lượt chơi đã kết thúc!`,
+          scoreDelta: 0,
+          oldScore,
+          newScore,
+        };
+
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: true,
+          scorePenalty: 0,
+          finalScoreDelta: 0,
         };
       }
 

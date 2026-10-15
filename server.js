@@ -1412,19 +1412,19 @@ function getTarotMinigameArchetypePool(basePoints = 20, options) {
       isSteal: canSteal,
       stealFraction: 1
     },
-    // 6. THE_FOOL: ±0đ Neutral
+    // 6. THE_FOOL: ±0đ Neutral / Trap
     {
       key: "THE_FOOL",
       nameVi: "K\u1EBB Kh\u1EDD L\xE3ng Du",
       nameEn: "The Fool",
       icon: "\u{1F0CF}",
-      type: "REWARD",
-      effectType: "BONUS_POINTS",
-      storyTitle: "\u{1F0CF} K\u1EBB Kh\u1EDD \xB10\u0111",
-      storyDescription: "V\xF4 th\u01B0\u1EDFng v\xF4 ph\u1EA1t: Gi\u1EEF nguy\xEAn th\u1EBF tr\u1EADn an to\xE0n tuy\u1EC7t \u0111\u1ED1i (\xB10\u0111)!",
+      type: "TRAP",
+      effectType: "LOSE_POINTS",
+      storyTitle: "\u{1F0CF} K\u1EBB Kh\u1EDD \xB10\u0111 (B\u1EABy Trung L\u1EADp)",
+      storyDescription: "V\xF4 \u01B0u l\xE3ng du: L\xE0 b\u1EABy trung l\u1EADp kh\xF4ng tr\u1EEB \u0111i\u1EC3m (\xB10\u0111) nh\u01B0ng khi\u1EBFn b\u1EA1n m\u1EA5t l\u01B0\u1EE3t an to\xE0n!",
       deltaMultiplier: 0,
       deltaPoints: 0,
-      isNegative: false
+      isNegative: true
     },
     // 7. WHEEL_OF_FORTUNE: +1.5x Base points
     {
@@ -2549,7 +2549,7 @@ function handleFlipCard({
     }
     const isPenaltyTile = (t) => {
       if (!t) return false;
-      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return false;
+      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return true;
       if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
       if (t.pairKey?.startsWith("PAIR_BOMB") || t.pairKey?.startsWith("PAIR_TRAP")) return true;
       if (t.pairKey === "PAIR_THE_TOWER" || t.pairKey === "PAIR_THE_KNIGHT" || t.pairKey === "PAIR_THE_DEVIL" || t.pairKey === "PAIR_THE_HANGED_MAN") return true;
@@ -2559,7 +2559,7 @@ function handleFlipCard({
     };
     const isNeutralTile = (t) => {
       if (!t) return false;
-      return t.tarotCardKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL" || t.deltaPoints === 0 && t.type === "REWARD";
+      return t.deltaPoints === 0 && t.type === "REWARD";
     };
     const getPenaltyKey = (t) => {
       if (!t) return null;
@@ -2576,6 +2576,7 @@ function handleFlipCard({
       memState.isBombRescueActive = false;
       state.memoryPairsState = { ...memState };
       const getPenaltyName = (k) => {
+        if (k === "PAIR_THE_FOOL") return "B\u1EAAY K\u1EBA KH\u1EDC";
         if (k === "PAIR_THE_KNIGHT" || k === "PAIR_BOMB_SMOKE" || k === "PAIR_TRAP") return "BOM KH\xD3I";
         if (k === "PAIR_THE_TOWER" || k === "PAIR_TRAP_BASE") return "TH\xC1P B\u1EAAY S\u1EE4P \u0110\u1ED4";
         if (k === "PAIR_THE_DEVIL" || k === "PAIR_BOMB_DARK") return "BOM H\u1EAEC \xC1M";
@@ -2622,6 +2623,28 @@ function handleFlipCard({
           scorePenalty: 0,
           finalScoreDelta: 0,
           shouldResetMismatchedCards: true
+        };
+      }
+      if (penaltyKey === "PAIR_THE_FOOL") {
+        state.phase = "TURN_SUMMARY";
+        state.turnFinishedReason = "BOMB_HIT";
+        state.potPoints = 0;
+        const oldScore = team.score || 0;
+        const newScore = oldScore;
+        state.storyResult = {
+          teamId: team.id,
+          teamName: team.name,
+          teamColor: team.color || "#f59e0b",
+          rewardText: `${cancelPrefix}\u{1F0CF} B\u1EABy K\u1EBB Kh\u1EDD k\xEDch ho\u1EA1t! B\u1EA1n kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m (\xB10\u0111), nh\u01B0ng l\u01B0\u1EE3t ch\u01A1i \u0111\xE3 k\u1EBFt th\xFAc!`,
+          scoreDelta: 0,
+          oldScore,
+          newScore
+        };
+        return {
+          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+          isBomb: true,
+          scorePenalty: 0,
+          finalScoreDelta: 0
         };
       }
       if (penaltyKey === "PAIR_THE_KNIGHT" || penaltyKey === "PAIR_BOMB_SMOKE" || penaltyKey === "PAIR_TRAP") {

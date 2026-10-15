@@ -269,33 +269,21 @@ export default function PlayPage() {
           setErrorMessage(null);
           setConnected(true);
 
-          // Synchronize all teams' answers into in-memory store so each machine is independent
-          if (e.data.allTeamAnswers && typeof e.data.allTeamAnswers === "object") {
-            Object.entries(e.data.allTeamAnswers).forEach(([tid, ans]) => {
-              if (ans !== undefined && ans !== null) {
-                teamAnswersRef.current.set(tid, ans as any);
-              }
-            });
-          }
-
-          if (currentAns !== undefined && currentAns !== null) {
-            teamAnswersRef.current.set(teamId, currentAns);
-          }
-          const savedTeamAns = (currentAns !== undefined && currentAns !== null)
-            ? currentAns
-            : (teamAnswersRef.current.get(teamId) ?? null);
-
-          setSubmittedAnswer(savedTeamAns);
-          setAnswered(savedTeamAns !== null && savedTeamAns !== undefined);
-
           const teamPlayerId = isSandboxRef.current
             ? `sb_${code}_t0`
             : playerIdRef.current;
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
 
-          // Instantly sync question, timer, and reveal state from sandbox host if provided
+          // 1. Instantly sync question, timer, and reveal state from sandbox host if provided
           if (e.data.currentQuestion !== undefined) {
+            const incomingQId = e.data.currentQuestion?.question?.id ?? null;
+            if (incomingQId !== lastQuestionIdRef.current) {
+              lastQuestionIdRef.current = incomingQId;
+              teamAnswersRef.current.clear();
+              setSubmittedAnswer(null);
+              setAnswered(false);
+            }
             setCurrentQuestion(e.data.currentQuestion);
           }
           if (e.data.timer !== undefined) {
@@ -303,6 +291,34 @@ export default function PlayPage() {
           }
           if (e.data.revealPayload !== undefined) {
             setRevealPayload(e.data.revealPayload);
+          }
+
+          // 2. Synchronize teams' answers ONLY if an active question is currently in play
+          const hasActiveQuestion = Boolean(e.data.currentQuestion && !e.data.revealPayload);
+          if (!hasActiveQuestion) {
+            teamAnswersRef.current.clear();
+            setSubmittedAnswer(null);
+            setAnswered(false);
+          } else {
+            if (e.data.allTeamAnswers && typeof e.data.allTeamAnswers === "object") {
+              Object.entries(e.data.allTeamAnswers).forEach(([tid, ans]) => {
+                if (ans !== undefined && ans !== null) {
+                  teamAnswersRef.current.set(tid, ans as any);
+                } else {
+                  teamAnswersRef.current.delete(tid);
+                }
+              });
+            }
+
+            if (currentAns !== undefined && currentAns !== null) {
+              teamAnswersRef.current.set(teamId, currentAns);
+            }
+            const savedTeamAns = (currentAns !== undefined && currentAns !== null)
+              ? currentAns
+              : (teamAnswersRef.current.get(teamId) ?? null);
+
+            setSubmittedAnswer(savedTeamAns);
+            setAnswered(savedTeamAns !== null && savedTeamAns !== undefined);
           }
 
           // Instantly adopt roomState without waiting for network round-trip
@@ -513,10 +529,16 @@ export default function PlayPage() {
         }
         if (p.teamAnswers !== undefined) {
           const curTid = myTeamIdRef.current || activeTeamId || selectedTeamId;
-          if (curTid && p.teamAnswers[curTid]) {
-            teamAnswersRef.current.set(curTid, p.teamAnswers[curTid]);
-            setSubmittedAnswer(p.teamAnswers[curTid]);
-            setAnswered(true);
+          if (curTid) {
+            if (p.teamAnswers && p.teamAnswers[curTid]) {
+              teamAnswersRef.current.set(curTid, p.teamAnswers[curTid]);
+              setSubmittedAnswer(p.teamAnswers[curTid]);
+              setAnswered(true);
+            } else {
+              teamAnswersRef.current.delete(curTid);
+              setSubmittedAnswer(null);
+              setAnswered(false);
+            }
           }
         }
       }

@@ -327,6 +327,8 @@ export default function AdminSandboxPage() {
 
   // Bot automation state (default: OFF, manual on-demand control)
   const [botAutoEnabled, setBotAutoEnabled] = useState(false);
+  const botAutoEnabledRef = useRef(false);
+  botAutoEnabledRef.current = botAutoEnabled;
   const [botLogs, setBotLogs] = useState<string[]>([]);
 
   // Debug card grant modal
@@ -553,7 +555,7 @@ export default function AdminSandboxPage() {
       let pendingBotAnswerQ: QuestionState | null = null;
 
       const triggerBotAnswer = (qState: QuestionState) => {
-        if (!botAutoEnabled) return;
+        if (!botAutoEnabledRef.current) return;
         // If human tester is controlling this team, do not answer for this bot!
         if (team.id === activeTeamIdRef.current) return;
 
@@ -570,7 +572,9 @@ export default function AdminSandboxPage() {
 
         const delay = 2000 + Math.random() * 2000;
         setTimeout(() => {
+          if (!botAutoEnabledRef.current) return;
           if (team.id === activeTeamIdRef.current) return;
+          if (currentQuestionRef.current?.question?.id !== qData.id) return;
           const correctOpt = rawOpts.find((o: any) => o.isCorrect) || rawOpts[0];
           const wrongOpts = rawOpts.filter((o: any) => !o.isCorrect);
           const wrongOpt = wrongOpts.length > 0
@@ -969,6 +973,9 @@ export default function AdminSandboxPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
+      setTeamSelectedAnswers({});
+      offlineAnswersRef.current.clear();
+      offlineFinalizedActorsRef.current.clear();
     });
     sock.on("admin:question:data", (data: any) => {
       setAdminQuestionData(data);
@@ -979,6 +986,9 @@ export default function AdminSandboxPage() {
       sock.emit("admin:question:get_data", { code: roomCode });
       setCurrentQuestion(q);
       setRevealPayload(null);
+      setTeamSelectedAnswers({});
+      offlineAnswersRef.current.clear();
+      offlineFinalizedActorsRef.current.clear();
       const curTeamId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id;
       if (curTeamId) {
         sock.emit("admin:sandbox:set_active_team", {
@@ -1200,6 +1210,9 @@ export default function AdminSandboxPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
+      setTeamSelectedAnswers({});
+      offlineAnswersRef.current.clear();
+      offlineFinalizedActorsRef.current.clear();
       addLog(`Chuyển về bàn cờ / đường đua`);
     });
 
@@ -4400,6 +4413,8 @@ export default function AdminSandboxPage() {
       offlineTimerRef.current = null;
     }
     offlineAnswersRef.current.clear();
+    offlineFinalizedActorsRef.current.clear();
+    setTeamSelectedAnswers({});
     offlineSharedPowerupUsedThisQuestionRef.current = false;
 
     // Multi-round replenish: Replenish +1 card for each team with < 3 cards every 3 questions
@@ -6451,15 +6466,20 @@ export default function AdminSandboxPage() {
     }
 
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-    const targetAnswer = isOfflineSandbox
-      ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
-      : (teamSelectedAnswers[targetTeam.id] || null);
+    const isQuestionActive = Boolean(currentQuestion && !revealPayload);
+    const targetAnswer = isQuestionActive
+      ? (isOfflineSandbox
+          ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+          : (teamSelectedAnswers[targetTeam.id] || null))
+      : null;
 
-    const allAnswers = isOfflineSandbox
-      ? Object.fromEntries(
-          Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
-        )
-      : teamSelectedAnswers;
+    const allAnswers = isQuestionActive
+      ? (isOfflineSandbox
+          ? Object.fromEntries(
+              Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+            )
+          : teamSelectedAnswers)
+      : {};
 
     playerIframeRef.current?.contentWindow?.postMessage(
       {
@@ -8603,14 +8623,19 @@ export default function AdminSandboxPage() {
                     const targetTeam = stableTeams[activeTeamIndex] || stableTeams[0];
                     if (targetTeam) {
                       const tName = activeTeamIndex === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;
-                      const targetAnswer = isOfflineSandbox
-                        ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
-                        : (teamSelectedAnswers[targetTeam.id] || null);
-                      const allAnswers = isOfflineSandbox
-                        ? Object.fromEntries(
-                            Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
-                          )
-                        : teamSelectedAnswers;
+                      const isQuestionActive = Boolean(currentQuestion && !revealPayload);
+                      const targetAnswer = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? (offlineAnswersRef.current.get(targetTeam.id)?.answer || null)
+                            : (teamSelectedAnswers[targetTeam.id] || null))
+                        : null;
+                      const allAnswers = isQuestionActive
+                        ? (isOfflineSandbox
+                            ? Object.fromEntries(
+                                Array.from(offlineAnswersRef.current.entries()).map(([tid, val]) => [tid, val.answer])
+                              )
+                            : teamSelectedAnswers)
+                        : {};
                       playerIframeRef.current?.contentWindow?.postMessage(
                         {
                           type: "SWITCH_ACTIVE_TEAM",

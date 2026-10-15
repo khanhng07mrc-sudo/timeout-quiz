@@ -54,8 +54,12 @@ export function calibrateClockFromPacket(serverTime?: number) {
     return;
   }
   const diff = packetOffset - serverClockOffset;
-  if (diff > 0 || diff < -250) {
-    serverClockOffset = packetOffset + 25;
+  // Only adjust if drift is substantial (> 500ms) or gently smooth (> 100ms)
+  // Never add arbitrary jumps (+25ms) that shift local clocks backwards during active countdown
+  if (Math.abs(diff) > 500) {
+    serverClockOffset += Math.sign(diff) * 100;
+  } else if (Math.abs(diff) > 100) {
+    serverClockOffset = Math.round(serverClockOffset * 0.95 + packetOffset * 0.05);
   }
 }
 

@@ -86,7 +86,12 @@ export default function GameQuestion({
 
   const [selected, setSelected] = useState<string[]>(() => {
     if (!initialAnswer) return [];
-    return Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
+    if (q.type === "MC_SINGLE" || q.type === "MC_MULTI" || q.type === "TRUE_FALSE") {
+      const validOptionIds = (q.options || []).map((o) => o.id);
+      const raw = Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
+      return raw.filter((id) => validOptionIds.includes(String(id)));
+    }
+    return [];
   });
   const [essayText, setEssayText] = useState(() => {
     return typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "";
@@ -133,18 +138,35 @@ export default function GameQuestion({
   const [draggingOrderIndex, setDraggingOrderIndex] = useState<number | null>(null);
   const [dragOverOrderIndex, setDragOverOrderIndex] = useState<number | null>(null);
   const [isBuzzedLocally, setIsBuzzedLocally] = useState(false);
-  const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => Boolean(initialAnswer && isSingleSubmit));
+  const [isFinalizedLocally, setIsFinalizedLocally] = useState(() => {
+    if (!initialAnswer || !isSingleSubmit) return false;
+    if (q.type === "MC_SINGLE" || q.type === "MC_MULTI" || q.type === "TRUE_FALSE") {
+      const validOptionIds = (q.options || []).map((o) => o.id);
+      const raw = Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
+      return raw.some((id) => validOptionIds.includes(String(id)));
+    }
+    if (q.type === "ESSAY" || q.type === "FILL_BLANK") {
+      return typeof initialAnswer === "string" && initialAnswer.trim().length > 0;
+    }
+    return true;
+  });
 
   const isSubmittingSingleRef = useRef(false);
 
   // Clean reset of input and selection states whenever question ID or active participant changes
   useEffect(() => {
-    isSubmittingSingleRef.current = Boolean(initialAnswer && isSingleSubmit);
     if (initialAnswer) {
-      setSelected(Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer]);
+      const validOptionIds = (q.options || []).map((o) => o.id);
+      const raw = Array.isArray(initialAnswer) ? initialAnswer : [initialAnswer];
+      const validSelected = (q.type === "MC_SINGLE" || q.type === "MC_MULTI" || q.type === "TRUE_FALSE")
+        ? raw.map(String).filter((id) => validOptionIds.includes(id))
+        : raw.map(String);
+
+      setSelected(validSelected);
       setEssayText(typeof initialAnswer === "string" && q.type === "ESSAY" ? initialAnswer : "");
       setFillText(typeof initialAnswer === "string" && q.type === "FILL_BLANK" ? initialAnswer : "");
       setLastAnsweredText(typeof initialAnswer === "string" && (q.type === "FILL_BLANK" || q.type === "ESSAY") ? initialAnswer : "");
+
       if (typeof initialAnswer === "object" && !Array.isArray(initialAnswer)) {
         setMatchingPairs(initialAnswer as Record<string, string>);
       } else if (Array.isArray(initialAnswer) && typeof initialAnswer[0] === "object" && initialAnswer[0] !== null) {
@@ -152,6 +174,7 @@ export default function GameQuestion({
       } else {
         setMatchingPairs({});
       }
+
       if (Array.isArray(initialAnswer) && q.type === "DRAG_DROP") {
         const clean = Array.isArray(initialAnswer[0]) ? initialAnswer[0] : initialAnswer;
         setDragOrder(clean.map(String));
@@ -173,8 +196,20 @@ export default function GameQuestion({
       } else {
         setDragOrder([]);
       }
-      setIsFinalizedLocally(Boolean(isSingleSubmit));
+
+      const hasValidAnswer = (
+        ((q.type === "MC_SINGLE" || q.type === "MC_MULTI" || q.type === "TRUE_FALSE") && validSelected.length > 0) ||
+        (q.type === "ESSAY" && typeof initialAnswer === "string" && initialAnswer.trim().length > 0) ||
+        (q.type === "FILL_BLANK" && typeof initialAnswer === "string" && initialAnswer.trim().length > 0) ||
+        (q.type === "MATCHING" && (typeof initialAnswer === "object" && initialAnswer !== null && Object.keys(initialAnswer).length > 0)) ||
+        (q.type === "DRAG_DROP" && Array.isArray(initialAnswer) && initialAnswer.length > 0)
+      );
+
+      const finalized = Boolean(hasValidAnswer && isSingleSubmit);
+      setIsFinalizedLocally(finalized);
+      isSubmittingSingleRef.current = finalized;
     } else {
+      isSubmittingSingleRef.current = false;
       setSelected([]);
       setEssayText("");
       setFillText("");

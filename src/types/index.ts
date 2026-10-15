@@ -1160,6 +1160,11 @@ export interface MysteryQuestState {
     promptSecondChance?: boolean;
     faceUpPenaltyTileIds?: number[]; // Các lá phạt/trung lập được lật ngửa cố định trên bàn
     attemptedPairs?: string[]; // Danh sách các cặp ô đã từng lật trong vòng (chống lặp lại cùng 1 nước đi)
+    rescueFormedNegativePairs?: Array<{
+      pairKey: string;
+      formedAtStep: 1 | 2 | 3;
+      cardTileIds: number[];
+    }>;
   };
   oneShotState?: {
     chosenTileId?: number;

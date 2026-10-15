@@ -1191,7 +1191,8 @@ function getInitialMemoryPairsState(promo) {
     matchedPairKey: null,
     isMismatchResolving: false,
     round: 1,
-    promptSecondChance: false
+    promptSecondChance: false,
+    rescueFormedNegativePairs: []
   };
 }
 var REWARD_TEMPLATES = {
@@ -2574,6 +2575,8 @@ function handleFlipCard({
       cancelOldKey
     }) => {
       memState.isBombRescueActive = false;
+      memState.activePenaltyPairKey = null;
+      memState.rescueFormedNegativePairs = [];
       state.memoryPairsState = { ...memState };
       const getPenaltyName = (k) => {
         if (k === "PAIR_THE_FOOL") return "B\u1EAAY K\u1EBA KH\u1EDC";
@@ -2588,6 +2591,7 @@ function handleFlipCard({
         state.hasShield = false;
         memState.activePenaltyPairKey = null;
         memState.isBombRescueActive = false;
+        memState.rescueFormedNegativePairs = [];
         state.potPoints = 0;
         state.storyResult = {
           teamId: team.id,
@@ -2749,24 +2753,25 @@ function handleFlipCard({
       state.tiles = state.tiles.map(
         (t) => Number(t.id) === numTileId || card1 && Number(t.id) === Number(card1.id) || card2 && Number(t.id) === Number(card2.id) ? { ...t, isOpened: true } : { ...t }
       );
-      const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
-      let matchedPair = null;
-      if (card1 && card3 && card1.pairKey && card1.pairKey === card3.pairKey) {
-        matchedPair = [card1, card3];
-      } else if (card2 && card3 && card2.pairKey && card2.pairKey === card3.pairKey) {
-        matchedPair = [card2, card3];
-      } else if (card1 && card2 && card1.pairKey && card1.pairKey === card2.pairKey) {
-        matchedPair = [card1, card2];
+      const isPositivePair = (a, b) => {
+        if (!a || !b) return false;
+        if (!a.pairKey || a.pairKey !== b.pairKey) return false;
+        return !isPenaltyTile(a);
+      };
+      let matchedPositiveTile = null;
+      if (isPositivePair(card2, card3)) {
+        matchedPositiveTile = card2;
+      } else if (isPositivePair(card1, card3)) {
+        matchedPositiveTile = card1;
+      } else if (isPositivePair(card1, card2)) {
+        matchedPositiveTile = card1;
       }
-      if (matchedPair) {
-        const [rescueA, _rescueB] = matchedPair;
-        if (isPenaltyTile(rescueA)) {
-          return executePenalty({ penaltyKey: rescueA.pairKey, cancelOldKey: oldPenaltyKey });
-        }
-        const winCard = rescueA;
+      if (matchedPositiveTile) {
+        const winCard = matchedPositiveTile;
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         memState.activePenaltyPairKey = null;
+        memState.rescueFormedNegativePairs = [];
         state.memoryPairsState = { ...memState };
         if (winCard.givesShield) {
           state.hasShield = true;
@@ -2884,14 +2889,59 @@ function handleFlipCard({
           stolenPoints,
           temperanceBonusRecipients
         };
-      } else {
-        memState.isBombRescueActive = false;
-        memState.activePenaltyPairKey = null;
-        return executePenalty({ penaltyKey: oldPenaltyKey });
       }
+      const card3PenaltyKey = getPenaltyKey(card3);
+      if (card3PenaltyKey) {
+        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, card3.id]));
+        memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], card3.id]));
+        const alreadyPairedIds = (memState.rescueFormedNegativePairs || []).flatMap((p) => p.cardTileIds);
+        if (card1 && card1.pairKey === card3.pairKey && isPenaltyTile(card1) && !alreadyPairedIds.includes(card1.id)) {
+          memState.rescueFormedNegativePairs = [
+            ...memState.rescueFormedNegativePairs || [],
+            {
+              pairKey: card3PenaltyKey,
+              formedAtStep: 3,
+              cardTileIds: [card1.id, card3.id]
+            }
+          ];
+        } else if (card2 && card2.pairKey === card3.pairKey && isPenaltyTile(card2) && !alreadyPairedIds.includes(card2.id)) {
+          memState.rescueFormedNegativePairs = [
+            ...memState.rescueFormedNegativePairs || [],
+            {
+              pairKey: card3PenaltyKey,
+              formedAtStep: 3,
+              cardTileIds: [card2.id, card3.id]
+            }
+          ];
+        } else {
+          const matchingPriorBombForCard3 = state.tiles.find(
+            (t) => previouslyKeptBombs.includes(t.id) && !alreadyPairedIds.includes(t.id) && t.id !== card1?.id && t.id !== card2?.id && t.id !== card3.id && getPenaltyKey(t) === card3PenaltyKey
+          );
+          if (matchingPriorBombForCard3) {
+            memState.rescueFormedNegativePairs = [
+              ...memState.rescueFormedNegativePairs || [],
+              {
+                pairKey: card3PenaltyKey,
+                formedAtStep: 3,
+                cardTileIds: [matchingPriorBombForCard3.id, card3.id]
+              }
+            ];
+          }
+        }
+      }
+      const formedNegPairs = memState.rescueFormedNegativePairs || [];
+      const sortedNegPairs = [...formedNegPairs].sort((a, b) => b.formedAtStep - a.formedAtStep);
+      const finalPenaltyPair = sortedNegPairs[0];
+      const finalKey = finalPenaltyPair?.pairKey || memState.activePenaltyPairKey || "PAIR_BOMB";
+      const previousPenaltyPair = sortedNegPairs.find((p) => p.pairKey !== finalKey)?.pairKey;
+      memState.isBombRescueActive = false;
+      memState.activePenaltyPairKey = null;
+      memState.rescueFormedNegativePairs = [];
+      return executePenalty({ penaltyKey: finalKey, cancelOldKey: previousPenaltyPair });
     }
     if (!memState.firstFlippedTileId) {
       memState.firstFlippedTileId = tile2.id;
+      memState.rescueFormedNegativePairs = [];
       state.lastFlippedTile = tile2;
       state.tiles = state.tiles.map(
         (t) => Number(t.id) === numTileId ? { ...t, isOpened: true } : { ...t }
@@ -2901,11 +2951,18 @@ function handleFlipCard({
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
         memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], tile2.id]));
         const matchingPriorBomb = state.tiles.find(
-          (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === tilePenaltyKey
+          (t) => previouslyKeptBombs.includes(t.id) && t.id !== tile2.id && getPenaltyKey(t) === tilePenaltyKey
         );
         if (matchingPriorBomb) {
           memState.isBombRescueActive = true;
           memState.activePenaltyPairKey = tilePenaltyKey;
+          memState.rescueFormedNegativePairs = [
+            {
+              pairKey: tilePenaltyKey,
+              formedAtStep: 1,
+              cardTileIds: [matchingPriorBomb.id, tile2.id]
+            }
+          ];
         }
       } else if (isNeutralTile(tile2)) {
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
@@ -2937,7 +2994,28 @@ function handleFlipCard({
     state.tiles = state.tiles.map(
       (t) => Number(t.id) === numTileId || firstTile && Number(t.id) === Number(firstTile.id) ? { ...t, isOpened: true } : { ...t }
     );
+    const firstTilePenaltyKey = getPenaltyKey(firstTile);
+    const secondTilePenaltyKey = getPenaltyKey(tile2);
     if (memState.isBombRescueActive) {
+      if (secondTilePenaltyKey) {
+        memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
+        memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], tile2.id]));
+        const alreadyPairedIds = (memState.rescueFormedNegativePairs || []).flatMap((p) => p.cardTileIds);
+        const matchingPriorBombForCard2 = state.tiles.find(
+          (t) => previouslyKeptBombs.includes(t.id) && !alreadyPairedIds.includes(t.id) && t.id !== firstTile?.id && t.id !== tile2.id && getPenaltyKey(t) === secondTilePenaltyKey
+        );
+        if (matchingPriorBombForCard2) {
+          memState.rescueFormedNegativePairs = [
+            ...memState.rescueFormedNegativePairs || [],
+            {
+              pairKey: secondTilePenaltyKey,
+              formedAtStep: 2,
+              cardTileIds: [matchingPriorBombForCard2.id, tile2.id]
+            }
+          ];
+          memState.activePenaltyPairKey = secondTilePenaltyKey;
+        }
+      }
       state.memoryPairsState = { ...memState };
       return {
         updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
@@ -2945,8 +3023,6 @@ function handleFlipCard({
         scorePenalty: 0
       };
     }
-    const firstTilePenaltyKey = getPenaltyKey(firstTile);
-    const secondTilePenaltyKey = getPenaltyKey(tile2);
     const handleRound2Failure = () => {
       const basePenalty = state.baseQuestionPoints || 10;
       const heartsRecord = { ...state.teamHearts || {} };
@@ -2982,6 +3058,28 @@ function handleFlipCard({
         memState.attemptsUsed += 1;
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
+        const matchingPriorBomb = state.tiles.find(
+          (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && t.id !== tile2.id && getPenaltyKey(t) === secondTilePenaltyKey
+        );
+        if (matchingPriorBomb) {
+          memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
+          memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], firstTile.id, tile2.id]));
+          memState.isBombRescueActive = true;
+          memState.activePenaltyPairKey = secondTilePenaltyKey;
+          memState.rescueFormedNegativePairs = [
+            {
+              pairKey: secondTilePenaltyKey,
+              formedAtStep: 2,
+              cardTileIds: [matchingPriorBomb.id, tile2.id]
+            }
+          ];
+          state.memoryPairsState = { ...memState };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+            isBomb: false,
+            scorePenalty: 0
+          };
+        }
         memState.attemptsUsed += 1;
         memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, firstTile.id, tile2.id]));
         memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], firstTile.id, tile2.id]));
@@ -3130,11 +3228,18 @@ function handleFlipCard({
       memState.keptBombTileIds = Array.from(/* @__PURE__ */ new Set([...previouslyKeptBombs, tile2.id]));
       memState.faceUpPenaltyTileIds = Array.from(/* @__PURE__ */ new Set([...memState.faceUpPenaltyTileIds || [], tile2.id]));
       const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && t.id !== tile2.id && getPenaltyKey(t) === secondTilePenaltyKey
       );
       if (matchingPriorBomb) {
         memState.isBombRescueActive = true;
         memState.activePenaltyPairKey = secondTilePenaltyKey;
+        memState.rescueFormedNegativePairs = [
+          {
+            pairKey: secondTilePenaltyKey,
+            formedAtStep: 2,
+            cardTileIds: [matchingPriorBomb.id, tile2.id]
+          }
+        ];
         state.memoryPairsState = { ...memState };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
@@ -4114,6 +4219,7 @@ function handleMemoryPairsSecondChanceDecision({
     memState.activePenaltyPairKey = null;
     memState.isMismatchResolving = false;
     memState.matchedPairKey = null;
+    memState.rescueFormedNegativePairs = [];
     const basePts = state.baseQuestionPoints || 20;
     const consecutiveBombs = state.consecutiveBombsByTeam?.[team.id] ?? 0;
     const riskTier = evaluateTeamRiskTier({

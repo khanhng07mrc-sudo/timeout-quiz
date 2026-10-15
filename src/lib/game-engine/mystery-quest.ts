@@ -570,6 +570,7 @@ export function getInitialMemoryPairsState(promo?: MysteryQuestState["promoPerk"
     isMismatchResolving: false,
     round: 1,
     promptSecondChance: false,
+    rescueFormedNegativePairs: [],
   };
 }
 
@@ -2470,6 +2471,8 @@ export function handleFlipCard({
       cancelOldKey?: string | null;
     }) => {
       memState.isBombRescueActive = false;
+      memState.activePenaltyPairKey = null;
+      memState.rescueFormedNegativePairs = [];
       state.memoryPairsState = { ...memState };
 
       const getPenaltyName = (k: string) => {
@@ -2490,6 +2493,7 @@ export function handleFlipCard({
         state.hasShield = false;
         memState.activePenaltyPairKey = null;
         memState.isBombRescueActive = false;
+        memState.rescueFormedNegativePairs = [];
         state.potPoints = 0;
         state.storyResult = {
           teamId: team.id,
@@ -2685,34 +2689,31 @@ export function handleFlipCard({
           : { ...t }
       );
 
-      const oldPenaltyKey = memState.activePenaltyPairKey || "PAIR_BOMB";
+      // ─────────────────────────────────────────────────────────────────────
+      // ƯU TIÊN 1: CẶP BÀI TÍCH CỰC (THƯỞNG / THOÁT HIỂM / KHIÊN / TIM)
+      // Nếu bất kỳ 2 lá nào trong lượt này tạo thành cặp tích cực, ưu tiên giải cứu thành công!
+      // ─────────────────────────────────────────────────────────────────────
+      const isPositivePair = (a: MysteryTile | undefined, b: MysteryTile | undefined) => {
+        if (!a || !b) return false;
+        if (!a.pairKey || a.pairKey !== b.pairKey) return false;
+        return !isPenaltyTile(a);
+      };
 
-      // Kiểm tra tất cả các cặp có thể trùng khớp giữa 3 lá bài (1-3, 2-3, 1-2):
-      // Ưu tiên cao nhất là ghép trúng cặp bài hợp lệ để giải cứu (lá 3 trùng lá 1 hoặc lá 2)!
-      let matchedPair: [MysteryTile, MysteryTile] | null = null;
-      if (card1 && card3 && card1.pairKey && card1.pairKey === card3.pairKey) {
-        matchedPair = [card1, card3];
-      } else if (card2 && card3 && card2.pairKey && card2.pairKey === card3.pairKey) {
-        matchedPair = [card2, card3];
-      } else if (card1 && card2 && card1.pairKey && card1.pairKey === card2.pairKey) {
-        matchedPair = [card1, card2];
+      let matchedPositiveTile: MysteryTile | null = null;
+      if (isPositivePair(card2, card3)) {
+        matchedPositiveTile = card2!;
+      } else if (isPositivePair(card1, card3)) {
+        matchedPositiveTile = card1!;
+      } else if (isPositivePair(card1, card2)) {
+        matchedPositiveTile = card1!;
       }
 
-      if (matchedPair) {
-        const [rescueA, _rescueB] = matchedPair;
-        // ─────────────────────────────────────────────────────────────────────
-        // CẶP TRÙNG KHỚP ĐƯỢC TÌM THẤY! Ưu tiên thực hiện chức năng của cặp mới (hủy phạt cặp cũ):
-        // ─────────────────────────────────────────────────────────────────────
-        if (isPenaltyTile(rescueA)) {
-          // Cặp mới lại là một cặp tiêu cực mới! Thực hiện phạt theo cặp mới, hủy cặp cũ:
-          return executePenalty({ penaltyKey: rescueA.pairKey!, cancelOldKey: oldPenaltyKey });
-        }
-
-        // Cặp mới là cặp TÍCH CỰC hoặc TRUNG LẬP (The Fool):
-        const winCard = rescueA;
+      if (matchedPositiveTile) {
+        const winCard = matchedPositiveTile;
         memState.matchedPairKey = winCard.pairKey;
         memState.isBombRescueActive = false;
         memState.activePenaltyPairKey = null;
+        memState.rescueFormedNegativePairs = [];
         state.memoryPairsState = { ...memState };
 
         if (winCard.givesShield) {
@@ -2845,14 +2846,73 @@ export function handleFlipCard({
           stolenPoints,
           temperanceBonusRecipients,
         };
-      } else {
-        // ─────────────────────────────────────────────────────────────────────
-        // 2 LÁ CÒN LẠI KHÔNG TRÙNG KHỚP: Phạt theo cặp tiêu cực trước đó!
-        // ─────────────────────────────────────────────────────────────────────
-        memState.isBombRescueActive = false;
-        memState.activePenaltyPairKey = null;
-        return executePenalty({ penaltyKey: oldPenaltyKey });
       }
+
+      // ─────────────────────────────────────────────────────────────────────
+      // ƯU TIÊN 2: KHÔNG CÓ CẶP TÍCH CỰC -> XÁC ĐỊNH CẶP TIÊU CỰC CUỐI CÙNG LỘ DIỆN
+      // Kiểm tra xem lá thứ 3 có tạo thêm cặp tiêu cực mới nào không (với card1, card2, hoặc lá cũ)
+      // ─────────────────────────────────────────────────────────────────────
+      const card3PenaltyKey = getPenaltyKey(card3);
+      if (card3PenaltyKey) {
+        memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, card3.id]));
+        memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), card3.id]));
+
+        const alreadyPairedIds = (memState.rescueFormedNegativePairs || []).flatMap((p) => p.cardTileIds);
+
+        if (card1 && card1.pairKey === card3.pairKey && isPenaltyTile(card1) && !alreadyPairedIds.includes(card1.id)) {
+          memState.rescueFormedNegativePairs = [
+            ...(memState.rescueFormedNegativePairs || []),
+            {
+              pairKey: card3PenaltyKey,
+              formedAtStep: 3,
+              cardTileIds: [card1.id, card3.id],
+            },
+          ];
+        } else if (card2 && card2.pairKey === card3.pairKey && isPenaltyTile(card2) && !alreadyPairedIds.includes(card2.id)) {
+          memState.rescueFormedNegativePairs = [
+            ...(memState.rescueFormedNegativePairs || []),
+            {
+              pairKey: card3PenaltyKey,
+              formedAtStep: 3,
+              cardTileIds: [card2.id, card3.id],
+            },
+          ];
+        } else {
+          const matchingPriorBombForCard3 = state.tiles.find(
+            (t) =>
+              previouslyKeptBombs.includes(t.id) &&
+              !alreadyPairedIds.includes(t.id) &&
+              t.id !== card1?.id &&
+              t.id !== card2?.id &&
+              t.id !== card3.id &&
+              getPenaltyKey(t) === card3PenaltyKey
+          );
+          if (matchingPriorBombForCard3) {
+            memState.rescueFormedNegativePairs = [
+              ...(memState.rescueFormedNegativePairs || []),
+              {
+                pairKey: card3PenaltyKey,
+                formedAtStep: 3,
+                cardTileIds: [matchingPriorBombForCard3.id, card3.id],
+              },
+            ];
+          }
+        }
+      }
+
+      // Sắp xếp các cặp tiêu cực đã xuất hiện theo thứ tự bước tạo lập giảm dần (Step 3 > Step 2 > Step 1)
+      const formedNegPairs = memState.rescueFormedNegativePairs || [];
+      const sortedNegPairs = [...formedNegPairs].sort((a, b) => b.formedAtStep - a.formedAtStep);
+      const finalPenaltyPair = sortedNegPairs[0];
+
+      const finalKey = finalPenaltyPair?.pairKey || memState.activePenaltyPairKey || "PAIR_BOMB";
+      const previousPenaltyPair = sortedNegPairs.find((p) => p.pairKey !== finalKey)?.pairKey;
+
+      memState.isBombRescueActive = false;
+      memState.activePenaltyPairKey = null;
+      memState.rescueFormedNegativePairs = [];
+
+      return executePenalty({ penaltyKey: finalKey, cancelOldKey: previousPenaltyPair });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2860,6 +2920,7 @@ export function handleFlipCard({
     // ─────────────────────────────────────────────────────────────────────────
     if (!memState.firstFlippedTileId) {
       memState.firstFlippedTileId = tile.id;
+      memState.rescueFormedNegativePairs = [];
       state.lastFlippedTile = tile;
 
       state.tiles = state.tiles.map((t) =>
@@ -2872,13 +2933,20 @@ export function handleFlipCard({
         memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
         // Kiểm tra xem trong previouslyKeptBombs có lá nào CÙNG LOẠI tilePenaltyKey không:
         const matchingPriorBomb = state.tiles.find(
-          (t) => previouslyKeptBombs.includes(t.id) && getPenaltyKey(t) === tilePenaltyKey
+          (t) => previouslyKeptBombs.includes(t.id) && t.id !== tile.id && getPenaltyKey(t) === tilePenaltyKey
         );
         if (matchingPriorBomb) {
           // Ngay ở lá thứ 1, người chơi đã làm lộ lá thứ 2 của cặp phạt tilePenaltyKey từ lượt trước!
           // Kích hoạt giải cứu cho cặp phạt này: lượt tăng lên 3 lá!
           memState.isBombRescueActive = true;
           memState.activePenaltyPairKey = tilePenaltyKey;
+          memState.rescueFormedNegativePairs = [
+            {
+              pairKey: tilePenaltyKey,
+              formedAtStep: 1,
+              cardTileIds: [matchingPriorBomb.id, tile.id],
+            },
+          ];
         }
       } else if (isNeutralTile(tile)) {
         // Lá The Fool trung lập: giữ ngửa cố định trên bàn
@@ -2921,9 +2989,37 @@ export function handleFlipCard({
         : { ...t }
     );
 
+    const firstTilePenaltyKey = getPenaltyKey(firstTile);
+    const secondTilePenaltyKey = getPenaltyKey(tile);
+
     // TH 2.1: Đang trong lượt giải cứu (Card 1 đã kích hoạt giải cứu với 1 lá đã mở trước đó)
-    // -> Giữ nguyên, mở khóa chờ lật tiếp lá thứ 3!
+    // -> Kiểm tra xem Card 2 có tạo thêm cặp tiêu cực mới với các lá đã mở trước đó không!
     if (memState.isBombRescueActive) {
+      if (secondTilePenaltyKey) {
+        memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
+        memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
+
+        const alreadyPairedIds = (memState.rescueFormedNegativePairs || []).flatMap((p) => p.cardTileIds);
+        const matchingPriorBombForCard2 = state.tiles.find(
+          (t) =>
+            previouslyKeptBombs.includes(t.id) &&
+            !alreadyPairedIds.includes(t.id) &&
+            t.id !== firstTile?.id &&
+            t.id !== tile.id &&
+            getPenaltyKey(t) === secondTilePenaltyKey
+        );
+        if (matchingPriorBombForCard2) {
+          memState.rescueFormedNegativePairs = [
+            ...(memState.rescueFormedNegativePairs || []),
+            {
+              pairKey: secondTilePenaltyKey,
+              formedAtStep: 2,
+              cardTileIds: [matchingPriorBombForCard2.id, tile.id],
+            },
+          ];
+          memState.activePenaltyPairKey = secondTilePenaltyKey;
+        }
+      }
       state.memoryPairsState = { ...memState };
       return {
         updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
@@ -2931,9 +3027,6 @@ export function handleFlipCard({
         scorePenalty: 0,
       };
     }
-
-    const firstTilePenaltyKey = getPenaltyKey(firstTile);
-    const secondTilePenaltyKey = getPenaltyKey(tile);
 
     // Helper khi hết 5 lượt ở Vòng 2 mà không ghép được cặp bài nào -> Trừ 100% điểm gốc + Trừ 1 Tim:
     const handleRound2Failure = () => {
@@ -2979,6 +3072,30 @@ export function handleFlipCard({
         return executePenalty({ penaltyKey: firstTilePenaltyKey });
       } else {
         // Hai lá phạt THUỘC 2 LOẠI KHÁC NHAU!
+        // Kiểm tra xem Card 2 có ghép với một bomb cũ từ các lượt trước không:
+        const matchingPriorBomb = state.tiles.find(
+          (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && t.id !== tile.id && getPenaltyKey(t) === secondTilePenaltyKey
+        );
+        if (matchingPriorBomb) {
+          memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, firstTile!.id, tile.id]));
+          memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), firstTile!.id, tile.id]));
+          memState.isBombRescueActive = true;
+          memState.activePenaltyPairKey = secondTilePenaltyKey;
+          memState.rescueFormedNegativePairs = [
+            {
+              pairKey: secondTilePenaltyKey,
+              formedAtStep: 2,
+              cardTileIds: [matchingPriorBomb.id, tile.id],
+            },
+          ];
+          state.memoryPairsState = { ...memState };
+          return {
+            updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
+            isBomb: false,
+            scorePenalty: 0,
+          };
+        }
+
         // Thêm cả 2 lá vào keptBombTileIds để giữ mở ngửa trên bàn, nhưng CHƯA áp dụng phạt!
         memState.attemptsUsed += 1;
         memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, firstTile!.id, tile.id]));
@@ -3161,13 +3278,20 @@ export function handleFlipCard({
       memState.keptBombTileIds = Array.from(new Set([...previouslyKeptBombs, tile.id]));
       memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
       const matchingPriorBomb = state.tiles.find(
-        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && getPenaltyKey(t) === secondTilePenaltyKey
+        (t) => previouslyKeptBombs.includes(t.id) && Number(t.id) !== Number(firstTile?.id) && t.id !== tile.id && getPenaltyKey(t) === secondTilePenaltyKey
       );
       if (matchingPriorBomb) {
         // Card 2 hoàn tất cặp phạt với lá từ lượt trước!
         // Kích hoạt giải cứu: người chơi được tăng thêm quyền lật lá thứ 3 trong lượt!
         memState.isBombRescueActive = true;
         memState.activePenaltyPairKey = secondTilePenaltyKey;
+        memState.rescueFormedNegativePairs = [
+          {
+            pairKey: secondTilePenaltyKey,
+            formedAtStep: 2,
+            cardTileIds: [matchingPriorBomb.id, tile.id],
+          },
+        ];
         state.memoryPairsState = { ...memState };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
@@ -4406,6 +4530,7 @@ export function handleMemoryPairsSecondChanceDecision({
     memState.activePenaltyPairKey = null;
     memState.isMismatchResolving = false;
     memState.matchedPairKey = null;
+    memState.rescueFormedNegativePairs = [];
 
     // Sinh 16 thẻ mới hoàn toàn theo Tarot Quotas Vòng 2
     const basePts = state.baseQuestionPoints || 20;

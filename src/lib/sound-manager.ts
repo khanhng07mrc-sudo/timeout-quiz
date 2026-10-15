@@ -60,6 +60,7 @@ class SoundManager {
   private bgmMap: Map<string, HTMLAudioElement> = new Map();
   private currentFanfareAudio: HTMLAudioElement | null = null;
   private wheelSpinAudio: HTMLAudioElement | null = null;
+  private wheelSpinStartingTime: number = 0;
   private initialized: boolean = false;
 
   constructor() {
@@ -807,16 +808,22 @@ class SoundManager {
     try {
       let audio = this.wheelSpinAudio || this.bgmMap.get("wheel_spin");
       if (!audio) {
-        audio = this.createAudioWithFallbacks(BGM_CONFIG.wheel_spin, true);
+        audio = this.createAudioWithFallbacks(BGM_CONFIG.wheel_spin, false);
         this.bgmMap.set("wheel_spin", audio);
       }
       this.wheelSpinAudio = audio;
 
-      // Nếu âm thanh đang phát mượt mà và không yêu cầu cưỡng chế khởi động lại -> chỉ cập nhật volume
-      if (!forceRestart && !audio.paused && !audio.ended && audio.currentTime > 0.05) {
-        audio.volume = this.isMuted ? 0 : Math.min(1, this.volume * 0.9);
-        return;
+      const now = Date.now();
+      // Khóa chống kích hoạt lặp lại (re-trigger) trong 2.5s hoặc khi audio đang phát mượt mà
+      if (!forceRestart) {
+        const isRecentlyStarted = (now - this.wheelSpinStartingTime) < 2500;
+        const isPlaying = !audio.paused && !audio.ended;
+        if (isRecentlyStarted || isPlaying) {
+          audio.volume = this.isMuted ? 0 : Math.min(1, this.volume * 0.9);
+          return;
+        }
       }
+      this.wheelSpinStartingTime = now;
 
       const prevFade = this.activeFadeMap.get(audio);
       if (prevFade) {
@@ -843,6 +850,7 @@ class SoundManager {
    * Dừng nhạc nền vòng quay Chiếc Nón Kỳ Diệu
    */
   public stopWheelSpinMusic(fadeDurationMs: number = 250) {
+    this.wheelSpinStartingTime = 0;
     if (!this.wheelSpinAudio) return;
     const audio = this.wheelSpinAudio;
     if (fadeDurationMs <= 0) {

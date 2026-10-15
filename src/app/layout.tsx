@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import { Be_Vietnam_Pro } from "next/font/google";
 import "./globals.css";
 
 import OfflineBanner from "@/components/ui/OfflineBanner";
 import QuizSoulBackground from "@/components/ui/QuizSoulBackground";
 import GlobalPageTransition from "@/components/ui/GlobalPageTransition";
+
+const beVietnamPro = Be_Vietnam_Pro({
+  subsets: ["vietnamese", "latin"],
+  weight: ["300", "400", "500", "600", "700", "800", "900"],
+  variable: "--font-be-vietnam-pro",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Quizorra — Đấu Trường Trí Tuệ & Realtime Quiz Arena",
@@ -21,8 +29,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="vi">
-      <body className="font-sans bg-background text-foreground relative min-h-screen">
+    <html lang="vi" className={beVietnamPro.variable}>
+      <body className={`${beVietnamPro.className} font-sans bg-background text-foreground relative min-h-screen antialiased`}>
         <QuizSoulBackground />
         <GlobalPageTransition />
         <OfflineBanner />

@@ -126,7 +126,6 @@ export default function MysteryQuestBoard({
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
-  const [isHandFlicking, setIsHandFlicking] = useState<boolean>(false);
   const wheelRef = useRef<HTMLDivElement>(null);
   const needleRef = useRef<HTMLDivElement>(null);
   const wheelPrevAngleRef = useRef<number>(0);
@@ -390,7 +389,6 @@ export default function MysteryQuestBoard({
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
-    let flickTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
     // 1. Khởi tạo kim thẳng đứng 0 độ tuyệt đối và bánh xe ở góc startAngle
@@ -398,19 +396,14 @@ export default function MysteryQuestBoard({
       wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
     }
     if (needleRef.current) {
-      needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+      needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
     }
-    setNeedleDeflectionDeg(0);
 
-    // Kích hoạt động tác bàn tay gẩy nhẹ chốt kim loại sang bên trong 500ms đầu
-    setIsHandFlicking(true);
+    // Tiếng gõ chốt khởi động nhẹ nhàng
     soundManager.playWheelPegTick(0.05);
-    flickTimer = setTimeout(() => {
-      setIsHandFlicking(false);
-    }, 650);
 
-    // 2. Dynamic Camera Zoom Rig (Phóng to 2.05x cận cảnh chuẩn 12h kịch tính):
-    // "lúc ban đầu quay đủ cả vòng ngoài, sau 3s đầu tiên, dần phóng về sát khu vực kim quay, dừng phóng ở khoảng giây thứ 10"
+    // 2. Dynamic Camera Zoom Rig (Phóng to 1.85x cận cảnh chuẩn 12h kịch tính):
+    // Phóng dần từ giây thứ 3 đến giây thứ 10
     setIsWheelZoomedIn(false);
     setWheelZoomDurationMs(7000);
     zoomStartTimer = setTimeout(() => {
@@ -418,10 +411,8 @@ export default function MysteryQuestBoard({
       setWheelZoomDurationMs(7000); // Phóng dần từ 3s đến 10s (chính xác 7000ms)
     }, 3000);
 
-    // 3. Start VTV3 Chiếc Nón Kỳ Diệu wheel spin background music (chỉ kích hoạt 1 lần duy nhất cho target hiện tại)
-    const isSandboxChild = typeof window !== "undefined" && window.self !== window.top;
-    const shouldPlayBgm = isDisplay || !isSandboxChild;
-    if (shouldPlayBgm && wheelSpinAudioTargetRef.current !== target) {
+    // 3. Start VTV3 Chiếc Nón Kỳ Diệu wheel spin background music (chỉ kích hoạt 1 lần duy nhất trên màn hình Display)
+    if (isDisplay && wheelSpinAudioTargetRef.current !== target) {
       wheelSpinAudioTargetRef.current = target;
       soundManager.playWheelSpinMusic(durationMs);
     }
@@ -447,32 +438,22 @@ export default function MysteryQuestBoard({
         soundManager.playWheelPegTick(rawProgress);
       }
 
-      // Vật lý Kim Flipper: Động tác gẩy tay 500ms đầu & Dao động tắt dần
+      // Vật lý Kim Flipper thuần chốt kim loại chuẩn xác, không bóng ma
       let needleAngle = 0;
-      if (elapsed < 500) {
-        const flickFrac = elapsed / 500;
-        if (flickFrac < 0.45) {
-          needleAngle = -22 * (flickFrac / 0.45);
-        } else {
-          const releaseFrac = (flickFrac - 0.45) / 0.55;
-          needleAngle = -22 * (1 - releaseFrac) + 10 * Math.sin(releaseFrac * Math.PI * 2) * (1 - releaseFrac);
-        }
+      const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
+      if (normAngle < 3.2) {
+        // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
+        needleAngle = -22 * (1 - normAngle / 3.2);
       } else {
-        const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
-        if (normAngle < 3.2) {
-          // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
-          needleAngle = -22 * (1 - normAngle / 3.2);
-        } else {
-          // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
-          const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
-          if (dt < 0.12) {
-            needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
-          }
+        // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
+        const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
+        if (dt < 0.12) {
+          needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
         }
       }
 
       if (needleRef.current) {
-        needleRef.current.style.transform = `rotate(${needleAngle}deg) scale(1.06)`;
+        needleRef.current.style.transform = `rotate(${needleAngle}deg) scale(1.06) translateZ(0)`;
       }
 
       if (rawProgress < 1) {
@@ -497,7 +478,7 @@ export default function MysteryQuestBoard({
           finalNeedle = 0;
         }
         if (needleRef.current) {
-          needleRef.current.style.transform = `rotate(${finalNeedle}deg) scale(1.06)`;
+          needleRef.current.style.transform = `rotate(${finalNeedle}deg) scale(1.06) translateZ(0)`;
         }
         setNeedleDeflectionDeg(finalNeedle);
 
@@ -513,7 +494,6 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
-      if (flickTimer) clearTimeout(flickTimer);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -2577,18 +2557,19 @@ export default function MysteryQuestBoard({
                   })()}
 
                   {/* ── SVG 3D Tarot Wheel (Chiếc Nón Kỳ Diệu) with 12 o'clock Flipper Pointer ── */}
-                  <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-3" : "w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] md:w-[440px] md:h-[440px] lg:w-[480px] lg:h-[480px] my-3"} mx-auto flex items-center justify-center z-10 p-0 overflow-visible`}>
-                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100% không bóp méo, 3s-10s phóng to 1.9x neo đỉnh 12h (50% 0%) & đẩy 90px để trọn vẹn kim và nan quạt trúng ── */}
+                  <div className={`relative aspect-square ${isDisplay ? "w-80 h-80 sm:w-[420px] sm:h-[420px] md:w-[480px] md:h-[480px] lg:w-[540px] lg:h-[540px] xl:w-[580px] xl:h-[580px] my-1" : "w-[300px] h-[300px] sm:w-[370px] sm:h-[370px] md:w-[430px] md:h-[430px] lg:w-[460px] lg:h-[460px] my-1"} mx-auto flex items-center justify-center z-10 p-0 overflow-hidden rounded-full`}>
+                    {/* ── Broadcast Royal Wheel Rig: Tròn đều 100%, 3s-10s phóng to 1.85x neo đỉnh 12h, đẩy nhẹ lên trên (-14px) ── */}
                     <div
                       className="w-full h-full aspect-square relative flex items-center justify-center select-none"
                       style={{
-                        transformOrigin: "50% 0%",
+                        transformOrigin: "50% 6%",
                         transform: isWheelZoomedIn
-                          ? "scale(1.9) translateY(90px)"
-                          : "scale(1.0) translateY(0px)",
+                          ? "scale(1.85) translateY(18px)"
+                          : "scale(1.0) translateY(-14px)",
                         transitionProperty: "transform",
                         transitionDuration: `${wheelZoomDurationMs}ms`,
                         transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
+                        willChange: "transform",
                       }}
                     >
                     {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation */}
@@ -2596,8 +2577,9 @@ export default function MysteryQuestBoard({
                       ref={needleRef}
                       className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 origin-top pointer-events-none"
                       style={{
-                        transform: `rotate(${needleDeflectionDeg}deg) scale(1.06)`,
-                        filter: "drop-shadow(0px 8px 14px rgba(0,0,0,0.95)) drop-shadow(0px 2px 4px rgba(0,0,0,0.85))",
+                        transform: `rotate(${needleDeflectionDeg}deg) scale(1.06) translateZ(0)`,
+                        filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
+                        willChange: "transform",
                       }}
                     >
                       {/* 3D Chrome & Ruby Flipper Pointer */}
@@ -2649,52 +2631,6 @@ export default function MysteryQuestBoard({
                         <circle cx="20.6" cy="9.6" r="1.2" fill="#ffffff" />
                       </svg>
                     </div>
-
-                    {/* Animated Hand Flicking the Peg / Needle at Wheel Spin Start */}
-                    {isHandFlicking && (
-                      <div
-                        className="absolute -top-7 left-[52%] z-50 pointer-events-none transition-all duration-300 ease-out"
-                        style={{
-                          filter: "drop-shadow(0px 8px 16px rgba(0,0,0,0.9))",
-                          animation: "handFlickMotion 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards",
-                        }}
-                      >
-                        <style>{`
-                          @keyframes handFlickMotion {
-                            0% { transform: translate(35px, -12px) rotate(15deg); opacity: 0; }
-                            25% { transform: translate(8px, 0px) rotate(-8deg); opacity: 1; }
-                            45% { transform: translate(-14px, 4px) rotate(-24deg); opacity: 1; }
-                            75% { transform: translate(-4px, 12px) rotate(-10deg); opacity: 0.8; }
-                            100% { transform: translate(25px, 20px) rotate(10deg); opacity: 0; }
-                          }
-                        `}</style>
-                        <svg width="68" height="68" viewBox="0 0 68 68" fill="none">
-                          <defs>
-                            <linearGradient id="gloveFlickGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                              <stop offset="0%" stopColor="#ffffff" />
-                              <stop offset="50%" stopColor="#f1f5f9" />
-                              <stop offset="100%" stopColor="#cbd5e1" />
-                            </linearGradient>
-                            <linearGradient id="goldCuffGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                              <stop offset="0%" stopColor="#f59e0b" />
-                              <stop offset="50%" stopColor="#fef08a" />
-                              <stop offset="100%" stopColor="#d97706" />
-                            </linearGradient>
-                          </defs>
-                          <g transform="rotate(18, 34, 34)">
-                            {/* Gold Cuff */}
-                            <rect x="42" y="44" width="22" height="14" rx="4" fill="url(#goldCuffGrad)" stroke="#78350f" strokeWidth="1.5" />
-                            {/* Glove Base */}
-                            <path d="M44 46 C38 40, 32 34, 26 26 C23 22, 18 18, 12 18 C9 18, 7 20, 7 23 C7 26, 11 30, 16 34 L28 46 C34 52, 40 54, 46 50 Z" fill="url(#gloveFlickGrad)" stroke="#94a3b8" strokeWidth="1.6" strokeLinejoin="round" />
-                            {/* Index Finger in flicking gesture */}
-                            <path d="M26 26 L10 14 C7.5 12, 4.5 14, 5 17 C5.5 19.5, 9 22, 14 26 L24 32" fill="url(#gloveFlickGrad)" stroke="#94a3b8" strokeWidth="1.6" strokeLinecap="round" />
-                            {/* Metallic spark trails */}
-                            <path d="M4 11 Q12 7 20 12" stroke="#fde047" strokeWidth="2.5" strokeLinecap="round" strokeDasharray="3 4" />
-                            <circle cx="5" cy="11" r="2.5" fill="#fef08a" />
-                          </g>
-                        </svg>
-                      </div>
-                    )}
 
                     {/* ── Stage Floor Shadow ── */}
                     <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
@@ -3038,125 +2974,142 @@ export default function MysteryQuestBoard({
 
                     return (
                       <>
-                        <div className="w-full max-w-sm mx-auto space-y-1 px-2 z-10">
-                          <div className="flex items-center justify-between text-xs font-black">
-                            <span className="text-purple-200 uppercase tracking-wider text-[11px] flex items-center gap-1">
-                              ⚡ LỰC QUAY ĐỊNH MỆNH:
-                            </span>
-                            <span
-                              className={`font-mono text-xs px-2 py-0.5 rounded font-black border transition-colors ${
-                                effectivePower > 75
-                                  ? "bg-fuchsia-500/30 text-fuchsia-200 border-fuchsia-400"
-                                  : effectivePower > 40
-                                  ? "bg-amber-500/30 text-amber-200 border-amber-400"
-                                  : "bg-indigo-500/30 text-indigo-200 border-indigo-400"
-                              }`}
-                            >
-                              {effectivePower}%
-                            </span>
+                        {/* Status banner when spinning */}
+                        {isSpinningActive && (
+                          <div className="z-10 py-1.5 px-5 rounded-full bg-purple-950/85 border border-purple-400/50 text-xs sm:text-sm font-black text-amber-200 tracking-wider flex items-center gap-2 animate-pulse shadow-[0_0_25px_rgba(168,85,247,0.5)] my-1.5">
+                            <span className="text-base animate-spin">🌀</span>
+                            <span>VÒNG QUAY ĐỊNH MỆNH ĐANG XOAY...</span>
                           </div>
+                        )}
 
-                          {/* Gauge track */}
-                          <div className="w-full h-3.5 rounded-full bg-[#05030a] border border-purple-400/30 p-0.5 relative overflow-hidden shadow-inner">
-                            <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-35 text-[8px] font-mono font-bold text-amber-100 items-center">
-                              <span>0</span>
-                              <span>25</span>
-                              <span>50</span>
-                              <span>75</span>
-                              <span>100</span>
-                            </div>
-                            <div
-                              style={{ width: `${effectivePower}%` }}
-                              className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-indigo-600 via-purple-500 to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.65)]"
-                            />
-                          </div>
-
-                          {!isDisplay && (
-                            <div className="flex items-center justify-between text-[10px] text-white/70 pt-0.5">
-                              <span className="flex items-center gap-1 font-sans">
-                                <span>✦</span>
-                                <span className="text-amber-200/90 font-medium">Chủ động chốt lực khi sẵn sàng</span>
+                        {/* Controls container - smoothly collapsed when spinning to free space for the wheel */}
+                        <div
+                          className={`w-full max-w-sm mx-auto space-y-2 z-10 transition-all duration-500 ease-in-out overflow-hidden ${
+                            isSpinningActive
+                              ? "opacity-0 max-h-0 pointer-events-none -translate-y-3 my-0 py-0"
+                              : "opacity-100 max-h-[500px] translate-y-0 pt-1"
+                          }`}
+                        >
+                          <div className="w-full space-y-1 px-2">
+                            <div className="flex items-center justify-between text-xs font-black">
+                              <span className="text-purple-200 uppercase tracking-wider text-[11px] flex items-center gap-1">
+                                ⚡ LỰC QUAY ĐỊNH MỆNH:
                               </span>
-                              <span className="text-[10px] text-purple-300/70 font-mono">
-                                {isSpinningActive ? "Đã khóa lực" : "Dao động Ping-pong"}
+                              <span
+                                className={`font-mono text-xs px-2 py-0.5 rounded font-black border transition-colors ${
+                                  effectivePower > 75
+                                    ? "bg-fuchsia-500/30 text-fuchsia-200 border-fuchsia-400"
+                                    : effectivePower > 40
+                                    ? "bg-amber-500/30 text-amber-200 border-amber-400"
+                                    : "bg-indigo-500/30 text-indigo-200 border-indigo-400"
+                                }`}
+                              >
+                                {effectivePower}%
                               </span>
                             </div>
-                          )}
-                        </div>
 
-                        {/* ── Spin Action Buttons ── */}
-                        <div className="text-center space-y-1.5 z-10 w-full max-w-sm pt-0.5">
-                          {canActOnTarot && !isDisplay ? (
-                            <button
-                              type="button"
-                              onClick={handleTriggerSpin}
-                              disabled={isSpinningActive}
-                              className={`w-full py-2.5 sm:py-3 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
-                                isSpinningActive
-                                  ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
-                                  : isGambleRound
-                                  ? "bg-gradient-to-r from-[#4a044e] via-[#c026d3] to-[#f59e0b] hover:from-[#701a75] hover:to-[#fbbf24] text-white border-fuchsia-300 shadow-[0_0_25px_rgba(217,70,239,0.65)] hover:scale-[1.02] active:scale-95 animate-pulse"
-                                  : "bg-gradient-to-r from-[#2e1065] via-[#7e22ce] to-[#d97706] hover:from-[#3b0764] hover:to-[#f59e0b] text-amber-100 border-amber-300/90 shadow-[0_0_25px_rgba(147,51,234,0.55)] hover:scale-[1.02] active:scale-95"
-                              }`}
-                            >
-                              {isSpinningActive
-                                ? "🌀 ĐANG XOAY VÒNG TAROT..."
-                                : isGambleRound
-                                ? `✦ CHỐT LỰC & QUAY TIẾP (${effectivePower}%) ✦`
-                                : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
-                            </button>
-                          ) : (
-                            <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
-                              {isSpinningActive
-                                ? "🌀 Vòng quay Major Arcana đang xoay..."
-                                : isGambleRound
-                                ? `Đang đợi Đội ${currentTurnTeamName} chốt lực quay tiếp...`
-                                : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
+                            {/* Gauge track */}
+                            <div className="w-full h-3.5 rounded-full bg-[#05030a] border border-purple-400/30 p-0.5 relative overflow-hidden shadow-inner">
+                              <div className="absolute inset-0 flex justify-between px-2 pointer-events-none z-10 opacity-35 text-[8px] font-mono font-bold text-amber-100 items-center">
+                                <span>0</span>
+                                <span>25</span>
+                                <span>50</span>
+                                <span>75</span>
+                                <span>100</span>
+                              </div>
+                              <div
+                                style={{ width: `${effectivePower}%` }}
+                                className="h-full rounded-full transition-all duration-75 bg-gradient-to-r from-indigo-600 via-purple-500 to-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.65)]"
+                              />
                             </div>
-                          )}
 
-                          {isGambleRound && canActOnTarot && !isSpinningActive && !isDisplay && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsLocalGambleArming(false);
-                                onTarotGambleDecision?.(false);
-                              }}
-                              className="w-full py-1.5 px-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-200 text-xs font-bold transition cursor-pointer"
-                            >
-                              🛑 Hoặc: Dừng Lại An Toàn (+{baseQuestionPoints || 10}đ)
-                            </button>
-                          )}
+                            {!isDisplay && (
+                              <div className="flex items-center justify-between text-[10px] text-white/70 pt-0.5">
+                                <span className="flex items-center gap-1 font-sans">
+                                  <span>✦</span>
+                                  <span className="text-amber-200/90 font-medium">Chủ động chốt lực khi sẵn sàng</span>
+                                </span>
+                                <span className="text-[10px] text-purple-300/70 font-mono">
+                                  {isSpinningActive ? "Đã khóa lực" : "Dao động Ping-pong"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
 
-                          {(isAdmin || isSandbox) && !isSpinningActive && !isDisplay && (
-                            <div className="flex gap-2">
+                          {/* ── Spin Action Buttons ── */}
+                          <div className="text-center space-y-1.5 z-10 w-full pt-0.5">
+                            {canActOnTarot && !isDisplay ? (
                               <button
                                 type="button"
                                 onClick={handleTriggerSpin}
-                                className="flex-1 py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
+                                disabled={isSpinningActive}
+                                className={`w-full py-2.5 sm:py-3 px-6 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-wider shadow-2xl transition-all cursor-pointer border-2 ${
+                                  isSpinningActive
+                                    ? "bg-purple-950/80 text-purple-300 border-purple-500/40 cursor-wait animate-pulse"
+                                    : isGambleRound
+                                    ? "bg-gradient-to-r from-[#4a044e] via-[#c026d3] to-[#f59e0b] hover:from-[#701a75] hover:to-[#fbbf24] text-white border-fuchsia-300 shadow-[0_0_25px_rgba(217,70,239,0.65)] hover:scale-[1.02] active:scale-95 animate-pulse"
+                                    : "bg-gradient-to-r from-[#2e1065] via-[#7e22ce] to-[#d97706] hover:from-[#3b0764] hover:to-[#f59e0b] text-amber-100 border-amber-300/90 shadow-[0_0_25px_rgba(147,51,234,0.55)] hover:scale-[1.02] active:scale-95"
+                                }`}
                               >
-                                ⚡ Admin {isGambleRound ? "Quay Tiếp Hộ" : "Quay Hộ"} ({effectivePower}%)
+                                {isSpinningActive
+                                  ? "🌀 ĐANG XOAY VÒNG TAROT..."
+                                  : isGambleRound
+                                  ? `✦ CHỐT LỰC & QUAY TIẾP (${effectivePower}%) ✦`
+                                  : `✦ CHỐT LỰC & QUAY (${effectivePower}%) ✦`}
                               </button>
-                              {isGambleRound && (
+                            ) : (
+                              <div className="py-2 px-4 rounded-xl bg-black/60 border border-purple-400/20 text-xs text-purple-200/80 italic text-center">
+                                {isSpinningActive
+                                  ? "🌀 Vòng quay Major Arcana đang xoay..."
+                                  : isGambleRound
+                                  ? `Đang đợi Đội ${currentTurnTeamName} chốt lực quay tiếp...`
+                                  : `Đang đợi Đội ${currentTurnTeamName} chốt lực quay...`}
+                              </div>
+                            )}
+
+                            {isGambleRound && canActOnTarot && !isSpinningActive && !isDisplay && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsLocalGambleArming(false);
+                                  onTarotGambleDecision?.(false);
+                                }}
+                                className="w-full py-1.5 px-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                              >
+                                🛑 Hoặc: Dừng Lại An Toàn (+{baseQuestionPoints || 10}đ)
+                              </button>
+                            )}
+
+                            {(isAdmin || isSandbox) && !isSpinningActive && !isDisplay && (
+                              <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    setIsLocalGambleArming(false);
-                                    onTarotGambleDecision?.(false);
-                                  }}
-                                  className="py-1 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-400/50 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                                  onClick={handleTriggerSpin}
+                                  className="flex-1 py-1.5 px-3 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-400/50 text-amber-200 text-xs font-bold transition cursor-pointer"
                                 >
-                                  ⚡ Admin Dừng Lại (+{baseQuestionPoints || 10}đ)
+                                  ⚡ Admin {isGambleRound ? "Quay Tiếp Hộ" : "Quay Hộ"} ({effectivePower}%)
                                 </button>
-                              )}
-                            </div>
-                          )}
+                                {isGambleRound && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsLocalGambleArming(false);
+                                      onTarotGambleDecision?.(false);
+                                    }}
+                                    className="py-1 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-400/50 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                                  >
+                                    ⚡ Admin Dừng Lại (+{baseQuestionPoints || 10}đ)
+                                  </button>
+                                )}
+                              </div>
+                            )}
 
-                          <p className="text-[10px] text-purple-200/60 tracking-wide">
-                            {isPenaltySurvivalMode
-                              ? "20 Ấn Sinh Tử: Ẩn giấu cơ hội Thoát Nạn Hòa Bình giữa các Ấn Phạt Cổ Xưa"
-                              : "22 Lá Major Arcana (0 – XXI): Điềm Lành, Đánh Cược, Cướp Điểm & Bẫy Phạt ẩn sau mỗi ấn cổ"}
-                          </p>
+                            <p className="text-[10px] text-purple-200/60 tracking-wide">
+                              {isPenaltySurvivalMode
+                                ? "20 Ấn Sinh Tử: Ẩn giấu cơ hội Thoát Nạn Hòa Bình giữa các Ấn Phạt Cổ Xưa"
+                                : "22 Lá Major Arcana (0 – XXI): Điềm Lành, Đánh Cược, Cướp Điểm & Bẫy Phạt ẩn sau mỗi ấn cổ"}
+                            </p>
+                          </div>
                         </div>
                       </>
                     );

@@ -5589,8 +5589,8 @@ export function registerSocketHandlers(io: IO) {
         roomMysteryQuests.set(room.id, updatedState);
         io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
 
-        // Tối ưu hóa siêu tốc cho Chọn Cửa Giai Đoạn 1: không có thay đổi điểm số hay kết quả kết thúc, chỉ chọn 3 cửa để ra riêng (<2ms)
-        if (normMiniType === "ONE_SHOT_DOORS" && (updatedState.oneShotState?.phase === "SELECTING" || (updatedState.oneShotState?.selectedDoorIds?.length || 0) < 3)) {
+        // Tối ưu hóa cho Chọn Cửa: nếu chưa kết thúc lượt và chưa chọn cướp điểm thì không ghi nhận điểm
+        if (normMiniType === "ONE_SHOT_DOORS" && updatedState.phase !== "TURN_SUMMARY" && !updatedState.turnFinishedReason && updatedState.phase !== "STEAL_TARGET_SELECT") {
           return;
         }
 
@@ -5630,7 +5630,8 @@ export function registerSocketHandlers(io: IO) {
               { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta },
             ]);
           } else if (scorePenalty > 0) {
-            const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+            const deltaToApply = (finalScoreDelta !== undefined && finalScoreDelta !== 0) ? finalScoreDelta : -scorePenalty;
+            const deltaRes = await applyScoreDeltaToTeam(team.id, deltaToApply);
             io.to(`room:${room.code}`).emit("game:score:update", [
               { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta },
             ]);
@@ -7524,13 +7525,20 @@ export function registerSocketHandlers(io: IO) {
       roomMysteryQuests.set(room.id, updatedState);
       io.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
 
-      if (victimTeamId && stolenPoints > 0 && finalScoreDelta > 0) {
+      const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
+
+      if (victimTeamId && stolenPoints > 0) {
         const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        scoreUpdates.push({ teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta });
+      }
+
+      if (updatedState.currentTurnTeamId && finalScoreDelta && finalScoreDelta !== 0) {
         const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
-        io.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
-          { teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta },
-        ]);
+        scoreUpdates.push({ teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta });
+      }
+
+      if (scoreUpdates.length > 0) {
+        io.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
       }
 
       const refreshedState = await buildRoomState(room.id);

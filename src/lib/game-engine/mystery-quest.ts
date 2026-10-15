@@ -1488,6 +1488,10 @@ export function generateSurvivalOneShotDoorsTiles(
 /**
  * Generates tiles specifically for Variant 4: TAROT_DESTINY (5 cards).
  */
+/**
+ * Generates tiles specifically for Variant 4: TAROT_DESTINY (8 ancient archetype cards).
+ * Uses generateTarotQuotaArchetypes to ensure balanced archetypes (Sun, Emperor, Steal, Fool, Bombs).
+ */
 export function generateTarotDestinyTiles(
   basePoints: number = 20,
   options?: {
@@ -1497,113 +1501,22 @@ export function generateTarotDestinyTiles(
     riskTier?: TeamRiskTier;
   }
 ): MysteryTile[] {
-  interface TarotDef {
-    tarotName: string;
-    icon: string;
-    type: MysteryTileType;
-    storyTitle: string;
-    storyDescription: string;
-    effectType: MysteryTileEffectType;
-    deltaPoints: number;
-  }
-
-  const riskTier = options?.riskTier ?? "NEUTRAL";
-  const pSun = basePoints * 2;
-  const pEmperor = Math.round(basePoints * 1.5);
-  const pFool = basePoints + 10;
-  const pKnight = basePoints;
-  const pDeath = riskTier === "UNDERDOG" ? 0 : basePoints;
-
-  const currentRound = options?.currentRound ?? 1;
-  const canSteal = currentRound >= 2 && Boolean(
-    options?.teams &&
-    options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
-  );
-
-  const fifthCard: TarotDef = canSteal
-    ? {
-        tarotName: "Hiệp Sĩ Đạo Tặc (The Knight)",
-        icon: "🗡️",
-        type: "REWARD",
-        storyTitle: `🗡️ Cướp +${pKnight}đ`,
-        storyDescription: `Thanh gươm công lý: Cướp +${pKnight}đ từ một đối thủ đủ điều kiện!`,
-        effectType: "STEAL_POINTS",
-        deltaPoints: pKnight,
-      }
-    : {
-        tarotName: "Ngôi Sao Hy Vọng (The Star)",
-        icon: "⭐",
-        type: "REWARD",
-        storyTitle: `⭐ Ngôi Sao +${pKnight}đ`,
-        storyDescription: `Ánh sao may mắn: Nhận nóng +${pKnight} điểm thưởng!`,
-        effectType: "BONUS_POINTS",
-        deltaPoints: pKnight,
-      };
-
-  const deathCard: TarotDef = riskTier === "UNDERDOG"
-    ? {
-        tarotName: "Thần Chết (Death)",
-        icon: "💀",
-        type: "BOMB_SMOKE",
-        storyTitle: "💀 Thần Chết Thử Thách 0đ",
-        storyDescription: "Lưỡi hái định mệnh tha thứ cho đội yếu thế: Chỉ mất điểm tích lũy câu hiện tại, tổng điểm không đổi!",
-        effectType: "LOSE_POT_POINTS",
-        deltaPoints: 0,
-      }
-    : {
-        tarotName: "Thần Chết (Death)",
-        icon: "💀",
-        type: "BOMB_MAJOR",
-        storyTitle: `💀 Thần Chết -${pDeath}đ`,
-        storyDescription: `Lưỡi hái định mệnh: Bị phạt trừ ${pDeath} điểm từ tổng điểm!`,
-        effectType: "LOSE_POINTS",
-        deltaPoints: -pDeath,
-      };
-
-  const tarotCards: TarotDef[] = [
-    {
-      tarotName: "Mặt Trời (The Sun)",
-      icon: "☀️",
-      type: "REWARD",
-      storyTitle: `☀️ Mặt Trời +${pSun}đ`,
-      storyDescription: `Ánh dương soi rọi: Ban tặng +${pSun} điểm thưởng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pSun,
-    },
-    {
-      tarotName: "Hoàng Đế (The Emperor)",
-      icon: "👑",
-      type: "REWARD",
-      storyTitle: `👑 Hoàng Đế +${pEmperor}đ`,
-      storyDescription: `Vương miện uy quyền: Thưởng nóng +${pEmperor} điểm danh dự!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pEmperor,
-    },
-    {
-      tarotName: "Kẻ Khờ (The Fool)",
-      icon: "🃏",
-      type: "REWARD",
-      storyTitle: `🃏 Kẻ Khờ +${pFool}đ`,
-      storyDescription: `Vận may bất ngờ: Đột phá năng lượng (+${pFool}đ)!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pFool,
-    },
-    deathCard,
-    fifthCard,
-  ];
-
-  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
-  return shuffled.map((card, idx) => ({
+  const { allEightArchetypes } = generateTarotQuotaArchetypes(basePoints, options);
+  const shuffled = [...allEightArchetypes].sort(() => Math.random() - 0.5);
+  return shuffled.map((arch, idx) => ({
     id: idx + 1,
     label: `Lá #${idx + 1}`,
-    tarotName: card.tarotName,
-    icon: card.icon,
+    tarotName: `${arch.nameVi} (${arch.nameEn})`,
+    icon: arch.icon,
     isOpened: false,
-    type: card.type,
-    storyTitle: card.storyTitle,
-    storyDescription: card.storyDescription,
-    effectType: card.effectType,
-    deltaPoints: card.deltaPoints,
+    type: arch.type,
+    storyTitle: arch.storyTitle,
+    storyDescription: arch.storyDescription,
+    effectType: arch.effectType,
+    deltaPoints: arch.deltaPoints,
+    tarotCardKey: arch.key,
+    bombDoorType: arch.bombType,
+    givesShield: arch.givesShield,
   }));
 }
 
@@ -1756,8 +1669,8 @@ export function generateNextPushYourLuckCard({
     delta = Math.min(delta, basePoints);
   } else if (template.effectType === "BONUS_POINTS") {
     if (basePoints <= 10) {
-      // 10đ tier: +10đ, +15đ, +20đ, +25đ
-      delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
+      // 10đ tier: +10đ, +15đ, +20đ (tối đa 2x điểm gốc = 20đ, tuyệt đối không xuất hiện 25đ)
+      delta = [10, 15, 20][Math.floor(Math.random() * 3)];
     } else if (basePoints <= 20) {
       // 20đ tier: +20đ, +25đ, +30đ, +40đ
       delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
@@ -1768,6 +1681,8 @@ export function generateNextPushYourLuckCard({
       // 40đ tier: +40đ, +50đ, +60đ, +80đ
       delta = [40, 50, 60, 80][Math.floor(Math.random() * 4)];
     }
+    // Ràng buộc nghiêm ngặt: điểm cộng thưởng tối đa không bao giờ vượt quá 2x điểm gốc
+    delta = Math.min(delta, basePoints * 2);
   }
 
   let storyTitle = template.storyTitle;
@@ -3281,10 +3196,10 @@ export function handleFlipCard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT 2: ONE_SHOT_DOORS (5 Cánh Cửa Bí Mật - 2 Giai Đoạn)
-  // Giai đoạn 1: Chọn 3 trong 5 cửa để để ra riêng (vẫn úp xuống, chưa lật).
-  // Hệ thống báo số lượng lá trừ trong 3 lá đã chọn.
-  // Giai đoạn 2: Người chơi PHẢI LẤY 3 CỬA ĐÃ CHỌN để chơi tiếp vòng 2, không dùng 2 cửa còn lại.
+  // VARIANT 2: ONE_SHOT_DOORS (8 Cánh Cửa Bí Mật - 2 Giai Đoạn)
+  // Giai đoạn 1: Chọn 4 trong 8 cửa để để ra riêng (vẫn úp xuống, chưa lật).
+  // Hệ thống báo số lượng lá trừ trong 4 lá đã chọn.
+  // Giai đoạn 2: Người chơi PHẢI LẤY 4 CỬA ĐÃ CHỌN để chơi tiếp vòng 2.
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "ONE_SHOT_DOORS") {
     const osState = state.oneShotState || {
@@ -3791,7 +3706,7 @@ export function handleFlipCard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // VARIANT 4: TAROT_DESTINY (Rút 1 trong 5 lá bài Tarot thần số)
+  // VARIANT 4: TAROT_DESTINY (Rút 1 trong 8 lá bài Tarot thần số)
   // ═══════════════════════════════════════════════════════════════════════════
   if (normType === "TAROT_DESTINY") {
     const tState = state.tarotState || {};
@@ -6027,6 +5942,7 @@ export function resolveWheelCardEffect({
           roman: seg.roman,
           group: "COMMON",
           scoreDelta,
+          temperanceBonusRecipients: otherRecipients,
         },
         finalScoreDelta: scoreDelta,
         scorePenalty: 0,
@@ -6290,6 +6206,8 @@ export function resolveWheelCardEffect({
           deathSubtype: "GIFT_TOP1",
           scoreDelta: -charityOutcome.penalty,
           giftedPoints: gifted,
+          recipientTeamId: charityOutcome.recipientTeamId,
+          recipientTeamName: charityOutcome.recipientTeamName,
           victimTeamId: charityOutcome.recipientTeamId,
           victimTeamName: charityOutcome.recipientTeamName,
         },

@@ -2685,8 +2685,9 @@ export default function AdminSandboxPage() {
               return t;
             });
           } else if (scorePenalty > 0) {
+            const netDelta = (finalScoreDelta !== undefined && finalScoreDelta !== 0) ? finalScoreDelta : -scorePenalty;
             updatedTeams = updatedTeams.map((t) =>
-              t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score - scorePenalty) } : t
+              t.id === activeTeam.id ? { ...t, score: Math.max(0, t.score + netDelta) } : t
             );
           }
         } else if (finalScoreDelta !== undefined && finalScoreDelta !== 0) {
@@ -3008,16 +3009,19 @@ export default function AdminSandboxPage() {
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (victimTeamId && stolenPoints && stolenPoints > 0) {
-          if (updatedState.miniGameType === "PUSH_YOUR_LUCK") {
-            // Trong push-your-luck, điểm được nạp vào pot, trừ điểm đối thủ khi chốt điểm
-          } else {
-            updatedTeams = updatedTeams.map((t) => {
-              if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
-              if (t.id === activeTeam.id) return { ...t, score: t.score + finalScoreDelta };
-              return t;
-            });
+        if (updatedState.miniGameType === "PUSH_YOUR_LUCK") {
+          // Trong push-your-luck, điểm được nạp vào pot, trừ điểm đối thủ khi chốt điểm
+        } else {
+          if (victimTeamId && stolenPoints && stolenPoints > 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === victimTeamId ? { ...t, score: Math.max(0, t.score - stolenPoints) } : t
+            );
             addLog(`🗡️ [${activeTeam.name}] đã cướp thành công ${stolenPoints}đ từ [${victimTeamName || "Đối thủ"}]!`);
+          }
+          if (finalScoreDelta && finalScoreDelta > 0) {
+            updatedTeams = updatedTeams.map((t) =>
+              t.id === activeTeam.id ? { ...t, score: t.score + finalScoreDelta } : t
+            );
           }
         }
 
@@ -3060,6 +3064,15 @@ export default function AdminSandboxPage() {
           );
           addLog(`💰 [${activeTeam.name}] quyết định BẢO TOÀN ĐIỂM! Thu về an toàn +${finalScoreDelta} điểm!`);
         }
+
+        const nextRoomState: RoomState = {
+          ...roomStateRef.current,
+          teams: updatedTeams,
+          mysteryQuestState: updatedState,
+        };
+        roomStateRef.current = nextRoomState;
+        setRoomState(nextRoomState);
+        syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
         return;
       }
       if (e.data?.type === "MYSTERY_CHOOSE_ACTION" || e.data?.action === "mystery_choose_action") {
@@ -3326,8 +3339,26 @@ export default function AdminSandboxPage() {
         const isShieldRespin = Boolean(curMystery.tarotState?.isShieldRespin);
         const isGamble = !curMystery.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
         let pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
-        if (pendingDeltas.length === 0 && drawnCard?.scoreDelta && curMystery.currentTurnTeamId) {
-          pendingDeltas = [{ teamId: curMystery.currentTurnTeamId, delta: drawnCard.scoreDelta }];
+        if (pendingDeltas.length === 0 && curMystery.currentTurnTeamId) {
+          if (drawnCard?.scoreDelta) {
+            pendingDeltas.push({ teamId: curMystery.currentTurnTeamId, delta: drawnCard.scoreDelta });
+          }
+          if (drawnCard?.temperanceBonusRecipients) {
+            for (const rec of drawnCard.temperanceBonusRecipients) {
+              if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.darkBombRecipients) {
+            for (const rec of drawnCard.darkBombRecipients) {
+              if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.recipientTeamId && drawnCard?.giftedPoints) {
+            pendingDeltas.push({ teamId: drawnCard.recipientTeamId, delta: drawnCard.giftedPoints });
+          }
+          if (drawnCard?.victimTeamId && drawnCard?.stolenPoints) {
+            pendingDeltas.push({ teamId: drawnCard.victimTeamId, delta: -drawnCard.stolenPoints });
+          }
         }
 
         let updatedTeams = [...roomStateRef.current.teams];

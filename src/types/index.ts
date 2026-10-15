@@ -888,7 +888,7 @@ export type MysteryMiniGameType =
   | "MEMORY_PAIRS"     // 1. Lật cặp trùng nhau (Memory Match)
   | "ONE_SHOT_DOORS"    // 2. Chọn 1 trong số ít cửa (Single Pick)
   | "PUSH_YOUR_LUCK"    // 3. Lật liều tích lũy né Bom (1 lớp bài kinh điển)
-  | "TAROT_DESTINY"     // 4. Rút Thẻ Bài Tarot Thần Số (5 lá bài vận mệnh)
+  | "TAROT_DESTINY"     // 4. Rút Thẻ Bài Tarot Thần Số (8 Ấn Định Mệnh / Vòng Quay)
   // Legacy / Cosmetic aliases:
   | "DOORS"
   | "CHESTS"
@@ -995,8 +995,11 @@ export interface AncientTarotDrawnCard {
   victimTeamId?: string;
   victimTeamName?: string;
   stolenPoints?: number;
+  recipientTeamId?: string;
+  recipientTeamName?: string;
   giftedPoints?: number;
   darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
+  temperanceBonusRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
 }
 
 export interface TarotWheelSegment {

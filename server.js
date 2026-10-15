@@ -1830,93 +1830,22 @@ function generateSurvivalOneShotDoorsTiles(basePoints = 20, _options) {
   }));
 }
 function generateTarotDestinyTiles(basePoints = 20, options) {
-  const riskTier = options?.riskTier ?? "NEUTRAL";
-  const pSun = basePoints * 2;
-  const pEmperor = Math.round(basePoints * 1.5);
-  const pFool = basePoints + 10;
-  const pKnight = basePoints;
-  const pDeath = riskTier === "UNDERDOG" ? 0 : basePoints;
-  const currentRound = options?.currentRound ?? 1;
-  const canSteal = currentRound >= 2 && Boolean(
-    options?.teams && options?.teams.some((t) => t.id !== options?.currentTeamId && (t.score || 0) >= pKnight)
-  );
-  const fifthCard = canSteal ? {
-    tarotName: "Hi\u1EC7p S\u0129 \u0110\u1EA1o T\u1EB7c (The Knight)",
-    icon: "\u{1F5E1}\uFE0F",
-    type: "REWARD",
-    storyTitle: `\u{1F5E1}\uFE0F C\u01B0\u1EDBp +${pKnight}\u0111`,
-    storyDescription: `Thanh g\u01B0\u01A1m c\xF4ng l\xFD: C\u01B0\u1EDBp +${pKnight}\u0111 t\u1EEB m\u1ED9t \u0111\u1ED1i th\u1EE7 \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n!`,
-    effectType: "STEAL_POINTS",
-    deltaPoints: pKnight
-  } : {
-    tarotName: "Ng\xF4i Sao Hy V\u1ECDng (The Star)",
-    icon: "\u2B50",
-    type: "REWARD",
-    storyTitle: `\u2B50 Ng\xF4i Sao +${pKnight}\u0111`,
-    storyDescription: `\xC1nh sao may m\u1EAFn: Nh\u1EADn n\xF3ng +${pKnight} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
-    effectType: "BONUS_POINTS",
-    deltaPoints: pKnight
-  };
-  const deathCard = riskTier === "UNDERDOG" ? {
-    tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
-    icon: "\u{1F480}",
-    type: "BOMB_SMOKE",
-    storyTitle: "\u{1F480} Th\u1EA7n Ch\u1EBFt Th\u1EED Th\xE1ch 0\u0111",
-    storyDescription: "L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh tha th\u1EE9 cho \u0111\u1ED9i y\u1EBFu th\u1EBF: Ch\u1EC9 m\u1EA5t \u0111i\u1EC3m t\xEDch l\u0169y c\xE2u hi\u1EC7n t\u1EA1i, t\u1ED5ng \u0111i\u1EC3m kh\xF4ng \u0111\u1ED5i!",
-    effectType: "LOSE_POT_POINTS",
-    deltaPoints: 0
-  } : {
-    tarotName: "Th\u1EA7n Ch\u1EBFt (Death)",
-    icon: "\u{1F480}",
-    type: "BOMB_MAJOR",
-    storyTitle: `\u{1F480} Th\u1EA7n Ch\u1EBFt -${pDeath}\u0111`,
-    storyDescription: `L\u01B0\u1EE1i h\xE1i \u0111\u1ECBnh m\u1EC7nh: B\u1ECB ph\u1EA1t tr\u1EEB ${pDeath} \u0111i\u1EC3m t\u1EEB t\u1ED5ng \u0111i\u1EC3m!`,
-    effectType: "LOSE_POINTS",
-    deltaPoints: -pDeath
-  };
-  const tarotCards = [
-    {
-      tarotName: "M\u1EB7t Tr\u1EDDi (The Sun)",
-      icon: "\u2600\uFE0F",
-      type: "REWARD",
-      storyTitle: `\u2600\uFE0F M\u1EB7t Tr\u1EDDi +${pSun}\u0111`,
-      storyDescription: `\xC1nh d\u01B0\u01A1ng soi r\u1ECDi: Ban t\u1EB7ng +${pSun} \u0111i\u1EC3m th\u01B0\u1EDFng!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pSun
-    },
-    {
-      tarotName: "Ho\xE0ng \u0110\u1EBF (The Emperor)",
-      icon: "\u{1F451}",
-      type: "REWARD",
-      storyTitle: `\u{1F451} Ho\xE0ng \u0110\u1EBF +${pEmperor}\u0111`,
-      storyDescription: `V\u01B0\u01A1ng mi\u1EC7n uy quy\u1EC1n: Th\u01B0\u1EDFng n\xF3ng +${pEmperor} \u0111i\u1EC3m danh d\u1EF1!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pEmperor
-    },
-    {
-      tarotName: "K\u1EBB Kh\u1EDD (The Fool)",
-      icon: "\u{1F0CF}",
-      type: "REWARD",
-      storyTitle: `\u{1F0CF} K\u1EBB Kh\u1EDD +${pFool}\u0111`,
-      storyDescription: `V\u1EADn may b\u1EA5t ng\u1EDD: \u0110\u1ED9t ph\xE1 n\u0103ng l\u01B0\u1EE3ng (+${pFool}\u0111)!`,
-      effectType: "BONUS_POINTS",
-      deltaPoints: pFool
-    },
-    deathCard,
-    fifthCard
-  ];
-  const shuffled = [...tarotCards].sort(() => Math.random() - 0.5);
-  return shuffled.map((card, idx) => ({
+  const { allEightArchetypes } = generateTarotQuotaArchetypes(basePoints, options);
+  const shuffled = [...allEightArchetypes].sort(() => Math.random() - 0.5);
+  return shuffled.map((arch, idx) => ({
     id: idx + 1,
     label: `L\xE1 #${idx + 1}`,
-    tarotName: card.tarotName,
-    icon: card.icon,
+    tarotName: `${arch.nameVi} (${arch.nameEn})`,
+    icon: arch.icon,
     isOpened: false,
-    type: card.type,
-    storyTitle: card.storyTitle,
-    storyDescription: card.storyDescription,
-    effectType: card.effectType,
-    deltaPoints: card.deltaPoints
+    type: arch.type,
+    storyTitle: arch.storyTitle,
+    storyDescription: arch.storyDescription,
+    effectType: arch.effectType,
+    deltaPoints: arch.deltaPoints,
+    tarotCardKey: arch.key,
+    bombDoorType: arch.bombType,
+    givesShield: arch.givesShield
   }));
 }
 function generateNextPushYourLuckCard({
@@ -2029,7 +1958,7 @@ function generateNextPushYourLuckCard({
     delta = Math.min(delta, basePoints);
   } else if (template.effectType === "BONUS_POINTS") {
     if (basePoints <= 10) {
-      delta = [10, 15, 20, 25][Math.floor(Math.random() * 4)];
+      delta = [10, 15, 20][Math.floor(Math.random() * 3)];
     } else if (basePoints <= 20) {
       delta = [20, 25, 30, 40][Math.floor(Math.random() * 4)];
     } else if (basePoints <= 30) {
@@ -2037,6 +1966,7 @@ function generateNextPushYourLuckCard({
     } else {
       delta = [40, 50, 60, 80][Math.floor(Math.random() * 4)];
     }
+    delta = Math.min(delta, basePoints * 2);
   }
   let storyTitle = template.storyTitle;
   if (template.effectType === "BONUS_POINTS" || template.effectType === "STEAL_POINTS") {
@@ -5097,7 +5027,8 @@ function resolveWheelCardEffect({
           icon: seg.icon,
           roman: seg.roman,
           group: "COMMON",
-          scoreDelta
+          scoreDelta,
+          temperanceBonusRecipients: otherRecipients
         },
         finalScoreDelta: scoreDelta,
         scorePenalty: 0,
@@ -5313,6 +5244,8 @@ function resolveWheelCardEffect({
           deathSubtype: "GIFT_TOP1",
           scoreDelta: -charityOutcome.penalty,
           giftedPoints: gifted,
+          recipientTeamId: charityOutcome.recipientTeamId,
+          recipientTeamName: charityOutcome.recipientTeamName,
           victimTeamId: charityOutcome.recipientTeamId,
           victimTeamName: charityOutcome.recipientTeamName
         },
@@ -11689,7 +11622,7 @@ function registerSocketHandlers(io2) {
         });
         roomMysteryQuests.set(room.id, updatedState);
         io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
-        if (normMiniType === "ONE_SHOT_DOORS" && (updatedState.oneShotState?.phase === "SELECTING" || (updatedState.oneShotState?.selectedDoorIds?.length || 0) < 3)) {
+        if (normMiniType === "ONE_SHOT_DOORS" && updatedState.phase !== "TURN_SUMMARY" && !updatedState.turnFinishedReason && updatedState.phase !== "STEAL_TARGET_SELECT") {
           return;
         }
         if (updatedState.phase === "STEAL_TARGET_SELECT") {
@@ -11724,7 +11657,8 @@ function registerSocketHandlers(io2) {
               { teamId: recipientTeamId, score: recipientDelta.newScore, delta: recipientDelta.effectiveDelta }
             ]);
           } else if (scorePenalty > 0) {
-            const deltaRes = await applyScoreDeltaToTeam(team.id, -scorePenalty);
+            const deltaToApply = finalScoreDelta !== void 0 && finalScoreDelta !== 0 ? finalScoreDelta : -scorePenalty;
+            const deltaRes = await applyScoreDeltaToTeam(team.id, deltaToApply);
             io2.to(`room:${room.code}`).emit("game:score:update", [
               { teamId: team.id, score: deltaRes.newScore, delta: deltaRes.effectiveDelta }
             ]);
@@ -13279,13 +13213,17 @@ function registerSocketHandlers(io2) {
       });
       roomMysteryQuests.set(room.id, updatedState);
       io2.to(`room:${room.code}`).emit("game:mystery:update", updatedState);
-      if (victimTeamId && stolenPoints > 0 && finalScoreDelta > 0) {
+      const scoreUpdates = [];
+      if (victimTeamId && stolenPoints > 0) {
         const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+        scoreUpdates.push({ teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta });
+      }
+      if (updatedState.currentTurnTeamId && finalScoreDelta && finalScoreDelta !== 0) {
         const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
-        io2.to(`room:${room.code}`).emit("game:score:update", [
-          { teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta },
-          { teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta }
-        ]);
+        scoreUpdates.push({ teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta });
+      }
+      if (scoreUpdates.length > 0) {
+        io2.to(`room:${room.code}`).emit("game:score:update", scoreUpdates);
       }
       const refreshedState = await buildRoomState(room.id);
       io2.to(`room:${room.code}`).emit("room:state", refreshedState);

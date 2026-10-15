@@ -898,6 +898,115 @@ class SoundManager {
       });
     } catch {}
   }
+
+  /**
+   * Vệt gió điện ảnh (Whoosh) khi icon trúng thưởng phóng ra phía trước và xoay 360 độ
+   */
+  public playTarotIconWhoosh() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+
+      // Pitch sweep up and down to simulate high-speed 360 flyby
+      osc.frequency.setValueAtTime(260, now);
+      osc.frequency.exponentialRampToValueAtTime(780, now + 0.35);
+      osc.frequency.exponentialRampToValueAtTime(320, now + 0.7);
+
+      const peak = Math.max(0.04, this.volume * 0.3);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(peak, now + 0.25);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.75);
+    } catch {}
+  }
+
+  /**
+   * Tiếng dập ấn hoàng kim (Heavy Seal Impact / Thud) khi icon đính phập lên lưng lá bài
+   */
+  public playTarotSealImpact() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+
+      // 1. Heavy low-end impact thud (80Hz -> 35Hz)
+      const subOsc = ctx.createOscillator();
+      const subGain = ctx.createGain();
+      subOsc.type = "triangle";
+      subOsc.frequency.setValueAtTime(110, now);
+      subOsc.frequency.exponentialRampToValueAtTime(38, now + 0.3);
+
+      const subPeak = Math.max(0.06, this.volume * 0.45);
+      subGain.gain.setValueAtTime(subPeak, now);
+      subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      subOsc.connect(subGain);
+      subGain.connect(ctx.destination);
+      subOsc.start(now);
+      subOsc.stop(now + 0.48);
+
+      // 2. Resonant metallic gold seal chime (G5 + D6 harmonic)
+      [783.99, 1174.66].forEach((f, idx) => {
+        const chimeOsc = ctx.createOscillator();
+        const chimeGain = ctx.createGain();
+        chimeOsc.type = "sine";
+        chimeOsc.frequency.setValueAtTime(f, now + idx * 0.02);
+
+        const chimePeak = Math.max(0.03, this.volume * 0.25);
+        chimeGain.gain.setValueAtTime(0.001, now + idx * 0.02);
+        chimeGain.gain.linearRampToValueAtTime(chimePeak, now + idx * 0.02 + 0.015);
+        chimeGain.gain.exponentialRampToValueAtTime(0.0008, now + idx * 0.02 + 0.6);
+
+        chimeOsc.connect(chimeGain);
+        chimeGain.connect(ctx.destination);
+        chimeOsc.start(now + idx * 0.02);
+        chimeOsc.stop(now + idx * 0.02 + 0.62);
+      });
+    } catch {}
+  }
+
+  /**
+   * Tiếng lật bài huyền bí (Magic 3D Card Flip) khi mở quẻ sau 1.5s
+   */
+  public playTarotCardFlip() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      // Huyền bí: Chuỗi hòa âm thăng hoa C5 -> G5 -> C6 -> E6
+      const chord = [523.25, 783.99, 1046.5, 1318.51];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.045);
+
+        const peak = Math.max(0.03, this.volume * 0.28);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.045);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.045 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0006, now + idx * 0.045 + 0.85);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.045);
+        osc.stop(now + idx * 0.045 + 0.88);
+      });
+    } catch {}
+  }
 }
 
 export const soundManager = typeof window !== "undefined" ? new SoundManager() : ({} as SoundManager);

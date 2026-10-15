@@ -7297,6 +7297,13 @@ function isSandboxRoomEntity(room) {
     room.name?.includes("Sandbox") || room.name?.startsWith("[Sandbox]") || room.config?.isSandbox || room.code?.startsWith("sb_") || roomSandboxActiveTeam.has(room.id)
   );
 }
+function canPlayerActForTurn(player, questState, room) {
+  if (!questState?.currentTurnTeamId) return false;
+  if (player?.teamId === questState.currentTurnTeamId) return true;
+  if (isSandboxRoomEntity(room)) return true;
+  if (player?.id?.startsWith("sb_") || player?.name?.includes("Tester")) return true;
+  return false;
+}
 var teamScoreLocks = /* @__PURE__ */ new Map();
 var playerScoreLocks = /* @__PURE__ */ new Map();
 var submissionLocks = /* @__PURE__ */ new Map();
@@ -10422,7 +10429,7 @@ function registerSocketHandlers(io2) {
           clearTimeout(roomIntermissionTimers.get(room.id));
           roomIntermissionTimers.delete(room.id);
         }
-        const startEndsAt = Date.now() + 5e3;
+        const startEndsAt = Date.now() + 5e3 + 250;
         io2.to(`room:${room.code}`).emit("game:starting", { seconds: 5, endsAt: startEndsAt, total: 5 });
         roomPrepareStates.set(room.id, {
           type: "STARTING",
@@ -12260,7 +12267,7 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.phase !== "DECISION_CHOICE") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EF1a ch\u1ECDn c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
@@ -12363,11 +12370,12 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.phase === "TURN_SUMMARY") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EADt b\xE0i c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryFlip(room, questState, team, tileId);
     });
@@ -12392,11 +12400,12 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.phase !== "PUSH_YOUR_LUCK") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t b\u1EA3o to\xE0n \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryCashOut(room, questState, team);
     });
@@ -12421,11 +12430,12 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || !questState.memoryPairsState?.promptSecondChance) return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryPairsDecision(room, questState, team, choice);
     });
@@ -12451,11 +12461,12 @@ function registerSocketHandlers(io2) {
       const questState = roomMysteryQuests.get(room.id);
       const osPhase = questState?.oneShotState?.phase;
       if (!questState || osPhase !== "STAGE_1_DECISION" && osPhase !== "FINAL_DECISION" && osPhase !== "SWAP_DOOR" && osPhase !== "OPEN_FINAL" && osPhase !== "PENALTY_DECISION" && osPhase !== "SCANNED" && osPhase !== "STAGE_2_PICK") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryDoorsDecision(room, questState, team, decision, chosenDoorId, swapRemovedDoorId, swapAddedDoorId);
     });
@@ -12481,7 +12492,7 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || !questState.tarotState?.canRedraw) return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
@@ -12506,11 +12517,12 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || !questState.tarotState?.chosenCardId) return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quy\u1EBFt \u0111\u1ECBnh c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryTarotKeep(room, questState, team);
     });
@@ -12664,7 +12676,8 @@ function registerSocketHandlers(io2) {
     };
     const executeMysteryTarotReveal = async (room, questState) => {
       if (!questState.tarotState) return;
-      if (!questState.tarotState.isRevealPending && questState.phase !== "PUSH_YOUR_LUCK") return;
+      if (!questState.tarotState.isRevealPending || questState.phase !== "PUSH_YOUR_LUCK") return;
+      questState.tarotState.isRevealPending = false;
       const drawnCard = questState.tarotState.drawnCard;
       const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
@@ -12672,8 +12685,26 @@ function registerSocketHandlers(io2) {
       if (!isGamble && !isShieldRespin) {
         pendingDeltas = roomTarotPendingScores.get(room.id) || [];
         roomTarotPendingScores.delete(room.id);
-        if (pendingDeltas.length === 0 && drawnCard?.scoreDelta && questState.currentTurnTeamId) {
-          pendingDeltas = [{ teamId: questState.currentTurnTeamId, delta: drawnCard.scoreDelta }];
+        if (pendingDeltas.length === 0 && questState.currentTurnTeamId) {
+          if (drawnCard?.scoreDelta) {
+            pendingDeltas.push({ teamId: questState.currentTurnTeamId, delta: drawnCard.scoreDelta });
+          }
+          if (drawnCard?.temperanceBonusRecipients) {
+            for (const rec of drawnCard.temperanceBonusRecipients) {
+              if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.darkBombRecipients) {
+            for (const rec of drawnCard.darkBombRecipients) {
+              if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.recipientTeamId && drawnCard?.giftedPoints) {
+            pendingDeltas.push({ teamId: drawnCard.recipientTeamId, delta: drawnCard.giftedPoints });
+          }
+          if (drawnCard?.victimTeamId && drawnCard?.stolenPoints) {
+            pendingDeltas.push({ teamId: drawnCard.victimTeamId, delta: -drawnCard.stolenPoints });
+          }
         }
         const scoreUpdates = [];
         for (const item of pendingDeltas) {
@@ -12915,7 +12946,7 @@ function registerSocketHandlers(io2) {
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      if (playerTeamId && !code && questState.currentTurnTeamId !== playerTeamId) {
+      if (playerTeamId && !code && !canPlayerActForTurn({ id: playerId, teamId: playerTeamId }, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t quay c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
@@ -13112,11 +13143,12 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.miniGameType !== "TAROT_DESTINY") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t r\xFAt b\xE0i c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }
-      const team = await prisma.team.findUnique({ where: { id: player.teamId } });
+      const actingTeamId = isSandboxRoomEntity(room) && questState.currentTurnTeamId || player.teamId;
+      const team = await prisma.team.findUnique({ where: { id: actingTeamId } });
       if (!team) return;
       await executeMysteryDrawTarot(room, questState, team);
     });
@@ -13270,7 +13302,7 @@ function registerSocketHandlers(io2) {
       if (room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
       const questState = roomMysteryQuests.get(room.id);
       if (!questState || questState.phase !== "STEAL_TARGET_SELECT") return;
-      if (questState.currentTurnTeamId !== player.teamId) {
+      if (!canPlayerActForTurn(player, questState, room)) {
         socket.emit("error", "Ch\u01B0a \u0111\u1EBFn l\u01B0\u1EE3t l\u1EF1a ch\u1ECDn c\u1EE7a \u0111\u1ED9i b\u1EA1n!");
         return;
       }

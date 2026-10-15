@@ -629,7 +629,7 @@ export default function AdminRoomPage() {
     if (roomState?.status === "LOBBY") {
       matchStartingRef.current = true;
       const serverNow = Date.now() + getServerClockOffset();
-      setMatchStarting({ seconds: 5, endsAt: serverNow + 5000, total: 5 });
+      setMatchStarting({ seconds: 5, endsAt: serverNow + 5000 + 250, total: 5 });
       soundManager.stopMusic(0);
     }
     emit("admin:next", { code });

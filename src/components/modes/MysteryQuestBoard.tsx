@@ -4151,19 +4151,35 @@ export default function MysteryQuestBoard({
               if (miniGameType === "TAROT_DESTINY" && tarotState?.isDrawn && tarotState?.drawnCard) {
                 const dc = tarotState.drawnCard;
                 if (t.id === currentTurnTeamId) {
-                  if (dc.key === "THE_SUN") tarotDelta = dc.scoreDelta;
-                  else if (dc.key === "THE_FOOL") tarotDelta = 0;
-                  else if (dc.key === "THE_EMPEROR" || dc.key === "THE_KNIGHT") tarotDelta = -Math.abs(dc.scoreDelta);
-                  else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT")) tarotDelta = -Math.abs(dc.scoreDelta);
-                  else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL")) tarotDelta = dc.stolenPoints || dc.scoreDelta;
+                  if (dc.key === "THE_FOOL" || dc.key === "JUSTICE") {
+                    tarotDelta = 0;
+                  } else if (dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") {
+                    if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
+                      tarotDelta = dc.stolenPoints || dc.scoreDelta || 0;
+                    } else if (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") {
+                      tarotDelta = -(dc.giftedPoints || Math.abs(dc.scoreDelta || 0));
+                    } else {
+                      tarotDelta = dc.scoreDelta ?? null;
+                    }
+                  } else {
+                    tarotDelta = dc.scoreDelta ?? null;
+                  }
                 } else {
-                  if (dc.key === "THE_EMPEROR") {
-                    const rec = dc.darkBombRecipients?.find((r) => r.teamId === t.id);
+                  if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && t.id === dc.victimTeamId) {
+                    if (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") {
+                      tarotDelta = dc.giftedPoints || Math.abs(dc.scoreDelta || 0);
+                    } else if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
+                      tarotDelta = -(dc.stolenPoints || Math.abs(dc.scoreDelta || 0));
+                    }
+                  } else if (dc.key === "TEMPERANCE") {
+                    const halfDelta = Math.round((mysteryState?.baseQuestionPoints || 10) * 0.5);
+                    tarotDelta = halfDelta;
+                  } else if (dc.key === "THE_HANGED_MAN" && dc.darkBombRecipients) {
+                    const rec = dc.darkBombRecipients.find((r: any) => r.teamId === t.id);
                     if (rec) tarotDelta = rec.points;
-                  } else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") && t.id === dc.victimTeamId) {
-                    tarotDelta = dc.giftedPoints || Math.abs(dc.scoreDelta);
-                  } else if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") && t.id === dc.victimTeamId) {
-                    tarotDelta = -(dc.stolenPoints || dc.scoreDelta);
+                  } else if (dc.key === "THE_DEVIL" && dc.darkBombRecipients) {
+                    const rec = dc.darkBombRecipients.find((r: any) => r.teamId === t.id);
+                    if (rec) tarotDelta = rec.points;
                   }
                 }
               }

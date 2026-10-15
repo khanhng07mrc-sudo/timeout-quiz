@@ -277,7 +277,16 @@ export default function DisplayPage() {
           }
         }
         if (p.timer !== undefined) {
-          setTimer(p.timer);
+          if (p.timer === null) {
+            setTimer(null);
+          } else {
+            setTimer((prev) => {
+              if (!prev || !p.timer) return p.timer;
+              if (prev.endsAt !== p.timer.endsAt) return p.timer;
+              if (p.timer.remaining === 0 && prev.remaining !== 0) return { ...prev, remaining: 0 };
+              return prev;
+            });
+          }
           const isPlaying = (p.roomState?.status || roomState?.status) === "PLAYING";
           if (p.timer?.remaining === 0 && isPlaying) {
             soundManager.stopQuestionMusic(600, true);

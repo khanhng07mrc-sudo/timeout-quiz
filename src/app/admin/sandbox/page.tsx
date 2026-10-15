@@ -454,7 +454,14 @@ export default function AdminSandboxPage() {
       setMatchStarting((prev) => {
         if (!prev) return null;
         const rem = Math.min(prev.seconds, remaining);
-        if (rem <= 0) return null;
+        if (rem <= 0) {
+          if (pendingOfflineLaunchRef.current) {
+            const cb = pendingOfflineLaunchRef.current;
+            pendingOfflineLaunchRef.current = null;
+            setTimeout(() => cb(), 0);
+          }
+          return null;
+        }
         if (prev.seconds === rem && prev.endsAt === endsAt) return prev;
         return { ...prev, seconds: rem, endsAt, total };
       });
@@ -1320,6 +1327,10 @@ export default function AdminSandboxPage() {
   revealPayloadRef.current = revealPayload;
   const intermissionRef = useRef(intermission);
   intermissionRef.current = intermission;
+  const matchStartingRef = useRef(matchStarting);
+  matchStartingRef.current = matchStarting;
+  const questionPrepareRef = useRef(questionPrepare);
+  questionPrepareRef.current = questionPrepare;
 
   const lastExplicitSyncTimeRef = useRef<number>(0);
 
@@ -1333,19 +1344,19 @@ export default function AdminSandboxPage() {
     const payload = {
       roomState: rState,
       currentQuestion: curQ,
-      timer: overrides?.timer ?? timerRef.current,
-      revealPayload: overrides?.revealPayload ?? revealPayloadRef.current,
+      timer: overrides?.timer !== undefined ? overrides.timer : timerRef.current,
+      revealPayload: overrides?.revealPayload !== undefined ? overrides.revealPayload : revealPayloadRef.current,
       buzzed: null,
       lastPowerup: null,
-      matchStarting: matchStarting,
-      questionPrepare: questionPrepare,
+      matchStarting: overrides?.matchStarting !== undefined ? overrides.matchStarting : matchStartingRef.current,
+      questionPrepare: overrides?.questionPrepare !== undefined ? overrides.questionPrepare : questionPrepareRef.current,
       intermission: intermissionRef.current,
       mysteryQuestState: rState?.mysteryQuestState,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
-  }, [isOfflineSandbox, matchStarting, questionPrepare]);
+  }, [isOfflineSandbox]);
 
   useEffect(() => {
     // Tránh gửi lặp 2 lần liên tiếp trong cùng một khung hình khi vừa mới sync trực tiếp từ handler
@@ -3308,7 +3319,7 @@ export default function AdminSandboxPage() {
           adminSocketRef.current?.emit("admin:mystery:ancient_tarot_reveal" as any, { code });
           return;
         }
-        if (!roomStateRef.current?.mysteryQuestState?.tarotState) return;
+        if (!roomStateRef.current?.mysteryQuestState?.tarotState?.isRevealPending) return;
         const curMystery = roomStateRef.current.mysteryQuestState;
         const drawnCard = curMystery.tarotState?.drawnCard;
         const isShieldRespin = Boolean(curMystery.tarotState?.isShieldRespin);
@@ -3632,13 +3643,28 @@ export default function AdminSandboxPage() {
         }
         if (!roomStateRef.current?.mysteryQuestState) return;
         const curMystery = roomStateRef.current.mysteryQuestState;
-        const teams = roomStateRef.current.teams;
+
+        // Tự động giải ngân điểm số chưa lật nếu MC bấm qua lượt sớm:
+        let teams = [...roomStateRef.current.teams];
+        const pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
+        if (pendingDeltas.length > 0) {
+          for (const item of pendingDeltas) {
+            if (item.delta !== 0) {
+              teams = teams.map((t) =>
+                t.id === item.teamId ? { ...t, score: Math.max(0, (t.score || 0) + item.delta) } : t
+              );
+            }
+          }
+        }
+        delete (curMystery as any)._pendingScoreDeltas;
+
         const nextTurnIdx = curMystery.currentTurnIndex + 1;
 
         if (nextTurnIdx >= curMystery.totalTurns) {
           addLog("🏁 Mystery Quest: Đã hoàn thành tất cả các lượt chơi!");
           const finalState: RoomState = {
             ...roomStateRef.current,
+            teams,
             status: "FINISHED",
           };
           roomStateRef.current = finalState;
@@ -3694,6 +3720,7 @@ export default function AdminSandboxPage() {
 
         const nextRoomState: RoomState = {
           ...roomStateRef.current,
+          teams,
           mysteryQuestState: nextStage,
         };
         roomStateRef.current = nextRoomState;
@@ -4798,7 +4825,7 @@ export default function AdminSandboxPage() {
         }
 
         const warmupTotal = 5;
-        const warmupEndsAt = Date.now() + warmupTotal * 1000;
+        const warmupEndsAt = Date.now() + warmupTotal * 1000 + 250;
         setMatchStarting({ seconds: warmupTotal, endsAt: warmupEndsAt, total: warmupTotal });
         syncToIframes({ matchStarting: { seconds: warmupTotal, endsAt: warmupEndsAt, total: warmupTotal } });
         addLog("🏁 Trận đấu bắt đầu! Đếm ngược chuẩn bị 5s...");
@@ -4859,23 +4886,6 @@ export default function AdminSandboxPage() {
         };
 
         pendingOfflineLaunchRef.current = proceedAfterWarmup;
-        if (offlineWarmupIntervalRef.current) {
-          clearInterval(offlineWarmupIntervalRef.current);
-          offlineWarmupIntervalRef.current = null;
-        }
-        offlineWarmupIntervalRef.current = setInterval(() => {
-          const rawRem = Math.max(0, Math.ceil((warmupEndsAt - Date.now()) / 1000));
-          const rem = Math.min(warmupTotal, rawRem);
-          if (rem > 0) {
-            setMatchStarting((prev) => {
-              const safeSeconds = prev ? Math.min(prev.seconds, rem) : rem;
-              if (prev?.seconds === safeSeconds && prev?.endsAt === warmupEndsAt) return prev;
-              return { seconds: safeSeconds, endsAt: warmupEndsAt, total: warmupTotal };
-            });
-          } else {
-            proceedAfterWarmup();
-          }
-        }, 100);
         return;
       }
 

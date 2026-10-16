@@ -732,69 +732,97 @@ class SoundManager {
   }
 
   /**
-   * Tiếng kim gẩy chốt Vòng Quay Chiếc Nón Kỳ Diệu (Wheel of Fortune Peg Click)
-   * @param progress Tiến độ quay từ 0.0 (mới quay, đanh nhanh) -> 1.0 (sắp dừng, trầm và vang hơn)
+   * Tiếng kim loại lách cách xoẹt qua khi quay Vòng Quay Tarot (Chiếc Nón Kỳ Diệu)
+   * Tạo bằng Web Audio API đa tầng: Kết hợp xung va đập kim loại đanh sắc (2600Hz - 3800Hz),
+   * lớp cọ xoẹt cơ học (metallic scrape transient) và độ vang cơ khí rõ nét.
    */
   public playWheelPegTick(progress: number = 0) {
     if (this.isMuted) return;
     const ctx = this.getWheelAudioCtx();
     if (!ctx) {
-      this.playSFX("tick", 0.55);
+      this.playSFX("tick", 0.75);
       return;
     }
 
     try {
       const now = ctx.currentTime;
       const clampedProg = Math.max(0, Math.min(1, progress));
+      const masterVol = Math.max(0.2, this.volume * (0.72 + clampedProg * 0.15));
 
-      // 1. Crisp flapper peg snap (triangle/square pitch drop)
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
+      // 1. Lớp va đập kim loại đanh sắc (Sharp Metallic Clink - High Harmonics)
+      const metalOsc = ctx.createOscillator();
+      const metalGain = ctx.createGain();
+      metalOsc.type = "sine";
+      const startFreq = 3400 - clampedProg * 400;
+      const endFreq = 1800 - clampedProg * 250;
+      metalOsc.frequency.setValueAtTime(startFreq, now);
+      metalOsc.frequency.exponentialRampToValueAtTime(Math.max(200, endFreq), now + 0.024);
 
-      // Pitch slightly higher when spinning fast, slightly deeper as each final peg clicks
-      const startFreq = 1150 - clampedProg * 280;
-      const endFreq = 240 - clampedProg * 60;
-      osc.frequency.setValueAtTime(startFreq, now);
-      osc.frequency.exponentialRampToValueAtTime(Math.max(80, endFreq), now + 0.028);
+      metalGain.gain.setValueAtTime(masterVol * 0.9, now);
+      metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
 
-      const peakVol = Math.max(0.04, this.volume * (0.22 + clampedProg * 0.12));
-      gain.gain.setValueAtTime(peakVol, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.032);
+      metalOsc.connect(metalGain);
+      metalGain.connect(ctx.destination);
+      metalOsc.start(now);
+      metalOsc.stop(now + 0.030);
 
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.onended = () => {
-        try {
-          osc.disconnect();
-          gain.disconnect();
-        } catch {}
-      };
-      osc.start(now);
-      osc.stop(now + 0.034);
+      // 2. Lớp hài kim loại cao (High Metallic Overtone / Chime 3800Hz)
+      const chimeOsc = ctx.createOscillator();
+      const chimeGain = ctx.createGain();
+      chimeOsc.type = "triangle";
+      chimeOsc.frequency.setValueAtTime(3800 - clampedProg * 300, now);
+      chimeOsc.frequency.exponentialRampToValueAtTime(2200, now + 0.018);
 
-      // 2. Subtle wooden/metallic peg body knock
+      chimeGain.gain.setValueAtTime(masterVol * 0.65, now);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
+
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(ctx.destination);
+      chimeOsc.start(now);
+      chimeOsc.stop(now + 0.024);
+
+      // 3. Lớp xoẹt cơ học kim loại (Metallic Scrape Transient - 16ms)
+      const bufferSize = Math.floor(ctx.sampleRate * 0.016);
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+      }
+      const noise = ctx.createBufferSource();
+      noise.buffer = noiseBuffer;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(4200, now);
+      filter.Q.setValueAtTime(3.5, now);
+
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.setValueAtTime(masterVol * 0.7, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.016);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(ctx.destination);
+      noise.start(now);
+      noise.stop(now + 0.018);
+
+      // 4. Lớp thân chốt kim loại rung đầm (Peg Body Resonant Knock)
       const bodyOsc = ctx.createOscillator();
       const bodyGain = ctx.createGain();
       bodyOsc.type = "sine";
-      bodyOsc.frequency.setValueAtTime(420 - clampedProg * 80, now);
-      bodyOsc.frequency.exponentialRampToValueAtTime(135, now + 0.022);
+      bodyOsc.frequency.setValueAtTime(680 - clampedProg * 120, now);
+      bodyOsc.frequency.exponentialRampToValueAtTime(220, now + 0.022);
 
-      bodyGain.gain.setValueAtTime(peakVol * 0.65, now);
-      bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+      bodyGain.gain.setValueAtTime(masterVol * 0.5, now);
+      bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.026);
 
       bodyOsc.connect(bodyGain);
       bodyGain.connect(ctx.destination);
-      bodyOsc.onended = () => {
-        try {
-          bodyOsc.disconnect();
-          bodyGain.disconnect();
-        } catch {}
-      };
       bodyOsc.start(now);
-      bodyOsc.stop(now + 0.026);
+      bodyOsc.stop(now + 0.028);
+
     } catch {
-      this.playSFX("tick", 0.35);
+      this.playSFX("tick", 0.75);
     }
   }
 

@@ -1327,180 +1327,295 @@ export default function GameQuestion({
             </div>
           )}
         </div>
-      ) : q.type === "MATCHING" ? (
-        <div className="flex flex-col gap-3">
-          <p className="text-xs text-muted-foreground italic">
-            💡 Hướng dẫn: Kéo thả từ cột A sang cột B, hoặc nhấn chọn 1 mục ở cột A rồi chọn mục tương ứng ở cột B để ghép cặp.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Cột Trái (Left items hoặc Mục cần ghép) */}
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-amber-300">Cột A: Mục cần ghép (Kéo thả hoặc Nhấn chọn)</span>
-              {(((q as any).pairs && (q as any).pairs.length > 0)
-                ? (q as any).pairs.map((p: any, idx: number) => ({ id: p.id || `L_${idx}`, text: p.left }))
-                : (q.options || []).map((o, idx) => ({ id: `L_${idx}`, text: o.text.split(" - ")[0] || o.text }))
-              ).map((item: { id: string; text: string }, idx: number) => {
-                const matchedTargetId = matchingPairs[item.id];
-                const isSelectedLeft = selectedMatchLeft === item.id;
-                const isDraggingThis = draggingMatchLeftId === item.id;
-                const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+      ) : q.type === "MATCHING" ? (() => {
+        const leftItems: Array<{ id: string; text: string; index: number }> = (((q as any).pairs && (q as any).pairs.length > 0)
+          ? (q as any).pairs.map((p: any, idx: number) => ({ id: p.id || `L_${idx}`, text: p.left, index: idx + 1 }))
+          : (q.options || []).map((o, idx) => ({ id: `L_${idx}`, text: o.text.split(" - ")[0] || o.text, index: idx + 1 }))
+        );
 
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    draggable={canInteract}
-                    onDragStart={(e) => {
-                      if (!canInteract) return;
-                      setDraggingMatchLeftId(item.id);
-                      setSelectedMatchLeft(item.id);
-                      e.dataTransfer.effectAllowed = "link";
-                      try {
-                        e.dataTransfer.setData("text/plain", item.id);
-                      } catch {}
-                    }}
-                    onDragEnd={() => {
-                      setDraggingMatchLeftId(null);
-                      setDragOverRightTargetId(null);
-                    }}
-                    disabled={!canInteract}
-                    onClick={() => setSelectedMatchLeft(isSelectedLeft ? null : item.id)}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
-                      isDraggingThis
-                        ? "opacity-50 border-dashed border-amber-400 bg-amber-500/20"
-                        : isSelectedLeft
-                        ? "border-amber-400 bg-amber-500/20 shadow-md ring-2 ring-amber-400/40"
-                        : matchedTargetId
-                        ? "border-green-500/60 bg-green-500/15 text-green-200"
-                        : "border-border hover:border-amber-400/50 bg-black/20"
-                    }`}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <span className="text-muted-foreground text-[10px]">⋮⋮</span>
-                      <span>{idx + 1}. {item.text}</span>
-                    </span>
-                    {matchedTargetId && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/30 text-green-300 font-mono">
-                        ✓ Đã ghép
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+        const rightItems: Array<{ id: string; targetId: string; label: string; text: string }> = (() => {
+          const rawPairs = (q as any).pairs;
+          if (rawPairs && rawPairs.length > 0) {
+            const items = rawPairs.map((p: any, idx: number) => ({
+              id: p.id || `R_${idx}`,
+              targetId: p.id || `L_${idx}`,
+              text: p.right,
+            }));
+            const scrambled = [...items];
+            const seed = (q.id || "").split("").reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
+            for (let i = scrambled.length - 1; i > 0; i--) {
+              const j = (seed + i * 13) % (i + 1);
+              [scrambled[i], scrambled[j]] = [scrambled[j], scrambled[i]];
+            }
+            return scrambled.map((opt, idx) => ({
+              ...opt,
+              label: String.fromCharCode(65 + idx),
+            }));
+          }
+          return (q.options || []).map((o, idx) => ({
+            id: o.id,
+            targetId: o.id,
+            label: o.id || String.fromCharCode(65 + idx),
+            text: o.text.split(" - ")[1] || o.text,
+          }));
+        })();
 
-            {/* Cột Phải (Right items) */}
-            <div className="flex flex-col gap-2">
-              <span className="text-xs font-bold text-cyan-300">Cột B: Đáp án tương ứng (Khu vực thả)</span>
-              {(() => {
-                const rawPairs = (q as any).pairs;
-                if (rawPairs && rawPairs.length > 0) {
-                  const items = rawPairs.map((p: any, idx: number) => ({
-                    id: p.id || `R_${idx}`,
-                    targetId: p.id || `L_${idx}`,
-                    text: p.right,
-                  }));
-                  // Xáo trộn vị trí hiển thị Cột B để tăng tính thử thách
-                  const scrambled = [...items];
-                  const seed = (q.id || "").split("").reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-                  for (let i = scrambled.length - 1; i > 0; i--) {
-                    const j = (seed + i * 13) % (i + 1);
-                    [scrambled[i], scrambled[j]] = [scrambled[j], scrambled[i]];
-                  }
-                  return scrambled.map((opt, idx) => ({
-                    ...opt,
-                    label: String.fromCharCode(65 + idx),
-                  }));
-                }
-                return (q.options || []).map((o, idx) => ({
-                  id: o.id,
-                  targetId: o.id,
-                  label: o.id || String.fromCharCode(65 + idx),
-                  text: o.text.split(" - ")[1] || o.text,
-                }));
-              })().map((opt: { id: string; targetId: string; label: string; text: string }) => {
-                const isPairedWithCurrent = selectedMatchLeft && matchingPairs[selectedMatchLeft] === opt.targetId;
-                const isPairedWithAny = Object.values(matchingPairs).includes(opt.targetId);
-                const isDragOver = dragOverRightTargetId === opt.targetId;
-                const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+        const pairWithTarget = (leftId: string, targetId: string) => {
+          const next = { ...matchingPairs };
+          // Gỡ bất kỳ leftId nào khác đã ghép với targetId này để tránh 1 đáp án nhận nhiều mục
+          Object.keys(next).forEach((k) => {
+            if (next[k] === targetId) delete next[k];
+          });
+          next[leftId] = targetId;
+          setMatchingPairs(next);
+          setSelectedMatchLeft(null);
+          setDraggingMatchLeftId(null);
+        };
 
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    disabled={!canInteract}
-                    onDragOver={(e) => {
-                      if (!canInteract) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "link";
-                      if (dragOverRightTargetId !== opt.targetId) {
-                        setDragOverRightTargetId(opt.targetId);
-                      }
-                    }}
-                    onDragLeave={() => {
-                      if (dragOverRightTargetId === opt.targetId) {
-                        setDragOverRightTargetId(null);
-                      }
-                    }}
-                    onDrop={(e) => {
-                      if (!canInteract) return;
-                      e.preventDefault();
-                      setDragOverRightTargetId(null);
-                      const leftId = draggingMatchLeftId || e.dataTransfer.getData("text/plain") || selectedMatchLeft;
-                      if (leftId) {
-                        const next = { ...matchingPairs, [leftId]: opt.targetId };
-                        setMatchingPairs(next);
-                        setSelectedMatchLeft(null);
+        const unpairLeft = (leftId: string) => {
+          const next = { ...matchingPairs };
+          delete next[leftId];
+          setMatchingPairs(next);
+        };
+
+        return (
+          <div className="flex flex-col gap-3">
+            <p className="text-xs text-muted-foreground italic">
+              💡 Hướng dẫn: Kéo thả từ cột A sang cột B, hoặc nhấn chọn 1 mục ở cột A rồi chọn mục tương ứng ở cột B để ghép cặp.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Cột Trái (Left items hoặc Mục cần ghép) */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-amber-300">Cột A: Mục cần ghép (Kéo thả hoặc Nhấn chọn)</span>
+                {leftItems.map((item: { id: string; text: string; index: number }) => {
+                  const matchedTargetId = matchingPairs[item.id];
+                  const matchedRight = rightItems.find((r) => r.targetId === matchedTargetId);
+                  const isSelectedLeft = selectedMatchLeft === item.id;
+                  const isDraggingThis = draggingMatchLeftId === item.id;
+                  const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      draggable={canInteract}
+                      onDragStart={(e) => {
+                        if (!canInteract) return;
+                        setDraggingMatchLeftId(item.id);
+                        setSelectedMatchLeft(item.id);
+                        e.dataTransfer.effectAllowed = "link";
+                        try {
+                          e.dataTransfer.setData("text/plain", item.id);
+                        } catch {}
+                      }}
+                      onDragEnd={() => {
                         setDraggingMatchLeftId(null);
-                      }
-                    }}
-                    onClick={() => {
-                      if (!selectedMatchLeft || !canAnswerThisQuestion()) return;
-                      const next = { ...matchingPairs, [selectedMatchLeft]: opt.targetId };
-                      setMatchingPairs(next);
-                      setSelectedMatchLeft(null);
-                    }}
-                    className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
-                      isDragOver
-                        ? "border-emerald-400 bg-emerald-500/25 ring-2 ring-emerald-400/50 shadow-lg scale-102"
-                        : isPairedWithCurrent
-                        ? "border-cyan-400 bg-cyan-500/20 ring-2 ring-cyan-400/40"
-                        : isPairedWithAny
-                        ? "border-purple-500/60 bg-purple-500/15 text-purple-200"
-                        : selectedMatchLeft || draggingMatchLeftId
-                        ? "border-cyan-500/40 hover:border-cyan-300 bg-cyan-950/20 animate-pulse"
-                        : "border-border bg-black/20"
-                    }`}
-                  >
-                    <span><strong>{opt.label}.</strong> {opt.text}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+                        setDragOverRightTargetId(null);
+                      }}
+                      disabled={!canInteract}
+                      onClick={() => setSelectedMatchLeft(isSelectedLeft ? null : item.id)}
+                      className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
+                        isDraggingThis
+                          ? "opacity-50 border-dashed border-amber-400 bg-amber-500/20"
+                          : isSelectedLeft
+                          ? "border-amber-400 bg-amber-500/20 shadow-md ring-2 ring-amber-400/40"
+                          : matchedRight
+                          ? "border-emerald-500/70 bg-emerald-950/40 text-emerald-100 ring-1 ring-emerald-500/40"
+                          : "border-border hover:border-amber-400/50 bg-black/20"
+                      }`}
+                    >
+                      <span className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-muted-foreground text-[10px] shrink-0">⋮⋮</span>
+                        <span className="truncate">{item.index}. {item.text}</span>
+                      </span>
+                      {matchedRight && (
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/25 border border-emerald-400/60 text-emerald-300 font-mono font-bold flex items-center gap-1 shadow-sm">
+                            <span>➔</span>
+                            <span className="font-black text-amber-300">{matchedRight.label}.</span>
+                            <span className="max-w-[80px] sm:max-w-[120px] truncate">{matchedRight.text}</span>
+                          </span>
+                          {canInteract && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              title="Hủy ghép cặp này"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                unpairLeft(item.id);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.stopPropagation();
+                                  unpairLeft(item.id);
+                                }
+                              }}
+                              className="w-5 h-5 rounded-full bg-rose-500/20 hover:bg-rose-500/50 text-rose-300 border border-rose-400/40 flex items-center justify-center text-[10px] font-black cursor-pointer transition-colors"
+                            >
+                              ✕
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-          {!revealPayload && !isFinalizedLocally && (
-            <div className="flex gap-2 mt-2">
-              <button
-                type="button"
-                disabled={!canAnswerThisQuestion()}
-                onClick={() => setMatchingPairs({})}
-                className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-              >
-                Đặt lại
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmitMatching}
-                disabled={Object.keys(matchingPairs).length === 0 || !canAnswerThisQuestion()}
-                className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm disabled:opacity-50 transition cursor-pointer"
-              >
-                {answered ? `✓ Cập nhật ghép cặp (${Object.keys(matchingPairs).length} cặp)` : `Xác nhận ghép cặp (${Object.keys(matchingPairs).length} cặp)`}
-              </button>
+              {/* Cột Phải (Right items) */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-bold text-cyan-300">Cột B: Đáp án tương ứng (Khu vực thả)</span>
+                {rightItems.map((opt: { id: string; targetId: string; label: string; text: string }) => {
+                  const isPairedWithCurrent = selectedMatchLeft && matchingPairs[selectedMatchLeft] === opt.targetId;
+                  const pairedLeftId = Object.keys(matchingPairs).find((lId) => matchingPairs[lId] === opt.targetId);
+                  const pairedLeft = pairedLeftId ? leftItems.find((l) => l.id === pairedLeftId) : null;
+                  const isDragOver = dragOverRightTargetId === opt.targetId;
+                  const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      disabled={!canInteract}
+                      onDragOver={(e) => {
+                        if (!canInteract) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "link";
+                        if (dragOverRightTargetId !== opt.targetId) {
+                          setDragOverRightTargetId(opt.targetId);
+                        }
+                      }}
+                      onDragLeave={() => {
+                        if (dragOverRightTargetId === opt.targetId) {
+                          setDragOverRightTargetId(null);
+                        }
+                      }}
+                      onDrop={(e) => {
+                        if (!canInteract) return;
+                        e.preventDefault();
+                        setDragOverRightTargetId(null);
+                        const leftId = draggingMatchLeftId || e.dataTransfer.getData("text/plain") || selectedMatchLeft;
+                        if (leftId) {
+                          pairWithTarget(leftId, opt.targetId);
+                        }
+                      }}
+                      onClick={() => {
+                        if (!selectedMatchLeft || !canAnswerThisQuestion()) return;
+                        pairWithTarget(selectedMatchLeft, opt.targetId);
+                      }}
+                      className={`p-2.5 rounded-xl border-2 text-left text-xs font-semibold transition-all flex items-center justify-between gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed select-none ${
+                        isDragOver
+                          ? "border-emerald-400 bg-emerald-500/25 ring-2 ring-emerald-400/50 shadow-lg scale-102"
+                          : isPairedWithCurrent
+                          ? "border-cyan-400 bg-cyan-500/20 ring-2 ring-cyan-400/40"
+                          : pairedLeft
+                          ? "border-cyan-500/70 bg-cyan-950/40 text-cyan-100 ring-1 ring-cyan-500/40"
+                          : selectedMatchLeft || draggingMatchLeftId
+                          ? "border-cyan-500/40 hover:border-cyan-300 bg-cyan-950/20 animate-pulse"
+                          : "border-border bg-black/20"
+                      }`}
+                    >
+                      <span className="truncate"><strong>{opt.label}.</strong> {opt.text}</span>
+                      {pairedLeft && (
+                        <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/25 border border-cyan-400/60 text-cyan-200 font-mono font-bold flex items-center gap-1 shadow-sm">
+                            <span>←</span>
+                            <span className="font-black text-amber-300">{pairedLeft.index}.</span>
+                            <span className="max-w-[70px] sm:max-w-[110px] truncate">{pairedLeft.text}</span>
+                          </span>
+                          {canInteract && (
+                            <span
+                              role="button"
+                              tabIndex={0}
+                              title="Hủy ghép cặp này"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                unpairLeft(pairedLeft.id);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.stopPropagation();
+                                  unpairLeft(pairedLeft.id);
+                                }
+                              }}
+                              className="w-5 h-5 rounded-full bg-rose-500/20 hover:bg-rose-500/50 text-rose-300 border border-rose-400/40 flex items-center justify-center text-[10px] font-black cursor-pointer transition-colors"
+                            >
+                              ✕
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </div>
-      ) : q.type === "DRAG_DROP" ? (
+
+            {/* Khay Chip Tóm Tắt Các Cặp Đã Ghép */}
+            {Object.keys(matchingPairs).length > 0 && (
+              <div className="p-2.5 rounded-xl bg-slate-900/90 border border-emerald-500/40 shadow-inner flex flex-col gap-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1">
+                    <span>🔗</span> Các cặp đã ghép ({Object.keys(matchingPairs).length}/{leftItems.length}):
+                  </span>
+                  {!revealPayload && !isFinalizedLocally && canAnswerThisQuestion() && (
+                    <span className="text-[10px] text-muted-foreground italic">Nhấn ✕ để gỡ nhanh cặp</span>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {leftItems
+                    .filter((l) => matchingPairs[l.id])
+                    .map((l) => {
+                      const r = rightItems.find((item) => item.targetId === matchingPairs[l.id]);
+                      if (!r) return null;
+                      const canInteract = !isFinalizedLocally && !Boolean(revealPayload) && canAnswerThisQuestion();
+                      return (
+                        <div
+                          key={l.id}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-500/50 text-[11px] text-emerald-200 font-medium shadow-sm"
+                        >
+                          <span className="font-bold text-amber-300">{l.index}. {l.text}</span>
+                          <span className="text-emerald-400 font-black">➔</span>
+                          <span className="font-bold text-cyan-300">{r.label}. {r.text}</span>
+                          {canInteract && (
+                            <button
+                              type="button"
+                              onClick={() => unpairLeft(l.id)}
+                              className="ml-1 w-4 h-4 rounded-full bg-rose-500/30 hover:bg-rose-500/70 text-rose-200 flex items-center justify-center text-[9px] font-black cursor-pointer transition-colors"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {!revealPayload && !isFinalizedLocally && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  disabled={!canAnswerThisQuestion()}
+                  onClick={() => setMatchingPairs({})}
+                  className="px-3 py-2.5 rounded-xl glass hover:bg-white/10 text-xs font-semibold text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Đặt lại
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitMatching}
+                  disabled={Object.keys(matchingPairs).length === 0 || !canAnswerThisQuestion()}
+                  className="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 font-bold text-xs sm:text-sm disabled:opacity-50 transition cursor-pointer"
+                >
+                  {answered ? `✓ Cập nhật ghép cặp (${Object.keys(matchingPairs).length} cặp)` : `Xác nhận ghép cặp (${Object.keys(matchingPairs).length} cặp)`}
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })() : q.type === "DRAG_DROP" ? (
         <div className="flex flex-col gap-2.5">
           <p className="text-xs text-muted-foreground italic">
             💡 Hướng dẫn: Kéo thả trực tiếp các ô hoặc sử dụng nút ⬆️ / ⬇️ để sắp xếp thứ tự từ trên xuống dưới.

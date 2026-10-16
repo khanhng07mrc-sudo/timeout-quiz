@@ -208,7 +208,8 @@ export default function MysteryQuestBoard({
     setOptimisticOpenedIds((prev) => {
       if (miniGameType === "MEMORY_PAIRS") {
         if (isPenaltySurvivalMode) {
-          return new Set([...serverOpened, ...pendingFlippedIdsRef.current, ...prev]);
+          const kept = new Set((memoryPairsState?.keptBombTileIds || []).map(Number));
+          return new Set([...serverOpened, ...kept, ...pendingFlippedIdsRef.current]);
         }
 
         const serverHasActiveFlip = Boolean(
@@ -397,11 +398,13 @@ export default function MysteryQuestBoard({
     if (target === undefined || target === null) {
       wheelPrevAngleRef.current = 0;
       setClientWheelAngle(0);
+      lastSnapTimeRef.current = 0;
+      setNeedleDeflectionDeg(0);
       if (wheelRef.current) {
         wheelRef.current.style.transform = "rotate(0deg)";
       }
       if (needleRef.current) {
-        needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+        needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
       }
       soundManager.stopWheelSpinMusic(150);
       return;
@@ -422,9 +425,10 @@ export default function MysteryQuestBoard({
       if (!tarotState?.isWheelSpinning && !isWheelSpinningOptimistic && tarotFlyPhase === "IDLE") {
         setIsWheelZoomedIn(false);
         setWheelZoomDurationMs(800);
+        lastSnapTimeRef.current = 0;
         setNeedleDeflectionDeg(0);
         if (needleRef.current) {
-          needleRef.current.style.transform = "rotate(0deg) scale(1.06)";
+          needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
         }
       }
       return;
@@ -442,6 +446,8 @@ export default function MysteryQuestBoard({
     let finishedChimePlayed = false;
 
     // 1. Khởi tạo kim thẳng đứng 0 độ tuyệt đối và bánh xe ở góc startAngle
+    lastSnapTimeRef.current = 0;
+    setNeedleDeflectionDeg(0);
     if (wheelRef.current) {
       wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
     }
@@ -501,15 +507,18 @@ export default function MysteryQuestBoard({
           // Pha 1: 1/3 thân dưới kim tiếp xúc chốt, chốt đẩy kim nghiêng dần sang PHẢI (+deg)
           const contactProgress = 1.0 - (pegDistToSnap / contactWindow);
           needleAngle = 22.0 * Math.pow(contactProgress, 1.15);
-        } else {
+        } else if (lastSnapTimeRef.current > 0) {
           // Pha 2: Ngay khi trượt khỏi chốt, kim bật giật cực nhanh sang TRÁI (-14°),
           // rồi nảy nhẹ sang PHẢI (+2.3°), sau đó tắt dần về trạng thái CÂN BẰNG (0°) trong ~80ms
-          const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
+          const dt = (now - lastSnapTimeRef.current) / 1000;
           if (dt < 0.085) {
             needleAngle = -14.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
           } else {
             needleAngle = 0;
           }
+        } else {
+          // Chưa có chốt nào trượt qua: Luôn giữ thẳng đứng 0° cân bằng tuyệt đối
+          needleAngle = 0;
         }
       }
 
@@ -606,6 +615,7 @@ export default function MysteryQuestBoard({
       if (memoryPairsState?.promptSecondChance) return;
       if (memoryPairsState?.matchedPairKey || optimisticMatchedPairKey) return;
       if (
+        !isPenaltySurvivalMode &&
         (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 4) &&
         !memoryPairsState?.isBombRescueActive
       ) {
@@ -616,7 +626,15 @@ export default function MysteryQuestBoard({
       const isHazardKey = (k?: string | null) =>
         Boolean(k && (k.startsWith("PAIR_BOMB") || k.startsWith("PAIR_TRAP") || k === "PAIR_THE_TOWER" || k === "PAIR_THE_KNIGHT" || k === "PAIR_THE_DEVIL" || k === "PAIR_THE_HANGED_MAN"));
 
-      if (!memoryPairsState?.isBombRescueActive) {
+      if (isPenaltySurvivalMode) {
+        // Trong chế độ Sinh Tử (Board Persistence): kiểm tra xem thẻ này có khớp với bất kỳ thẻ nào đã mở trên bàn không
+        const matchingPrior = tiles.find(
+          (t) => (t.isOpened || optimisticOpenedIds.has(t.id)) && Number(t.id) !== Number(tile.id) && t.pairKey && t.pairKey === tile.pairKey
+        );
+        if (matchingPrior?.pairKey) {
+          setOptimisticMatchedPairKey(matchingPrior.pairKey);
+        }
+      } else if (!memoryPairsState?.isBombRescueActive) {
         const priorFlippedId = memoryPairsState?.firstFlippedTileId;
         if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
           const fId = Number(priorFlippedId);
@@ -1363,7 +1381,7 @@ export default function MysteryQuestBoard({
                     )}
                     <span className="font-mono font-bold text-amber-300 px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[11px]">
                       {isPenaltySurvivalMode
-                        ? `Lượt lật: ${memoryPairsState?.attemptsUsed ?? 0}`
+                        ? `Thẻ đã mở: ${memoryPairsState?.attemptsUsed ?? 0}`
                         : `Lượt lật: ${memoryPairsState?.attemptsUsed ?? 0}/${memoryPairsState?.maxAttempts ?? 5}`}
                     </span>
                   </div>
@@ -1378,7 +1396,7 @@ export default function MysteryQuestBoard({
                   </p>
                 ) : isPenaltySurvivalMode ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
-                    💀 SUDDEN DEATH: Không giới hạn số lượt! Hãy lật các cặp thẻ để tìm kiếm cơ hội sống sót. Cặp thẻ trùng đầu tiên sẽ định đoạt: 🕊️ Thoát Hiểm / 🃏 Chàng Khờ (bảo toàn điểm & tim) vs 💀 Bẫy & Bom (nhận hình phạt)!
+                    💀 SUDDEN DEATH: Không giới hạn số lượt! Hãy lật các thẻ để tìm kiếm cơ hội sống sót. Cặp thẻ trùng đầu tiên trên bàn cờ sẽ định đoạt: 🕊️ Thoát Hiểm / 🃏 Chàng Khờ (bảo toàn điểm & tim) vs 💀 Bẫy & Bom (nhận hình phạt)!
                   </p>
                 ) : (memoryPairsState?.keptBombTileIds && memoryPairsState.keptBombTileIds.length > 0) ? (
                   <p className="text-[11px] text-rose-300 font-bold leading-snug">
@@ -2909,8 +2927,8 @@ export default function MysteryQuestBoard({
                           const degPerSeg = 360 / segCount;
                           const theta1 = (i * degPerSeg * Math.PI) / 180;
                           const theta2 = ((i + 1) * degPerSeg * Math.PI) / 180;
-                          // Mở rộng lòng vòng quay sát mép viền ngoài tối đa (r = 214)
-                          const r = 214;
+                          // Lòng vòng quay khớp sát mép trong viền vàng (r = 196)
+                          const r = 196;
                           const cx = 220;
                           const cy = 220;
                           const x1 = cx + r * Math.sin(theta1);
@@ -2927,13 +2945,12 @@ export default function MysteryQuestBoard({
                             Boolean(isPenaltySurvivalMode)
                           );
 
-                          // Peg position at segment divider boundary theta1 (rPeg = 207)
-                          const rPeg = 207;
+                          // Chốt kim loại crom 3D nổi bật 100% ở rPeg = 190, không bị viền che
+                          const rPeg = 190;
                           const pegX = cx + rPeg * Math.sin(theta1);
                           const pegY = cy - rPeg * Math.cos(theta1);
 
                           // Wedge Content Formatting:
-                          // Chữ nhỏ gọn vừa vặn, dấu + / - bọc trong hình tròn màu sáng cạnh icon Tarot
                           const cleanLabel = displayInfo.mainLabel.trim();
                           const hasSign = cleanLabel.startsWith("+") || cleanLabel.startsWith("-");
                           const signChar = hasSign ? cleanLabel[0] : "";
@@ -2941,8 +2958,8 @@ export default function MysteryQuestBoard({
                           const isNumeric = /^\d+$/.test(numericPart);
                           const numericDigits = isNumeric ? numericPart.split("") : [];
                           const labelLen = cleanLabel.length;
-                          const radialMainFontSize = labelLen <= 5 ? "11.5" : labelLen <= 9 ? "10" : "8.5";
-                          const ySpokeCenter = cy - 116;
+                          const radialMainFontSize = labelLen <= 5 ? "11" : labelLen <= 9 ? "9.5" : "8";
+                          const ySpokeCenter = cy - 106;
 
                           return (
                             <g key={seg.index}>
@@ -2969,7 +2986,7 @@ export default function MysteryQuestBoard({
                               {/* Wedge Content (Icon & Radial Upright Stacked Digits or Single Text Line) */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
                                 {/* Outer Accent Pin */}
-                                <circle cx={cx} cy={cy - 198} r="1.3" fill={symbolColor} opacity="0.8" />
+                                <circle cx={cx} cy={cy - 182} r="1.3" fill={symbolColor} opacity="0.8" />
 
                                 {/* Arcana Vector Line-Art Icon + Sign Badge (nếu có dấu + hoặc -) */}
                                 {hasSign ? (
@@ -2977,7 +2994,7 @@ export default function MysteryQuestBoard({
                                     {/* Icon lệch trái một chút để nhường chỗ cho badge dấu */}
                                     <svg
                                       x={cx - 18}
-                                      y={cy - 184}
+                                      y={cy - 169}
                                       width="19"
                                       height="19"
                                       viewBox="0 0 32 32"
@@ -2988,7 +3005,7 @@ export default function MysteryQuestBoard({
                                     {/* Hình tròn màu sáng bọc dấu màu tối nằm ngay cạnh icon Tarot */}
                                     <circle
                                       cx={cx + 9}
-                                      cy={cy - 174.5}
+                                      cy={cy - 159.5}
                                       r="6.8"
                                       fill={signChar === "+" ? "#ffffff" : "#fee2e2"}
                                       stroke="#0f172a"
@@ -2998,7 +3015,7 @@ export default function MysteryQuestBoard({
                                     {/* Vector nét chuẩn tâm 100% không phụ thuộc font chữ */}
                                     {signChar === "+" ? (
                                       <path
-                                        d={`M ${cx + 9 - 3.2} ${cy - 174.5} L ${cx + 9 + 3.2} ${cy - 174.5} M ${cx + 9} ${cy - 174.5 - 3.2} L ${cx + 9} ${cy - 174.5 + 3.2}`}
+                                        d={`M ${cx + 9 - 3.2} ${cy - 159.5} L ${cx + 9 + 3.2} ${cy - 159.5} M ${cx + 9} ${cy - 159.5 - 3.2} L ${cx + 9} ${cy - 159.5 + 3.2}`}
                                         stroke="#0f172a"
                                         strokeWidth="2.2"
                                         strokeLinecap="round"
@@ -3006,7 +3023,7 @@ export default function MysteryQuestBoard({
                                       />
                                     ) : (
                                       <path
-                                        d={`M ${cx + 9 - 3.2} ${cy - 174.5} L ${cx + 9 + 3.2} ${cy - 174.5}`}
+                                        d={`M ${cx + 9 - 3.2} ${cy - 159.5} L ${cx + 9 + 3.2} ${cy - 159.5}`}
                                         stroke="#0f172a"
                                         strokeWidth="2.2"
                                         strokeLinecap="round"
@@ -3017,7 +3034,7 @@ export default function MysteryQuestBoard({
                                 ) : (
                                   <svg
                                     x={cx - 10}
-                                    y={cy - 184}
+                                    y={cy - 169}
                                     width="20"
                                     height="20"
                                     viewBox="0 0 32 32"
@@ -3098,7 +3115,7 @@ export default function MysteryQuestBoard({
                         })}
 
                         {/* ── Outer & Inner Sacred Geometry Rings ── */}
-                        <circle cx="220" cy="220" r="204" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
+                        <circle cx="220" cy="220" r="186" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
                         <circle cx="220" cy="220" r="88" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.35" />
 
                         {/* ── 3D Center Hub (Elevated Tiered Obsidian Dome) ── */}
@@ -3775,7 +3792,7 @@ export default function MysteryQuestBoard({
             memoryPairsState?.promptSecondChance ||
             effectiveMatchedPairKey ||
             phase === "TURN_SUMMARY" ||
-            ((memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 4) && !memoryPairsState?.isBombRescueActive)
+            (!isPenaltySurvivalMode && (memoryPairsState?.attemptsUsed ?? 0) >= (memoryPairsState?.maxAttempts ?? 4) && !memoryPairsState?.isBombRescueActive)
           );
 
           const shouldDimBoard = Boolean(memoryPairsState?.promptSecondChance);
@@ -3798,7 +3815,7 @@ export default function MysteryQuestBoard({
 
                 const priorFlippedId = memoryPairsState?.firstFlippedTileId;
                 let isAlreadyAttemptedPair = false;
-                if (priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
+                if (!isPenaltySurvivalMode && priorFlippedId && Number(priorFlippedId) !== Number(tile.id)) {
                   const fId = Number(priorFlippedId);
                   const sId = Number(tile.id);
                   const pairMoveKey = `${Math.min(fId, sId)}-${Math.max(fId, sId)}`;

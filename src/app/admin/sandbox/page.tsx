@@ -2728,11 +2728,11 @@ export default function AdminSandboxPage() {
         roomStateRef.current = nextRoomState;
         setRoomState(nextRoomState);
         syncToIframes({ roomState: nextRoomState, mysteryQuestState: updatedState });
-        if (updatedState.turnFinishedReason === "PAIR_MATCHED") {
-          addLog(`🎉 [${activeTeam.name}] GHÉP CẶP THÀNH CÔNG: ${updatedState.storyResult?.rewardText || ""} (+${finalScoreDelta || 0}đ)`);
+        if (updatedState.turnFinishedReason === "PAIR_MATCHED" || updatedState.turnFinishedReason === "SURVIVAL_ESCAPE") {
+          addLog(`🎉 [${activeTeam.name}] ${updatedState.turnFinishedReason === "SURVIVAL_ESCAPE" ? "THOÁT HIỂM THÀNH CÔNG" : "GHÉP CẶP THÀNH CÔNG"}: ${updatedState.storyResult?.rewardText || ""} (+${finalScoreDelta || 0}đ)`);
           soundManager.playCorrect();
-        } else if (isBomb) {
-          addLog(`💥 [${activeTeam.name}] dẫm phải BOM ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || ""}`);
+        } else if (isBomb || updatedState.turnFinishedReason === "SURVIVAL_FAILED") {
+          addLog(`💥 [${activeTeam.name}] ${updatedState.turnFinishedReason === "SURVIVAL_FAILED" ? "SINH TỬ THẤT BẠI" : "dẫm phải BOM"} ở ô #${tileId}! ${updatedState.bombExploded?.penaltyText || updatedState.storyResult?.rewardText || ""}`);
           soundManager.playWrong();
         } else {
           addLog(`💎 [${activeTeam.name}] lật mở thành công ô #${tileId}! Hũ điểm: ${updatedState.potPoints}đ`);

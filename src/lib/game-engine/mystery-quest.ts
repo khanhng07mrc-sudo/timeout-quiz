@@ -2304,17 +2304,20 @@ export function handleFlipCard({
               t.type === "ESCAPE_SAFE")
         );
 
-      const executeSurvivalEscape = () => {
-        state.tiles.forEach((t) => { t.isOpened = true; });
+      const executeSurvivalEscape = (matchedTile: MysteryTile, priorTile: MysteryTile) => {
+        state.tiles = state.tiles.map((t) => ({ ...t, isOpened: true }));
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "SURVIVAL_ESCAPE";
         const oldScore = team.score || 0;
+        const escapeName = matchedTile.tarotCardKey === "THE_FOOL" || matchedTile.pairKey === "PAIR_THE_FOOL"
+          ? "🃏 Chàng Khờ (The Fool)"
+          : "🕊️ Thoát Hiểm";
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#10b981",
-          rewardText: "🕊️ Kỳ Tích Sinh Tử! Bạn đã ghép thành công cặp Thoát Hiểm, bảo toàn nguyên vẹn điểm số và tim!",
+          rewardText: `🕊️ Kỳ Tích Sinh Tử! Bạn đã ghép thành công cặp ${escapeName} (Thẻ #${priorTile.id} & #${matchedTile.id}), bảo toàn nguyên vẹn điểm số (${oldScore}đ) và tim!`,
           scoreDelta: 0,
           oldScore,
           newScore: oldScore,
@@ -2327,8 +2330,8 @@ export function handleFlipCard({
         };
       };
 
-      const executeSurvivalPenalty = (penaltyKey: string) => {
-        state.tiles.forEach((t) => { t.isOpened = true; });
+      const executeSurvivalPenalty = (penaltyKey: string, matchedTile: MysteryTile, priorTile: MysteryTile) => {
+        state.tiles = state.tiles.map((t) => ({ ...t, isOpened: true }));
 
         const isTower = penaltyKey?.includes("THE_TOWER") || penaltyKey === "PAIR_TRAP_BASE";
         const heartsRecord = { ...(state.teamHearts || {}) };
@@ -2349,7 +2352,7 @@ export function handleFlipCard({
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `⚡ Ghép trúng Cặp Tòa Tháp Sụp Đổ! Chế độ Sinh Tử phạt trừ ${penalty} điểm (100% điểm gốc câu hỏi) và mất -1 ❤️ (còn ${newHearts} ❤️)!`,
+            rewardText: `⚡ Ghép trúng Cặp Tòa Tháp Sụp Đổ (Thẻ #${priorTile.id} & #${matchedTile.id})! Chế độ Sinh Tử phạt trừ ${penalty} điểm (100% điểm gốc câu hỏi) và mất -1 ❤️ (còn ${newHearts} ❤️)!`,
             scoreDelta: -penalty,
             oldScore,
             newScore,
@@ -2373,7 +2376,7 @@ export function handleFlipCard({
           allTeams,
           storyDescription: `Ghép trúng ${
             bombType === "BOMB_SMOKE" ? "Bom Khói" : bombType === "BOMB_CHARITY" ? "Bom Tặng" : "Bom Tối"
-          }!`,
+          } (Thẻ #${priorTile.id} & #${matchedTile.id})!`,
           baseQuestionPoints: state.baseQuestionPoints,
           isSurvivalPenalty: true,
         });
@@ -2388,7 +2391,7 @@ export function handleFlipCard({
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `💥 ${outcome.bombExploded.title}: ${outcome.penaltyText} (Mất -1 ❤️ Sinh Tử, còn ${newHearts} ❤️)`,
+          rewardText: `💥 ${outcome.bombExploded.title} (Thẻ #${priorTile.id} & #${matchedTile.id}): ${outcome.penaltyText} (Mất -1 ❤️ Sinh Tử, còn ${newHearts} ❤️)`,
           scoreDelta: -outcome.penalty,
           oldScore,
           newScore,
@@ -2411,47 +2414,40 @@ export function handleFlipCard({
       );
       state.lastFlippedTile = tile;
 
-      // Bước 1: Lật lá thứ 1
-      if (!memState.firstFlippedTileId) {
-        memState.firstFlippedTileId = tile.id;
+      memState.attemptsUsed = (memState.attemptsUsed || 0) + 1;
+      memState.keptBombTileIds = Array.from(new Set([...(memState.keptBombTileIds || []), tile.id]));
+      memState.faceUpPenaltyTileIds = Array.from(new Set([...(memState.faceUpPenaltyTileIds || []), tile.id]));
+
+      // Kiểm tra xem trên bàn cờ ĐÃ CÓ thẻ nào đang mở cùng pairKey với thẻ vừa lật không!
+      const matchingPriorTile = state.tiles.find(
+        (t) => t.isOpened && Number(t.id) !== numTileId && t.pairKey && t.pairKey === tile.pairKey
+      );
+
+      if (matchingPriorTile) {
+        // CẶP ĐẦU TIÊN ĐÃ KHỚP! (Board Persistence)
+        memState.matchedPairKey = tile.pairKey;
+        memState.firstFlippedTileId = matchingPriorTile.id;
+        memState.secondFlippedTileId = tile.id;
+        memState.isMismatchResolving = false;
         state.memoryPairsState = { ...memState };
-        return {
-          updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
-          isBomb: false,
-          scorePenalty: 0,
-        };
-      }
 
-      // Bước 2: Lật lá thứ 2
-      if (Number(memState.firstFlippedTileId) === numTileId) {
-        return { updatedState: state, isBomb: false, scorePenalty: 0 };
-      }
-
-      memState.secondFlippedTileId = tile.id;
-      const firstTile = state.tiles.find((t) => Number(t.id) === Number(memState.firstFlippedTileId));
-      const secondTile = tile;
-
-      memState.attemptsUsed += 1;
-      const isMatch = Boolean(firstTile && secondTile && firstTile.pairKey === secondTile.pairKey);
-
-      if (isMatch && firstTile) {
-        // Cặp đầu tiên đã ghép trúng!
-        memState.matchedPairKey = firstTile.pairKey;
-        if (isEscapeTile(firstTile)) {
-          return executeSurvivalEscape();
+        if (isEscapeTile(tile)) {
+          return executeSurvivalEscape(tile, matchingPriorTile);
         } else {
-          return executeSurvivalPenalty(firstTile.pairKey || "PAIR_BOMB_DARK");
+          return executeSurvivalPenalty(tile.pairKey || "PAIR_BOMB_DARK", tile, matchingPriorTile);
         }
       }
 
-      // Không trùng khớp: Reset 2 lá úp lại, người chơi tiếp tục thử lượt sau (Sudden Death)
-      memState.isMismatchResolving = true;
+      // Chưa có thẻ nào cùng cặp: lá bài này tiếp tục giữ ngửa trên bàn, người chơi tiếp tục click lá tiếp theo!
+      memState.firstFlippedTileId = tile.id;
+      memState.secondFlippedTileId = null;
+      memState.isMismatchResolving = false;
       state.memoryPairsState = { ...memState };
       return {
         updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
         isBomb: false,
         scorePenalty: 0,
-        shouldResetMismatchedCards: true,
+        shouldResetMismatchedCards: false,
       };
     }
 

@@ -2630,6 +2630,12 @@ function handleFlipCard({
         };
       }
       if (penaltyKey === "PAIR_THE_FOOL") {
+        state.bombExploded = {
+          type: "SMOKE",
+          title: "\u{1F0CF} K\u1EBA KH\u1EDC (THE FOOL)!",
+          description: "Gh\xE9p tr\xFAng qu\u1EBB b\xE0i K\u1EBB Kh\u1EDD trung l\u1EADp. L\u01B0\u1EE3t k\u1EBFt th\xFAc an to\xE0n m\xE0 kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m.",
+          penaltyText: "Kh\xF4ng b\u1ECB tr\u1EEB \u0111i\u1EC3m (\xB10\u0111), k\u1EBFt th\xFAc l\u01B0\u1EE3t thi."
+        };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         state.potPoints = 0;
@@ -2681,6 +2687,12 @@ function handleFlipCard({
       } else if (penaltyKey === "PAIR_THE_TOWER" || penaltyKey === "PAIR_TRAP_BASE") {
         const penalty = riskTier === "UNDERDOG" ? 0 : state.baseQuestionPoints || 10;
         state.potPoints = 0;
+        state.bombExploded = {
+          type: penalty === 0 ? "SMOKE" : "MINOR",
+          title: "\u26A1 TH\xC1P B\u1EAAY S\u1EE4P \u0110\u1ED4 (THE TOWER)!",
+          description: "Gh\xE9p tr\xFAng c\u1EB7p Th\xE1p B\u1EABy S\u1EE5p \u0110\u1ED5 mang n\u0103ng l\u01B0\u1EE3ng h\u1ED7n lo\u1EA1n v\xE0 s\u1EE5p \u0111\u1ED5!",
+          penaltyText: penalty === 0 ? "Th\u1EBF tr\u1EADn y\u1EBFu th\u1EBF b\u1EA3o h\u1ED9 n\xE9 ph\u1EA1t an to\xE0n, \u0111i\u1EC3m s\u1ED1 \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n." : `B\u1ECB ph\u1EA1t tr\u1EEB -${penalty} \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi t\u1EEB t\u1ED5ng \u0111i\u1EC3m.`
+        };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         const oldScore = team.score || 0;

@@ -2537,6 +2537,12 @@ export function handleFlipCard({
 
       if (penaltyKey === "PAIR_THE_FOOL") {
         // Cặp Kẻ Khờ: Bẫy trung lập không trừ điểm (±0đ), nhưng kết thúc lượt chơi (Turn Over)!
+        state.bombExploded = {
+          type: "SMOKE",
+          title: "🃏 KẺ KHỜ (THE FOOL)!",
+          description: "Ghép trúng quẻ bài Kẻ Khờ trung lập. Lượt kết thúc an toàn mà không bị trừ điểm.",
+          penaltyText: "Không bị trừ điểm (±0đ), kết thúc lượt thi.",
+        };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         state.potPoints = 0;
@@ -2595,6 +2601,14 @@ export function handleFlipCard({
         // Cặp The Tower / Bẫy Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu Underdog: 0đ)
         const penalty = riskTier === "UNDERDOG" ? 0 : (state.baseQuestionPoints || 10);
         state.potPoints = 0;
+        state.bombExploded = {
+          type: penalty === 0 ? "SMOKE" : "MINOR",
+          title: "⚡ THÁP BẪY SỤP ĐỔ (THE TOWER)!",
+          description: "Ghép trúng cặp Tháp Bẫy Sụp Đổ mang năng lượng hỗn loạn và sụp đổ!",
+          penaltyText: penalty === 0
+            ? "Thế trận yếu thế bảo hộ né phạt an toàn, điểm số được bảo toàn."
+            : `Bị phạt trừ -${penalty} điểm gốc câu hỏi từ tổng điểm.`,
+        };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         const oldScore = team.score || 0;

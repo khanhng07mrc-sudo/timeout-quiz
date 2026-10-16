@@ -1093,6 +1093,8 @@ export interface MysteryQuestState {
   currentTeamRiskTier?: TeamRiskTier;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;
+  smokeDebuffByTeam?: Record<string, boolean>; // Quản lý đội nào đang chịu hiệu ứng khói ở lượt kế tiếp
+  lastSmokePenaltyApplied?: { teamId: string; points: number }; // Ghi nhận mức phạt khói vừa áp dụng trong lượt
   // Push-your-luck pot & minigame state
   potPoints: number; // Điểm tích lũy trong lượt này
   potMultiplier: number; // Hệ số nhân

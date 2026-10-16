@@ -2165,7 +2165,11 @@ export default function AdminSandboxPage() {
           const curMystery = prev.mysteryQuestState;
           if (curMystery.currentTurnTeamId === targetTeamId) {
             if (isCorrect) {
-              const promo = generateMysteryPromoPerk(basePts, curMystery.miniGameType, { teams: prev.teams, currentTeamId: targetTeamId });
+              const promo = generateMysteryPromoPerk(basePts, curMystery.miniGameType, {
+                teams: prev.teams,
+                currentTeamId: targetTeamId,
+                currentRound: curMystery.currentRound ?? 1,
+              });
               nextMystery = {
                 ...curMystery,
                 phase: "DECISION_CHOICE",
@@ -4016,11 +4020,13 @@ export default function AdminSandboxPage() {
         } else if (cType === "STEAL_POINTS" || cType === "STEAL") {
           if (powerupTargetTeamId) {
             const targetT = teams.find((t) => t.id === powerupTargetTeamId);
-            if (targetT) {
+            if (targetT && targetT.score > 0) {
               const stealAmt = Math.min(targetT.score, 30);
               targetT.score -= stealAmt;
               cardTeam.score += stealAmt;
               addLog(`🃏 [${cardTeam.name}] dùng [Cướp điểm]: Cướp ${stealAmt}đ từ [${targetT.name}]!`);
+            } else {
+              addLog(`⚠️ [${cardTeam.name}] dùng [Cướp điểm] không thành công: Mục tiêu không có điểm để cướp! Thẻ được bảo toàn.`);
             }
           }
         } else if (cType === "SWAP_SCORES") {
@@ -5483,6 +5489,7 @@ export default function AdminSandboxPage() {
             const promo = generateMysteryPromoPerk(basePts, curMystery.miniGameType, {
               teams: prev.teams,
               currentTeamId: activeTeamId,
+              currentRound: curMystery.currentRound ?? 1,
             });
             nextMystery = {
               ...curMystery,

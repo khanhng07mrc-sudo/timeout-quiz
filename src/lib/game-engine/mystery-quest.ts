@@ -274,38 +274,23 @@ export function resolveBombOutcome({
   const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
 
   if (bombType === "BOMB_SMOKE") {
-    if (isSurvivalPenalty) {
-      const penalty = Math.min(currentScore, roundToMultipleOfFive(baseQuestionPoints * 0.5));
-      const penaltyText = `Khói mù bao phủ! Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi (-${penalty}đ)!`;
-      return {
-        penalty,
-        penaltyText,
-        giftedPoints: 0,
-        bombExploded: {
-          type: "SMOKE",
-          title: "Bom Khói 💨",
-          description: storyDescription || "Khói mù bao phủ! Chế độ Sinh Tử phạt trừ 50% điểm gốc câu hỏi.",
-          penaltyText,
-          donorTeamId: team.id,
-          donorTeamName: team.name,
-          deductedPoints: penalty,
-        },
-      };
-    }
-
-    const penaltyText = "Mất sạch điểm của câu này. Tổng điểm của đội không đổi.";
+    const rawPenalty = roundToMultipleOfFive(baseQuestionPoints * 0.5);
+    const penalty = Math.min(currentScore, rawPenalty);
+    const penaltyText = penalty > 0
+      ? `Khói mù bao phủ! Mất toàn bộ điểm câu này và bị phạt trừ 50% điểm gốc câu hỏi (-${penalty}đ)!`
+      : `Khói mù bao phủ! Mất toàn bộ điểm câu này (đội đang có 0đ nên không bị trừ thêm).`;
     return {
-      penalty: 0,
+      penalty,
       penaltyText,
       giftedPoints: 0,
       bombExploded: {
         type: "SMOKE",
         title: "Bom Khói 💨",
-        description: storyDescription || "Khói mù bao phủ! Mất toàn bộ điểm tích lũy của câu hiện tại.",
+        description: storyDescription || "Khói mù bao phủ! Mất toàn bộ điểm tích lũy của câu và bị phạt 50% điểm gốc.",
         penaltyText,
         donorTeamId: team.id,
         donorTeamName: team.name,
-        deductedPoints: 0,
+        deductedPoints: penalty,
       },
     };
   }
@@ -460,10 +445,12 @@ export function generateMysteryPromoPerk(
   options?: {
     teams?: MysteryTeamRef[];
     currentTeamId?: string;
+    currentRound?: number;
   }
 ): MysteryPromoPerk {
   const normType = miniGameType ? normalizeMiniGameType(miniGameType) : "PUSH_YOUR_LUCK";
-  const hasOpponentWithScore = Boolean(
+  const currentRound = options?.currentRound ?? 1;
+  const hasOpponentWithScore = currentRound >= 2 && Boolean(
     options?.teams &&
     options.teams.some((t) => t.id !== options.currentTeamId && (t.score || 0) > 0)
   );
@@ -1964,6 +1951,7 @@ export function generateMysteryStageForTurn({
   const promoPerk = generateMysteryPromoPerk(effectiveBasePoints, miniGameType, {
     teams,
     currentTeamId: currentTeam.id,
+    currentRound,
   });
 
   const totalTurns = teams.length * turnsPerTeam;
@@ -2568,25 +2556,32 @@ export function handleFlipCard({
       }
 
       if (penaltyKey === "PAIR_THE_KNIGHT" || penaltyKey === "PAIR_BOMB_SMOKE" || penaltyKey === "PAIR_TRAP") {
-        // Cặp Bom Khói: Mất điểm câu hỏi hiện tại (0đ), bảo toàn tổng điểm (delta = 0)
+        // Cặp Bom Khói: Mất điểm câu hỏi hiện tại và bị phạt 50% điểm gốc câu hỏi
+        const rawPenalty = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+        const penalty = Math.min(team.score || 0, rawPenalty);
         state.bombExploded = {
           type: "SMOKE",
           title: "💨 BOM KHÓI PHÁT NỔ!",
-          description: "Kích hoạt Bom Khói: Mất toàn bộ điểm tích lũy của câu hỏi này (0đ), bảo toàn tổng điểm!",
-          penaltyText: "Mất điểm câu hiện tại, tổng điểm được bảo toàn.",
+          description: "Kích hoạt Bom Khói: Mất toàn bộ điểm tích lũy của câu hỏi này và bị phạt 50% điểm gốc câu hỏi!",
+          penaltyText: penalty > 0
+            ? `Bị phạt trừ 50% điểm gốc câu hỏi (-${penalty}đ).`
+            : "Điểm hiện tại là 0đ nên không bị trừ thêm.",
+          deductedPoints: penalty,
         };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         state.potPoints = 0;
         const oldScore = team.score || 0;
-        const newScore = oldScore;
+        const newScore = Math.max(0, oldScore - penalty);
 
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}💨 Bom Khói kích hoạt! Mất toàn bộ điểm câu hỏi này (0đ), bảo toàn tổng điểm!`,
-          scoreDelta: 0,
+          rewardText: penalty > 0
+            ? `${cancelPrefix}💨 Bom Khói kích hoạt! Mất toàn bộ điểm câu này và bị phạt trừ -${penalty}đ (50% điểm gốc)!`
+            : `${cancelPrefix}💨 Bom Khói kích hoạt! Mất toàn bộ điểm câu hỏi này (đội đang có 0đ nên không bị trừ thêm)!`,
+          scoreDelta: -penalty,
           oldScore,
           newScore,
         };
@@ -2594,8 +2589,8 @@ export function handleFlipCard({
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: true,
-          scorePenalty: 0,
-          finalScoreDelta: 0,
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty,
         };
       } else if (penaltyKey === "PAIR_THE_TOWER" || penaltyKey === "PAIR_TRAP_BASE") {
         // Cặp The Tower / Bẫy Trừ Gốc: Trừ đúng điểm gốc câu hỏi (nếu Underdog: 0đ)
@@ -5348,7 +5343,8 @@ export function handleAncientTarotDraw({
  * - 1 lá Bom Hắc Ám (XV The Devil)
  * - 1 lá Bẫy Sập -1x Điểm gốc (XVI The Tower)
  * - 1 lá Bom Từ Thiện (XII The Hanged Man)
- * - 2 lá Kẻ Khờ ±0đ (0 The Fool, XI Justice)
+ * - 1 lá Kẻ Khờ ±0đ (0 The Fool)
+ * - 1 lá Cán Cân Bình Đẳng (XI Justice)
  */
 export const MAJOR_ARCANA_WHEEL_SEGMENTS: TarotWheelSegment[] = [
   { index: 0, key: "THE_FOOL", nameVi: "Kẻ Khờ", nameEn: "The Fool", icon: "🃏", roman: "0", group: "COMMON", bgColor: "#070510", borderColor: "#b45309", textColor: "#fde68a" },
@@ -5611,9 +5607,14 @@ export function getTarotSegmentDisplayLabel(
     return { mainLabel: "MAY MẮN", colorType: "SPECIAL" };
   }
 
-  // g) 2 lá Mất lượt: 0 Fool & XI Justice
-  if (seg.key === "THE_FOOL" || seg.key === "JUSTICE") {
+  // g) 1 lá Mất lượt: 0 Fool
+  if (seg.key === "THE_FOOL") {
     return { mainLabel: "MẤT LƯỢT", colorType: "NEUTRAL" };
+  }
+
+  // g2) 1 lá Cán Cân Bình Đẳng: XI Justice (+1x cho đội, +0.5x cho đối thủ)
+  if (seg.key === "JUSTICE") {
+    return { mainLabel: "BÌNH ĐẲNG", colorType: "SPECIAL" };
   }
 
   // h) 1 lá Bẫy sập: XVI Tower (-1x điểm)
@@ -5724,7 +5725,8 @@ export function calculateTarotWheelSpin({
  *   + 1 lá Bom Hắc Ám (XV Devil)
  *   + 1 lá Bẫy Sập -1x Điểm gốc (XVI Tower)
  *   + 1 lá Bom Từ Thiện (XII Hanged Man)
- *   + 2 lá Kẻ Khờ ±0đ (0 Fool, XI Justice)
+ *   + 1 lá Kẻ Khờ ±0đ (0 Fool)
+ *   + 1 lá Cán Cân Bình Đẳng (XI Justice)
  * - Hỗ trợ 3 tầng cân bằng động (Vòng 1/2/3+, UNDERDOG/DOMINANT) & Chống cướp liên hoàn.
  */
 export function resolveWheelCardEffect({
@@ -5930,7 +5932,8 @@ export function resolveWheelCardEffect({
     MAJOR_ARCANA_WHEEL_SEGMENTS[0];
 
   // 10 nhóm hiệu ứng cố định chuẩn 22 lá Major Arcana:
-  const isNeutral = cardKey === "THE_FOOL" || cardKey === "JUSTICE"; // 2 lá ±0đ
+  const isNeutral = cardKey === "THE_FOOL"; // 1 lá ±0đ
+  const isSunJustice = cardKey === "JUSTICE"; // Cán Cân Bình Đẳng: +1x cho đội, +0.5x cho đối thủ
   const isSunSmall =
     cardKey === "THE_MAGICIAN" ||
     cardKey === "THE_HIGH_PRIESTESS" ||
@@ -5957,6 +5960,7 @@ export function resolveWheelCardEffect({
     | "NEUTRAL"
     | "SUN_SMALL"
     | "SUN_MEDIUM"
+    | "SUN_JUSTICE"
     | "SUN_TEMPERANCE"
     | "SUN_LARGE"
     | "SUN_RANDOM"
@@ -5970,6 +5974,8 @@ export function resolveWheelCardEffect({
 
   if (isNeutral) {
     effectiveEffectType = "NEUTRAL";
+  } else if (isSunJustice) {
+    effectiveEffectType = "SUN_JUSTICE";
   } else if (isSunSmall) {
     effectiveEffectType = "SUN_SMALL";
   } else if (isSunMedium) {
@@ -6088,6 +6094,35 @@ export function resolveWheelCardEffect({
         isBomb: false,
         scoreDeltas: [{ teamId: team.id, delta: basePoints }],
         rewardText,
+      };
+    }
+
+    case "SUN_JUSTICE": {
+      // XI — Justice: Cán Cân Bình Đẳng!
+      // Đội quay nhận +1x Điểm gốc, đồng thời Cán Cân Công Lý tặng +0.5x Điểm gốc cho TẤT CẢ các đối thủ còn lại!
+      const scoreDelta = basePoints;
+      const pHalf = roundToMultipleOfFive(basePoints * 0.5);
+      const otherRecipients = otherTeams.map((t) => ({ teamId: t.id, teamName: t.name, points: pHalf }));
+      const scoreDeltas = [
+        { teamId: team.id, delta: scoreDelta },
+        ...otherRecipients.map((r) => ({ teamId: r.teamId, delta: r.points })),
+      ];
+      return {
+        drawnCard: {
+          key: cardKey,
+          nameVi: seg.nameVi,
+          nameEn: seg.nameEn,
+          icon: seg.icon,
+          roman: seg.roman,
+          group: "COMMON",
+          scoreDelta,
+          temperanceBonusRecipients: otherRecipients,
+        },
+        finalScoreDelta: scoreDelta,
+        scorePenalty: 0,
+        isBomb: false,
+        scoreDeltas,
+        rewardText: `⚖️ ${seg.nameVi} (${seg.nameEn}): Cán Cân Bình Đẳng! Đội bạn nhận trọn vẹn +${scoreDelta}đ (x1), đồng thời phước lành sẻ chia +${pHalf}đ (x0.5) cho tất cả đối thủ!`,
       };
     }
 
@@ -6653,7 +6688,7 @@ export function handleAncientTarotSpinWheel({
  * Xử lý quyết định Đánh Cược Tarot Gamble (THE_STAR / THE_MOON):
  * - Quay Thêm (spinAgain = true): Quay tiếp vòng quay với cùng bộ 22 lá.
  *   + Kết quả tốt -> nhận kết quả
- *   + Kết quả hòa (FOOL / JUSTICE) -> ±0
+ *   + Kết quả hòa (FOOL) -> ±0
  *   + Trúng tiếp Gamble -> tiếp tục chuỗi gamble
  * - Dừng Lại An Toàn (spinAgain = false): Kết thúc an toàn với +1x điểm gốc câu hỏi (+basePoints).
  */

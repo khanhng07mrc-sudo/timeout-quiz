@@ -3309,6 +3309,24 @@ export function registerSocketHandlers(io: IO) {
         roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
       }
 
+      // RÀNG BUỘC KÍCH HOẠT THẺ STEAL: Chặn dùng nếu không có đối thủ nào đủ điều kiện cướp điểm
+      let stealAmount = 0;
+      let stealTargetTeam: any = null;
+      if (card.type === "STEAL") {
+        const teams = await prisma.team.findMany({
+          where: { roomId: room.id },
+          orderBy: { score: "desc" },
+        });
+        const myTeam = teams.find((t) => t.id === player.teamId);
+        const otherTeams = teams.filter((t) => t.id !== player.teamId);
+        stealTargetTeam = otherTeams[0];
+        stealAmount = stealTargetTeam ? computeStealAmount(stealTargetTeam.score, myTeam?.score ?? 0) : 0;
+        if (!stealTargetTeam || stealAmount <= 0) {
+          socket.emit("error", "Không có đối thủ nào đủ điều kiện để cướp điểm! Thẻ của bạn được bảo toàn.");
+          return;
+        }
+      }
+
       await prisma.powerupCard.update({
         where: { id: cardId },
         data: { used: true, usedAt: new Date(), usedByTeamId: player.teamId },
@@ -3373,22 +3391,13 @@ export function registerSocketHandlers(io: IO) {
           });
         }
       } else if (card.type === "STEAL") {
-        const teams = await prisma.team.findMany({
-          where: { roomId: room.id },
-          orderBy: { score: "desc" },
-        });
-        const leader = teams[0];
-        if (leader && leader.id !== player.teamId) {
-          const myTeam = teams.find((t) => t.id === player.teamId);
-          const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
-          if (amount > 0 && player.teamId) {
-            const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
-            const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
-            io.to(`room:${room.code}`).emit("game:score:update", [
-              { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
-              { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta },
-            ]);
-          }
+        if (stealTargetTeam && stealAmount > 0 && player.teamId) {
+          const leaderRes = await applyScoreDeltaToTeam(stealTargetTeam.id, -stealAmount);
+          const myRes = await applyScoreDeltaToTeam(player.teamId, stealAmount);
+          io.to(`room:${room.code}`).emit("game:score:update", [
+            { teamId: stealTargetTeam.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
+            { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta },
+          ]);
         }
       } else if (card.type === "SKIP") {
         const questions = room.quizBank?.questions ?? [];
@@ -3879,9 +3888,11 @@ export function registerSocketHandlers(io: IO) {
         if (allowed.length === 0) return;
 
         const initialCount = config.powerupCountPerTeam || 2;
-        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
-        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
-        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+        // RÀNG BUỘC VÒNG 1: Tuyệt đối không phát thẻ STEAL ở đợt phát đầu trận (Vòng 1 / Câu 1)
+        const roundOneAllowed = allowed.filter((t) => t !== "STEAL");
+        const sharedAllowed = roundOneAllowed.filter((t) => isSharedPowerup(t));
+        const privateAllowed = roundOneAllowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : roundOneAllowed;
 
         const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
         const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
@@ -3987,6 +3998,16 @@ export function registerSocketHandlers(io: IO) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
+            // RÀNG BUỘC CƯỚP ĐIỂM: Chỉ cho phép phát thẻ STEAL nếu có ít nhất 1 đối thủ đang dẫn trước đủ điều kiện cướp
+            const myScore = team.score || 0;
+            const hasEligibleOpponent = room.teams.some(
+              (other) => !other.isEliminated && other.id !== team.id && computeStealAmount(other.score || 0, myScore) > 0
+            );
+            const teamPrivatePool = hasEligibleOpponent
+              ? safePrivatePool
+              : safePrivatePool.filter((t) => t !== "STEAL");
+            const effectivePrivatePool = teamPrivatePool.length > 0 ? teamPrivatePool : safePrivatePool;
+
             // Check if team is eligible for a rare shared card drop
             const hasShared = team.powerupCards.some((c) => !c.used && isSharedPowerup(c.type as CardType));
             let cardTypeToGive: CardType;
@@ -4000,7 +4021,7 @@ export function registerSocketHandlers(io: IO) {
               cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
               currentSharedTeamCount++;
             } else {
-              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+              cardTypeToGive = effectivePrivatePool[Math.floor(Math.random() * effectivePrivatePool.length)];
             }
 
             await prisma.powerupCard.create({

@@ -59,11 +59,17 @@ export function isPrivatePowerup(cardType: CardType): boolean {
 
 export const DEFAULT_SHARED_POWERUP_PROBABILITY = 0.10; // 10% low drop rate
 
+export interface DistributeCardsOptions {
+  isRoundOne?: boolean;
+  teamScores?: Map<string, number> | Record<string, number>;
+}
+
 /**
  * Distributes power-up cards to teams according to the rules:
  * - Shared power-ups (TIME_PLUS, SKIP) are scarce: at most `sharedQuota` teams in the room get ONE shared card.
  * - Each eligible candidate has a low drop probability (default: 10%), ensuring shared cards remain rare.
  * - Remaining slots for those teams, and ALL slots for other teams, are drawn strictly from private power-ups.
+ * - STEAL card constraint: Never distributed in Round 1 or when no opponent has enough points to be stolen.
  * - Returns a Map of teamId -> CardType[]
  */
 export function distributeCategorizedCardsToTeams(
@@ -71,7 +77,8 @@ export function distributeCategorizedCardsToTeams(
   allowedTypes: CardType[],
   cardsPerTeam: number = 2,
   sharedQuota?: number,
-  sharedProbability: number = DEFAULT_SHARED_POWERUP_PROBABILITY
+  sharedProbability: number = DEFAULT_SHARED_POWERUP_PROBABILITY,
+  options?: DistributeCardsOptions
 ): Map<string, CardType[]> {
   const result = new Map<string, CardType[]>();
   if (teamIds.length === 0 || allowedTypes.length === 0 || cardsPerTeam <= 0) {
@@ -103,13 +110,43 @@ export function distributeCategorizedCardsToTeams(
     const cards: CardType[] = [];
     const isLucky = luckyTeamIds.has(teamId) && sharedAllowed.length > 0;
 
+    let canSteal = !options?.isRoundOne;
+    if (canSteal && options?.teamScores) {
+      const myScore = options.teamScores instanceof Map
+        ? options.teamScores.get(teamId) ?? 0
+        : (options.teamScores as Record<string, number>)[teamId] ?? 0;
+
+      let hasEligibleOpponent = false;
+      if (options.teamScores instanceof Map) {
+        for (const [otherId, otherScore] of options.teamScores.entries()) {
+          if (otherId !== teamId && computeStealAmount(otherScore, myScore) > 0) {
+            hasEligibleOpponent = true;
+            break;
+          }
+        }
+      } else {
+        for (const [otherId, otherScore] of Object.entries(options.teamScores)) {
+          if (otherId !== teamId && computeStealAmount(otherScore, myScore) > 0) {
+            hasEligibleOpponent = true;
+            break;
+          }
+        }
+      }
+      canSteal = hasEligibleOpponent;
+    }
+
+    const teamPrivatePool = canSteal
+      ? safePrivatePool
+      : safePrivatePool.filter((t) => t !== "STEAL");
+    const effectivePrivatePool = teamPrivatePool.length > 0 ? teamPrivatePool : safePrivatePool;
+
     if (isLucky) {
       const randomShared = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
       cards.push(randomShared);
     }
 
     while (cards.length < cardsPerTeam) {
-      const randomPrivate = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+      const randomPrivate = effectivePrivatePool[Math.floor(Math.random() * effectivePrivatePool.length)];
       cards.push(randomPrivate);
     }
 
@@ -236,16 +273,25 @@ export function resolvePowerup({
     }
 
     case "STEAL": {
-      const leader = [...teams].sort((a, b) => b.score - a.score)[0];
-      if (!leader || leader.id === usedByTeam.id) {
+      const otherTeams = teams.filter((t) => t.id !== usedByTeam.id);
+      const leader = [...otherTeams].sort((a, b) => b.score - a.score)[0];
+      if (!leader) {
         return {
           type: cardType,
           description: "No team to steal from!",
-          descriptionVi: "Không có đội nào để cướp điểm!",
+          descriptionVi: "Không có đối thủ nào để cướp điểm!",
           mutations: [],
         };
       }
       const amount = computeStealAmount(leader.score, usedByTeam.score);
+      if (amount <= 0) {
+        return {
+          type: cardType,
+          description: "No team has enough points to steal!",
+          descriptionVi: "Không có đối thủ nào đủ điều kiện để cướp điểm!",
+          mutations: [],
+        };
+      }
       return {
         type: cardType,
         description: `Stole ${amount} points from ${leader.name}!`,

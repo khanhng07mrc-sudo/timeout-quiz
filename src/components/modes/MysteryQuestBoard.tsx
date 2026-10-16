@@ -2589,13 +2589,20 @@ export default function MysteryQuestBoard({
                   textColor: "text-sky-300",
                 };
               case "THE_FOOL":
-              case "JUSTICE":
                 return {
                   gradient: "from-purple-950/40 via-violet-900/30 to-black/90",
                   border: "border-purple-500",
                   glow: "rgba(168, 85, 247, 0.5)",
                   tagColor: "bg-purple-500/20 text-purple-300 border-purple-400/40",
                   textColor: "text-purple-300",
+                };
+              case "JUSTICE":
+                return {
+                  gradient: "from-amber-950/40 via-yellow-900/30 to-black/90",
+                  border: "border-amber-400",
+                  glow: "rgba(251, 191, 36, 0.6)",
+                  tagColor: "bg-amber-500/20 text-amber-300 border-amber-400/40",
+                  textColor: "text-amber-300",
                 };
               case "THE_CHARIOT":
               case "THE_DEATH":
@@ -4313,7 +4320,7 @@ export default function MysteryQuestBoard({
               if (miniGameType === "TAROT_DESTINY" && tarotState?.isDrawn && tarotState?.drawnCard) {
                 const dc = tarotState.drawnCard;
                 if (t.id === currentTurnTeamId) {
-                  if (dc.key === "THE_FOOL" || dc.key === "JUSTICE") {
+                  if (dc.key === "THE_FOOL") {
                     tarotDelta = 0;
                   } else if (dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") {
                     if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
@@ -4333,7 +4340,10 @@ export default function MysteryQuestBoard({
                     } else if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
                       tarotDelta = -(dc.stolenPoints || Math.abs(dc.scoreDelta || 0));
                     }
-                  } else if (dc.key === "TEMPERANCE") {
+                  } else if (dc.temperanceBonusRecipients) {
+                    const rec = dc.temperanceBonusRecipients.find((r: any) => r.teamId === t.id);
+                    if (rec) tarotDelta = rec.points;
+                  } else if (dc.key === "TEMPERANCE" || dc.key === "JUSTICE") {
                     const halfDelta = Math.round((mysteryState?.baseQuestionPoints || 10) * 0.5);
                     tarotDelta = halfDelta;
                   } else if (dc.key === "THE_HANGED_MAN" && dc.darkBombRecipients) {

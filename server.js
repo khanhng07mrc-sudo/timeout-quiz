@@ -966,37 +966,21 @@ function resolveBombOutcome({
   const currentScore = team.score || 0;
   const otherTeams = allTeams.filter((t) => t.id !== team.id && !t.isEliminated);
   if (bombType === "BOMB_SMOKE") {
-    if (isSurvivalPenalty) {
-      const penalty = Math.min(currentScore, roundToMultipleOfFive(baseQuestionPoints * 0.5));
-      const penaltyText3 = `Kh\xF3i m\xF9 bao ph\u1EE7! Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${penalty}\u0111)!`;
-      return {
-        penalty,
-        penaltyText: penaltyText3,
-        giftedPoints: 0,
-        bombExploded: {
-          type: "SMOKE",
-          title: "Bom Kh\xF3i \u{1F4A8}",
-          description: storyDescription || "Kh\xF3i m\xF9 bao ph\u1EE7! Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi.",
-          penaltyText: penaltyText3,
-          donorTeamId: team.id,
-          donorTeamName: team.name,
-          deductedPoints: penalty
-        }
-      };
-    }
-    const penaltyText2 = "M\u1EA5t s\u1EA1ch \u0111i\u1EC3m c\u1EE7a c\xE2u n\xE0y. T\u1ED5ng \u0111i\u1EC3m c\u1EE7a \u0111\u1ED9i kh\xF4ng \u0111\u1ED5i.";
+    const rawPenalty = roundToMultipleOfFive(baseQuestionPoints * 0.5);
+    const penalty = Math.min(currentScore, rawPenalty);
+    const penaltyText2 = penalty > 0 ? `Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y v\xE0 b\u1ECB ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${penalty}\u0111)!` : `Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y (\u0111\u1ED9i \u0111ang c\xF3 0\u0111 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB th\xEAm).`;
     return {
-      penalty: 0,
+      penalty,
       penaltyText: penaltyText2,
       giftedPoints: 0,
       bombExploded: {
         type: "SMOKE",
         title: "Bom Kh\xF3i \u{1F4A8}",
-        description: storyDescription || "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u hi\u1EC7n t\u1EA1i.",
+        description: storyDescription || "Kh\xF3i m\xF9 bao ph\u1EE7! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u v\xE0 b\u1ECB ph\u1EA1t 50% \u0111i\u1EC3m g\u1ED1c.",
         penaltyText: penaltyText2,
         donorTeamId: team.id,
         donorTeamName: team.name,
-        deductedPoints: 0
+        deductedPoints: penalty
       }
     };
   }
@@ -1115,7 +1099,8 @@ function resolveBombOutcome({
 }
 function generateMysteryPromoPerk(_basePoints = 10, miniGameType, options) {
   const normType = miniGameType ? normalizeMiniGameType(miniGameType) : "PUSH_YOUR_LUCK";
-  const hasOpponentWithScore = Boolean(
+  const currentRound = options?.currentRound ?? 1;
+  const hasOpponentWithScore = currentRound >= 2 && Boolean(
     options?.teams && options.teams.some((t) => t.id !== options.currentTeamId && (t.score || 0) > 0)
   );
   let pool = [];
@@ -2169,7 +2154,8 @@ function generateMysteryStageForTurn({
   const miniGameType = forcedMiniGameType ? normalizeMiniGameType(forcedMiniGameType) : getRandomMiniGame(prevMiniGameType);
   const promoPerk = generateMysteryPromoPerk(effectiveBasePoints, miniGameType, {
     teams,
-    currentTeamId: currentTeam.id
+    currentTeamId: currentTeam.id,
+    currentRound
   });
   const totalTurns = teams.length * turnsPerTeam;
   let tiles = [];
@@ -2658,31 +2644,34 @@ function handleFlipCard({
         };
       }
       if (penaltyKey === "PAIR_THE_KNIGHT" || penaltyKey === "PAIR_BOMB_SMOKE" || penaltyKey === "PAIR_TRAP") {
+        const rawPenalty = roundToMultipleOfFive((state.baseQuestionPoints || 10) * 0.5);
+        const penalty = Math.min(team.score || 0, rawPenalty);
         state.bombExploded = {
           type: "SMOKE",
           title: "\u{1F4A8} BOM KH\xD3I PH\xC1T N\u1ED4!",
-          description: "K\xEDch ho\u1EA1t Bom Kh\xF3i: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u h\u1ECFi n\xE0y (0\u0111), b\u1EA3o to\xE0n t\u1ED5ng \u0111i\u1EC3m!",
-          penaltyText: "M\u1EA5t \u0111i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i, t\u1ED5ng \u0111i\u1EC3m \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n."
+          description: "K\xEDch ho\u1EA1t Bom Kh\xF3i: M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m t\xEDch l\u0169y c\u1EE7a c\xE2u h\u1ECFi n\xE0y v\xE0 b\u1ECB ph\u1EA1t 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi!",
+          penaltyText: penalty > 0 ? `B\u1ECB ph\u1EA1t tr\u1EEB 50% \u0111i\u1EC3m g\u1ED1c c\xE2u h\u1ECFi (-${penalty}\u0111).` : "\u0110i\u1EC3m hi\u1EC7n t\u1EA1i l\xE0 0\u0111 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB th\xEAm.",
+          deductedPoints: penalty
         };
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "BOMB_HIT";
         state.potPoints = 0;
         const oldScore = team.score || 0;
-        const newScore = oldScore;
+        const newScore = Math.max(0, oldScore - penalty);
         state.storyResult = {
           teamId: team.id,
           teamName: team.name,
           teamColor: team.color || "#ef4444",
-          rewardText: `${cancelPrefix}\u{1F4A8} Bom Kh\xF3i k\xEDch ho\u1EA1t! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u h\u1ECFi n\xE0y (0\u0111), b\u1EA3o to\xE0n t\u1ED5ng \u0111i\u1EC3m!`,
-          scoreDelta: 0,
+          rewardText: penalty > 0 ? `${cancelPrefix}\u{1F4A8} Bom Kh\xF3i k\xEDch ho\u1EA1t! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u n\xE0y v\xE0 b\u1ECB ph\u1EA1t tr\u1EEB -${penalty}\u0111 (50% \u0111i\u1EC3m g\u1ED1c)!` : `${cancelPrefix}\u{1F4A8} Bom Kh\xF3i k\xEDch ho\u1EA1t! M\u1EA5t to\xE0n b\u1ED9 \u0111i\u1EC3m c\xE2u h\u1ECFi n\xE0y (\u0111\u1ED9i \u0111ang c\xF3 0\u0111 n\xEAn kh\xF4ng b\u1ECB tr\u1EEB th\xEAm)!`,
+          scoreDelta: -penalty,
           oldScore,
           newScore
         };
         return {
           updatedState: { ...state, tiles: [...state.tiles], memoryPairsState: { ...memState } },
           isBomb: true,
-          scorePenalty: 0,
-          finalScoreDelta: 0
+          scorePenalty: penalty,
+          finalScoreDelta: -penalty
         };
       } else if (penaltyKey === "PAIR_THE_TOWER" || penaltyKey === "PAIR_TRAP_BASE") {
         const penalty = riskTier === "UNDERDOG" ? 0 : state.baseQuestionPoints || 10;
@@ -5045,7 +5034,8 @@ function resolveWheelCardEffect({
     };
   }
   const seg = MAJOR_ARCANA_WHEEL_SEGMENTS.find((s) => s.key === cardKey) || MAJOR_ARCANA_WHEEL_SEGMENTS[0];
-  const isNeutral = cardKey === "THE_FOOL" || cardKey === "JUSTICE";
+  const isNeutral = cardKey === "THE_FOOL";
+  const isSunJustice = cardKey === "JUSTICE";
   const isSunSmall = cardKey === "THE_MAGICIAN" || cardKey === "THE_HIGH_PRIESTESS" || cardKey === "THE_HIEROPHANT" || cardKey === "THE_HERMIT" || cardKey === "THE_EMPEROR" || cardKey === "STRENGTH";
   const isSunMedium = cardKey === "THE_EMPRESS" || cardKey === "JUDGEMENT";
   const isSunTemperance = cardKey === "TEMPERANCE";
@@ -5059,6 +5049,8 @@ function resolveWheelCardEffect({
   let effectiveEffectType = "SUN_SMALL";
   if (isNeutral) {
     effectiveEffectType = "NEUTRAL";
+  } else if (isSunJustice) {
+    effectiveEffectType = "SUN_JUSTICE";
   } else if (isSunSmall) {
     effectiveEffectType = "SUN_SMALL";
   } else if (isSunMedium) {
@@ -5150,6 +5142,32 @@ function resolveWheelCardEffect({
         isBomb: false,
         scoreDeltas: [{ teamId: team.id, delta: basePoints }],
         rewardText
+      };
+    }
+    case "SUN_JUSTICE": {
+      const scoreDelta = basePoints;
+      const pHalf = roundToMultipleOfFive(basePoints * 0.5);
+      const otherRecipients = otherTeams.map((t) => ({ teamId: t.id, teamName: t.name, points: pHalf }));
+      const scoreDeltas = [
+        { teamId: team.id, delta: scoreDelta },
+        ...otherRecipients.map((r) => ({ teamId: r.teamId, delta: r.points }))
+      ];
+      return {
+        drawnCard: {
+          key: cardKey,
+          nameVi: seg.nameVi,
+          nameEn: seg.nameEn,
+          icon: seg.icon,
+          roman: seg.roman,
+          group: "COMMON",
+          scoreDelta,
+          temperanceBonusRecipients: otherRecipients
+        },
+        finalScoreDelta: scoreDelta,
+        scorePenalty: 0,
+        isBomb: false,
+        scoreDeltas,
+        rewardText: `\u2696\uFE0F ${seg.nameVi} (${seg.nameEn}): C\xE1n C\xE2n B\xECnh \u0110\u1EB3ng! \u0110\u1ED9i b\u1EA1n nh\u1EADn tr\u1ECDn v\u1EB9n +${scoreDelta}\u0111 (x1), \u0111\u1ED3ng th\u1EDDi ph\u01B0\u1EDBc l\xE0nh s\u1EBB chia +${pHalf}\u0111 (x0.5) cho t\u1EA5t c\u1EA3 \u0111\u1ED1i th\u1EE7!`
       };
     }
     case "SUN_TEMPERANCE": {
@@ -9840,6 +9858,22 @@ function registerSocketHandlers(io2) {
           }
           roomTeamImmunity.set(immunityKey, room.currentQuestion + 1);
         }
+        let stealAmount = 0;
+        let stealTargetTeam = null;
+        if (card.type === "STEAL") {
+          const teams = await prisma.team.findMany({
+            where: { roomId: room.id },
+            orderBy: { score: "desc" }
+          });
+          const myTeam = teams.find((t) => t.id === player.teamId);
+          const otherTeams = teams.filter((t) => t.id !== player.teamId);
+          stealTargetTeam = otherTeams[0];
+          stealAmount = stealTargetTeam ? computeStealAmount(stealTargetTeam.score, myTeam?.score ?? 0) : 0;
+          if (!stealTargetTeam || stealAmount <= 0) {
+            socket.emit("error", "Kh\xF4ng c\xF3 \u0111\u1ED1i th\u1EE7 n\xE0o \u0111\u1EE7 \u0111i\u1EC1u ki\u1EC7n \u0111\u1EC3 c\u01B0\u1EDBp \u0111i\u1EC3m! Th\u1EBB c\u1EE7a b\u1EA1n \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n.");
+            return;
+          }
+        }
         await prisma.powerupCard.update({
           where: { id: cardId },
           data: { used: true, usedAt: /* @__PURE__ */ new Date(), usedByTeamId: player.teamId }
@@ -9899,22 +9933,13 @@ function registerSocketHandlers(io2) {
             });
           }
         } else if (card.type === "STEAL") {
-          const teams = await prisma.team.findMany({
-            where: { roomId: room.id },
-            orderBy: { score: "desc" }
-          });
-          const leader = teams[0];
-          if (leader && leader.id !== player.teamId) {
-            const myTeam = teams.find((t) => t.id === player.teamId);
-            const amount = computeStealAmount(leader.score, myTeam?.score ?? 0);
-            if (amount > 0 && player.teamId) {
-              const leaderRes = await applyScoreDeltaToTeam(leader.id, -amount);
-              const myRes = await applyScoreDeltaToTeam(player.teamId, amount);
-              io2.to(`room:${room.code}`).emit("game:score:update", [
-                { teamId: leader.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
-                { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta }
-              ]);
-            }
+          if (stealTargetTeam && stealAmount > 0 && player.teamId) {
+            const leaderRes = await applyScoreDeltaToTeam(stealTargetTeam.id, -stealAmount);
+            const myRes = await applyScoreDeltaToTeam(player.teamId, stealAmount);
+            io2.to(`room:${room.code}`).emit("game:score:update", [
+              { teamId: stealTargetTeam.id, score: leaderRes.newScore, delta: leaderRes.effectiveDelta },
+              { teamId: player.teamId, score: myRes.newScore, delta: myRes.effectiveDelta }
+            ]);
           }
         } else if (card.type === "SKIP") {
           const questions = room.quizBank?.questions ?? [];
@@ -10344,9 +10369,10 @@ function registerSocketHandlers(io2) {
         ];
         if (allowed.length === 0) return;
         const initialCount = config.powerupCountPerTeam || 2;
-        const sharedAllowed = allowed.filter((t) => isSharedPowerup(t));
-        const privateAllowed = allowed.filter((t) => !isSharedPowerup(t));
-        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : allowed;
+        const roundOneAllowed = allowed.filter((t) => t !== "STEAL");
+        const sharedAllowed = roundOneAllowed.filter((t) => isSharedPowerup(t));
+        const privateAllowed = roundOneAllowed.filter((t) => !isSharedPowerup(t));
+        const safePrivatePool = privateAllowed.length > 0 ? privateAllowed : roundOneAllowed;
         const sharedQuota = config.sharedPowerupTeamQuota ?? (room.teams.length <= 3 ? 1 : 2);
         const sharedProbability = config.sharedPowerupProbability ?? DEFAULT_SHARED_POWERUP_PROBABILITY;
         const teamsWithShared = new Set(
@@ -10437,13 +10463,19 @@ function registerSocketHandlers(io2) {
           if (team.isEliminated) continue;
           const activeUnused = team.powerupCards.filter((c) => !c.used).length;
           if (activeUnused < maxHand) {
+            const myScore = team.score || 0;
+            const hasEligibleOpponent = room.teams.some(
+              (other) => !other.isEliminated && other.id !== team.id && computeStealAmount(other.score || 0, myScore) > 0
+            );
+            const teamPrivatePool = hasEligibleOpponent ? safePrivatePool : safePrivatePool.filter((t) => t !== "STEAL");
+            const effectivePrivatePool = teamPrivatePool.length > 0 ? teamPrivatePool : safePrivatePool;
             const hasShared = team.powerupCards.some((c) => !c.used && isSharedPowerup(c.type));
             let cardTypeToGive;
             if (!hasShared && currentSharedTeamCount < sharedQuota && sharedAllowed.length > 0 && Math.random() < sharedProbability) {
               cardTypeToGive = sharedAllowed[Math.floor(Math.random() * sharedAllowed.length)];
               currentSharedTeamCount++;
             } else {
-              cardTypeToGive = safePrivatePool[Math.floor(Math.random() * safePrivatePool.length)];
+              cardTypeToGive = effectivePrivatePool[Math.floor(Math.random() * effectivePrivatePool.length)];
             }
             await prisma.powerupCard.create({
               data: {

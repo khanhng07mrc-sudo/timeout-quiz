@@ -488,17 +488,28 @@ export default function MysteryQuestBoard({
         soundManager.playWheelPegTick(rawProgress);
       }
 
-      // Vật lý Kim Flipper thuần chốt kim loại chuẩn xác, không bóng ma
+      // ── Vật lý Kim Flipper chân thật chuẩn cơ khí "Chiếc nón kỳ diệu" ──
       let needleAngle = 0;
-      const normAngle = (360 - (currentLiveAngle % 360)) % segAngle;
-      if (normAngle < 3.2) {
-        // Chốt tì vào lưỡi kim (lò xo bị nén uốn cong theo chiều quay)
-        needleAngle = -22 * (1 - normAngle / 3.2);
+      if (elapsed < 60) {
+        // 60ms đầu tiên: Kim luôn giữ thẳng đứng 0° tuyệt đối để bắt đầu mượt mà
+        needleAngle = 0;
       } else {
-        // Kim búng nhả: Dao động tắt dần theta(t) = theta0 * e^(-gamma*dt) * cos(omega*dt)
-        const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
-        if (dt < 0.12) {
-          needleAngle = 18 * Math.exp(-24 * dt) * Math.cos(45 * dt);
+        const pegDistToSnap = segAngle - (currentLiveAngle % segAngle);
+        const contactWindow = 3.6;
+
+        if (pegDistToSnap <= contactWindow) {
+          // Pha 1: 1/3 thân dưới kim tiếp xúc chốt, chốt đẩy kim nghiêng dần sang PHẢI (+deg)
+          const contactProgress = 1.0 - (pegDistToSnap / contactWindow);
+          needleAngle = 22.0 * Math.pow(contactProgress, 1.15);
+        } else {
+          // Pha 2: Ngay khi trượt khỏi chốt, kim bật giật cực nhanh sang TRÁI (-14°),
+          // rồi nảy nhẹ sang PHẢI (+2.3°), sau đó tắt dần về trạng thái CÂN BẰNG (0°) trong ~80ms
+          const dt = (now - (lastSnapTimeRef.current || now)) / 1000;
+          if (dt < 0.085) {
+            needleAngle = -14.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+          } else {
+            needleAngle = 0;
+          }
         }
       }
 
@@ -516,19 +527,11 @@ export default function MysteryQuestBoard({
         wheelPrevAngleRef.current = target;
         wheelSpinAudioTargetRef.current = null;
 
-        // Mô phỏng chính xác "Chiếc nón kỳ diệu" khi dừng ở giữa hai chốt:
-        // Kim tì nghiêng chéo về ô bên phải theo đúng phản lực đàn hồi của chốt
-        const finalNorm = (360 - (target % 360)) % segAngle;
-        let finalNeedle = 0;
-        if (finalNorm < 2.8) {
-          finalNeedle = -15;
-        } else if (finalNorm > segAngle - 2.8) {
-          finalNeedle = 15;
-        } else {
-          finalNeedle = 0;
-        }
+        // Khi bánh xe dừng hẳn: Kim luôn hồi về thẳng đứng 0° cân bằng tuyệt đối
+        // (đảm bảo trước và khi bắt đầu quay của lượt kế tiếp kim luôn ngay ngắn 100%)
+        const finalNeedle = 0;
         if (needleRef.current) {
-          needleRef.current.style.transform = `rotate(${finalNeedle}deg) scale(1.06) translateZ(0)`;
+          needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
         }
         setNeedleDeflectionDeg(finalNeedle);
 
@@ -2751,8 +2754,9 @@ export default function MysteryQuestBoard({
                     {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation */}
                     <div
                       ref={needleRef}
-                      className="absolute -top-5 sm:-top-6 left-1/2 -translate-x-1/2 z-30 origin-top pointer-events-none"
+                      className="absolute -top-[18px] sm:-top-[22px] left-1/2 -translate-x-1/2 z-30 pointer-events-none"
                       style={{
+                        transformOrigin: "50% 22.92%",
                         transform: `rotate(${needleDeflectionDeg}deg) scale(1.06) translateZ(0)`,
                         filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
                         willChange: "transform",
@@ -2905,7 +2909,8 @@ export default function MysteryQuestBoard({
                           const degPerSeg = 360 / segCount;
                           const theta1 = (i * degPerSeg * Math.PI) / 180;
                           const theta2 = ((i + 1) * degPerSeg * Math.PI) / 180;
-                          const r = 194;
+                          // Mở rộng lòng vòng quay sát mép viền ngoài tối đa (r = 214)
+                          const r = 214;
                           const cx = 220;
                           const cy = 220;
                           const x1 = cx + r * Math.sin(theta1);
@@ -2922,13 +2927,13 @@ export default function MysteryQuestBoard({
                             Boolean(isPenaltySurvivalMode)
                           );
 
-                          // Peg position at segment divider boundary theta1
-                          const rPeg = 189;
+                          // Peg position at segment divider boundary theta1 (rPeg = 207)
+                          const rPeg = 207;
                           const pegX = cx + rPeg * Math.sin(theta1);
                           const pegY = cy - rPeg * Math.cos(theta1);
 
                           // Wedge Content Formatting:
-                          // Yêu cầu: Chữ nhỏ lại vừa vặn. Dấu + / - bọc trong hình tròn màu sáng, dấu màu tối, nằm cạnh icon Tarot thay vì để gần tâm.
+                          // Chữ nhỏ gọn vừa vặn, dấu + / - bọc trong hình tròn màu sáng cạnh icon Tarot
                           const cleanLabel = displayInfo.mainLabel.trim();
                           const hasSign = cleanLabel.startsWith("+") || cleanLabel.startsWith("-");
                           const signChar = hasSign ? cleanLabel[0] : "";
@@ -2936,8 +2941,8 @@ export default function MysteryQuestBoard({
                           const isNumeric = /^\d+$/.test(numericPart);
                           const numericDigits = isNumeric ? numericPart.split("") : [];
                           const labelLen = cleanLabel.length;
-                          const radialMainFontSize = labelLen <= 5 ? "11" : labelLen <= 9 ? "9.5" : "8";
-                          const ySpokeCenter = cy - 105;
+                          const radialMainFontSize = labelLen <= 5 ? "11.5" : labelLen <= 9 ? "10" : "8.5";
+                          const ySpokeCenter = cy - 116;
 
                           return (
                             <g key={seg.index}>
@@ -2964,7 +2969,7 @@ export default function MysteryQuestBoard({
                               {/* Wedge Content (Icon & Radial Upright Stacked Digits or Single Text Line) */}
                               <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
                                 {/* Outer Accent Pin */}
-                                <circle cx={cx} cy={cy - 180} r="1.3" fill={symbolColor} opacity="0.8" />
+                                <circle cx={cx} cy={cy - 198} r="1.3" fill={symbolColor} opacity="0.8" />
 
                                 {/* Arcana Vector Line-Art Icon + Sign Badge (nếu có dấu + hoặc -) */}
                                 {hasSign ? (
@@ -2972,7 +2977,7 @@ export default function MysteryQuestBoard({
                                     {/* Icon lệch trái một chút để nhường chỗ cho badge dấu */}
                                     <svg
                                       x={cx - 18}
-                                      y={cy - 168}
+                                      y={cy - 184}
                                       width="19"
                                       height="19"
                                       viewBox="0 0 32 32"
@@ -2983,7 +2988,7 @@ export default function MysteryQuestBoard({
                                     {/* Hình tròn màu sáng bọc dấu màu tối nằm ngay cạnh icon Tarot */}
                                     <circle
                                       cx={cx + 9}
-                                      cy={cy - 158.5}
+                                      cy={cy - 174.5}
                                       r="6.8"
                                       fill={signChar === "+" ? "#ffffff" : "#fee2e2"}
                                       stroke="#0f172a"
@@ -2993,7 +2998,7 @@ export default function MysteryQuestBoard({
                                     {/* Vector nét chuẩn tâm 100% không phụ thuộc font chữ */}
                                     {signChar === "+" ? (
                                       <path
-                                        d={`M ${cx + 9 - 3.2} ${cy - 158.5} L ${cx + 9 + 3.2} ${cy - 158.5} M ${cx + 9} ${cy - 158.5 - 3.2} L ${cx + 9} ${cy - 158.5 + 3.2}`}
+                                        d={`M ${cx + 9 - 3.2} ${cy - 174.5} L ${cx + 9 + 3.2} ${cy - 174.5} M ${cx + 9} ${cy - 174.5 - 3.2} L ${cx + 9} ${cy - 174.5 + 3.2}`}
                                         stroke="#0f172a"
                                         strokeWidth="2.2"
                                         strokeLinecap="round"
@@ -3001,7 +3006,7 @@ export default function MysteryQuestBoard({
                                       />
                                     ) : (
                                       <path
-                                        d={`M ${cx + 9 - 3.2} ${cy - 158.5} L ${cx + 9 + 3.2} ${cy - 158.5}`}
+                                        d={`M ${cx + 9 - 3.2} ${cy - 174.5} L ${cx + 9 + 3.2} ${cy - 174.5}`}
                                         stroke="#0f172a"
                                         strokeWidth="2.2"
                                         strokeLinecap="round"
@@ -3012,7 +3017,7 @@ export default function MysteryQuestBoard({
                                 ) : (
                                   <svg
                                     x={cx - 10}
-                                    y={cy - 168}
+                                    y={cy - 184}
                                     width="20"
                                     height="20"
                                     viewBox="0 0 32 32"
@@ -3093,7 +3098,7 @@ export default function MysteryQuestBoard({
                         })}
 
                         {/* ── Outer & Inner Sacred Geometry Rings ── */}
-                        <circle cx="220" cy="220" r="185" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
+                        <circle cx="220" cy="220" r="204" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.5" />
                         <circle cx="220" cy="220" r="88" fill="none" stroke="#c084fc" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.35" />
 
                         {/* ── 3D Center Hub (Elevated Tiered Obsidian Dome) ── */}

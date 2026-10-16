@@ -142,7 +142,8 @@ class SoundManager {
     // Preload BGM
     (Object.keys(BGM_CONFIG) as BGMKey[]).forEach((key) => {
       try {
-        const loop = key === "lobby" || key === "question_suspense";
+        // Nhạc hiệu mở đầu lobby chỉ chạy 1 lần duy nhất khi khởi động phòng, không lặp lại
+        const loop = key === "question_suspense";
         const audio = this.createAudioWithFallbacks(BGM_CONFIG[key], loop);
         this.bgmMap.set(key, audio);
       } catch {}
@@ -315,7 +316,7 @@ class SoundManager {
 
     let nextAudio = this.bgmMap.get(audioKey);
     if (!nextAudio) {
-      const loop = type === "LOBBY";
+      const loop = audioKey === "question_suspense";
       nextAudio = this.createAudioWithFallbacks(BGM_CONFIG[audioKey] || { primary: `/sounds/${audioKey}.mp3`, fallbacks: [] }, loop);
       this.bgmMap.set(audioKey, nextAudio);
     }
@@ -410,7 +411,7 @@ class SoundManager {
       this.currentMusicKey = audioKey;
       this.currentPlayingQuestionId = null;
       this.lastMusicStartTime = now;
-      nextAudio.loop = true;
+      nextAudio.loop = audioKey === "question_suspense";
 
       this.fadeInAudio(nextAudio, targetVol, Math.max(300, crossfadeMs - 50), () => {
         this.pendingMusicTrack = { type, audioKey, targetVolFactor, crossfadeMs, questionId };

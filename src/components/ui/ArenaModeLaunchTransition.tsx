@@ -47,26 +47,32 @@ export default function ArenaModeLaunchTransition({
   const timerDoneRef = useRef<NodeJS.Timeout | null>(null);
   const timerFallbackRef = useRef<NodeJS.Timeout | null>(null);
   const timerExpandRef = useRef<NodeJS.Timeout | null>(null);
+  const hasTriggeredLaunchRef = useRef<boolean>(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const triggerOutro = useCallback(() => {
-    if (phase === "outro") return;
-    setPhase("outro");
-    timerDoneRef.current = setTimeout(() => {
-      setPhase("idle");
-      setIsExpanded(false);
-      if (onCompleteRef.current) {
-        onCompleteRef.current();
-      }
-    }, 280);
-  }, [phase]);
+    setPhase((prev) => {
+      if (prev === "outro" || prev === "idle") return prev;
+      if (timerDoneRef.current) clearTimeout(timerDoneRef.current);
+      timerDoneRef.current = setTimeout(() => {
+        setPhase("idle");
+        setIsExpanded(false);
+        hasTriggeredLaunchRef.current = false;
+        if (onCompleteRef.current) {
+          onCompleteRef.current();
+        }
+      }, 280);
+      return "outro";
+    });
+  }, []);
 
   // Quản lý khi mở transition (bắt đầu từ trạng thái loading)
   useEffect(() => {
     if (!isOpen) {
+      hasTriggeredLaunchRef.current = false;
       if (timerOutroRef.current) clearTimeout(timerOutroRef.current);
       if (timerDoneRef.current) clearTimeout(timerDoneRef.current);
       if (timerFallbackRef.current) clearTimeout(timerFallbackRef.current);
@@ -75,6 +81,9 @@ export default function ArenaModeLaunchTransition({
       setIsExpanded(false);
       return;
     }
+
+    if (hasTriggeredLaunchRef.current) return;
+    hasTriggeredLaunchRef.current = true;
 
     openTimestampRef.current = Date.now();
     setPhase("loading");
@@ -85,10 +94,10 @@ export default function ArenaModeLaunchTransition({
       setIsExpanded(true);
     }, 25);
 
-    // Phát âm thanh Web Audio API độc bản không cần tải file ngoài
+    // Phát âm thanh Web Audio API độc bản không cần tải file ngoài (chỉ chạy đúng 1 lần)
     transitionSoundEngine.playTransitionSfx(String(mode));
 
-    // Thử phát video ngay lập tức
+    // Thử phát video ngay lập tức (chỉ chạy đúng 1 lần duy nhất từ 0)
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
       videoRef.current.play().catch(() => {});
@@ -146,21 +155,16 @@ export default function ArenaModeLaunchTransition({
         isOutro ? "opacity-0" : "opacity-100"
       }`}
     >
-      {/* ── 1. MÀN CHE MỜ KÍNH TỐI NHẸ (Backdrop Blur + Dark Overlay 60% làm nổi bật video 3D trong suốt) ── */}
-      <div
-        className={`absolute inset-0 bg-[#030712]/60 backdrop-blur-md transition-opacity duration-300 ease-out will-change-transform ${
-          isOutro ? "opacity-0" : "opacity-100"
-        }`}
-      />
+      {/* ── 1. NỀN TRONG SUỐT 100% (Không che tối, nhìn thấu bàn đấu và giao diện bên dưới) ── */}
 
-      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM (Tôn vinh video 3D điện ảnh trong suốt) ── */}
+      {/* ── 2. VẦNG HÀO QUANG RADIAL AURA TRUNG TÂM DỊU NHẸ (Tôn vinh video 3D trong suốt) ── */}
       <div
         className={`absolute inset-0 pointer-events-none transition-opacity duration-400 ${
           isOutro ? "opacity-0" : "opacity-100"
         }`}
         style={{
           background:
-            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.22) 0%, rgba(147,51,234,0.12) 35%, rgba(3,7,18,0.5) 70%, transparent 100%)",
+            "radial-gradient(circle at 50% 48%, rgba(6,182,212,0.20) 0%, rgba(147,51,234,0.10) 35%, transparent 65%)",
         }}
       />
 
@@ -175,7 +179,7 @@ export default function ArenaModeLaunchTransition({
           opacity: isOutro ? 0 : 1,
         }}
       >
-        {/* ── Vầng sáng Hologram tĩnh/radial nhẹ phía sau video - 0% per-pixel rasterization overhead ── */}
+        {/* ── Vầng sáng Hologram tĩnh/radial nhẹ phía sau video ── */}
         <div
           className="absolute w-[440px] h-[440px] rounded-full pointer-events-none blur-3xl opacity-35 bg-gradient-to-tr from-cyan-500/30 to-purple-500/25"
         />
@@ -187,6 +191,7 @@ export default function ArenaModeLaunchTransition({
           playsInline
           preload="auto"
           onEnded={triggerOutro}
+          style={{ mixBlendMode: "screen" }}
           className="w-full h-full object-contain pointer-events-none will-change-transform"
         />
       </div>

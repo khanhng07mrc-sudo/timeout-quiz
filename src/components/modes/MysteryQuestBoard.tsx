@@ -2041,7 +2041,7 @@ export default function MysteryQuestBoard({
                             </button>
                           </div>
                           <p className="text-[10px] text-amber-200/90 italic pt-0.5 max-w-md mx-auto">
-                            ⚠️ Lưu ý: Khi đổi cửa từ Đèn Xanh, hệ thống sẽ KHÔNG báo trước cửa mới có bẫy hay không, và đội bạn BUỘC PHẢI mở chính cánh cửa vừa đổi vào (cửa an toàn cũ sẽ bị khóa)!
+                            ⚠️ Lưu ý: Dù Đèn Xanh, Đèn Vàng hay Đèn Đỏ, một khi chọn Đổi 1 cửa, hệ thống sẽ KHÔNG báo trước cửa mới có bẫy hay không và bạn BUỘC PHẢI mở chính cánh cửa vừa đổi vào (cửa còn lại sẽ bị khóa)!
                           </p>
                         </>
                       ) : isYellow ? (
@@ -2099,6 +2099,9 @@ export default function MysteryQuestBoard({
                           <p className="text-[10.5px] text-amber-200/90 italic pt-0.5">
                             * Bạn cũng có thể bấm trực tiếp vào 1 trong 2 cánh cửa đang sáng (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để Mở Liều!
                           </p>
+                          <p className="text-[10px] text-amber-200/90 italic pt-0.5 max-w-md mx-auto">
+                            ⚠️ Lưu ý: Dù Đèn Xanh, Đèn Vàng hay Đèn Đỏ, một khi chọn Đổi 1 cửa, hệ thống sẽ KHÔNG báo trước cửa mới có bẫy hay không và bạn BUỘC PHẢI mở chính cánh cửa vừa đổi vào (cửa còn lại sẽ bị khóa)!
+                          </p>
                         </>
                       ) : (
                         /* ĐÈN ĐỎ (RED) - Cả 2 cửa đều tiêu cực */
@@ -2142,6 +2145,9 @@ export default function MysteryQuestBoard({
                               <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Bắt Buộc Đổi 1 Cửa"}</span>
                             </button>
                           </div>
+                          <p className="text-[10px] text-amber-200/90 italic pt-0.5 max-w-md mx-auto">
+                            ⚠️ Lưu ý: Khi Đèn Đỏ, cả 2 cửa cũ chắc chắn là tiêu cực! Khi chọn Đổi 1 cửa, hệ thống sẽ KHÔNG báo trước bẫy và ÉP bạn phải mở chính cánh cửa vừa mới đổi để tránh tự phá hoại bản thân (cửa cũ sẽ bị khóa)!
+                          </p>
                         </>
                       )
                     ) : swapStep === "SELECT_REMOVE" ? (
@@ -2179,20 +2185,20 @@ export default function MysteryQuestBoard({
               }
 
               if (osPhase === "OPEN_FINAL") {
-                const isForcedFromGreen = Boolean(oneShotState?.swappedFromGreen && oneShotState?.forcedOpenDoorId);
+                const isForced = Boolean(oneShotState?.forcedOpenDoorId);
                 return (
                   <div className={`mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b shadow-2xl text-center space-y-1.5 animate-bounce-in max-w-xl mx-auto border-2 ${
-                    isForcedFromGreen
+                    isForced
                       ? "from-amber-950/95 via-red-950/90 to-black/95 border-amber-400"
                       : "from-amber-950/95 via-yellow-950/90 to-black/95 border-yellow-400"
                   }`}>
-                    <div className="text-2xl animate-pulse">{isForcedFromGreen ? "🎲🚪" : "🚪✨"}</div>
+                    <div className="text-2xl animate-pulse">{isForced ? "🎲🚪" : "🚪✨"}</div>
                     <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
-                      {isForcedFromGreen ? `MỞ CỬA BẮT BUỘC #${oneShotState?.forcedOpenDoorId}` : "MỞ CÁNH CỬA QUYẾT ĐỊNH!"}
+                      {isForced ? `MỞ CỬA BẮT BUỘC #${oneShotState?.forcedOpenDoorId}` : "MỞ CÁNH CỬA QUYẾT ĐỊNH!"}
                     </h4>
-                    {isForcedFromGreen ? (
+                    {isForced ? (
                       <p className="text-[11px] text-amber-200 font-semibold max-w-md mx-auto leading-relaxed">
-                        Đội bạn đã đổi cửa từ Đèn Xanh: Cửa mới không được báo trước bẫy và bạn <strong className="text-yellow-300 underline">BUỘC PHẢI MỞ CHÍNH CỬA VỪA ĐỔI #{oneShotState?.forcedOpenDoorId}</strong> (cửa an toàn cũ đã bị khóa lại)!
+                        Bạn đã chọn đổi 1 cửa: Cửa mới không được báo trước bẫy và bạn <strong className="text-yellow-300 underline">BUỘC PHẢI MỞ CHÍNH CỬA VỪA ĐỔI #{oneShotState?.forcedOpenDoorId}</strong> (cánh cửa còn lại đã bị khóa để tránh tự phá hoại hoặc đi lùi)!
                       </p>
                     ) : (
                       <p className="text-[11px] text-white/90 max-w-md mx-auto">

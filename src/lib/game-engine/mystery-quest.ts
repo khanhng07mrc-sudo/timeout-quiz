@@ -5045,11 +5045,10 @@ export function handleOneShotDoorsDecision({
       osState.hasSwapped = true;
       osState.swapRemovedDoorId = swapRemovedDoorId;
       osState.swapAddedDoorId = swapAddedDoorId;
-      if (isFromGreen) {
-        osState.swappedFromGreen = true;
-        osState.forcedOpenDoorId = swapAddedDoorId;
-        osState.radarLight = undefined; // Hệ thống không báo trước cửa mới có phải ô trừ điểm không
-      }
+      // Dù đèn xanh hay đèn vàng, một khi chọn đổi 1 cửa, hệ thống ép phải mở chính cửa vừa đổi, không được chọn cửa còn lại
+      osState.swappedFromGreen = isFromGreen;
+      osState.forcedOpenDoorId = swapAddedDoorId;
+      osState.radarLight = undefined; // Hệ thống không báo trước cửa mới có phải ô trừ điểm không
       osState.penaltyDoorsCount = undefined;
       osState.hasBombDetected = false;
       osState.phase = "OPEN_FINAL";

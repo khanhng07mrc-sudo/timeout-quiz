@@ -4579,11 +4579,9 @@ function handleOneShotDoorsDecision({
       osState.hasSwapped = true;
       osState.swapRemovedDoorId = swapRemovedDoorId;
       osState.swapAddedDoorId = swapAddedDoorId;
-      if (isFromGreen) {
-        osState.swappedFromGreen = true;
-        osState.forcedOpenDoorId = swapAddedDoorId;
-        osState.radarLight = void 0;
-      }
+      osState.swappedFromGreen = isFromGreen;
+      osState.forcedOpenDoorId = swapAddedDoorId;
+      osState.radarLight = void 0;
       osState.penaltyDoorsCount = void 0;
       osState.hasBombDetected = false;
       osState.phase = "OPEN_FINAL";

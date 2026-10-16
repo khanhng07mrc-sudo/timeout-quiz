@@ -3498,6 +3498,9 @@ function handleFlipCard({
       if (!selected.includes(tileId)) {
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
+      if (osState.forcedOpenDoorId && tileId !== osState.forcedOpenDoorId) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
       osState.chosenFinalDoorId = tileId;
       osState.phase = "RESOLVED";
       osState.allRevealed = true;
@@ -3513,6 +3516,9 @@ function handleFlipCard({
           osState.phase = "OPEN_FINAL";
           osState.allRevealed = false;
           osState.selectedDoorIds = (osState.selectedDoorIds || []).filter((id) => id !== tileId);
+          if (osState.forcedOpenDoorId === tileId) {
+            osState.forcedOpenDoorId = void 0;
+          }
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
@@ -4565,6 +4571,7 @@ function handleOneShotDoorsDecision({
     const currentSelected = [...osState.selectedDoorIds || []];
     const currentDiscarded = [...osState.discardedDoorIds || []];
     if (swapRemovedDoorId && swapAddedDoorId) {
+      const isFromGreen = osState.radarLight === "GREEN";
       const newSelected = currentSelected.filter((id) => id !== swapRemovedDoorId).concat(swapAddedDoorId);
       const newDiscarded = currentDiscarded.filter((id) => id !== swapAddedDoorId).concat(swapRemovedDoorId);
       osState.selectedDoorIds = newSelected;
@@ -4572,6 +4579,11 @@ function handleOneShotDoorsDecision({
       osState.hasSwapped = true;
       osState.swapRemovedDoorId = swapRemovedDoorId;
       osState.swapAddedDoorId = swapAddedDoorId;
+      if (isFromGreen) {
+        osState.swappedFromGreen = true;
+        osState.forcedOpenDoorId = swapAddedDoorId;
+        osState.radarLight = void 0;
+      }
       osState.penaltyDoorsCount = void 0;
       osState.hasBombDetected = false;
       osState.phase = "OPEN_FINAL";
@@ -4630,7 +4642,10 @@ function handleOneShotDoorsDecision({
       scorePenalty: 0
     };
   }
-  const doorIdToOpen = chosenDoorId ?? (osState.selectedDoorIds && osState.selectedDoorIds[0]);
+  const doorIdToOpen = chosenDoorId ?? (osState.forcedOpenDoorId || osState.selectedDoorIds && osState.selectedDoorIds[0]);
+  if (osState.forcedOpenDoorId && doorIdToOpen !== osState.forcedOpenDoorId) {
+    return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  }
   const chosenTile = state.tiles.find((t) => t.id === doorIdToOpen);
   if (!chosenTile) {
     return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
@@ -4656,6 +4671,9 @@ function handleOneShotDoorsDecision({
       chosenTile.isOpened = true;
       if (osState.selectedDoorIds) {
         osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
+      }
+      if (osState.forcedOpenDoorId === doorIdToOpen) {
+        osState.forcedOpenDoorId = void 0;
       }
       osState.chosenFinalDoorId = void 0;
       osState.phase = "OPEN_FINAL";

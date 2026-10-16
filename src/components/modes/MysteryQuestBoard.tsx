@@ -2023,9 +2023,27 @@ export default function MysteryQuestBoard({
 
                     {swapStep === "IDLE" ? (
                       isGreen ? (
-                        <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                          Cả 2 cánh cửa đều an toàn! Bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 2 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở nhận thưởng!
-                        </p>
+                        <>
+                          <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                            Cả 2 cánh cửa hiện tại đều an toàn (100% không bẫy)! Bạn có thể bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 2 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở nhận thưởng, HOẶC có thể <strong>Đổi 1 cửa</strong> để thử thách vận may!
+                          </p>
+                          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1 max-w-md mx-auto">
+                            <button
+                              type="button"
+                              onClick={() => setSwapStep("SELECT_REMOVE")}
+                              disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
+                              className={`w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                                oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : "animate-pulse"
+                              }`}
+                            >
+                              <span>🔄</span>
+                              <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Đổi 1 Cửa (Thử Vận May)"}</span>
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-amber-200/90 italic pt-0.5 max-w-md mx-auto">
+                            ⚠️ Lưu ý: Khi đổi cửa từ Đèn Xanh, hệ thống sẽ KHÔNG báo trước cửa mới có bẫy hay không, và đội bạn BUỘC PHẢI mở chính cánh cửa vừa đổi vào (cửa an toàn cũ sẽ bị khóa)!
+                          </p>
+                        </>
                       ) : isYellow ? (
                         <>
                           <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
@@ -2161,15 +2179,26 @@ export default function MysteryQuestBoard({
               }
 
               if (osPhase === "OPEN_FINAL") {
+                const isForcedFromGreen = Boolean(oneShotState?.swappedFromGreen && oneShotState?.forcedOpenDoorId);
                 return (
-                  <div className="mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-950/95 via-yellow-950/90 to-black/95 border-2 border-yellow-400 shadow-2xl text-center space-y-1.5 animate-bounce-in max-w-xl mx-auto">
-                    <div className="text-2xl animate-pulse">🚪✨</div>
+                  <div className={`mb-3 p-3 sm:p-4 rounded-2xl bg-gradient-to-b shadow-2xl text-center space-y-1.5 animate-bounce-in max-w-xl mx-auto border-2 ${
+                    isForcedFromGreen
+                      ? "from-amber-950/95 via-red-950/90 to-black/95 border-amber-400"
+                      : "from-amber-950/95 via-yellow-950/90 to-black/95 border-yellow-400"
+                  }`}>
+                    <div className="text-2xl animate-pulse">{isForcedFromGreen ? "🎲🚪" : "🚪✨"}</div>
                     <h4 className="text-xs sm:text-sm font-black text-yellow-300 uppercase tracking-wider">
-                      MỞ CÁNH CỬA QUYẾT ĐỊNH!
+                      {isForcedFromGreen ? `MỞ CỬA BẮT BUỘC #${oneShotState?.forcedOpenDoorId}` : "MỞ CÁNH CỬA QUYẾT ĐỊNH!"}
                     </h4>
-                    <p className="text-[11px] text-white/90 max-w-md mx-auto">
-                      Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong các cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở và khám phá kết quả!
-                    </p>
+                    {isForcedFromGreen ? (
+                      <p className="text-[11px] text-amber-200 font-semibold max-w-md mx-auto leading-relaxed">
+                        Đội bạn đã đổi cửa từ Đèn Xanh: Cửa mới không được báo trước bẫy và bạn <strong className="text-yellow-300 underline">BUỘC PHẢI MỞ CHÍNH CỬA VỪA ĐỔI #{oneShotState?.forcedOpenDoorId}</strong> (cửa an toàn cũ đã bị khóa lại)!
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-white/90 max-w-md mx-auto">
+                        Hãy bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong các cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở và khám phá kết quả!
+                      </p>
+                    )}
                   </div>
                 );
               }
@@ -2257,6 +2286,12 @@ export default function MysteryQuestBoard({
                   }
 
                   if (osPhase === "OPEN_FINAL") {
+                    if (oneShotState?.forcedOpenDoorId) {
+                      if (tile.id === oneShotState.forcedOpenDoorId) {
+                        handleTileClick(tile);
+                      }
+                      return;
+                    }
                     if (isSelected) {
                       handleTileClick(tile);
                     }
@@ -2279,7 +2314,7 @@ export default function MysteryQuestBoard({
                           (osPhase === "FINAL_DECISION" && swapStep === "IDLE" && oneShotState?.radarLight !== "GREEN" && oneShotState?.radarLight !== "YELLOW") ||
                           (osPhase === "FINAL_DECISION" && swapStep === "SELECT_REMOVE" && !isSelected) ||
                           (osPhase === "FINAL_DECISION" && swapStep === "SELECT_ADD" && (!isDiscarded || tile.isPeeked)) ||
-                          (osPhase === "OPEN_FINAL" && !isSelected) ||
+                          (osPhase === "OPEN_FINAL" && (!isSelected || (Boolean(oneShotState?.forcedOpenDoorId) && tile.id !== oneShotState?.forcedOpenDoorId))) ||
                           (osPhase === "SELECT_4" && tile.isPeeked)
                         ))
                       }
@@ -2320,7 +2355,13 @@ export default function MysteryQuestBoard({
                             ? "opacity-30 grayscale cursor-not-allowed"
                             : "opacity-60 cursor-default"
                           : osPhase === "OPEN_FINAL"
-                          ? isSelected
+                          ? oneShotState?.forcedOpenDoorId
+                            ? tile.id === oneShotState.forcedOpenDoorId
+                              ? "scale-105 shadow-[0_0_35px_rgba(250,204,21,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-amber-400"
+                              : isSelected
+                              ? "opacity-30 grayscale cursor-not-allowed pointer-events-none scale-95 ring-1 ring-stone-600"
+                              : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
+                            : isSelected
                             ? "scale-105 shadow-[0_0_35px_rgba(250,204,21,0.8)] cursor-pointer animate-pulse hover:scale-108 ring-2 ring-yellow-400"
                             : "opacity-25 grayscale-80 scale-95 pointer-events-none cursor-not-allowed"
                           : isSelected
@@ -2374,7 +2415,31 @@ export default function MysteryQuestBoard({
                                   CHỌN 📦
                                 </span>
                               ) : null
-                            ) : osPhase === "OPEN_FINAL" || (osPhase === "FINAL_DECISION" && (oneShotState?.radarLight === "GREEN" || oneShotState?.radarLight === "YELLOW")) ? (
+                            ) : osPhase === "OPEN_FINAL" ? (
+                              oneShotState?.forcedOpenDoorId ? (
+                                tile.id === oneShotState.forcedOpenDoorId ? (
+                                  <span className="text-[7.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 text-black animate-pulse shadow whitespace-nowrap">
+                                    BẮT BUỘC MỞ 🚪
+                                  </span>
+                                ) : isSelected ? (
+                                  <span className="text-[7px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-stone-700 text-stone-300 border border-stone-500 whitespace-nowrap">
+                                    CỬA CŨ (KHÓA) 🔒
+                                  </span>
+                                ) : (
+                                  <span className="text-[7px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-stone-800 text-stone-400 whitespace-nowrap">
+                                    LOẠI ❌
+                                  </span>
+                                )
+                              ) : isSelected ? (
+                                <span className="text-[7.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-400 text-black animate-pulse shadow whitespace-nowrap">
+                                  MỞ ✨
+                                </span>
+                              ) : (
+                                <span className="text-[7px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-stone-800 text-stone-400 whitespace-nowrap">
+                                  LOẠI ❌
+                                </span>
+                              )
+                            ) : (osPhase === "FINAL_DECISION" && (oneShotState?.radarLight === "GREEN" || oneShotState?.radarLight === "YELLOW")) ? (
                               isSelected ? (
                                 <span className={`text-[7.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full ${
                                   oneShotState?.radarLight === "YELLOW" ? "bg-amber-400 text-black" : "bg-yellow-400 text-black"
@@ -2437,9 +2502,9 @@ export default function MysteryQuestBoard({
                           </div>
                         ) : (
                           <div className={`text-xl sm:text-3xl transition-transform duration-300 drop-shadow-md ${
-                            isStage2 && isSelected ? "scale-110 animate-pulse text-amber-300" : "group-hover:scale-110"
+                            isStage2 && isSelected && (!oneShotState?.forcedOpenDoorId || tile.id === oneShotState.forcedOpenDoorId) ? "scale-110 animate-pulse text-amber-300" : "group-hover:scale-110"
                           }`}>
-                            {isStage2 && isSelected ? "🗝️✨" : "🔒"}
+                            {isStage2 && isSelected ? (oneShotState?.forcedOpenDoorId && tile.id !== oneShotState.forcedOpenDoorId ? "🔒" : "🗝️✨") : "🔒"}
                           </div>
                         )}
                         {tile.isPeeked && (
@@ -2457,7 +2522,9 @@ export default function MysteryQuestBoard({
                         <span className="text-[7px] sm:text-[9px] uppercase tracking-wider text-amber-300 font-extrabold block drop-shadow-sm truncate">
                           {isStage2
                             ? isSelected
-                              ? "Đang sáng · Mở!"
+                              ? oneShotState?.forcedOpenDoorId && tile.id !== oneShotState.forcedOpenDoorId
+                                ? "Cửa cũ · Đã khóa"
+                                : "Đang sáng · Mở!"
                               : "Đã bị loại"
                             : isPenaltyDecision
                             ? swapStep === "SELECT_REMOVE"

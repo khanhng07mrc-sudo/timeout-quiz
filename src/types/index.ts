@@ -1213,6 +1213,8 @@ export interface MysteryQuestState {
     hasSwapped?: boolean;       // Đã đổi 1 lá sang lá khác (chỉ 1 lần duy nhất)
     swapRemovedDoorId?: number; // Cửa bỏ ra
     swapAddedDoorId?: number;   // Cửa thay vào
+    swappedFromGreen?: boolean; // Đánh dấu đổi cửa từ Đèn Xanh
+    forcedOpenDoorId?: number;  // ID cánh cửa bắt buộc phải mở (chính là swapAddedDoorId)
     isBasePointsWithMinusHeart?: boolean; // Rút lui nhận 50% điểm gốc và trừ 1 Tim
     bombDoorType?: "BOMB_SMOKE" | "BOMB_DARK" | "BOMB_CHARITY"; // Loại bom ngẫu nhiên của Cửa Bom
   };

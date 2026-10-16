@@ -3645,6 +3645,11 @@ export function handleFlipCard({
         return { updatedState: state, isBomb: false, scorePenalty: 0 };
       }
 
+      // Nếu đổi cửa từ Đèn Xanh, bắt buộc phải mở chính cánh cửa vừa đổi vào
+      if (osState.forcedOpenDoorId && tileId !== osState.forcedOpenDoorId) {
+        return { updatedState: state, isBomb: false, scorePenalty: 0 };
+      }
+
       // Người chơi mở cánh cửa đã chọn:
       osState.chosenFinalDoorId = tileId;
       osState.phase = "RESOLVED";
@@ -3661,6 +3666,9 @@ export function handleFlipCard({
           osState.phase = "OPEN_FINAL";
           osState.allRevealed = false;
           osState.selectedDoorIds = (osState.selectedDoorIds || []).filter((id) => id !== tileId);
+          if (osState.forcedOpenDoorId === tileId) {
+            osState.forcedOpenDoorId = undefined;
+          }
           state.storyResult = {
             teamId: team.id,
             teamName: team.name,
@@ -5023,6 +5031,7 @@ export function handleOneShotDoorsDecision({
     const currentDiscarded = [...(osState.discardedDoorIds || [])];
 
     if (swapRemovedDoorId && swapAddedDoorId) {
+      const isFromGreen = osState.radarLight === "GREEN";
       const newSelected = currentSelected
         .filter((id) => id !== swapRemovedDoorId)
         .concat(swapAddedDoorId);
@@ -5036,6 +5045,11 @@ export function handleOneShotDoorsDecision({
       osState.hasSwapped = true;
       osState.swapRemovedDoorId = swapRemovedDoorId;
       osState.swapAddedDoorId = swapAddedDoorId;
+      if (isFromGreen) {
+        osState.swappedFromGreen = true;
+        osState.forcedOpenDoorId = swapAddedDoorId;
+        osState.radarLight = undefined; // Hệ thống không báo trước cửa mới có phải ô trừ điểm không
+      }
       osState.penaltyDoorsCount = undefined;
       osState.hasBombDetected = false;
       osState.phase = "OPEN_FINAL";
@@ -5113,7 +5127,10 @@ export function handleOneShotDoorsDecision({
     };
   }
 
-  const doorIdToOpen = chosenDoorId ?? (osState.selectedDoorIds && osState.selectedDoorIds[0]);
+  const doorIdToOpen = chosenDoorId ?? (osState.forcedOpenDoorId || (osState.selectedDoorIds && osState.selectedDoorIds[0]));
+  if (osState.forcedOpenDoorId && doorIdToOpen !== osState.forcedOpenDoorId) {
+    return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
+  }
   const chosenTile = state.tiles.find((t) => t.id === doorIdToOpen);
   if (!chosenTile) {
     return { updatedState: state, finalScoreDelta: 0, isBomb: false, scorePenalty: 0 };
@@ -5143,6 +5160,9 @@ export function handleOneShotDoorsDecision({
       chosenTile.isOpened = true;
       if (osState.selectedDoorIds) {
         osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
+      }
+      if (osState.forcedOpenDoorId === doorIdToOpen) {
+        osState.forcedOpenDoorId = undefined;
       }
       osState.chosenFinalDoorId = undefined;
       osState.phase = "OPEN_FINAL";

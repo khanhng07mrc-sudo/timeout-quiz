@@ -1000,6 +1000,11 @@ export interface AncientTarotDrawnCard {
   giftedPoints?: number;
   darkBombRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
   temperanceBonusRecipients?: Array<{ teamId: string; teamName: string; points: number }>;
+  hierophantPenalties?: Array<{ teamId: string; teamName: string; points: number }>;
+  allShieldsGranted?: boolean;
+  shieldsGrantedTeamIds?: string[];
+  heartsHealedTeamIds?: string[];
+  brokenShieldTeamId?: string;
 }
 
 export interface TarotWheelSegment {
@@ -1071,6 +1076,12 @@ export interface MysteryQuestState {
     eligibleTeamIds: string[];
     tileTitle: string;
     tileIcon: string;
+    sourceCardKey?: AncientTarotCardKey;
+    baseBonusPoints?: number;
+    healHeartSelf?: boolean;
+    grantShieldSelf?: boolean;
+    grantShieldVictim?: boolean;
+    breakVictimShield?: boolean;
   };
   pendingStealVictimId?: string;
   pendingStealVictimName?: string;

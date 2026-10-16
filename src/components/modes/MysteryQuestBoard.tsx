@@ -4220,14 +4220,46 @@ export default function MysteryQuestBoard({
 
             <div className="space-y-1">
               <span className="px-3 py-1 rounded-full bg-rose-500/30 border border-rose-400/50 text-rose-300 font-black text-xs uppercase tracking-widest">
-                KÍCH HOẠT THẺ CƯỚP ĐIỂM
+                {mysteryState.pendingSteal.sourceCardKey ? "THỰC THI LÁ BÀI TAROT" : "KÍCH HOẠT THẺ CƯỚP ĐIỂM"}
               </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white pt-1">
                 {mysteryState.pendingSteal.tileTitle || "Đoạt Bảo Thành Công!"}
               </h2>
-              <p className="text-sm text-rose-200/90 font-medium">
-                Được quyền cướp <strong className="text-yellow-300 font-mono text-base font-black">+{mysteryState.pendingSteal.stolenPoints}đ</strong> từ một đối thủ đủ điều kiện!
-              </p>
+              <div className="text-sm text-rose-200/90 font-medium space-y-1">
+                <p>
+                  {mysteryState.pendingSteal.baseBonusPoints && mysteryState.pendingSteal.baseBonusPoints > 0 ? (
+                    <>
+                      Nhận thưởng <strong className="text-emerald-300 font-mono font-black">+{mysteryState.pendingSteal.baseBonusPoints}đ</strong> và được quyền cướp <strong className="text-yellow-300 font-mono font-black">+{mysteryState.pendingSteal.stolenPoints}đ</strong> từ đối thủ!
+                    </>
+                  ) : (
+                    <>
+                      Được quyền cướp <strong className="text-yellow-300 font-mono text-base font-black">+{mysteryState.pendingSteal.stolenPoints}đ</strong> từ một đối thủ đủ điều kiện!
+                    </>
+                  )}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+                  {mysteryState.pendingSteal.healHeartSelf && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/40 text-rose-300 text-xs font-bold">
+                      ❤️ Hồi 1 Tim
+                    </span>
+                  )}
+                  {mysteryState.pendingSteal.grantShieldSelf && (
+                    <span className="px-2 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold">
+                      🛡️ Nhận Khiên Thần
+                    </span>
+                  )}
+                  {mysteryState.pendingSteal.grantShieldVictim && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-400/40 text-purple-300 text-xs font-bold">
+                      🛡️ Đối Thủ Cũng Nhận Khiên
+                    </span>
+                  )}
+                  {mysteryState.pendingSteal.breakVictimShield && (
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs font-bold">
+                      ⚡ Phá Khiên Đối Thủ
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
 
             {/* Danh sách các đội đủ điều kiện để cướp */}
@@ -4322,34 +4354,21 @@ export default function MysteryQuestBoard({
                 if (t.id === currentTurnTeamId) {
                   if (dc.key === "THE_FOOL") {
                     tarotDelta = 0;
-                  } else if (dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") {
-                    if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
-                      tarotDelta = dc.stolenPoints || dc.scoreDelta || 0;
-                    } else if (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") {
-                      tarotDelta = -(dc.giftedPoints || Math.abs(dc.scoreDelta || 0));
-                    } else {
-                      tarotDelta = dc.scoreDelta ?? null;
-                    }
                   } else {
                     tarotDelta = dc.scoreDelta ?? null;
                   }
                 } else {
-                  if ((dc.key === "THE_DEATH" || (dc.key as any) === "DEATH") && t.id === dc.victimTeamId) {
-                    if (dc.deathSubtype === "GIFT_TOP1" || (dc.deathSubtype as any) === "GIFT") {
-                      tarotDelta = dc.giftedPoints || Math.abs(dc.scoreDelta || 0);
-                    } else if (dc.deathSubtype === "STEAL_TOP1" || (dc.deathSubtype as any) === "STEAL") {
-                      tarotDelta = -(dc.stolenPoints || Math.abs(dc.scoreDelta || 0));
-                    }
+                  if (t.id === dc.victimTeamId && dc.stolenPoints) {
+                    tarotDelta = -dc.stolenPoints;
+                  } else if (t.id === dc.recipientTeamId && dc.giftedPoints) {
+                    tarotDelta = dc.giftedPoints;
+                  } else if (dc.hierophantPenalties) {
+                    const pen = dc.hierophantPenalties.find((p: any) => p.teamId === t.id);
+                    if (pen) tarotDelta = -pen.points;
                   } else if (dc.temperanceBonusRecipients) {
                     const rec = dc.temperanceBonusRecipients.find((r: any) => r.teamId === t.id);
                     if (rec) tarotDelta = rec.points;
-                  } else if (dc.key === "TEMPERANCE" || dc.key === "JUSTICE") {
-                    const halfDelta = Math.round((mysteryState?.baseQuestionPoints || 10) * 0.5);
-                    tarotDelta = halfDelta;
-                  } else if (dc.key === "THE_HANGED_MAN" && dc.darkBombRecipients) {
-                    const rec = dc.darkBombRecipients.find((r: any) => r.teamId === t.id);
-                    if (rec) tarotDelta = rec.points;
-                  } else if (dc.key === "THE_DEVIL" && dc.darkBombRecipients) {
+                  } else if (dc.darkBombRecipients) {
                     const rec = dc.darkBombRecipients.find((r: any) => r.teamId === t.id);
                     if (rec) tarotDelta = rec.points;
                   }

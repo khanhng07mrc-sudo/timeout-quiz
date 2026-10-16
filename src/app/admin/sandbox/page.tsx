@@ -3355,6 +3355,30 @@ export default function AdminSandboxPage() {
         const drawnCard = curMystery.tarotState?.drawnCard;
         const isShieldRespin = Boolean(curMystery.tarotState?.isShieldRespin);
         const isGamble = !curMystery.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
+
+        // Nếu lá bài yêu cầu chọn đội cướp (The Empress, The Lovers, The Chariot, The Death, Judgement, The World)
+        // Chuyển sang phase STEAL_TARGET_SELECT để người chơi tự chọn đối thủ!
+        if (curMystery.pendingSteal && (curMystery.pendingSteal.eligibleTeamIds?.length || 0) > 0) {
+          const targetSelectState: MysteryQuestState = {
+            ...curMystery,
+            phase: "STEAL_TARGET_SELECT",
+            turnFinishedReason: undefined,
+            tarotState: {
+              ...curMystery.tarotState,
+              isRevealPending: false,
+            },
+          };
+          delete (targetSelectState as any)._pendingScoreDeltas;
+          const nextRoomState = {
+            ...roomStateRef.current,
+            mysteryQuestState: targetSelectState,
+          };
+          roomStateRef.current = nextRoomState;
+          setRoomState(nextRoomState);
+          syncToIframes({ roomState: nextRoomState, mysteryQuestState: targetSelectState });
+          return;
+        }
+
         let pendingDeltas: Array<{ teamId: string; delta: number }> = (curMystery as any)._pendingScoreDeltas || [];
         if (pendingDeltas.length === 0 && curMystery.currentTurnTeamId) {
           if (drawnCard?.scoreDelta) {
@@ -3363,6 +3387,11 @@ export default function AdminSandboxPage() {
           if (drawnCard?.temperanceBonusRecipients) {
             for (const rec of drawnCard.temperanceBonusRecipients) {
               if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.hierophantPenalties) {
+            for (const pen of drawnCard.hierophantPenalties) {
+              if (pen.points) pendingDeltas.push({ teamId: pen.teamId, delta: -pen.points });
             }
           }
           if (drawnCard?.darkBombRecipients) {

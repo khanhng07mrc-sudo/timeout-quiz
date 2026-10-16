@@ -6826,6 +6826,26 @@ export function registerSocketHandlers(io: IO) {
       const isShieldRespin = Boolean(questState.tarotState.isShieldRespin);
       const isGamble = !questState.isPenaltySurvivalMode && (drawnCard?.key === "THE_STAR" || drawnCard?.key === "THE_MOON");
 
+      // Nếu lá bài yêu cầu chọn đội cướp (The Empress, The Lovers, The Chariot, The Death, Judgement, The World)
+      // Chuyển sang phase STEAL_TARGET_SELECT để người chơi tự chọn đối thủ!
+      if (questState.pendingSteal && (questState.pendingSteal.eligibleTeamIds?.length || 0) > 0) {
+        roomTarotPendingScores.delete(room.id);
+        const targetSelectState: MysteryQuestState = {
+          ...questState,
+          phase: "STEAL_TARGET_SELECT",
+          turnFinishedReason: undefined,
+          tarotState: {
+            ...questState.tarotState,
+            isRevealPending: false,
+          },
+        };
+        roomMysteryQuests.set(room.id, targetSelectState);
+        io.to(`room:${room.code}`).emit("game:mystery:update", targetSelectState);
+        const refreshedState = await buildRoomState(room.id);
+        io.to(`room:${room.code}`).emit("room:state", refreshedState);
+        return;
+      }
+
       let pendingDeltas: Array<{ teamId: string; delta: number }> = [];
       if (!isGamble && !isShieldRespin) {
         pendingDeltas = roomTarotPendingScores.get(room.id) || [];
@@ -6838,6 +6858,11 @@ export function registerSocketHandlers(io: IO) {
           if (drawnCard?.temperanceBonusRecipients) {
             for (const rec of drawnCard.temperanceBonusRecipients) {
               if (rec.points) pendingDeltas.push({ teamId: rec.teamId, delta: rec.points });
+            }
+          }
+          if (drawnCard?.hierophantPenalties) {
+            for (const pen of drawnCard.hierophantPenalties) {
+              if (pen.points) pendingDeltas.push({ teamId: pen.teamId, delta: -pen.points });
             }
           }
           if (drawnCard?.darkBombRecipients) {

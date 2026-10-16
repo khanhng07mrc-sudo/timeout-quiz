@@ -747,79 +747,74 @@ class SoundManager {
     try {
       const now = ctx.currentTime;
       const clampedProg = Math.max(0, Math.min(1, progress));
-      const masterVol = Math.max(0.2, this.volume * (0.72 + clampedProg * 0.15));
+      const masterVol = Math.max(0.18, this.volume * (0.75 + clampedProg * 0.15));
 
-      // 1. Lớp va đập kim loại đanh sắc (Sharp Metallic Clink - High Harmonics)
-      const metalOsc = ctx.createOscillator();
-      const metalGain = ctx.createGain();
-      metalOsc.type = "sine";
-      const startFreq = 3400 - clampedProg * 400;
-      const endFreq = 1800 - clampedProg * 250;
-      metalOsc.frequency.setValueAtTime(startFreq, now);
-      metalOsc.frequency.exponentialRampToValueAtTime(Math.max(200, endFreq), now + 0.024);
-
-      metalGain.gain.setValueAtTime(masterVol * 0.9, now);
-      metalGain.gain.exponentialRampToValueAtTime(0.001, now + 0.028);
-
-      metalOsc.connect(metalGain);
-      metalGain.connect(ctx.destination);
-      metalOsc.start(now);
-      metalOsc.stop(now + 0.030);
-
-      // 2. Lớp hài kim loại cao (High Metallic Overtone / Chime 3800Hz)
-      const chimeOsc = ctx.createOscillator();
-      const chimeGain = ctx.createGain();
-      chimeOsc.type = "triangle";
-      chimeOsc.frequency.setValueAtTime(3800 - clampedProg * 300, now);
-      chimeOsc.frequency.exponentialRampToValueAtTime(2200, now + 0.018);
-
-      chimeGain.gain.setValueAtTime(masterVol * 0.65, now);
-      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.022);
-
-      chimeOsc.connect(chimeGain);
-      chimeGain.connect(ctx.destination);
-      chimeOsc.start(now);
-      chimeOsc.stop(now + 0.024);
-
-      // 3. Lớp xoẹt cơ học kim loại (Metallic Scrape Transient - 16ms)
-      const bufferSize = Math.floor(ctx.sampleRate * 0.016);
+      // 1. Mechanical Pawl Click Transient (8ms Bandpass-filtered high noise spike)
+      const bufferSize = Math.max(64, Math.floor(ctx.sampleRate * 0.008));
       const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
       const output = noiseBuffer.getChannelData(0);
       for (let i = 0; i < bufferSize; i++) {
-        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.35));
+        output[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
       }
       const noise = ctx.createBufferSource();
       noise.buffer = noiseBuffer;
 
-      const filter = ctx.createBiquadFilter();
-      filter.type = "bandpass";
-      filter.frequency.setValueAtTime(4200, now);
-      filter.Q.setValueAtTime(3.5, now);
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = "bandpass";
+      noiseFilter.frequency.setValueAtTime(4600, now);
+      noiseFilter.Q.setValueAtTime(3.8, now);
 
       const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(masterVol * 0.7, now);
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.016);
+      noiseGain.gain.setValueAtTime(masterVol * 0.85, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.008);
 
-      noise.connect(filter);
-      filter.connect(noiseGain);
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
       noiseGain.connect(ctx.destination);
       noise.start(now);
-      noise.stop(now + 0.018);
+      noise.stop(now + 0.009);
 
-      // 4. Lớp thân chốt kim loại rung đầm (Peg Body Resonant Knock)
-      const bodyOsc = ctx.createOscillator();
-      const bodyGain = ctx.createGain();
-      bodyOsc.type = "sine";
-      bodyOsc.frequency.setValueAtTime(680 - clampedProg * 120, now);
-      bodyOsc.frequency.exponentialRampToValueAtTime(220, now + 0.022);
+      // 2. High Chrome Peg Inharmonic Clack 1 (4200Hz - Fixed frequency, không sweep tần số)
+      const pingOsc1 = ctx.createOscillator();
+      const pingGain1 = ctx.createGain();
+      pingOsc1.type = "triangle";
+      pingOsc1.frequency.setValueAtTime(4200, now);
 
-      bodyGain.gain.setValueAtTime(masterVol * 0.5, now);
-      bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.026);
+      pingGain1.gain.setValueAtTime(masterVol * 0.7, now);
+      pingGain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.010);
 
-      bodyOsc.connect(bodyGain);
-      bodyGain.connect(ctx.destination);
-      bodyOsc.start(now);
-      bodyOsc.stop(now + 0.028);
+      pingOsc1.connect(pingGain1);
+      pingGain1.connect(ctx.destination);
+      pingOsc1.start(now);
+      pingOsc1.stop(now + 0.011);
+
+      // 3. High Chrome Peg Inharmonic Clack 2 (6400Hz - Tiếng kim loại đanh dứt khoát)
+      const pingOsc2 = ctx.createOscillator();
+      const pingGain2 = ctx.createGain();
+      pingOsc2.type = "sine";
+      pingOsc2.frequency.setValueAtTime(6400, now);
+
+      pingGain2.gain.setValueAtTime(masterVol * 0.45, now);
+      pingGain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.007);
+
+      pingOsc2.connect(pingGain2);
+      pingGain2.connect(ctx.destination);
+      pingOsc2.start(now);
+      pingOsc2.stop(now + 0.008);
+
+      // 4. Crisp Mechanical Tap (1400Hz - Cực ngắn 7ms, không tụt xuống dải trầm gây kẽo kẹt)
+      const tapOsc = ctx.createOscillator();
+      const tapGain = ctx.createGain();
+      tapOsc.type = "sine";
+      tapOsc.frequency.setValueAtTime(1400, now);
+
+      tapGain.gain.setValueAtTime(masterVol * 0.4, now);
+      tapGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.007);
+
+      tapOsc.connect(tapGain);
+      tapGain.connect(ctx.destination);
+      tapOsc.start(now);
+      tapOsc.stop(now + 0.008);
 
     } catch {
       this.playSFX("tick", 0.75);

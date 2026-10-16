@@ -127,7 +127,7 @@ export default function MysteryQuestBoard({
   const [needleDeflectionDeg, setNeedleDeflectionDeg] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
-  const [tarotFlyPhase, setTarotFlyPhase] = useState<"IDLE" | "FLYING" | "ATTACHED" | "REVEALED">("IDLE");
+  const [tarotFlyPhase, setTarotFlyPhase] = useState<"IDLE" | "STOPPED" | "FLYING" | "ATTACHED" | "REVEALED">("IDLE");
   const wheelRef = useRef<HTMLDivElement>(null);
   const needleRef = useRef<HTMLDivElement>(null);
   const wheelPrevAngleRef = useRef<number>(0);
@@ -355,7 +355,7 @@ export default function MysteryQuestBoard({
         if (shouldPlaySound) {
           soundManager.playTarotSealImpact();
         }
-      }, 700);
+      }, 750);
       return () => clearTimeout(flyTimer);
     }
     if (tarotFlyPhase === "ATTACHED") {
@@ -366,7 +366,7 @@ export default function MysteryQuestBoard({
           soundManager.playTarotCardFlip();
         }
         onTarotReveal?.();
-      }, 1500);
+      }, 1200);
       return () => clearTimeout(attachedTimer);
     }
   }, [tarotFlyPhase, onTarotReveal, isSandbox, isDisplay]);
@@ -441,8 +441,7 @@ export default function MysteryQuestBoard({
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
     let zoomStartTimer: ReturnType<typeof setTimeout> | null = null;
-    let flyTimer: ReturnType<typeof setTimeout> | null = null;
-    let attachedTimer: ReturnType<typeof setTimeout> | null = null;
+    let stopTimer: ReturnType<typeof setTimeout> | null = null;
     let finishedChimePlayed = false;
 
     // 1. Khởi tạo kim thẳng đứng 0 độ tuyệt đối và bánh xe ở góc startAngle
@@ -504,15 +503,16 @@ export default function MysteryQuestBoard({
         const contactWindow = 3.6;
 
         if (pegDistToSnap <= contactWindow) {
-          // Pha 1: 1/3 thân dưới kim tiếp xúc chốt, chốt đẩy kim nghiêng dần sang PHẢI (+deg)
+          // Pha 1: 1/3 thân dưới kim tiếp xúc chốt, chốt bánh xe (quay theo chiều kim đồng hồ từ trái sang phải)
+          // đẩy đầu kim nghiêng dần sang PHẢI (-deg trong hệ tọa độ CSS/SVG với pivot ở đỉnh)
           const contactProgress = 1.0 - (pegDistToSnap / contactWindow);
-          needleAngle = 22.0 * Math.pow(contactProgress, 1.15);
+          needleAngle = -22.0 * Math.pow(contactProgress, 1.15);
         } else if (lastSnapTimeRef.current > 0) {
-          // Pha 2: Ngay khi trượt khỏi chốt, kim bật giật cực nhanh sang TRÁI (-14°),
-          // rồi nảy nhẹ sang PHẢI (+2.3°), sau đó tắt dần về trạng thái CÂN BẰNG (0°) trong ~80ms
+          // Pha 2: Ngay khi trượt khỏi chốt, lực đàn hồi bật giật kim cực nhanh sang TRÁI (+14°),
+          // rồi nảy nhẹ sang PHẢI (-2.3°), sau đó tắt dần về trạng thái CÂN BẰNG (0°) trong ~80ms
           const dt = (now - lastSnapTimeRef.current) / 1000;
           if (dt < 0.085) {
-            needleAngle = -14.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+            needleAngle = 14.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
           } else {
             needleAngle = 0;
           }
@@ -549,9 +549,11 @@ export default function MysteryQuestBoard({
           soundManager.playWheelStopChime();
         }
 
-        // ── KHÔNG ZOOM OUT! Vòng quay giữ nguyên cận cảnh 12h và fade đi ──
-        // Kích hoạt hiệu ứng Icon bay ra từ kim 12h
-        setTarotFlyPhase("FLYING");
+        // ── DỪNG 0.8S TẠI Ô TRÚNG: Giữ nguyên cận cảnh 12h để mọi người nhìn rõ kim đang chỉ vào ô nào ──
+        setTarotFlyPhase("STOPPED");
+        stopTimer = setTimeout(() => {
+          setTarotFlyPhase("FLYING");
+        }, 800);
       }
     };
 
@@ -560,6 +562,7 @@ export default function MysteryQuestBoard({
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
+      if (stopTimer) clearTimeout(stopTimer);
     };
   }, [tarotState?.startAngle, tarotState?.targetAngle, tarotState?.isWheelSpinning, tarotState?.spinDurationMs, isPenaltySurvivalMode]);
 
@@ -2546,7 +2549,8 @@ export default function MysteryQuestBoard({
               tarotState?.drawnCard &&
               !tarotState?.isWheelSpinning &&
               !isWheelSpinningOptimistic &&
-              !isGambleWaiting)
+              !isGambleWaiting &&
+              tarotFlyPhase !== "STOPPED")
           );
           const drawnCard = tarotState?.drawnCard;
 
@@ -2715,6 +2719,24 @@ export default function MysteryQuestBoard({
                     filter: drop-shadow(0 0 35px rgba(251, 191, 36, 1)) drop-shadow(0 0 50px rgba(168, 85, 247, 0.9));
                   }
                 }
+                @keyframes tarotCardFlyOutFrom12h {
+                  0% {
+                    transform: translateY(-40%) scale(0.18) rotate(-6deg);
+                    opacity: 0;
+                    filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.9));
+                  }
+                  15% {
+                    opacity: 1;
+                  }
+                  75% {
+                    transform: translateY(0%) scale(1.05) rotate(1deg);
+                  }
+                  100% {
+                    transform: translateY(0%) scale(1.0) rotate(0deg);
+                    opacity: 1;
+                    filter: drop-shadow(0 0 35px rgba(251, 191, 36, 0.8)) drop-shadow(0 0 50px rgba(168, 85, 247, 0.6));
+                  }
+                }
               `}</style>
               {!isDrawn ? (
                 /* ── Trạng thái CHƯA RÚT / ĐANG QUAY: Vòng Quay Tarot 3D Chiếc Nón Kỳ Diệu ── */
@@ -2769,10 +2791,10 @@ export default function MysteryQuestBoard({
                         willChange: "transform",
                       }}
                     >
-                    {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation */}
+                    {/* Flipper Pointer Needle at 12 o'clock with Hooke's Law & Damped Harmonic Oscillation (Responsive % Sizing) */}
                     <div
                       ref={needleRef}
-                      className="absolute -top-[18px] sm:-top-[22px] left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+                      className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
                       style={{
                         transformOrigin: "50% 22.92%",
                         transform: `rotate(${needleDeflectionDeg}deg) scale(1.06) translateZ(0)`,
@@ -2780,8 +2802,8 @@ export default function MysteryQuestBoard({
                         willChange: "transform",
                       }}
                     >
-                      {/* 3D Chrome & Ruby Flipper Pointer */}
-                      <svg width="50" height="54" viewBox="0 0 44 48">
+                      {/* 3D Chrome & Ruby Flipper Pointer - Scaled 100% proportionally to wheel */}
+                      <svg viewBox="0 0 44 48" className="w-full h-full">
                         <defs>
                           <linearGradient id="chromeNeedleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                             <stop offset="0%" stopColor="#ffffff" />
@@ -3097,13 +3119,13 @@ export default function MysteryQuestBoard({
                                 <circle cx={cx} cy={cy - 56} r="1.1" fill={symbolColor} opacity="0.5" />
                               </g>
 
-                              {/* ── 3D Upright Chrome Peg with Spherical Ball Cap & Cast Shadow ── */}
-                              <g>
+                              {/* ── 3D Radial Outward Chrome Peg (Tỏa tròn chuẩn nan quạt) ── */}
+                              <g transform={`rotate(${i * degPerSeg} ${pegX} ${pegY})`}>
                                 {/* Cast Shadow onto Wheel Surface */}
-                                <ellipse cx={pegX + 2} cy={pegY + 1.8} rx="4" ry="2" fill="#000000" opacity="0.65" />
+                                <ellipse cx={pegX + 1.5} cy={pegY + 1.8} rx="3.8" ry="2" fill="#000000" opacity="0.65" />
                                 {/* Peg Base Collar */}
                                 <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
-                                {/* Vertical Standing Chrome Post */}
+                                {/* Radial Standing Chrome Post */}
                                 <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
                                 {/* Spherical Chrome Ball Cap */}
                                 <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
@@ -3352,37 +3374,10 @@ export default function MysteryQuestBoard({
                   {/* Ambient constellation backdrop */}
                   <div className="absolute inset-0 opacity-30 pointer-events-none" style={{ backgroundImage: "radial-gradient(#fde68a 0.75px, transparent 0.75px)", backgroundSize: "28px 28px" }} />
 
-                  {/* ── Dimmed Fading Wheel in Background while FLYING ── */}
-                  {tarotFlyPhase === "FLYING" && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-15 scale-90 blur-[1px] pointer-events-none transition-all duration-700">
-                      <div className="w-64 h-64 rounded-full border-4 border-amber-400/20 animate-spin-slow" />
-                    </div>
-                  )}
-
-                  {/* ── Flying Arcana Icon from 12 o'clock needle forward to card center, spinning 360 degrees ── */}
-                  {tarotFlyPhase === "FLYING" && (
-                    <div className="absolute inset-0 pointer-events-none z-50 flex items-center justify-center">
-                      <div
-                        className="absolute flex flex-col items-center justify-center"
-                        style={{
-                          animation: "tarotFlyForward360 0.7s cubic-bezier(0.2, 0.8, 0.25, 1) forwards",
-                        }}
-                      >
-                        <div className="relative flex items-center justify-center">
-                          <div className="absolute w-28 h-28 rounded-full bg-gradient-to-r from-amber-400 via-fuchsia-500 to-purple-600 blur-2xl opacity-90 animate-pulse" />
-                          <div className="absolute w-20 h-20 rounded-full border-2 border-amber-300/90 animate-ping" />
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-b from-[#1a0f35] to-[#0a0515] border-2 border-amber-300 shadow-[0_0_35px_rgba(251,191,36,1)] flex items-center justify-center p-2.5">
-                            <TarotArcanaSvgIcon
-                              cardKey={drawnCard?.key || "THE_SUN"}
-                              strokeColor="#fde68a"
-                              className="w-full h-full drop-shadow-[0_0_10px_rgba(251,191,36,0.95)]"
-                            />
-                          </div>
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-200 mt-2 bg-black/90 px-3 py-0.5 rounded-full border border-amber-400/60 shadow-lg">
-                          ✦ {getPureArcanaNameVi(drawnCard?.nameVi)} ✦
-                        </span>
-                      </div>
+                  {/* ── Mystical Astral Glow Aura while FLYING / ATTACHED ── */}
+                  {(tarotFlyPhase === "FLYING" || tarotFlyPhase === "ATTACHED") && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-80 h-80 rounded-full bg-gradient-to-r from-amber-500/20 via-purple-600/25 to-fuchsia-500/20 blur-3xl animate-pulse" />
                     </div>
                   )}
 
@@ -3391,8 +3386,10 @@ export default function MysteryQuestBoard({
                     {isPendingReveal ? (
                       <span className="inline-block px-3.5 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-[0.15em] border bg-purple-950/80 text-amber-200 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.3)] animate-pulse">
                         {tarotFlyPhase === "ATTACHED"
-                          ? "✦ ẤN CHỨNG ĐÃ PHONG ẤN LÊN LÁ BÀI • ĐANG KHAI MỞ (1.5S) ✦"
-                          : "✦ ẤN CHỨNG MAJOR ARCANA • ĐANG PHÓNG RA ✦"}
+                          ? "✦ ẤN CHỨNG ĐÃ PHONG ẤN LÊN LÁ BÀI • ĐANG KHAI MỞ (1.2S) ✦"
+                          : tarotFlyPhase === "FLYING"
+                          ? "✦ LÁ BÀI TAROT 3D • ĐANG PHÓNG RA TỪ ĐỈNH 12H ✦"
+                          : "✦ ĐỊNH MỆNH MAJOR ARCANA ✦"}
                       </span>
                     ) : (
                       <span className={`inline-block px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${cardVisual.tagColor}`}>
@@ -3409,7 +3406,7 @@ export default function MysteryQuestBoard({
                     )}
                   </div>
 
-                  {/* ── 3D Card Container (Perspective Flip 180deg) ── */}
+                  {/* ── 3D Card Container (Perspective Flip 180deg & 12h Fly-out) ── */}
                   <div
                     onClick={() => {
                       if (isPendingReveal && canActOnTarot) {
@@ -3417,6 +3414,11 @@ export default function MysteryQuestBoard({
                       }
                     }}
                     className={`relative z-10 ${isDisplay ? "w-44 h-64 sm:w-48 sm:h-72" : "w-52 h-76 sm:w-60 sm:h-84"} [perspective:1200px] select-none ${canActOnTarot && isPendingReveal ? "cursor-pointer" : ""}`}
+                    style={
+                      tarotFlyPhase === "FLYING"
+                        ? { animation: "tarotCardFlyOutFrom12h 0.75s cubic-bezier(0.2, 0.8, 0.25, 1) forwards" }
+                        : undefined
+                    }
                   >
                     <div
                       className={`w-full h-full relative transition-transform duration-700 [transform-style:preserve-3d] ${
@@ -3469,17 +3471,17 @@ export default function MysteryQuestBoard({
                           {/* Con dấu phong ấn lên lưng lá bài */}
                           <div
                             className={`relative p-3 rounded-full transition-all duration-500 ${
-                              tarotFlyPhase === "ATTACHED"
+                              tarotFlyPhase === "ATTACHED" || tarotFlyPhase === "FLYING"
                                 ? "bg-amber-500/25 border-2 border-amber-300 shadow-[0_0_35px_rgba(251,191,36,0.95)]"
                                 : "bg-purple-950/60 border border-amber-400/30 opacity-40"
                             }`}
                             style={
-                              tarotFlyPhase === "ATTACHED"
+                              tarotFlyPhase === "ATTACHED" || tarotFlyPhase === "FLYING"
                                 ? { animation: "tarotSealGlow 1.5s ease-in-out infinite" }
                                 : undefined
                             }
                           >
-                            {tarotFlyPhase === "ATTACHED" ? (
+                            {tarotFlyPhase === "ATTACHED" || tarotFlyPhase === "FLYING" ? (
                               <TarotArcanaSvgIcon
                                 cardKey={drawnCard?.key || "THE_FOOL"}
                                 strokeColor="#fde68a"
@@ -3497,7 +3499,9 @@ export default function MysteryQuestBoard({
                         <div className="w-full text-center z-10">
                           <span className="text-[10px] font-black uppercase tracking-widest text-amber-300/90 bg-black/60 px-3 py-1 rounded-full border border-amber-400/40 shadow">
                             {tarotFlyPhase === "ATTACHED"
-                              ? "✦ ĐÃ PHONG ẤN • ĐANG KHAI MỞ (1.5S) ✦"
+                              ? "✦ ĐÃ PHONG ẤN • ĐANG KHAI MỞ (1.2S) ✦"
+                              : tarotFlyPhase === "FLYING"
+                              ? "✦ ĐANG TIẾP ĐẤT TRUNG TÂM ✦"
                               : "✦ ĐANG TIẾP NHẬN ẤN MAJOR ARCANA ✦"}
                           </span>
                         </div>

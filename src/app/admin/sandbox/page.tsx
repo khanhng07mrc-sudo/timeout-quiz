@@ -3568,7 +3568,7 @@ export default function AdminSandboxPage() {
               if (roomStateRef.current?.mysteryQuestState?.tarotState?.isRevealPending) {
                 window.postMessage({ type: "MYSTERY_TAROT_REVEAL", action: "mystery_tarot_reveal" }, "*");
               }
-            }, 2200);
+            }, 2800);
           }, (spinDurationMs || 20000) + 100);
         } else {
           let updatedTeams = [...roomStateRef.current.teams];

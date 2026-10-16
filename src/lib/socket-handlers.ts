@@ -6810,13 +6810,13 @@ export function registerSocketHandlers(io: IO) {
         const refreshedState = await buildRoomState(room.id);
         io.to(`room:${room.code}`).emit("room:state", refreshedState);
 
-        // Tự động lật bài sau 2.2s (khớp 650ms bay + 1500ms đính icon trên client)
+        // Tự động lật bài sau 2.8s (khớp 800ms dừng ngắm ô + 750ms bay ra + 1200ms đính ấn lật mở trên client)
         setTimeout(async () => {
           const currentQuest = roomMysteryQuests.get(room.id);
           if (currentQuest && currentQuest.tarotState?.isRevealPending) {
             await executeMysteryTarotReveal(room, currentQuest);
           }
-        }, 2200);
+        }, 2800);
       }, result.spinDurationMs + 100);
     };
 
@@ -7136,7 +7136,7 @@ export function registerSocketHandlers(io: IO) {
           if (currentQuest && currentQuest.tarotState?.isRevealPending) {
             await executeMysteryTarotReveal(room, currentQuest);
           }
-        }, 2200);
+        }, 2800);
       }, dur + 100);
     };
 

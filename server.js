@@ -13198,7 +13198,7 @@ function registerSocketHandlers(io2) {
           if (currentQuest && currentQuest.tarotState?.isRevealPending) {
             await executeMysteryTarotReveal(room, currentQuest);
           }
-        }, 2200);
+        }, 2800);
       }, result.spinDurationMs + 100);
     };
     const executeMysteryTarotReveal = async (room, questState) => {
@@ -13469,7 +13469,7 @@ function registerSocketHandlers(io2) {
           if (currentQuest && currentQuest.tarotState?.isRevealPending) {
             await executeMysteryTarotReveal(room, currentQuest);
           }
-        }, 2200);
+        }, 2800);
       }, dur + 100);
     };
     const executeMysteryDrawTarot = async (room, questState, team) => {

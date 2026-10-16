@@ -756,7 +756,7 @@ export default function MysteryQuestBoard({
       steps: [
         { step: "1. Chọn 4 & Radar 1", desc: "Chọn 4 trong 8 cánh cửa. Radar 1 quét số bẫy. Chọn nhận 100% điểm gốc hoặc tiếp tục.", icon: "🚪" },
         { step: "2. Chọn 2 & Radar 2", desc: "Giữ lại 2 trong 4 cửa. Radar 2 quét số bẫy trong 2 cửa.", icon: "📡" },
-        { step: "3. Đổi & Chốt mở", desc: "Chọn Nhận 50% điểm (-1 ❤️) hoặc BẮT BUỘC ĐỔI 1 cửa với 1 trong 6 cửa đã bị loại trước khi mở chốt!", icon: "✨" },
+        { step: "3. Đổi & Chốt mở", desc: "Đèn Xanh: Mở nhận thưởng. Đèn Vàng: Tự do mở liều 50/50, Đổi cửa hoặc Rút lui (-1 ❤️). Đèn Đỏ: Bắt buộc Đổi 1 cửa hoặc Rút lui!", icon: "✨" },
       ],
       rewardMechanic: "Cửa Thưởng: Đại Thưởng (+2x điểm), Cướp đối thủ (+1x), Kho Báu (+1.5x), May Mắn (+1x).",
       riskMechanic: "Cửa Bẫy: Trừ điểm gốc (-1x), Bom Khói, Bom Hắc Ám, Bom Từ Thiện.",
@@ -1479,7 +1479,9 @@ export default function MysteryQuestBoard({
                   <p className="text-[11px] text-yellow-300 font-bold leading-snug">
                     {oneShotState?.radarLight === "GREEN"
                       ? "🟢 Radar báo Xanh: Cả 2 cửa đều AN TOÀN TUYỆT ĐỐI! Hãy mở cửa hoặc rút lui an toàn."
-                      : `⚠️ Radar báo Động: Có ${oneShotState?.penaltyDoorsCount || 1} cửa bẫy trong 2 cửa này! BẮT BUỘC ĐỔI CỬA trước khi mở!`}
+                      : oneShotState?.radarLight === "YELLOW"
+                      ? "🟡 Radar báo Vàng: Có 1 cửa tiêu cực (50/50)! Có thể Mở liều, Đổi cửa hoặc Rút lui an toàn."
+                      : "🔴 Radar báo Đỏ: Cả 2 cửa đều là Bẫy & Bom! BẮT BUỘC ĐỔI CỬA trước khi mở!"}
                   </p>
                 ) : oneShotState?.phase === "OPEN_FINAL" ? (
                   <p className="text-[11px] text-yellow-300 font-bold leading-snug">
@@ -1528,9 +1530,11 @@ export default function MysteryQuestBoard({
 
                 {mysteryState?.stolenPointsPot && mysteryState.stolenPointsPot > 0 ? (
                   <div className="flex justify-center">
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.2 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[10px] font-black animate-pulse shadow-sm">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-400/50 text-rose-300 text-[10px] sm:text-[11px] font-black animate-pulse shadow-sm">
                       <span>🗡️</span>
-                      <span>Gồm +{mysteryState.stolenPointsPot}đ cướp từ đối thủ dẫn đầu!</span>
+                      <span>
+                        Gồm +{mysteryState.stolenPointsPot}đ nhắm cướp từ {mysteryState.pendingStealVictimName || "đối thủ"} (Chốt để nhận!)
+                      </span>
                     </span>
                   </div>
                 ) : null}
@@ -2013,103 +2017,144 @@ export default function MysteryQuestBoard({
                         : "bg-red-950/90 border-red-500 text-red-200"
                     }`}>
                       {isGreen && <span>🟢 ĐÈN XANH: Cả 2 cửa đều hoàn toàn an toàn! Hãy chọn 1 cửa để mở!</span>}
-                      {isYellow && <span>🟡 ĐÈN VÀNG: Có 1 kíp nổ trong 2 cửa này! Bắt buộc đổi cửa hoặc rút lui an toàn!</span>}
-                      {!isGreen && !isYellow && <span>🔴 ĐÈN ĐỎ: Cả 2 cửa đều là Bẫy & Bom! Bắt buộc đổi cửa hoặc rút lui an toàn!</span>}
+                      {isYellow && <span>🟡 ĐÈN VÀNG: Có 1 ô tiêu cực trong 2 cửa này (Tỷ lệ 50/50)! Tự do lựa chọn: Mở liều, Đổi 1 cửa hoặc Rút lui an toàn!</span>}
+                      {!isGreen && !isYellow && <span>🔴 ĐÈN ĐỎ: Cả 2 cửa đều là Bẫy & Bom (100% Tiêu cực)! BẮT BUỘC ĐỔI CỬA hoặc Rút lui an toàn!</span>}
                     </div>
 
-                    {isGreen ? (
-                      <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
-                        Cả 2 cánh cửa đều an toàn! Bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 2 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở nhận thưởng!
-                      </p>
-                    ) : (
-                      <>
-                        {swapStep === "IDLE" && (
-                          <>
-                            <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
-                              Chọn <strong>Rút lui an toàn</strong> (nhận 50% điểm gốc, -1 ❤️) HOẶC <strong>Đổi 1 cửa</strong> với 1 trong 6 cửa đã bị loại trước đó!
-                            </p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              {/* Rút lui an toàn */}
-                              {hasHeartsToSafelyExit ? (
-                                <button
-                                  type="button"
-                                  onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
-                                  disabled={!canInteract}
-                                  className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
-                                >
-                                  <span>🛡️</span>
-                                  <span>Rút Lui (+{Math.round((baseQuestionPoints || 10) * 0.5)}đ, -1 ❤️)</span>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled
-                                  className="px-3 py-2 rounded-xl bg-stone-800 text-stone-400 font-bold text-xs uppercase border border-stone-700 cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
-                                >
-                                  <span>🔒</span>
-                                  <span>Hết Tim - Không Thể Rút Lui</span>
-                                </button>
-                              )}
+                    {swapStep === "IDLE" ? (
+                      isGreen ? (
+                        <p className="text-[11px] text-white/90 max-w-md mx-auto leading-relaxed">
+                          Cả 2 cánh cửa đều an toàn! Bấm trực tiếp vào <strong className="text-yellow-300 underline">1 trong 2 cánh cửa đang sáng</strong> (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để mở nhận thưởng!
+                        </p>
+                      ) : isYellow ? (
+                        <>
+                          <p className="text-[11px] sm:text-xs text-white/90 max-w-md mx-auto leading-relaxed">
+                            Đèn Vàng (50% An Toàn / 50% Tiêu Cực)! Đội bạn <strong>không bị ép buộc phải đổi cửa</strong>. Hãy chọn 1 trong 3 phương án:
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            {/* Phương án 1: Mở liều 1 trong 2 cửa */}
+                            <button
+                              type="button"
+                              onClick={() => onDoorsDecision?.({ decision: "RISK_OPEN" })}
+                              disabled={!canInteract}
+                              className="px-3 py-2 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-600 hover:from-yellow-400 hover:to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow-lg border border-yellow-300 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 animate-pulse"
+                            >
+                              <span>🎲</span>
+                              <span>Mở Liều (50/50)</span>
+                            </button>
 
-                              {/* Đổi 1 cửa */}
+                            {/* Phương án 2: Đổi 1 cửa */}
+                            <button
+                              type="button"
+                              onClick={() => setSwapStep("SELECT_REMOVE")}
+                              disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
+                              className={`px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                                oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : ""
+                              }`}
+                            >
+                              <span>🔄</span>
+                              <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Đổi 1 Cửa"}</span>
+                            </button>
+
+                            {/* Phương án 3: Rút lui an toàn */}
+                            {hasHeartsToSafelyExit ? (
                               <button
                                 type="button"
-                                onClick={() => setSwapStep("SELECT_REMOVE")}
-                                disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
-                                className={`px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 ${
-                                  oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : "animate-pulse"
-                                }`}
-                              >
-                                <span>🔄</span>
-                                <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Đổi 1 Cửa (Với Cửa Bị Loại)"}</span>
-                              </button>
-                            </div>
-                            <div className="pt-0.5">
-                              <button
-                                type="button"
-                                onClick={() => onDoorsDecision?.({ decision: "RISK_OPEN" })}
+                                onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
                                 disabled={!canInteract}
-                                className="text-[10px] text-amber-300/80 hover:text-amber-200 underline font-semibold transition cursor-pointer"
+                                className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
                               >
-                                🎲 Hoặc: Mở luôn 1 trong 2 cửa hiện tại (Chấp nhận rủi ro) ➔
+                                <span>🛡️</span>
+                                <span>Rút Lui (+{Math.round((baseQuestionPoints || 10) * 0.5)}đ, -1 ❤️)</span>
                               </button>
-                            </div>
-                          </>
-                        )}
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                className="px-3 py-2 rounded-xl bg-stone-800 text-stone-400 font-bold text-xs uppercase border border-stone-700 cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
+                              >
+                                <span>🔒</span>
+                                <span>Hết Tim</span>
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-[10.5px] text-amber-200/90 italic pt-0.5">
+                            * Bạn cũng có thể bấm trực tiếp vào 1 trong 2 cánh cửa đang sáng (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để Mở Liều!
+                          </p>
+                        </>
+                      ) : (
+                        /* ĐÈN ĐỎ (RED) - Cả 2 cửa đều tiêu cực */
+                        <>
+                          <p className="text-[11px] sm:text-xs text-rose-200 font-bold max-w-md mx-auto leading-relaxed">
+                            ⚠️ Đèn Đỏ: Cả 2 cửa đều là Bẫy & Bom (100% Tiêu cực)! BẮT BUỘC ĐỔI CỬA sang 1 trong 6 cửa đã loại hoặc RÚT LUI AN TOÀN!
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                            {/* Rút lui an toàn */}
+                            {hasHeartsToSafelyExit ? (
+                              <button
+                                type="button"
+                                onClick={() => onDoorsDecision?.({ decision: "SAFE_EXIT" })}
+                                disabled={!canInteract}
+                                className="px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-emerald-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5"
+                              >
+                                <span>🛡️</span>
+                                <span>Rút Lui (+{Math.round((baseQuestionPoints || 10) * 0.5)}đ, -1 ❤️)</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled
+                                className="px-3 py-2 rounded-xl bg-stone-800 text-stone-400 font-bold text-xs uppercase border border-stone-700 cursor-not-allowed opacity-60 flex items-center justify-center gap-1.5"
+                              >
+                                <span>🔒</span>
+                                <span>Hết Tim - Bắt Buộc Đổi Cửa</span>
+                              </button>
+                            )}
 
-                        {swapStep === "SELECT_REMOVE" && (
-                          <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
-                            <p className="text-xs text-amber-200 font-bold animate-pulse">
-                              👉 BƯỚC 1: Bấm vào 1 trong 2 cánh cửa bạn đã chọn (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để BỎ RA.
-                            </p>
+                            {/* Đổi 1 cửa */}
                             <button
                               type="button"
-                              onClick={() => setSwapStep("IDLE")}
-                              className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                              onClick={() => setSwapStep("SELECT_REMOVE")}
+                              disabled={!canInteract || Boolean(oneShotState?.hasSwapped)}
+                              className={`px-3 py-2 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-lg border border-amber-400 active:scale-95 transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                                oneShotState?.hasSwapped ? "opacity-50 cursor-not-allowed" : "animate-pulse"
+                              }`}
                             >
-                              Hủy đổi cửa
+                              <span>🔄</span>
+                              <span>{oneShotState?.hasSwapped ? "Đã Đổi Cửa" : "Bắt Buộc Đổi 1 Cửa"}</span>
                             </button>
                           </div>
-                        )}
-
-                        {swapStep === "SELECT_ADD" && (
-                          <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/50 space-y-2">
-                            <p className="text-xs text-cyan-200 font-bold animate-pulse">
-                              👉 BƯỚC 2: Bấm vào 1 trong các cánh cửa đã bị loại (#{(oneShotState?.discardedDoorIds || []).join(", #")}) bên dưới để THAY VÀO (thay thế Cửa #{swapRemovedId}).
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSwapStep("SELECT_REMOVE");
-                                setSwapRemovedId(null);
-                              }}
-                              className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
-                            >
-                              Chọn lại cửa bỏ
-                            </button>
-                          </div>
-                        )}
-                      </>
+                        </>
+                      )
+                    ) : swapStep === "SELECT_REMOVE" ? (
+                      <div className="p-2.5 rounded-xl bg-black/60 border border-amber-400/50 space-y-2">
+                        <p className="text-xs text-amber-200 font-bold animate-pulse">
+                          👉 BƯỚC 1: Bấm vào 1 trong 2 cánh cửa bạn đã chọn (#{(oneShotState?.selectedDoorIds || []).join(", #")}) bên dưới để BỎ RA.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSwapStep("IDLE")}
+                          className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                        >
+                          Hủy đổi cửa
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-400/50 space-y-2">
+                        <p className="text-xs text-cyan-200 font-bold animate-pulse">
+                          👉 BƯỚC 2: Bấm vào 1 trong các cánh cửa đã bị loại (#{(oneShotState?.discardedDoorIds || []).join(", #")}) bên dưới để THAY VÀO (thay thế Cửa #{swapRemovedId}).
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSwapStep("SELECT_REMOVE");
+                            setSwapRemovedId(null);
+                          }}
+                          className="px-3 py-1 rounded-lg bg-stone-800 text-stone-300 hover:text-white text-[11px] font-bold border border-white/20 transition cursor-pointer"
+                        >
+                          Chọn lại cửa bỏ
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -2203,8 +2248,8 @@ export default function MysteryQuestBoard({
                       }
                       return;
                     }
-                    // Green light: open directly
-                    if (swapStep === "IDLE" && oneShotState?.radarLight === "GREEN" && isSelected) {
+                    // Green or Yellow light: open directly
+                    if (swapStep === "IDLE" && (oneShotState?.radarLight === "GREEN" || oneShotState?.radarLight === "YELLOW") && isSelected) {
                       handleTileClick(tile);
                       return;
                     }
@@ -2231,7 +2276,7 @@ export default function MysteryQuestBoard({
                         (!isPenaltySurvivalMode && (
                           (osPhase === "SELECT_2" && isDiscarded) ||
                           (osPhase === "STAGE_1_DECISION") ||
-                          (osPhase === "FINAL_DECISION" && swapStep === "IDLE" && oneShotState?.radarLight !== "GREEN") ||
+                          (osPhase === "FINAL_DECISION" && swapStep === "IDLE" && oneShotState?.radarLight !== "GREEN" && oneShotState?.radarLight !== "YELLOW") ||
                           (osPhase === "FINAL_DECISION" && swapStep === "SELECT_REMOVE" && !isSelected) ||
                           (osPhase === "FINAL_DECISION" && swapStep === "SELECT_ADD" && (!isDiscarded || tile.isPeeked)) ||
                           (osPhase === "OPEN_FINAL" && !isSelected) ||
@@ -2267,10 +2312,10 @@ export default function MysteryQuestBoard({
                               : isDiscarded && !tile.isPeeked
                               ? "scale-105 shadow-[0_0_25px_rgba(16,185,129,0.8)] ring-2 ring-emerald-400 cursor-pointer animate-pulse hover:scale-108"
                               : "opacity-35 pointer-events-none cursor-not-allowed"
-                            : isSelected && oneShotState?.radarLight === "GREEN"
-                            ? "scale-105 shadow-[0_0_30px_rgba(16,185,129,0.8)] ring-2 ring-emerald-400 cursor-pointer animate-pulse"
+                            : isSelected && (oneShotState?.radarLight === "GREEN" || oneShotState?.radarLight === "YELLOW")
+                            ? `scale-105 shadow-[0_0_30px_${oneShotState?.radarLight === "GREEN" ? "rgba(16,185,129,0.8)" : "rgba(245,158,11,0.8)"}] ring-2 ${oneShotState?.radarLight === "GREEN" ? "ring-emerald-400" : "ring-amber-400"} cursor-pointer animate-pulse`
                             : isSelected
-                            ? "scale-102 shadow-xl ring-2 ring-amber-400 cursor-default"
+                            ? "scale-102 shadow-xl ring-2 ring-rose-500 cursor-default"
                             : isDiscarded
                             ? "opacity-30 grayscale cursor-not-allowed"
                             : "opacity-60 cursor-default"
@@ -2329,10 +2374,12 @@ export default function MysteryQuestBoard({
                                   CHỌN 📦
                                 </span>
                               ) : null
-                            ) : osPhase === "OPEN_FINAL" || (osPhase === "FINAL_DECISION" && oneShotState?.radarLight === "GREEN") ? (
+                            ) : osPhase === "OPEN_FINAL" || (osPhase === "FINAL_DECISION" && (oneShotState?.radarLight === "GREEN" || oneShotState?.radarLight === "YELLOW")) ? (
                               isSelected ? (
-                                <span className="text-[7.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full bg-yellow-400 text-black animate-pulse shadow whitespace-nowrap">
-                                  MỞ ✨
+                                <span className={`text-[7.5px] sm:text-[10px] font-black px-1.5 sm:px-2 py-0.5 rounded-full ${
+                                  oneShotState?.radarLight === "YELLOW" ? "bg-amber-400 text-black" : "bg-yellow-400 text-black"
+                                } animate-pulse shadow whitespace-nowrap`}>
+                                  {oneShotState?.radarLight === "YELLOW" ? "MỞ 🎲" : "MỞ ✨"}
                                 </span>
                               ) : (
                                 <span className="text-[7px] sm:text-[9px] font-black px-1.5 py-0.5 rounded-full bg-stone-800 text-stone-400 whitespace-nowrap">

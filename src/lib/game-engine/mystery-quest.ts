@@ -3544,7 +3544,7 @@ export function handleFlipCard({
     }
 
     const isDoorNegative = (t: MysteryTile): boolean => {
-      if (t.tarotCardKey === "THE_FOOL") return false;
+      if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return true;
       if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
       if (t.type !== "REWARD" && t.type !== "ESCAPE_SAFE") return true;
       if (t.deltaPoints && t.deltaPoints < 0) return true;
@@ -3638,7 +3638,7 @@ export function handleFlipCard({
       osState.phase === "OPEN_FINAL" ||
       osState.phase === "STAGE_2_PICK" ||
       osState.phase === "SCANNED" ||
-      (osState.phase === "FINAL_DECISION" && osState.radarLight === "GREEN")
+      (osState.phase === "FINAL_DECISION" && (osState.radarLight === "GREEN" || osState.radarLight === "YELLOW"))
     ) {
       const selected = osState.selectedDoorIds || [];
       if (!selected.includes(tileId)) {
@@ -3673,6 +3673,34 @@ export function handleFlipCard({
           return {
             updatedState: { ...state },
             isBomb: false,
+            scorePenalty: 0,
+            finalScoreDelta: 0,
+          };
+        }
+
+        if (tile.tarotCardKey === "THE_FOOL" || tile.pairKey === "THE_FOOL" || tile.pairKey === "PAIR_THE_FOOL") {
+          state.potPoints = 0;
+          state.bombExploded = {
+            type: "SMOKE",
+            title: "🃏 KẺ KHỜ (THE FOOL)!",
+            description: "Mở trúng ô Kẻ Khờ ±0đ. Lượt chơi kết thúc an toàn nhưng không nhận được điểm thưởng!",
+            penaltyText: "Không nhận được điểm thưởng (±0đ), kết thúc lượt thi.",
+          };
+          state.phase = "TURN_SUMMARY";
+          state.turnFinishedReason = "BOMB_HIT";
+          const oldScore = team.score || 0;
+          state.storyResult = {
+            teamId: team.id,
+            teamName: team.name,
+            teamColor: team.color || "#f59e0b",
+            rewardText: `🃏 MỞ CỬA KẺ KHỜ! Bẫy trung lập kích hoạt: Giữ nguyên thế trận an toàn tuyệt đối (±0đ) nhưng không có điểm thưởng!`,
+            scoreDelta: 0,
+            oldScore,
+            newScore: oldScore,
+          };
+          return {
+            updatedState: { ...state },
+            isBomb: true,
             scorePenalty: 0,
             finalScoreDelta: 0,
           };
@@ -4285,6 +4313,9 @@ export function handleFlipCard({
     const finalDelta = savedPotPoints - penalty;
 
     state.potPoints = 0;
+    state.stolenPointsPot = 0;
+    state.pendingStealVictimId = undefined;
+    state.pendingStealVictimName = undefined;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = state.isPenaltySurvivalMode ? "SURVIVAL_FAILED" : "BOMB_HIT";
 
@@ -4743,6 +4774,25 @@ export function handleChooseStealTarget({
     state.pendingStealVictimId = victimTeamId;
     state.pendingStealVictimName = victimTeamName;
 
+    // Đảm bảo luôn có lá bài tiếp theo trên đỉnh chồng bài để người chơi tiếp tục lật liều hoặc chốt điểm
+    const hasUnopenedCard = state.tiles.some((t) => !t.isOpened);
+    if (!hasUnopenedCard) {
+      const activeTeamObj = (allTeams || []).find((t) => t.id === state.currentTurnTeamId);
+      const nextTopCard = generateNextPushYourLuckCard({
+        theme: state.theme,
+        drawIndex: (state.cardsFlippedCount || 0) + 1,
+        basePoints: state.baseQuestionPoints || 10,
+        teamScore: activeTeamObj?.score || 0,
+        isDoublePromo: false,
+        options: {
+          currentRound: state.currentRound,
+          teams: allTeams,
+          currentTeamId: state.currentTurnTeamId,
+        },
+      });
+      state.tiles.push(nextTopCard);
+    }
+
     state.storyResult = {
       teamId: state.currentTurnTeamId,
       teamName: state.currentTurnTeamName,
@@ -5077,7 +5127,7 @@ export function handleOneShotDoorsDecision({
   });
 
   const isDoorNegative = (t: MysteryTile): boolean => {
-    if (t.tarotCardKey === "THE_FOOL") return false;
+    if (t.tarotCardKey === "THE_FOOL" || t.pairKey === "THE_FOOL" || t.pairKey === "PAIR_THE_FOOL") return true;
     if (t.tarotCardKey === "THE_TOWER" || t.tarotCardKey === "THE_KNIGHT" || t.tarotCardKey === "THE_DEVIL" || t.tarotCardKey === "THE_HANGED_MAN") return true;
     if (t.type !== "REWARD" && t.type !== "ESCAPE_SAFE") return true;
     if (t.deltaPoints && t.deltaPoints < 0) return true;
@@ -5112,6 +5162,34 @@ export function handleOneShotDoorsDecision({
       return {
         updatedState: { ...state },
         isBomb: false,
+        scorePenalty: 0,
+        finalScoreDelta: 0,
+      };
+    }
+
+    if (chosenTile.tarotCardKey === "THE_FOOL" || chosenTile.pairKey === "THE_FOOL" || chosenTile.pairKey === "PAIR_THE_FOOL") {
+      state.potPoints = 0;
+      state.bombExploded = {
+        type: "SMOKE",
+        title: "🃏 KẺ KHỜ (THE FOOL)!",
+        description: "Mở trúng ô Kẻ Khờ ±0đ. Lượt chơi kết thúc an toàn nhưng không nhận được điểm thưởng!",
+        penaltyText: "Không nhận được điểm thưởng (±0đ), kết thúc lượt thi.",
+      };
+      state.phase = "TURN_SUMMARY";
+      state.turnFinishedReason = "BOMB_HIT";
+      const oldScore = team.score || 0;
+      state.storyResult = {
+        teamId: team.id,
+        teamName: team.name,
+        teamColor: team.color || "#f59e0b",
+        rewardText: `🃏 MỞ CỬA KẺ KHỜ! Bẫy trung lập kích hoạt: Giữ nguyên thế trận an toàn tuyệt đối (±0đ) nhưng không có điểm thưởng!`,
+        scoreDelta: 0,
+        oldScore,
+        newScore: oldScore,
+      };
+      return {
+        updatedState: { ...state },
+        isBomb: true,
         scorePenalty: 0,
         finalScoreDelta: 0,
       };

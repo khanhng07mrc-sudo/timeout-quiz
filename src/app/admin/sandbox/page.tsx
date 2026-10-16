@@ -2680,7 +2680,7 @@ export default function AdminSandboxPage() {
         });
 
         let updatedTeams = [...roomStateRef.current.teams];
-        if (victimTeamId && stolenPoints && stolenPoints > 0) {
+        if (victimTeamId && stolenPoints && stolenPoints > 0 && updatedState.miniGameType !== "PUSH_YOUR_LUCK") {
           updatedTeams = updatedTeams.map((t) => {
             if (t.id === victimTeamId) return { ...t, score: Math.max(0, t.score - stolenPoints) };
             if (t.id === activeTeam.id) return { ...t, score: t.score + (finalScoreDelta || stolenPoints) };

@@ -7582,14 +7582,19 @@ export function registerSocketHandlers(io: IO) {
 
       const scoreUpdates: Array<{ teamId: string; score: number; delta: number }> = [];
 
-      if (victimTeamId && stolenPoints > 0) {
-        const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
-        scoreUpdates.push({ teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta });
-      }
+      // CHỈ trừ điểm đối thủ ngay lập tức đối với các minigame kết thúc lượt ngay (như TAROT_DESTINY, ONE_SHOT_DOORS, MEMORY_PAIRS).
+      // Đối với PUSH_YOUR_LUCK (Lật Liều), điểm cướp chỉ được nạp vào Hũ điểm (Quỹ thưởng).
+      // CHỈ KHI NÀO CHỐT ĐIỂM (CASH OUT) THÌ MỚI THỰC SỰ TRỪ ĐIỂM ĐỐI THỦ! NẾU DÍNH BOM THÌ HỦY TOÀN BỘ VỤ CƯỚP!
+      if (updatedState.miniGameType !== "PUSH_YOUR_LUCK") {
+        if (victimTeamId && stolenPoints > 0) {
+          const victimDelta = await applyScoreDeltaToTeam(victimTeamId, -stolenPoints);
+          scoreUpdates.push({ teamId: victimTeamId, score: victimDelta.newScore, delta: victimDelta.effectiveDelta });
+        }
 
-      if (updatedState.currentTurnTeamId && finalScoreDelta && finalScoreDelta !== 0) {
-        const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
-        scoreUpdates.push({ teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta });
+        if (updatedState.currentTurnTeamId && finalScoreDelta && finalScoreDelta !== 0) {
+          const stealerDelta = await applyScoreDeltaToTeam(updatedState.currentTurnTeamId, finalScoreDelta);
+          scoreUpdates.push({ teamId: updatedState.currentTurnTeamId, score: stealerDelta.newScore, delta: stealerDelta.effectiveDelta });
+        }
       }
 
       if (scoreUpdates.length > 0) {

@@ -1005,6 +1005,10 @@ export interface AncientTarotDrawnCard {
   shieldsGrantedTeamIds?: string[];
   heartsHealedTeamIds?: string[];
   brokenShieldTeamId?: string;
+  maxHeartsBonusTeamId?: string;
+  heartLostTeamId?: string;
+  shieldDisabledTeamId?: string;
+  immunityGrantedTeamId?: string;
 }
 
 export interface TarotWheelSegment {
@@ -1064,6 +1068,7 @@ export interface MysteryQuestState {
   turnsPerTeam: number;
   initialHeartsPerTeam?: number; // Số Tim ban đầu: Math.round(turnsPerTeam / 3)
   teamHearts?: Record<string, number>; // Quản lý số Tim thực tế của từng team (teamId -> hearts)
+  teamMaxHearts?: Record<string, number>; // Quản lý giới hạn Tim tối đa của từng team (teamId -> maxHearts)
   currentRound: number; // 1, 2, ...
   theme: MysteryTheme;
   miniGameType: MysteryMiniGameType;
@@ -1101,6 +1106,7 @@ export interface MysteryQuestState {
       };
   hasShield?: boolean;
   teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>; // Bùa Miễn Nhiễm Mặt Trăng (The Moon)
   currentTeamRiskTier?: TeamRiskTier;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;

@@ -1039,7 +1039,7 @@ export default function MysteryQuestBoard({
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
-                          Không mất tim trước, bước vào <strong>Minigame Sinh Tử</strong>: Tỷ lệ <span className="text-emerald-400 font-bold">25% An Toàn 🕊️/🃏</span> - <span className="text-rose-400 font-bold">75% Bẫy & Bom 💀</span> (Vô hiệu hóa toàn bộ Perk). Nếu an toàn: giữ trọn điểm và tim!
+                          Không mất tim trước, bước vào <strong>Minigame Sinh Tử</strong>: Tỷ lệ <span className="text-emerald-400 font-bold">25% An Toàn 🕊️/🃏</span> - <span className="text-rose-400 font-bold">75% Bẫy & Bom 💀</span>. Nếu an toàn: giữ trọn điểm và tim; nếu dính ô trừ điểm: trừ điểm và mất -1 ❤️!
                         </p>
                       </div>
 
@@ -3130,6 +3130,11 @@ export default function MysteryQuestBoard({
                     const isSpinningActive = Boolean(tarotState?.isWheelSpinning || isWheelSpinningOptimistic);
 
                     const isGambleRound = Boolean(tarotState?.isGambling || tarotState?.isGamblingWaitingSpin || isLocalGambleArming);
+                    const gambleTriggerCard = mysteryState?.tarotGambleState?.triggerCardKey || tarotState?.drawnCard?.key;
+                    const isStarGamble = isGambleRound && gambleTriggerCard === "THE_STAR";
+                    const isMoonGamble = isGambleRound && gambleTriggerCard === "THE_MOON";
+                    const activeTeamHearts = teams.find((t) => t.id === currentTurnTeamId)?.hearts ?? mysteryState?.teamHearts?.[currentTurnTeamId] ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                    const isStarDisabled = isStarGamble && activeTeamHearts < 1;
 
                     const handleTriggerSpin = () => {
                       if (isSpinningActive) return;
@@ -3240,13 +3245,30 @@ export default function MysteryQuestBoard({
                             {isGambleRound && canActOnTarot && !isSpinningActive && !isDisplay && (
                               <button
                                 type="button"
+                                disabled={isStarDisabled}
                                 onClick={() => {
+                                  if (isStarDisabled) return;
                                   setIsLocalGambleArming(false);
                                   onTarotGambleDecision?.(false);
                                 }}
-                                className="w-full py-1.5 px-3 rounded-xl bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                                className={`w-full py-1.5 px-3 rounded-xl border text-xs font-bold transition ${
+                                  isStarDisabled
+                                    ? "bg-slate-900/80 border-rose-500/30 text-rose-300/60 cursor-not-allowed opacity-60"
+                                    : isStarGamble
+                                    ? "bg-amber-950/80 hover:bg-amber-900 border-amber-400/60 text-amber-200 cursor-pointer shadow-md"
+                                    : isMoonGamble
+                                    ? "bg-indigo-950/80 hover:bg-indigo-900 border-indigo-400/60 text-indigo-200 cursor-pointer shadow-md"
+                                    : "bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-400/60 text-emerald-200 cursor-pointer"
+                                }`}
+                                title={isStarDisabled ? "Cần tối thiểu 1 ❤️ để dừng lại đổi lấy Max Tim" : undefined}
                               >
-                                🛑 Hoặc: Dừng Lại An Toàn (+{baseQuestionPoints || 10}đ)
+                                {isStarDisabled
+                                  ? "🛑 Dừng Lại (Khóa: Cần tối thiểu 1 ❤️ để đổi Max Tim)"
+                                  : isStarGamble
+                                  ? `🛑 Dừng Lại (+${baseQuestionPoints || 10}đ & Đổi 1 ❤️ lấy +1 Max Tim)`
+                                  : isMoonGamble
+                                  ? `🛑 Dừng Lại (+${baseQuestionPoints || 10}đ & Bùa Miễn Nhiễm 🌙)`
+                                  : `🛑 Hoặc: Dừng Lại An Toàn (+${baseQuestionPoints || 10}đ)`}
                               </button>
                             )}
 
@@ -3262,13 +3284,30 @@ export default function MysteryQuestBoard({
                                 {isGambleRound && (
                                   <button
                                     type="button"
+                                    disabled={isStarDisabled}
                                     onClick={() => {
+                                      if (isStarDisabled) return;
                                       setIsLocalGambleArming(false);
                                       onTarotGambleDecision?.(false);
                                     }}
-                                    className="py-1 px-3 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-400/50 text-emerald-200 text-xs font-bold transition cursor-pointer"
+                                    className={`py-1 px-3 rounded-xl border text-xs font-bold transition ${
+                                      isStarDisabled
+                                        ? "bg-slate-900/80 border-rose-500/30 text-rose-300/60 cursor-not-allowed opacity-60"
+                                        : isStarGamble
+                                        ? "bg-amber-950/70 hover:bg-amber-900 border-amber-400/50 text-amber-200 cursor-pointer"
+                                        : isMoonGamble
+                                        ? "bg-indigo-950/70 hover:bg-indigo-900 border-indigo-400/50 text-indigo-200 cursor-pointer"
+                                        : "bg-emerald-950/60 hover:bg-emerald-900/80 border-emerald-400/50 text-emerald-200 cursor-pointer"
+                                    }`}
+                                    title={isStarDisabled ? "Cần tối thiểu 1 ❤️ để dừng lại đổi lấy Max Tim" : undefined}
                                   >
-                                    ⚡ Admin Dừng Lại (+{baseQuestionPoints || 10}đ)
+                                    {isStarDisabled
+                                      ? "⚡ Admin Dừng Lại (Khóa: Cần ≥ 1 ❤️)"
+                                      : isStarGamble
+                                      ? `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ & Đổi Max Tim)`
+                                      : isMoonGamble
+                                      ? `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ & Bùa 🌙)`
+                                      : `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ)`}
                                   </button>
                                 )}
                               </div>
@@ -3486,11 +3525,13 @@ export default function MysteryQuestBoard({
                             ) : drawnCard && (drawnCard.key === "THE_STAR" || drawnCard.key === "THE_MOON") ? (
                               tarotState?.isGambling ? (
                                 <span className="text-fuchsia-300">
-                                  ⭐ Cánh Cổng Đánh Cược (An toàn +{baseQuestionPoints || 10}đ / Quay Tiếp)
+                                  {drawnCard.key === "THE_STAR"
+                                    ? `⭐ Đánh Cược (Dừng: +${baseQuestionPoints || 10}đ & Đổi 1 ❤️ lấy +1 Max Tim)`
+                                    : `🌑 Đánh Cược (Dừng: +${baseQuestionPoints || 10}đ & Bùa Miễn Nhiễm 🌙)`}
                                 </span>
                               ) : (
                                 <span className="text-emerald-400">
-                                  +{drawnCard.scoreDelta || baseQuestionPoints || 10}đ (Dừng Lại An Toàn 🛡️)
+                                  +{drawnCard.scoreDelta || baseQuestionPoints || 10}đ {drawnCard.key === "THE_STAR" ? "(Đổi 1 ❤️ lấy +1 Max Tim ⭐)" : "(Nhận Bùa Miễn Nhiễm 🌙)"}
                                 </span>
                               )
                             ) : drawnCard && drawnCard.stolenPoints && drawnCard.stolenPoints > 0 ? (
@@ -3595,70 +3636,123 @@ export default function MysteryQuestBoard({
                   )}
 
                   {/* ── Gamble Options when isGambling (after reveal) ── */}
-                  {!isPendingReveal && tarotState?.isGambling && (
-                    <div className="mt-4 p-4 rounded-2xl bg-purple-950/75 border-2 border-fuchsia-500/60 shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-black text-fuchsia-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
-                          <span>✦</span>
-                          <span>CÁNH CỔNG ĐÁNH CƯỢC ĐỊNH MỆNH</span>
-                          <span>✦</span>
-                        </h4>
-                        <p className="text-xs text-purple-200/90 font-medium">
-                          Bạn có muốn <strong>Quay Tiếp</strong> để săn phần thưởng lớn hơn, hay <strong>Dừng Lại An Toàn</strong> nhận ngay <strong>+{baseQuestionPoints || 10}đ</strong> (1x điểm gốc câu hỏi)?
-                        </p>
-                      </div>
+                  {!isPendingReveal && tarotState?.isGambling && (() => {
+                    const gambleTriggerCard = mysteryState?.tarotGambleState?.triggerCardKey || tarotState?.drawnCard?.key;
+                    const isStarGambleModal = gambleTriggerCard === "THE_STAR";
+                    const isMoonGambleModal = gambleTriggerCard === "THE_MOON";
+                    const activeTeamHearts = teams.find((t) => t.id === currentTurnTeamId)?.hearts ?? mysteryState?.teamHearts?.[currentTurnTeamId] ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                    const isStarDisabledModal = isStarGambleModal && activeTeamHearts < 1;
 
-                      <div className="flex items-center justify-center gap-3 pt-1">
-                        {canActOnTarot && !isDisplay ? (
-                          <>
+                    return (
+                      <div className="mt-4 p-4 rounded-2xl bg-purple-950/75 border-2 border-fuchsia-500/60 shadow-2xl text-center space-y-3 max-w-md w-full animate-fade-in z-10">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-fuchsia-300 uppercase tracking-wider flex items-center justify-center gap-1.5">
+                            <span>✦</span>
+                            <span>CÁNH CỔNG ĐÁNH CƯỢC ĐỊNH MỆNH</span>
+                            <span>✦</span>
+                          </h4>
+                          <p className="text-xs text-purple-200/90 font-medium">
+                            {isStarGambleModal
+                              ? `Bạn có muốn Quay Tiếp để săn phần thưởng lớn hơn, hay Dừng Lại (+${baseQuestionPoints || 10}đ) để đổi 1 ❤️ lấy +1 Giới hạn Tim tối đa?`
+                              : isMoonGambleModal
+                              ? `Bạn có muốn Quay Tiếp để săn phần thưởng lớn hơn, hay Dừng Lại (+${baseQuestionPoints || 10}đ) để kích hoạt Bùa Miễn Nhiễm 🌙 trọn vẹn 1 vòng đấu (sẽ vô hiệu hóa Khiên nếu có)?`
+                              : `Bạn có muốn Quay Tiếp để săn phần thưởng lớn hơn, hay Dừng Lại An Toàn nhận ngay +${baseQuestionPoints || 10}đ (1x điểm gốc câu hỏi)?`}
+                          </p>
+                          {isStarDisabledModal && (
+                            <div className="p-2 rounded-xl bg-rose-950/70 border border-rose-500/50 text-[11px] text-rose-300 font-bold mt-2">
+                              ⚠️ Đội bạn đang có 0 ❤️ nên không đủ điều kiện Dừng Lại để đổi Max Tim. Bạn buộc phải bấm Quay Tiếp!
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-center gap-3 pt-1">
+                          {canActOnTarot && !isDisplay ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsLocalGambleArming(true);
+                                  onTarotGamblePrepare?.();
+                                }}
+                                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-amber-300 hover:scale-105 active:scale-95 transition cursor-pointer animate-pulse"
+                              >
+                                🎲 QUYẾT ĐỊNH QUAY TIẾP ➔
+                              </button>
+                              <button
+                                type="button"
+                                disabled={isStarDisabledModal}
+                                onClick={() => {
+                                  if (isStarDisabledModal) return;
+                                  onTarotGambleDecision?.(false);
+                                }}
+                                className={`flex-1 py-3 px-4 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider border transition ${
+                                  isStarDisabledModal
+                                    ? "bg-slate-900/80 border-rose-500/30 text-rose-300/50 cursor-not-allowed opacity-60"
+                                    : isStarGambleModal
+                                    ? "bg-amber-900/85 hover:bg-amber-800 text-amber-100 border-amber-400/60 hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                                    : isMoonGambleModal
+                                    ? "bg-indigo-900/85 hover:bg-indigo-800 text-indigo-100 border-indigo-400/60 hover:scale-105 active:scale-95 cursor-pointer shadow-lg"
+                                    : "bg-emerald-900/75 hover:bg-emerald-800/85 text-emerald-100 border-emerald-400/50 hover:scale-105 active:scale-95 cursor-pointer"
+                                }`}
+                              >
+                                {isStarDisabledModal
+                                  ? "🛑 KHÓA (CẦN ≥ 1 ❤️)"
+                                  : isStarGambleModal
+                                  ? `🛑 DỪNG LẠI (+${baseQuestionPoints || 10}đ & ĐỔI MAX TIM)`
+                                  : isMoonGambleModal
+                                  ? `🛑 DỪNG LẠI (+${baseQuestionPoints || 10}đ & BÙA 🌙)`
+                                  : `🛑 DỪNG LẠI (+${baseQuestionPoints || 10}đ)`}
+                              </button>
+                            </>
+                          ) : (
+                            <div className="py-2 px-3 text-xs text-slate-300 italic">
+                              Đang đợi Đội {currentTurnTeamName} quyết định cược...
+                            </div>
+                          )}
+                        </div>
+
+                        {(isAdmin || isSandbox) && !isDisplay && (
+                          <div className="flex gap-2 justify-center pt-2 border-t border-white/10">
                             <button
                               type="button"
                               onClick={() => {
                                 setIsLocalGambleArming(true);
                                 onTarotGamblePrepare?.();
                               }}
-                              className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-fuchsia-600 via-purple-600 to-amber-500 hover:from-fuchsia-500 hover:to-amber-400 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg border border-amber-300 hover:scale-105 active:scale-95 transition cursor-pointer animate-pulse"
+                              className="py-1 px-3 rounded-lg bg-fuchsia-900/40 hover:bg-fuchsia-900/70 border border-fuchsia-400/40 text-fuchsia-200 text-[11px] font-bold transition cursor-pointer"
                             >
-                              🎲 QUYẾT ĐỊNH QUAY TIẾP ➔
+                              ⚡ Admin Quay Tiếp ➔
                             </button>
                             <button
                               type="button"
-                              onClick={() => onTarotGambleDecision?.(false)}
-                              className="flex-1 py-3 px-4 rounded-xl bg-emerald-900/75 hover:bg-emerald-800/85 text-emerald-100 font-black text-xs sm:text-sm uppercase tracking-wider border border-emerald-400/50 hover:scale-105 active:scale-95 transition cursor-pointer"
+                              disabled={isStarDisabledModal}
+                              onClick={() => {
+                                if (isStarDisabledModal) return;
+                                onTarotGambleDecision?.(false);
+                              }}
+                              className={`py-1 px-3 rounded-lg border text-[11px] font-bold transition ${
+                                isStarDisabledModal
+                                  ? "bg-slate-900/70 border-rose-500/30 text-rose-300/50 cursor-not-allowed opacity-60"
+                                  : isStarGambleModal
+                                  ? "bg-amber-900/60 hover:bg-amber-800/70 border-amber-500/50 text-amber-200 cursor-pointer"
+                                  : isMoonGambleModal
+                                  ? "bg-indigo-900/60 hover:bg-indigo-800/70 border-indigo-500/50 text-indigo-200 cursor-pointer"
+                                  : "bg-emerald-900/50 hover:bg-emerald-800/60 border-emerald-500/40 text-emerald-200 cursor-pointer"
+                              }`}
                             >
-                              🛑 DỪNG LẠI (+{baseQuestionPoints || 10}đ)
+                              {isStarDisabledModal
+                                ? "⚡ Admin Dừng Lại (Khóa: Cần ≥ 1 ❤️)"
+                                : isStarGambleModal
+                                ? `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ & Đổi Max Tim)`
+                                : isMoonGambleModal
+                                ? `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ & Bùa 🌙)`
+                                : `⚡ Admin Dừng Lại (+${baseQuestionPoints || 10}đ)`}
                             </button>
-                          </>
-                        ) : (
-                          <div className="py-2 px-3 text-xs text-slate-300 italic">
-                            Đang đợi Đội {currentTurnTeamName} quyết định cược...
                           </div>
                         )}
                       </div>
-
-                      {(isAdmin || isSandbox) && !isDisplay && (
-                        <div className="flex gap-2 justify-center pt-2 border-t border-white/10">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsLocalGambleArming(true);
-                              onTarotGamblePrepare?.();
-                            }}
-                            className="py-1 px-3 rounded-lg bg-fuchsia-900/40 hover:bg-fuchsia-900/70 border border-fuchsia-400/40 text-fuchsia-200 text-[11px] font-bold transition cursor-pointer"
-                          >
-                            ⚡ Admin Quay Tiếp ➔
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onTarotGambleDecision?.(false)}
-                            className="py-1 px-3 rounded-lg bg-emerald-900/50 hover:bg-emerald-800/60 border border-emerald-500/40 text-emerald-200 text-[11px] font-bold transition cursor-pointer"
-                          >
-                            ⚡ Admin Dừng Lại (+{baseQuestionPoints || 10}đ)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -4346,6 +4440,12 @@ export default function MysteryQuestBoard({
           <div className="flex flex-wrap items-center gap-2">
             {teams.map((t) => {
               const currentHearts = t.hearts ?? mysteryState?.teamHearts?.[t.id] ?? mysteryState?.initialHeartsPerTeam ?? 0;
+              const maxHearts = mysteryState?.teamMaxHearts?.[t.id] ?? mysteryState?.initialHeartsPerTeam ?? 3;
+              const curTurn = mysteryState?.currentTurnIndex || 0;
+              const immunity = mysteryState?.teamImmunities?.[t.id];
+              const isImmuneActive = Boolean(immunity && curTurn >= immunity.activeFromTurnIndex && curTurn <= immunity.expiresAfterTurnIndex);
+              const shield = mysteryState?.teamShields?.[t.id];
+              const isShieldActive = Boolean(shield && curTurn >= shield.activeFromTurnIndex && curTurn <= shield.expiresAfterTurnIndex);
 
               // Calculate specific score delta for this team if Tarot was drawn
               let tarotDelta: number | null = null;
@@ -4395,9 +4495,25 @@ export default function MysteryQuestBoard({
                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: t.color }} />
                   <span>{t.name}:</span>
                   <span className="font-mono font-bold text-amber-300">{t.score.toLocaleString()}đ</span>
-                  <span className="flex items-center gap-0.5 text-xs text-rose-400 font-bold ml-1 bg-rose-950/40 px-1.5 py-0.5 rounded-md border border-rose-500/30" title={`${currentHearts} Tim`}>
-                    ❤️ {currentHearts}
+                  <span className="flex items-center gap-0.5 text-xs text-rose-400 font-bold ml-1 bg-rose-950/40 px-1.5 py-0.5 rounded-md border border-rose-500/30" title={`${currentHearts}/${maxHearts} Tim`}>
+                    ❤️ {currentHearts}/{maxHearts}
                   </span>
+                  {isImmuneActive && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] text-amber-200 font-bold ml-1 bg-amber-950/70 px-1.5 py-0.5 rounded-md border border-amber-400/50 shadow-[0_0_8px_rgba(245,158,11,0.35)] animate-pulse"
+                      title="Bùa Miễn Nhiễm 🌙: Miễn nhiễm cướp điểm và bẫy phạt trọn vòng thi đấu"
+                    >
+                      🌙 Bùa Miễn Nhiễm
+                    </span>
+                  )}
+                  {isShieldActive && !isImmuneActive && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] text-cyan-200 font-bold ml-1 bg-cyan-950/70 px-1.5 py-0.5 rounded-md border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.35)]"
+                      title="Khiên Thần Hộ Thể 🛡️: Hấp thụ đòn tấn công / bẫy phạt tiếp theo"
+                    >
+                      🛡️ Khiên
+                    </span>
+                  )}
                   {/* Floating brief score delta indicator for Divine Eye / Mắt Thần */}
                   {tarotDelta !== null && tarotDelta !== 0 && (
                     <span

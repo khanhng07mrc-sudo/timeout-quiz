@@ -6147,8 +6147,11 @@ export function registerSocketHandlers(io: IO) {
         baseQuestionPoints: targetPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
         teamHearts: questState.teamHearts,
+        teamMaxHearts: questState.teamMaxHearts,
         timesStolenInCycle: questState.timesStolenInCycle,
         consecutiveBombsByTeam: questState.consecutiveBombsByTeam,
+        teamShields: questState.teamShields,
+        teamImmunities: questState.teamImmunities,
       });
       nextStage.phase = "QUESTION_ACTIVE";
       roomMysteryQuests.set(room.id, nextStage);
@@ -7537,8 +7540,11 @@ export function registerSocketHandlers(io: IO) {
         baseQuestionPoints: questState.baseQuestionPoints,
         initialHeartsPerTeam: questState.initialHeartsPerTeam,
         teamHearts: questState.teamHearts,
+        teamMaxHearts: questState.teamMaxHearts,
         timesStolenInCycle: questState.timesStolenInCycle,
         consecutiveBombsByTeam: questState.consecutiveBombsByTeam,
+        teamShields: questState.teamShields,
+        teamImmunities: questState.teamImmunities,
       });
       // Retain active phase, potPoints & perks
       newStage.phase = questState.phase;
@@ -7546,6 +7552,9 @@ export function registerSocketHandlers(io: IO) {
       if (questState.promoPerk) newStage.promoPerk = questState.promoPerk;
       if (questState.hasShield !== undefined) newStage.hasShield = questState.hasShield;
       if (questState.teamHearts) newStage.teamHearts = questState.teamHearts;
+      if (questState.teamMaxHearts) newStage.teamMaxHearts = questState.teamMaxHearts;
+      if (questState.teamShields) newStage.teamShields = questState.teamShields;
+      if (questState.teamImmunities) newStage.teamImmunities = questState.teamImmunities;
       if (questState.initialHeartsPerTeam !== undefined) newStage.initialHeartsPerTeam = questState.initialHeartsPerTeam;
       if (questState.timesStolenInCycle) newStage.timesStolenInCycle = questState.timesStolenInCycle;
       if (questState.consecutiveBombsByTeam) newStage.consecutiveBombsByTeam = questState.consecutiveBombsByTeam;

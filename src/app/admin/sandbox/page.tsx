@@ -3700,6 +3700,11 @@ export default function AdminSandboxPage() {
           forcedMiniGameType: miniGameType,
           initialHeartsPerTeam: curMystery.initialHeartsPerTeam,
           teamHearts: curMystery.teamHearts,
+          teamMaxHearts: curMystery.teamMaxHearts,
+          teamShields: curMystery.teamShields,
+          teamImmunities: curMystery.teamImmunities,
+          timesStolenInCycle: curMystery.timesStolenInCycle,
+          consecutiveBombsByTeam: curMystery.consecutiveBombsByTeam,
         });
         nextStage.phase = curMystery.phase;
         nextStage.potPoints = curMystery.potPoints;
@@ -3770,6 +3775,11 @@ export default function AdminSandboxPage() {
           prevMiniGameType: curMystery.miniGameType,
           initialHeartsPerTeam: curMystery.initialHeartsPerTeam,
           teamHearts: curMystery.teamHearts,
+          teamMaxHearts: curMystery.teamMaxHearts,
+          teamShields: curMystery.teamShields,
+          teamImmunities: curMystery.teamImmunities,
+          timesStolenInCycle: curMystery.timesStolenInCycle,
+          consecutiveBombsByTeam: curMystery.consecutiveBombsByTeam,
         });
 
         const questions = offlineQuestionsRef.current;

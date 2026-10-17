@@ -847,17 +847,67 @@ export default function MagicWheelBoard({
         {/* Right Col: Studio Dashboard & Virtual MC (7 cols on lg) */}
         <div className="lg:col-span-7 flex flex-col gap-3">
           {/* Virtual MC Card with Speech Bubble */}
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-purple-950/60 via-slate-900/70 to-indigo-950/60 border border-purple-500/30 shadow-md">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5 shadow-lg shrink-0 flex items-center justify-center">
-              <div className="w-full h-full rounded-[14px] bg-slate-900 flex items-center justify-center text-2xl">
-                {mcReaction.emotion}
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-purple-950/70 via-slate-900/80 to-indigo-950/70 border border-purple-500/40 shadow-lg relative overflow-hidden">
+            {/* Ambient MC Spotlight */}
+            <div className="absolute -left-4 -top-4 w-24 h-24 bg-pink-500/20 rounded-full blur-xl pointer-events-none" />
+
+            {/* Illustrated MC Avatar Image with Gameshow Suit & Mic */}
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-400 via-pink-500 to-purple-600 p-0.5 shadow-xl shrink-0 flex items-center justify-center">
+              <div className="w-full h-full rounded-[14px] bg-[#0c1222] flex items-center justify-center relative overflow-hidden">
+                {/* SVG Illustrated MC Character */}
+                <svg viewBox="0 0 64 64" className="w-full h-full">
+                  <defs>
+                    <linearGradient id="mcSuitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#1e293b" />
+                      <stop offset="100%" stopColor="#0f172a" />
+                    </linearGradient>
+                    <linearGradient id="mcShirtGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="#e2e8f0" />
+                    </linearGradient>
+                    <linearGradient id="mcTieGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ef4444" />
+                      <stop offset="100%" stopColor="#991b1b" />
+                    </linearGradient>
+                  </defs>
+                  {/* Hair */}
+                  <path d="M22 24 C22 14 42 14 42 24 C44 26 44 32 40 33 C38 27 26 27 24 33 C20 32 20 26 22 24 Z" fill="#334155" />
+                  {/* Head / Face */}
+                  <circle cx="32" cy="27" r="10" fill="#fed7aa" />
+                  {/* Eyes & Smile */}
+                  <circle cx="28.5" cy="26" r="1.2" fill="#1e293b" />
+                  <circle cx="35.5" cy="26" r="1.2" fill="#1e293b" />
+                  <path d="M29 30 Q32 33 35 30" stroke="#9a3412" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  {/* Suit Shoulders */}
+                  <path d="M14 60 C14 42 22 39 32 39 C42 39 50 42 50 60 Z" fill="url(#mcSuitGrad)" />
+                  {/* Shirt Collar */}
+                  <polygon points="32,49 26,39 38,39" fill="url(#mcShirtGrad)" />
+                  {/* Red Tie */}
+                  <polygon points="32,42 30,48 32,56 34,48" fill="url(#mcTieGrad)" />
+                  {/* Suit Lapels */}
+                  <path d="M22 41 L27 52 L23 60" stroke="#f59e0b" strokeWidth="0.8" fill="none" opacity="0.6" />
+                  <path d="M42 41 L37 52 L41 60" stroke="#f59e0b" strokeWidth="0.8" fill="none" opacity="0.6" />
+                  {/* Broadcast Headset / Mic */}
+                  <path d="M22 25 C20 25 19 28 20 31 L26 35" stroke="#94a3b8" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+                  <circle cx="26.5" cy="35" r="1.8" fill="#3b82f6" />
+                </svg>
+                {/* Emotion Badge at Corner */}
+                <span className="absolute bottom-0 right-0 text-[12px] leading-none drop-shadow">
+                  {mcReaction.emotion}
+                </span>
               </div>
             </div>
+
             <div className="flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-black tracking-wider text-pink-400 block mb-0.5">
-                🎙️ MC ẢO CHIẾC NÓN KỲ DIỆU
-              </span>
-              <p className="text-xs sm:text-sm font-bold text-white line-clamp-2">
+              <div className="flex items-center gap-2 mb-0.5">
+                <span className="text-[10px] uppercase font-black tracking-wider text-pink-400">
+                  🎙️ MC ẢO CHIẾC NÓN KỲ DIỆU
+                </span>
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 animate-pulse">
+                  TRỰC TIẾP
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-snug">
                 "{mcReaction.text}"
               </p>
             </div>

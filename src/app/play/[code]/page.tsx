@@ -2442,11 +2442,12 @@ export default function PlayPage() {
                     }
                     socketRef.current?.emit("magic_wheel:lucky_pick", { index });
                   }}
-                  onSelectRewardCard={(cardType) => {
+                  onSelectRewardCard={(rewardPayload: any) => {
+                    const data = typeof rewardPayload === "string" ? { cardType: rewardPayload } : rewardPayload;
                     if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType, teamId: effectiveTeamId }, "*");
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data, teamId: effectiveTeamId }, "*");
                     }
-                    socketRef.current?.emit("magic_wheel:reward_select", { cardType });
+                    socketRef.current?.emit("magic_wheel:reward_select", data);
                   }}
                   onTradeDecide={(trade, boxIndex) => {
                     if (typeof window !== "undefined" && window.self !== window.top) {

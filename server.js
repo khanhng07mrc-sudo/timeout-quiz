@@ -15307,7 +15307,7 @@ function registerSocketHandlers(io2) {
         }
       }
     });
-    socket.on("magic_wheel:reward_select", async ({ cardType }) => {
+    socket.on("magic_wheel:reward_select", async (payload) => {
       const playerId = playerSockets.get(socket.id);
       let roomCode;
       let roomId;
@@ -15330,17 +15330,46 @@ function registerSocketHandlers(io2) {
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
       if (!wheelState.teamShields) wheelState.teamShields = {};
-      if (cardType === "POINTS_1500") {
+      const cardNum = payload.cardIndex !== void 0 ? payload.cardIndex + 1 : 1;
+      if (payload.rewardType === "POINTS") {
+        const pts = payload.points || 500;
+        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + pts;
+        wheelState.lastActionMessage = `\u{1F381} \u0110\u1ED9i ${teamName} b\u1ED1c \u0111\u01B0\u1EE3c l\xE1 th\u0103m #${cardNum}: Nh\u1EADn ngay +${pts} \u0111i\u1EC3m!`;
+      } else if (payload.rewardType === "FREE_SPIN") {
+        wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
+        wheelState.lastActionMessage = `\u{1F39F}\uFE0F \u0110\u1ED9i ${teamName} b\u1ED1c \u0111\u01B0\u1EE3c l\xE1 th\u0103m #${cardNum}: Nh\u1EADn 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t b\u1EA3o l\u01B0u!`;
+      } else if (payload.rewardType === "JACKPOT_LETTER") {
+        const pts = payload.points || 3e3;
+        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + pts;
+        if (wheelState.currentPuzzle) {
+          const p = wheelState.currentPuzzle;
+          const unrevealed = [];
+          for (let i = 0; i < p.secretPhrase.length; i++) {
+            if (/[a-zA-Zà-ỹÀ-Ỹ]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+              unrevealed.push(i);
+            }
+          }
+          if (unrevealed.length > 0) {
+            const luckyIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            p.revealedIndices.push(luckyIdx);
+            wheelState.lastActionMessage = `\u2B50 \u0110\u1ED9i ${teamName} b\u1ED1c tr\xFAng SI\xCAU PH\u1EA6N TH\u01AF\u1EDENG l\xE1 th\u0103m #${cardNum}: +${pts} \u0111i\u1EC3m V\xC0 m\u1EDF ch\u1EEF "${p.secretPhrase[luckyIdx].toUpperCase()}"!`;
+          } else {
+            wheelState.lastActionMessage = `\u2B50 \u0110\u1ED9i ${teamName} b\u1ED1c tr\xFAng SI\xCAU PH\u1EA6N TH\u01AF\u1EDENG l\xE1 th\u0103m #${cardNum}: +${pts} \u0111i\u1EC3m!`;
+          }
+        } else {
+          wheelState.lastActionMessage = `\u2B50 \u0110\u1ED9i ${teamName} b\u1ED1c tr\xFAng SI\xCAU PH\u1EA6N TH\u01AF\u1EDENG l\xE1 th\u0103m #${cardNum}: +${pts} \u0111i\u1EC3m!`;
+        }
+      } else if (payload.cardType === "POINTS_1500") {
         wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 1500;
         wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn Th\u1EBB \u0110i\u1EC3m Th\u01B0\u1EDFng: Nh\u1EADn ngay +1.500 \u0111i\u1EC3m v\xF2ng 1!`;
-      } else if (cardType === "FREE_SPIN") {
+      } else if (payload.cardType === "FREE_SPIN") {
         wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
         wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn Th\u1EBB Th\xEAm L\u01B0\u1EE3t: Nh\u1EADn 1 Th\u1EBB B\u1EA3o L\u01B0u L\u01B0\u1EE3t \u{1F39F}\uFE0F!`;
-      } else if (cardType === "SHIELD") {
+      } else if (payload.cardType === "SHIELD") {
         wheelState.teamShields[tId] = true;
         wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn Th\u1EBB Khi\xEAn B\u1EA3o H\u1ED9 \u{1F6E1}\uFE0F: Mi\u1EC5n nhi\u1EC5m 1 l\u1EA7n M\u1EA5t L\u01B0\u1EE3t/M\u1EA5t \u0110i\u1EC3m!`;
       }
-      wheelState.phase = "ACTION_INPUT";
+      wheelState.phase = "SPIN_WAITING";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
     socket.on("magic_wheel:trade_decide", async ({ trade, boxIndex }) => {

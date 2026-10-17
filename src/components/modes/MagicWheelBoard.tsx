@@ -53,11 +53,48 @@ interface Props {
   onGuessLetter?: (letter: string) => void;
   onSolvePuzzle?: (answer: string) => void;
   onMysteryDecide?: (openMystery: boolean) => void;
-  onSelectRewardCard?: (cardType: "POINTS_1500" | "FREE_SPIN" | "SHIELD") => void;
+  onSelectRewardCard?: (reward: any) => void;
   onTradeDecide?: (trade: boolean, boxIndex?: number) => void;
   onLuckyPick?: (index: number) => void;
   onAdvanceRound?: () => void;
   onOverrideTurn?: (teamId: string) => void;
+}
+
+interface RewardCardItem {
+  type: "POINTS" | "FREE_SPIN" | "JACKPOT_LETTER";
+  points?: number;
+  label: string;
+  icon: string;
+}
+
+function generate20RewardCards(): RewardCardItem[] {
+  const cards: RewardCardItem[] = [];
+  // 12 cards (60%): 100đ - 900đ (bước 100đ ngẫu nhiên)
+  const pts100to900 = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+  for (let i = 0; i < 12; i++) {
+    const pts = pts100to900[Math.floor(Math.random() * pts100to900.length)];
+    cards.push({ type: "POINTS", points: pts, label: `+${pts}đ`, icon: "💰" });
+  }
+  // 3 cards (15%): 1000đ hoặc 2000đ
+  const ptsBig = [1000, 2000];
+  for (let i = 0; i < 3; i++) {
+    const pts = ptsBig[Math.floor(Math.random() * ptsBig.length)];
+    cards.push({ type: "POINTS", points: pts, label: `+${pts}đ`, icon: "🌟" });
+  }
+  // 3 cards (15%): Thêm lượt (1 Thẻ bảo lưu 🎟️)
+  for (let i = 0; i < 3; i++) {
+    cards.push({ type: "FREE_SPIN", label: "THÊM LƯỢT", icon: "🎟️" });
+  }
+  // 2 cards (10%): +3000đ VÀ lật mở 1 chữ cái bất kỳ
+  for (let i = 0; i < 2; i++) {
+    cards.push({ type: "JACKPOT_LETTER", points: 3000, label: "+3.000đ & MỞ CHỮ", icon: "👑" });
+  }
+  // Xáo bài ngẫu nhiên Fisher-Yates
+  for (let i = cards.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [cards[i], cards[j]] = [cards[j], cards[i]];
+  }
+  return cards;
 }
 
 export default function MagicWheelBoard({
@@ -131,27 +168,44 @@ export default function MagicWheelBoard({
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
-  // STAGES: "EMPTY_56" (chỉ 56 ô rỗng) -> "BLANK_PHRASE" (lật ô trắng rỗng) -> "READY_CLUE" (hiện chủ đề & gợi ý)
+  // STAGES: "EMPTY_56" (chỉ 56 ô rỗng hoa văn xanh VTV3) -> "BLANK_PHRASE" (lật ô trắng rỗng) -> "READY_CLUE" (hiện chủ đề & gợi ý)
+  // MC/Admin chủ động bấm nút "⭐ Mở ô chữ & Chủ đề" để chuyển stage
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
-  const prevRoundForStage = useRef<number>(currentRound || 1);
 
   useEffect(() => {
-    // Khi bắt đầu vòng mới: khởi động quy trình mở màn
+    // Khi bắt đầu vòng mới: khởi động ở EMPTY_56, chờ MC/Admin chủ động mở ô chữ
     setBoardStage("EMPTY_56");
-    const t1 = setTimeout(() => {
-      setBoardStage("BLANK_PHRASE");
-      soundManager.playMagicWheelBoardOpen();
-    }, 1200);
-
-    const t2 = setTimeout(() => {
-      setBoardStage("READY_CLUE");
-    }, 2800);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
   }, [currentRound]);
+
+  const handleOpenBoard = () => {
+    soundManager.playMagicWheelBoardOpen();
+    setBoardStage("BLANK_PHRASE");
+    setTimeout(() => {
+      setBoardStage("READY_CLUE");
+    }, 1600);
+  };
+
+  // ── Ô May Mắn 2-Step Interaction State ──────────────────────────────────
+  // Click 1: Highlight xanh lá cây (sound: mark)
+  // Click 2: Chính thức lật mở chữ cái (sound: letter reveal)
+  const [luckyGreenSelectedIdx, setLuckyGreenSelectedIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (phase !== "LUCKY_PICK") {
+      setLuckyGreenSelectedIdx(null);
+    }
+  }, [phase]);
+
+  // ── Ô Phần Thưởng 20 Lá Thăm Bí Mật ─────────────────────────────────────
+  const [rewardCards, setRewardCards] = useState<RewardCardItem[]>([]);
+  const [pickedRewardCardIdx, setPickedRewardCardIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (phase === "REWARD_CHOICE") {
+      setRewardCards(generate20RewardCards());
+      setPickedRewardCardIdx(null);
+    }
+  }, [phase]);
 
   // ── Sequential Letter Highlighting Pipeline (Left-to-Right, Top-to-Bottom) ─
   const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
@@ -592,12 +646,34 @@ export default function MagicWheelBoard({
       {/* ── THE ICONIC VTV3 PUZZLE BOARD GRID (4 ROWS x 14 COLS = 56 TILES) ─ */}
       {subMode === "WORD_PUZZLE" && (
         <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)]">
-          {/* Header Category on Top of Board (Animate in when READY_CLUE) */}
-          <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500">
-            {boardStage === "READY_CLUE"
-              ? `⭐ CHỦ ĐỀ: ${currentPuzzle?.category || "TỔNG HỢP"} ⭐`
-              : "⭐ CHIẾC NÓN KỲ DIỆU ⭐"}
-          </div>
+          {/* Header Action: MC/Admin Open Board Button OR Category Banner */}
+          {boardStage === "EMPTY_56" ? (
+            <div className="mb-2 flex items-center justify-center">
+              <button
+                type="button"
+                onClick={handleOpenBoard}
+                className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-amber-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(245,158,11,0.7)] hover:brightness-110 active:scale-95 transition cursor-pointer animate-bounce border-2 border-yellow-200"
+              >
+                ⭐ MỞ Ô CHỮ & CHỦ ĐỀ ⭐
+              </button>
+            </div>
+          ) : (
+            <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
+              {boardStage === "READY_CLUE"
+                ? `⭐ CHỦ ĐỀ: ${currentPuzzle?.category || "TỔNG HỢP"} ⭐`
+                : "⭐ ĐANG LẬT MỞ BẢNG Ô CHỮ... ⭐"}
+            </div>
+          )}
+
+          {/* Ô May Mắn MC Guide Banner */}
+          {phase === "LUCKY_PICK" && (
+            <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 text-[11px] sm:text-xs font-bold flex items-center gap-2 animate-pulse shadow-lg">
+              <span className="text-base">🍀</span>
+              <span>
+                <strong>Ô MAY MẮN:</strong> Click lần 1 vào ô chưa mở để chọn (xanh lá), click lần 2 vào chính ô đó để lật mở!
+              </span>
+            </div>
+          )}
 
           {/* Grid Container (Responsive 14 columns, no overflow) */}
           <div className="w-full max-w-4xl flex justify-center py-1 px-1">
@@ -605,7 +681,7 @@ export default function MagicWheelBoard({
               {gridMatrix.map((row, rIdx) => (
                 <div key={rIdx} className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center">
                   {row.map((cell, cIdx) => {
-                    // Cell unused (Decorative Green Floral Tile)
+                    // Cell unused or staged EMPTY_56 (Decorative Green Floral Tile)
                     if (!cell || boardStage === "EMPTY_56") {
                       return (
                         <div
@@ -620,27 +696,39 @@ export default function MagicWheelBoard({
                     }
 
                     // Cell is active letter tile
+                    const isLuckyGreen = phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
+
                     return (
                       <div
                         key={cIdx}
                         onClick={() => {
                           if (phase === "LUCKY_PICK" && canInteract && !cell.isRevealed) {
-                            onLuckyPick?.(cell.originalIndex);
+                            if (luckyGreenSelectedIdx !== cell.originalIndex) {
+                              setLuckyGreenSelectedIdx(cell.originalIndex);
+                              soundManager.playMagicWheelMark();
+                            } else {
+                              setLuckyGreenSelectedIdx(null);
+                              onLuckyPick?.(cell.originalIndex);
+                            }
                           }
                         }}
                         className={`w-full aspect-[3/4] max-h-[42px] sm:max-h-[46px] rounded font-black flex items-center justify-center transition-all duration-300 select-none ${
-                          cell.isHighlighted
+                          isLuckyGreen
+                            ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
+                            : cell.isHighlighted
                             ? "bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 text-amber-950 border-2 border-yellow-200 scale-105 shadow-[0_0_20px_#f59e0b] animate-bounce"
                             : cell.isRevealed
                             ? "bg-white text-[#0f172a] shadow-[0_4px_10px_rgba(255,255,255,0.4)] border-2 border-white scale-100"
                             : phase === "LUCKY_PICK"
-                            ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_20px_#f59e0b] cursor-pointer hover:scale-110"
+                            ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
                             : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                         }`}
                       >
                         <span className="text-xs sm:text-base md:text-xl font-extrabold tracking-tight">
                           {cell.isRevealed
                             ? cell.char
+                            : isLuckyGreen
+                            ? "✓"
                             : cell.isHighlighted
                             ? "⭐"
                             : phase === "LUCKY_PICK"
@@ -672,18 +760,22 @@ export default function MagicWheelBoard({
         <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-black/25 rounded-2xl border border-white/5">
           {/* Wheel Frame Container with Camera Zoom Rig */}
           <div
-            className="w-[280px] h-[280px] sm:w-[330px] sm:h-[330px] relative transition-transform"
+            className="w-[290px] h-[290px] sm:w-[350px] sm:h-[350px] relative transition-transform select-none flex items-center justify-center"
             style={{
-              transform: isWheelZoomedIn ? "scale(1.32) translateY(28px)" : "scale(1.0) translateY(0)",
+              transformOrigin: "50% 0%",
+              transform: isWheelZoomedIn ? "scale(1.45) translateY(38px)" : "scale(1.0) translateY(0)",
               transitionDuration: `${wheelZoomDurationMs}ms`,
-              transitionTimingFunction: "cubic-bezier(0.25, 1, 0.5, 1)",
+              transitionTimingFunction: "cubic-bezier(0.25, 1, 0.4, 1)",
+              willChange: "transform",
             }}
           >
             {/* Top 3D Chrome & Ruby Flipper Pointer at 12 o'clock */}
             <div
               ref={needleRef}
-              className="absolute -top-3 left-1/2 -translate-x-1/2 z-30 w-9 h-11 pointer-events-none origin-[50%_25%]"
+              className="absolute -top-[4.2%] left-1/2 -translate-x-1/2 w-[11.4%] aspect-[44/48] z-30 pointer-events-none"
               style={{
+                transformOrigin: "50% 22.92%",
+                transform: "rotate(0deg) scale(1.06) translateZ(0)",
                 filter: "drop-shadow(0px 4px 8px rgba(0,0,0,0.85))",
                 willChange: "transform",
               }}
@@ -720,9 +812,12 @@ export default function MagicWheelBoard({
               </svg>
             </div>
 
-            {/* Outer Gold Rim Frame */}
-            <div className="absolute inset-0 aspect-square rounded-full border-[10px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9)] pointer-events-none z-20">
-              <div className="w-full h-full rounded-full border border-amber-950/70" />
+            {/* Stage Floor Shadow */}
+            <div className="absolute -inset-4 rounded-full bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0.95)_45%,rgba(15,8,30,0.7)_70%,transparent_85%)] blur-md pointer-events-none -z-10" />
+
+            {/* Royal Gold Outer Bezel Frame (100% Tròn xoe chuẩn Tarot) */}
+            <div className="absolute inset-0 aspect-square rounded-full border-[10px] sm:border-[12px] border-[#d97706] shadow-[0_16px_40px_rgba(0,0,0,0.9),0_0_35px_rgba(245,158,11,0.45),inset_0_2px_4px_rgba(254,240,138,0.9),inset_0_-3px_8px_rgba(69,26,3,0.95)] pointer-events-none z-20">
+              <div className="w-full h-full rounded-full border border-amber-950/70 shadow-[inset_0_2px_6px_rgba(0,0,0,0.9)]" />
             </div>
 
             {/* Spinning Wheel Body */}
@@ -731,107 +826,199 @@ export default function MagicWheelBoard({
               className="w-full h-full aspect-square rounded-full overflow-hidden shadow-2xl relative"
               style={{ transform: `rotate(${clientWheelAngle}deg)` }}
             >
-              <svg viewBox="0 0 400 400" className="w-full h-full select-none">
+              <svg viewBox="0 0 440 440" className="w-full h-full select-none">
                 <defs>
-                  <filter id="mw_text_shadow" x="-15%" y="-15%" width="130%" height="130%">
-                    <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.8" />
-                  </filter>
-                  <radialGradient id="mwHubGrad" cx="45%" cy="40%" r="55%">
-                    <stop offset="0%" stopColor="#fbbf24" />
-                    <stop offset="50%" stopColor="#d97706" />
-                    <stop offset="100%" stopColor="#78350f" />
-                  </radialGradient>
-                </defs>
+                  {/* 3D Chrome Vertical Stem Gradient */}
+                  <linearGradient id="chromeStemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#64748b" />
+                    <stop offset="30%" stopColor="#f8fafc" />
+                    <stop offset="60%" stopColor="#cbd5e1" />
+                    <stop offset="85%" stopColor="#94a3b8" />
+                    <stop offset="100%" stopColor="#334155" />
+                  </linearGradient>
 
-                {/* Outer Ring */}
-                <circle cx="200" cy="200" r="195" fill="#1e1b4b" stroke="#f59e0b" strokeWidth="6" />
+                  {/* 3D Chrome Collar Base Gradient */}
+                  <linearGradient id="chromeCollarGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <stop offset="0%" stopColor="#cbd5e1" />
+                    <stop offset="50%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#1e293b" />
+                  </linearGradient>
+
+                  {/* 3D Chrome Ball Cap Radial Gradient */}
+                  <radialGradient id="chromeCapGrad" cx="35%" cy="30%" r="65%">
+                    <stop offset="0%" stopColor="#ffffff" />
+                    <stop offset="35%" stopColor="#e2e8f0" />
+                    <stop offset="70%" stopColor="#64748b" />
+                    <stop offset="100%" stopColor="#1e293b" />
+                  </radialGradient>
+
+                  {/* 3D Royal Gold Rim Gradient */}
+                  <linearGradient id="goldRimGrad3D" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#fef08a" />
+                    <stop offset="25%" stopColor="#f59e0b" />
+                    <stop offset="50%" stopColor="#78350f" />
+                    <stop offset="75%" stopColor="#fbbf24" />
+                    <stop offset="100%" stopColor="#b45309" />
+                  </linearGradient>
+
+                  {/* Obsidian Dome Core Gradient */}
+                  <radialGradient id="hubObsidianGrad" cx="45%" cy="40%" r="55%">
+                    <stop offset="0%" stopColor="#1e1b4b" />
+                    <stop offset="40%" stopColor="#0f172a" />
+                    <stop offset="80%" stopColor="#020617" />
+                    <stop offset="100%" stopColor="#000000" />
+                  </radialGradient>
+
+                  {/* Center Hub Outer Drop Shadow */}
+                  <filter id="hubDropShadow" x="-30%" y="-30%" width="160%" height="160%">
+                    <feDropShadow dx="0" dy="4" stdDeviation="6" floodColor="#000000" floodOpacity="0.85" />
+                  </filter>
+
+                  {/* Winning Landed Slice 3D Pulsing Glow */}
+                  <filter id="winningSliceGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feDropShadow dx="0" dy="0" stdDeviation="8" floodColor="#fbbf24" floodOpacity="0.95" />
+                    <feDropShadow dx="0" dy="0" stdDeviation="16" floodColor="#f59e0b" floodOpacity="0.8" />
+                  </filter>
+                </defs>
 
                 {/* 24 Sectors (15 deg each) */}
                 {sectors.map((sec, idx) => {
-                  const anglePerSector = 360 / sectors.length;
-                  const startAngle = idx * anglePerSector - 90;
-                  const endAngle = (idx + 1) * anglePerSector - 90;
-                  const startRad = (startAngle * Math.PI) / 180;
-                  const endRad = (endAngle * Math.PI) / 180;
+                  const segCount = sectors.length || 24;
+                  const degPerSeg = 360 / segCount;
+                  const theta1 = (idx * degPerSeg * Math.PI) / 180;
+                  const theta2 = ((idx + 1) * degPerSeg * Math.PI) / 180;
+                  const r = 196;
+                  const cx = 220;
+                  const cy = 220;
+                  const x1 = cx + r * Math.sin(theta1);
+                  const y1 = cy - r * Math.cos(theta1);
+                  const x2 = cx + r * Math.sin(theta2);
+                  const y2 = cy - r * Math.cos(theta2);
+                  const midDeg = (idx + 0.5) * degPerSeg;
 
-                  const r = 186;
-                  const x1 = 200 + r * Math.cos(startRad);
-                  const y1 = 200 + r * Math.sin(startRad);
-                  const x2 = 200 + r * Math.cos(endRad);
-                  const y2 = 200 + r * Math.sin(endRad);
+                  const rPeg = 190;
+                  const pegX = cx + rPeg * Math.sin(theta1);
+                  const pegY = cy - rPeg * Math.cos(theta1);
 
-                  const midAngle = startAngle + anglePerSector / 2;
-                  const pathData = `M 200 200 L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
-
+                  const isWinningSector = !isSpinning && selectedSector && selectedSector.id === sec.id;
                   const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
                   const digits = isNumeric ? sec.label.trim().split("") : [];
                   const numCount = digits.length;
-                  const numStep = numCount >= 4 ? 20 : 25;
-                  const numStartY = -(112 + ((numCount - 1) * numStep) / 2);
+                  const charStep = numCount >= 4 ? 17 : 21;
+                  const ySpokeCenter = cy - 108;
+                  const startY = ySpokeCenter - ((numCount - 1) * charStep) / 2;
 
                   const specialLabel = sec.label;
-                  const specialFontSize = specialLabel.length > 9 ? "9.5" : specialLabel.length > 7 ? "10.5" : "11.5";
-
-                  const pegX = 200 + 185 * Math.cos(startRad);
-                  const pegY = 200 + 185 * Math.sin(startRad);
+                  const specialFontSize = specialLabel.length > 9 ? "10" : specialLabel.length > 7 ? "11.5" : "13";
 
                   return (
                     <g key={sec.id}>
+                      {/* Wedge Slice Path */}
                       <path
-                        d={pathData}
-                        fill={sec.color}
-                        stroke="#ffffff"
-                        strokeWidth="1.2"
-                        strokeOpacity="0.4"
+                        d={`M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`}
+                        fill={isWinningSector ? "#4c1d95" : sec.color}
+                        stroke={isWinningSector ? "#fbbf24" : "#ffffff"}
+                        strokeWidth={isWinningSector ? "3.5" : "1.2"}
+                        strokeOpacity={isWinningSector ? 1 : 0.4}
+                        filter={isWinningSector ? "url(#winningSliceGlow)" : undefined}
                       />
 
-                      <g transform={`translate(200, 200) rotate(${midAngle + 90})`}>
+                      {/* Inset Line Highlight */}
+                      <line
+                        x1={cx}
+                        y1={cy}
+                        x2={x1}
+                        y2={y1}
+                        stroke="#ffffff"
+                        strokeWidth="0.6"
+                        strokeOpacity="0.3"
+                      />
+
+                      {/* Wedge Content (Digits or Rotated Text Line) */}
+                      <g transform={`rotate(${midDeg} ${cx} ${cy})`}>
+                        {/* Outer Accent Dot */}
+                        <circle cx={cx} cy={cy - 182} r="1.3" fill={sec.textColor || "#ffffff"} opacity="0.8" />
+
                         {isNumeric ? (
-                          digits.map((digit, dIdx) => (
-                            <text
-                              key={dIdx}
-                              x={0}
-                              y={numStartY + dIdx * numStep}
-                              fill={sec.textColor || "#ffffff"}
-                              fontSize={numCount >= 4 ? "15" : "17"}
-                              fontWeight="900"
-                              fontFamily="system-ui, -apple-system, sans-serif"
-                              textAnchor="middle"
-                              dominantBaseline="central"
-                              filter="url(#mw_text_shadow)"
-                            >
-                              {digit}
-                            </text>
-                          ))
+                          <g className="font-black select-none pointer-events-none">
+                            {digits.map((digit, dIdx) => (
+                              <text
+                                key={dIdx}
+                                x={cx}
+                                y={startY + dIdx * charStep}
+                                textAnchor="middle"
+                                dominantBaseline="central"
+                                fontSize={numCount >= 4 ? "15" : "17"}
+                                fontWeight="900"
+                                fill={isWinningSector ? "#fef08a" : sec.textColor || "#ffffff"}
+                                stroke="#000000"
+                                strokeWidth="2.0"
+                                style={{ paintOrder: "stroke fill" }}
+                                className="font-black select-none pointer-events-none"
+                              >
+                                {digit}
+                              </text>
+                            ))}
+                          </g>
                         ) : (
-                          <text
-                            x={0}
-                            y={-110}
-                            transform="rotate(90, 0, -110)"
-                            fill={sec.textColor || "#ffffff"}
-                            fontSize={specialFontSize}
-                            fontWeight="900"
-                            fontFamily="system-ui, -apple-system, sans-serif"
-                            textAnchor="middle"
-                            dominantBaseline="central"
-                            letterSpacing="0.8px"
-                            filter="url(#mw_text_shadow)"
-                          >
-                            {specialLabel}
-                          </text>
+                          <g transform={`rotate(90 ${cx} ${ySpokeCenter})`}>
+                            <text
+                              x={cx}
+                              y={ySpokeCenter}
+                              textAnchor="middle"
+                              fontSize={specialFontSize}
+                              fontWeight="900"
+                              fill={isWinningSector ? "#fef08a" : sec.textColor || "#ffffff"}
+                              stroke="#000000"
+                              strokeWidth="2.2"
+                              style={{ paintOrder: "stroke fill" }}
+                              dominantBaseline="central"
+                              className="font-black select-none pointer-events-none tracking-tight uppercase"
+                            >
+                              {specialLabel}
+                            </text>
+                          </g>
                         )}
+
+                        {/* Inner Accent Dot near Hub */}
+                        <circle cx={cx} cy={cy - 56} r="1.1" fill={sec.textColor || "#ffffff"} opacity="0.5" />
                       </g>
 
-                      {/* 3D Chrome Peg Pin */}
-                      <circle cx={pegX} cy={pegY} r="2.8" fill="#fef08a" stroke="#78350f" strokeWidth="1" />
+                      {/* 3D Radial Outward Chrome Peg */}
+                      <g transform={`rotate(${idx * degPerSeg} ${pegX} ${pegY})`}>
+                        <ellipse cx={pegX + 1.5} cy={pegY + 1.8} rx="3.8" ry="2" fill="#000000" opacity="0.65" />
+                        <ellipse cx={pegX} cy={pegY} rx="3.6" ry="2.2" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                        <rect x={pegX - 1.8} y={pegY - 8.5} width="3.6" height="8.5" rx="1.8" fill="url(#chromeStemGrad)" stroke="#1e293b" strokeWidth="0.5" />
+                        <circle cx={pegX} cy={pegY - 8.5} r="3.6" fill="url(#chromeCapGrad)" stroke="#1e293b" strokeWidth="0.6" />
+                        <circle cx={pegX - 1.1} cy={pegY - 9.8} r="1" fill="#ffffff" opacity="0.95" />
+                      </g>
                     </g>
                   );
                 })}
 
-                {/* Center Hub */}
-                <circle cx="200" cy="200" r="32" fill="url(#mwHubGrad)" stroke="#78350f" strokeWidth="4" />
-                <circle cx="200" cy="200" r="16" fill="#18181b" stroke="#ffffff" strokeWidth="2" />
-                <text x="200" y="204" textAnchor="middle" fill="#fef08a" fontSize="14" fontWeight="black">⭐</text>
+                {/* Decorative Geometry Rings */}
+                <circle cx="220" cy="220" r="186" fill="none" stroke="#fde68a" strokeWidth="0.7" strokeDasharray="3 4" opacity="0.4" />
+
+                {/* 3D Center Hub (Elevated Tiered Obsidian Dome) */}
+                <g filter="url(#hubDropShadow)">
+                  {/* Chrome Hub Bezel */}
+                  <circle cx="220" cy="220" r="48" fill="url(#chromeCollarGrad)" stroke="#0f172a" strokeWidth="1.5" />
+                  {/* Gold Step Ring */}
+                  <circle cx="220" cy="220" r="44" fill="url(#goldRimGrad3D)" stroke="#451a03" strokeWidth="1" />
+                  {/* Obsidian Dome Core */}
+                  <circle cx="220" cy="220" r="39" fill="url(#hubObsidianGrad)" stroke="#fde68a" strokeWidth="1.8" />
+                  {/* VTV3 8-Pointed Celestial Star Emblem */}
+                  <g transform="translate(202, 202)">
+                    <svg width="36" height="36" viewBox="0 0 32 32">
+                      <polygon points="16,2 19,13 30,16 19,19 16,30 13,19 2,16 13,13" fill="none" stroke="#fde68a" strokeWidth="1.3" opacity="0.8" />
+                      <polygon points="6,6 14,13 26,6 19,16 26,26 16,19 6,26 13,16" fill="none" stroke="#fbbf24" strokeWidth="1" opacity="0.5" />
+                      <circle cx="16" cy="16" r="7.5" fill="#090514" stroke="#fde68a" strokeWidth="1.6" />
+                      <polygon points="16,10 18,14 22,16 18,18 16,22 14,18 10,16 14,14" fill="#fbbf24" />
+                      {/* Center Chrome Screw Pin */}
+                      <circle cx="16" cy="16" r="2.8" fill="url(#chromeCapGrad)" stroke="#0f172a" strokeWidth="0.5" />
+                    </svg>
+                  </g>
+                </g>
               </svg>
             </div>
           </div>
@@ -937,7 +1124,11 @@ export default function MagicWheelBoard({
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
-                        onClick={() => onSpin?.(oscillatingPower)}
+                        onClick={() => {
+                          if (isSpinning) return;
+                          soundManager.playMagicWheelSpin();
+                          onSpin?.(oscillatingPower);
+                        }}
                         disabled={isSpinning}
                         className="flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 transition shadow-[0_0_20px_rgba(236,72,153,0.4)] cursor-pointer"
                       >
@@ -1017,39 +1208,80 @@ export default function MagicWheelBoard({
                 </div>
               )}
 
-              {/* 3. Vòng 1: Ô Phần Thưởng */}
+              {/* 3. Ô Phần Thưởng: Lưới 20 Lá Thăm Bí Mật Chuẩn Xác Suất */}
               {phase === "REWARD_CHOICE" && (
-                <div className="p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 shadow space-y-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xl">🎁</span>
-                    <h4 className="font-black text-xs text-amber-200">Ô PHẦN THƯỞNG: CHỌN 1 TRONG 3 THẺ</h4>
+                <div className="p-3.5 rounded-2xl bg-gradient-to-b from-amber-950/80 via-slate-900/90 to-amber-950/80 border-2 border-amber-400/50 shadow-2xl space-y-3">
+                  <div className="flex items-center justify-between border-b border-amber-400/30 pb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl animate-bounce">🎁</span>
+                      <div>
+                        <h4 className="font-black text-xs sm:text-sm text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-yellow-400 uppercase tracking-wide">
+                          Ô PHẦN THƯỞNG: 20 LÁ THĂM BÍ MẬT
+                        </h4>
+                        <p className="text-[10px] text-amber-200/70 font-semibold">
+                          Tỷ lệ: 60% (+100đ - +900đ) · 15% (+1.000đ/+2.000đ) · 15% (Thêm lượt 🎟️) · 10% (+3.000đ & Mở chữ)
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                      Chọn 1 trong 20 lá
+                    </span>
                   </div>
+
                   {canInteract ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onSelectRewardCard?.("POINTS_1500")}
-                        className="p-2.5 rounded-lg border border-amber-400/50 bg-amber-500/20 text-amber-200 text-left cursor-pointer hover:bg-amber-500/30 transition text-xs font-bold"
-                      >
-                        🌟 +1.500 ĐIỂM
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onSelectRewardCard?.("FREE_SPIN")}
-                        className="p-2.5 rounded-lg border border-sky-400/50 bg-sky-500/20 text-sky-200 text-left cursor-pointer hover:bg-sky-500/30 transition text-xs font-bold"
-                      >
-                        🎟️ THÊM LƯỢT
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onSelectRewardCard?.("SHIELD")}
-                        className="p-2.5 rounded-lg border border-emerald-400/50 bg-emerald-500/20 text-emerald-200 text-left cursor-pointer hover:bg-emerald-500/30 transition text-xs font-bold"
-                      >
-                        🛡️ KHIÊN BẢO HỘ
-                      </button>
+                    <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5 sm:gap-2">
+                      {rewardCards.map((card, idx) => {
+                        const isRevealed = pickedRewardCardIdx === idx;
+                        const isOtherPicked = pickedRewardCardIdx !== null && pickedRewardCardIdx !== idx;
+
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            disabled={pickedRewardCardIdx !== null}
+                            onClick={() => {
+                              if (pickedRewardCardIdx !== null) return;
+                              setPickedRewardCardIdx(idx);
+                              soundManager.playMagicWheelReward();
+                              setTimeout(() => {
+                                onSelectRewardCard?.({
+                                  cardIndex: idx,
+                                  rewardType: card.type,
+                                  points: card.points,
+                                });
+                              }, 1200);
+                            }}
+                            className={`aspect-[3/4] rounded-xl flex flex-col items-center justify-center p-1 font-black text-center transition-all duration-300 select-none relative ${
+                              isRevealed
+                                ? "bg-gradient-to-tr from-amber-300 via-yellow-200 to-amber-400 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_25px_#f59e0b] z-10 animate-scale-up"
+                                : isOtherPicked
+                                ? "bg-black/30 border border-white/5 opacity-40 cursor-not-allowed"
+                                : "bg-gradient-to-b from-amber-900/60 to-purple-950/80 border-2 border-amber-400/40 hover:border-amber-300 hover:scale-105 active:scale-95 text-amber-200 shadow-md cursor-pointer"
+                            }`}
+                          >
+                            {isRevealed ? (
+                              <>
+                                <span className="text-xl sm:text-2xl">{card.icon}</span>
+                                <span className="text-[10px] sm:text-xs font-black tracking-tight leading-tight mt-0.5">
+                                  {card.label}
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-base sm:text-lg opacity-80">✉️</span>
+                                <span className="text-[10px] sm:text-xs font-black text-amber-300 mt-0.5">
+                                  #{idx + 1}
+                                </span>
+                              </>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   ) : (
-                    <div className="text-center text-xs text-slate-400 italic">Đang đợi Đội {currentTurnTeamName}...</div>
+                    <div className="text-center py-3 text-xs text-amber-200 italic">
+                      Đang chờ Đội {currentTurnTeamName} chọn 1 trong 20 lá thăm bí mật...
+                    </div>
                   )}
                 </div>
               )}

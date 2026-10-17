@@ -1001,13 +1001,11 @@ export default function AdminSandboxPage() {
       syncToIframes({ matchStarting: null, questionPrepare: null });
     });
     sock.on("game:magic_wheel:update" as any, (wheelState: any) => {
-      setMatchStarting(null);
-      setQuestionPrepare(null);
       setRoomState((prev) => {
         if (!prev) return prev;
         const next = { ...prev, magicWheelState: wheelState };
         roomStateRef.current = next;
-        syncToIframes({ roomState: next, magicWheelState: wheelState, matchStarting: null, questionPrepare: null });
+        syncToIframes({ roomState: next, magicWheelState: wheelState });
         return next;
       });
     });
@@ -4249,8 +4247,8 @@ export default function AdminSandboxPage() {
           cur.targetRotationDegrees = targetDegrees;
           cur.selectedSectorIndex = landingSectorIndex;
           cur.phase = "SPINNING";
-          cur.lastActionMessage = `Nón đang xoay với lực ${effPower}%...`;
-          soundManager.playWheelSpin(4500);
+          const spinDurationMs = 15000 + Math.round((effPower / 100) * 6000);
+          soundManager.playWheelSpin(spinDurationMs);
 
           setTimeout(() => {
             setRoomState((latest) => {
@@ -4327,6 +4325,11 @@ export default function AdminSandboxPage() {
                 nextWheel.pendingSpecialAction = "LUCKY";
                 nextWheel.phase = "LUCKY_PICK";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MAY MẮN! Mời bấm chọn 1 ô bất kỳ trên bảng để lật mở miễn phí!`;
+              } else if (sector.type === "PRIZE") {
+                soundManager.playMagicWheelReward();
+                nextWheel.pendingSpecialAction = "PRIZE";
+                nextWheel.phase = "REWARD_CHOICE";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô PHẦN THƯỞNG 🎁! Hãy chọn 1 trong 20 lá thăm bí mật!`;
               } else if (sector.type === "MYSTERY") {
                 soundManager.playWheelStopChime();
                 nextWheel.pendingSpecialAction = "MYSTERY";
@@ -4344,7 +4347,7 @@ export default function AdminSandboxPage() {
               syncToIframes({ roomState: nextRoom });
               return nextRoom;
             });
-          }, 4500);
+          }, spinDurationMs);
 
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
@@ -4567,7 +4570,7 @@ export default function AdminSandboxPage() {
           return nextRoom;
         });
       } else if (e.data?.type === "MAGIC_WHEEL_REWARD_SELECT") {
-        const { cardType, cardId } = e.data;
+        const { cardIndex, rewardType, points, cardType, cardId } = e.data;
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
@@ -4576,8 +4579,37 @@ export default function AdminSandboxPage() {
           const perm = { ...(cur.permanentScores || {}) };
           const shields = { ...(cur.teamShields || {}) };
           const freeSpins = { ...(cur.freeSpinCount || {}) };
+          const cardNum = (cardIndex !== undefined ? cardIndex + 1 : 1);
 
-          if (cardType === "POINTS_1500" || cardId === "CARD_1500") {
+          if (rewardType === "POINTS") {
+            const pts = points || 500;
+            cur.roundScores[tId] = (cur.roundScores[tId] || 0) + pts;
+            cur.lastActionMessage = `🎁 Đội ${teamName} bốc được lá thăm #${cardNum}: Nhận ngay +${pts} điểm!`;
+          } else if (rewardType === "FREE_SPIN") {
+            freeSpins[tId] = (freeSpins[tId] || 0) + 1;
+            cur.lastActionMessage = `🎟️ Đội ${teamName} bốc được lá thăm #${cardNum}: Nhận 1 Thẻ Thêm Lượt bảo lưu!`;
+          } else if (rewardType === "JACKPOT_LETTER") {
+            const pts = points || 3000;
+            cur.roundScores[tId] = (cur.roundScores[tId] || 0) + pts;
+            if (cur.currentPuzzle) {
+              const p = cur.currentPuzzle;
+              const unrevealed: number[] = [];
+              for (let i = 0; i < p.secretPhrase.length; i++) {
+                if (/[a-zA-Zà-ỹÀ-Ỹ]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+                  unrevealed.push(i);
+                }
+              }
+              if (unrevealed.length > 0) {
+                const luckyIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+                p.revealedIndices.push(luckyIdx);
+                cur.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm VÀ mở chữ "${p.secretPhrase[luckyIdx].toUpperCase()}"!`;
+              } else {
+                cur.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm!`;
+              }
+            } else {
+              cur.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm!`;
+            }
+          } else if (cardType === "POINTS_1500" || cardId === "CARD_1500") {
             perm[tId] = (perm[tId] || 0) + 1500;
             cur.lastActionMessage = `🎁 Đội ${teamName} nhận Thẻ +1.500 Điểm Vĩnh Viễn!`;
           } else if (cardType === "FREE_SPIN" || cardId === "CARD_EXTRA_TURN") {
@@ -10068,10 +10100,11 @@ export default function AdminSandboxPage() {
                           adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index });
                         }
                       }}
-                      onSelectRewardCard={(cardType) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType }, "*");
+                      onSelectRewardCard={(rewardPayload: any) => {
+                        const data = typeof rewardPayload === "string" ? { cardType: rewardPayload } : rewardPayload;
+                        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data }, "*");
                         if (adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:reward_select" as any, { cardType });
+                          adminSocketRef.current.emit("magic_wheel:reward_select" as any, data);
                         }
                       }}
                       onTradeDecide={(trade, boxIndex) => {

@@ -1466,8 +1466,10 @@ export default function AdminRoomPage() {
                   onGuessLetter={(letter) => emit("magic_wheel:guess_letter", { letter })}
                   onSolvePuzzle={(answer) => emit("magic_wheel:solve_puzzle", { answer })}
                   onMysteryDecide={(openMystery) => emit("magic_wheel:mystery_decide", { openMystery })}
-                  onLuckyPick={(index) => emit("magic_wheel:lucky_pick", { index })}
-                  onSelectRewardCard={(cardType) => emit("magic_wheel:reward_select", { cardType })}
+                  onSelectRewardCard={(rewardPayload: any) => {
+                    const data = typeof rewardPayload === "string" ? { cardType: rewardPayload } : rewardPayload;
+                    emit("magic_wheel:reward_select", data);
+                  }}
                   onTradeDecide={(trade, boxIndex) => emit("magic_wheel:trade_decide", { trade, boxIndex })}
                 />
               </div>

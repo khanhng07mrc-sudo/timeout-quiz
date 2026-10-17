@@ -809,7 +809,7 @@ export interface MagicWheelState {
   roundScores: Record<string, number>; // teamId -> điểm tích lũy trong vòng hiện tại
   disqualifiedTeamIdsInRound: string[]; // Các đội bị loại trong vòng do phạm 3 lỗi liên tiếp
   consecutiveWrongGuesses: Record<string, number>; // teamId -> số lần đoán sai liên tiếp (0, 1, 2, 3)
-  pendingSpecialAction?: "NONE" | "EXTRA_TURN" | "DOUBLE" | "HALF" | "POINTS" | "LUCKY" | "MYSTERY";
+  pendingSpecialAction?: "NONE" | "EXTRA_TURN" | "DOUBLE" | "HALF" | "POINTS" | "LUCKY" | "MYSTERY" | "PRIZE";
   phase:
     | "SPIN_WAITING"      // Chờ đội đến lượt bấm quay
     | "SPINNING"          // Nón đang xoay
@@ -1811,7 +1811,12 @@ export interface ClientToServerEvents {
   "magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
   "magic_wheel:mystery_decide": (payload: { openMystery: boolean }) => void;
   "magic_wheel:lucky_pick": (payload: { index: number }) => void;
-  "magic_wheel:reward_select": (payload: { cardType: "POINTS_1500" | "FREE_SPIN" | "SHIELD" }) => void;
+  "magic_wheel:reward_select": (payload: {
+    cardIndex?: number;
+    rewardType?: "POINTS" | "FREE_SPIN" | "JACKPOT_LETTER";
+    points?: number;
+    cardType?: "POINTS_1500" | "FREE_SPIN" | "SHIELD";
+  }) => void;
   "magic_wheel:trade_decide": (payload: { trade: boolean; boxIndex?: number }) => void;
   "admin:magic_wheel:advance_round": () => void;
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;

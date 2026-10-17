@@ -8567,7 +8567,12 @@ export function registerSocketHandlers(io: IO) {
       }
     });
 
-    socket.on("magic_wheel:reward_select", async ({ cardType }: { cardType: "POINTS_1500" | "FREE_SPIN" | "SHIELD" }) => {
+    socket.on("magic_wheel:reward_select", async (payload: {
+      cardIndex?: number;
+      rewardType?: "POINTS" | "FREE_SPIN" | "JACKPOT_LETTER";
+      points?: number;
+      cardType?: "POINTS_1500" | "FREE_SPIN" | "SHIELD";
+    }) => {
       const playerId = playerSockets.get(socket.id);
       let roomCode: string | undefined;
       let roomId: string | undefined;
@@ -8589,18 +8594,48 @@ export function registerSocketHandlers(io: IO) {
       const teamName = wheelState.currentTurnTeamName;
       if (!wheelState.teamShields) wheelState.teamShields = {};
 
-      if (cardType === "POINTS_1500") {
+      const cardNum = (payload.cardIndex !== undefined ? payload.cardIndex + 1 : 1);
+
+      if (payload.rewardType === "POINTS") {
+        const pts = payload.points || 500;
+        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + pts;
+        wheelState.lastActionMessage = `🎁 Đội ${teamName} bốc được lá thăm #${cardNum}: Nhận ngay +${pts} điểm!`;
+      } else if (payload.rewardType === "FREE_SPIN") {
+        wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
+        wheelState.lastActionMessage = `🎟️ Đội ${teamName} bốc được lá thăm #${cardNum}: Nhận 1 Thẻ Thêm Lượt bảo lưu!`;
+      } else if (payload.rewardType === "JACKPOT_LETTER") {
+        const pts = payload.points || 3000;
+        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + pts;
+        if (wheelState.currentPuzzle) {
+          const p = wheelState.currentPuzzle;
+          const unrevealed: number[] = [];
+          for (let i = 0; i < p.secretPhrase.length; i++) {
+            if (/[a-zA-Zà-ỹÀ-Ỹ]/.test(p.secretPhrase[i]) && !p.revealedIndices.includes(i)) {
+              unrevealed.push(i);
+            }
+          }
+          if (unrevealed.length > 0) {
+            const luckyIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            p.revealedIndices.push(luckyIdx);
+            wheelState.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm VÀ mở chữ "${p.secretPhrase[luckyIdx].toUpperCase()}"!`;
+          } else {
+            wheelState.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm!`;
+          }
+        } else {
+          wheelState.lastActionMessage = `⭐ Đội ${teamName} bốc trúng SIÊU PHẦN THƯỞNG lá thăm #${cardNum}: +${pts} điểm!`;
+        }
+      } else if (payload.cardType === "POINTS_1500") {
         wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 1500;
         wheelState.lastActionMessage = `Đội ${teamName} chọn Thẻ Điểm Thưởng: Nhận ngay +1.500 điểm vòng 1!`;
-      } else if (cardType === "FREE_SPIN") {
+      } else if (payload.cardType === "FREE_SPIN") {
         wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
         wheelState.lastActionMessage = `Đội ${teamName} chọn Thẻ Thêm Lượt: Nhận 1 Thẻ Bảo Lưu Lượt 🎟️!`;
-      } else if (cardType === "SHIELD") {
+      } else if (payload.cardType === "SHIELD") {
         wheelState.teamShields[tId] = true;
         wheelState.lastActionMessage = `Đội ${teamName} chọn Thẻ Khiên Bảo Hộ 🛡️: Miễn nhiễm 1 lần Mất Lượt/Mất Điểm!`;
       }
 
-      wheelState.phase = "ACTION_INPUT";
+      wheelState.phase = "SPIN_WAITING";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 

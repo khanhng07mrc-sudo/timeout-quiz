@@ -11823,22 +11823,34 @@ function registerSocketHandlers(io2) {
             io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
           }
         }
-        if (room.mode === "GRID_CARO") {
-          startGridCaroPreview(io2, room.id, room.code, config2?.gridPreviewDuration || 5);
-          return;
-        }
-        if (room.mode === "DICE_RACE") {
-          const diceState = roomDiceRaces.get(room.id);
-          if (diceState) {
-            io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
-          }
-          return;
-        }
-        if (room.mode === "MAGIC_WHEEL") {
-          const wheelState = roomMagicWheels.get(room.id);
-          if (wheelState) {
-            io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
-          }
+        if (room.mode === "GRID_CARO" || room.mode === "DICE_RACE" || room.mode === "MAGIC_WHEEL") {
+          const completeWarmupForBoard = () => {
+            roomPrepareStates.delete(room.id);
+            io2.to(`room:${room.code}`).emit("game:prepare:clear");
+            if (room.mode === "GRID_CARO") {
+              startGridCaroPreview(io2, room.id, room.code, config2?.gridPreviewDuration || 5);
+            } else if (room.mode === "DICE_RACE") {
+              const diceState = roomDiceRaces.get(room.id);
+              if (diceState) {
+                io2.to(`room:${room.code}`).emit("game:dice:update", diceState);
+              }
+            } else if (room.mode === "MAGIC_WHEEL") {
+              const wheelState = roomMagicWheels.get(room.id);
+              if (wheelState) {
+                io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+              }
+            }
+          };
+          const remainingWarmupDelay2 = Math.max(0, startEndsAt - Date.now());
+          const timer2 = setTimeout(completeWarmupForBoard, remainingWarmupDelay2);
+          roomPrepareStates.set(room.id, {
+            type: "STARTING",
+            questionIndex: 0,
+            totalQuestions: 0,
+            targetTimestamp: startEndsAt,
+            timer: timer2,
+            skipCallback: completeWarmupForBoard
+          });
           return;
         }
         const launchWarmupToFirstQuestion = async () => {
@@ -14882,13 +14894,14 @@ function registerSocketHandlers(io2) {
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
-      wheelState.phase = "SPINNING";
+      const spinDurationMs = 15e3 + Math.round(effPower / 100 * 6e3);
       wheelState.lastActionMessage = `N\xF3n \u0111ang xoay v\u1EDBi l\u1EF1c ${effPower}%...`;
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:spin_started", {
         teamId: wheelState.currentTurnTeamId,
         teamName: wheelState.currentTurnTeamName,
         power: effPower,
-        targetDegrees
+        targetDegrees,
+        durationMs: spinDurationMs
       });
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
       setTimeout(async () => {
@@ -14974,7 +14987,7 @@ function registerSocketHandlers(io2) {
           cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 ${sector.label} \u0111i\u1EC3m! M\u1EDDi g\u1ECDi ch\u1EEF c\xE1i!`;
         }
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-      }, 4500);
+      }, spinDurationMs + 250);
     });
     socket.on("magic_wheel:guess_letter", async ({ letter }) => {
       const playerId = playerSockets.get(socket.id);

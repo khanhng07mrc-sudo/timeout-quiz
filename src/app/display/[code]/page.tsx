@@ -152,6 +152,8 @@ export default function DisplayPage() {
       });
 
       if (remaining <= 0) {
+        setMatchStarting(null);
+        matchStartingRef.current = false;
         clearInterval(interval);
       }
     }, 50);
@@ -194,6 +196,7 @@ export default function DisplayPage() {
       });
 
       if (remaining <= 0) {
+        setQuestionPrepare(null);
         clearInterval(interval);
       }
     }, 50);
@@ -431,6 +434,12 @@ export default function DisplayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic(0, true);
+    });
+
+    socket.on("game:prepare:clear", () => {
+      matchStartingRef.current = false;
+      setMatchStarting(null);
+      setQuestionPrepare(null);
     });
 
     socket.on("game:intermission", (p) => {
@@ -674,6 +683,9 @@ export default function DisplayPage() {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
     socket.on("game:magic_wheel:update", (magicWheelState) => {
+      matchStartingRef.current = false;
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
       if (magicWheelState.phase !== "ROUND_RECAP") {
         setDisplayModeTab("BOARD");

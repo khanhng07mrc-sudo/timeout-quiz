@@ -1648,6 +1648,7 @@ export interface ServerToClientEvents {
   "room:state": (state: RoomState) => void;
   "game:starting": (payload: GameStartingPayload) => void;
   "game:prepare": (payload: GamePreparePayload) => void;
+  "game:prepare:clear": () => void;
   "game:intermission": (payload: GameIntermissionPayload | null) => void;
   "game:question": (question: QuestionState) => void;
   "game:timer": (payload: { remaining: number; total: number; endsAt?: number; serverTime?: number }) => void;
@@ -1748,7 +1749,7 @@ export interface ServerToClientEvents {
   }) => void;
   // Magic Wheel Events
   "game:magic_wheel:update": (state: MagicWheelState) => void;
-  "game:magic_wheel:spin_started": (payload: { teamId: string; teamName: string; power: number; targetDegrees: number }) => void;
+  "game:magic_wheel:spin_started": (payload: { teamId: string; teamName: string; power: number; targetDegrees: number; durationMs?: number }) => void;
   "game:magic_wheel:letter_guessed": (payload: { letter: string; found: boolean; count: number; teamId: string; teamName: string; pointsAwarded: number }) => void;
   "game:magic_wheel:puzzle_solved": (payload: { teamId: string; teamName: string; isCorrect: boolean; secretPhrase: string; roundWonPoints: number }) => void;
   "game:magic_wheel:mystery_result": (payload: { teamId: string; outcome: "PRIZE_CASH" | "BANKRUPT" | "SAFE_POINTS"; points: number }) => void;

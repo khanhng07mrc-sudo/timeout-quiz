@@ -182,6 +182,7 @@ export default function AdminRoomPage() {
       });
 
       if (remaining <= 0) {
+        setMatchStarting(null);
         clearInterval(interval);
       }
     }, 50);
@@ -224,6 +225,7 @@ export default function AdminRoomPage() {
       });
 
       if (remaining <= 0) {
+        setQuestionPrepare(null);
         clearInterval(interval);
       }
     }, 50);
@@ -376,6 +378,11 @@ export default function AdminRoomPage() {
       setAdminQuestionData(null);
       setRevealPayload(null);
       soundManager.stopMusic(0);
+    });
+
+    socket.on("game:prepare:clear", () => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
     });
 
     socket.on("game:intermission", (p) => {
@@ -594,6 +601,8 @@ export default function AdminRoomPage() {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
     socket.on("game:magic_wheel:update", (magicWheelState) => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {

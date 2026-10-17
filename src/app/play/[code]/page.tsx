@@ -156,6 +156,7 @@ export default function PlayPage() {
       });
 
       if (remaining <= 0) {
+        setMatchStarting(null);
         clearInterval(interval);
       }
     }, 50);
@@ -198,6 +199,7 @@ export default function PlayPage() {
       });
 
       if (remaining <= 0) {
+        setQuestionPrepare(null);
         clearInterval(interval);
       }
     }, 50);
@@ -788,6 +790,11 @@ export default function PlayPage() {
       soundManager.stopMusic(0, true);
     });
 
+    socket.on("game:prepare:clear", () => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
+    });
+
     socket.on("game:intermission", (p) => {
       setIntermission(p);
       setMatchStarting(null);
@@ -1117,6 +1124,8 @@ export default function PlayPage() {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
     socket.on("game:magic_wheel:update", (magicWheelState) => {
+      setMatchStarting(null);
+      setQuestionPrepare(null);
       setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
     });
     socket.on("game:magic_wheel:spin_started", () => {

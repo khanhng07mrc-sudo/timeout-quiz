@@ -4369,27 +4369,36 @@ export function registerSocketHandlers(io: IO) {
           }
         }
 
-        if (room.mode === "GRID_CARO") {
-          // Board-based mode waits for turn player's cell selection
-          startGridCaroPreview(io, room.id, room.code, config?.gridPreviewDuration || 5);
-          return;
-        }
+        if (room.mode === "GRID_CARO" || room.mode === "DICE_RACE" || room.mode === "MAGIC_WHEEL") {
+          const completeWarmupForBoard = () => {
+            roomPrepareStates.delete(room.id);
+            io.to(`room:${room.code}`).emit("game:prepare:clear");
+            if (room.mode === "GRID_CARO") {
+              startGridCaroPreview(io, room.id, room.code, config?.gridPreviewDuration || 5);
+            } else if (room.mode === "DICE_RACE") {
+              const diceState = roomDiceRaces.get(room.id);
+              if (diceState) {
+                io.to(`room:${room.code}`).emit("game:dice:update", diceState);
+              }
+            } else if (room.mode === "MAGIC_WHEEL") {
+              const wheelState = roomMagicWheels.get(room.id);
+              if (wheelState) {
+                io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+              }
+            }
+          };
 
-        if (room.mode === "DICE_RACE") {
-          // Bắt đầu game: Hiện bàn cờ đường đua trước toàn màn hình.
-          // Chỉ khi admin nhấn 'Hiện câu hỏi' thì mới đếm ngược và lộ câu hỏi.
-          const diceState = roomDiceRaces.get(room.id);
-          if (diceState) {
-            io.to(`room:${room.code}`).emit("game:dice:update", diceState);
-          }
-          return;
-        }
+          const remainingWarmupDelay = Math.max(0, startEndsAt - Date.now());
+          const timer = setTimeout(completeWarmupForBoard, remainingWarmupDelay);
 
-        if (room.mode === "MAGIC_WHEEL") {
-          const wheelState = roomMagicWheels.get(room.id);
-          if (wheelState) {
-            io.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
-          }
+          roomPrepareStates.set(room.id, {
+            type: "STARTING",
+            questionIndex: 0,
+            totalQuestions: 0,
+            targetTimestamp: startEndsAt,
+            timer,
+            skipCallback: completeWarmupForBoard,
+          });
           return;
         }
 
@@ -8085,7 +8094,7 @@ export function registerSocketHandlers(io: IO) {
       wheelState.spinPower = effPower;
       wheelState.targetRotationDegrees = targetDegrees;
       wheelState.selectedSectorIndex = landingSectorIndex;
-      wheelState.phase = "SPINNING";
+      const spinDurationMs = 15000 + Math.round((effPower / 100) * 6000);
       wheelState.lastActionMessage = `Nón đang xoay với lực ${effPower}%...`;
 
       io.to(`room:${roomCode}`).emit("game:magic_wheel:spin_started", {
@@ -8093,10 +8102,11 @@ export function registerSocketHandlers(io: IO) {
         teamName: wheelState.currentTurnTeamName,
         power: effPower,
         targetDegrees,
+        durationMs: spinDurationMs,
       });
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
 
-      // Đợi hiệu ứng quay 4.5 giây
+      // Đợi hiệu ứng quay nón 15s - 21s chuẩn VTV3
       setTimeout(async () => {
         const cur = roomMagicWheels.get(roomId!);
         if (!cur) return;
@@ -8185,7 +8195,7 @@ export function registerSocketHandlers(io: IO) {
         }
 
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
-      }, 4500);
+      }, spinDurationMs + 250);
     });
 
     socket.on("magic_wheel:guess_letter", async ({ letter }) => {

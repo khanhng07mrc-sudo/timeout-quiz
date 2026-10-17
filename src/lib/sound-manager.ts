@@ -4,8 +4,12 @@
 type SFXKey =
   | "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout"
   | "mw_letter_reveal"
+  | "mw_mark"
+  | "mw_board_open"
   | "mw_wrong_letter"
   | "mw_bankrupt"
+  | "mw_lose_turn"
+  | "mw_lucky"
   | "mw_solve_win"
   | "mw_buzz_solve"
   | "mw_double"
@@ -35,14 +39,18 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   powerup: { primary: "/sounds/powerup.mp3", fallbacks: ["/sounds/powerup.wav"] },
   timeout: { primary: "/sounds/timeout.mp3", fallbacks: ["/sounds/buzz.mp3"] },
   mw_letter_reveal: { primary: "/sounds/magic-wheel/letter_reveal.mp3", fallbacks: ["/sounds/correct.mp3"] },
+  mw_mark: { primary: "/sounds/magic-wheel/danh_dau_o_chu.mp3", fallbacks: ["/sounds/tick.mp3"] },
+  mw_board_open: { primary: "/sounds/magic-wheel/mo_o_chu.mp3", fallbacks: ["/sounds/magic-wheel/intro_round.mp3"] },
   mw_wrong_letter: { primary: "/sounds/magic-wheel/wrong_letter.mp3", fallbacks: ["/sounds/wrong.ogg"] },
-  mw_bankrupt: { primary: "/sounds/magic-wheel/bankrupt_lose_turn.mp3", fallbacks: ["/sounds/wrong.ogg"] },
+  mw_bankrupt: { primary: "/sounds/magic-wheel/mat_diem.mp3", fallbacks: ["/sounds/magic-wheel/bankrupt_lose_turn.mp3", "/sounds/wrong.ogg"] },
+  mw_lose_turn: { primary: "/sounds/magic-wheel/mat_luot.mp3", fallbacks: ["/sounds/magic-wheel/bankrupt_lose_turn.mp3", "/sounds/wrong.ogg"] },
+  mw_lucky: { primary: "/sounds/magic-wheel/them_luot_may_man.mp3", fallbacks: ["/sounds/powerup.mp3"] },
   mw_solve_win: { primary: "/sounds/magic-wheel/solve_puzzle_win.mp3", fallbacks: ["/sounds/correct.mp3"] },
   mw_buzz_solve: { primary: "/sounds/magic-wheel/buzz_solve.mp3", fallbacks: ["/sounds/olympia_buzz.mp3"] },
   mw_double: { primary: "/sounds/magic-wheel/double_points.mp3", fallbacks: ["/sounds/correct.mp3"] },
-  mw_halve: { primary: "/sounds/magic-wheel/halve_points.mp3", fallbacks: ["/sounds/wrong.ogg"] },
-  mw_reward: { primary: "/sounds/magic-wheel/reward_card.mp3", fallbacks: ["/sounds/powerup.mp3"] },
-  mw_mystery: { primary: "/sounds/magic-wheel/mystery_box.mp3", fallbacks: ["/sounds/magic-wheel/reward_card.mp3"] },
+  mw_halve: { primary: "/sounds/magic-wheel/chia_doi.mp3", fallbacks: ["/sounds/wrong.ogg"] },
+  mw_reward: { primary: "/sounds/magic-wheel/phan_thuong.mp3", fallbacks: ["/sounds/magic-wheel/reward_card.mp3", "/sounds/powerup.mp3"] },
+  mw_mystery: { primary: "/sounds/magic-wheel/o_bi_mat.mp3", fallbacks: ["/sounds/magic-wheel/mystery_box.mp3", "/sounds/magic-wheel/reward_card.mp3"] },
   mw_trade: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/magic-wheel/reward_card.mp3"] },
 };
 
@@ -54,9 +62,9 @@ const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   olympia_30s: { primary: "/sounds/olympia_30s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_60s: { primary: "/sounds/olympia_60s.mp3", fallbacks: ["/sounds/olympia_30s.mp3", "/sounds/question_suspense.mp3"] },
   question_suspense: { primary: "/sounds/question_suspense.mp3", fallbacks: ["/sounds/question_suspense.wav"] },
-  wheel_spin: { primary: "/sounds/magic-wheel/wheel_spin.mp3", fallbacks: ["/sounds/wheel_spin.mp3"] },
+  wheel_spin: { primary: "/sounds/magic-wheel/wheel_spin_2014_2016.mp3", fallbacks: ["/sounds/magic-wheel/wheel_spin.mp3", "/sounds/wheel_spin.mp3"] },
   mw_intro: { primary: "/sounds/magic-wheel/intro_round.mp3", fallbacks: ["/sounds/lobby.mp3"] },
-  mw_thinking: { primary: "/sounds/magic-wheel/thinking_timer.mp3", fallbacks: ["/sounds/olympia_5s.mp3"] },
+  mw_thinking: { primary: "/sounds/magic-wheel/nhac_nen_1.mp3", fallbacks: ["/sounds/magic-wheel/thinking_timer.mp3", "/sounds/olympia_5s.mp3"] },
   mw_trade_bgm: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/lobby.mp3"] },
 };
 
@@ -1180,11 +1188,9 @@ class SoundManager {
    */
   public playMagicWheelLoseTurn() {
     if (this.isMuted) return;
+    this.playSFX("mw_lose_turn", 1.0);
     const ctx = this.getWheelAudioCtx();
-    if (!ctx) {
-      this.playSFX("buzz", 0.9);
-      return;
-    }
+    if (!ctx) return;
     try {
       const now = ctx.currentTime;
       // Còi báo mất lượt đôi: 2 nhịp bíp trầm dứt khoát
@@ -1209,11 +1215,9 @@ class SoundManager {
    */
   public playMagicWheelLucky() {
     if (this.isMuted) return;
+    this.playSFX("mw_lucky", 1.0);
     const ctx = this.getWheelAudioCtx();
-    if (!ctx) {
-      this.playSFX("powerup", 0.9);
-      return;
-    }
+    if (!ctx) return;
     try {
       const now = ctx.currentTime;
       // Chuỗi arpeggio thăng hoa kỳ diệu: G5 -> B5 -> D6 -> G6 -> B6
@@ -1325,6 +1329,20 @@ class SoundManager {
         });
       } catch {}
     }
+  }
+
+  /**
+   * 5. Ting đánh dấu highlight ô chữ chính xác (nhịp quét từ trái sang phải, trên xuống dưới)
+   */
+  public playMagicWheelMark() {
+    this.playSFX("mw_mark", 1.0);
+  }
+
+  /**
+   * 6. Âm thanh mở màn bảng ô chữ (khi các ô từ khóa lật thành ô trắng rỗng)
+   */
+  public playMagicWheelBoardOpen() {
+    this.playSFX("mw_board_open", 1.0);
   }
 
   /**

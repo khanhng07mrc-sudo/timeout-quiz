@@ -34,15 +34,17 @@ export const DEFAULT_ALLOWED_POWERUPS_BY_MODE: Record<GameMode, CardType[]> = {
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   // MYSTERY_QUEST: Hành trình phiêu lưu - Mode DUY NHẤT không hỗ trợ thẻ bổ trợ (Power-up) do đặc thù sân khấu luân phiên & Ô số phận
   MYSTERY_QUEST: [],
+  // MAGIC_WHEEL: Chiếc Nón Kỳ Diệu - Tự vận hành bằng 24 ô đặc biệt trên nón (Thêm lượt, Nhân đôi, Chia đôi, May mắn, Mất lượt...)
+  MAGIC_WHEEL: [],
 };
 
 export function getDefaultAllowedPowerupsForMode(mode: GameMode): CardType[] {
-  if (mode === "MYSTERY_QUEST") return [];
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return [];
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] ?? DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
 }
 
 export function isPowerupAllowedForMode(mode: GameMode, cardType: CardType): boolean {
-  if (mode === "MYSTERY_QUEST") return false;
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return false;
   const allowed = getDefaultAllowedPowerupsForMode(mode);
   return allowed.includes(cardType);
 }

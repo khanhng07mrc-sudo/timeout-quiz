@@ -23,6 +23,7 @@ import SystemIcon from "@/components/ui/SystemIcon";
 import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { TieBreakerState } from "@/types";
 import {
@@ -574,6 +575,9 @@ export default function AdminRoomPage() {
     });
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
+    });
+    socket.on("game:magic_wheel:update", (magicWheelState) => {
+      setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
@@ -1390,7 +1394,59 @@ export default function AdminRoomPage() {
             </div>
           )}
 
-          {/* TOURNAMENT Mode Admin Panel */}
+          {/* MAGIC_WHEEL Mode Admin Panel */}
+          {roomState?.mode === "MAGIC_WHEEL" && roomState.magicWheelState && (
+            <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🎡</span>
+                  <div>
+                    <h3 className="font-bold text-sm text-amber-300">Vòng Quay Tri Thức (Chiếc Nón Kỳ Diệu)</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Vòng {roomState.magicWheelState.currentRound} / {roomState.magicWheelState.maxRounds} • Đang đến lượt: <strong className="text-white">{roomState.magicWheelState.currentTurnTeamName || "?"}</strong>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={roomState.magicWheelState.currentTurnTeamId}
+                    onChange={(e) => emit("admin:magic_wheel:override_turn", { teamId: e.target.value })}
+                    className="px-2.5 py-1.5 rounded-lg bg-input border border-border text-xs text-amber-200"
+                  >
+                    <option value="" disabled>Chuyển lượt cho đội...</option>
+                    {roomState.teams.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        Lượt: {t.name} ({roomState.magicWheelState?.roundScores?.[t.id] || 0}đ)
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => emit("admin:magic_wheel:advance_round")}
+                    className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow transition-all active:scale-95"
+                  >
+                    ⏩ Sang Vòng Tiếp Theo
+                  </button>
+                </div>
+              </div>
+
+              {/* Render Admin Live Magic Wheel Board */}
+              <div className="pt-2 border-t border-amber-500/20">
+                <MagicWheelBoard
+                  wheelState={roomState.magicWheelState}
+                  isDisplay={false}
+                  teams={roomState.teams}
+                  isMyTurn={true}
+                  onSpin={(power) => emit("magic_wheel:spin", { power })}
+                  onGuessLetter={(letter) => emit("magic_wheel:guess_letter", { letter })}
+                  onSolvePuzzle={(answer) => emit("magic_wheel:solve_puzzle", { answer })}
+                  onMysteryDecide={(openMystery) => emit("magic_wheel:mystery_decide", { openMystery })}
+                  onLuckyPick={(index) => emit("magic_wheel:lucky_pick", { index })}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* TOURNAMENT Mode Admin Panel (Legacy) */}
           {roomState?.mode === "TOURNAMENT" && (
             <div className="p-4 rounded-xl bg-yellow-900/20 border border-yellow-500/30 space-y-3">
               <div className="flex items-center justify-between">

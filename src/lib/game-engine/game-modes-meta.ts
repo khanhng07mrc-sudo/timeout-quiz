@@ -10,6 +10,7 @@ export const MODE_DISPLAY_NAMES: Record<string, string> = {
   BOUNCEBACK: "Bounceback",
   ELIMINATION: "Survival",
   TOURNAMENT: "Tournament 1v1",
+  MAGIC_WHEEL: "Magic Wheel",
   GRID_CARO: "Grid Caro",
   DICE_RACE: "Dice Race",
   WAGER: "Secret Wager",
@@ -41,6 +42,11 @@ export const MODE_RULES_SUMMARY: Record<string, ModeRulesSummary> = {
     objective: "Đánh bại đối thủ trong nhánh đấu trực tiếp để bước lên bục vinh quang.",
     mechanism: "Chia bảng thi đấu đối đầu 1v1 theo thể thức loại trực tiếp (Tứ kết, Bán kết, Chung kết).",
     tip: "Tận dụng các câu hỏi hệ số cao để tạo cách biệt an toàn trước đối thủ cùng cặp.",
+  },
+  MAGIC_WHEEL: {
+    objective: "Quay nón tri thức, lật mở ô chữ bí mật và tích lũy điểm thưởng cao nhất phòng đấu.",
+    mechanism: "Đội đến lượt chốt lực quay nón 24 ô; đoán đúng chữ cái hoặc câu hỏi để nhân điểm và giữ quyền quay tiếp.",
+    tip: "Chú ý tần suất chữ cái phổ biến và chủ động Giải ô chữ khi đã nắm chắc đáp án để bảo toàn điểm.",
   },
   GRID_CARO: {
     objective: "Chiếm ô trên bàn cờ ma trận và nối chuỗi K ô liên tiếp ăn thưởng cực đại.",
@@ -90,7 +96,7 @@ export function formatRoomTitle(rawTitle: string | undefined, mode?: string): { 
 
   // Xóa bỏ các mã enum thô kệch nếu có
   let cleaned = rawTitle
-    .replace(/MYSTERY_QUEST|GRID_CARO|DICE_RACE|BOUNCEBACK|ELIMINATION|TOURNAMENT/gi, "")
+    .replace(/MYSTERY_QUEST|GRID_CARO|DICE_RACE|BOUNCEBACK|ELIMINATION|TOURNAMENT|MAGIC_WHEEL/gi, "")
     .replace(/[-_–—]/g, " ")
     .replace(/\s+/g, " ")
     .trim();

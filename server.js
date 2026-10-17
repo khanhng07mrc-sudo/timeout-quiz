@@ -241,6 +241,152 @@ function getStandardQuestionTimeLimit(question, overridePoints) {
   return 60;
 }
 
+// src/lib/game-engine/magic-wheel.ts
+var BASE_24_SECTORS = [
+  { id: 0, label: "500", type: "POINTS", value: 500, color: "#e11d48", textColor: "#ffffff" },
+  { id: 1, label: "300", type: "POINTS", value: 300, color: "#2563eb", textColor: "#ffffff" },
+  { id: 2, label: "M\u1EA4T L\u01AF\u1EE2T", type: "LOSE_TURN", color: "#475569", textColor: "#f8fafc" },
+  { id: 3, label: "700", type: "POINTS", value: 700, color: "#d97706", textColor: "#ffffff" },
+  { id: 4, label: "200", type: "POINTS", value: 200, color: "#059669", textColor: "#ffffff" },
+  { id: 5, label: "TH\xCAM L\u01AF\u1EE2T", type: "EXTRA_TURN", color: "#0284c7", textColor: "#ffffff" },
+  { id: 6, label: "400", type: "POINTS", value: 400, color: "#7c3aed", textColor: "#ffffff" },
+  { id: 7, label: "900", type: "POINTS", value: 900, color: "#ea580c", textColor: "#ffffff" },
+  { id: 8, label: "M\u1EA4T \u0110I\u1EC2M", type: "BANKRUPT", color: "#000000", textColor: "#ef4444" },
+  { id: 9, label: "300", type: "POINTS", value: 300, color: "#0d9488", textColor: "#ffffff" },
+  { id: 10, label: "1000", type: "POINTS", value: 1e3, color: "#f59e0b", textColor: "#000000" },
+  { id: 11, label: "CHIA \u0110\xD4I", type: "HALF", color: "#64748b", textColor: "#f8fafc" },
+  { id: 12, label: "600", type: "POINTS", value: 600, color: "#4f46e5", textColor: "#ffffff" },
+  { id: 13, label: "100", type: "POINTS", value: 100, color: "#16a34a", textColor: "#ffffff" },
+  { id: 14, label: "MAY M\u1EAEN", type: "LUCKY", color: "#ec4899", textColor: "#ffffff" },
+  { id: 15, label: "800", type: "POINTS", value: 800, color: "#c026d3", textColor: "#ffffff" },
+  { id: 16, label: "200", type: "POINTS", value: 200, color: "#0891b2", textColor: "#ffffff" },
+  { id: 17, label: "NH\xC2N \u0110\xD4I", type: "DOUBLE", color: "#10b981", textColor: "#ffffff" },
+  { id: 18, label: "300", type: "POINTS", value: 300, color: "#3b82f6", textColor: "#ffffff" },
+  { id: 19, label: "700", type: "POINTS", value: 700, color: "#eab308", textColor: "#000000" },
+  { id: 20, label: "400", type: "POINTS", value: 400, color: "#9333ea", textColor: "#ffffff" },
+  { id: 21, label: "900", type: "POINTS", value: 900, color: "#f97316", textColor: "#ffffff" },
+  { id: 22, label: "1000", type: "POINTS", value: 1e3, color: "#e11d48", textColor: "#ffffff" },
+  { id: 23, label: "2000", type: "POINTS", value: 2e3, color: "#ffd700", textColor: "#000000" }
+];
+function generateMagicWheelSectors(round) {
+  const sectors = BASE_24_SECTORS.map((s) => ({ ...s }));
+  if (round === 1) {
+    const targetIdx = sectors.findIndex((s) => s.id === 13);
+    if (targetIdx !== -1) {
+      sectors[targetIdx] = {
+        id: 13,
+        label: "\u{1F381} PH\u1EA6N TH\u01AF\u1EDENG",
+        type: "PRIZE",
+        value: 500,
+        color: "#fbbf24",
+        textColor: "#78350f",
+        isOverlay: true,
+        overlayType: "PRIZE"
+      };
+    }
+  } else if (round === 2) {
+    [4, 16].forEach((targetId) => {
+      const idx = sectors.findIndex((s) => s.id === targetId);
+      if (idx !== -1) {
+        sectors[idx] = {
+          id: targetId,
+          label: "\u{1F52E} B\xCD M\u1EACT",
+          type: "MYSTERY",
+          color: "#8b5cf6",
+          textColor: "#ffffff",
+          isOverlay: true,
+          overlayType: "MYSTERY"
+        };
+      }
+    });
+  }
+  return sectors;
+}
+function normalizeVietnameseBaseLetter(char) {
+  const upper = char.toUpperCase();
+  return upper.normalize("NFD").replace(/[\u0300\u0301\u0303\u0309\u0323]/g, "").normalize("NFC");
+}
+function checkLetterInSecretPhrase(phrase, letter, alreadyRevealedIndices) {
+  const targetLetter = normalizeVietnameseBaseLetter(letter);
+  const normalizedPhrase = phrase.split("").map((c) => normalizeVietnameseBaseLetter(c));
+  const newIndices = [];
+  normalizedPhrase.forEach((char, idx) => {
+    if (char === targetLetter && !alreadyRevealedIndices.includes(idx)) {
+      newIndices.push(idx);
+    }
+  });
+  return {
+    found: newIndices.length > 0,
+    count: newIndices.length,
+    newRevealedIndices: [...alreadyRevealedIndices, ...newIndices]
+  };
+}
+function isPuzzleFullyRevealed(phrase, revealedIndices) {
+  for (let i = 0; i < phrase.length; i++) {
+    const char = phrase[i];
+    if (char !== " " && char !== "-" && char !== "," && char !== "." && char !== "!" && char !== "?") {
+      if (!revealedIndices.includes(i)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+function matchWholeSecretPhrase(phrase, guess) {
+  const cleanPhrase = phrase.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+  const cleanGuess = guess.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ");
+  return cleanPhrase === cleanGuess;
+}
+function calculateSpinDestination(currentDegrees, powerPercent, totalSectors = 24) {
+  const sectorAngle = 360 / totalSectors;
+  const minRotations = 4;
+  const powerFactor = Math.max(0.1, Math.min(1, powerPercent / 100));
+  const additionalSpins = Math.floor(powerFactor * 4);
+  const randomJitter = (Math.random() * 0.8 + 0.1) * sectorAngle;
+  const totalTravel = (minRotations + additionalSpins) * 360 + powerFactor * 360 + randomJitter;
+  const targetDegrees = Math.round(currentDegrees + totalTravel);
+  const normalizedAngle = (360 - targetDegrees % 360) % 360;
+  const landingSectorIndex = Math.floor(normalizedAngle / sectorAngle) % totalSectors;
+  return {
+    targetDegrees,
+    landingSectorIndex
+  };
+}
+var DEFAULT_MAGIC_WHEEL_PUZZLES = [
+  {
+    id: "puzzle-r1",
+    roundNumber: 1,
+    category: "DANH NH\xC2N L\u1ECACH S\u1EEC",
+    secretPhrase: "NGUY\u1EC4N TR\xC3I",
+    clue: "Nh\xE0 qu\xE2n s\u1EF1, danh nh\xE2n v\u0103n h\xF3a l\u1ED7i l\u1EA1c th\u1EBF gi\u1EDBi c\u1EE7a Vi\u1EC7t Nam th\u1EDDi H\u1EADu L\xEA.",
+    revealedIndices: []
+  },
+  {
+    id: "puzzle-r2",
+    roundNumber: 2,
+    category: "\u0110\u1ECAA DANH VI\u1EC6T NAM",
+    secretPhrase: "V\u1ECANH H\u1EA0 LONG",
+    clue: "Di s\u1EA3n thi\xEAn nhi\xEAn th\u1EBF gi\u1EDBi k\u1EF3 v\u0129 \u0111\u01B0\u1EE3c UNESCO c\xF4ng nh\u1EADn t\u1EA1i Qu\u1EA3ng Ninh.",
+    revealedIndices: []
+  },
+  {
+    id: "puzzle-r3",
+    roundNumber: 3,
+    category: "TH\xC0NH NG\u1EEE T\u1EE4C NG\u1EEE",
+    secretPhrase: "H\u1ECCC TH\u1EA6Y KH\xD4NG T\xC0Y H\u1ECCC B\u1EA0N",
+    clue: "Khuy\xEAn nh\u1EE7 vi\u1EC7c h\u1ECDc h\u1ECFi kinh nghi\u1EC7m l\u1EABn nhau gi\u1EEFa b\u1EA1n b\xE8 \u0111\u1ED3ng trang l\u1EE9a.",
+    revealedIndices: []
+  },
+  {
+    id: "puzzle-final",
+    roundNumber: 4,
+    category: "CH\u1EE6 \u0110\u1EC0 \u0110\u1EB6C BI\u1EC6T: TH\u01A0 CA",
+    secretPhrase: "TRUY\u1EC6N KI\u1EC0U NGUY\u1EC4N DU",
+    clue: "Ki\u1EC7t t\xE1c b\u1EA5t h\u1EE7 \u0111\u01B0\u1EE3c xem l\xE0 \u0111\u1EC9nh cao c\u1EE7a n\u1EC1n v\u0103n h\u1ECDc trung \u0111\u1EA1i Vi\u1EC7t Nam.",
+    revealedIndices: []
+  }
+];
+
 // src/lib/game-engine/scoring.ts
 function calculateItemIRTMetrics(params) {
   const { rawPoints, roomAccuracy } = params;
@@ -1119,13 +1265,122 @@ function generateMysteryPromoPerk(_basePoints = 10, miniGameType, options) {
   }
   return pool[Math.floor(Math.random() * pool.length)];
 }
+function absorbDamageWithShield({
+  teamShields,
+  victimTeamId,
+  victimTeamName,
+  damage,
+  currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false
+}) {
+  const victimShield = teamShields?.[victimTeamId];
+  const isShieldActive = Boolean(
+    victimShield && currentTurnIndex >= victimShield.activeFromTurnIndex && currentTurnIndex <= victimShield.expiresAfterTurnIndex && (victimShield.hp === void 0 || victimShield.hp > 0)
+  );
+  if (!isShieldActive) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: false,
+      remainingShieldHp: 0
+    };
+  }
+  const name = victimTeamName || "\u0110\u1ED1i th\u1EE7";
+  if (isShieldShatter) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: true,
+      remainingShieldHp: 0,
+      shieldConsumedVictimId: victimTeamId,
+      protectionNote: `\u{1F4A5} PH\xC1 GI\xC1P: \u0110\xF2n t\u1EA5n c\xF4ng \u0111\xE3 \u0111\u1EADp tan ho\xE0n to\xE0n Khi\xEAn c\u1EE7a \u0110\u1ED9i ${name}!`
+    };
+  }
+  if (isArmorPiercing) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: false,
+      remainingShieldHp: victimShield?.hp ?? 20,
+      protectionNote: `\u26A1 XUY\xCAN GI\xC1P: \u0110\xF2n c\u01B0\u1EDBp xuy\xEAn qua l\u1EDBp khi\xEAn c\u1EE7a \u0110\u1ED9i ${name}, l\u1EA5y th\u1EB3ng \u0111i\u1EC3m g\u1ED1c!`
+    };
+  }
+  const currentHp = victimShield?.hp ?? 20;
+  if (currentHp >= damage) {
+    const remainingHp = currentHp - damage;
+    return {
+      effectiveDamage: 0,
+      absorbedDamage: damage,
+      isShieldBlocked: true,
+      isShieldShattered: false,
+      remainingShieldHp: remainingHp,
+      shieldConsumedVictimId: remainingHp === 0 ? victimTeamId : void 0,
+      protectionNote: `\u{1F6E1}\uFE0F KHI\xCAN H\u1EA4P TH\u1EE4: Khi\xEAn \u0110\u1ED9i ${name} \u0111\xE3 \u0111\u1EE1 tr\u1ECDn v\u1EB9n ${damage}\u0111 (Khi\xEAn c\xF2n ${remainingHp} HP)!`
+    };
+  } else {
+    const absorbedDamage = currentHp;
+    const effectiveDamage = damage - absorbedDamage;
+    return {
+      effectiveDamage,
+      absorbedDamage,
+      isShieldBlocked: false,
+      isShieldShattered: true,
+      remainingShieldHp: 0,
+      shieldConsumedVictimId: victimTeamId,
+      protectionNote: `\u{1F6E1}\uFE0F\u{1F4A5} KHI\xCAN V\u1EE0: Khi\xEAn \u0110\u1ED9i ${name} h\u1EA5p th\u1EE5 ${absorbedDamage}\u0111 r\u1ED3i v\u1EE1 v\u1EE5n! B\u1ECB tr\u1EEB th\xEAm ${effectiveDamage}\u0111!`
+    };
+  }
+}
+function grantShieldToTeam({
+  state,
+  teamId,
+  curTurn,
+  teamsCount,
+  sourceCard = "SHIELD",
+  shieldHp = 20,
+  maxShieldHp = 20
+}) {
+  if (!state.teamShields) state.teamShields = {};
+  const existing = state.teamShields[teamId];
+  let bonusPointsAwarded = 0;
+  let heartHealed = false;
+  if (existing && (existing.hp ?? 20) > 0) {
+    existing.hp = maxShieldHp;
+    existing.maxHp = maxShieldHp;
+    existing.activeFromTurnIndex = curTurn + 1;
+    existing.expiresAfterTurnIndex = curTurn + teamsCount;
+    existing.sourceCard = sourceCard;
+    const maxHearts = state.teamMaxHearts?.[teamId] ?? state.initialHeartsPerTeam ?? 3;
+    const currentHearts = state.teamHearts?.[teamId] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts < maxHearts) {
+      if (!state.teamHearts) state.teamHearts = {};
+      state.teamHearts[teamId] = currentHearts + 1;
+      heartHealed = true;
+    }
+    return { refreshed: true, bonusPointsAwarded: 0, heartHealed };
+  }
+  state.teamShields[teamId] = {
+    activeFromTurnIndex: curTurn + 1,
+    expiresAfterTurnIndex: curTurn + teamsCount,
+    hp: shieldHp,
+    maxHp: maxShieldHp,
+    sourceCard
+  };
+  return { refreshed: false, bonusPointsAwarded: 0, heartHealed: false };
+}
 function calculatePromoSteal5({
   activeTeamId,
   allTeams,
   timesStolenInCycle = {},
   teamShields,
   teamImmunities,
-  currentTurnIndex = 0
+  currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false
 }) {
   const opponents = (allTeams || []).filter(
     (t) => t.id !== activeTeamId && !t.isEliminated && (t.score || 0) > 0
@@ -1139,27 +1394,48 @@ function calculatePromoSteal5({
     if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
       return false;
     }
-    const shield = teamShields?.[t.id];
-    if (shield && currentTurnIndex >= shield.activeFromTurnIndex && currentTurnIndex <= shield.expiresAfterTurnIndex) {
-      return false;
-    }
     return true;
   });
   if (eligibleOpponents.length === 0) {
     return {
       stolenPoints: 5,
       isFromBank: true,
-      protectionNote: "C\xE1c \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c b\u1EA3o v\u1EC7 (Khi\xEAn / B\xF9a Mi\u1EC5n Nhi\u1EC5m)! B\u1EA1n nh\u1EADn +5\u0111 an to\xE0n t\u1EEB H\u1EC7 Th\u1ED1ng."
+      protectionNote: "C\xE1c \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c b\u1EA3o v\u1EC7 (Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp / B\xF9a Mi\u1EC5n Nhi\u1EC5m)! B\u1EA1n nh\u1EADn +5\u0111 an to\xE0n t\u1EEB H\u1EC7 Th\u1ED1ng."
     };
   }
   const maxScore = Math.max(...eligibleOpponents.map((t) => t.score || 0));
   const topOpponents = eligibleOpponents.filter((t) => (t.score || 0) === maxScore);
   const chosenVictim = topOpponents[Math.floor(Math.random() * topOpponents.length)];
-  const stolenPoints = Math.min(5, chosenVictim.score || 0);
+  const rawTargetSteal = Math.min(5, chosenVictim.score || 0);
+  const absorption = absorbDamageWithShield({
+    teamShields,
+    victimTeamId: chosenVictim.id,
+    victimTeamName: chosenVictim.name,
+    damage: rawTargetSteal,
+    currentTurnIndex,
+    isArmorPiercing,
+    isShieldShatter
+  });
+  if (absorption.isShieldBlocked) {
+    return {
+      victimTeamId: chosenVictim.id,
+      victimTeamName: chosenVictim.name,
+      stolenPoints: 0,
+      isShieldBlocked: true,
+      shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+      remainingShieldHp: absorption.remainingShieldHp,
+      shieldDamageAbsorbed: absorption.absorbedDamage,
+      protectionNote: absorption.protectionNote
+    };
+  }
   return {
     victimTeamId: chosenVictim.id,
     victimTeamName: chosenVictim.name,
-    stolenPoints
+    stolenPoints: absorption.effectiveDamage,
+    shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+    remainingShieldHp: absorption.remainingShieldHp,
+    shieldDamageAbsorbed: absorption.absorbedDamage,
+    protectionNote: absorption.protectionNote
   };
 }
 function getPerkType(promo) {
@@ -1242,20 +1518,32 @@ function calculateCappedSteal({
   allTeams,
   targetPoints = 20,
   maxCap,
-  timesStolenInCycle = {}
+  timesStolenInCycle = {},
+  teamShields,
+  teamImmunities,
+  currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false
 }) {
   const effectiveCap = maxCap ?? Math.max(targetPoints, 50);
   const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
   if (otherTeams.length === 0) {
     return { stolenPoints: Math.min(targetPoints, effectiveCap), isFromBank: true };
   }
-  const eligibleVictims = otherTeams.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+  const eligibleVictims = otherTeams.filter((t) => {
+    if ((timesStolenInCycle[t.id] ?? 0) >= 2) return false;
+    const imm = teamImmunities?.[t.id];
+    if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
+      return false;
+    }
+    return true;
+  });
   if (eligibleVictims.length === 0) {
     const finalSteal = Math.min(targetPoints, effectiveCap);
     return {
       stolenPoints: finalSteal,
       isFromBank: true,
-      protectionNote: "T\u1EA5t c\u1EA3 \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp b\u1EA3o v\u1EC7! Nh\u1EADn \u0111i\u1EC3m an to\xE0n t\u1EEB Qu\u1EF9 H\u1EC7 Th\u1ED1ng."
+      protectionNote: "T\u1EA5t c\u1EA3 \u0111\u1ED1i th\u1EE7 \u0111\u1EC1u \u0111ang \u0111\u01B0\u1EE3c b\u1EA3o v\u1EC7 (Khi\xEAn Mi\u1EC5n Nhi\u1EC5m C\u01B0\u1EDBp / B\xF9a Mi\u1EC5n Nhi\u1EC5m)! Nh\u1EADn \u0111i\u1EC3m an to\xE0n t\u1EEB Qu\u1EF9 H\u1EC7 Th\u1ED1ng."
     };
   }
   const sorted = [...eligibleVictims].sort((a, b) => (b.score || 0) - (a.score || 0));
@@ -1272,21 +1560,47 @@ function calculateCappedSteal({
   const allowed = Math.min(targetPoints, effectiveCap, halfScore);
   const baseSteal = Math.max(1, allowed);
   const timesStolen = timesStolenInCycle[victim.id] ?? 0;
+  let targetStealBeforeShield = baseSteal;
+  let isHalfProtection = false;
   if (timesStolen === 1) {
     const halfSteal = Math.max(5, roundToMultipleOfFive(baseSteal * 0.5));
-    const finalSteal = Math.min(baseSteal, halfSteal);
+    targetStealBeforeShield = Math.min(baseSteal, halfSteal);
+    isHalfProtection = true;
+  }
+  const absorption = absorbDamageWithShield({
+    teamShields,
+    victimTeamId: victim.id,
+    victimTeamName: victim.name,
+    damage: targetStealBeforeShield,
+    currentTurnIndex,
+    isArmorPiercing,
+    isShieldShatter
+  });
+  if (absorption.isShieldBlocked) {
     return {
       victimTeamId: victim.id,
       victimTeamName: victim.name,
-      stolenPoints: finalSteal,
-      isHalfProtection: true,
-      protectionNote: `Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50% (-${finalSteal}\u0111)!`
+      stolenPoints: 0,
+      isShieldBlocked: true,
+      shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+      remainingShieldHp: absorption.remainingShieldHp,
+      shieldDamageAbsorbed: absorption.absorbedDamage,
+      protectionNote: absorption.protectionNote
     };
+  }
+  let finalProtectionNote = absorption.protectionNote;
+  if (!finalProtectionNote && isHalfProtection) {
+    finalProtectionNote = `Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50% (-${targetStealBeforeShield}\u0111)!`;
   }
   return {
     victimTeamId: victim.id,
     victimTeamName: victim.name,
-    stolenPoints: baseSteal
+    stolenPoints: absorption.effectiveDamage,
+    isHalfProtection,
+    shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+    remainingShieldHp: absorption.remainingShieldHp,
+    shieldDamageAbsorbed: absorption.absorbedDamage,
+    protectionNote: finalProtectionNote
   };
 }
 function getTarotMinigameArchetypePool(basePoints = 20, options) {
@@ -2136,8 +2450,12 @@ function generateMysteryStageForTurn({
   if (teamShields) {
     for (const [tid, s] of Object.entries(teamShields)) {
       const shield = s;
-      if (turnIndex <= shield.expiresAfterTurnIndex) {
-        updatedTeamShields[tid] = shield;
+      if (turnIndex <= shield.expiresAfterTurnIndex && (shield.hp === void 0 || shield.hp > 0)) {
+        updatedTeamShields[tid] = {
+          ...shield,
+          hp: shield.hp ?? 20,
+          maxHp: shield.maxHp ?? 20
+        };
         if (tid === currentTeam.id && turnIndex >= shield.activeFromTurnIndex) {
           hasActiveShield = true;
         }
@@ -2590,6 +2908,9 @@ function handleFlipCard({
       const cancelPrefix = cancelOldKey ? `\u26A0\uFE0F \u0110\xC3 H\u1EE6Y B\u1ECE ${getPenaltyName(cancelOldKey)} C\u0168! Th\u1EF1c hi\u1EC7n ph\u1EA1t theo c\u1EB7p m\u1EDBi: ` : "";
       if (state.hasShield) {
         state.hasShield = false;
+        if (state.teamShields && team.id) {
+          delete state.teamShields[team.id];
+        }
         memState.activePenaltyPairKey = null;
         memState.isBombRescueActive = false;
         memState.rescueFormedNegativePairs = [];
@@ -2793,14 +3114,13 @@ function handleFlipCard({
           state.hasShield = true;
           const teamsCount = Math.max(1, allTeams?.length || 2);
           const curTurn = state.currentTurnIndex || 0;
-          state.teamShields = {
-            ...state.teamShields || {},
-            [team.id]: {
-              activeFromTurnIndex: curTurn + 1,
-              expiresAfterTurnIndex: curTurn + teamsCount,
-              sourceCard: "THE_EMPEROR"
-            }
-          };
+          grantShieldToTeam({
+            state,
+            teamId: team.id,
+            curTurn,
+            teamsCount,
+            sourceCard: "THE_EMPEROR"
+          });
         }
         let winCardHeartMaxed = false;
         if (winCard.givesHeart) {
@@ -2834,9 +3154,16 @@ function handleFlipCard({
           finalDelta = 0;
         } else if (winCard.effectType === "STEAL_POINTS") {
           const stealAmount = winCard.deltaPoints || state.baseQuestionPoints || 10;
-          const eligibleTeams = (allTeams || []).filter(
-            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-          );
+          const curTurn = state.currentTurnIndex || 0;
+          const eligibleTeams = (allTeams || []).filter((t) => {
+            if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+            if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+            const imm = state.teamImmunities?.[t.id];
+            if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+              return false;
+            }
+            return true;
+          });
           if (eligibleTeams.length > 0) {
             state.phase = "STEAL_TARGET_SELECT";
             state.pendingSteal = {
@@ -2860,18 +3187,36 @@ function handleFlipCard({
         if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
           const promoSteal = calculatePromoSteal5({
             activeTeamId: team.id,
-            allTeams
+            allTeams,
+            timesStolenInCycle: state.timesStolenInCycle,
+            teamShields: state.teamShields,
+            teamImmunities: state.teamImmunities,
+            currentTurnIndex: state.currentTurnIndex || 0
           });
+          if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+            delete state.teamShields[promoSteal.shieldConsumedVictimId];
+          }
           if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
             victimTeamId = promoSteal.victimTeamId;
             victimTeamName = promoSteal.victimTeamName;
             stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
             finalDelta += promoSteal.stolenPoints;
+            if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+            state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
           }
         }
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
+        if (finalDelta > 0) {
+          const heartsRecord = { ...state.teamHearts || {} };
+          const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
+        }
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
         const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
@@ -3127,14 +3472,13 @@ function handleFlipCard({
         state.hasShield = true;
         const teamsCount = Math.max(1, allTeams?.length || 2);
         const curTurn = state.currentTurnIndex || 0;
-        state.teamShields = {
-          ...state.teamShields || {},
-          [team.id]: {
-            activeFromTurnIndex: curTurn + 1,
-            expiresAfterTurnIndex: curTurn + teamsCount,
-            sourceCard: "THE_EMPEROR"
-          }
-        };
+        grantShieldToTeam({
+          state,
+          teamId: team.id,
+          curTurn,
+          teamsCount,
+          sourceCard: "THE_EMPEROR"
+        });
       }
       let firstTileHeartMaxed = false;
       if (firstTile.givesHeart) {
@@ -3168,9 +3512,16 @@ function handleFlipCard({
         finalDelta = 0;
       } else if (firstTile.effectType === "STEAL_POINTS") {
         const stealAmount = firstTile.deltaPoints || state.baseQuestionPoints || 10;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
+        const curTurn = state.currentTurnIndex || 0;
+        const eligibleTeams = (allTeams || []).filter((t) => {
+          if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+          if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+          const imm = state.teamImmunities?.[t.id];
+          if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+            return false;
+          }
+          return true;
+        });
         if (eligibleTeams.length > 0) {
           state.phase = "STEAL_TARGET_SELECT";
           state.pendingSteal = {
@@ -3194,18 +3545,36 @@ function handleFlipCard({
       if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
         const promoSteal = calculatePromoSteal5({
           activeTeamId: team.id,
-          allTeams
+          allTeams,
+          timesStolenInCycle: state.timesStolenInCycle,
+          teamShields: state.teamShields,
+          teamImmunities: state.teamImmunities,
+          currentTurnIndex: state.currentTurnIndex || 0
         });
+        if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+          delete state.teamShields[promoSteal.shieldConsumedVictimId];
+        }
         if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
           victimTeamId = promoSteal.victimTeamId;
           victimTeamName = promoSteal.victimTeamName;
           stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
           finalDelta += promoSteal.stolenPoints;
+          if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+          state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
         }
       }
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "PAIR_MATCHED";
       state.potPoints = 0;
+      if (finalDelta > 0) {
+        const heartsRecord = { ...state.teamHearts || {} };
+        const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+        const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+        if (curHearts < maxHearts) {
+          heartsRecord[team.id] = curHearts + 1;
+          state.teamHearts = heartsRecord;
+        }
+      }
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
       const baseReward = finalDelta - extraPotBonus2 - (stolenPoints || 0);
@@ -3511,6 +3880,9 @@ function handleFlipCard({
       if (isNegative) {
         if (state.hasShield && !state.isPenaltySurvivalMode) {
           state.hasShield = false;
+          if (state.teamShields && team.id) {
+            delete state.teamShields[team.id];
+          }
           tile2.isOpened = true;
           osState.chosenFinalDoorId = void 0;
           osState.phase = "OPEN_FINAL";
@@ -3636,14 +4008,13 @@ function handleFlipCard({
           state.hasShield = true;
           const teamsCount = Math.max(1, allTeams?.length || 2);
           const curTurn = state.currentTurnIndex || 0;
-          state.teamShields = {
-            ...state.teamShields || {},
-            [team.id]: {
-              activeFromTurnIndex: curTurn + 1,
-              expiresAfterTurnIndex: curTurn + teamsCount,
-              sourceCard: "THE_EMPEROR"
-            }
-          };
+          grantShieldToTeam({
+            state,
+            teamId: team.id,
+            curTurn,
+            teamsCount,
+            sourceCard: "THE_EMPEROR"
+          });
         }
         let tileHeartMaxed = false;
         if (tile2.givesHeart) {
@@ -3674,9 +4045,16 @@ function handleFlipCard({
         const multiplier = state.potMultiplier || 1;
         if (tile2.effectType === "STEAL_POINTS") {
           const stealAmount = tile2.deltaPoints || state.baseQuestionPoints || 10;
-          const eligibleTeams = (allTeams || []).filter(
-            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-          );
+          const curTurn = state.currentTurnIndex || 0;
+          const eligibleTeams = (allTeams || []).filter((t) => {
+            if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+            if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+            const imm = state.teamImmunities?.[t.id];
+            if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+              return false;
+            }
+            return true;
+          });
           if (eligibleTeams.length > 0) {
             state.phase = "STEAL_TARGET_SELECT";
             state.pendingSteal = {
@@ -3701,18 +4079,36 @@ function handleFlipCard({
         if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
           const promoSteal = calculatePromoSteal5({
             activeTeamId: team.id,
-            allTeams
+            allTeams,
+            timesStolenInCycle: state.timesStolenInCycle,
+            teamShields: state.teamShields,
+            teamImmunities: state.teamImmunities,
+            currentTurnIndex: state.currentTurnIndex || 0
           });
+          if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+            delete state.teamShields[promoSteal.shieldConsumedVictimId];
+          }
           if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
             victimTeamId = promoSteal.victimTeamId;
             victimTeamName = promoSteal.victimTeamName;
             stolenPoints = promoSteal.stolenPoints;
             finalDelta += promoSteal.stolenPoints;
+            if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+            state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
           }
         }
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "DOOR_CHOSEN";
+        if (finalDelta > 0) {
+          const heartsRecord = { ...state.teamHearts || {} };
+          const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
+        }
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
         let rewardText = tile2.tarotCardKey === "THE_FOOL" ? `\u{1F0CF} M\u1EDE C\u1EECA K\u1EBA KH\u1EDC! Gi\u1EEF nguy\xEAn th\u1EBF tr\u1EADn an to\xE0n tuy\u1EC7t \u0111\u1ED1i (\xB10\u0111)!` : extraPotBonus2 > 0 ? `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn +${baseReward * multiplier}\u0111 v\xE0 +${extraPotBonus2}\u0111 Qu\u1EF9 th\u01B0\u1EDFng (T\u1ED5ng +${finalDelta} \u0111i\u1EC3m)!` : `\u{1F389} M\u1EDE C\u1EECA TH\xC0NH C\xD4NG! ${tile2.storyTitle} Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m th\u01B0\u1EDFng!`;
@@ -3775,6 +4171,9 @@ function handleFlipCard({
     if (isBomb) {
       if (state.hasShield && !state.isPenaltySurvivalMode) {
         state.hasShield = false;
+        if (state.teamShields && team.id) {
+          delete state.teamShields[team.id];
+        }
         tile2.isOpened = true;
         state.storyResult = {
           teamId: team.id,
@@ -3828,9 +4227,16 @@ function handleFlipCard({
       const multiplier = state.potMultiplier || 1;
       if (tile2.effectType === "STEAL_POINTS") {
         const stealAmount = tile2.deltaPoints || state.baseQuestionPoints || 10;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
+        const curTurn = state.currentTurnIndex || 0;
+        const eligibleTeams = (allTeams || []).filter((t) => {
+          if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+          if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+          const imm = state.teamImmunities?.[t.id];
+          if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+            return false;
+          }
+          return true;
+        });
         if (eligibleTeams.length > 0) {
           state.phase = "STEAL_TARGET_SELECT";
           state.pendingSteal = {
@@ -3854,13 +4260,22 @@ function handleFlipCard({
       if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
         const promoSteal = calculatePromoSteal5({
           activeTeamId: team.id,
-          allTeams
+          allTeams,
+          timesStolenInCycle: state.timesStolenInCycle,
+          teamShields: state.teamShields,
+          teamImmunities: state.teamImmunities,
+          currentTurnIndex: state.currentTurnIndex || 0
         });
+        if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+          delete state.teamShields[promoSteal.shieldConsumedVictimId];
+        }
         if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
           victimTeamId = promoSteal.victimTeamId;
           victimTeamName = promoSteal.victimTeamName;
           stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
           finalDelta += promoSteal.stolenPoints;
+          if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+          state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
         }
       }
       state.potPoints = 0;
@@ -4003,6 +4418,9 @@ function handleFlipCard({
   if (isBombCard) {
     if (state.hasShield) {
       state.hasShield = false;
+      if (state.teamShields && team.id) {
+        delete state.teamShields[team.id];
+      }
       tile.isOpened = true;
       state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
       state.lastFlippedTile = tile;
@@ -4092,9 +4510,16 @@ function handleFlipCard({
     state.potPoints = basePts * 2 + extraPotBonus;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
-    const eligibleTeams = (allTeams || []).filter(
-      (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-    );
+    const curTurn = state.currentTurnIndex || 0;
+    const eligibleTeams = (allTeams || []).filter((t) => {
+      if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+      if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+      const imm = state.teamImmunities?.[t.id];
+      if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+        return false;
+      }
+      return true;
+    });
     if (eligibleTeams.length > 0) {
       state.phase = "STEAL_TARGET_SELECT";
       state.pendingSteal = {
@@ -4140,6 +4565,10 @@ function handleCashOut({
   team,
   allTeams = []
 }) {
+  const currentTeamHearts = state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 0;
+  if (currentTeamHearts <= 0 && (state.cardsFlippedCount || 0) < 3) {
+    throw new Error("Ch\u1EBF \u0111\u1ED9 Sinh T\u1EED (0 \u2764\uFE0F): C\u1EA7n l\u1EADt t\u1ED1i thi\u1EC3u 3 th\u1EBB an to\xE0n m\u1EDBi \u0111\u01B0\u1EE3c ph\xE9p Ch\u1ED1t \u0110i\u1EC3m!");
+  }
   let finalScoreDelta = state.potPoints;
   if (!state.consecutiveBombsByTeam) state.consecutiveBombsByTeam = {};
   state.consecutiveBombsByTeam[team.id] = 0;
@@ -4162,13 +4591,26 @@ function handleCashOut({
         allTeams,
         targetPoints: state.stolenPointsPot,
         maxCap: 25,
-        timesStolenInCycle: state.timesStolenInCycle
+        timesStolenInCycle: state.timesStolenInCycle,
+        teamShields: state.teamShields,
+        teamImmunities: state.teamImmunities,
+        currentTurnIndex: state.currentTurnIndex || 0
       });
-      if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+      if (stealCalc.shieldConsumedVictimId && state.teamShields) {
+        if (stealCalc.remainingShieldHp === 0) {
+          delete state.teamShields[stealCalc.shieldConsumedVictimId];
+        } else if (state.teamShields[stealCalc.shieldConsumedVictimId]) {
+          state.teamShields[stealCalc.shieldConsumedVictimId].hp = stealCalc.remainingShieldHp;
+        }
+      }
+      if (stealCalc.victimTeamId) {
         victimTeamId = stealCalc.victimTeamId;
         victimTeamName = stealCalc.victimTeamName;
         stolenPoints = stealCalc.stolenPoints;
         stealProtectionNote = stealCalc.protectionNote;
+        if (stealCalc.isShieldBlocked) {
+          finalScoreDelta = Math.max(0, finalScoreDelta - state.stolenPointsPot);
+        }
       }
     }
   }
@@ -4177,8 +4619,18 @@ function handleCashOut({
     const promoSteal = calculatePromoSteal5({
       activeTeamId: team.id,
       allTeams,
-      timesStolenInCycle: state.timesStolenInCycle
+      timesStolenInCycle: state.timesStolenInCycle,
+      teamShields: state.teamShields,
+      teamImmunities: state.teamImmunities,
+      currentTurnIndex: state.currentTurnIndex || 0
     });
+    if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+      if (promoSteal.remainingShieldHp === 0) {
+        delete state.teamShields[promoSteal.shieldConsumedVictimId];
+      } else if (state.teamShields[promoSteal.shieldConsumedVictimId]) {
+        state.teamShields[promoSteal.shieldConsumedVictimId].hp = promoSteal.remainingShieldHp;
+      }
+    }
     if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
       promoStealDetails = { victimName: promoSteal.victimTeamName, stolen: promoSteal.stolenPoints };
       finalScoreDelta += promoSteal.stolenPoints;
@@ -4188,10 +4640,13 @@ function handleCashOut({
         victimTeamId = promoSteal.victimTeamId;
         victimTeamName = promoSteal.victimTeamName;
         stolenPoints = promoSteal.stolenPoints;
+      } else {
+        if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+        state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
       }
     }
   }
-  if (victimTeamId) {
+  if (victimTeamId && (stolenPoints || 0) > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[victimTeamId] = (state.timesStolenInCycle[victimTeamId] || 0) + 1;
   }
@@ -4201,10 +4656,10 @@ function handleCashOut({
   state.turnFinishedReason = "CASH_OUT";
   state.potPoints = 0;
   state.stolenPointsPot = 0;
-  if (finalScoreDelta > 0 && !state.isPenaltySurvivalMode) {
+  if (finalScoreDelta > 0) {
     const heartsRecord = { ...state.teamHearts || {} };
     const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[team.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
@@ -4338,46 +4793,68 @@ function handleChooseStealTarget({
   const isImmunityActive = Boolean(
     victimImmunity && curTurn >= victimImmunity.activeFromTurnIndex && curTurn <= victimImmunity.expiresAfterTurnIndex
   );
-  const isJudgementBreak = Boolean(pending?.breakVictimShield && victimShield && !isImmunityActive);
-  if (isJudgementBreak && victimTeamId && state.teamShields) {
-    delete state.teamShields[victimTeamId];
-  }
-  const isEmperorShieldActive = !isJudgementBreak && !isImmunityActive && Boolean(
-    victimShield && curTurn >= victimShield.activeFromTurnIndex && curTurn <= victimShield.expiresAfterTurnIndex
-  );
+  const isJudgementBreak = Boolean((pending?.breakVictimShield || pending?.isShieldShatter) && victimShield && !isImmunityActive);
+  const isArmorPiercing = Boolean(pending?.isArmorPiercing);
+  let protectionNote = "";
   if (isImmunityActive && victimTeamId) {
     stolenPoints = 0;
-  } else if (isEmperorShieldActive && victimTeamId) {
-    if (state.teamShields) {
-      delete state.teamShields[victimTeamId];
-    }
+    protectionNote = ` (\u{1F319} B\xD9A MI\u1EC4N NHI\u1EC4M: \u0110\u1ED9i ${victimTeamName} ho\xE0n to\xE0n mi\u1EC5n nhi\u1EC5m tr\u01B0\u1EDBc m\u1ECDi lo\u1EA1i c\u01B0\u1EDBp \u0111i\u1EC3m, 0\u0111 m\u1EA5t m\xE1t!)`;
+  } else if (victimTeamId && timesStolen >= 2) {
     stolenPoints = 0;
-  } else if (victimTeamId && timesStolen === 1) {
-    stolenPoints = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
-    isHalfProtected = true;
+    protectionNote = ` (\u{1F6E1}\uFE0F MI\u1EC4N NHI\u1EC4M C\u01AF\u1EDAP: \u0110\u1ED9i ${victimTeamName} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp 2 l\u1EA7n trong v\xF2ng, ho\xE0n to\xE0n mi\u1EC5n nhi\u1EC5m c\u01B0\u1EDBp \u0111i\u1EC3m!)`;
+  } else if (victimTeamId) {
+    let targetDeduction = rawStolenPoints;
+    if (timesStolen === 1) {
+      targetDeduction = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
+      isHalfProtected = true;
+    }
+    const absorption = absorbDamageWithShield({
+      teamShields: state.teamShields,
+      victimTeamId,
+      victimTeamName,
+      damage: targetDeduction,
+      currentTurnIndex: curTurn,
+      isArmorPiercing,
+      isShieldShatter: isJudgementBreak
+    });
+    if (absorption.isShieldBlocked) {
+      stolenPoints = 0;
+    } else {
+      stolenPoints = absorption.effectiveDamage;
+    }
+    if (absorption.shieldConsumedVictimId) {
+      if (absorption.remainingShieldHp === 0 && state.teamShields) {
+        delete state.teamShields[victimTeamId];
+      }
+    } else if (state.teamShields && state.teamShields[victimTeamId]) {
+      state.teamShields[victimTeamId].hp = absorption.remainingShieldHp;
+    }
+    if (absorption.protectionNote) {
+      protectionNote = ` (${absorption.protectionNote})`;
+    } else if (isHalfProtected) {
+      protectionNote = ` (Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victimTeamName} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50%!)`;
+    }
   }
-  if (victimTeamId) {
+  if (victimTeamId && stolenPoints > 0 && state.miniGameType !== "PUSH_YOUR_LUCK") {
     state.timesStolenInCycle[victimTeamId] = timesStolen + 1;
   }
   if (pending?.grantShieldSelf && activeTeam) {
-    state.teamShields = {
-      ...state.teamShields || {},
-      [activeTeam.id]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: pending.sourceCardKey || "TAROT"
-      }
-    };
+    grantShieldToTeam({
+      state,
+      teamId: activeTeam.id,
+      curTurn,
+      teamsCount,
+      sourceCard: pending.sourceCardKey || "TAROT"
+    });
   }
   if (pending?.grantShieldVictim && victimTeamId) {
-    state.teamShields = {
-      ...state.teamShields || {},
-      [victimTeamId]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: pending.sourceCardKey || "THE_LOVERS"
-      }
-    };
+    grantShieldToTeam({
+      state,
+      teamId: victimTeamId,
+      curTurn,
+      teamsCount,
+      sourceCard: pending.sourceCardKey || "THE_LOVERS"
+    });
   }
   if (pending?.healHeartSelf && activeTeam) {
     const heartsRecord = { ...state.teamHearts || {} };
@@ -4388,7 +4865,6 @@ function handleChooseStealTarget({
       state.teamHearts = heartsRecord;
     }
   }
-  const protectionNote = isImmunityActive ? ` (\u{1F319} B\xD9A MI\u1EC4N NHI\u1EC4M: \u0110\u1ED9i ${victimTeamName} ho\xE0n to\xE0n mi\u1EC5n nhi\u1EC5m tr\u01B0\u1EDBc m\u1ECDi lo\u1EA1i c\u01B0\u1EDBp \u0111i\u1EC3m, 0\u0111 m\u1EA5t m\xE1t!)` : isJudgementBreak ? ` (\u26A1 PH\xC1 KHI\xCAN: Ph\xE1n Quy\u1EBFt \u0111\xE3 ph\xE1 v\u1EE1 ho\xE0n to\xE0n Khi\xEAn Th\u1EA7n c\u1EE7a \u0110\u1ED9i ${victimTeamName}!)` : isEmperorShieldActive ? ` (\u{1F6E1}\uFE0F KHI\xCAN HO\xC0NG \u0110\u1EBE: \u0110\u1ED9i ${victimTeamName} \u0111\xE3 k\xEDch ho\u1EA1t Khi\xEAn Th\u1EA7n ch\u1EB7n \u0111\u1EE9ng v\u1EE5 c\u01B0\u1EDBp \u0111i\u1EC3m, 0\u0111 m\u1EA5t m\xE1t!)` : isHalfProtected ? ` (Khi\xEAn Ch\u1ED1ng V\u1EAFt Ki\u1EC7t: \u0110\u1ED9i ${victimTeamName} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp l\u1EA7n 2 trong v\xF2ng, ch\u1EC9 b\u1ECB tr\u1EEB 50%!)` : "";
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
     const totalPotFromSteal = (stolenPoints + extraPotBonus) * state.potMultiplier;
     state.phase = "PUSH_YOUR_LUCK";
@@ -4439,10 +4915,10 @@ function handleChooseStealTarget({
   const finalScoreDelta = baseBonusPoints + stolenPoints + extraPotBonus;
   const oldScore = activeTeam?.score || 0;
   const newScore = oldScore + finalScoreDelta;
-  if (activeTeam && finalScoreDelta > 0 && !pending?.healHeartSelf && !state.isPenaltySurvivalMode) {
+  if (activeTeam && finalScoreDelta > 0 && !pending?.healHeartSelf) {
     const heartsRecord = { ...state.teamHearts || {} };
     const maxHearts = state.teamMaxHearts?.[activeTeam.id] ?? state.initialHeartsPerTeam ?? 3;
-    const curHearts = heartsRecord[activeTeam.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[activeTeam.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[activeTeam.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
@@ -4666,6 +5142,9 @@ function handleOneShotDoorsDecision({
   if (isNegative) {
     if (state.hasShield && !state.isPenaltySurvivalMode) {
       state.hasShield = false;
+      if (state.teamShields && team.id) {
+        delete state.teamShields[team.id];
+      }
       chosenTile.isOpened = true;
       if (osState.selectedDoorIds) {
         osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
@@ -4796,14 +5275,13 @@ function handleOneShotDoorsDecision({
       state.hasShield = true;
       const teamsCount = Math.max(1, allTeams?.length || 2);
       const curTurn = state.currentTurnIndex || 0;
-      state.teamShields = {
-        ...state.teamShields || {},
-        [team.id]: {
-          activeFromTurnIndex: curTurn + 1,
-          expiresAfterTurnIndex: curTurn + teamsCount,
-          sourceCard: "THE_EMPEROR"
-        }
-      };
+      grantShieldToTeam({
+        state,
+        teamId: team.id,
+        curTurn,
+        teamsCount,
+        sourceCard: "THE_EMPEROR"
+      });
     }
     let chosenTileHeartMaxed = false;
     if (chosenTile.givesHeart) {
@@ -4835,9 +5313,16 @@ function handleOneShotDoorsDecision({
     let finalDelta = 0;
     if (chosenTile.effectType === "STEAL_POINTS") {
       const stealAmount = chosenTile.deltaPoints || state.baseQuestionPoints || 10;
-      const eligibleTeams = (allTeams || []).filter(
-        (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-      );
+      const curTurn = state.currentTurnIndex || 0;
+      const eligibleTeams = (allTeams || []).filter((t) => {
+        if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+        if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+        const imm = state.teamImmunities?.[t.id];
+        if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+          return false;
+        }
+        return true;
+      });
       if (eligibleTeams.length > 0) {
         state.phase = "STEAL_TARGET_SELECT";
         state.pendingSteal = {
@@ -4862,18 +5347,36 @@ function handleOneShotDoorsDecision({
     if (getPerkType(state.promoPerk) === "STEAL_5_PROMO" && allTeams && allTeams.length > 0) {
       const promoSteal = calculatePromoSteal5({
         activeTeamId: team.id,
-        allTeams
+        allTeams,
+        timesStolenInCycle: state.timesStolenInCycle,
+        teamShields: state.teamShields,
+        teamImmunities: state.teamImmunities,
+        currentTurnIndex: state.currentTurnIndex || 0
       });
+      if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+        delete state.teamShields[promoSteal.shieldConsumedVictimId];
+      }
       if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
         victimTeamId = promoSteal.victimTeamId;
         victimTeamName = promoSteal.victimTeamName;
         stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
         finalDelta += promoSteal.stolenPoints;
+        if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+        state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
       }
     }
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "DOOR_CHOSEN";
+    if (finalDelta > 0) {
+      const heartsRecord = { ...state.teamHearts || {} };
+      const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+      const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+      if (curHearts < maxHearts) {
+        heartsRecord[team.id] = curHearts + 1;
+        state.teamHearts = heartsRecord;
+      }
+    }
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
     let rewardText = chosenTile.tarotCardKey === "THE_FOOL" ? `\u{1F0CF} M\u1EDF tr\xFAng C\u1EEDa K\u1EBB Kh\u1EDD (\xB10\u0111): Th\u1EBF tr\u1EADn \u0111\u01B0\u1EE3c b\u1EA3o to\xE0n an to\xE0n tuy\u1EC7t \u0111\u1ED1i!` : `\u{1F389} \u0110O\xC1N \u0110\xDANG XU\u1EA4T S\u1EAEC! M\u1EDF tr\xFAng c\xE1nh c\u1EEDa an to\xE0n #${chosenTile.id}: Nh\u1EADn tr\u1ECDn v\u1EB9n +${finalDelta} \u0111i\u1EC3m!`;
@@ -5080,7 +5583,8 @@ function resolveWheelCardEffect({
   maxHearts = 3,
   targetVictimTeamId,
   currentTurnIndex = 0,
-  teamImmunities
+  teamImmunities,
+  teamShields
 }) {
   const currentScore = team.score || 0;
   const otherTeams = (allTeams || []).filter((t) => t.id !== team.id && !t.isEliminated);
@@ -5719,7 +6223,14 @@ function resolveWheelCardEffect({
       const nominalSteal = isDeath || isWorld ? basePoints : Math.max(5, roundToMultipleOfFive(basePoints * 0.5));
       const maxAllowedSteals = isChariot ? 1 : 2;
       const opponentsWithPoints = otherTeams.filter((t) => (t.score || 0) > 0);
-      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
+      const eligibleOpponents = opponentsWithPoints.filter((t) => {
+        if ((timesStolenInCycle[t.id] ?? 0) >= maxAllowedSteals) return false;
+        const imm = teamImmunities?.[t.id];
+        if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
+          return false;
+        }
+        return true;
+      });
       if (eligibleOpponents.length === 0) {
         const fallbackSteal = Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5));
         const totalDelta2 = baseBonus + fallbackSteal;
@@ -5767,30 +6278,43 @@ function resolveWheelCardEffect({
       const timesStolen = timesStolenInCycle[victim.id] ?? 0;
       let targetSteal = nominalSteal;
       let halfNote = "";
-      if (!isChariot && timesStolen === 1) {
-        targetSteal = Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5));
-        halfNote = ` (\u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp 1 l\u1EA7n: ch\u1EC9 b\u1ECB tr\u1EEB 50% \u0111\u1ECBnh m\u1EE9c)`;
+      const victimShield = teamShields?.[victim.id];
+      const isShieldActive = !isJudgement && Boolean(
+        victimShield && currentTurnIndex >= victimShield.activeFromTurnIndex && currentTurnIndex <= victimShield.expiresAfterTurnIndex
+      );
+      let actualStolen = 0;
+      let isShieldBlocked = false;
+      if (isShieldActive) {
+        actualStolen = 0;
+        isShieldBlocked = true;
+      } else {
+        if (!isChariot && timesStolen === 1) {
+          targetSteal = Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5));
+          halfNote = ` (\u0110\u1ED9i ${victim.name} \u0111\xE3 b\u1ECB c\u01B0\u1EDBp 1 l\u1EA7n: ch\u1EC9 b\u1ECB tr\u1EEB 50% \u0111\u1ECBnh m\u1EE9c)`;
+        }
+        actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       }
-      const actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       const totalDelta = baseBonus + actualStolen;
       const scoreDeltas = [
         { teamId: team.id, delta: totalDelta },
-        { teamId: victim.id, delta: -actualStolen }
+        ...actualStolen > 0 ? [{ teamId: victim.id, delta: -actualStolen }] : []
       ];
-      const brokenShieldTeamId = isJudgement ? victim.id : void 0;
+      const brokenShieldTeamId = isJudgement || isShieldActive ? victim.id : void 0;
       const shieldsGrantedTeamIds = isLovers ? [team.id, victim.id] : isWorld ? [team.id] : void 0;
       const heartsHealedTeamIds = isEmpress ? [team.id] : void 0;
-      let rewardText = `\u{1F5E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): C\u01B0\u1EDBp th\xE0nh c\xF4ng +${actualStolen}\u0111 t\u1EEB ${victim.name} (-${actualStolen}\u0111)${halfNote}!`;
-      if (isEmpress) {
-        rewardText = `\u{1F338} ${seg.nameVi} (${seg.nameEn}): V\u01B0\u01A1ng Quy\u1EC1n Tr\xF9 Ph\xFA! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 h\u1ED3i ph\u1EE5c +1 Tr\xE1i Tim \u2764\uFE0F!`;
-      } else if (isLovers) {
-        rewardText = `\u{1F49E} ${seg.nameVi} (${seg.nameEn}): Duy\xEAn N\u1EE3 Tr\xF3i Bu\u1ED9c! Nh\u1EADn +${baseBonus}\u0111 (x1.5), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 C\u1EA2 HAI c\xF9ng nh\u1EADn Khi\xEAn Th\u1EA7n \u{1F6E1}\uFE0F!`;
-      } else if (isJudgement) {
-        rewardText = `\u{1F4EF} ${seg.nameVi} (${seg.nameEn}): Ph\xE1n Quy\u1EBFt Tr\u1EEBng Ph\u1EA1t! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 PH\xC1 KHI\xCAN \u{1F6E1}\uFE0F c\u1EE7a \u0111\u1ED1i th\u1EE7 n\u1EBFu c\xF3!`;
-      } else if (isWorld) {
-        rewardText = `\u{1F30D} ${seg.nameVi} (${seg.nameEn}): B\xE1 Ch\u1EE7 Th\u1EBF Gi\u1EDBi! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng tr\xF2n +${totalDelta}\u0111) v\xE0 nh\u1EADn 1 Khi\xEAn Th\u1EA7n \u{1F6E1}\uFE0F!`;
-      } else if (isDeath) {
-        rewardText = `\u{1F480} ${seg.nameVi} (${seg.nameEn}): \u0110o\u1EA1t M\u1EC7nh T\u1ED1i H\u1EADu! C\u01B0\u1EDBp tr\u1ECDn v\u1EB9n +${actualStolen}\u0111 (100% \u0111i\u1EC3m g\u1ED1c) t\u1EEB ${victim.name} (-${actualStolen}\u0111)${halfNote}!`;
+      let rewardText = isShieldBlocked ? `\u{1F6E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): \u0110\u1ED9i ${victim.name} \u0111\xE3 k\xEDch ho\u1EA1t Khi\xEAn Th\u1EA7n ch\u1EB7n \u0111\u1EE9ng \u0111\xF2n c\u01B0\u1EDBp \u0111i\u1EC3m, 0\u0111 m\u1EA5t m\xE1t! B\u1EA1n nh\u1EADn +${totalDelta}\u0111 an to\xE0n!` : `\u{1F5E1}\uFE0F ${seg.nameVi} (${seg.nameEn}): C\u01B0\u1EDBp th\xE0nh c\xF4ng +${actualStolen}\u0111 t\u1EEB ${victim.name} (-${actualStolen}\u0111)${halfNote}!`;
+      if (!isShieldBlocked) {
+        if (isEmpress) {
+          rewardText = `\u{1F338} ${seg.nameVi} (${seg.nameEn}): V\u01B0\u01A1ng Quy\u1EC1n Tr\xF9 Ph\xFA! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 h\u1ED3i ph\u1EE5c +1 Tr\xE1i Tim \u2764\uFE0F!`;
+        } else if (isLovers) {
+          rewardText = `\u{1F49E} ${seg.nameVi} (${seg.nameEn}): Duy\xEAn N\u1EE3 Tr\xF3i Bu\u1ED9c! Nh\u1EADn +${baseBonus}\u0111 (x1.5), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 C\u1EA2 HAI c\xF9ng nh\u1EADn Khi\xEAn Th\u1EA7n \u{1F6E1}\uFE0F!`;
+        } else if (isJudgement) {
+          rewardText = `\u{1F4EF} ${seg.nameVi} (${seg.nameEn}): Ph\xE1n Quy\u1EBFt Tr\u1EEBng Ph\u1EA1t! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng +${totalDelta}\u0111) v\xE0 PH\xC1 KHI\xCAN \u{1F6E1}\uFE0F c\u1EE7a \u0111\u1ED1i th\u1EE7 n\u1EBFu c\xF3!`;
+        } else if (isWorld) {
+          rewardText = `\u{1F30D} ${seg.nameVi} (${seg.nameEn}): B\xE1 Ch\u1EE7 Th\u1EBF Gi\u1EDBi! Nh\u1EADn +${baseBonus}\u0111 (x1), c\u01B0\u1EDBp +${actualStolen}\u0111 t\u1EEB ${victim.name} (t\u1ED5ng tr\xF2n +${totalDelta}\u0111) v\xE0 nh\u1EADn 1 Khi\xEAn Th\u1EA7n \u{1F6E1}\uFE0F!`;
+        } else if (isDeath) {
+          rewardText = `\u{1F480} ${seg.nameVi} (${seg.nameEn}): \u0110o\u1EA1t M\u1EC7nh T\u1ED1i H\u1EADu! C\u01B0\u1EDBp tr\u1ECDn v\u1EB9n +${actualStolen}\u0111 (100% \u0111i\u1EC3m g\u1ED1c) t\u1EEB ${victim.name} (-${actualStolen}\u0111)${halfNote}!`;
+        }
       }
       return {
         drawnCard: {
@@ -5885,12 +6409,16 @@ function handleAncientTarotSpinWheel({
     currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
     maxHearts,
     currentTurnIndex: state.currentTurnIndex || 0,
-    teamImmunities: state.teamImmunities
+    teamImmunities: state.teamImmunities,
+    teamShields: state.teamShields
   });
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isNegative = isBomb || scorePenalty > 0 || drawnCard.scoreDelta < 0;
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
+    if (state.teamShields && team.id) {
+      delete state.teamShields[team.id];
+    }
     state.potPoints = 0;
     state.phase = "PUSH_YOUR_LUCK";
     state.turnFinishedReason = void 0;
@@ -5935,6 +6463,9 @@ function handleAncientTarotSpinWheel({
       isGambleTrigger: false
     };
   }
+  if (effectResult.brokenShieldTeamId && state.teamShields) {
+    delete state.teamShields[effectResult.brokenShieldTeamId];
+  }
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[effectResult.victimTeamId] = (state.timesStolenInCycle[effectResult.victimTeamId] || 0) + 1;
@@ -5973,14 +6504,13 @@ function handleAncientTarotSpinWheel({
     state.hasShield = true;
     const teamsCount = Math.max(1, allTeams?.length || 2);
     const curTurn = state.currentTurnIndex || 0;
-    state.teamShields = {
-      ...state.teamShields || {},
-      [team.id]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: "THE_EMPEROR"
-      }
-    };
+    grantShieldToTeam({
+      state,
+      teamId: team.id,
+      curTurn,
+      teamsCount,
+      sourceCard: "THE_EMPEROR"
+    });
   }
   const isStealChoiceCard = drawnCard.key === "THE_EMPRESS" || drawnCard.key === "THE_LOVERS" || drawnCard.key === "THE_CHARIOT" || drawnCard.key === "THE_DEATH" || drawnCard.key === "DEATH" || drawnCard.key === "JUDGEMENT" || drawnCard.key === "THE_WORLD";
   if (isStealChoiceCard && !isSurvivalMode && !isNegative) {
@@ -6013,21 +6543,21 @@ function handleAncientTarotSpinWheel({
       };
     }
   }
-  if (!isNegative && effectiveFinalDelta > 0 && !isGambleTrigger && !isStealChoiceCard && !isSurvivalMode) {
+  if (!isNegative && effectiveFinalDelta > 0 && !isGambleTrigger && !isStealChoiceCard) {
     const heartsRecord = { ...state.teamHearts || {} };
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[team.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
     }
   }
-  if (isSurvivalMode && drawnCard.key !== "THE_PEACE" && (isBomb || scorePenalty > 0 || effectiveFinalDelta < 0)) {
+  if (drawnCard.key !== "THE_PEACE" && (isBomb || scorePenalty > 0 || effectiveFinalDelta < 0)) {
     const heartsRecord = { ...state.teamHearts || {} };
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     const newHearts = Math.max(0, curHearts - 1);
     heartsRecord[team.id] = newHearts;
     state.teamHearts = heartsRecord;
-    effectiveRewardText += ` (M\u1EA5t -1 \u2764\uFE0F Sinh T\u1EED, c\xF2n ${newHearts} \u2764\uFE0F)`;
+    effectiveRewardText += ` (M\u1EA5t -1 \u2764\uFE0F, c\xF2n ${newHearts} \u2764\uFE0F)`;
   }
   state.potPoints = 0;
   state.phase = "PUSH_YOUR_LUCK";
@@ -6203,11 +6733,17 @@ function handleAncientTarotGambleDecision({
     isSurvivalMode: false,
     timesStolenInCycle: state.timesStolenInCycle,
     currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
-    maxHearts: state.initialHeartsPerTeam ?? 3
+    maxHearts: state.initialHeartsPerTeam ?? 3,
+    currentTurnIndex: state.currentTurnIndex || 0,
+    teamImmunities: state.teamImmunities,
+    teamShields: state.teamShields
   });
   const { drawnCard, finalScoreDelta, isBomb, scorePenalty, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isGambleAgain = Boolean(isGambleTrigger);
   const isNegative = isBomb || scorePenalty > 0 || drawnCard.scoreDelta < 0;
+  if (effectResult.brokenShieldTeamId && state.teamShields) {
+    delete state.teamShields[effectResult.brokenShieldTeamId];
+  }
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[effectResult.victimTeamId] = (state.timesStolenInCycle[effectResult.victimTeamId] || 0) + 1;
@@ -6862,14 +7398,16 @@ var DEFAULT_ALLOWED_POWERUPS_BY_MODE = {
   // CLASSIC: Toàn bộ 10 thẻ.
   CLASSIC: ["FIFTY_FIFTY", "DOUBLE", "FREEZE", "ATTACK", "SKIP", "TIME_PLUS", "SHIELD", "STEAL", "PENALTY", "SCORE_X2"],
   // MYSTERY_QUEST: Hành trình phiêu lưu - Mode DUY NHẤT không hỗ trợ thẻ bổ trợ (Power-up) do đặc thù sân khấu luân phiên & Ô số phận
-  MYSTERY_QUEST: []
+  MYSTERY_QUEST: [],
+  // MAGIC_WHEEL: Chiếc Nón Kỳ Diệu - Tự vận hành bằng 24 ô đặc biệt trên nón (Thêm lượt, Nhân đôi, Chia đôi, May mắn, Mất lượt...)
+  MAGIC_WHEEL: []
 };
 function getDefaultAllowedPowerupsForMode(mode) {
-  if (mode === "MYSTERY_QUEST") return [];
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return [];
   return DEFAULT_ALLOWED_POWERUPS_BY_MODE[mode] ?? DEFAULT_ALLOWED_POWERUPS_BY_MODE.CLASSIC;
 }
 function isPowerupAllowedForMode(mode, cardType) {
-  if (mode === "MYSTERY_QUEST") return false;
+  if (mode === "MYSTERY_QUEST" || mode === "MAGIC_WHEEL") return false;
   const allowed = getDefaultAllowedPowerupsForMode(mode);
   return allowed.includes(cardType);
 }
@@ -7782,6 +8320,7 @@ var roomBuzzDisqualified = /* @__PURE__ */ new Map();
 var roomBuzzAnsweringTimers = /* @__PURE__ */ new Map();
 var roomTotalActorsCache = /* @__PURE__ */ new Map();
 var roomTournaments = /* @__PURE__ */ new Map();
+var roomMagicWheels = /* @__PURE__ */ new Map();
 var roomGridCaros = /* @__PURE__ */ new Map();
 var roomDiceRaces = /* @__PURE__ */ new Map();
 var roomWagers = /* @__PURE__ */ new Map();
@@ -7838,6 +8377,7 @@ async function persistGameStateSnapshot(roomId) {
     if (roomWagers.has(roomId)) snapshot.wagerState = roomWagers.get(roomId);
     if (roomMysteryQuests.has(roomId)) snapshot.mysteryQuestState = roomMysteryQuests.get(roomId);
     if (roomTournaments.has(roomId)) snapshot.tournamentState = roomTournaments.get(roomId);
+    if (roomMagicWheels.has(roomId)) snapshot.magicWheelState = roomMagicWheels.get(roomId);
     if (roomActiveQuestions.has(roomId)) snapshot.activeQuestion = roomActiveQuestions.get(roomId);
     if (roomUsedQuestions.has(roomId)) {
       snapshot.usedQuestions = Array.from(roomUsedQuestions.get(roomId));
@@ -7872,6 +8412,9 @@ function restoreGameStateSnapshot(room) {
     }
     if (snapshot.tournamentState && !roomTournaments.has(room.id)) {
       roomTournaments.set(room.id, snapshot.tournamentState);
+    }
+    if (snapshot.magicWheelState && !roomMagicWheels.has(room.id)) {
+      roomMagicWheels.set(room.id, snapshot.magicWheelState);
     }
     if (snapshot.activeQuestion && !roomActiveQuestions.has(room.id)) {
       roomActiveQuestions.set(room.id, snapshot.activeQuestion);
@@ -8672,6 +9215,7 @@ function cleanupRoomInMemory(roomId) {
     roomRemainingTimes.delete(roomId);
     roomTimerEndsAt.delete(roomId);
     roomTournaments.delete(roomId);
+    roomMagicWheels.delete(roomId);
     roomGridCaros.delete(roomId);
     roomDiceRaces.delete(roomId);
     roomWagers.delete(roomId);
@@ -9375,6 +9919,9 @@ function registerSocketHandlers(io2) {
             if (roomTournaments.has(room.id)) {
               socket.emit("game:tournament:update", roomTournaments.get(room.id));
             }
+            if (roomMagicWheels.has(room.id)) {
+              socket.emit("game:magic_wheel:update", roomMagicWheels.get(room.id));
+            }
             if (roomMysteryQuests.has(room.id)) {
               socket.emit("game:mystery:update", roomMysteryQuests.get(room.id));
             }
@@ -9604,6 +10151,9 @@ function registerSocketHandlers(io2) {
           if (roomTournaments.has(room.id)) {
             socket.emit("game:tournament:update", roomTournaments.get(room.id));
           }
+          if (roomMagicWheels.has(room.id)) {
+            socket.emit("game:magic_wheel:update", roomMagicWheels.get(room.id));
+          }
           if (roomMysteryQuests.has(room.id)) {
             socket.emit("game:mystery:update", roomMysteryQuests.get(room.id));
           }
@@ -9800,6 +10350,9 @@ function registerSocketHandlers(io2) {
         }
         if (roomTournaments.has(room.id)) {
           socket.emit("game:tournament:update", roomTournaments.get(room.id));
+        }
+        if (roomMagicWheels.has(room.id)) {
+          socket.emit("game:magic_wheel:update", roomMagicWheels.get(room.id));
         }
         if (roomTieBreakers.has(room.id)) {
           socket.emit("game:tie_breaker:state", roomTieBreakers.get(room.id));
@@ -11091,6 +11644,40 @@ function registerSocketHandlers(io2) {
             currentMatchId: matches[0]?.id,
             questionsPerMatch
           });
+        } else if (room.mode === "MAGIC_WHEEL") {
+          const subMode = config2?.magicWheelSubMode || "WORD_PUZZLE";
+          const maxRounds = config2?.magicWheelRoundsCount || 4;
+          const puzzles = config2?.magicWheelPuzzles && config2.magicWheelPuzzles.length > 0 ? config2.magicWheelPuzzles.map((p, idx) => ({
+            id: `puzzle-${idx + 1}`,
+            roundNumber: p.roundNumber || idx + 1,
+            category: p.category || "T\u1ED4NG H\u1EE2P",
+            secretPhrase: p.secretPhrase || "NGUY\u1EC4N HU\u1EC6",
+            clue: p.clue || "L\u1EAFng nghe g\u1EE3i \xFD t\u1EEB ng\u01B0\u1EDDi d\u1EABn ch\u01B0\u01A1ng tr\xECnh v\xE0 \u0111o\xE1n c\xE1c ch\u1EEF c\xE1i!",
+            revealedIndices: []
+          })) : DEFAULT_MAGIC_WHEEL_PUZZLES;
+          const wheelState = {
+            subMode,
+            sectors: generateMagicWheelSectors(1),
+            currentTurnTeamId: teams[0]?.id || "",
+            currentTurnTeamName: teams[0]?.name || "",
+            currentRound: 1,
+            maxRounds,
+            puzzles,
+            currentPuzzle: puzzles[0],
+            isSpinning: false,
+            spinPower: 50,
+            targetRotationDegrees: 0,
+            guessedLetters: [],
+            wrongGuessesCount: {},
+            freeSpinCount: {},
+            roundScores: {},
+            disqualifiedTeamIdsInRound: [],
+            consecutiveWrongGuesses: {},
+            pendingSpecialAction: "NONE",
+            phase: "SPIN_WAITING"
+          };
+          roomMagicWheels.set(room.id, wheelState);
+          io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
         } else if (room.mode === "GRID_CARO") {
           const rows = config2?.gridRows || 4;
           const cols = config2?.gridCols || 4;
@@ -12910,6 +13497,7 @@ function registerSocketHandlers(io2) {
         activeQuest.survivalDilemmaPending = false;
         activeQuest.survivalDilemmaChoice = choice;
         if (choice === "SACRIFICE_HEART") {
+          const maxHearts = activeQuest.teamMaxHearts?.[team.id] ?? activeQuest.initialHeartsPerTeam ?? 3;
           teamHearts[team.id] = 0;
           activeQuest.teamHearts = teamHearts;
           activeQuest.phase = "TURN_SUMMARY";
@@ -12919,7 +13507,7 @@ function registerSocketHandlers(io2) {
             teamId: team.id,
             teamName: team.name,
             teamColor: team.color || "#ef4444",
-            rewardText: `\u{1F494} \u0110\u1ED9i ch\u1EA5p nh\u1EADn \u0111\xE1nh \u0111\u1ED5i to\xE0n b\u1ED9 tim (m\u1EA5t h\u1EBFt \u2764\uFE0F) \u0111\u1EC3 b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n ${team.score || 0} \u0111i\u1EC3m!`,
+            rewardText: `\u{1F494} \u0110\u1ED9i \u0111\xE3 hi\u1EBFn t\u1EBF to\xE0n b\u1ED9 ${maxHearts} \u2764\uFE0F \u0111\u1EC3 b\u1EA3o to\xE0n nguy\xEAn v\u1EB9n ${team.score || 0} \u0111i\u1EC3m t\xEDch l\u0169y tr\u01B0\u1EDBc \u0111\xF3 (\u0110i\u1EC3m c\xE2u hi\u1EC7n t\u1EA1i: 0\u0111, ph\u1EA1t tr\u1EEB: 0\u0111)!`,
             scoreDelta: 0,
             oldScore: team.score || 0,
             newScore: team.score || 0
@@ -14178,6 +14766,501 @@ function registerSocketHandlers(io2) {
         percentA,
         percentB
       });
+    });
+    const advanceMagicWheelTurnHelper = (wheelState, teams) => {
+      const eligibleTeams = teams.filter((t) => !(wheelState.disqualifiedTeamIdsInRound || []).includes(t.id));
+      if (eligibleTeams.length === 0) {
+        wheelState.phase = "ROUND_RECAP";
+        wheelState.lastActionMessage = "T\u1EA5t c\u1EA3 c\xE1c \u0111\u1ED9i \u0111\u1EC1u \u0111\xE3 ph\u1EA1m 3 l\u1ED7i li\xEAn ti\u1EBFp trong v\xF2ng n\xE0y!";
+        return;
+      }
+      const activeIdx = eligibleTeams.findIndex((t) => t.id === wheelState.currentTurnTeamId);
+      const nextIdx = (activeIdx + 1) % eligibleTeams.length;
+      wheelState.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+      wheelState.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+      wheelState.phase = "SPIN_WAITING";
+      wheelState.selectedSector = void 0;
+      wheelState.pendingSpecialAction = "NONE";
+    };
+    const completeMagicWheelRoundHelper = async (roomId, roomCode, winnerTeamId) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      const wonPoints = Math.max(300, wheelState.roundScores[winnerTeamId] || 500);
+      const tRes = await applyScoreDeltaToTeam(winnerTeamId, wonPoints);
+      io2.to(`room:${roomCode}`).emit("game:score:update", [
+        { teamId: winnerTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
+      ]);
+      wheelState.phase = "ROUND_RECAP";
+      wheelState.lastActionMessage = `\u{1F389} \u0110\u1ED9i ${wheelState.currentTurnTeamName} \u0111\xE3 xu\u1EA5t s\u1EAFc chi\u1EBFn th\u1EAFng V\xF2ng ${wheelState.currentRound} v\xE0 nh\u1EADn +${wonPoints} \u0111i\u1EC3m!`;
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+        teamId: winnerTeamId,
+        teamName: wheelState.currentTurnTeamName,
+        isCorrect: true,
+        secretPhrase: wheelState.currentPuzzle?.secretPhrase || "",
+        roundWonPoints: wonPoints
+      });
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      setTimeout(async () => {
+        const cur = roomMagicWheels.get(roomId);
+        if (!cur) return;
+        if (cur.currentRound < cur.maxRounds) {
+          cur.currentRound++;
+          cur.sectors = generateMagicWheelSectors(cur.currentRound);
+          cur.currentPuzzle = cur.puzzles[(cur.currentRound - 1) % cur.puzzles.length] || cur.puzzles[0];
+          if (cur.currentPuzzle) {
+            cur.currentPuzzle.revealedIndices = [];
+          }
+          cur.guessedLetters = [];
+          cur.wrongGuessesCount = {};
+          cur.roundScores = {};
+          cur.freeSpinCount = {};
+          cur.disqualifiedTeamIdsInRound = [];
+          cur.consecutiveWrongGuesses = {};
+          cur.pendingSpecialAction = "NONE";
+          cur.phase = "SPIN_WAITING";
+          cur.selectedSector = void 0;
+          cur.lastActionMessage = `B\u1EAFt \u0111\u1EA7u V\xF2ng ${cur.currentRound}! M\u1EDDi \u0110\u1ED9i ${cur.currentTurnTeamName} b\u1EA5m quay n\xF3n.`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+        }
+      }, 5e3);
+    };
+    socket.on("magic_wheel:spin", async ({ power }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode;
+      let roomId;
+      let teamId;
+      if (playerId) {
+        const player = await prisma.player.findUnique({
+          where: { id: playerId },
+          include: { room: true }
+        });
+        if (player?.room?.mode === "MAGIC_WHEEL") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+          teamId = player.teamId || void 0;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room2 = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+          if (room2?.mode === "MAGIC_WHEEL") {
+            roomCode = room2.code;
+          }
+        }
+      }
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "SPIN_WAITING" || wheelState.isSpinning) return;
+      if (teamId && teamId !== wheelState.currentTurnTeamId) return;
+      const room = await prisma.room.findUnique({
+        where: { id: roomId },
+        include: { teams: true }
+      });
+      if (!room) return;
+      const effPower = Math.max(10, Math.min(100, power || 50));
+      const { targetDegrees, landingSectorIndex } = calculateSpinDestination(
+        wheelState.targetRotationDegrees,
+        effPower,
+        wheelState.sectors.length
+      );
+      wheelState.isSpinning = true;
+      wheelState.spinPower = effPower;
+      wheelState.targetRotationDegrees = targetDegrees;
+      wheelState.selectedSectorIndex = landingSectorIndex;
+      wheelState.phase = "SPINNING";
+      wheelState.lastActionMessage = `N\xF3n \u0111ang xoay v\u1EDBi l\u1EF1c ${effPower}%...`;
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:spin_started", {
+        teamId: wheelState.currentTurnTeamId,
+        teamName: wheelState.currentTurnTeamName,
+        power: effPower,
+        targetDegrees
+      });
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      setTimeout(async () => {
+        const cur = roomMagicWheels.get(roomId);
+        if (!cur) return;
+        cur.isSpinning = false;
+        const sector = cur.sectors[landingSectorIndex];
+        cur.selectedSector = sector;
+        const teamName = cur.currentTurnTeamName;
+        const tId = cur.currentTurnTeamId;
+        const eligibleTeams = room.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id));
+        const isSoleSurvivor = eligibleTeams.length === 1 && room.teams.length > 1;
+        if (sector.type === "LOSE_TURN") {
+          cur.pendingSpecialAction = "NONE";
+          if (isSoleSurvivor) {
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T L\u01AF\u1EE2T nh\u01B0ng v\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i trong v\xF2ng n\xEAn \u0111\u01B0\u1EE3c mi\u1EC5n ph\u1EA1t v\xE0 ti\u1EBFp t\u1EE5c quay!`;
+          } else if ((cur.freeSpinCount[tId] || 0) > 0) {
+            cur.freeSpinCount[tId]--;
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o M\u1EA4T L\u01AF\u1EE2T nh\u01B0ng \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n ch\u01A1i!`;
+          } else {
+            advanceMagicWheelTurnHelper(cur, room.teams);
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T L\u01AF\u1EE2T! Chuy\u1EC3n l\u01B0\u1EE3t sang ${cur.currentTurnTeamName}.`;
+          }
+        } else if (sector.type === "BANKRUPT") {
+          cur.pendingSpecialAction = "NONE";
+          cur.roundScores[tId] = 0;
+          if (isSoleSurvivor) {
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111)! V\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i trong v\xF2ng n\xEAn v\u1EABn \u0111\u01B0\u1EE3c quay ti\u1EBFp.`;
+          } else if ((cur.freeSpinCount[tId] || 0) > 0) {
+            cur.freeSpinCount[tId]--;
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M (v\u1EC1 0\u0111)! \u0110\xE3 d\xF9ng Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 quay ti\u1EBFp.`;
+          } else {
+            advanceMagicWheelTurnHelper(cur, room.teams);
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 M\u1EA4T \u0110I\u1EC2M! \u0110i\u1EC3m v\xF2ng b\u1ECB x\xF3a v\u1EC1 0 v\xE0 chuy\u1EC3n l\u01B0\u1EE3t sang ${cur.currentTurnTeamName}.`;
+          }
+        } else if (sector.type === "HALF") {
+          cur.pendingSpecialAction = "HALF";
+          cur.roundScores[tId] = Math.floor((cur.roundScores[tId] || 0) / 2);
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 CHIA \u0110\xD4I! \u0110i\u1EC3m v\xF2ng c\xF2n ${cur.roundScores[tId]}\u0111. \u0110o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u0111\u1EC3 ti\u1EBFp t\u1EE5c quay (kh\xF4ng c\u1ED9ng th\xEAm \u0111i\u1EC3m)!`;
+        } else if (sector.type === "DOUBLE") {
+          cur.pendingSpecialAction = "DOUBLE";
+          cur.phase = "ACTION_INPUT";
+          const currentPts = cur.roundScores[tId] || 0;
+          cur.lastActionMessage = currentPts > 0 ? `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 NH\xC2N \u0110\xD4I! \u0110o\xE1n \u0111\xFAng ch\u1EEF c\xE1i \u0111\u1EC3 x2 s\u1ED1 \u0111i\u1EC3m v\xF2ng (${currentPts}\u0111 -> ${currentPts * 2}\u0111)!` : `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 NH\xC2N \u0110\xD4I! (Ch\u01B0a c\xF3 \u0111i\u1EC3m n\xEAn kh\xF4ng \u0111\u01B0\u1EE3c nh\xE2n \u0111\xF4i, nh\u01B0ng c\u1EA7n \u0111o\xE1n \u0111\xFAng \u0111\u1EC3 tr\xE1nh b\u1ECB t\xEDnh l\u1ED7i). M\u1EDDi ch\u1ECDn ch\u1EEF c\xE1i!`;
+        } else if (sector.type === "EXTRA_TURN") {
+          cur.pendingSpecialAction = "EXTRA_TURN";
+          cur.phase = "ACTION_INPUT";
+          if (isSoleSurvivor) {
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 TH\xCAM L\u01AF\u1EE2T! (V\xEC l\xE0 \u0111\u1ED9i duy nh\u1EA5t c\xF2n l\u1EA1i n\xEAn th\u1EBB kh\xF4ng c\xF3 t\xE1c d\u1EE5ng, nh\u01B0ng ph\u1EA3i \u0111o\xE1n \u0111\xFAng \u0111\u1EC3 tr\xE1nh b\u1ECB t\xEDnh l\u1ED7i). M\u1EDDi ch\u1ECDn ch\u1EEF c\xE1i!`;
+          } else {
+            cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 TH\xCAM L\u01AF\u1EE2T \u{1F39F}\uFE0F! H\xE3y \u0111o\xE1n \u0111\xFAng 1 ch\u1EEF c\xE1i \u0111\u1EC3 ch\xEDnh th\u1EE9c nh\u1EADn th\u1EBB!`;
+          }
+        } else if (sector.type === "LUCKY") {
+          cur.pendingSpecialAction = "LUCKY";
+          cur.phase = "LUCKY_PICK";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 MAY M\u1EAEN! M\u1EDDi b\u1EA5m ch\u1ECDn 1 \xF4 b\u1EA5t k\u1EF3 tr\xEAn b\u1EA3ng \u0111\u1EC3 l\u1EADt m\u1EDF mi\u1EC5n ph\xED!`;
+        } else if (sector.type === "MYSTERY") {
+          cur.pendingSpecialAction = "MYSTERY";
+          cur.phase = "MYSTERY_CHOICE";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 B\xCD M\u1EACT \u{1F52E}! H\xE3y quy\u1EBFt \u0111\u1ECBnh l\u1EADt \xF4 b\xED m\u1EADt hay nh\u1EADn 1000\u0111 an to\xE0n.`;
+        } else {
+          cur.pendingSpecialAction = "POINTS";
+          cur.phase = "ACTION_INPUT";
+          cur.lastActionMessage = `\u0110\u1ED9i ${teamName} quay v\xE0o \xF4 ${sector.label} \u0111i\u1EC3m! M\u1EDDi g\u1ECDi ch\u1EEF c\xE1i!`;
+        }
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+      }, 4500);
+    });
+    socket.on("magic_wheel:guess_letter", async ({ letter }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode;
+      let roomId;
+      let teamId;
+      if (playerId) {
+        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
+        if (player?.room?.mode === "MAGIC_WHEEL") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+          teamId = player.teamId || void 0;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room2 = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+          if (room2?.mode === "MAGIC_WHEEL") roomCode = room2.code;
+        }
+      }
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "ACTION_INPUT") return;
+      if (teamId && teamId !== wheelState.currentTurnTeamId) return;
+      const normLetter = normalizeVietnameseBaseLetter(letter);
+      if (wheelState.guessedLetters.includes(normLetter)) return;
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      wheelState.guessedLetters.push(normLetter);
+      const puzzle = wheelState.currentPuzzle;
+      if (!puzzle) return;
+      const check = checkLetterInSecretPhrase(puzzle.secretPhrase, normLetter, puzzle.revealedIndices);
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+      if (check.found) {
+        wheelState.consecutiveWrongGuesses[tId] = 0;
+        wheelState.wrongGuessesCount[tId] = 0;
+        puzzle.revealedIndices = check.newRevealedIndices;
+        let earned = 0;
+        const eligibleTeams = room.teams.filter((t) => !(wheelState.disqualifiedTeamIdsInRound || []).includes(t.id));
+        const isSoleSurvivor = eligibleTeams.length === 1 && room.teams.length > 1;
+        if (wheelState.pendingSpecialAction === "DOUBLE") {
+          const prevScore = wheelState.roundScores[tId] || 0;
+          if (prevScore > 0) {
+            wheelState.roundScores[tId] = prevScore * 2;
+            earned = prevScore;
+          }
+        } else if (wheelState.pendingSpecialAction === "HALF") {
+          earned = 0;
+        } else if (wheelState.pendingSpecialAction === "EXTRA_TURN") {
+          if (!isSoleSurvivor) {
+            wheelState.freeSpinCount[tId] = (wheelState.freeSpinCount[tId] || 0) + 1;
+          }
+          earned = 0;
+        } else {
+          const baseVal = wheelState.selectedSector?.value || 300;
+          earned = baseVal * check.count;
+          wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + earned;
+        }
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
+          letter: normLetter,
+          found: true,
+          count: check.count,
+          teamId: tId,
+          teamName,
+          pointsAwarded: earned
+        });
+        if (isPuzzleFullyRevealed(puzzle.secretPhrase, puzzle.revealedIndices)) {
+          await completeMagicWheelRoundHelper(roomId, roomCode, tId);
+        } else {
+          wheelState.phase = "SPIN_WAITING";
+          let actionText = `Ch\xEDnh x\xE1c! C\xF3 ${check.count} ch\u1EEF ${normLetter}`;
+          if (wheelState.pendingSpecialAction === "EXTRA_TURN" && !isSoleSurvivor) {
+            actionText += ` (+1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u{1F39F}\uFE0F)`;
+          } else if (earned > 0) {
+            actionText += ` (+${earned}\u0111)`;
+          }
+          wheelState.pendingSpecialAction = "NONE";
+          wheelState.lastActionMessage = `${actionText}. M\u1EDDi \u0110\u1ED9i ${teamName} quay ti\u1EBFp!`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+        }
+      } else {
+        wheelState.consecutiveWrongGuesses[tId] = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
+        wheelState.wrongGuessesCount[tId] = wheelState.consecutiveWrongGuesses[tId];
+        const strikeCount = wheelState.consecutiveWrongGuesses[tId];
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:letter_guessed", {
+          letter: normLetter,
+          found: false,
+          count: 0,
+          teamId: tId,
+          teamName,
+          pointsAwarded: 0
+        });
+        if (strikeCount >= 3) {
+          if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+          if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+            wheelState.disqualifiedTeamIdsInRound.push(tId);
+          }
+          wheelState.roundScores[tId] = 0;
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastActionMessage = `\u274C \u0110\u1ED9i ${teamName} \u0111\xE3 \u0111o\xE1n sai 3 L\u1EA6N LI\xCAN TI\u1EBEP v\xE0 b\u1ECB lo\u1EA1i kh\u1ECFi V\xF2ng ${wheelState.currentRound}! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
+        } else if ((wheelState.freeSpinCount[tId] || 0) > 0) {
+          wheelState.freeSpinCount[tId]--;
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.pendingSpecialAction = "NONE";
+          wheelState.lastActionMessage = `Kh\xF4ng c\xF3 ch\u1EEF ${normLetter}! \u0110\u1ED9i ${teamName} \u0111\xE3 d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 gi\u1EEF quy\u1EC1n quay ti\u1EBFp (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3).`;
+        } else {
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastActionMessage = `R\u1EA5t ti\u1EBFc! Kh\xF4ng c\xF3 ch\u1EEF ${normLetter} n\xE0o (L\u1ED7i li\xEAn ti\u1EBFp c\u1EE7a ${teamName}: ${strikeCount}/3). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
+        }
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      }
+    });
+    socket.on("magic_wheel:solve_puzzle", async ({ answer }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode;
+      let roomId;
+      let teamId;
+      if (playerId) {
+        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
+        if (player?.room?.mode === "MAGIC_WHEEL") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+          teamId = player.teamId || void 0;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room2 = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+          if (room2?.mode === "MAGIC_WHEEL") roomCode = room2.code;
+        }
+      }
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || !wheelState.currentPuzzle) return;
+      if (teamId && teamId !== wheelState.currentTurnTeamId) return;
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      const isCorrect = matchWholeSecretPhrase(wheelState.currentPuzzle.secretPhrase, answer);
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+      if (isCorrect) {
+        wheelState.consecutiveWrongGuesses[tId] = 0;
+        wheelState.wrongGuessesCount[tId] = 0;
+        wheelState.currentPuzzle.revealedIndices = Array.from(
+          { length: wheelState.currentPuzzle.secretPhrase.length },
+          (_, i) => i
+        );
+        await completeMagicWheelRoundHelper(roomId, roomCode, tId);
+      } else {
+        wheelState.consecutiveWrongGuesses[tId] = (wheelState.consecutiveWrongGuesses[tId] || 0) + 1;
+        wheelState.wrongGuessesCount[tId] = wheelState.consecutiveWrongGuesses[tId];
+        const strikeCount = wheelState.consecutiveWrongGuesses[tId];
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:puzzle_solved", {
+          teamId: tId,
+          teamName,
+          isCorrect: false,
+          secretPhrase: "",
+          roundWonPoints: 0
+        });
+        if (strikeCount >= 3) {
+          if (!wheelState.disqualifiedTeamIdsInRound) wheelState.disqualifiedTeamIdsInRound = [];
+          if (!wheelState.disqualifiedTeamIdsInRound.includes(tId)) {
+            wheelState.disqualifiedTeamIdsInRound.push(tId);
+          }
+          wheelState.roundScores[tId] = 0;
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastActionMessage = `\u274C \u0110\xE1p \xE1n "${answer}" ch\u01B0a \u0111\xFAng! \u0110\u1ED9i ${teamName} \u0111\xE3 ph\u1EA1m 3 L\u1ED6I LI\xCAN TI\u1EBEP v\xE0 b\u1ECB lo\u1EA1i kh\u1ECFi V\xF2ng ${wheelState.currentRound}!`;
+        } else if ((wheelState.freeSpinCount[tId] || 0) > 0) {
+          wheelState.freeSpinCount[tId]--;
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.pendingSpecialAction = "NONE";
+          wheelState.lastActionMessage = `\u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! \u0110\u1ED9i ${teamName} d\xF9ng 1 Th\u1EBB Th\xEAm L\u01B0\u1EE3t \u0111\u1EC3 quay ti\u1EBFp (L\u1ED7i li\xEAn ti\u1EBFp: ${strikeCount}/3).`;
+        } else {
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastActionMessage = `\u0110\xE1p \xE1n "${answer}" ch\u01B0a ch\xEDnh x\xE1c! (L\u1ED7i li\xEAn ti\u1EBFp c\u1EE7a ${teamName}: ${strikeCount}/3). Chuy\u1EC3n l\u01B0\u1EE3t sang \u0110\u1ED9i ${wheelState.currentTurnTeamName}.`;
+        }
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      }
+    });
+    socket.on("magic_wheel:mystery_decide", async ({ openMystery }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode;
+      let roomId;
+      if (playerId) {
+        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
+        if (player?.room?.mode === "MAGIC_WHEEL") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room2 = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+          if (room2?.mode === "MAGIC_WHEEL") roomCode = room2.code;
+        }
+      }
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "MYSTERY_CHOICE") return;
+      const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: true } });
+      if (!room) return;
+      const tId = wheelState.currentTurnTeamId;
+      const teamName = wheelState.currentTurnTeamName;
+      if (openMystery) {
+        const isWin = Math.random() >= 0.5;
+        if (isWin) {
+          wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 3e3;
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.lastActionMessage = `\u{1F389} Ch\xFAc m\u1EEBng! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 gi\u1EA3i th\u01B0\u1EDFng n\xF3ng +3000 \u0111i\u1EC3m!`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
+            teamId: tId,
+            outcome: "PRIZE_CASH",
+            points: 3e3
+          });
+        } else {
+          wheelState.roundScores[tId] = 0;
+          advanceMagicWheelTurnHelper(wheelState, room.teams);
+          wheelState.lastActionMessage = `\u{1F4A5} \xD4i kh\xF4ng! M\u1EB7t sau \xF4 B\xED M\u1EADt l\xE0 M\u1EA4T \u0110I\u1EC2M! Chuy\u1EC3n l\u01B0\u1EE3t sang ${wheelState.currentTurnTeamName}.`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
+            teamId: tId,
+            outcome: "BANKRUPT",
+            points: 0
+          });
+        }
+      } else {
+        wheelState.roundScores[tId] = (wheelState.roundScores[tId] || 0) + 1e3;
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.lastActionMessage = `\u0110\u1ED9i ${teamName} ch\u1ECDn an to\xE0n nh\u1EADn +1000 \u0111i\u1EC3m! M\u1EDDi quay ti\u1EBFp.`;
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:mystery_result", {
+          teamId: tId,
+          outcome: "SAFE_POINTS",
+          points: 1e3
+        });
+      }
+      io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+    });
+    socket.on("magic_wheel:lucky_pick", async ({ index }) => {
+      const playerId = playerSockets.get(socket.id);
+      let roomCode;
+      let roomId;
+      if (playerId) {
+        const player = await prisma.player.findUnique({ where: { id: playerId }, include: { room: true } });
+        if (player?.room?.mode === "MAGIC_WHEEL") {
+          roomId = player.roomId;
+          roomCode = player.room.code;
+        }
+      } else {
+        roomId = adminSockets.get(socket.id);
+        if (roomId) {
+          const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
+          if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
+        }
+      }
+      if (!roomId || !roomCode) return;
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState || wheelState.phase !== "LUCKY_PICK" || !wheelState.currentPuzzle) return;
+      const p = wheelState.currentPuzzle;
+      if (index >= 0 && index < p.secretPhrase.length && !p.revealedIndices.includes(index)) {
+        p.revealedIndices.push(index);
+        const char = p.secretPhrase[index];
+        const tId = wheelState.currentTurnTeamId;
+        io2.to(`room:${roomCode}`).emit("game:magic_wheel:lucky_picked", {
+          teamId: tId,
+          index,
+          letter: char
+        });
+        if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+          await completeMagicWheelRoundHelper(roomId, roomCode, tId);
+        } else {
+          wheelState.phase = "SPIN_WAITING";
+          wheelState.lastActionMessage = `\xD4 May M\u1EAFn m\u1EDF ra ch\u1EEF "${char.toUpperCase()}"! M\u1EDDi \u0110\u1ED9i ${wheelState.currentTurnTeamName} quay ti\u1EBFp.`;
+          io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+        }
+      }
+    });
+    socket.on("admin:magic_wheel:advance_round", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState) return;
+      if (wheelState.currentRound < wheelState.maxRounds) {
+        wheelState.currentRound++;
+        wheelState.sectors = generateMagicWheelSectors(wheelState.currentRound);
+        wheelState.currentPuzzle = wheelState.puzzles[(wheelState.currentRound - 1) % wheelState.puzzles.length] || wheelState.puzzles[0];
+        if (wheelState.currentPuzzle) {
+          wheelState.currentPuzzle.revealedIndices = [];
+        }
+        wheelState.guessedLetters = [];
+        wheelState.wrongGuessesCount = {};
+        wheelState.roundScores = {};
+        wheelState.freeSpinCount = {};
+        wheelState.disqualifiedTeamIdsInRound = [];
+        wheelState.consecutiveWrongGuesses = {};
+        wheelState.pendingSpecialAction = "NONE";
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.selectedSector = void 0;
+        wheelState.lastActionMessage = `Admin \u0111\xE3 chuy\u1EC3n sang V\xF2ng ${wheelState.currentRound}! M\u1EDDi \u0110\u1ED9i ${wheelState.currentTurnTeamName} quay n\xF3n.`;
+        io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+      }
+    });
+    socket.on("admin:magic_wheel:override_turn", async ({ teamId }) => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      const wheelState = roomMagicWheels.get(room.id);
+      if (!wheelState) return;
+      const targetTeam = await prisma.team.findUnique({ where: { id: teamId } });
+      if (targetTeam) {
+        wheelState.currentTurnTeamId = targetTeam.id;
+        wheelState.currentTurnTeamName = targetTeam.name;
+        wheelState.phase = "SPIN_WAITING";
+        wheelState.selectedSector = void 0;
+        wheelState.lastActionMessage = `Admin \u0111\xE3 trao l\u01B0\u1EE3t cho \u0110\u1ED9i ${targetTeam.name}!`;
+        io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+      }
     });
     socket.on("admin:wager:skip_timer", async () => {
       const room = await getAdminRoom(socket);
@@ -16871,7 +17954,8 @@ async function revealCurrentAnswer(io2, roomId, roomCode, questionId, customTeam
         questState.potPoints = 0;
         questState.potMultiplier = 1;
         questState.turnFinishedReason = void 0;
-        if (currentHearts > 0) {
+        const maxHearts = questState.teamMaxHearts?.[questState.currentTurnTeamId] ?? questState.initialHeartsPerTeam ?? 3;
+        if (currentHearts >= maxHearts) {
           questState.phase = "DECISION_CHOICE";
           questState.survivalDilemmaPending = true;
           questState.survivalDilemmaChoice = void 0;
@@ -17030,6 +18114,7 @@ async function buildRoomState(roomId) {
     sharedCards,
     config,
     tournamentState: roomTournaments.get(room.id),
+    magicWheelState: roomMagicWheels.get(room.id),
     gridCaroState: roomGridCaros.get(room.id),
     diceRaceState: roomDiceRaces.get(room.id),
     wagerState: roomWagers.get(room.id),

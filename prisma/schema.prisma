@@ -33,6 +33,7 @@ enum GameMode {
   DICE_RACE
   WAGER
   MYSTERY_QUEST
+  MAGIC_WHEEL
 }
 
 enum TeamMode {

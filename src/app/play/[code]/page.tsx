@@ -27,6 +27,7 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { TieBreakerState } from "@/types";
 import GameModeRulesModal from "@/components/ui/GameModeRulesModal";
@@ -1090,6 +1091,24 @@ export default function PlayPage() {
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
+    socket.on("game:magic_wheel:update", (magicWheelState) => {
+      setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
+    });
+    socket.on("game:magic_wheel:spin_started", () => {
+      if (soundEnabledRef.current) soundManager.playWheelSpin();
+    });
+    socket.on("game:magic_wheel:letter_guessed", ({ found }) => {
+      if (soundEnabledRef.current) {
+        if (found) soundManager.playCorrect();
+        else soundManager.playWrong();
+      }
+    });
+    socket.on("game:magic_wheel:puzzle_solved", ({ isCorrect }) => {
+      if (soundEnabledRef.current) {
+        if (isCorrect) soundManager.playCorrect();
+        else soundManager.playWrong();
+      }
+    });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
       if (mysteryQuestState.phase !== "QUESTION_ACTIVE") {
@@ -1702,7 +1721,8 @@ export default function PlayPage() {
     (roomState?.mode === "GRID_CARO" && roomState?.gridCaroState) ||
     (roomState?.mode === "DICE_RACE" && roomState?.diceRaceState) ||
     (roomState?.mode === "TOURNAMENT" && roomState?.tournamentState) ||
-    (roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState)
+    (roomState?.mode === "MYSTERY_QUEST" && roomState?.mysteryQuestState) ||
+    (roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState)
   );
 
   if (!isInteractiveBoardPhase && (intermission || (!currentQuestion && roomState?.status === "PLAYING"))) {
@@ -2348,6 +2368,45 @@ export default function PlayPage() {
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MYSTERY_SURVIVAL_CHOICE", action: "mystery_survival_choice", choice, teamId: effectiveTeamId }, "*");
                     }
+                  }}
+                />
+              </div>
+            ) : roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState ? (
+              <div className="w-full max-w-5xl mx-auto">
+                <MagicWheelBoard
+                  wheelState={roomState.magicWheelState}
+                  isDisplay={false}
+                  teams={roomState.teams}
+                  isMyTurn={roomState.magicWheelState.currentTurnTeamId === effectiveTeamId}
+                  onSpin={(power) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SPIN", power, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:spin", { power });
+                  }}
+                  onGuessLetter={(letter) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:guess_letter", { letter });
+                  }}
+                  onSolvePuzzle={(answer) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:solve_puzzle", { answer });
+                  }}
+                  onMysteryDecide={(openMystery) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:mystery_decide", { openMystery });
+                  }}
+                  onLuckyPick={(index) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:lucky_pick", { index });
                   }}
                 />
               </div>

@@ -49,6 +49,7 @@ export type GameMode =
   | "BOUNCEBACK"
   | "ELIMINATION"
   | "TOURNAMENT"
+  | "MAGIC_WHEEL"
   | "GRID_CARO"
   | "DICE_RACE"
   | "WAGER"
@@ -184,6 +185,32 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
     ],
     tipsVi: [
       "Ưu tiên độ chính xác kết hợp tốc độ bấm bài nhanh để tối đa hóa điểm % thời gian trong cặp đấu 1v1!",
+    ],
+  },
+  MAGIC_WHEEL: {
+    mode: "MAGIC_WHEEL",
+    nameVi: "Vòng Quay Tri Thức (Magic Wheel)",
+    emoji: "🎡",
+    taglineVi: "Quay nón 24 ô, Ô chữ bí mật & Tranh giải thưởng lớn",
+    summaryVi: "Mô phỏng chân thực gameshow Chiếc nón kỳ diệu truyền hình. Đội đến lượt bấm chốt lực quay chiếc nón 24 ô định mệnh (100 - 2000đ, Mất lượt, Mất điểm, Nhân đôi, Chia đôi, May mắn, Ô Phần thưởng & Bí mật). Đoán đúng chữ cái hoặc câu hỏi để tích lũy điểm và giữ quyền quay tiếp; đội xuất sắc giải mã toàn bộ ô chữ sẽ ẵm trọn giải thưởng vòng thi!",
+    mechanicsVi: [
+      "Quay nón 24 ô: Đội đến lượt điều chỉnh thanh lực (0-100%) và chốt quay nón nhận điểm hoặc hiệu ứng.",
+      "2 Thể thức tùy chọn: Thể thức 'Ô chữ bí mật' (đoán chữ cái trong cụm từ ẩn) hoặc Thể thức 'Quiz Vòng Quay' (trả lời câu hỏi ngân hàng đề).",
+      "Quy tắc giữ lượt: Đoán đúng chữ cái hoặc trả lời đúng câu hỏi sẽ tiếp tục giữ lượt quay tiếp; đoán sai hoặc quay vào Mất lượt/Mất điểm sẽ chuyển lượt cho đội kế tiếp.",
+      "Ô chữ đa hàng lật số: Hiển thị bảng ô chữ 4 hàng chuẩn trường quay VTV3 với hiệu ứng lật mở 3D chân thực.",
+      "Ô đặc biệt & Ô đè: Ô Phần thưởng (Vòng 1), Ô Bí mật (Vòng 2 - 50% trúng thưởng nóng 3000đ, 50% Mất điểm), May mắn (tự chọn lật 1 ô chữ bất kỳ).",
+      "Bàn phím theo dõi chữ cái: Trực quan hóa toàn bộ 29 chữ cái tiếng Việt đã gọi hoặc còn lại.",
+    ],
+    scoringVi: [
+      "Đoán đúng chữ cái: [Điểm ô nón quay được × Số lượng chữ cái xuất hiện trong từ khóa].",
+      "Quay vào Nhân đôi (x2): Nhân 2 lần điểm số tích lũy của vòng nếu đoán đúng chữ cái kế tiếp.",
+      "Quay vào Chia đôi (/2): Giảm 50% số điểm tích lũy của vòng.",
+      "Quay vào Mất điểm (Bankrupt): Điểm tích lũy vòng hiện tại về 0 và chuyển lượt.",
+      "Giải đúng toàn bộ ô chữ: Giữ toàn bộ điểm số của vòng và nhận cúp chiến thắng vòng thi.",
+    ],
+    tipsVi: [
+      "Quan sát kỹ độ dài các từ và các chữ cái phổ biến (như N, H, T, C) trước khi quyết định gọi chữ!",
+      "Khi đã chắc chắn về cụm từ bí mật, hãy chủ động 'Giải ô chữ' ngay trong lượt để bảo toàn số điểm, tránh rủi ro quay vào ô Mất điểm!",
     ],
   },
   GRID_CARO: {
@@ -591,8 +618,12 @@ export interface GameConfig {
   eliminationIntervalQuestions?: number;
   eliminationTeamsPerStage?: number;
   eliminationRevivalCount?: number;
-  // Tournament config
+  // Tournament config (Archived)
   tournamentQuestionsPerMatch?: number;
+  // Magic Wheel config
+  magicWheelSubMode?: "WHEEL_QUIZ" | "WORD_PUZZLE";
+  magicWheelPuzzles?: { roundNumber: number; category: string; secretPhrase: string; clue?: string }[];
+  magicWheelRoundsCount?: number;
   // Grid Caro config
   gridRows?: number;
   gridCols?: number;
@@ -720,6 +751,74 @@ export interface TournamentState {
   currentSeedingQuestion?: number;
   activeRecapMatchId?: string;
   recapCountdownSeconds?: number;
+}
+
+// ─── Magic Wheel Mode (Vòng Quay Tri Thức - Chiếc Nón Kỳ Diệu) ─────────────
+
+export type MagicWheelSectorType =
+  | "POINTS"
+  | "LOSE_TURN"
+  | "BANKRUPT"
+  | "DOUBLE"
+  | "HALF"
+  | "EXTRA_TURN"
+  | "LUCKY"
+  | "PRIZE"
+  | "MYSTERY";
+
+export interface MagicWheelSector {
+  id: number;
+  label: string;
+  type: MagicWheelSectorType;
+  value?: number;
+  color: string;
+  textColor: string;
+  isOverlay?: boolean;
+  overlayType?: "PRIZE" | "MYSTERY";
+}
+
+export interface MagicWheelPuzzle {
+  id: string;
+  roundNumber: number; // 1, 2, 3, 4 (Chung kết)
+  category: string;    // "Danh nhân", "Địa danh", "Văn học", "Khoa học"
+  secretPhrase: string; // "NGUYỄN HUỆ"
+  clue?: string;        // "Vị anh hùng áo vải cờ đào..."
+  revealedIndices: number[]; // Vị trí các ký tự đã được lật mở
+}
+
+export interface MagicWheelState {
+  subMode: "WHEEL_QUIZ" | "WORD_PUZZLE";
+  sectors: MagicWheelSector[];
+  currentTurnTeamId: string;
+  currentTurnTeamName: string;
+  currentRound: number;
+  maxRounds: number;
+  puzzles: MagicWheelPuzzle[];
+  currentPuzzle?: MagicWheelPuzzle;
+  isSpinning: boolean;
+  spinPower: number; // 0 - 100
+  targetRotationDegrees: number;
+  selectedSectorIndex?: number;
+  selectedSector?: MagicWheelSector;
+  guessedLetters: string[]; // Các chữ cái đã đoán ("A", "B", "C"...)
+  wrongGuessesCount: Record<string, number>; // teamId -> số lỗi liên tiếp
+  freeSpinCount: Record<string, number>; // teamId -> số lần có Thêm Lượt
+  roundScores: Record<string, number>; // teamId -> điểm tích lũy trong vòng hiện tại
+  disqualifiedTeamIdsInRound: string[]; // Các đội bị loại trong vòng do phạm 3 lỗi liên tiếp
+  consecutiveWrongGuesses: Record<string, number>; // teamId -> số lần đoán sai liên tiếp (0, 1, 2, 3)
+  pendingSpecialAction?: "NONE" | "EXTRA_TURN" | "DOUBLE" | "HALF" | "POINTS" | "LUCKY" | "MYSTERY";
+  phase:
+    | "SPIN_WAITING"      // Chờ đội đến lượt bấm quay
+    | "SPINNING"          // Nón đang xoay
+    | "SECTOR_RESULT"     // Nón đã dừng, thông báo kết quả ô quay
+    | "ACTION_INPUT"      // Chờ đoán chữ cái / trả lời quiz / giải ô chữ
+    | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 1000đ
+    | "LUCKY_PICK"        // Chờ người chơi chọn ô lật miễn phí
+    | "ROUND_RECAP";      // Kết thúc vòng, tổng kết điểm
+  mysteryRevealedType?: "PRIZE_CASH" | "BANKRUPT";
+  lastActionMessage?: string;
+  lastAwardedPoints?: number;
+  activeQuestionId?: string; // Dùng trong thể thức WHEEL_QUIZ
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1087,6 +1186,8 @@ export interface MysteryQuestState {
     grantShieldSelf?: boolean;
     grantShieldVictim?: boolean;
     breakVictimShield?: boolean;
+    isArmorPiercing?: boolean;
+    isShieldShatter?: boolean;
   };
   pendingStealVictimId?: string;
   pendingStealVictimName?: string;
@@ -1105,8 +1206,25 @@ export interface MysteryQuestState {
         icon: string;
       };
   hasShield?: boolean;
-  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  teamShields?: Record<
+    string,
+    {
+      activeFromTurnIndex: number;
+      expiresAfterTurnIndex: number;
+      hp?: number;
+      maxHp?: number;
+      sourceCard?: string;
+    }
+  >;
   teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>; // Bùa Miễn Nhiễm Mặt Trăng (The Moon)
+  fullHeartSacrificePrompt?: {
+    teamId: string;
+    teamName: string;
+    lostQuestionPoints: number;
+    basePenaltyPoints: number;
+    heartsToSacrifice: number;
+    expiresAt: number;
+  };
   currentTeamRiskTier?: TeamRiskTier;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;
@@ -1276,6 +1394,7 @@ export interface RoomState {
   sharedCards: PowerupCard[];
   config: GameConfig;
   tournamentState?: TournamentState;
+  magicWheelState?: MagicWheelState;
   gridCaroState?: GridCaroState;
   diceRaceState?: DiceRaceState;
   wagerState?: WagerState;
@@ -1610,6 +1729,21 @@ export interface ServerToClientEvents {
   "game:mystery:cashed_out": (payload: { teamId: string; teamName: string; totalGained: number; newScore: number }) => void;
   "game:mystery:steal_open": (payload: { questionId: string; timeLimit: number }) => void;
   "game:mystery:steal_buzzed": (payload: { teamId: string; teamName: string; timeLimit: number }) => void;
+  "game:mystery:full_heart_sacrifice_prompt": (payload: {
+    teamId: string;
+    teamName: string;
+    lostQuestionPoints: number;
+    basePenaltyPoints: number;
+    heartsToSacrifice: number;
+    expiresAt: number;
+  }) => void;
+  // Magic Wheel Events
+  "game:magic_wheel:update": (state: MagicWheelState) => void;
+  "game:magic_wheel:spin_started": (payload: { teamId: string; teamName: string; power: number; targetDegrees: number }) => void;
+  "game:magic_wheel:letter_guessed": (payload: { letter: string; found: boolean; count: number; teamId: string; teamName: string; pointsAwarded: number }) => void;
+  "game:magic_wheel:puzzle_solved": (payload: { teamId: string; teamName: string; isCorrect: boolean; secretPhrase: string; roundWonPoints: number }) => void;
+  "game:magic_wheel:mystery_result": (payload: { teamId: string; outcome: "PRIZE_CASH" | "BANKRUPT" | "SAFE_POINTS"; points: number }) => void;
+  "game:magic_wheel:lucky_picked": (payload: { teamId: string; index: number; letter: string }) => void;
 }
 
 export interface ClientToServerEvents {
@@ -1661,6 +1795,17 @@ export interface ClientToServerEvents {
   "admin:tournament:advance": () => void;
   "tournament:predict": (payload: { matchId: string; predictedWinnerId: string }) => void;
   "tournament:cheer": (payload: { matchId: string; targetTeamId: string; emoji: string }) => void;
+  // Magic Wheel Client Events
+  "magic_wheel:spin": (payload: { power: number }) => void;
+  "magic_wheel:guess_letter": (payload: { letter: string }) => void;
+  "magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
+  "magic_wheel:mystery_decide": (payload: { openMystery: boolean }) => void;
+  "magic_wheel:lucky_pick": (payload: { index: number }) => void;
+  "admin:magic_wheel:advance_round": () => void;
+  "admin:magic_wheel:spin": (payload?: { power?: number }) => void;
+  "admin:magic_wheel:guess_letter": (payload: { letter: string }) => void;
+  "admin:magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
+  "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;
@@ -1719,6 +1864,8 @@ export interface ClientToServerEvents {
   "ancient-tarot-gamble-decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "game:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
   "admin:mystery:ancient_tarot_gamble_decision": (payload: { spinAgain: boolean; powerPercent?: number; code?: string }) => void;
+  "game:mystery:full_heart_sacrifice_decision": (payload: { acceptSacrifice: boolean }) => void;
+  "admin:mystery:full_heart_sacrifice_decision": (payload: { acceptSacrifice: boolean; code?: string }) => void;
   // Tie-Breaker Client Events
   "tie_breaker:buzz": (payload?: { clientBuzzedAt?: number }) => void;
   "tie_breaker:answer": (payload: { optionId: string }) => void;

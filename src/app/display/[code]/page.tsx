@@ -23,6 +23,7 @@ import GridCaroBoard from "@/components/modes/GridCaroBoard";
 import DiceRaceTrack from "@/components/modes/DiceRaceTrack";
 import WagerPanel from "@/components/modes/WagerPanel";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
 import { formatRoomTitle } from "@/lib/game-engine/game-modes-meta";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { TieBreakerState } from "@/types";
@@ -645,6 +646,23 @@ export default function DisplayPage() {
     socket.on("game:tournament:update", (tournamentState) => {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
+    socket.on("game:magic_wheel:update", (magicWheelState) => {
+      setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
+      if (magicWheelState.phase !== "ROUND_RECAP") {
+        setDisplayModeTab("BOARD");
+      }
+    });
+    socket.on("game:magic_wheel:spin_started", () => {
+      soundManager.playWheelSpin();
+    });
+    socket.on("game:magic_wheel:letter_guessed", ({ found }) => {
+      if (found) soundManager.playCorrect();
+      else soundManager.playWrong();
+    });
+    socket.on("game:magic_wheel:puzzle_solved", ({ isCorrect }) => {
+      if (isCorrect) soundManager.playCorrect();
+      else soundManager.playWrong();
+    });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
       if (mysteryQuestState.phase !== "QUESTION_ACTIVE") {
@@ -959,6 +977,7 @@ export default function DisplayPage() {
     const isWager = roomState?.mode === "WAGER" && roomState.wagerState;
     const isTour = roomState?.mode === "TOURNAMENT" && roomState.tournamentState;
     const isMystery = roomState?.mode === "MYSTERY_QUEST" && roomState.mysteryQuestState;
+    const isMagicWheel = roomState?.mode === "MAGIC_WHEEL" && roomState.magicWheelState;
 
     const participants = [...(roomState?.teamMode === "TEAM" ? roomState.teams : roomState?.players ?? [])]
       .sort((a: any, b: any) => (b.score ?? 0) - (a.score ?? 0));
@@ -1053,6 +1072,10 @@ export default function DisplayPage() {
         ) : isMystery && roomState.mysteryQuestState?.phase !== "QUESTION_ACTIVE" ? (
           <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start md:justify-center overflow-y-auto animate-slide-up">
             <MysteryQuestBoard mysteryState={roomState.mysteryQuestState!} isDisplay={true} teams={roomState.teams} />
+          </div>
+        ) : isMagicWheel ? (
+          <div className="w-full max-w-6xl mx-auto flex-1 flex flex-col justify-start md:justify-center overflow-y-auto animate-slide-up">
+            <MagicWheelBoard wheelState={roomState.magicWheelState!} isDisplay={true} teams={roomState.teams} />
           </div>
         ) : (
           /* Grand Leaderboard Intermission for BUZZ, CLASSIC, OLYMPIA, ELIMINATION, etc. */
@@ -2227,6 +2250,14 @@ export default function DisplayPage() {
               <div className="w-full max-w-6xl my-auto">
                 <MysteryQuestBoard
                   mysteryState={roomState.mysteryQuestState}
+                  isDisplay={true}
+                  teams={roomState.teams}
+                />
+              </div>
+            ) : roomState.mode === "MAGIC_WHEEL" && roomState.magicWheelState ? (
+              <div className="w-full max-w-6xl my-auto">
+                <MagicWheelBoard
+                  wheelState={roomState.magicWheelState}
                   isDisplay={true}
                   teams={roomState.teams}
                 />

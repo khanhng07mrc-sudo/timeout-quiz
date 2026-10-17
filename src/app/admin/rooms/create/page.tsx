@@ -18,7 +18,7 @@ const GAME_MODES = [
   { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
   { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "TOURNAMENT", label: "Tournament 1v1", desc: "Nhánh đấu trực tiếp loại trừ tranh cúp vô địch", emoji: "🏆", badge: "Đối kháng", badgeColor: "text-yellow-300 bg-yellow-500/20 border-yellow-500/30" },
+  { value: "MAGIC_WHEEL", label: "Vòng Quay Tri Thức", desc: "Chiếc Nón Kỳ Diệu: Quay nón tính điểm, đoán chữ cái & giải ô chữ bí mật", emoji: "🎡", badge: "Gameshow VTV3", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
@@ -97,8 +97,17 @@ export default function CreateRoomPage() {
   const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
   const [eliminationTeamsPerStage, setEliminationTeamsPerStage] = useState(1);
   const [eliminationRevivalCount, setEliminationRevivalCount] = useState(1);
-  // Tournament config
+  // Tournament config (Legacy)
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
+  // Magic Wheel config
+  const [magicWheelSubMode, setMagicWheelSubMode] = useState<"WORD_PUZZLE" | "WHEEL_QUIZ">("WORD_PUZZLE");
+  const [magicWheelRoundsCount, setMagicWheelRoundsCount] = useState(4);
+  const [magicWheelPuzzles, setMagicWheelPuzzles] = useState<Array<{ roundNumber: number; category: string; secretPhrase: string; clue: string }>>([
+    { roundNumber: 1, category: "DANH NHÂN LỊCH SỬ", secretPhrase: "NGUYỄN HUỆ", clue: "Vị anh hùng áo vải cờ đào đại phá quân Thanh" },
+    { roundNumber: 2, category: "DANH LAM THẮNG CẢNH", secretPhrase: "VỊNH HẠ LONG", clue: "Kỳ quan thiên nhiên thế giới tại tỉnh Quảng Ninh" },
+    { roundNumber: 3, category: "VĂN HỌC NGHỆ THUẬT", secretPhrase: "TRUYỆN KIỀU", clue: "Kiệt tác truyện thơ Nôm của Đại thi hào Nguyễn Du" },
+    { roundNumber: 4, category: "KHOA HỌC CÔNG NGHỆ", secretPhrase: "TRÍ TUỆ NHÂN TẠO", clue: "Công nghệ mô phỏng trí thông minh của con người" },
+  ]);
   // Grid Caro config
   const [gridRows, setGridRows] = useState(4);
   const [gridCols, setGridCols] = useState(4);
@@ -257,8 +266,12 @@ export default function CreateRoomPage() {
             eliminationIntervalQuestions,
             eliminationTeamsPerStage: mode === "ELIMINATION" ? eliminationTeamsPerStage : 1,
             eliminationRevivalCount: mode === "ELIMINATION" ? eliminationRevivalCount : 1,
-            // Tournament config
+            // Tournament config (Legacy)
             tournamentQuestionsPerMatch: mode === "TOURNAMENT" ? tournamentQuestionsPerMatch : 3,
+            // Magic Wheel config
+            magicWheelSubMode: mode === "MAGIC_WHEEL" ? magicWheelSubMode : "WORD_PUZZLE",
+            magicWheelRoundsCount: mode === "MAGIC_WHEEL" ? magicWheelRoundsCount : 4,
+            magicWheelPuzzles: mode === "MAGIC_WHEEL" ? magicWheelPuzzles : undefined,
             // Grid Caro config
             gridRows: mode === "GRID_CARO" ? gridRows : 4,
             gridCols: mode === "GRID_CARO" ? gridCols : 4,
@@ -1184,6 +1197,117 @@ export default function CreateRoomPage() {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {mode === "MAGIC_WHEEL" && (
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
+              <div className="flex items-center gap-2">
+                <GameModeIcon mode="MAGIC_WHEEL" className="w-6 h-6 shrink-0" />
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình Vòng Quay Tri Thức (Chiếc Nón Kỳ Diệu)</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium mb-1">Thể thức thi đấu</label>
+                  <select
+                    value={magicWheelSubMode}
+                    onChange={(e) => setMagicWheelSubMode(e.target.value as "WORD_PUZZLE" | "WHEEL_QUIZ")}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  >
+                    <option value="WORD_PUZZLE">Giải Ô Chữ Bí Mật (Chuẩn VTV3)</option>
+                    <option value="WHEEL_QUIZ">Vòng Quay Trắc Nghiệm (Quay nón chọn điểm)</option>
+                  </select>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    {magicWheelSubMode === "WORD_PUZZLE"
+                      ? "Bảng ô chữ 4 hàng x 14 ô. Đội đến lượt quay nón để nhận điểm/ô đặc biệt, đoán chữ cái hoặc đoán giải toàn bộ ô chữ."
+                      : "Mỗi lượt quay nón để xác định hệ số điểm của câu hỏi trắc nghiệm tiếp theo từ ngân hàng câu hỏi."}
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Số vòng thi đấu</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={magicWheelRoundsCount}
+                    onChange={(e) => {
+                      const count = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                      setMagicWheelRoundsCount(count);
+                      setMagicWheelPuzzles((prev) => {
+                        const next = [...prev];
+                        while (next.length < count) {
+                          const idx = next.length + 1;
+                          next.push({
+                            roundNumber: idx,
+                            category: "CHỦ ĐỀ MỚI",
+                            secretPhrase: "CHIEC NON KY DIEU",
+                            clue: "Gameshow kinh điển của Đài Truyền hình Việt Nam",
+                          });
+                        }
+                        return next.slice(0, count);
+                      });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Số vòng chơi chính (sau mỗi vòng hoàn tất giải ô chữ sẽ tự động chuyển sang vòng tiếp theo).
+                  </p>
+                </div>
+              </div>
+
+              {magicWheelSubMode === "WORD_PUZZLE" && (
+                <div className="space-y-3 pt-2 border-t border-amber-500/20">
+                  <h4 className="text-xs font-bold text-amber-200">Danh sách Ô Chữ theo từng Vòng:</h4>
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                    {magicWheelPuzzles.slice(0, magicWheelRoundsCount).map((p, idx) => (
+                      <div key={idx} className="p-3 rounded-lg bg-[#151728]/80 border border-border space-y-2">
+                        <div className="flex items-center justify-between text-xs font-bold text-amber-300">
+                          <span>Vòng {idx + 1}</span>
+                          <span className="text-[11px] text-muted-foreground">Tối đa 14 ký tự/hàng</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Chủ đề (ví dụ: DANH NHÂN LỊCH SỬ)"
+                            value={p.category}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMagicWheelPuzzles((prev) =>
+                                prev.map((item, i) => (i === idx ? { ...item, category: val } : item))
+                              );
+                            }}
+                            className="px-2.5 py-1.5 rounded bg-input border border-border text-xs uppercase"
+                          />
+                          <input
+                            type="text"
+                            placeholder="Ô chữ bí mật (ví dụ: NGUYEN HUE)"
+                            value={p.secretPhrase}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setMagicWheelPuzzles((prev) =>
+                                prev.map((item, i) => (i === idx ? { ...item, secretPhrase: val } : item))
+                              );
+                            }}
+                            className="px-2.5 py-1.5 rounded bg-input border border-border text-xs uppercase font-bold text-white tracking-widest"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Gợi ý MC đọc cho người chơi..."
+                          value={p.clue}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setMagicWheelPuzzles((prev) =>
+                              prev.map((item, i) => (i === idx ? { ...item, clue: val } : item))
+                            );
+                          }}
+                          className="w-full px-2.5 py-1.5 rounded bg-input border border-border text-xs text-muted-foreground"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

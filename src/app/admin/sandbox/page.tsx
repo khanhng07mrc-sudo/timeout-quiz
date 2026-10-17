@@ -27,7 +27,18 @@ import GameModeIcon from "@/components/ui/GameModeIcon";
 import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition";
 import { MODE_DISPLAY_NAMES } from "@/lib/game-engine/game-modes-meta";
 import MysteryQuestBoard from "@/components/modes/MysteryQuestBoard";
+import MagicWheelBoard from "@/components/modes/MagicWheelBoard";
+import {
+  generateMagicWheelSectors,
+  DEFAULT_MAGIC_WHEEL_PUZZLES,
+  calculateSpinDestination,
+  normalizeVietnameseBaseLetter,
+  checkLetterInSecretPhrase,
+  isPuzzleFullyRevealed,
+  matchWholeSecretPhrase,
+} from "@/lib/game-engine/magic-wheel";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
+import type { MagicWheelState } from "@/types";
 import { soundManager } from "@/lib/sound-manager";
 import {
   generateMysteryStageForTurn,
@@ -160,6 +171,17 @@ const AVAILABLE_MODES: {
     accentColor: "#ef4444",
     glowClass: "glow-neon-rose",
     perks: ["Cướp chuông 0ms", "Khóa nút tự động", "Phạt điểm sai"],
+  },
+  {
+    mode: "MAGIC_WHEEL",
+    name: "Vòng Quay Tri Thức",
+    emoji: "🎡",
+    tagline: "Chiếc Nón Kỳ Diệu · Quay nón tính điểm, đoán chữ cái & giải ô chữ bí mật",
+    badge: "Gameshow VTV3",
+    gradient: "from-amber-600 via-orange-600 to-yellow-600",
+    accentColor: "#f59e0b",
+    glowClass: "glow-neon-amber",
+    perks: ["Ô chữ 4x14", "24 ô chuẩn VTV3", "Luật 3 lỗi liên tiếp"],
   },
   {
     mode: "TOURNAMENT",
@@ -1552,6 +1574,32 @@ export default function AdminSandboxPage() {
       }));
     }
 
+    let magicWheelState: any = undefined;
+    if (mode === "MAGIC_WHEEL") {
+      magicWheelState = {
+        subMode: "WORD_PUZZLE",
+        sectors: generateMagicWheelSectors(1),
+        currentTurnTeamId: teams[0].id,
+        currentTurnTeamName: teams[0].name,
+        currentRound: 1,
+        maxRounds: 4,
+        puzzles: DEFAULT_MAGIC_WHEEL_PUZZLES,
+        currentPuzzle: DEFAULT_MAGIC_WHEEL_PUZZLES[0],
+        isSpinning: false,
+        spinPower: 50,
+        targetRotationDegrees: 0,
+        guessedLetters: [],
+        wrongGuessesCount: {},
+        freeSpinCount: {},
+        roundScores: {},
+        disqualifiedTeamIdsInRound: [],
+        consecutiveWrongGuesses: {},
+        pendingSpecialAction: "NONE",
+        phase: "SPIN_WAITING",
+        lastActionMessage: `Chào mừng đến với Vòng Quay Tri Thức! Mời Đội ${teams[0].name} bấm quay nón!`,
+      };
+    }
+
     const initialRoomState: RoomState = {
       id: "room_offline_local",
       code: offlineCode,
@@ -1589,6 +1637,7 @@ export default function AdminSandboxPage() {
       gridCaroState,
       diceRaceState,
       mysteryQuestState,
+      magicWheelState,
     };
 
     setRoomState(initialRoomState);
@@ -4132,6 +4181,274 @@ export default function AdminSandboxPage() {
           return nextState;
         });
         syncToIframes();
+      } else if (e.data?.type === "MAGIC_WHEEL_SPIN") {
+        const { power } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState || prev.magicWheelState.isSpinning) return prev;
+          const cur = { ...prev.magicWheelState };
+          const effPower = Math.max(10, Math.min(100, power || 50));
+          const { targetDegrees, landingSectorIndex } = calculateSpinDestination(
+            cur.targetRotationDegrees,
+            effPower,
+            cur.sectors.length
+          );
+          cur.isSpinning = true;
+          cur.spinPower = effPower;
+          cur.targetRotationDegrees = targetDegrees;
+          cur.selectedSectorIndex = landingSectorIndex;
+          cur.phase = "SPINNING";
+          cur.lastActionMessage = `Nón đang xoay với lực ${effPower}%...`;
+
+          setTimeout(() => {
+            setRoomState((latest) => {
+              if (!latest || !latest.magicWheelState) return latest;
+              const nextWheel = { ...latest.magicWheelState };
+              nextWheel.isSpinning = false;
+              const sector = nextWheel.sectors[landingSectorIndex];
+              nextWheel.selectedSector = sector;
+              const tId = nextWheel.currentTurnTeamId;
+              const teamName = nextWheel.currentTurnTeamName;
+              const eligibleTeams = latest.teams.filter((t) => !(nextWheel.disqualifiedTeamIdsInRound || []).includes(t.id));
+              const isSoleSurvivor = eligibleTeams.length === 1 && latest.teams.length > 1;
+
+              if (sector.type === "LOSE_TURN") {
+                nextWheel.pendingSpecialAction = "NONE";
+                if (isSoleSurvivor) {
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào MẤT LƯỢT nhưng vì là đội duy nhất còn lại nên được miễn phạt và quay tiếp!`;
+                } else if ((nextWheel.freeSpinCount[tId] || 0) > 0) {
+                  nextWheel.freeSpinCount[tId]--;
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào MẤT LƯỢT nhưng đã dùng 1 Thẻ Thêm Lượt để giữ quyền chơi!`;
+                } else {
+                  const activeIdx = eligibleTeams.findIndex((t) => t.id === nextWheel.currentTurnTeamId);
+                  const nextIdx = (activeIdx + 1) % eligibleTeams.length;
+                  nextWheel.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+                  nextWheel.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.selectedSector = undefined;
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT LƯỢT! Chuyển lượt sang ${nextWheel.currentTurnTeamName}.`;
+                }
+              } else if (sector.type === "BANKRUPT") {
+                nextWheel.pendingSpecialAction = "NONE";
+                nextWheel.roundScores[tId] = 0;
+                if (isSoleSurvivor) {
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ)! Vì là đội duy nhất còn lại nên vẫn được quay tiếp.`;
+                } else if ((nextWheel.freeSpinCount[tId] || 0) > 0) {
+                  nextWheel.freeSpinCount[tId]--;
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM (về 0đ)! Đã dùng Thẻ Thêm Lượt để quay tiếp.`;
+                } else {
+                  const activeIdx = eligibleTeams.findIndex((t) => t.id === nextWheel.currentTurnTeamId);
+                  const nextIdx = (activeIdx + 1) % eligibleTeams.length;
+                  nextWheel.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+                  nextWheel.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+                  nextWheel.phase = "SPIN_WAITING";
+                  nextWheel.selectedSector = undefined;
+                  nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM! Điểm vòng bị xóa về 0 và chuyển lượt sang ${nextWheel.currentTurnTeamName}.`;
+                }
+              } else if (sector.type === "HALF") {
+                nextWheel.pendingSpecialAction = "HALF";
+                nextWheel.roundScores[tId] = Math.floor((nextWheel.roundScores[tId] || 0) / 2);
+                nextWheel.phase = "ACTION_INPUT";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô CHIA ĐÔI! Điểm vòng còn ${nextWheel.roundScores[tId]}đ. Mời chọn chữ cái!`;
+              } else if (sector.type === "DOUBLE") {
+                nextWheel.pendingSpecialAction = "DOUBLE";
+                nextWheel.phase = "ACTION_INPUT";
+                const curPts = nextWheel.roundScores[tId] || 0;
+                nextWheel.lastActionMessage = curPts > 0
+                  ? `Đội ${teamName} quay vào ô NHÂN ĐÔI! Đoán đúng chữ cái để x2 số điểm vòng (${curPts}đ -> ${curPts * 2}đ)!`
+                  : `Đội ${teamName} quay vào ô NHÂN ĐÔI! (Chưa có điểm nên không nhân đôi, nhưng cần đoán đúng để tránh bị tính lỗi). Mời chọn chữ cái!`;
+              } else if (sector.type === "EXTRA_TURN") {
+                nextWheel.pendingSpecialAction = "EXTRA_TURN";
+                nextWheel.phase = "ACTION_INPUT";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô THÊM LƯỢT 🎟️! Hãy đoán đúng 1 chữ cái để chính thức nhận thẻ!`;
+              } else if (sector.type === "LUCKY") {
+                nextWheel.pendingSpecialAction = "LUCKY";
+                nextWheel.phase = "LUCKY_PICK";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MAY MẮN! Mời bấm chọn 1 ô bất kỳ trên bảng để lật mở miễn phí!`;
+              } else if (sector.type === "MYSTERY") {
+                nextWheel.pendingSpecialAction = "MYSTERY";
+                nextWheel.phase = "MYSTERY_CHOICE";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô BÍ MẬT 🔮! Hãy quyết định lật ô bí mật hay nhận 1000đ an toàn.`;
+              } else {
+                nextWheel.pendingSpecialAction = "POINTS";
+                nextWheel.phase = "ACTION_INPUT";
+                nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô ${sector.label} điểm! Mời gọi chữ cái!`;
+              }
+
+              const nextRoom = { ...latest, magicWheelState: nextWheel };
+              syncToIframes({ roomState: nextRoom });
+              return nextRoom;
+            });
+          }, 4500);
+
+          const nextRoom = { ...prev, magicWheelState: cur };
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_GUESS_LETTER") {
+        const { letter } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState || prev.magicWheelState.phase !== "ACTION_INPUT") return prev;
+          const cur = { ...prev.magicWheelState };
+          const normLetter = normalizeVietnameseBaseLetter(letter);
+          if (cur.guessedLetters.includes(normLetter)) return prev;
+
+          cur.guessedLetters = [...cur.guessedLetters, normLetter];
+          const p = cur.currentPuzzle;
+          if (!p) return prev;
+
+          const check = checkLetterInSecretPhrase(p.secretPhrase, normLetter, p.revealedIndices);
+          const tId = cur.currentTurnTeamId;
+          const teamName = cur.currentTurnTeamName;
+          const eligibleTeams = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id));
+
+          if (check.found) {
+            cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: 0 };
+            p.revealedIndices = check.newRevealedIndices;
+            let earned = 0;
+            if (cur.pendingSpecialAction === "DOUBLE") {
+              const prevSc = cur.roundScores[tId] || 0;
+              if (prevSc > 0) { cur.roundScores[tId] = prevSc * 2; earned = prevSc; }
+            } else if (cur.pendingSpecialAction === "HALF") {
+              earned = 0;
+            } else if (cur.pendingSpecialAction === "EXTRA_TURN") {
+              if (eligibleTeams.length > 1) {
+                cur.freeSpinCount = { ...cur.freeSpinCount, [tId]: (cur.freeSpinCount[tId] || 0) + 1 };
+              }
+              earned = 0;
+            } else {
+              const baseVal = cur.selectedSector?.value || 300;
+              earned = baseVal * check.count;
+              cur.roundScores[tId] = (cur.roundScores[tId] || 0) + earned;
+            }
+
+            if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+              cur.phase = "ROUND_RECAP";
+              cur.lastActionMessage = `🎉 Đội ${teamName} đã xuất sắc giải được toàn bộ ô chữ và nhận trọn vẹn điểm số vòng!`;
+            } else {
+              cur.phase = "SPIN_WAITING";
+              cur.pendingSpecialAction = "NONE";
+              cur.lastActionMessage = `Chính xác! Có ${check.count} chữ ${normLetter}. Mời Đội ${teamName} quay tiếp!`;
+            }
+          } else {
+            const strikes = (cur.consecutiveWrongGuesses[tId] || 0) + 1;
+            cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
+
+            if (strikes >= 3) {
+              cur.disqualifiedTeamIdsInRound = [...(cur.disqualifiedTeamIdsInRound || []), tId];
+              cur.roundScores[tId] = 0;
+              const remaining = prev.teams.filter((t) => !cur.disqualifiedTeamIdsInRound.includes(t.id));
+              if (remaining.length > 0) {
+                const nextIdx = 0;
+                cur.currentTurnTeamId = remaining[nextIdx].id;
+                cur.currentTurnTeamName = remaining[nextIdx].name;
+                cur.phase = "SPIN_WAITING";
+                cur.lastActionMessage = `❌ Đội ${teamName} phạm 3 LỖI LIÊN TIẾP và bị loại khỏi vòng này! Chuyển lượt sang ${cur.currentTurnTeamName}.`;
+              } else {
+                cur.phase = "ROUND_RECAP";
+                cur.lastActionMessage = "Tất cả các đội đều đã bị loại trong vòng này!";
+              }
+            } else if ((cur.freeSpinCount[tId] || 0) > 0) {
+              cur.freeSpinCount[tId]--;
+              cur.phase = "SPIN_WAITING";
+              cur.pendingSpecialAction = "NONE";
+              cur.lastActionMessage = `Không có chữ ${normLetter}! Đội ${teamName} đã dùng 1 Thẻ Thêm Lượt để quay tiếp (Lỗi liên tiếp: ${strikes}/3).`;
+            } else {
+              const activeIdx = eligibleTeams.findIndex((t) => t.id === cur.currentTurnTeamId);
+              const nextIdx = (activeIdx + 1) % Math.max(1, eligibleTeams.length);
+              cur.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+              cur.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+              cur.phase = "SPIN_WAITING";
+              cur.selectedSector = undefined;
+              cur.pendingSpecialAction = "NONE";
+              cur.lastActionMessage = `Không có chữ ${normLetter} nào (Lỗi liên tiếp của ${teamName}: ${strikes}/3). Chuyển lượt sang ${cur.currentTurnTeamName}.`;
+            }
+          }
+
+          const nextRoom = { ...prev, magicWheelState: cur };
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_SOLVE_PUZZLE") {
+        const { answer } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState || !prev.magicWheelState.currentPuzzle) return prev;
+          const cur = { ...prev.magicWheelState };
+          const p = cur.currentPuzzle;
+          if (!p) return prev;
+          const tId = cur.currentTurnTeamId;
+          const teamName = cur.currentTurnTeamName;
+          const isCorrect = matchWholeSecretPhrase(p.secretPhrase, answer);
+
+          if (isCorrect) {
+            p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
+            cur.phase = "ROUND_RECAP";
+            cur.lastActionMessage = `🎉 Chúc mừng Đội ${teamName} đã giải chính xác toàn bộ ô chữ: "${p.secretPhrase}"!`;
+          } else {
+            const strikes = (cur.consecutiveWrongGuesses[tId] || 0) + 1;
+            cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
+            if (strikes >= 3) {
+              cur.disqualifiedTeamIdsInRound = [...(cur.disqualifiedTeamIdsInRound || []), tId];
+              cur.roundScores[tId] = 0;
+            }
+            const remaining = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id));
+            if (remaining.length > 0) {
+              const activeIdx = remaining.findIndex((t) => t.id === cur.currentTurnTeamId);
+              const nextIdx = (activeIdx + 1) % remaining.length;
+              cur.currentTurnTeamId = remaining[nextIdx]?.id || "";
+              cur.currentTurnTeamName = remaining[nextIdx]?.name || "";
+              cur.phase = "SPIN_WAITING";
+              cur.lastActionMessage = `Đáp án "${answer}" chưa đúng! (Lỗi liên tiếp của ${teamName}: ${strikes}/3). Chuyển lượt sang ${cur.currentTurnTeamName}.`;
+            }
+          }
+
+          const nextRoom = { ...prev, magicWheelState: cur };
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_LUCKY_PICK") {
+        const { index } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState || !prev.magicWheelState.currentPuzzle) return prev;
+          const cur = { ...prev.magicWheelState };
+          const p = cur.currentPuzzle;
+          if (!p) return prev;
+          if (index >= 0 && index < p.secretPhrase.length && !p.revealedIndices.includes(index)) {
+            p.revealedIndices = [...p.revealedIndices, index];
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `Ô May Mắn đã lật mở chữ "${p.secretPhrase[index]}"! Mời Đội ${cur.currentTurnTeamName} quay tiếp.`;
+          }
+          const nextRoom = { ...prev, magicWheelState: cur };
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_MYSTERY_DECIDE") {
+        const { openMystery } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          const tId = cur.currentTurnTeamId;
+          if (openMystery) {
+            const isWin = Math.random() >= 0.5;
+            if (isWin) {
+              cur.roundScores[tId] = (cur.roundScores[tId] || 0) + 3000;
+              cur.lastActionMessage = "🎉 Ô Bí Mật thưởng nóng +3000 điểm!";
+            } else {
+              cur.roundScores[tId] = 0;
+              cur.lastActionMessage = "💥 Mặt sau ô Bí Mật là MẤT ĐIỂM!";
+            }
+          } else {
+            cur.roundScores[tId] = (cur.roundScores[tId] || 0) + 1000;
+            cur.lastActionMessage = "Nhận an toàn +1000 điểm!";
+          }
+          cur.phase = "SPIN_WAITING";
+          const nextRoom = { ...prev, magicWheelState: cur };
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
       } else if (e.data?.type === "TOURNAMENT_PREDICT") {
         const { matchId, predictedWinnerId, teamId } = e.data;
         setRoomState((prev) => {
@@ -9128,6 +9445,56 @@ export default function AdminSandboxPage() {
                         🆘 Cứu trợ {roomState.wagerState.bailoutQueue[0].teamName}
                       </button>
                     )}
+                  </div>
+                )}
+
+                {roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState && (
+                  <div className="pt-3 border-t border-white/10 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-amber-300">🎡 Vòng Quay Tri Thức (Admin Sandbox Control)</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRoomState((prev) => {
+                            if (!prev || !prev.magicWheelState) return prev;
+                            const cur = { ...prev.magicWheelState };
+                            if (cur.currentRound < cur.maxRounds) {
+                              cur.currentRound++;
+                              cur.sectors = generateMagicWheelSectors(cur.currentRound);
+                              cur.currentPuzzle = cur.puzzles[(cur.currentRound - 1) % cur.puzzles.length] || cur.puzzles[0];
+                              if (cur.currentPuzzle) cur.currentPuzzle.revealedIndices = [];
+                              cur.guessedLetters = [];
+                              cur.wrongGuessesCount = {};
+                              cur.roundScores = {};
+                              cur.freeSpinCount = {};
+                              cur.disqualifiedTeamIdsInRound = [];
+                              cur.consecutiveWrongGuesses = {};
+                              cur.pendingSpecialAction = "NONE";
+                              cur.phase = "SPIN_WAITING";
+                              cur.selectedSector = undefined;
+                              cur.lastActionMessage = `Bắt đầu Vòng ${cur.currentRound}! Mời Đội ${cur.currentTurnTeamName} quay nón.`;
+                            }
+                            const nextRoom = { ...prev, magicWheelState: cur };
+                            syncToIframes({ roomState: nextRoom });
+                            return nextRoom;
+                          });
+                        }}
+                        className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-xs"
+                      >
+                        ⏩ Sang Vòng Tiếp Theo
+                      </button>
+                    </div>
+                    <MagicWheelBoard
+                      wheelState={roomState.magicWheelState}
+                      isDisplay={false}
+                      teams={roomState.teams}
+                      isMyTurn={true}
+                      onSpin={(power) => window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*")}
+                      onGuessLetter={(letter) => window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*")}
+                      onSolvePuzzle={(answer) => window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*")}
+                      onMysteryDecide={(openMystery) => window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*")}
+                      onLuckyPick={(index) => window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*")}
+                    />
                   </div>
                 )}
 

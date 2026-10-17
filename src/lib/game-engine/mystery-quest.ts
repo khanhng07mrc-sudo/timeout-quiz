@@ -480,6 +480,184 @@ export function generateMysteryPromoPerk(
  * If multiple opponents tie for highest score, randomly selects one.
  * Áp dụng quy tắc bảo vệ chống cướp liên hoàn (tối đa 2 lần trước lượt kế tiếp).
  */
+export interface PromoStealResult {
+  victimTeamId?: string;
+  victimTeamName?: string;
+  stolenPoints: number;
+  isFromBank?: boolean;
+  protectionNote?: string;
+  isShieldBlocked?: boolean;
+  shieldConsumedVictimId?: string;
+  remainingShieldHp?: number;
+  shieldDamageAbsorbed?: number;
+}
+
+export interface ShieldAbsorptionResult {
+  effectiveDamage: number;
+  absorbedDamage: number;
+  isShieldBlocked: boolean;
+  isShieldShattered: boolean;
+  remainingShieldHp: number;
+  shieldConsumedVictimId?: string;
+  protectionNote?: string;
+}
+
+/**
+ * Hấp thụ thiệt hại (cướp điểm hoặc bom) bằng Khiên HP.
+ * - Hỗ trợ Xuyên Giáp (isArmorPiercing) bỏ qua khiên.
+ * - Hỗ trợ Phá Giáp (isShieldShatter) đập tan khiên về 0 HP.
+ * - Hấp thụ trừ dần HP: nếu damage <= HP, chặn 100% (0đ thiệt hại), còn dư HP.
+ * - Nếu damage > HP: hấp thụ tối đa HP còn lại, khiên vỡ vụn, phần dư trừ vào điểm.
+ */
+export function absorbDamageWithShield({
+  teamShields,
+  victimTeamId,
+  victimTeamName,
+  damage,
+  currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false,
+}: {
+  teamShields?: Record<
+    string,
+    { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string }
+  >;
+  victimTeamId: string;
+  victimTeamName?: string;
+  damage: number;
+  currentTurnIndex?: number;
+  isArmorPiercing?: boolean;
+  isShieldShatter?: boolean;
+}): ShieldAbsorptionResult {
+  const victimShield = teamShields?.[victimTeamId];
+  const isShieldActive = Boolean(
+    victimShield &&
+    currentTurnIndex >= victimShield.activeFromTurnIndex &&
+    currentTurnIndex <= victimShield.expiresAfterTurnIndex &&
+    (victimShield.hp === undefined || victimShield.hp > 0)
+  );
+
+  if (!isShieldActive) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: false,
+      remainingShieldHp: 0,
+    };
+  }
+
+  const name = victimTeamName || "Đối thủ";
+
+  // 1. Phá Giáp (Shatter):
+  if (isShieldShatter) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: true,
+      remainingShieldHp: 0,
+      shieldConsumedVictimId: victimTeamId,
+      protectionNote: `💥 PHÁ GIÁP: Đòn tấn công đã đập tan hoàn toàn Khiên của Đội ${name}!`,
+    };
+  }
+
+  // 2. Xuyên Giáp (Armor Piercing):
+  if (isArmorPiercing) {
+    return {
+      effectiveDamage: damage,
+      absorbedDamage: 0,
+      isShieldBlocked: false,
+      isShieldShattered: false,
+      remainingShieldHp: victimShield?.hp ?? 20,
+      protectionNote: `⚡ XUYÊN GIÁP: Đòn cướp xuyên qua lớp khiên của Đội ${name}, lấy thẳng điểm gốc!`,
+    };
+  }
+
+  // 3. Hấp thụ trừ dần HP:
+  const currentHp = victimShield?.hp ?? 20;
+  if (currentHp >= damage) {
+    const remainingHp = currentHp - damage;
+    return {
+      effectiveDamage: 0,
+      absorbedDamage: damage,
+      isShieldBlocked: true,
+      isShieldShattered: false,
+      remainingShieldHp: remainingHp,
+      shieldConsumedVictimId: remainingHp === 0 ? victimTeamId : undefined,
+      protectionNote: `🛡️ KHIÊN HẤP THỤ: Khiên Đội ${name} đã đỡ trọn vẹn ${damage}đ (Khiên còn ${remainingHp} HP)!`,
+    };
+  } else {
+    const absorbedDamage = currentHp;
+    const effectiveDamage = damage - absorbedDamage;
+    return {
+      effectiveDamage,
+      absorbedDamage,
+      isShieldBlocked: false,
+      isShieldShattered: true,
+      remainingShieldHp: 0,
+      shieldConsumedVictimId: victimTeamId,
+      protectionNote: `🛡️💥 KHIÊN VỠ: Khiên Đội ${name} hấp thụ ${absorbedDamage}đ rồi vỡ vụn! Bị trừ thêm ${effectiveDamage}đ!`,
+    };
+  }
+}
+
+/**
+ * Cấp hoặc gia hạn Khiên cho đội với cơ chế chống tích trữ vô hạn:
+ * - Nếu đang có khiên: làm mới về mức trần maxShieldHp (20 HP) và kéo dài hạn chu kỳ mới.
+ * - Nếu chưa đầy tim (currentHearts < maxHearts): hồi phục +1 Tim sinh mệnh.
+ * - Nếu tim đã đầy: KHÔNG cộng thêm bất kỳ điểm số nào để giữ tính độc lập và công bằng giữa các chỉ số.
+ */
+export function grantShieldToTeam({
+  state,
+  teamId,
+  curTurn,
+  teamsCount,
+  sourceCard = "SHIELD",
+  shieldHp = 20,
+  maxShieldHp = 20,
+}: {
+  state: MysteryQuestState;
+  teamId: string;
+  curTurn: number;
+  teamsCount: number;
+  sourceCard?: string;
+  shieldHp?: number;
+  maxShieldHp?: number;
+}): { refreshed: boolean; bonusPointsAwarded: number; heartHealed: boolean } {
+  if (!state.teamShields) state.teamShields = {};
+  const existing = state.teamShields[teamId];
+  let bonusPointsAwarded = 0;
+  let heartHealed = false;
+
+  if (existing && (existing.hp ?? 20) > 0) {
+    existing.hp = maxShieldHp;
+    existing.maxHp = maxShieldHp;
+    existing.activeFromTurnIndex = curTurn + 1;
+    existing.expiresAfterTurnIndex = curTurn + teamsCount;
+    existing.sourceCard = sourceCard;
+
+    const maxHearts = state.teamMaxHearts?.[teamId] ?? state.initialHeartsPerTeam ?? 3;
+    const currentHearts = state.teamHearts?.[teamId] ?? state.initialHeartsPerTeam ?? 1;
+    if (currentHearts < maxHearts) {
+      if (!state.teamHearts) state.teamHearts = {};
+      state.teamHearts[teamId] = currentHearts + 1;
+      heartHealed = true;
+    }
+    // Không cộng điểm thưởng dôi dư khi tim đã đầy để đảm bảo tính công bằng và độc lập tuyệt đối giữa các chỉ số
+    return { refreshed: true, bonusPointsAwarded: 0, heartHealed };
+  }
+
+  state.teamShields[teamId] = {
+    activeFromTurnIndex: curTurn + 1,
+    expiresAfterTurnIndex: curTurn + teamsCount,
+    hp: shieldHp,
+    maxHp: maxShieldHp,
+    sourceCard,
+  };
+  return { refreshed: false, bonusPointsAwarded: 0, heartHealed: false };
+}
+
 export function calculatePromoSteal5({
   activeTeamId,
   allTeams,
@@ -487,20 +665,18 @@ export function calculatePromoSteal5({
   teamShields,
   teamImmunities,
   currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false,
 }: {
   activeTeamId: string;
   allTeams: MysteryTeamRef[];
   timesStolenInCycle?: Record<string, number>;
-  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string }>;
   teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
   currentTurnIndex?: number;
-}): {
-  victimTeamId?: string;
-  victimTeamName?: string;
-  stolenPoints: number;
-  isFromBank?: boolean;
-  protectionNote?: string;
-} {
+  isArmorPiercing?: boolean;
+  isShieldShatter?: boolean;
+}): PromoStealResult {
   const opponents = (allTeams || []).filter(
     (t) => t.id !== activeTeamId && !t.isEliminated && (t.score || 0) > 0
   );
@@ -508,15 +684,11 @@ export function calculatePromoSteal5({
     return { stolenPoints: 5, isFromBank: true };
   }
 
-  // Loại trừ các đội đã bị cướp >= 2 lần trong chu kỳ, đang được Bùa Miễn Nhiễm hoặc Khiên Hoàng Đế bảo vệ
+  // 1. Loại trừ các đối thủ đã bị cướp >= 2 lần trong chu kỳ hoặc đang được Bùa Miễn Nhiễm (The Moon) bảo vệ
   const eligibleOpponents = opponents.filter((t) => {
     if ((timesStolenInCycle[t.id] ?? 0) >= 2) return false;
     const imm = teamImmunities?.[t.id];
     if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
-      return false;
-    }
-    const shield = teamShields?.[t.id];
-    if (shield && currentTurnIndex >= shield.activeFromTurnIndex && currentTurnIndex <= shield.expiresAfterTurnIndex) {
       return false;
     }
     return true;
@@ -526,7 +698,7 @@ export function calculatePromoSteal5({
     return {
       stolenPoints: 5,
       isFromBank: true,
-      protectionNote: "Các đối thủ đều đang được bảo vệ (Khiên / Bùa Miễn Nhiễm)! Bạn nhận +5đ an toàn từ Hệ Thống.",
+      protectionNote: "Các đối thủ đều đang được bảo vệ (Khiên Miễn Nhiễm Cướp / Bùa Miễn Nhiễm)! Bạn nhận +5đ an toàn từ Hệ Thống.",
     };
   }
 
@@ -534,11 +706,39 @@ export function calculatePromoSteal5({
   const topOpponents = eligibleOpponents.filter((t) => (t.score || 0) === maxScore);
   const chosenVictim = topOpponents[Math.floor(Math.random() * topOpponents.length)];
 
-  const stolenPoints = Math.min(5, chosenVictim.score || 0);
+  // 2. KIỂM TRA KHIÊN HP BẢO VỆ:
+  const rawTargetSteal = Math.min(5, chosenVictim.score || 0);
+  const absorption = absorbDamageWithShield({
+    teamShields,
+    victimTeamId: chosenVictim.id,
+    victimTeamName: chosenVictim.name,
+    damage: rawTargetSteal,
+    currentTurnIndex,
+    isArmorPiercing,
+    isShieldShatter,
+  });
+
+  if (absorption.isShieldBlocked) {
+    return {
+      victimTeamId: chosenVictim.id,
+      victimTeamName: chosenVictim.name,
+      stolenPoints: 0,
+      isShieldBlocked: true,
+      shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+      remainingShieldHp: absorption.remainingShieldHp,
+      shieldDamageAbsorbed: absorption.absorbedDamage,
+      protectionNote: absorption.protectionNote,
+    };
+  }
+
   return {
     victimTeamId: chosenVictim.id,
     victimTeamName: chosenVictim.name,
-    stolenPoints,
+    stolenPoints: absorption.effectiveDamage,
+    shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+    remainingShieldHp: absorption.remainingShieldHp,
+    shieldDamageAbsorbed: absorption.absorbedDamage,
+    protectionNote: absorption.protectionNote,
   };
 }
 
@@ -642,6 +842,10 @@ export interface StealResult {
   isHalfProtection?: boolean;
   isFromBank?: boolean;
   protectionNote?: string;
+  isShieldBlocked?: boolean;
+  shieldConsumedVictimId?: string;
+  remainingShieldHp?: number;
+  shieldDamageAbsorbed?: number;
 }
 
 /**
@@ -654,6 +858,9 @@ export interface StealResult {
  *   + Lần 1: Chịu 100% số điểm cướp.
  *   + Lần 2: Giảm còn 50% số điểm cướp (làm tròn bội số của 5).
  *   + Lần 3+: Hoàn toàn Miễn Nhiễm Cướp (nhận điểm từ Quỹ Hệ Thống).
+ * - KHIÊN HP ĐA TẦNG:
+ *   + Hấp thụ trừ dần HP. Nếu khiên đỡ hết (0đ mất mát) -> không tính là lần cướp.
+ *   + Hỗ trợ Xuyên Giáp (isArmorPiercing) và Phá Giáp (isShieldShatter).
  */
 export function calculateCappedSteal({
   activeTeamId,
@@ -661,12 +868,22 @@ export function calculateCappedSteal({
   targetPoints = 20,
   maxCap,
   timesStolenInCycle = {},
+  teamShields,
+  teamImmunities,
+  currentTurnIndex = 0,
+  isArmorPiercing = false,
+  isShieldShatter = false,
 }: {
   activeTeamId: string;
   allTeams: MysteryTeamRef[];
   targetPoints?: number;
   maxCap?: number;
   timesStolenInCycle?: Record<string, number>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string }>;
+  teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  currentTurnIndex?: number;
+  isArmorPiercing?: boolean;
+  isShieldShatter?: boolean;
 }): StealResult {
   const effectiveCap = maxCap ?? Math.max(targetPoints, 50);
   const otherTeams = (allTeams || []).filter((t) => t.id !== activeTeamId && !t.isEliminated);
@@ -674,16 +891,23 @@ export function calculateCappedSteal({
     return { stolenPoints: Math.min(targetPoints, effectiveCap), isFromBank: true };
   }
 
-  // 1. Loại trừ các đối thủ đã bị cướp >= 2 lần trong chu kỳ trước lượt của họ
-  const eligibleVictims = otherTeams.filter((t) => (timesStolenInCycle[t.id] ?? 0) < 2);
+  // 1. Loại trừ các đối thủ đã bị cướp >= 2 lần trong chu kỳ trước lượt của họ hoặc đang có Bùa Miễn Nhiễm (The Moon)
+  const eligibleVictims = otherTeams.filter((t) => {
+    if ((timesStolenInCycle[t.id] ?? 0) >= 2) return false;
+    const imm = teamImmunities?.[t.id];
+    if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
+      return false;
+    }
+    return true;
+  });
 
-  // Nếu tất cả đối thủ đều đã bị cướp đủ 2 lần -> Miễn nhiễm cướp! Nhận điểm từ Quỹ Hệ Thống
+  // Nếu tất cả đối thủ đều đã bị cướp đủ 2 lần hoặc miễn nhiễm -> Nhận điểm từ Quỹ Hệ Thống
   if (eligibleVictims.length === 0) {
     const finalSteal = Math.min(targetPoints, effectiveCap);
     return {
       stolenPoints: finalSteal,
       isFromBank: true,
-      protectionNote: "Tất cả đối thủ đều đang được Khiên Miễn Nhiễm Cướp bảo vệ! Nhận điểm an toàn từ Quỹ Hệ Thống.",
+      protectionNote: "Tất cả đối thủ đều đang được bảo vệ (Khiên Miễn Nhiễm Cướp / Bùa Miễn Nhiễm)! Nhận điểm an toàn từ Quỹ Hệ Thống.",
     };
   }
 
@@ -705,24 +929,54 @@ export function calculateCappedSteal({
   const allowed = Math.min(targetPoints, effectiveCap, halfScore);
   const baseSteal = Math.max(1, allowed);
 
-  // 4. Áp dụng quy tắc bảo vệ: Lần 1 = 100%, Lần 2 = 50%
+  // 4. Áp dụng quy tắc bảo vệ Chống Cướp Liên Hoàn: Lần 1 = 100%, Lần 2 = 50%
   const timesStolen = timesStolenInCycle[victim.id] ?? 0;
+  let targetStealBeforeShield = baseSteal;
+  let isHalfProtection = false;
   if (timesStolen === 1) {
     const halfSteal = Math.max(5, roundToMultipleOfFive(baseSteal * 0.5));
-    const finalSteal = Math.min(baseSteal, halfSteal);
+    targetStealBeforeShield = Math.min(baseSteal, halfSteal);
+    isHalfProtection = true;
+  }
+
+  // 5. Áp dụng hấp thụ thiệt hại qua Khiên HP
+  const absorption = absorbDamageWithShield({
+    teamShields,
+    victimTeamId: victim.id,
+    victimTeamName: victim.name,
+    damage: targetStealBeforeShield,
+    currentTurnIndex,
+    isArmorPiercing,
+    isShieldShatter,
+  });
+
+  if (absorption.isShieldBlocked) {
     return {
       victimTeamId: victim.id,
       victimTeamName: victim.name,
-      stolenPoints: finalSteal,
-      isHalfProtection: true,
-      protectionNote: `Khiên Chống Vắt Kiệt: Đội ${victim.name} đã bị cướp lần 2 trong vòng, chỉ bị trừ 50% (-${finalSteal}đ)!`,
+      stolenPoints: 0,
+      isShieldBlocked: true,
+      shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+      remainingShieldHp: absorption.remainingShieldHp,
+      shieldDamageAbsorbed: absorption.absorbedDamage,
+      protectionNote: absorption.protectionNote,
     };
+  }
+
+  let finalProtectionNote = absorption.protectionNote;
+  if (!finalProtectionNote && isHalfProtection) {
+    finalProtectionNote = `Khiên Chống Vắt Kiệt: Đội ${victim.name} đã bị cướp lần 2 trong vòng, chỉ bị trừ 50% (-${targetStealBeforeShield}đ)!`;
   }
 
   return {
     victimTeamId: victim.id,
     victimTeamName: victim.name,
-    stolenPoints: baseSteal,
+    stolenPoints: absorption.effectiveDamage,
+    isHalfProtection,
+    shieldConsumedVictimId: absorption.shieldConsumedVictimId,
+    remainingShieldHp: absorption.remainingShieldHp,
+    shieldDamageAbsorbed: absorption.absorbedDamage,
+    protectionNote: finalProtectionNote,
   };
 }
 
@@ -1906,7 +2160,7 @@ export function generateMysteryStageForTurn({
   teamMaxHearts?: Record<string, number>;
   timesStolenInCycle?: Record<string, number>;
   consecutiveBombsByTeam?: Record<string, number>;
-  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string }>;
   teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
 }): MysteryQuestState {
   const computedInitialHearts = initialHeartsPerTeam !== undefined ? initialHeartsPerTeam : Math.round(turnsPerTeam / 3);
@@ -1920,13 +2174,17 @@ export function generateMysteryStageForTurn({
   }
 
   // CƠ CHẾ KHIÊN HOÀNG ĐẾ (THE_EMPEROR): Đánh giá khiên còn hiệu lực cho đội hiện tại
-  const updatedTeamShields: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }> = {};
+  const updatedTeamShields: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string }> = {};
   let hasActiveShield = false;
   if (teamShields) {
     for (const [tid, s] of Object.entries(teamShields)) {
-      const shield = s as { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string };
-      if (turnIndex <= shield.expiresAfterTurnIndex) {
-        updatedTeamShields[tid] = shield;
+      const shield = s as { activeFromTurnIndex: number; expiresAfterTurnIndex: number; hp?: number; maxHp?: number; sourceCard?: string };
+      if (turnIndex <= shield.expiresAfterTurnIndex && (shield.hp === undefined || shield.hp > 0)) {
+        updatedTeamShields[tid] = {
+          ...shield,
+          hp: shield.hp ?? 20,
+          maxHp: shield.maxHp ?? 20,
+        };
         if (tid === currentTeam.id && turnIndex >= shield.activeFromTurnIndex) {
           hasActiveShield = true;
         }
@@ -2505,6 +2763,9 @@ export function handleFlipCard({
       // Kiểm tra khiên thần bảo vệ (chỉ có hiệu lực đúng 1 lần duy nhất trong minigame)
       if (state.hasShield) {
         state.hasShield = false;
+        if (state.teamShields && team.id) {
+          delete state.teamShields[team.id];
+        }
         memState.activePenaltyPairKey = null;
         memState.isBombRescueActive = false;
         memState.rescueFormedNegativePairs = [];
@@ -2755,14 +3016,13 @@ export function handleFlipCard({
           state.hasShield = true;
           const teamsCount = Math.max(1, allTeams?.length || 2);
           const curTurn = state.currentTurnIndex || 0;
-          state.teamShields = {
-            ...(state.teamShields || {}),
-            [team.id]: {
-              activeFromTurnIndex: curTurn + 1,
-              expiresAfterTurnIndex: curTurn + teamsCount,
-              sourceCard: "THE_EMPEROR",
-            },
-          };
+          grantShieldToTeam({
+            state,
+            teamId: team.id,
+            curTurn,
+            teamsCount,
+            sourceCard: "THE_EMPEROR",
+          });
         }
         let winCardHeartMaxed = false;
         if (winCard.givesHeart) {
@@ -2799,9 +3059,16 @@ export function handleFlipCard({
           finalDelta = 0;
         } else if (winCard.effectType === "STEAL_POINTS") {
           const stealAmount = winCard.deltaPoints || state.baseQuestionPoints || 10;
-          const eligibleTeams = (allTeams || []).filter(
-            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-          );
+          const curTurn = state.currentTurnIndex || 0;
+          const eligibleTeams = (allTeams || []).filter((t) => {
+            if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+            if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+            const imm = state.teamImmunities?.[t.id];
+            if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+              return false;
+            }
+            return true;
+          });
           if (eligibleTeams.length > 0) {
             state.phase = "STEAL_TARGET_SELECT";
             state.pendingSteal = {
@@ -2827,18 +3094,37 @@ export function handleFlipCard({
           const promoSteal = calculatePromoSteal5({
             activeTeamId: team.id,
             allTeams,
+            timesStolenInCycle: state.timesStolenInCycle,
+            teamShields: state.teamShields,
+            teamImmunities: state.teamImmunities,
+            currentTurnIndex: state.currentTurnIndex || 0,
           });
+          if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+            delete state.teamShields[promoSteal.shieldConsumedVictimId];
+          }
           if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
             victimTeamId = promoSteal.victimTeamId;
             victimTeamName = promoSteal.victimTeamName;
             stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
             finalDelta += promoSteal.stolenPoints;
+            if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+            state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
           }
         }
 
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "PAIR_MATCHED";
         state.potPoints = 0;
+
+        if (finalDelta > 0) {
+          const heartsRecord = { ...(state.teamHearts || {}) };
+          const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
+        }
 
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
@@ -3177,14 +3463,13 @@ export function handleFlipCard({
         state.hasShield = true;
         const teamsCount = Math.max(1, allTeams?.length || 2);
         const curTurn = state.currentTurnIndex || 0;
-        state.teamShields = {
-          ...(state.teamShields || {}),
-          [team.id]: {
-            activeFromTurnIndex: curTurn + 1,
-            expiresAfterTurnIndex: curTurn + teamsCount,
-            sourceCard: "THE_EMPEROR",
-          },
-        };
+        grantShieldToTeam({
+          state,
+          teamId: team.id,
+          curTurn,
+          teamsCount,
+          sourceCard: "THE_EMPEROR",
+        });
       }
       let firstTileHeartMaxed = false;
       if (firstTile.givesHeart) {
@@ -3221,9 +3506,16 @@ export function handleFlipCard({
         finalDelta = 0;
       } else if (firstTile.effectType === "STEAL_POINTS") {
         const stealAmount = firstTile.deltaPoints || state.baseQuestionPoints || 10;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
+        const curTurn = state.currentTurnIndex || 0;
+        const eligibleTeams = (allTeams || []).filter((t) => {
+          if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+          if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+          const imm = state.teamImmunities?.[t.id];
+          if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+            return false;
+          }
+          return true;
+        });
         if (eligibleTeams.length > 0) {
           state.phase = "STEAL_TARGET_SELECT";
           state.pendingSteal = {
@@ -3249,18 +3541,37 @@ export function handleFlipCard({
         const promoSteal = calculatePromoSteal5({
           activeTeamId: team.id,
           allTeams,
+          timesStolenInCycle: state.timesStolenInCycle,
+          teamShields: state.teamShields,
+          teamImmunities: state.teamImmunities,
+          currentTurnIndex: state.currentTurnIndex || 0,
         });
+        if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+          delete state.teamShields[promoSteal.shieldConsumedVictimId];
+        }
         if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
           victimTeamId = promoSteal.victimTeamId;
           victimTeamName = promoSteal.victimTeamName;
           stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
           finalDelta += promoSteal.stolenPoints;
+          if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+          state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
         }
       }
 
       state.phase = "TURN_SUMMARY";
       state.turnFinishedReason = "PAIR_MATCHED";
       state.potPoints = 0;
+
+      if (finalDelta > 0) {
+        const heartsRecord = { ...(state.teamHearts || {}) };
+        const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+        const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+        if (curHearts < maxHearts) {
+          heartsRecord[team.id] = curHearts + 1;
+          state.teamHearts = heartsRecord;
+        }
+      }
 
       const oldScore = team.score || 0;
       const newScore = oldScore + finalDelta;
@@ -3661,6 +3972,9 @@ export function handleFlipCard({
       if (isNegative) {
         if (state.hasShield && !state.isPenaltySurvivalMode) {
           state.hasShield = false;
+          if (state.teamShields && team.id) {
+            delete state.teamShields[team.id];
+          }
           tile.isOpened = true;
           osState.chosenFinalDoorId = undefined;
           osState.phase = "OPEN_FINAL";
@@ -3803,14 +4117,13 @@ export function handleFlipCard({
           state.hasShield = true;
           const teamsCount = Math.max(1, allTeams?.length || 2);
           const curTurn = state.currentTurnIndex || 0;
-          state.teamShields = {
-            ...(state.teamShields || {}),
-            [team.id]: {
-              activeFromTurnIndex: curTurn + 1,
-              expiresAfterTurnIndex: curTurn + teamsCount,
-              sourceCard: "THE_EMPEROR",
-            },
-          };
+          grantShieldToTeam({
+            state,
+            teamId: team.id,
+            curTurn,
+            teamsCount,
+            sourceCard: "THE_EMPEROR",
+          });
         }
         let tileHeartMaxed = false;
         if (tile.givesHeart) {
@@ -3844,9 +4157,16 @@ export function handleFlipCard({
 
         if (tile.effectType === "STEAL_POINTS") {
           const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
-          const eligibleTeams = (allTeams || []).filter(
-            (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-          );
+          const curTurn = state.currentTurnIndex || 0;
+          const eligibleTeams = (allTeams || []).filter((t) => {
+            if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+            if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+            const imm = state.teamImmunities?.[t.id];
+            if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+              return false;
+            }
+            return true;
+          });
           if (eligibleTeams.length > 0) {
             state.phase = "STEAL_TARGET_SELECT";
             state.pendingSteal = {
@@ -3874,18 +4194,37 @@ export function handleFlipCard({
           const promoSteal = calculatePromoSteal5({
             activeTeamId: team.id,
             allTeams,
+            timesStolenInCycle: state.timesStolenInCycle,
+            teamShields: state.teamShields,
+            teamImmunities: state.teamImmunities,
+            currentTurnIndex: state.currentTurnIndex || 0,
           });
+          if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+            delete state.teamShields[promoSteal.shieldConsumedVictimId];
+          }
           if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
             victimTeamId = promoSteal.victimTeamId;
             victimTeamName = promoSteal.victimTeamName;
             stolenPoints = promoSteal.stolenPoints;
             finalDelta += promoSteal.stolenPoints;
+            if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+            state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
           }
         }
 
         state.potPoints = 0;
         state.phase = "TURN_SUMMARY";
         state.turnFinishedReason = "DOOR_CHOSEN";
+
+        if (finalDelta > 0) {
+          const heartsRecord = { ...(state.teamHearts || {}) };
+          const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+          const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+          if (curHearts < maxHearts) {
+            heartsRecord[team.id] = curHearts + 1;
+            state.teamHearts = heartsRecord;
+          }
+        }
 
         const oldScore = team.score || 0;
         const newScore = oldScore + finalDelta;
@@ -3973,6 +4312,9 @@ export function handleFlipCard({
       // Shield Protection Check:
       if (state.hasShield && !state.isPenaltySurvivalMode) {
         state.hasShield = false;
+        if (state.teamShields && team.id) {
+          delete state.teamShields[team.id];
+        }
         tile.isOpened = true;
         state.storyResult = {
           teamId: team.id,
@@ -4032,9 +4374,16 @@ export function handleFlipCard({
 
       if (tile.effectType === "STEAL_POINTS") {
         const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
-        const eligibleTeams = (allTeams || []).filter(
-          (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-        );
+        const curTurn = state.currentTurnIndex || 0;
+        const eligibleTeams = (allTeams || []).filter((t) => {
+          if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+          if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+          const imm = state.teamImmunities?.[t.id];
+          if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+            return false;
+          }
+          return true;
+        });
         if (eligibleTeams.length > 0) {
           state.phase = "STEAL_TARGET_SELECT";
           state.pendingSteal = {
@@ -4060,12 +4409,21 @@ export function handleFlipCard({
         const promoSteal = calculatePromoSteal5({
           activeTeamId: team.id,
           allTeams,
+          timesStolenInCycle: state.timesStolenInCycle,
+          teamShields: state.teamShields,
+          teamImmunities: state.teamImmunities,
+          currentTurnIndex: state.currentTurnIndex || 0,
         });
+        if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+          delete state.teamShields[promoSteal.shieldConsumedVictimId];
+        }
         if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
           victimTeamId = promoSteal.victimTeamId;
           victimTeamName = promoSteal.victimTeamName;
           stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
           finalDelta += promoSteal.stolenPoints;
+          if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+          state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
         }
       }
 
@@ -4256,6 +4614,9 @@ export function handleFlipCard({
   if (isBombCard) {
     if (state.hasShield) {
       state.hasShield = false;
+      if (state.teamShields && team.id) {
+        delete state.teamShields[team.id];
+      }
       tile.isOpened = true;
       state.cardsFlippedCount = (state.cardsFlippedCount || 0) + 1;
       state.lastFlippedTile = tile;
@@ -4369,9 +4730,16 @@ export function handleFlipCard({
     state.potPoints = (basePts * 2) + extraPotBonus;
   } else if (tile.effectType === "STEAL_POINTS") {
     const stealAmount = tile.deltaPoints || state.baseQuestionPoints || 10;
-    const eligibleTeams = (allTeams || []).filter(
-      (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-    );
+    const curTurn = state.currentTurnIndex || 0;
+    const eligibleTeams = (allTeams || []).filter((t) => {
+      if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+      if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+      const imm = state.teamImmunities?.[t.id];
+      if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+        return false;
+      }
+      return true;
+    });
     if (eligibleTeams.length > 0) {
       state.phase = "STEAL_TARGET_SELECT";
       state.pendingSteal = {
@@ -4439,6 +4807,11 @@ export function handleCashOut({
   victimTeamName?: string;
   stolenPoints?: number;
 } {
+  const currentTeamHearts = state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 0;
+  if (currentTeamHearts <= 0 && (state.cardsFlippedCount || 0) < 3) {
+    throw new Error("Chế độ Sinh Tử (0 ❤️): Cần lật tối thiểu 3 thẻ an toàn mới được phép Chốt Điểm!");
+  }
+
   let finalScoreDelta = state.potPoints;
 
   // Reset chuỗi nổ bom của đội hiện tại vì đã Cash Out thành công
@@ -4466,12 +4839,25 @@ export function handleCashOut({
         targetPoints: state.stolenPointsPot,
         maxCap: 25,
         timesStolenInCycle: state.timesStolenInCycle,
+        teamShields: state.teamShields,
+        teamImmunities: state.teamImmunities,
+        currentTurnIndex: state.currentTurnIndex || 0,
       });
-      if (stealCalc.victimTeamId && stealCalc.stolenPoints > 0) {
+      if (stealCalc.shieldConsumedVictimId && state.teamShields) {
+        if (stealCalc.remainingShieldHp === 0) {
+          delete state.teamShields[stealCalc.shieldConsumedVictimId];
+        } else if (state.teamShields[stealCalc.shieldConsumedVictimId]) {
+          state.teamShields[stealCalc.shieldConsumedVictimId].hp = stealCalc.remainingShieldHp;
+        }
+      }
+      if (stealCalc.victimTeamId) {
         victimTeamId = stealCalc.victimTeamId;
         victimTeamName = stealCalc.victimTeamName;
         stolenPoints = stealCalc.stolenPoints;
         stealProtectionNote = stealCalc.protectionNote;
+        if (stealCalc.isShieldBlocked) {
+          finalScoreDelta = Math.max(0, finalScoreDelta - state.stolenPointsPot);
+        }
       }
     }
   }
@@ -4483,7 +4869,17 @@ export function handleCashOut({
       activeTeamId: team.id,
       allTeams,
       timesStolenInCycle: state.timesStolenInCycle,
+      teamShields: state.teamShields,
+      teamImmunities: state.teamImmunities,
+      currentTurnIndex: state.currentTurnIndex || 0,
     });
+    if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+      if (promoSteal.remainingShieldHp === 0) {
+        delete state.teamShields[promoSteal.shieldConsumedVictimId];
+      } else if (state.teamShields[promoSteal.shieldConsumedVictimId]) {
+        state.teamShields[promoSteal.shieldConsumedVictimId].hp = promoSteal.remainingShieldHp;
+      }
+    }
     if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
       promoStealDetails = { victimName: promoSteal.victimTeamName, stolen: promoSteal.stolenPoints };
       finalScoreDelta += promoSteal.stolenPoints;
@@ -4493,12 +4889,16 @@ export function handleCashOut({
         victimTeamId = promoSteal.victimTeamId;
         victimTeamName = promoSteal.victimTeamName;
         stolenPoints = promoSteal.stolenPoints;
+      } else {
+        // promoSteal nhắm vào đối thủ khác với stolenPointsPot
+        if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+        state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
       }
     }
   }
 
-  // Ghi nhận số lần bị cướp trong chu kỳ của nạn nhân
-  if (victimTeamId) {
+  // Ghi nhận số lần bị cướp trong chu kỳ của nạn nhân (chỉ khi thực sự bị trừ điểm > 0)
+  if (victimTeamId && (stolenPoints || 0) > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
     state.timesStolenInCycle[victimTeamId] = (state.timesStolenInCycle[victimTeamId] || 0) + 1;
   }
@@ -4511,11 +4911,11 @@ export function handleCashOut({
   state.potPoints = 0; // Reset to 0 immediately upon cashing out!
   state.stolenPointsPot = 0;
 
-  // Hồi phục +1 Tim khi trả lời đúng và kết thúc lượt nhận điểm cộng (không vượt quá maxHearts)
-  if (finalScoreDelta > 0 && !state.isPenaltySurvivalMode) {
+  // Hồi phục +1 Tim khi chơi minigame được cộng điểm (dù trong bối cảnh nào, gồm cả hồi sinh từ 0 tim)
+  if (finalScoreDelta > 0) {
     const heartsRecord = { ...(state.teamHearts || {}) };
     const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[team.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
@@ -4700,55 +5100,82 @@ export function handleChooseStealTarget({
     victimImmunity && curTurn >= victimImmunity.activeFromTurnIndex && curTurn <= victimImmunity.expiresAfterTurnIndex
   );
 
-  // PHÁN QUYẾT (Judgement): Phá vỡ khiên thần của đối thủ (không phá được Bùa Miễn Nhiễm)!
-  const isJudgementBreak = Boolean(pending?.breakVictimShield && victimShield && !isImmunityActive);
-  if (isJudgementBreak && victimTeamId && state.teamShields) {
-    delete state.teamShields[victimTeamId];
-  }
+  // PHÁN QUYẾT (Judgement) hoặc Phá Giáp: Phá vỡ khiên của đối thủ!
+  const isJudgementBreak = Boolean((pending?.breakVictimShield || pending?.isShieldShatter) && victimShield && !isImmunityActive);
+  const isArmorPiercing = Boolean(pending?.isArmorPiercing);
 
-  const isEmperorShieldActive = !isJudgementBreak && !isImmunityActive && Boolean(
-    victimShield && curTurn >= victimShield.activeFromTurnIndex && curTurn <= victimShield.expiresAfterTurnIndex
-  );
-
+  let protectionNote = "";
   if (isImmunityActive && victimTeamId) {
     stolenPoints = 0; // Bùa Miễn Nhiễm chặn đứng 100% vụ cướp điểm, không bị phá hủy
-  } else if (isEmperorShieldActive && victimTeamId) {
-    if (state.teamShields) {
-      delete state.teamShields[victimTeamId]; // Tiêu hao khiên
+    protectionNote = ` (🌙 BÙA MIỄN NHIỄM: Đội ${victimTeamName} hoàn toàn miễn nhiễm trước mọi loại cướp điểm, 0đ mất mát!)`;
+  } else if (victimTeamId && timesStolen >= 2) {
+    stolenPoints = 0; // Đã bị cướp >= 2 lần trong chu kỳ: hoàn toàn miễn nhiễm
+    protectionNote = ` (🛡️ MIỄN NHIỄM CƯỚP: Đội ${victimTeamName} đã bị cướp 2 lần trong vòng, hoàn toàn miễn nhiễm cướp điểm!)`;
+  } else if (victimTeamId) {
+    let targetDeduction = rawStolenPoints;
+    if (timesStolen === 1) {
+      targetDeduction = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
+      isHalfProtected = true;
     }
-    stolenPoints = 0;
-  } else if (victimTeamId && timesStolen === 1) {
-    stolenPoints = Math.max(5, roundToMultipleOfFive(rawStolenPoints * 0.5));
-    isHalfProtected = true;
+
+    const absorption = absorbDamageWithShield({
+      teamShields: state.teamShields,
+      victimTeamId,
+      victimTeamName,
+      damage: targetDeduction,
+      currentTurnIndex: curTurn,
+      isArmorPiercing,
+      isShieldShatter: isJudgementBreak,
+    });
+
+    if (absorption.isShieldBlocked) {
+      stolenPoints = 0;
+    } else {
+      stolenPoints = absorption.effectiveDamage;
+    }
+
+    if (absorption.shieldConsumedVictimId) {
+      if (absorption.remainingShieldHp === 0 && state.teamShields) {
+        delete state.teamShields[victimTeamId];
+      }
+    } else if (state.teamShields && state.teamShields[victimTeamId]) {
+      state.teamShields[victimTeamId].hp = absorption.remainingShieldHp;
+    }
+
+    if (absorption.protectionNote) {
+      protectionNote = ` (${absorption.protectionNote})`;
+    } else if (isHalfProtected) {
+      protectionNote = ` (Khiên Chống Vắt Kiệt: Đội ${victimTeamName} đã bị cướp lần 2 trong vòng, chỉ bị trừ 50%!)`;
+    }
   }
 
-  if (victimTeamId) {
+  // Chỉ ghi nhận tăng số lần bị cướp nếu thực sự bị trừ điểm (> 0).
+  // Đối với PUSH_YOUR_LUCK, điểm cướp mới nạp vào pot, chỉ trừ và ghi nhận khi Cash Out thành công.
+  if (victimTeamId && stolenPoints > 0 && state.miniGameType !== "PUSH_YOUR_LUCK") {
     state.timesStolenInCycle[victimTeamId] = timesStolen + 1;
   }
 
   // TÁC ĐỘNG TÀI NGUYÊN (KHIÊN / TIM)
   // 1. Cấp khiên cho bản thân (The Lovers, The World)
   if (pending?.grantShieldSelf && activeTeam) {
-    state.teamShields = {
-      ...(state.teamShields || {}),
-      [activeTeam.id]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: pending.sourceCardKey || "TAROT",
-      },
-    };
+    grantShieldToTeam({
+      state,
+      teamId: activeTeam.id,
+      curTurn,
+      teamsCount,
+      sourceCard: pending.sourceCardKey || "TAROT",
+    });
   }
 
   // 2. Cấp khiên cho nạn nhân (The Lovers)
   if (pending?.grantShieldVictim && victimTeamId) {
-    state.teamShields = {
-      ...(state.teamShields || {}),
-      [victimTeamId]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: pending.sourceCardKey || "THE_LOVERS",
-      },
-    };
+    grantShieldToTeam({
+      state,
+      teamId: victimTeamId,
+      curTurn,
+      teamsCount,
+      sourceCard: pending.sourceCardKey || "THE_LOVERS",
+    });
   }
 
   // 3. Hồi 1 tim cho bản thân (The Empress)
@@ -4761,16 +5188,6 @@ export function handleChooseStealTarget({
       state.teamHearts = heartsRecord;
     }
   }
-
-  const protectionNote = isImmunityActive
-    ? ` (🌙 BÙA MIỄN NHIỄM: Đội ${victimTeamName} hoàn toàn miễn nhiễm trước mọi loại cướp điểm, 0đ mất mát!)`
-    : isJudgementBreak
-    ? ` (⚡ PHÁ KHIÊN: Phán Quyết đã phá vỡ hoàn toàn Khiên Thần của Đội ${victimTeamName}!)`
-    : isEmperorShieldActive
-    ? ` (🛡️ KHIÊN HOÀNG ĐẾ: Đội ${victimTeamName} đã kích hoạt Khiên Thần chặn đứng vụ cướp điểm, 0đ mất mát!)`
-    : isHalfProtected
-    ? ` (Khiên Chống Vắt Kiệt: Đội ${victimTeamName} đã bị cướp lần 2 trong vòng, chỉ bị trừ 50%!)`
-    : "";
 
   if (state.miniGameType === "PUSH_YOUR_LUCK") {
     // Trong Push-your-luck, cướp điểm nạp vào quỹ pot và tiếp tục chơi
@@ -4838,11 +5255,11 @@ export function handleChooseStealTarget({
   const oldScore = activeTeam?.score || 0;
   const newScore = oldScore + finalScoreDelta;
 
-  // Hồi phục +1 Tim khi trả lời đúng nhận điểm cộng (nếu chưa được hồi bởi healHeartSelf)
-  if (activeTeam && finalScoreDelta > 0 && !pending?.healHeartSelf && !state.isPenaltySurvivalMode) {
+  // Hồi phục +1 Tim khi nhận điểm cộng (dù trong bối cảnh nào, nếu chưa được hồi bởi healHeartSelf)
+  if (activeTeam && finalScoreDelta > 0 && !pending?.healHeartSelf) {
     const heartsRecord = { ...(state.teamHearts || {}) };
     const maxHearts = state.teamMaxHearts?.[activeTeam.id] ?? state.initialHeartsPerTeam ?? 3;
-    const curHearts = heartsRecord[activeTeam.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[activeTeam.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[activeTeam.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
@@ -5156,6 +5573,9 @@ export function handleOneShotDoorsDecision({
   if (isNegative) {
     if (state.hasShield && !state.isPenaltySurvivalMode) {
       state.hasShield = false;
+      if (state.teamShields && team.id) {
+        delete state.teamShields[team.id];
+      }
       chosenTile.isOpened = true;
       if (osState.selectedDoorIds) {
         osState.selectedDoorIds = osState.selectedDoorIds.filter((id) => id !== doorIdToOpen);
@@ -5302,14 +5722,13 @@ export function handleOneShotDoorsDecision({
       state.hasShield = true;
       const teamsCount = Math.max(1, allTeams?.length || 2);
       const curTurn = state.currentTurnIndex || 0;
-      state.teamShields = {
-        ...(state.teamShields || {}),
-        [team.id]: {
-          activeFromTurnIndex: curTurn + 1,
-          expiresAfterTurnIndex: curTurn + teamsCount,
-          sourceCard: "THE_EMPEROR",
-        },
-      };
+      grantShieldToTeam({
+        state,
+        teamId: team.id,
+        curTurn,
+        teamsCount,
+        sourceCard: "THE_EMPEROR",
+      });
     }
     let chosenTileHeartMaxed = false;
     if (chosenTile.givesHeart) {
@@ -5344,9 +5763,16 @@ export function handleOneShotDoorsDecision({
 
     if (chosenTile.effectType === "STEAL_POINTS") {
       const stealAmount = chosenTile.deltaPoints || state.baseQuestionPoints || 10;
-      const eligibleTeams = (allTeams || []).filter(
-        (t) => t.id !== team.id && !t.isEliminated && (t.score || 0) >= stealAmount
-      );
+      const curTurn = state.currentTurnIndex || 0;
+      const eligibleTeams = (allTeams || []).filter((t) => {
+        if (t.id === team.id || t.isEliminated || (t.score || 0) < stealAmount) return false;
+        if ((state.timesStolenInCycle?.[t.id] ?? 0) >= 2) return false;
+        const imm = state.teamImmunities?.[t.id];
+        if (imm && curTurn >= imm.activeFromTurnIndex && curTurn <= imm.expiresAfterTurnIndex) {
+          return false;
+        }
+        return true;
+      });
       if (eligibleTeams.length > 0) {
         state.phase = "STEAL_TARGET_SELECT";
         state.pendingSteal = {
@@ -5373,18 +5799,37 @@ export function handleOneShotDoorsDecision({
       const promoSteal = calculatePromoSteal5({
         activeTeamId: team.id,
         allTeams,
+        timesStolenInCycle: state.timesStolenInCycle,
+        teamShields: state.teamShields,
+        teamImmunities: state.teamImmunities,
+        currentTurnIndex: state.currentTurnIndex || 0,
       });
+      if (promoSteal.shieldConsumedVictimId && state.teamShields) {
+        delete state.teamShields[promoSteal.shieldConsumedVictimId];
+      }
       if (promoSteal.victimTeamId && promoSteal.stolenPoints > 0) {
         victimTeamId = promoSteal.victimTeamId;
         victimTeamName = promoSteal.victimTeamName;
         stolenPoints = (stolenPoints || 0) + promoSteal.stolenPoints;
         finalDelta += promoSteal.stolenPoints;
+        if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
+        state.timesStolenInCycle[promoSteal.victimTeamId] = (state.timesStolenInCycle[promoSteal.victimTeamId] || 0) + 1;
       }
     }
 
     state.potPoints = 0;
     state.phase = "TURN_SUMMARY";
     state.turnFinishedReason = "DOOR_CHOSEN";
+
+    if (finalDelta > 0) {
+      const heartsRecord = { ...(state.teamHearts || {}) };
+      const maxHearts = state.teamMaxHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 3;
+      const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
+      if (curHearts < maxHearts) {
+        heartsRecord[team.id] = curHearts + 1;
+        state.teamHearts = heartsRecord;
+      }
+    }
 
     const oldScore = team.score || 0;
     const newScore = oldScore + finalDelta;
@@ -5487,6 +5932,9 @@ export function handleAncientTarotDraw({
     timesStolenInCycle: state.timesStolenInCycle,
     currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
     maxHearts: state.initialHeartsPerTeam ?? 3,
+    currentTurnIndex: state.currentTurnIndex || 0,
+    teamShields: state.teamShields,
+    teamImmunities: state.teamImmunities,
   });
 
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText } = effectResult;
@@ -5495,6 +5943,9 @@ export function handleAncientTarotDraw({
   const isNegative = isBomb || scorePenalty > 0 || drawnCard.scoreDelta < 0;
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
+    if (state.teamShields && team.id) {
+      delete state.teamShields[team.id];
+    }
     state.potPoints = 0;
     state.phase = "PUSH_YOUR_LUCK";
     state.turnFinishedReason = undefined;
@@ -5523,6 +5974,11 @@ export function handleAncientTarotDraw({
       drawnCard,
       scoreDeltas: [],
     };
+  }
+
+  // Tiêu hao khiên thần của nạn nhân nếu bị phá vỡ hoặc đã hấp thụ cướp điểm
+  if (effectResult.brokenShieldTeamId && state.teamShields) {
+    delete state.teamShields[effectResult.brokenShieldTeamId];
   }
 
   // Ghi nhận số lần bị cướp trong chu kỳ của nạn nhân (nếu là lá Cướp điểm)
@@ -5950,6 +6406,7 @@ export function resolveWheelCardEffect({
   targetVictimTeamId,
   currentTurnIndex = 0,
   teamImmunities,
+  teamShields,
 }: {
   cardKey: AncientTarotCardKey;
   basePoints: number;
@@ -5966,6 +6423,7 @@ export function resolveWheelCardEffect({
   targetVictimTeamId?: string;
   currentTurnIndex?: number;
   teamImmunities?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
+  teamShields?: Record<string, { activeFromTurnIndex: number; expiresAfterTurnIndex: number; sourceCard?: string }>;
 }): {
   drawnCard: AncientTarotDrawnCard;
   finalScoreDelta: number;
@@ -6674,7 +7132,14 @@ export function resolveWheelCardEffect({
 
       const maxAllowedSteals = isChariot ? 1 : 2;
       const opponentsWithPoints = otherTeams.filter((t) => (t.score || 0) > 0);
-      const eligibleOpponents = opponentsWithPoints.filter((t) => (timesStolenInCycle[t.id] ?? 0) < maxAllowedSteals);
+      const eligibleOpponents = opponentsWithPoints.filter((t) => {
+        if ((timesStolenInCycle[t.id] ?? 0) >= maxAllowedSteals) return false;
+        const imm = teamImmunities?.[t.id];
+        if (imm && currentTurnIndex >= imm.activeFromTurnIndex && currentTurnIndex <= imm.expiresAfterTurnIndex) {
+          return false;
+        }
+        return true;
+      });
 
       // Nếu không có đối thủ hợp lệ để cướp -> trợ cấp an toàn từ hệ thống
       if (eligibleOpponents.length === 0) {
@@ -6730,20 +7195,36 @@ export function resolveWheelCardEffect({
       let targetSteal = nominalSteal;
       let halfNote = "";
 
-      if (!isChariot && timesStolen === 1) {
-        targetSteal = Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5));
-        halfNote = ` (Đội ${victim.name} đã bị cướp 1 lần: chỉ bị trừ 50% định mức)`;
+      // Kiểm tra Khiên Thần của nạn nhân (nếu không phải bị phá bởi Judgement)
+      const victimShield = teamShields?.[victim.id];
+      const isShieldActive = !isJudgement && Boolean(
+        victimShield &&
+        currentTurnIndex >= victimShield.activeFromTurnIndex &&
+        currentTurnIndex <= victimShield.expiresAfterTurnIndex
+      );
+
+      let actualStolen = 0;
+      let isShieldBlocked = false;
+
+      if (isShieldActive) {
+        actualStolen = 0;
+        isShieldBlocked = true;
+      } else {
+        if (!isChariot && timesStolen === 1) {
+          targetSteal = Math.max(5, roundToMultipleOfFive(nominalSteal * 0.5));
+          halfNote = ` (Đội ${victim.name} đã bị cướp 1 lần: chỉ bị trừ 50% định mức)`;
+        }
+        actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       }
 
-      const actualStolen = Math.min(targetSteal, victimScore, nominalSteal);
       const totalDelta = baseBonus + actualStolen;
 
       const scoreDeltas: Array<{ teamId: string; delta: number }> = [
         { teamId: team.id, delta: totalDelta },
-        { teamId: victim.id, delta: -actualStolen },
+        ...(actualStolen > 0 ? [{ teamId: victim.id, delta: -actualStolen }] : []),
       ];
 
-      const brokenShieldTeamId = isJudgement ? victim.id : undefined;
+      const brokenShieldTeamId = (isJudgement || isShieldActive) ? victim.id : undefined;
       const shieldsGrantedTeamIds = isLovers
         ? [team.id, victim.id]
         : isWorld
@@ -6751,17 +7232,21 @@ export function resolveWheelCardEffect({
         : undefined;
       const heartsHealedTeamIds = isEmpress ? [team.id] : undefined;
 
-      let rewardText = `🗡️ ${seg.nameVi} (${seg.nameEn}): Cướp thành công +${actualStolen}đ từ ${victim.name} (-${actualStolen}đ)${halfNote}!`;
-      if (isEmpress) {
-        rewardText = `🌸 ${seg.nameVi} (${seg.nameEn}): Vương Quyền Trù Phú! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và hồi phục +1 Trái Tim ❤️!`;
-      } else if (isLovers) {
-        rewardText = `💞 ${seg.nameVi} (${seg.nameEn}): Duyên Nợ Trói Buộc! Nhận +${baseBonus}đ (x1.5), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và CẢ HAI cùng nhận Khiên Thần 🛡️!`;
-      } else if (isJudgement) {
-        rewardText = `📯 ${seg.nameVi} (${seg.nameEn}): Phán Quyết Trừng Phạt! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và PHÁ KHIÊN 🛡️ của đối thủ nếu có!`;
-      } else if (isWorld) {
-        rewardText = `🌍 ${seg.nameVi} (${seg.nameEn}): Bá Chủ Thế Giới! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng tròn +${totalDelta}đ) và nhận 1 Khiên Thần 🛡️!`;
-      } else if (isDeath) {
-        rewardText = `💀 ${seg.nameVi} (${seg.nameEn}): Đoạt Mệnh Tối Hậu! Cướp trọn vẹn +${actualStolen}đ (100% điểm gốc) từ ${victim.name} (-${actualStolen}đ)${halfNote}!`;
+      let rewardText = isShieldBlocked
+        ? `🛡️ ${seg.nameVi} (${seg.nameEn}): Đội ${victim.name} đã kích hoạt Khiên Thần chặn đứng đòn cướp điểm, 0đ mất mát! Bạn nhận +${totalDelta}đ an toàn!`
+        : `🗡️ ${seg.nameVi} (${seg.nameEn}): Cướp thành công +${actualStolen}đ từ ${victim.name} (-${actualStolen}đ)${halfNote}!`;
+      if (!isShieldBlocked) {
+        if (isEmpress) {
+          rewardText = `🌸 ${seg.nameVi} (${seg.nameEn}): Vương Quyền Trù Phú! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và hồi phục +1 Trái Tim ❤️!`;
+        } else if (isLovers) {
+          rewardText = `💞 ${seg.nameVi} (${seg.nameEn}): Duyên Nợ Trói Buộc! Nhận +${baseBonus}đ (x1.5), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và CẢ HAI cùng nhận Khiên Thần 🛡️!`;
+        } else if (isJudgement) {
+          rewardText = `📯 ${seg.nameVi} (${seg.nameEn}): Phán Quyết Trừng Phạt! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng +${totalDelta}đ) và PHÁ KHIÊN 🛡️ của đối thủ nếu có!`;
+        } else if (isWorld) {
+          rewardText = `🌍 ${seg.nameVi} (${seg.nameEn}): Bá Chủ Thế Giới! Nhận +${baseBonus}đ (x1), cướp +${actualStolen}đ từ ${victim.name} (tổng tròn +${totalDelta}đ) và nhận 1 Khiên Thần 🛡️!`;
+        } else if (isDeath) {
+          rewardText = `💀 ${seg.nameVi} (${seg.nameEn}): Đoạt Mệnh Tối Hậu! Cướp trọn vẹn +${actualStolen}đ (100% điểm gốc) từ ${victim.name} (-${actualStolen}đ)${halfNote}!`;
+        }
       }
 
       return {
@@ -6890,6 +7375,7 @@ export function handleAncientTarotSpinWheel({
     maxHearts,
     currentTurnIndex: state.currentTurnIndex || 0,
     teamImmunities: state.teamImmunities,
+    teamShields: state.teamShields,
   });
 
   const { drawnCard, finalScoreDelta, scorePenalty, isBomb, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
@@ -6899,6 +7385,9 @@ export function handleAncientTarotSpinWheel({
 
   if (state.hasShield && isNegative && !isSurvivalMode) {
     state.hasShield = false;
+    if (state.teamShields && team.id) {
+      delete state.teamShields[team.id];
+    }
     state.potPoints = 0;
     // Giữ phase = "PUSH_YOUR_LUCK" trong khi chờ người chơi bấm Lật Bài Định Mệnh (isRevealPending: true)
     state.phase = "PUSH_YOUR_LUCK";
@@ -6944,6 +7433,11 @@ export function handleAncientTarotSpinWheel({
     };
   }
 
+  // Tiêu hao khiên thần của nạn nhân nếu bị phá vỡ hoặc đã hấp thụ cướp điểm
+  if (effectResult.brokenShieldTeamId && state.teamShields) {
+    delete state.teamShields[effectResult.brokenShieldTeamId];
+  }
+
   // Ghi nhận số lần bị cướp trong chu kỳ của nạn nhân (nếu là lá Cướp điểm)
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {
     if (!state.timesStolenInCycle) state.timesStolenInCycle = {};
@@ -6987,14 +7481,13 @@ export function handleAncientTarotSpinWheel({
     state.hasShield = true;
     const teamsCount = Math.max(1, allTeams?.length || 2);
     const curTurn = state.currentTurnIndex || 0;
-    state.teamShields = {
-      ...(state.teamShields || {}),
-      [team.id]: {
-        activeFromTurnIndex: curTurn + 1,
-        expiresAfterTurnIndex: curTurn + teamsCount,
-        sourceCard: "THE_EMPEROR",
-      },
-    };
+    grantShieldToTeam({
+      state,
+      teamId: team.id,
+      curTurn,
+      teamsCount,
+      sourceCard: "THE_EMPEROR",
+    });
   }
 
   // Khởi tạo pendingSteal cho 6 lá bài cướp có quyền tự chọn mục tiêu
@@ -7044,24 +7537,24 @@ export function handleAncientTarotSpinWheel({
     }
   }
 
-  // CƠ CHẾ HỒI PHỤC TIM: Trả lời đúng nhận điểm cộng -> Hồi phục +1 Tim (nếu không phải gamble hoặc steal choice)
-  if (!isNegative && effectiveFinalDelta > 0 && !isGambleTrigger && !isStealChoiceCard && !isSurvivalMode) {
+  // CƠ CHẾ HỒI PHỤC TIM: Chơi minigame nhận điểm cộng -> Luôn hồi phục +1 Tim (dù trong bối cảnh nào, tối đa maxHearts)
+  if (!isNegative && effectiveFinalDelta > 0 && !isGambleTrigger && !isStealChoiceCard) {
     const heartsRecord = { ...(state.teamHearts || {}) };
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     if (curHearts < maxHearts) {
       heartsRecord[team.id] = curHearts + 1;
       state.teamHearts = heartsRecord;
     }
   }
 
-  // CƠ CHẾ TRỪ TIM SINH TỬ: Dính ô trừ điểm trong chế độ Sinh Tử -> trừ -1 ❤️
-  if (isSurvivalMode && drawnCard.key !== "THE_PEACE" && (isBomb || scorePenalty > 0 || effectiveFinalDelta < 0)) {
+  // CƠ CHẾ TRỪ TIM: Rơi vào ô bị trừ điểm -> trừ -1 ❤️
+  if (drawnCard.key !== "THE_PEACE" && (isBomb || scorePenalty > 0 || effectiveFinalDelta < 0)) {
     const heartsRecord = { ...(state.teamHearts || {}) };
-    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 1;
+    const curHearts = heartsRecord[team.id] ?? state.initialHeartsPerTeam ?? 0;
     const newHearts = Math.max(0, curHearts - 1);
     heartsRecord[team.id] = newHearts;
     state.teamHearts = heartsRecord;
-    effectiveRewardText += ` (Mất -1 ❤️ Sinh Tử, còn ${newHearts} ❤️)`;
+    effectiveRewardText += ` (Mất -1 ❤️, còn ${newHearts} ❤️)`;
   }
 
   state.potPoints = 0;
@@ -7290,11 +7783,19 @@ export function handleAncientTarotGambleDecision({
     timesStolenInCycle: state.timesStolenInCycle,
     currentHearts: state.teamHearts?.[team.id] ?? state.initialHeartsPerTeam ?? 1,
     maxHearts: state.initialHeartsPerTeam ?? 3,
+    currentTurnIndex: state.currentTurnIndex || 0,
+    teamImmunities: state.teamImmunities,
+    teamShields: state.teamShields,
   });
 
   const { drawnCard, finalScoreDelta, isBomb, scorePenalty, scoreDeltas, rewardText, isGambleTrigger } = effectResult;
   const isGambleAgain = Boolean(isGambleTrigger);
   const isNegative = isBomb || scorePenalty > 0 || drawnCard.scoreDelta < 0;
+
+  // Tiêu hao khiên thần của nạn nhân nếu bị phá vỡ hoặc đã hấp thụ cướp điểm
+  if (effectResult.brokenShieldTeamId && state.teamShields) {
+    delete state.teamShields[effectResult.brokenShieldTeamId];
+  }
 
   // Ghi nhận số lần bị cướp trong chu kỳ của nạn nhân (nếu là lá Cướp điểm)
   if (!isNegative && effectResult.victimTeamId && effectResult.stolenPoints && effectResult.stolenPoints > 0) {

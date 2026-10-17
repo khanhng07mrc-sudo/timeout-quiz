@@ -189,6 +189,47 @@ export default function GameModeIcon({ mode, className = "w-8 h-8", size, disabl
         </svg>
       );
 
+    case "MAGIC_WHEEL":
+      return (
+        <svg
+          viewBox="0 0 64 64"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          className={className}
+          style={sizeStyle}
+        >
+          <defs>
+            <linearGradient id="gmi_wheel_bg" x1="6" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#ec4899" />
+              <stop offset="50%" stopColor="#8b5cf6" />
+              <stop offset="100%" stopColor="#06b6d4" />
+            </linearGradient>
+            <filter id="gmi_wheel_sh" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="3" stdDeviation="3" floodColor="#ec4899" floodOpacity="0.5" />
+            </filter>
+          </defs>
+          <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#gmi_wheel_bg)" filter="url(#gmi_wheel_sh)" />
+          <rect x="4" y="4" width="56" height="56" rx="16" stroke="#ffffff" strokeOpacity="0.3" strokeWidth="1.5" />
+          {/* Wheel Outer Rim */}
+          <circle cx="32" cy="34" r="20" fill="#18182f" stroke="#fbbf24" strokeWidth="2.5" />
+          {/* Wheel Spokes / Sectors */}
+          <path d="M32 14L32 54" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" />
+          <path d="M12 34L52 34" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" />
+          <path d="M18 20L46 48" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" />
+          <path d="M18 48L46 20" stroke="#fbbf24" strokeWidth="1.2" strokeOpacity="0.8" />
+          {/* Sector Colors Pie slices */}
+          <circle cx="32" cy="34" r="16" fill="none" stroke="#f43f5e" strokeWidth="6" strokeDasharray="16 34" />
+          <circle cx="32" cy="34" r="16" fill="none" stroke="#10b981" strokeWidth="6" strokeDasharray="16 34" strokeDashoffset="12" />
+          <circle cx="32" cy="34" r="16" fill="none" stroke="#3b82f6" strokeWidth="6" strokeDasharray="16 34" strokeDashoffset="25" />
+          <circle cx="32" cy="34" r="16" fill="none" stroke="#eab308" strokeWidth="6" strokeDasharray="16 34" strokeDashoffset="38" />
+          {/* Center Hub */}
+          <circle cx="32" cy="34" r="6" fill="#fbbf24" stroke="#ffffff" strokeWidth="1.5" />
+          <circle cx="32" cy="34" r="2.5" fill="#78350f" />
+          {/* Needle / Pointer at top */}
+          <polygon points="32,15 28,9 36,9" fill="#ef4444" stroke="#ffffff" strokeWidth="1.2" />
+        </svg>
+      );
+
     case "GRID_CARO":
       return (
         <svg

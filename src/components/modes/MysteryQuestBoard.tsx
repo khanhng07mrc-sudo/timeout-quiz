@@ -1014,7 +1014,7 @@ export default function MysteryQuestBoard({
                       <div className="space-y-1 sm:space-y-1.5">
                         <div className="text-2xl sm:text-3xl">💔</div>
                         <h4 className="text-xs sm:text-sm font-black text-rose-300 uppercase tracking-wide">
-                          Phương Án 1: Mất Hết Tim
+                          Phương Án 1: Hiến Tế Toàn Bộ Tim
                         </h4>
                         <div className="py-0.5">
                           <span className="text-2xl sm:text-3xl font-black font-mono text-emerald-400">
@@ -1022,7 +1022,7 @@ export default function MysteryQuestBoard({
                           </span>
                         </div>
                         <p className="text-[10px] sm:text-xs text-white/80 leading-snug line-clamp-3">
-                          Đánh đổi toàn bộ <strong className="text-rose-400">{currentHearts} ❤️</strong> (về 0 ❤️) để kết thúc lượt ngay bây giờ. Toàn bộ <strong>{currentScore} điểm</strong> được bảo toàn nguyên vẹn.
+                          Hiến tế toàn bộ <strong className="text-rose-400">{currentHearts} ❤️</strong> (về 0 ❤️) để bảo toàn 100% <strong>{currentScore} điểm tích lũy trước đó</strong> (Điểm câu hiện tại: 0đ). Lượt sau bước vào Chế độ Sinh Tử.
                         </p>
                       </div>
 
@@ -1033,7 +1033,7 @@ export default function MysteryQuestBoard({
                             onClick={() => onSurvivalChoice?.("SACRIFICE_HEART")}
                             className="w-full py-2 sm:py-2.5 px-2 rounded-xl bg-gradient-to-r from-rose-700 to-red-600 hover:from-rose-600 hover:to-red-500 text-white font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg shadow-rose-950/60 border border-rose-400 hover:scale-[1.02] active:scale-95 transition cursor-pointer"
                           >
-                            💔 Mất Hết Tim (Giữ {currentScore}đ)
+                            💔 Hiến Tế Tim (Giữ {currentScore}đ)
                           </button>
                         ) : (
                           <div className="py-1.5 px-2 rounded-lg bg-black/40 border border-white/10 text-[10px] sm:text-xs text-slate-400 italic">
@@ -4377,25 +4377,44 @@ export default function MysteryQuestBoard({
                     <span>RÚT 1 LÁ (#{nextCardNum})</span>
                   </button>
 
-                  {canCashOut && (
-                    <button
-                      type="button"
-                      disabled={isCashingOut}
-                      onClick={() => {
-                        if (isCashingOut) return;
-                        setIsCashingOut(true);
-                        onCashOut?.();
-                      }}
-                      className={`px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-xs sm:text-sm shadow-xl border border-emerald-300 transition-all flex items-center gap-1.5 ${
-                        isCashingOut
-                          ? "opacity-60 cursor-not-allowed scale-95"
-                          : "hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
-                      }`}
-                    >
-                      <span>{isCashingOut ? "⏳" : "💰"}</span>
-                      <span>{isCashingOut ? "ĐANG CHỐT..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
-                    </button>
-                  )}
+                  {canCashOut && (() => {
+                    const activeTeamObj = teams.find((t) => t.id === currentTurnTeamId);
+                    const curTeamHearts = mysteryState?.teamHearts?.[currentTurnTeamId] ?? activeTeamObj?.hearts ?? mysteryState?.initialHeartsPerTeam ?? 0;
+                    const isSurvivalLock = curTeamHearts <= 0 && (mysteryState?.cardsFlippedCount || 0) < 3;
+                    const cardsNeeded = Math.max(0, 3 - (mysteryState?.cardsFlippedCount || 0));
+
+                    if (isSurvivalLock) {
+                      return (
+                        <div
+                          className="px-3 sm:px-4 py-2 rounded-xl bg-slate-900/90 border border-rose-500/50 text-rose-300 font-bold text-xs sm:text-sm shadow-xl flex items-center gap-1.5 opacity-90 cursor-not-allowed select-none"
+                          title="Chế độ Sinh Tử (0 ❤️): Cần lật tối thiểu 3 thẻ an toàn mới được dừng chơi!"
+                        >
+                          <span>🔒</span>
+                          <span>LẬT THÊM {cardsNeeded} THẺ ĐỂ CHỐT (+{potPoints}Đ)</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        type="button"
+                        disabled={isCashingOut}
+                        onClick={() => {
+                          if (isCashingOut) return;
+                          setIsCashingOut(true);
+                          onCashOut?.();
+                        }}
+                        className={`px-4 sm:px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-600 hover:from-emerald-500 hover:to-green-400 text-white font-black text-xs sm:text-sm shadow-xl border border-emerald-300 transition-all flex items-center gap-1.5 ${
+                          isCashingOut
+                            ? "opacity-60 cursor-not-allowed scale-95"
+                            : "hover:scale-105 active:scale-95 cursor-pointer animate-pulse"
+                        }`}
+                      >
+                        <span>{isCashingOut ? "⏳" : "💰"}</span>
+                        <span>{isCashingOut ? "ĐANG CHỐT..." : `CHỐT ĐIỂM (+${potPoints}Đ)`}</span>
+                      </button>
+                    );
+                  })()}
 
                   {canInteract && (peekUsesRemaining ?? 0) > 0 && !nextCardPeek && (
                     <button
@@ -4654,10 +4673,11 @@ export default function MysteryQuestBoard({
                   )}
                   {isShieldActive && !isImmuneActive && (
                     <span
-                      className="flex items-center gap-0.5 text-[10px] text-cyan-200 font-bold ml-1 bg-cyan-950/70 px-1.5 py-0.5 rounded-md border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.35)]"
-                      title="Khiên Thần Hộ Thể 🛡️: Hấp thụ đòn tấn công / bẫy phạt tiếp theo"
+                      className="flex items-center gap-1 text-[10px] text-cyan-200 font-bold ml-1 bg-cyan-950/80 px-2 py-0.5 rounded-md border border-cyan-400/50 shadow-[0_0_8px_rgba(6,182,212,0.35)]"
+                      title={`Khiên Hộ Thể 🛡️: Còn ${shield?.hp ?? 20}/${shield?.maxHp ?? 20} HP (Hấp thụ thiệt hại điểm)`}
                     >
-                      🛡️ Khiên
+                      <span>🛡️</span>
+                      <span>{shield?.hp ?? 20}/{shield?.maxHp ?? 20} HP</span>
                     </span>
                   )}
                   {/* Floating brief score delta indicator for Divine Eye / Mắt Thần */}

@@ -58,6 +58,13 @@ const MODE_CONFIG: Record<
     ringColor: "#fef08a",
     subGlow: "rgba(234, 179, 8, 0.7)",
   },
+  MAGIC_WHEEL: {
+    name: "Vòng Quay Tri Thức",
+    neonColor: "#ec4899",
+    auraGrad: "from-pink-500/40 via-purple-600/30 to-transparent",
+    ringColor: "#f472b6",
+    subGlow: "rgba(236, 72, 153, 0.7)",
+  },
   GRID_CARO: {
     name: "Lưới Chọn Ô & Caro",
     neonColor: "#10b981",

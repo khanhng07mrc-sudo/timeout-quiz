@@ -776,6 +776,8 @@ export interface MagicWheelSector {
   textColor: string;
   isOverlay?: boolean;
   overlayType?: "PRIZE" | "MYSTERY";
+  basePoints?: number;
+  mysteryContent?: "PRIZE_3M" | "BANKRUPT";
 }
 
 export interface MagicWheelPuzzle {
@@ -813,13 +815,19 @@ export interface MagicWheelState {
     | "SPINNING"          // Nón đang xoay
     | "SECTOR_RESULT"     // Nón đã dừng, thông báo kết quả ô quay
     | "ACTION_INPUT"      // Chờ đoán chữ cái / trả lời quiz / giải ô chữ
-    | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 1000đ
+    | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 3000đ vĩnh viễn
+    | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 3 thẻ chức năng
+    | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (VTV3 2012)
     | "LUCKY_PICK"        // Chờ người chơi chọn ô lật miễn phí
     | "ROUND_RECAP";      // Kết thúc vòng, tổng kết điểm
   mysteryRevealedType?: "PRIZE_CASH" | "BANKRUPT";
   lastActionMessage?: string;
   lastAwardedPoints?: number;
   activeQuestionId?: string; // Dùng trong thể thức WHEEL_QUIZ
+  permanentScores?: Record<string, number>; // Điểm vĩnh viễn bảo toàn mang về chung cuộc
+  teamShields?: Record<string, boolean>; // Khiên bảo hộ chống mất lượt / mất điểm
+  round3TradedTeams?: string[]; // V3: Các đội đã chọn Đổi (dừng vòng 3 lấy quà)
+  round3ForbiddenSolveTeams?: string[]; // V3: Các đội bị cấm đoán cả ô chữ (phải lật từng chữ đến cuối)
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1802,11 +1810,16 @@ export interface ClientToServerEvents {
   "magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
   "magic_wheel:mystery_decide": (payload: { openMystery: boolean }) => void;
   "magic_wheel:lucky_pick": (payload: { index: number }) => void;
+  "magic_wheel:reward_select": (payload: { cardType: "POINTS_1500" | "FREE_SPIN" | "SHIELD" }) => void;
+  "magic_wheel:trade_decide": (payload: { trade: boolean; boxIndex?: number }) => void;
   "admin:magic_wheel:advance_round": () => void;
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;
   "admin:magic_wheel:guess_letter": (payload: { letter: string }) => void;
   "admin:magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
+  "admin:magic_wheel:pass_turn": () => void;
+  "admin:magic_wheel:quick_reveal_letter": () => void;
+  "admin:magic_wheel:reveal_all": () => void;
   "admin:wager:skip_timer": () => void;
   "admin:wager:launch_question": () => void;
   "admin:wager:grant_bailout": (payload: { teamId: string }) => void;

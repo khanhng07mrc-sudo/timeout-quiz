@@ -36,6 +36,8 @@ import {
   checkLetterInSecretPhrase,
   isPuzzleFullyRevealed,
   matchWholeSecretPhrase,
+  VIETNAMESE_ALPHABET,
+  BASE_24_SECTORS,
 } from "@/lib/game-engine/magic-wheel";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
 import type { MagicWheelState, MagicWheelPuzzle } from "@/types";
@@ -4493,20 +4495,53 @@ export default function AdminSandboxPage() {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
           const tId = cur.currentTurnTeamId;
+          const teamName = cur.currentTurnTeamName;
+          const currentSector = cur.selectedSector || cur.sectors[cur.selectedSectorIndex ?? -1];
+          const basePts = currentSector?.basePoints || (currentSector?.id === 13 ? 100 : 200);
+          const is3M = currentSector?.mysteryContent ? currentSector.mysteryContent === "PRIZE_3M" : Math.random() >= 0.5;
+
           if (openMystery) {
-            const isWin = Math.random() >= 0.5;
-            if (isWin) {
-              cur.roundScores[tId] = (cur.roundScores[tId] || 0) + 3000;
-              cur.lastActionMessage = "🎉 Ô Bí Mật thưởng nóng +3000 điểm!";
+            // Lật ô bí mật: Khôi phục ô điểm ban đầu trên nón
+            if (currentSector) {
+              const sIdx = cur.sectors.findIndex((s) => s.id === currentSector.id);
+              if (sIdx !== -1) {
+                const orig = BASE_24_SECTORS.find((b) => b.id === currentSector.id) || {
+                  id: currentSector.id,
+                  label: String(basePts),
+                  type: "POINTS" as const,
+                  value: basePts,
+                  color: basePts === 100 ? "#16a34a" : "#059669",
+                  textColor: "#ffffff",
+                };
+                cur.sectors[sIdx] = { ...orig };
+              }
+            }
+
+            if (is3M) {
+              const perm = { ...(cur.permanentScores || {}) };
+              perm[tId] = (perm[tId] || 0) + 3000;
+              cur.permanentScores = perm;
+              cur.phase = "ACTION_INPUT";
+              cur.pendingSpecialAction = "POINTS";
+              cur.lastActionMessage = `🎉 CHÚC MỪNG! Mặt sau ô Bí Mật là 3.000.000 ĐỒNG (+3.000đ vĩnh viễn)! Mời Đội ${teamName} gọi chữ cái!`;
             } else {
               cur.roundScores[tId] = 0;
-              cur.lastActionMessage = "💥 Mặt sau ô Bí Mật là MẤT ĐIỂM!";
+              const eligibleTeams = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id) && !(cur.round3TradedTeams || []).includes(t.id));
+              if (eligibleTeams.length > 0) {
+                const activeIdx = eligibleTeams.findIndex((t) => t.id === cur.currentTurnTeamId);
+                const nextIdx = (activeIdx + 1) % eligibleTeams.length;
+                cur.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+                cur.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+              }
+              cur.phase = "SPIN_WAITING";
+              cur.lastActionMessage = `💥 ÔI KHÔNG! Mặt sau ô Bí Mật là MẤT ĐIỂM! Đội ${teamName} mất toàn bộ điểm vòng! Chuyển lượt sang ${cur.currentTurnTeamName}.`;
             }
           } else {
-            cur.roundScores[tId] = (cur.roundScores[tId] || 0) + 1000;
-            cur.lastActionMessage = "Nhận an toàn +1000 điểm!";
+            cur.roundScores[tId] = (cur.roundScores[tId] || 0) + basePts;
+            cur.phase = "ACTION_INPUT";
+            cur.pendingSpecialAction = "POINTS";
+            cur.lastActionMessage = `Đội ${teamName} chọn KHÔNG LẬT ô bí mật! Nhận an toàn ${basePts} điểm và tiếp tục gọi chữ cái.`;
           }
-          cur.phase = "SPIN_WAITING";
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
@@ -4518,6 +4553,180 @@ export default function AdminSandboxPage() {
           const cur = { ...prev.magicWheelState, phase: e.data.phase || "ACTION_INPUT" };
           if (e.data.selectedSector) cur.selectedSector = e.data.selectedSector;
           if (e.data.lastActionMessage) cur.lastActionMessage = e.data.lastActionMessage;
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_REWARD_SELECT") {
+        const { cardType, cardId } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          const tId = cur.currentTurnTeamId;
+          const teamName = cur.currentTurnTeamName;
+          const perm = { ...(cur.permanentScores || {}) };
+          const shields = { ...(cur.teamShields || {}) };
+          const freeSpins = { ...(cur.freeSpinCount || {}) };
+
+          if (cardType === "POINTS_1500" || cardId === "CARD_1500") {
+            perm[tId] = (perm[tId] || 0) + 1500;
+            cur.lastActionMessage = `🎁 Đội ${teamName} nhận Thẻ +1.500 Điểm Vĩnh Viễn!`;
+          } else if (cardType === "FREE_SPIN" || cardId === "CARD_EXTRA_TURN") {
+            freeSpins[tId] = (freeSpins[tId] || 0) + 1;
+            cur.lastActionMessage = `🎟️ Đội ${teamName} nhận Thẻ Thêm Lượt bảo lưu!`;
+          } else if (cardType === "SHIELD" || cardId === "CARD_SHIELD") {
+            shields[tId] = true;
+            cur.lastActionMessage = `🛡️ Đội ${teamName} nhận Khiên Bảo Hộ chống mất điểm/mất lượt 1 lần!`;
+          }
+          cur.permanentScores = perm;
+          cur.teamShields = shields;
+          cur.freeSpinCount = freeSpins;
+          cur.phase = "SPIN_WAITING";
+          cur.pendingSpecialAction = "NONE";
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_TRADE_DECIDE") {
+        const { trade, acceptTrade, boxIndex, giftBoxId } = e.data;
+        const isTradeAccepted = trade !== undefined ? trade : Boolean(acceptTrade);
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          const tId = cur.currentTurnTeamId;
+          const teamName = cur.currentTurnTeamName;
+          const eligibleTeams = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id));
+
+          if (isTradeAccepted) {
+            const traded = [...(cur.round3TradedTeams || [])];
+            if (!traded.includes(tId)) traded.push(tId);
+            cur.round3TradedTeams = traded;
+            const perm = { ...(cur.permanentScores || {}) };
+            const freeSpins = { ...(cur.freeSpinCount || {}) };
+            const shields = { ...(cur.teamShields || {}) };
+
+            if (boxIndex === 0 || giftBoxId === "BOX_A") {
+              perm[tId] = (perm[tId] || 0) + 2500;
+              cur.lastActionMessage = `🎁 [HỘP QUÀ 1] Đội ${teamName} nhận +2.500 điểm vĩnh viễn và dừng chơi Vòng 3 để bảo toàn giải thưởng!`;
+            } else if (boxIndex === 1 || giftBoxId === "BOX_B") {
+              freeSpins[tId] = (freeSpins[tId] || 0) + 2;
+              cur.lastActionMessage = `🎟️ [HỘP QUÀ 2] Đội ${teamName} nhận 2 Thẻ Thêm Lượt cho vòng chung kết và dừng chơi Vòng 3!`;
+            } else if (boxIndex === 2 || giftBoxId === "BOX_C") {
+              shields[tId] = true;
+              cur.lastActionMessage = `🛡️ [HỘP QUÀ 3] Đội ${teamName} nhận Khiên Bảo Hộ Vĩnh Cửu và dừng chơi Vòng 3!`;
+            } else {
+              perm[tId] = (perm[tId] || 0) + 4000;
+              cur.lastActionMessage = `🏆 [HỘP QUÀ ĐẶC BIỆT] Đội ${teamName} nhận giải thưởng khủng +4.000 điểm vĩnh viễn và dừng chơi Vòng 3!`;
+            }
+            cur.permanentScores = perm;
+            cur.freeSpinCount = freeSpins;
+            cur.teamShields = shields;
+
+            const remaining = eligibleTeams.filter((t) => !traded.includes(t.id));
+            if (remaining.length > 0) {
+              cur.currentTurnTeamId = remaining[0].id;
+              cur.currentTurnTeamName = remaining[0].name;
+              cur.phase = "SPIN_WAITING";
+            } else {
+              cur.phase = "ROUND_RECAP";
+              cur.lastActionMessage = "Tất cả các đội đều đã nhận quà Đổi Hộp Quà ở Vòng 3!";
+            }
+          } else {
+            const forbidden = [...(cur.round3ForbiddenSolveTeams || [])];
+            if (!forbidden.includes(tId)) forbidden.push(tId);
+            cur.round3ForbiddenSolveTeams = forbidden;
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `Đội ${teamName} CHỌN KHÔNG ĐỔI! Đội sẽ tiếp tục quay mở ô chữ nhưng BỊ CẤM ĐOÁN Ô CHỮ cho đến khi toàn bộ chữ cái được lật mở!`;
+          }
+
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_PASS_TURN") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          const eligibleTeams = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id) && !(cur.round3TradedTeams || []).includes(t.id));
+          if (eligibleTeams.length > 0) {
+            const activeIdx = eligibleTeams.findIndex((t) => t.id === cur.currentTurnTeamId);
+            const nextIdx = (activeIdx + 1) % eligibleTeams.length;
+            cur.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+            cur.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+            cur.phase = "SPIN_WAITING";
+            cur.selectedSector = undefined;
+            cur.pendingSpecialAction = "NONE";
+            cur.lastActionMessage = `Quản trò chuyển lượt sang Đội ${cur.currentTurnTeamName}.`;
+          }
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_QUICK_REVEAL") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
+          const cur = { ...prev.magicWheelState };
+          const p = cur.currentPuzzle;
+          if (!p) return prev;
+          const unrevealed: number[] = [];
+          for (let i = 0; i < p.secretPhrase.length; i++) {
+            if (p.secretPhrase[i] !== " " && !p.revealedIndices.includes(i)) unrevealed.push(i);
+          }
+          if (unrevealed.length > 0) {
+            const pick = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+            soundManager.playMagicWheelLetterReveal();
+            p.revealedIndices = [...p.revealedIndices, pick];
+            cur.lastActionMessage = `Quản trò mở nhanh vị trí #${pick + 1} (${p.secretPhrase[pick]})`;
+            if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+              soundManager.playMagicWheelSolveWin();
+              cur.phase = "ROUND_RECAP";
+            }
+          }
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_REVEAL_ALL") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
+          const cur = { ...prev.magicWheelState };
+          const p = cur.currentPuzzle;
+          if (!p) return prev;
+          p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
+          soundManager.playMagicWheelSolveWin();
+          cur.phase = "ROUND_RECAP";
+          cur.lastActionMessage = `Quản trò đã lật mở toàn bộ ô chữ: "${p.secretPhrase}"!`;
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_ADVANCE_ROUND") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          if (cur.currentRound < cur.maxRounds) {
+            cur.currentRound++;
+            cur.sectors = generateMagicWheelSectors(cur.currentRound);
+            cur.currentPuzzle = cur.puzzles[(cur.currentRound - 1) % cur.puzzles.length] || cur.puzzles[0];
+            if (cur.currentPuzzle) cur.currentPuzzle.revealedIndices = [];
+            cur.guessedLetters = [];
+            cur.wrongGuessesCount = {};
+            cur.roundScores = {};
+            cur.disqualifiedTeamIdsInRound = [];
+            cur.consecutiveWrongGuesses = {};
+            cur.pendingSpecialAction = "NONE";
+            cur.phase = "SPIN_WAITING";
+            cur.selectedSector = undefined;
+            cur.round3TradedTeams = [];
+            cur.round3ForbiddenSolveTeams = [];
+            cur.lastActionMessage = `Bắt đầu Vòng ${cur.currentRound}! Mời Đội ${cur.currentTurnTeamName} quay nón.`;
+          }
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
@@ -6150,6 +6359,156 @@ export default function AdminSandboxPage() {
     adminSocketRef.current?.emit("admin:question:start_timer");
     addLog("Admin: Bắt đầu tính giờ");
   };
+
+  // ── Magic Wheel Dedicated Admin Controls ──────────────────────────────────
+  const handleMagicWheelQuickSpin = () => {
+    const power = Math.floor(Math.random() * 40 + 50);
+    window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
+    }
+    addLog(`🎡 [Quản trò] Quay nón với lực ${power}%`);
+  };
+
+  const handleMagicWheelPassTurn = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:pass_turn" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
+    addLog(`⏭️ [Quản trò] Đổi lượt sang đội kế tiếp`);
+  };
+
+  const handleMagicWheelQuickRevealLetter = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:quick_reveal_letter" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
+    addLog(`🔤 [Quản trò] Mở nhanh 1 chữ cái trên bàn cờ`);
+  };
+
+  const handleMagicWheelTriggerLucky = () => {
+    const mw = roomStateRef.current?.magicWheelState;
+    if (mw?.currentPuzzle) {
+      const p = mw.currentPuzzle;
+      const unrevealed: number[] = [];
+      for (let i = 0; i < p.secretPhrase.length; i++) {
+        if (p.secretPhrase[i] !== " " && !p.revealedIndices.includes(i)) unrevealed.push(i);
+      }
+      if (unrevealed.length > 0) {
+        const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+        if (adminSocketRef.current?.connected) {
+          adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index: randomIdx });
+        }
+        window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index: randomIdx }, "*");
+        addLog(`🎁 [Quản trò] Kích hoạt ô May Mắn mở vị trí #${randomIdx + 1}`);
+      }
+    }
+  };
+
+  const handleMagicWheelDirectSolve = () => {
+    const mw = roomStateRef.current?.magicWheelState;
+    if (mw?.currentPuzzle) {
+      const answer = mw.currentPuzzle.secretPhrase;
+      if (adminSocketRef.current?.connected) {
+        adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer });
+      }
+      window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
+      addLog(`🎯 [Quản trò] Đoán ô chữ chính xác: "${answer}"`);
+    }
+  };
+
+  const handleMagicWheelRevealAll = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:reveal_all" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
+    addLog(`💡 [Quản trò] Mở toàn bộ ô chữ bí mật`);
+  };
+
+  const handleMagicWheelNextRound = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:advance_round" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
+    addLog(`⏩ [Quản trò] Tiến sang vòng kế tiếp`);
+  };
+
+  // ── Magic Wheel Bot Automation Timer ──────────────────────────────────────
+  const pendingBotWheelTimerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    if (!botAutoEnabled || selectedMode !== "MAGIC_WHEEL") {
+      if (pendingBotWheelTimerRef.current) {
+        clearTimeout(pendingBotWheelTimerRef.current);
+        pendingBotWheelTimerRef.current = null;
+      }
+      return;
+    }
+
+    const mw = roomState?.magicWheelState;
+    if (!mw) return;
+
+    const currentTurnTeamId = mw.currentTurnTeamId;
+    const activeTesterId = activeTeamIdRef.current || stableTeams[activeTeamIndex]?.id;
+    const isBotTurn = currentTurnTeamId && currentTurnTeamId !== activeTesterId;
+    if (!isBotTurn) return;
+
+    if (pendingBotWheelTimerRef.current) {
+      clearTimeout(pendingBotWheelTimerRef.current);
+    }
+
+    if (mw.phase === "SPIN_WAITING" && !mw.isSpinning) {
+      pendingBotWheelTimerRef.current = setTimeout(() => {
+        handleMagicWheelQuickSpin();
+      }, 2000);
+    } else if (mw.phase === "ACTION_INPUT" && !mw.isSpinning) {
+      pendingBotWheelTimerRef.current = setTimeout(() => {
+        const availableLetters = VIETNAMESE_ALPHABET.filter((l) => !mw.guessedLetters.includes(l));
+        if (availableLetters.length > 0) {
+          const letter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
+          window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
+          if (adminSocketRef.current?.connected) {
+            adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter });
+          }
+          addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động gọi chữ cái "${letter}"`);
+        }
+      }, 2500);
+    } else if (mw.phase === "REWARD_CHOICE") {
+      pendingBotWheelTimerRef.current = setTimeout(() => {
+        const cards: ("POINTS_1500" | "FREE_SPIN" | "SHIELD")[] = ["POINTS_1500", "FREE_SPIN", "SHIELD"];
+        const chosen = cards[Math.floor(Math.random() * cards.length)];
+        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType: chosen }, "*");
+        if (adminSocketRef.current?.connected) {
+          adminSocketRef.current.emit("magic_wheel:reward_select" as any, { cardType: chosen });
+        }
+        addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động chọn thẻ quà: ${chosen}`);
+      }, 2000);
+    } else if (mw.phase === "MYSTERY_CHOICE") {
+      pendingBotWheelTimerRef.current = setTimeout(() => {
+        const openMystery = Math.random() >= 0.4;
+        window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
+        if (adminSocketRef.current?.connected) {
+          adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery });
+        }
+        addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động chọn ô Bí Mật: ${openMystery ? "Lật Hộp Đỏ" : "Nhận 3.000đ vĩnh viễn"}`);
+      }, 2000);
+    } else if (mw.phase === "TRADE_CHOICE") {
+      pendingBotWheelTimerRef.current = setTimeout(() => {
+        const trade = Math.random() >= 0.5;
+        const boxIndex = Math.floor(Math.random() * 4);
+        window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
+        if (adminSocketRef.current?.connected) {
+          adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade, boxIndex });
+        }
+        addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động quyết định Vòng 3: ${trade ? `Đổi lấy Hộp Quà #${boxIndex + 1}` : "Không Đổi"}`);
+      }, 2000);
+    }
+
+    return () => {
+      if (pendingBotWheelTimerRef.current) {
+        clearTimeout(pendingBotWheelTimerRef.current);
+      }
+    };
+  }, [botAutoEnabled, selectedMode, roomState?.magicWheelState]);
 
   // Mode Specific Handlers
   const handleBuzzUnlock = () => {
@@ -8929,42 +9288,105 @@ export default function AdminSandboxPage() {
                   {/* Contextual Quick MC Action */}
                   {renderQuickMcAction()}
 
-                  <button
-                    type="button"
-                    onClick={() => handleForceActiveTeamAnswer(true)}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
-                    title="Giả lập đội này chọn đáp án đúng"
-                  >
-                    ✓ Đúng
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleForceActiveTeamAnswer(false)}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
-                    title="Giả lập đội này chọn đáp án sai"
-                  >
-                    ✗ Sai
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleForceActiveTeamBuzz}
-                    className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
-                    title="Giả lập đội này bấm chuông"
-                  >
-                    ⚡ Buzz
-                  </button>
-                  {currentQuestion && !revealPayload && currentQuestion.question.options && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (currentTeam) setDirectAnswerTargetTeamId(currentTeam.id);
-                        setShowDirectAnswerModal(true);
-                      }}
-                      className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm hidden sm:inline-block"
-                      title="MC nộp đáp án trực tiếp cho đội này hoặc đội khác"
-                    >
-                      🎙️ MC nộp
-                    </button>
+                  {selectedMode === "MAGIC_WHEEL" ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelQuickSpin}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Quay nón cho đội hiện tại"
+                      >
+                        🎡 Quay nón
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelPassTurn}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Chuyển lượt cho đội kế tiếp"
+                      >
+                        ⏭️ Đổi lượt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelQuickRevealLetter}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Mở nhanh 1 chữ cái ngẫu nhiên chưa lật"
+                      >
+                        🔤 Mở chữ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelTriggerLucky}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Kích hoạt ô May Mắn"
+                      >
+                        🎁 May mắn
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelDirectSolve}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Đoán ô chữ chính xác"
+                      >
+                        🎯 Đoán ô chữ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelRevealAll}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Mở toàn bộ ô chữ hoàn thành vòng"
+                      >
+                        💡 Mở hết
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleMagicWheelNextRound}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Chuyển nhanh sang vòng tiếp theo"
+                      >
+                        ⏩ Vòng kế
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleForceActiveTeamAnswer(true)}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-green-500/20 border border-green-500/40 text-green-300 hover:bg-green-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Giả lập đội này chọn đáp án đúng"
+                      >
+                        ✓ Đúng
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleForceActiveTeamAnswer(false)}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Giả lập đội này chọn đáp án sai"
+                      >
+                        ✗ Sai
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleForceActiveTeamBuzz}
+                        className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm"
+                        title="Giả lập đội này bấm chuông"
+                      >
+                        ⚡ Buzz
+                      </button>
+                      {currentQuestion && !revealPayload && currentQuestion.question.options && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (currentTeam) setDirectAnswerTargetTeamId(currentTeam.id);
+                            setShowDirectAnswerModal(true);
+                          }}
+                          className="px-1.5 sm:px-2 py-0.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-[10px] btn-tactile cursor-pointer shadow-sm hidden sm:inline-block"
+                          title="MC nộp đáp án trực tiếp cho đội này hoặc đội khác"
+                        >
+                          🎙️ MC nộp
+                        </button>
+                      )}
+                    </>
                   )}
 
                   {/* Score Cheat Dropdown (Fixed Floating Popover) */}
@@ -9614,6 +10036,18 @@ export default function AdminSandboxPage() {
                         window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
                         if (adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index });
+                        }
+                      }}
+                      onSelectRewardCard={(cardType) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:reward_select" as any, { cardType });
+                        }
+                      }}
+                      onTradeDecide={(trade, boxIndex) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade, boxIndex });
                         }
                       }}
                     />

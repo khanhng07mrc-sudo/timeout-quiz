@@ -130,25 +130,36 @@ export default function PlayPage() {
     }
     const endsAt = matchStarting.endsAt || (getServerTime() + matchStarting.seconds * 1000);
     const total = matchStarting.total || 5;
+
+    // Immediate tick for current second
+    const initRem = Math.max(0, Math.min(total, Math.ceil((endsAt - getServerTime()) / 1000)));
+    if (initRem > 0 && lastMatchTickRef.current !== initRem && soundEnabledRef.current) {
+      lastMatchTickRef.current = initRem;
+      soundManager.playCountdownTick(initRem);
+    }
+
     const interval = setInterval(() => {
       const now = getServerTime();
       const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
       const remaining = Math.min(total, rawRem);
+
+      if (lastMatchTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
+        lastMatchTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
+
       setMatchStarting((prev) => {
         if (!prev) return null;
-        // Strictly monotonic non-increasing: NEVER allow seconds to jump upwards (e.g. 4 -> 5 or 3 -> 4)
         const safeSeconds = Math.min(prev.seconds, remaining);
-        if (lastMatchTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
-          lastMatchTickRef.current = safeSeconds;
-          soundManager.playCountdownTick(safeSeconds);
-        }
-        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: safeSeconds, endsAt, total };
+        if (prev.seconds === safeSeconds) return prev;
+        return { ...prev, seconds: safeSeconds };
       });
+
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 100);
+    }, 50);
+
     return () => clearInterval(interval);
   }, [matchStarting?.endsAt]);
 
@@ -161,25 +172,36 @@ export default function PlayPage() {
     }
     const endsAt = questionPrepare.endsAt || (getServerTime() + questionPrepare.seconds * 1000);
     const total = questionPrepare.total || 3;
+
+    // Immediate tick for current second
+    const initRem = Math.max(0, Math.min(total, Math.ceil((endsAt - getServerTime()) / 1000)));
+    if (initRem > 0 && lastPrepareTickRef.current !== initRem && soundEnabledRef.current) {
+      lastPrepareTickRef.current = initRem;
+      soundManager.playCountdownTick(initRem);
+    }
+
     const interval = setInterval(() => {
       const now = getServerTime();
       const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
       const remaining = Math.min(total, rawRem);
+
+      if (lastPrepareTickRef.current !== remaining && remaining > 0 && soundEnabledRef.current) {
+        lastPrepareTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
+
       setQuestionPrepare((prev) => {
         if (!prev) return null;
-        // Strictly monotonic non-increasing: NEVER jump upwards
         const safeSeconds = Math.min(prev.seconds, remaining);
-        if (lastPrepareTickRef.current !== safeSeconds && safeSeconds > 0 && soundEnabledRef.current) {
-          lastPrepareTickRef.current = safeSeconds;
-          soundManager.playCountdownTick(safeSeconds);
-        }
-        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: safeSeconds, endsAt, total };
+        if (prev.seconds === safeSeconds) return prev;
+        return { ...prev, seconds: safeSeconds };
       });
+
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 100);
+    }, 50);
+
     return () => clearInterval(interval);
   }, [questionPrepare?.endsAt]);
 
@@ -749,9 +771,6 @@ export default function PlayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic(0, true);
-      if (soundEnabledRef.current) {
-        soundManager.playCountdownTick(p.seconds);
-      }
     });
 
     socket.on("game:prepare", (p) => {
@@ -767,9 +786,6 @@ export default function PlayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic(0, true);
-      if (soundEnabledRef.current) {
-        soundManager.playCountdownTick(p.seconds);
-      }
     });
 
     socket.on("game:intermission", (p) => {
@@ -2416,6 +2432,18 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index, teamId: effectiveTeamId }, "*");
                     }
                     socketRef.current?.emit("magic_wheel:lucky_pick", { index });
+                  }}
+                  onSelectRewardCard={(cardType) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:reward_select", { cardType });
+                  }}
+                  onTradeDecide={(trade, boxIndex) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:trade_decide", { trade, boxIndex });
                   }}
                 />
               </div>

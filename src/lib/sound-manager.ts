@@ -1,8 +1,24 @@
 // Quizorra - Studio Audio Engine (Đường lên đỉnh Olympia Official Audio Edition)
 // High-fidelity gameshow audio player featuring authentic Olympia soundtracks, smooth transitions, and instant SFX.
 
-type SFXKey = "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout";
-type BGMKey = "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense" | "wheel_spin";
+type SFXKey =
+  | "tick" | "buzz" | "correct" | "wrong" | "go" | "fanfare" | "powerup" | "timeout"
+  | "mw_letter_reveal"
+  | "mw_wrong_letter"
+  | "mw_bankrupt"
+  | "mw_solve_win"
+  | "mw_buzz_solve"
+  | "mw_double"
+  | "mw_halve"
+  | "mw_reward"
+  | "mw_mystery"
+  | "mw_trade";
+
+type BGMKey =
+  | "lobby" | "olympia_5s" | "olympia_15s" | "olympia_20s" | "olympia_30s" | "olympia_60s" | "question_suspense" | "wheel_spin"
+  | "mw_intro"
+  | "mw_thinking"
+  | "mw_trade_bgm";
 
 interface AudioSourceConfig {
   primary: string;
@@ -18,6 +34,16 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   fanfare: { primary: "", fallbacks: [] },
   powerup: { primary: "/sounds/powerup.mp3", fallbacks: ["/sounds/powerup.wav"] },
   timeout: { primary: "/sounds/timeout.mp3", fallbacks: ["/sounds/buzz.mp3"] },
+  mw_letter_reveal: { primary: "/sounds/magic-wheel/letter_reveal.mp3", fallbacks: ["/sounds/correct.mp3"] },
+  mw_wrong_letter: { primary: "/sounds/magic-wheel/wrong_letter.mp3", fallbacks: ["/sounds/wrong.ogg"] },
+  mw_bankrupt: { primary: "/sounds/magic-wheel/bankrupt_lose_turn.mp3", fallbacks: ["/sounds/wrong.ogg"] },
+  mw_solve_win: { primary: "/sounds/magic-wheel/solve_puzzle_win.mp3", fallbacks: ["/sounds/correct.mp3"] },
+  mw_buzz_solve: { primary: "/sounds/magic-wheel/buzz_solve.mp3", fallbacks: ["/sounds/olympia_buzz.mp3"] },
+  mw_double: { primary: "/sounds/magic-wheel/double_points.mp3", fallbacks: ["/sounds/correct.mp3"] },
+  mw_halve: { primary: "/sounds/magic-wheel/halve_points.mp3", fallbacks: ["/sounds/wrong.ogg"] },
+  mw_reward: { primary: "/sounds/magic-wheel/reward_card.mp3", fallbacks: ["/sounds/powerup.mp3"] },
+  mw_mystery: { primary: "/sounds/magic-wheel/mystery_box.mp3", fallbacks: ["/sounds/magic-wheel/reward_card.mp3"] },
+  mw_trade: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/magic-wheel/reward_card.mp3"] },
 };
 
 const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
@@ -28,7 +54,10 @@ const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   olympia_30s: { primary: "/sounds/olympia_30s.mp3", fallbacks: ["/sounds/question_suspense.mp3"] },
   olympia_60s: { primary: "/sounds/olympia_60s.mp3", fallbacks: ["/sounds/olympia_30s.mp3", "/sounds/question_suspense.mp3"] },
   question_suspense: { primary: "/sounds/question_suspense.mp3", fallbacks: ["/sounds/question_suspense.wav"] },
-  wheel_spin: { primary: "/sounds/wheel_spin.mp3", fallbacks: [] },
+  wheel_spin: { primary: "/sounds/magic-wheel/wheel_spin.mp3", fallbacks: ["/sounds/wheel_spin.mp3"] },
+  mw_intro: { primary: "/sounds/magic-wheel/intro_round.mp3", fallbacks: ["/sounds/lobby.mp3"] },
+  mw_thinking: { primary: "/sounds/magic-wheel/thinking_timer.mp3", fallbacks: ["/sounds/olympia_5s.mp3"] },
+  mw_trade_bgm: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/lobby.mp3"] },
 };
 
 class SoundManager {
@@ -651,17 +680,30 @@ class SoundManager {
     } catch {}
   }
 
+  private lastCountdownTickTime = 0;
+  private lastCountdownRemaining = -1;
+
   /**
-   * Only used for pre-match ready countdown (3, 2, 1).
+   * Only used for pre-match ready countdown (5, 4, 3, 2, 1).
    * Strictly blocked when question countdown music is playing to keep Olympia tracks completely clean.
+   * Debounced with duplicate-second and timing guard to guarantee exactly 1 tick per second without stutter.
    */
   public playCountdownTick(remaining: number) {
-    if (this.currentMusicType === "QUESTION") {
+    if (this.currentMusicType === "QUESTION" || remaining <= 0) {
       return;
     }
-    if (remaining > 0) {
-      this.playSFX("tick", 0.75);
+    const now = Date.now();
+    // Guard against duplicate ticks for the same second within 800ms
+    if (remaining === this.lastCountdownRemaining && now - this.lastCountdownTickTime < 800) {
+      return;
     }
+    // Guard against two ticks firing within 500ms
+    if (now - this.lastCountdownTickTime < 500) {
+      return;
+    }
+    this.lastCountdownRemaining = remaining;
+    this.lastCountdownTickTime = now;
+    this.playSFX("tick", 0.75);
   }
 
   /**
@@ -1077,7 +1119,7 @@ class SoundManager {
    */
   public playMagicWheelWrong() {
     if (this.isMuted) return;
-    this.playSFX("wrong", 0.85);
+    this.playSFX("mw_wrong_letter", 1.0);
 
     const ctx = this.getWheelAudioCtx();
     if (!ctx) return;
@@ -1105,11 +1147,9 @@ class SoundManager {
    */
   public playMagicWheelBankrupt() {
     if (this.isMuted) return;
+    this.playSFX("mw_bankrupt", 1.0);
     const ctx = this.getWheelAudioCtx();
-    if (!ctx) {
-      this.playSFX("wrong", 1.0);
-      return;
-    }
+    if (!ctx) return;
     try {
       const now = ctx.currentTime;
       // Stinger buồn trứ danh: Eb4 -> D4 -> Db4 -> C4 (Wah-wah-wah-wah)
@@ -1228,6 +1268,113 @@ class SoundManager {
         osc.stop(now + idx * 0.05 + 0.58);
       });
     } catch {}
+  }
+
+  // ── Chiếc Nón Kỳ Diệu VTV3 (2013 - 2016) Official Sound Suite ──────────
+
+  /**
+   * 1. Nhạc mở đầu vòng thi / giới thiệu ô chữ
+   */
+  public playMagicWheelIntro() {
+    this.playMusicTrack("QUESTION", "mw_intro", 0.9, 200);
+  }
+
+  /**
+   * 2. Nhạc quay nón & kim gõ peg ticks
+   */
+  public playMagicWheelSpin(durationMs: number = 20000) {
+    this.playWheelSpinMusic(durationMs, true);
+  }
+
+  public stopMagicWheelSpin(fadeDurationMs: number = 200) {
+    this.stopWheelSpinMusic(fadeDurationMs);
+  }
+
+  /**
+   * 3. Chuông đếm ngược 5 giây thời gian suy nghĩ đoán chữ
+   */
+  public playMagicWheelThinking() {
+    this.playMusicTrack("QUESTION", "mw_thinking", 0.85, 150);
+  }
+
+  public stopMagicWheelThinking(fadeDurationMs: number = 200) {
+    this.stopMusic(fadeDurationMs, true);
+  }
+
+  /**
+   * 4. Ting mở ô chữ đúng (chữ cái xuất hiện trên bảng)
+   */
+  public playMagicWheelLetterReveal() {
+    this.playSFX("mw_letter_reveal", 1.0);
+    const ctx = this.getWheelAudioCtx();
+    if (ctx) {
+      try {
+        const now = ctx.currentTime;
+        [1320, 1760].forEach((f, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(f, now + idx * 0.05);
+          gain.gain.setValueAtTime(0.001, now + idx * 0.05);
+          gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.05 + 0.01);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.05);
+          osc.stop(now + idx * 0.05 + 0.36);
+        });
+      } catch {}
+    }
+  }
+
+  /**
+   * 7. Nhạc ăn mừng giải thành công cả ô chữ
+   */
+  public playMagicWheelSolveWin() {
+    this.playSFX("mw_solve_win", 1.0);
+    this.playMagicWheelSolve();
+  }
+
+  /**
+   * 8. Chuông bấm giành quyền giải ô chữ
+   */
+  public playMagicWheelBuzzSolve() {
+    this.playSFX("mw_buzz_solve", 1.0);
+  }
+
+  /**
+   * 9. Âm thanh ô Nhân Đôi điểm
+   */
+  public playMagicWheelDouble() {
+    this.playSFX("mw_double", 1.0);
+  }
+
+  /**
+   * 10. Âm thanh ô Chia Đôi điểm
+   */
+  public playMagicWheelHalve() {
+    this.playSFX("mw_halve", 1.0);
+  }
+
+  /**
+   * 11. Âm thanh Ô Phần Thưởng (Vòng 1 - 3 Thẻ Chức Năng)
+   */
+  public playMagicWheelReward() {
+    this.playSFX("mw_reward", 1.0);
+  }
+
+  /**
+   * 12. Âm thanh Ô Bí Mật (Vòng 2 - 3.000đ vĩnh viễn / Hộp Đỏ)
+   */
+  public playMagicWheelMystery() {
+    this.playSFX("mw_mystery", 1.0);
+  }
+
+  /**
+   * 13. Âm thanh / Nhạc nền Mini-game Đổi hay Không Đổi (Vòng 3)
+   */
+  public playMagicWheelTrade() {
+    this.playSFX("mw_trade", 1.0);
   }
 
   /**

@@ -29,6 +29,8 @@ export interface MagicWheelSector {
   textColor: string;
   isOverlay?: boolean;
   overlayType?: "PRIZE" | "MYSTERY";
+  basePoints?: number;
+  mysteryContent?: "PRIZE_3M" | "BANKRUPT";
 }
 
 export interface MagicWheelPuzzle {
@@ -125,18 +127,30 @@ export function generateMagicWheelSectors(round: number): MagicWheelSector[] {
       };
     }
   } else if (round === 2) {
-    // Vòng 2: Ô Bí Mật đè lên 2 ô 200 điểm (id 4 và id 16)
-    [4, 16].forEach((targetId) => {
-      const idx = sectors.findIndex((s) => s.id === targetId);
+    // Vòng 2: Hai ô Bí Mật đè lên ô 100 điểm (id 13) và ô 200 điểm (id 4)
+    // Một ô ẩn chứa 3.000.000 đồng (+3.000đ vĩnh viễn), một ô ẩn chứa MẤT ĐIỂM!
+    const isFirst3M = Math.random() >= 0.5;
+    const contents: ("PRIZE_3M" | "BANKRUPT")[] = isFirst3M
+      ? ["PRIZE_3M", "BANKRUPT"]
+      : ["BANKRUPT", "PRIZE_3M"];
+    const targets = [
+      { id: 13, basePoints: 100 },
+      { id: 4, basePoints: 200 },
+    ];
+
+    targets.forEach((target, i) => {
+      const idx = sectors.findIndex((s) => s.id === target.id);
       if (idx !== -1) {
         sectors[idx] = {
-          id: targetId,
+          id: target.id,
           label: "🔮 BÍ MẬT",
           type: "MYSTERY",
           color: "#8b5cf6",
           textColor: "#ffffff",
           isOverlay: true,
           overlayType: "MYSTERY",
+          basePoints: target.basePoints,
+          mysteryContent: contents[i],
         };
       }
     });

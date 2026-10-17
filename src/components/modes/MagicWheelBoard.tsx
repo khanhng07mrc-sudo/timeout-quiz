@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { MagicWheelState, MagicWheelSector, TeamState } from "@/types";
 import { VIETNAMESE_ALPHABET, normalizeVietnameseBaseLetter } from "@/lib/game-engine/magic-wheel";
+import { soundManager } from "@/lib/sound-manager";
 
 interface Props {
   magicWheelState?: MagicWheelState;
@@ -16,6 +17,8 @@ interface Props {
   onGuessLetter?: (letter: string) => void;
   onSolvePuzzle?: (answer: string) => void;
   onMysteryDecide?: (openMystery: boolean) => void;
+  onSelectRewardCard?: (cardType: "POINTS_1500" | "FREE_SPIN" | "SHIELD") => void;
+  onTradeDecide?: (trade: boolean, boxIndex?: number) => void;
   onLuckyPick?: (index: number) => void;
   onAdvanceRound?: () => void;
   onOverrideTurn?: (teamId: string) => void;
@@ -33,6 +36,8 @@ export default function MagicWheelBoard({
   onGuessLetter,
   onSolvePuzzle,
   onMysteryDecide,
+  onSelectRewardCard,
+  onTradeDecide,
   onLuckyPick,
   onAdvanceRound,
   onOverrideTurn,
@@ -80,6 +85,85 @@ export default function MagicWheelBoard({
     }, 40);
     return () => clearInterval(interval);
   }, [phase, isSpinning]);
+
+  // ── Audio Engine Hooks ───────────────────────────────────────────────────
+  const prevIsSpinning = useRef<boolean>(false);
+  const prevRevealedCount = useRef<number>(currentPuzzle?.revealedIndices?.length || 0);
+  const prevWrongCount = useRef<number>(0);
+  const prevRound = useRef<number>(currentRound || 1);
+  const prevPhase = useRef<string>(phase || "SPIN_WAITING");
+
+  // Spin audio
+  useEffect(() => {
+    if (isSpinning && !prevIsSpinning.current) {
+      soundManager.playMagicWheelSpin();
+    } else if (!isSpinning && prevIsSpinning.current) {
+      soundManager.stopMagicWheelSpin();
+      if (selectedSector) {
+        if (selectedSector.type === "DOUBLE") {
+          soundManager.playMagicWheelDouble();
+        } else if (selectedSector.type === "HALF") {
+          soundManager.playMagicWheelHalve();
+        } else if (selectedSector.type === "BANKRUPT" || selectedSector.type === "LOSE_TURN") {
+          soundManager.playMagicWheelBankrupt();
+        } else if (selectedSector.type === "PRIZE") {
+          soundManager.playMagicWheelReward();
+        } else if (selectedSector.type === "MYSTERY") {
+          soundManager.playMagicWheelMystery();
+        } else {
+          soundManager.playWheelStopChime();
+        }
+      }
+    }
+    prevIsSpinning.current = Boolean(isSpinning);
+  }, [isSpinning, selectedSector]);
+
+  // Letter reveal audio
+  const currentRevealedCount = currentPuzzle?.revealedIndices?.length || 0;
+  useEffect(() => {
+    if (currentRevealedCount > prevRevealedCount.current) {
+      soundManager.playMagicWheelLetterReveal();
+    }
+    prevRevealedCount.current = currentRevealedCount;
+  }, [currentRevealedCount]);
+
+  // Wrong guess audio
+  const totalWrongGuesses = Object.values(activeState.wrongGuessesCount || {}).reduce((a, b) => a + b, 0);
+  useEffect(() => {
+    if (totalWrongGuesses > prevWrongCount.current) {
+      soundManager.playMagicWheelWrong();
+    }
+    prevWrongCount.current = totalWrongGuesses;
+  }, [totalWrongGuesses]);
+
+  // Phase music / effects
+  useEffect(() => {
+    if (prevPhase.current === "ACTION_INPUT" && (phase as string) !== "ACTION_INPUT") {
+      soundManager.stopMagicWheelThinking();
+    }
+
+    if (phase === "ROUND_RECAP") {
+      soundManager.playMagicWheelSolveWin();
+    } else if (phase === "ACTION_INPUT") {
+      soundManager.playMagicWheelThinking();
+    } else if (phase === "TRADE_CHOICE") {
+      soundManager.playMagicWheelTrade();
+    }
+    prevPhase.current = phase;
+  }, [phase]);
+
+  // Round Intro
+  useEffect(() => {
+    if (currentRound !== prevRound.current) {
+      soundManager.playMagicWheelIntro();
+      prevRound.current = currentRound;
+    }
+  }, [currentRound]);
+
+  // Rule Vòng 3 check: Kiểm tra xem đội hiện tại có bị cấm đoán cả ô chữ không
+  const secretLettersOnly = (currentPuzzle?.secretPhrase || "").replace(/[^a-zA-Zà-ỹÀ-Ỹ]/g, "");
+  const remainingHiddenLetters = Math.max(0, secretLettersOnly.length - (currentPuzzle?.revealedIndices?.length || 0));
+  const isSolveForbiddenInRound3 = currentRound === 3 && (activeState.round3ForbiddenSolveTeams || []).includes(currentTurnTeamId) && remainingHiddenLetters > 0;
 
   // Current turn team object
   const activeTeam = teams.find((t) => t.id === currentTurnTeamId);
@@ -527,10 +611,15 @@ export default function MagicWheelBoard({
                     <button
                       type="button"
                       onClick={() => setSolveModalOpen(true)}
-                      disabled={isSpinning}
-                      className="px-4 py-3 sm:py-3.5 rounded-xl font-black text-xs sm:text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 active:scale-98 transition shadow-[0_0_15px_rgba(245,158,11,0.4)] cursor-pointer whitespace-nowrap"
+                      disabled={isSpinning || isSolveForbiddenInRound3}
+                      title={isSolveForbiddenInRound3 ? "Theo luật Vòng 3 VTV3: Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ." : undefined}
+                      className={`px-4 py-3 sm:py-3.5 rounded-xl font-black text-xs sm:text-sm whitespace-nowrap transition shadow ${
+                        isSolveForbiddenInRound3
+                          ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                          : "text-black bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 active:scale-98 shadow-[0_0_15px_rgba(245,158,11,0.4)] cursor-pointer"
+                      }`}
                     >
-                      🎯 ĐOÁN CẢ Ô CHỮ
+                      {isSolveForbiddenInRound3 ? "🔒 CẦN MỞ HẾT CHỮ (VTV3)" : "🎯 ĐOÁN CẢ Ô CHỮ"}
                     </button>
                   )}
                 </div>
@@ -553,9 +642,15 @@ export default function MagicWheelBoard({
                   <button
                     type="button"
                     onClick={() => setSolveModalOpen(true)}
-                    className="px-3 py-1 rounded-xl text-xs font-black bg-gradient-to-r from-yellow-500 to-amber-600 hover:brightness-110 text-black shadow transition cursor-pointer"
+                    disabled={isSolveForbiddenInRound3}
+                    title={isSolveForbiddenInRound3 ? "Theo luật Vòng 3 VTV3: Bạn phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ." : undefined}
+                    className={`px-3 py-1 rounded-xl text-xs font-black shadow transition ${
+                      isSolveForbiddenInRound3
+                        ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                        : "bg-gradient-to-r from-yellow-500 to-amber-600 hover:brightness-110 text-black cursor-pointer"
+                    }`}
                   >
-                    🎯 GIẢI Ô CHỮ
+                    {isSolveForbiddenInRound3 ? "🔒 MỞ HẾT MỚI ĐƯỢC GIẢI" : "🎯 GIẢI Ô CHỮ"}
                   </button>
                 )}
               </div>
@@ -588,39 +683,158 @@ export default function MagicWheelBoard({
             </div>
           )}
 
-          {/* 3. Mystery Decision Choice (Ô Bí Mật Vòng 2) */}
-          {phase === "MYSTERY_CHOICE" && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/70 via-indigo-950/70 to-purple-950/70 border-2 border-purple-500/50 shadow-xl space-y-3 animate-scale-up">
+          {/* 3. Vòng 1: Ô Phần Thưởng (3 Thẻ Chức Năng) */}
+          {phase === "REWARD_CHOICE" && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/70 via-yellow-950/70 to-amber-950/70 border-2 border-amber-500/50 shadow-xl space-y-3 animate-scale-up">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🔮</span>
+                <span className="text-2xl">🎁</span>
                 <div>
-                  <h4 className="font-black text-sm text-purple-200">QUYẾT ĐỊNH Ô BÍ MẬT</h4>
+                  <h4 className="font-black text-sm text-amber-200">Ô PHẦN THƯỞNG (VÒNG 1)</h4>
                   <p className="text-[11px] text-slate-300">
-                    Bạn đã đoán đúng chữ cái! Hãy chọn: Lật ô Bí Mật (50% Thưởng 3000đ, 50% Mất điểm) hoặc Từ chối để nhận 1000đ an toàn.
+                    Chúc mừng quay vào ô Phần Thưởng! Hãy chọn 1 trong 3 Thẻ Chức Năng chiến thuật bên dưới:
                   </p>
                 </div>
               </div>
 
               {canInteract ? (
-                <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
                   <button
                     type="button"
-                    onClick={() => onMysteryDecide?.(true)}
-                    className="py-2.5 px-3 rounded-xl font-black text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:brightness-110 shadow cursor-pointer active:scale-98 transition"
+                    onClick={() => onSelectRewardCard?.("POINTS_1500")}
+                    className="p-3 rounded-xl border border-amber-400/50 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-left cursor-pointer transition active:scale-98"
                   >
-                    🎲 LẬT Ô BÍ MẬT ➔
+                    <div className="font-black text-xs flex items-center gap-1.5 mb-1">
+                      <span>🌟</span> +1.500 ĐIỂM
+                    </div>
+                    <p className="text-[10px] text-slate-300">Cộng trực tiếp 1.500 điểm vào điểm số vòng 1.</p>
                   </button>
+
                   <button
                     type="button"
-                    onClick={() => onMysteryDecide?.(false)}
-                    className="py-2.5 px-3 rounded-xl font-black text-xs bg-slate-700 hover:bg-slate-600 text-white shadow cursor-pointer active:scale-98 transition"
+                    onClick={() => onSelectRewardCard?.("FREE_SPIN")}
+                    className="p-3 rounded-xl border border-sky-400/50 bg-sky-500/20 hover:bg-sky-500/30 text-sky-200 text-left cursor-pointer transition active:scale-98"
                   >
-                    🛡️ TỪ CHỐI (+1000đ)
+                    <div className="font-black text-xs flex items-center gap-1.5 mb-1">
+                      <span>🎟️</span> THÊM LƯỢT
+                    </div>
+                    <p className="text-[10px] text-slate-300">Bảo lưu lượt chơi: Nếu đoán sai vẫn được giữ quyền quay tiếp.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onSelectRewardCard?.("SHIELD")}
+                    className="p-3 rounded-xl border border-emerald-400/50 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-left cursor-pointer transition active:scale-98"
+                  >
+                    <div className="font-black text-xs flex items-center gap-1.5 mb-1">
+                      <span>🛡️</span> KHIÊN BẢO HỘ
+                    </div>
+                    <p className="text-[10px] text-slate-300">Miễn nhiễm 1 lần nếu không may quay vào ô Mất Lượt hoặc Mất Điểm.</p>
                   </button>
                 </div>
               ) : (
                 <div className="text-center text-xs text-slate-400 italic">
-                  Đang đợi Đội {currentTurnTeamName} quyết định...
+                  Đang đợi Đội {currentTurnTeamName} chọn thẻ chức năng...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 4. Vòng 2: Quyết Định Ô Bí Mật (Chuẩn VTV3: 3.000.000đ vs Mất Điểm) */}
+          {phase === "MYSTERY_CHOICE" && (() => {
+            const mysterySector = selectedSector || sectors[activeState.selectedSectorIndex ?? -1];
+            const baseVal = mysterySector?.basePoints || (mysterySector?.id === 13 ? 100 : 200);
+
+            return (
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/70 via-indigo-950/70 to-purple-950/70 border-2 border-purple-500/50 shadow-xl space-y-3 animate-scale-up">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🔮</span>
+                  <div>
+                    <h4 className="font-black text-sm text-purple-200">QUYẾT ĐỊNH Ô BÍ MẬT (VÒNG 2)</h4>
+                    <p className="text-[11px] text-slate-300">
+                      Chuẩn VTV3: Hai ô Bí Mật đè lên ô 100 và ô 200 điểm. Nội dung ẩn của từng ô là <strong className="text-yellow-300">3.000.000 đồng</strong> (+3.000đ vĩnh viễn) hoặc <strong className="text-rose-400">MẤT ĐIỂM</strong>!
+                    </p>
+                  </div>
+                </div>
+
+                {canInteract ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onMysteryDecide?.(false)}
+                      className="py-3 px-4 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow cursor-pointer active:scale-98 transition flex flex-col items-center gap-1"
+                    >
+                      <span className="text-sm">🛡️ KHÔNG LẬT (Nhận {baseVal}đ)</span>
+                      <span className="text-[10px] font-normal opacity-90">Lấy điểm ô gốc, giữ nguyên ô Bí Mật trên nón và đoán chữ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onMysteryDecide?.(true)}
+                      className="py-3 px-4 rounded-xl font-black text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:brightness-110 shadow cursor-pointer active:scale-98 transition flex flex-col items-center gap-1"
+                    >
+                      <span className="text-sm">🎲 LẬT Ô BÍ MẬT NÀY ➔</span>
+                      <span className="text-[10px] font-normal opacity-90">Mở mặt sau: Hoặc 3.000.000đ vĩnh viễn hoặc Mất Điểm</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center text-xs text-slate-400 italic">
+                    Đang đợi Đội {currentTurnTeamName} quyết định...
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* 5. Vòng 3: Mini-Game 'Đổi Hay Không Đổi' (Chuẩn VTV3 2012) */}
+          {phase === "TRADE_CHOICE" && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/80 via-rose-950/80 to-purple-950/80 border-2 border-rose-500/60 shadow-2xl space-y-3 animate-scale-up">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎁</span>
+                <div>
+                  <h4 className="font-black text-sm text-rose-200">ĐỔI HAY KHÔNG ĐỔI? (VÒNG 3)</h4>
+                  <p className="text-[11px] text-slate-300">
+                    Theo luật VTV3 2012: Bạn có thể chọn <strong className="text-amber-300">ĐỔI QUÀ</strong> (bốc 1 trong 4 Hộp Quà và dừng thi đấu Vòng 3 để bảo toàn điểm mang về) hoặc chọn <strong className="text-cyan-300">KHÔNG ĐỔI</strong> (tiếp tục quay và lật mở từng chữ cho đến ô cuối cùng, không được đoán tắt cả ô chữ).
+                  </p>
+                </div>
+              </div>
+
+              {canInteract ? (
+                <div className="space-y-3 pt-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { idx: 0, label: "Hộp Quà #1", icon: "🎁" },
+                      { idx: 1, label: "Hộp Quà #2", icon: "🎁" },
+                      { idx: 2, label: "Hộp Quà #3", icon: "🏆" },
+                      { idx: 3, label: "Hộp Quà #4", icon: "🎁" },
+                    ].map((box) => (
+                      <button
+                        key={box.idx}
+                        type="button"
+                        onClick={() => onTradeDecide?.(true, box.idx)}
+                        className="p-3 rounded-xl border border-rose-400/50 bg-rose-500/20 hover:bg-rose-500/40 text-rose-200 flex flex-col items-center gap-1 cursor-pointer transition active:scale-95 shadow"
+                      >
+                        <span className="text-2xl">{box.icon}</span>
+                        <span className="font-black text-xs">{box.label}</span>
+                        <span className="text-[9px] text-rose-300">Đổi & Dừng V3</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="text-center pt-1">
+                    <button
+                      type="button"
+                      onClick={() => onTradeDecide?.(false)}
+                      className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-black text-xs bg-cyan-600 hover:bg-cyan-500 text-white shadow cursor-pointer active:scale-98 transition"
+                    >
+                      🛡️ KHÔNG ĐỔI — TIẾP TỤC THI ĐẤU Ô CHỮ ➔
+                    </button>
+                    <p className="text-[10px] text-slate-400 mt-1 italic">
+                      *Lưu ý: Nếu không đổi, bạn bắt buộc phải lật mở từng chữ cái cho đến ô cuối cùng, không được đoán tắt cả ô chữ.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-xs text-slate-400 italic">
+                  Đang đợi Đội {currentTurnTeamName} quyết định Đổi hay Không Đổi...
                 </div>
               )}
             </div>

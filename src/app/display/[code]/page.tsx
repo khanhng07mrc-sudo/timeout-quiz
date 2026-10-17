@@ -126,25 +126,36 @@ export default function DisplayPage() {
     }
     const endsAt = matchStarting.endsAt || (Date.now() + getServerClockOffset() + matchStarting.seconds * 1000);
     const total = matchStarting.total || 5;
+
+    // Immediate tick for current second
+    const initRem = Math.max(0, Math.min(total, Math.ceil((endsAt - (Date.now() + getServerClockOffset())) / 1000)));
+    if (initRem > 0 && lastMatchTickRef.current !== initRem) {
+      lastMatchTickRef.current = initRem;
+      soundManager.playCountdownTick(initRem);
+    }
+
     const interval = setInterval(() => {
       const now = Date.now() + getServerClockOffset();
       const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
       const remaining = Math.min(total, rawRem);
+
+      if (lastMatchTickRef.current !== remaining && remaining > 0) {
+        lastMatchTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
+
       setMatchStarting((prev) => {
         if (!prev) return null;
-        // Strictly monotonic non-increasing: NEVER jump upwards
         const safeSeconds = Math.min(prev.seconds, remaining);
-        if (lastMatchTickRef.current !== safeSeconds && safeSeconds > 0) {
-          lastMatchTickRef.current = safeSeconds;
-          soundManager.playCountdownTick(safeSeconds);
-        }
-        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: safeSeconds, endsAt, total };
+        if (prev.seconds === safeSeconds) return prev;
+        return { ...prev, seconds: safeSeconds };
       });
+
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 100);
+    }, 50);
+
     return () => clearInterval(interval);
   }, [matchStarting?.endsAt]);
 
@@ -157,25 +168,36 @@ export default function DisplayPage() {
     }
     const endsAt = questionPrepare.endsAt || (Date.now() + getServerClockOffset() + questionPrepare.seconds * 1000);
     const total = questionPrepare.total || 3;
+
+    // Immediate tick for current second
+    const initRem = Math.max(0, Math.min(total, Math.ceil((endsAt - (Date.now() + getServerClockOffset())) / 1000)));
+    if (initRem > 0 && lastPrepareTickRef.current !== initRem) {
+      lastPrepareTickRef.current = initRem;
+      soundManager.playCountdownTick(initRem);
+    }
+
     const interval = setInterval(() => {
       const now = Date.now() + getServerClockOffset();
       const rawRem = Math.max(0, Math.ceil((endsAt - now) / 1000));
       const remaining = Math.min(total, rawRem);
+
+      if (lastPrepareTickRef.current !== remaining && remaining > 0) {
+        lastPrepareTickRef.current = remaining;
+        soundManager.playCountdownTick(remaining);
+      }
+
       setQuestionPrepare((prev) => {
         if (!prev) return null;
-        // Strictly monotonic non-increasing: NEVER jump upwards
         const safeSeconds = Math.min(prev.seconds, remaining);
-        if (lastPrepareTickRef.current !== safeSeconds && safeSeconds > 0) {
-          lastPrepareTickRef.current = safeSeconds;
-          soundManager.playCountdownTick(safeSeconds);
-        }
-        if (prev.seconds === safeSeconds && prev.endsAt === endsAt) return prev;
-        return { ...prev, seconds: safeSeconds, endsAt, total };
+        if (prev.seconds === safeSeconds) return prev;
+        return { ...prev, seconds: safeSeconds };
       });
+
       if (remaining <= 0) {
         clearInterval(interval);
       }
-    }, 100);
+    }, 50);
+
     return () => clearInterval(interval);
   }, [questionPrepare?.endsAt]);
 
@@ -393,7 +415,6 @@ export default function DisplayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic(0, true);
-      soundManager.playCountdownTick(p.seconds);
     });
 
     socket.on("game:prepare", (p) => {
@@ -410,7 +431,6 @@ export default function DisplayPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       soundManager.stopMusic(0, true);
-      soundManager.playCountdownTick(p.seconds);
     });
 
     socket.on("game:intermission", (p) => {

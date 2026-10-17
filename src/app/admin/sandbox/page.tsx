@@ -4316,12 +4316,14 @@ export default function AdminSandboxPage() {
               }
 
               const nextRoom = { ...latest, magicWheelState: nextWheel };
+              roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
               return nextRoom;
             });
           }, 4500);
 
           const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
@@ -4409,6 +4411,7 @@ export default function AdminSandboxPage() {
           }
 
           const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
@@ -4448,6 +4451,7 @@ export default function AdminSandboxPage() {
           }
 
           const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
@@ -4465,6 +4469,7 @@ export default function AdminSandboxPage() {
             cur.lastActionMessage = `Ô May Mắn đã lật mở chữ "${p.secretPhrase[index]}"! Mời Đội ${cur.currentTurnTeamName} quay tiếp.`;
           }
           const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
@@ -4489,6 +4494,7 @@ export default function AdminSandboxPage() {
           }
           cur.phase = "SPIN_WAITING";
           const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
@@ -5320,13 +5326,18 @@ export default function AdminSandboxPage() {
             addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
             return;
           } else if (selectedMode === "MAGIC_WHEEL") {
+            const currentRState = roomStateRef.current || roomState;
+            const updatedRoomState: RoomState = {
+              ...(currentRState || {}),
+              status: "PLAYING",
+              magicWheelState: currentRState?.magicWheelState,
+            };
+            roomStateRef.current = updatedRoomState;
+            setRoomState(updatedRoomState);
             syncToIframes({
               matchStarting: null,
-              roomState: {
-                ...(roomState || {}),
-                status: "PLAYING",
-                magicWheelState: roomState?.magicWheelState,
-              },
+              roomState: updatedRoomState,
+              magicWheelState: updatedRoomState.magicWheelState,
             });
             addLog("🎡 Chiếc Nón Kỳ Diệu bắt đầu! Vòng quay tri thức và ô chữ 4x14 sẵn sàng.");
             return;

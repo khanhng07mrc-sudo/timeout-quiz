@@ -11,6 +11,7 @@ type SFXKey =
   | "mw_lose_turn"
   | "mw_lucky"
   | "mw_solve_win"
+  | "mw_solve_reveal"
   | "mw_buzz_solve"
   | "mw_double"
   | "mw_halve"
@@ -45,7 +46,8 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   mw_bankrupt: { primary: "/sounds/magic-wheel/mat_diem.mp3", fallbacks: ["/sounds/magic-wheel/bankrupt_lose_turn.mp3", "/sounds/wrong.ogg"] },
   mw_lose_turn: { primary: "/sounds/magic-wheel/mat_luot.mp3", fallbacks: ["/sounds/magic-wheel/bankrupt_lose_turn.mp3", "/sounds/wrong.ogg"] },
   mw_lucky: { primary: "/sounds/magic-wheel/them_luot_may_man.mp3", fallbacks: ["/sounds/powerup.mp3"] },
-  mw_solve_win: { primary: "/sounds/magic-wheel/solve_puzzle_win.mp3", fallbacks: ["/sounds/correct.mp3"] },
+  mw_solve_win: { primary: "/sounds/magic-wheel/mo_dap_an_o_chu.mp3", fallbacks: ["/sounds/magic-wheel/solve_puzzle_win.mp3", "/sounds/correct.mp3"] },
+  mw_solve_reveal: { primary: "/sounds/magic-wheel/mo_dap_an_o_chu.mp3", fallbacks: ["/sounds/magic-wheel/solve_puzzle_win.mp3", "/sounds/correct.mp3"] },
   mw_buzz_solve: { primary: "/sounds/magic-wheel/buzz_solve.mp3", fallbacks: ["/sounds/olympia_buzz.mp3"] },
   mw_double: { primary: "/sounds/magic-wheel/double_points.mp3", fallbacks: ["/sounds/correct.mp3"] },
   mw_halve: { primary: "/sounds/magic-wheel/chia_doi.mp3", fallbacks: ["/sounds/wrong.ogg"] },
@@ -1346,11 +1348,10 @@ class SoundManager {
   }
 
   /**
-   * 7. Nhạc ăn mừng giải thành công cả ô chữ
+   * 7. Nhạc ăn mừng giải thành công cả ô chữ (Mở đáp án ô chữ chuẩn 2012)
    */
   public playMagicWheelSolveWin() {
-    this.playSFX("mw_solve_win", 1.0);
-    this.playMagicWheelSolve();
+    this.playSFX("mw_solve_reveal", 1.0);
   }
 
   /**

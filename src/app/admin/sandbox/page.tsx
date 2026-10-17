@@ -3908,7 +3908,7 @@ export default function AdminSandboxPage() {
         }
         return;
       }
-      if (e.data?.type !== "OFFLINE_PLAYER_ACTION" || !isOfflineSandbox) return;
+      if (e.data?.type === "OFFLINE_PLAYER_ACTION" && isOfflineSandbox) {
       const { action, answer, points, cellId, teamId } = e.data;
       const targetTeamId = teamId || stableTeams[activeTeamIndex]?.id || stableTeams[0]?.id || "t_0";
       const targetTeamName = stableTeams.find((t) => t.id === targetTeamId)?.name || "Bạn (Tester)";
@@ -4209,7 +4209,10 @@ export default function AdminSandboxPage() {
           return nextState;
         });
         syncToIframes();
-      } else if (e.data?.type === "MAGIC_WHEEL_SPIN") {
+        }
+      }
+
+      if (e.data?.type === "MAGIC_WHEEL_SPIN") {
         const { power } = e.data;
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState || prev.magicWheelState.isSpinning) return prev;
@@ -4498,6 +4501,17 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
+      } else if (e.data?.type === "MAGIC_WHEEL_FORCE_PHASE") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState, phase: e.data.phase || "ACTION_INPUT" };
+          if (e.data.selectedSector) cur.selectedSector = e.data.selectedSector;
+          if (e.data.lastActionMessage) cur.lastActionMessage = e.data.lastActionMessage;
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
       } else if (e.data?.type === "TOURNAMENT_PREDICT") {
         const { matchId, predictedWinnerId, teamId } = e.data;
         setRoomState((prev) => {
@@ -4513,7 +4527,8 @@ export default function AdminSandboxPage() {
           syncToIframes({ tournamentState: nextTournament });
           return { ...prev, tournamentState: nextTournament };
         });
-        addLog(`🔮 Đội [${targetTeamName}] đã DỰ ĐOÁN đội thắng cho trận [${matchId}]!`);
+        const predTeamName = stableTeams.find((t) => t.id === teamId)?.name || teamId || "Đội";
+        addLog(`🔮 Đội [${predTeamName}] đã DỰ ĐOÁN đội thắng cho trận [${matchId}]!`);
       } else if (e.data?.type === "TOURNAMENT_CHEER") {
         const { matchId, targetTeamId: cheerTeamId, emoji } = e.data;
         setRoomState((prev) => {

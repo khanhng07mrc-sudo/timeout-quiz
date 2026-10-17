@@ -320,15 +320,24 @@ export default function MagicWheelBoard({
                 const y2 = 200 + r * Math.sin(endRad);
 
                 const midAngle = startAngle + anglePerSector / 2;
-                const midRad = (midAngle * Math.PI) / 180;
-                const textR = 125;
-                const tx = 200 + textR * Math.cos(midRad);
-                const ty = 200 + textR * Math.sin(midRad);
-
                 const pathData = `M 200 200 L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
+
+                const isNumeric = sec.type === "POINTS" || /^\d+$/.test(sec.label.trim());
+                const digits = isNumeric ? sec.label.trim().split("") : [];
+                const numCount = digits.length;
+                const numStep = numCount >= 4 ? 20 : 25;
+                const numStartY = -(112 + ((numCount - 1) * numStep) / 2);
+
+                const specialLabel = sec.label;
+                const specialFontSize = specialLabel.length > 9 ? "9.5" : specialLabel.length > 7 ? "10.5" : "11.5";
+
+                // Peg pin between sectors
+                const pegX = 200 + 185 * Math.cos(startRad);
+                const pegY = 200 + 185 * Math.sin(startRad);
 
                 return (
                   <g key={sec.id}>
+                    {/* Wedge Path */}
                     <path
                       d={pathData}
                       fill={sec.color}
@@ -336,21 +345,49 @@ export default function MagicWheelBoard({
                       strokeWidth="1.2"
                       strokeOpacity="0.4"
                     />
-                    {/* Text rotated along radial line */}
-                    <text
-                      x={tx}
-                      y={ty}
-                      fill={sec.textColor || "#ffffff"}
-                      fontSize={sec.label.length > 6 ? "9.5" : "13"}
-                      fontWeight="900"
-                      fontFamily="system-ui, -apple-system, sans-serif"
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      transform={`rotate(${midAngle + 90}, ${tx}, ${ty})`}
-                      filter="url(#mw_shadow)"
-                    >
-                      {sec.label}
-                    </text>
+
+                    {/* Sector Text & Numbers */}
+                    <g transform={`translate(200, 200) rotate(${midAngle + 90})`}>
+                      {isNumeric ? (
+                        /* Số đi theo chiều kim, xếp dọc từ top (mép ngoài) vào tâm */
+                        digits.map((digit, dIdx) => (
+                          <text
+                            key={dIdx}
+                            x={0}
+                            y={numStartY + dIdx * numStep}
+                            fill={sec.textColor || "#ffffff"}
+                            fontSize={numCount >= 4 ? "15" : "17"}
+                            fontWeight="900"
+                            fontFamily="system-ui, -apple-system, sans-serif"
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            filter="url(#mw_shadow)"
+                          >
+                            {digit}
+                          </text>
+                        ))
+                      ) : (
+                        /* Ô chức năng: đi đúng chiều ô (dọc theo tia ô), căn giữa ô */
+                        <text
+                          x={0}
+                          y={-110}
+                          transform="rotate(90, 0, -110)"
+                          fill={sec.textColor || "#ffffff"}
+                          fontSize={specialFontSize}
+                          fontWeight="900"
+                          fontFamily="system-ui, -apple-system, sans-serif"
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          letterSpacing="0.8px"
+                          filter="url(#mw_shadow)"
+                        >
+                          {specialLabel}
+                        </text>
+                      )}
+                    </g>
+
+                    {/* Peg Pin on Sector Boundary */}
+                    <circle cx={pegX} cy={pegY} r="2.2" fill="#fef08a" stroke="#78350f" strokeWidth="0.8" />
                   </g>
                 );
               })}

@@ -1035,6 +1035,241 @@ class SoundManager {
       });
     } catch {}
   }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // CHIẾC NÓN KỲ DIỆU (WHEEL OF FORTUNE) SOUND SYSTEM
+  // ═════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Tiếng chuông đing ngân vang trong sáng khi lật đúng chữ cái trên bàn ô chữ
+   */
+  public playMagicWheelCorrect() {
+    if (this.isMuted) return;
+    this.playSFX("correct", 0.85);
+
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      // Chuông đing ngân vang: E5 (659.25Hz) -> A5 (880Hz) -> C#6 (1108.73Hz)
+      const notes = [659.25, 880, 1108.73];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+
+        const peak = Math.max(0.04, this.volume * 0.35);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.08 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0005, now + idx * 0.08 + 0.7);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.72);
+      });
+    } catch {}
+  }
+
+  /**
+   * Tiếng còi báo đoán sai chữ cái
+   */
+  public playMagicWheelWrong() {
+    if (this.isMuted) return;
+    this.playSFX("wrong", 0.85);
+
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(146.83, now); // D3
+      osc.frequency.linearRampToValueAtTime(123.47, now + 0.4); // B2
+
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(this.volume * 0.28, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.46);
+    } catch {}
+  }
+
+  /**
+   * Âm thanh thảm họa khi quay vào ô MẤT ĐIỂM (Bankrupt stinger)
+   */
+  public playMagicWheelBankrupt() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("wrong", 1.0);
+      return;
+    }
+    try {
+      const now = ctx.currentTime;
+      // Stinger buồn trứ danh: Eb4 -> D4 -> Db4 -> C4 (Wah-wah-wah-wah)
+      const notes = [311.13, 293.66, 277.18, 261.63];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.18);
+        // Pitch bend down slight wah
+        osc.frequency.linearRampToValueAtTime(freq * 0.95, now + idx * 0.18 + 0.16);
+
+        const peak = Math.max(0.03, this.volume * 0.3);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.18);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.18 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.18 + 0.22);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.18);
+        osc.stop(now + idx * 0.18 + 0.24);
+      });
+    } catch {}
+  }
+
+  /**
+   * Âm thanh còi báo khi quay vào ô MẤT LƯỢT (Lose Turn buzzer)
+   */
+  public playMagicWheelLoseTurn() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("buzz", 0.9);
+      return;
+    }
+    try {
+      const now = ctx.currentTime;
+      // Còi báo mất lượt đôi: 2 nhịp bíp trầm dứt khoát
+      [0, 0.22].forEach((offset) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.setValueAtTime(185.0, now + offset); // F#3
+        gain.gain.setValueAtTime(0.001, now + offset);
+        gain.gain.linearRampToValueAtTime(this.volume * 0.25, now + offset + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.16);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + 0.17);
+      });
+    } catch {}
+  }
+
+  /**
+   * Âm thanh lấp lánh kỳ diệu khi quay vào Ô MAY MẮN (Sparkling magic chime)
+   */
+  public playMagicWheelLucky() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("powerup", 0.9);
+      return;
+    }
+    try {
+      const now = ctx.currentTime;
+      // Chuỗi arpeggio thăng hoa kỳ diệu: G5 -> B5 -> D6 -> G6 -> B6
+      const arpeggio = [783.99, 987.77, 1174.66, 1567.98, 1975.53];
+      arpeggio.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+        const peak = Math.max(0.03, this.volume * 0.32);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.06);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.06 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0008, now + idx * 0.06 + 0.6);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.06);
+        osc.stop(now + idx * 0.06 + 0.62);
+      });
+    } catch {}
+  }
+
+  /**
+   * Âm thanh hân hoan khi nhận THÊM LƯỢT hoặc NHÂN ĐÔI ĐIỂM
+   */
+  public playMagicWheelExtraTurn() {
+    if (this.isMuted) return;
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("powerup", 0.9);
+      return;
+    }
+    try {
+      const now = ctx.currentTime;
+      // Hợp âm vui tươi: C5 -> E5 -> G5 -> C6
+      const chord = [523.25, 659.25, 783.99, 1046.5];
+      chord.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+        const peak = Math.max(0.04, this.volume * 0.35);
+        gain.gain.setValueAtTime(0.001, now + idx * 0.05);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.05 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.55);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + idx * 0.05);
+        osc.stop(now + idx * 0.05 + 0.58);
+      });
+    } catch {}
+  }
+
+  /**
+   * Nhạc chiến thắng tưng bừng khi giải thành công ô chữ (Puzzle Solved Fanfare)
+   */
+  public playMagicWheelSolve() {
+    if (this.isMuted) return;
+    this.playSFX("correct", 1.0);
+
+    const ctx = this.getWheelAudioCtx();
+    if (!ctx) {
+      this.playSFX("powerup", 1.0);
+      return;
+    }
+    try {
+      const now = ctx.currentTime;
+      // Grand Gameshow Fanfare: G4 -> C5 -> E5 -> G5 (dài) -> C6 (rực rỡ)
+      const melody = [
+        { f: 392.0, d: 0.12, t: 0 },
+        { f: 523.25, d: 0.12, t: 0.14 },
+        { f: 659.25, d: 0.12, t: 0.28 },
+        { f: 783.99, d: 0.35, t: 0.42 },
+        { f: 1046.5, d: 0.8, t: 0.82 },
+      ];
+      melody.forEach((note) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(note.f, now + note.t);
+
+        const peak = Math.max(0.05, this.volume * 0.4);
+        gain.gain.setValueAtTime(0.001, now + note.t);
+        gain.gain.linearRampToValueAtTime(peak, now + note.t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + note.t + note.d);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now + note.t);
+        osc.stop(now + note.t + note.d + 0.05);
+      });
+    } catch {}
+  }
 }
 
 export const soundManager = typeof window !== "undefined" ? new SoundManager() : ({} as SoundManager);

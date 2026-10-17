@@ -257,12 +257,12 @@ export default function MagicWheelBoard({
                           cell.isRevealed
                             ? "bg-white text-[#0f172a] shadow-[0_4px_10px_rgba(255,255,255,0.4)] border-2 border-white scale-100"
                             : phase === "LUCKY_PICK"
-                            ? "bg-amber-300 text-black border-2 border-yellow-400 animate-bounce cursor-pointer hover:scale-110"
+                            ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_20px_#f59e0b] cursor-pointer hover:scale-110"
                             : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                         }`}
                       >
                         <span className="text-sm sm:text-2xl md:text-3xl font-extrabold tracking-tight">
-                          {cell.isRevealed ? cell.char : "?"}
+                          {cell.isRevealed ? cell.char : phase === "LUCKY_PICK" ? "⭐" : "?"}
                         </span>
                       </div>
                     );
@@ -399,17 +399,29 @@ export default function MagicWheelBoard({
               </div>
 
               {canInteract ? (
-                <button
-                  type="button"
-                  onClick={() => onSpin?.(oscillatingPower)}
-                  disabled={isSpinning}
-                  className="w-full py-3 sm:py-3.5 rounded-xl font-black text-sm sm:text-base text-white bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 transition shadow-[0_0_20px_rgba(236,72,153,0.4)] cursor-pointer"
-                >
-                  ✦ CHỐT LỰC & QUAY NÓN ({oscillatingPower}%) ✦
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => onSpin?.(oscillatingPower)}
+                    disabled={isSpinning}
+                    className="flex-1 py-3 sm:py-3.5 rounded-xl font-black text-sm sm:text-base text-white bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 transition shadow-[0_0_20px_rgba(236,72,153,0.4)] cursor-pointer"
+                  >
+                    ✦ CHỐT LỰC & QUAY NÓN ({oscillatingPower}%) ✦
+                  </button>
+                  {subMode === "WORD_PUZZLE" && (
+                    <button
+                      type="button"
+                      onClick={() => setSolveModalOpen(true)}
+                      disabled={isSpinning}
+                      className="px-4 py-3 sm:py-3.5 rounded-xl font-black text-xs sm:text-sm text-black bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 hover:brightness-110 active:scale-98 transition shadow-[0_0_15px_rgba(245,158,11,0.4)] cursor-pointer whitespace-nowrap"
+                    >
+                      🎯 ĐOÁN CẢ Ô CHỮ
+                    </button>
+                  )}
+                </div>
               ) : (
                 <div className="text-center py-2 text-xs text-slate-400 italic">
-                  Đang chờ Đội {currentTurnTeamName} bấm quay nón...
+                  Đang chờ Đội {currentTurnTeamName} bấm quay nón hoặc giải ô chữ...
                 </div>
               )}
             </div>
@@ -509,23 +521,49 @@ export default function MagicWheelBoard({
                 const rScore = roundScores?.[t.id] || 0;
                 const freeCount = freeSpinCount?.[t.id] || 0;
                 const isTurn = t.id === currentTurnTeamId;
+                const strikes = activeState.consecutiveWrongGuesses?.[t.id] || activeState.wrongGuessesCount?.[t.id] || 0;
+                const isEliminated = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
 
                 return (
                   <div
                     key={t.id}
-                    className={`p-2 rounded-xl flex items-center justify-between border transition ${
-                      isTurn
-                        ? "bg-amber-500/15 border-amber-400/50 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                    className={`p-2.5 rounded-xl flex flex-col gap-1 border transition ${
+                      isEliminated
+                        ? "bg-red-950/20 border-red-500/30 opacity-60"
+                        : isTurn
+                        ? "bg-amber-500/15 border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
                         : "bg-white/5 border-white/10"
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
-                      <span className="text-xs font-bold text-white truncate">{t.name}</span>
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
+                        <span className="text-xs font-bold text-white truncate">{t.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-right">
+                        {freeCount > 0 && (
+                          <span title="Thẻ thêm lượt" className="text-[10px] bg-sky-500/20 text-sky-300 px-1 rounded border border-sky-500/30">
+                            🎟️{freeCount}
+                          </span>
+                        )}
+                        <span className="text-xs font-mono font-black text-amber-300">+{rScore}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 text-right">
-                      {freeCount > 0 && <span title="Thẻ thêm lượt" className="text-[10px]">🎟️{freeCount}</span>}
-                      <span className="text-xs font-mono font-black text-amber-300">+{rScore}</span>
+                    {/* Strike and Elimination Status */}
+                    <div className="flex items-center justify-between text-[10px]">
+                      {isEliminated ? (
+                        <span className="text-rose-400 font-bold uppercase tracking-tighter">⛔ Đã dừng vòng</span>
+                      ) : (
+                        <div className="flex items-center gap-1 text-slate-400">
+                          <span className="text-[9px] font-semibold">Lỗi:</span>
+                          <span className={strikes >= 1 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                          <span className={strikes >= 2 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                          <span className={strikes >= 3 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                        </div>
+                      )}
+                      {isTurn && !isEliminated && (
+                        <span className="text-[9px] font-extrabold text-amber-300 animate-pulse">● LƯỢT</span>
+                      )}
                     </div>
                   </div>
                 );

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
 import { normalizeToThreeLevels } from "@/lib/game-engine/scoring";
+import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
 
 export async function GET(
   _req: NextRequest,
@@ -12,6 +13,14 @@ export async function GET(
     where: { quizBankId: id },
     orderBy: { order: "asc" },
   });
+
+  if (questions.length === 0) {
+    const preset = MAGIC_WHEEL_PRESET_BANKS.find((p) => p.id === id);
+    if (preset && preset.questions) {
+      return NextResponse.json({ questions: preset.questions });
+    }
+  }
+
   return NextResponse.json({ questions });
 }
 

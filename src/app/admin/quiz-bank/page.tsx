@@ -84,6 +84,8 @@ interface QuizBank {
   title: string;
   description?: string;
   createdAt: string;
+  isBuiltIn?: boolean;
+  isPublic?: boolean;
   _count?: { questions: number };
 }
 
@@ -1341,7 +1343,16 @@ export default function QuizBankPage() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-bold text-base flex-1">{b.title}</p>
+                    <div className="flex-1 flex flex-col gap-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="font-bold text-base">{b.title}</p>
+                        {(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/25 text-amber-300 border border-amber-500/40 whitespace-nowrap shadow-sm">
+                            ⭐ Đề Mẫu VTV3
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                       <button
                         onClick={(e) => {
@@ -1353,17 +1364,19 @@ export default function QuizBankPage() {
                       >
                         ✏️
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteBank(b);
-                        }}
-                        disabled={deletingBankId === b.id}
-                        className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition flex items-center justify-center"
-                        title="Xóa bộ đề"
-                      >
-                        {deletingBankId === b.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400" />}
-                      </button>
+                      {!(b.isBuiltIn || b.id.startsWith("bank_mw_preset")) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteBank(b);
+                          }}
+                          disabled={deletingBankId === b.id}
+                          className="p-1 rounded-lg hover:bg-destructive/20 text-destructive text-xs transition flex items-center justify-center"
+                          title="Xóa bộ đề"
+                        >
+                          {deletingBankId === b.id ? "..." : <SystemIcon name="trash" className="w-3.5 h-3.5 text-red-400" />}
+                        </button>
+                      )}
                     </div>
                   </div>
                   {b.description && (

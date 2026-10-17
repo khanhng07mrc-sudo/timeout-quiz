@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyAdminRequest, sanitizeInput } from "@/lib/security";
-
 import { getCurrentUserFromRequest } from "@/lib/security";
+import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
 
 export async function GET(
   req: NextRequest,
@@ -17,7 +17,24 @@ export async function GET(
     },
   });
 
-  if (!bank) return NextResponse.json({ error: "Không tìm thấy bộ đề" }, { status: 404 });
+  if (!bank) {
+    const preset = MAGIC_WHEEL_PRESET_BANKS.find((p) => p.id === id);
+    if (preset) {
+      return NextResponse.json({
+        bank: {
+          id: preset.id,
+          title: preset.title,
+          description: preset.description,
+          isPublic: true,
+          ownerId: "demo-host-id",
+          isBuiltIn: true,
+          questions: preset.questions || [],
+          _count: { questions: preset.questions?.length || 4, rooms: 0 },
+        },
+      });
+    }
+    return NextResponse.json({ error: "Không tìm thấy bộ đề" }, { status: 404 });
+  }
 
   const user = getCurrentUserFromRequest(req);
   const isAdmin = verifyAdminRequest(req);
@@ -77,6 +94,10 @@ export async function DELETE(
   }
 
   const { id } = await params;
+
+  if (id.startsWith("bank_mw_preset")) {
+    return NextResponse.json({ error: "Không thể xóa bộ đề mẫu mặc định của hệ thống" }, { status: 400 });
+  }
 
   const bank = await prisma.quizBank.findUnique({ where: { id } });
   if (!bank) return NextResponse.json({ error: "Không tìm thấy bộ đề" }, { status: 404 });

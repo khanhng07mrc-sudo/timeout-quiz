@@ -4225,6 +4225,7 @@ export default function AdminSandboxPage() {
           cur.selectedSectorIndex = landingSectorIndex;
           cur.phase = "SPINNING";
           cur.lastActionMessage = `Nón đang xoay với lực ${effPower}%...`;
+          soundManager.playWheelSpin(4500);
 
           setTimeout(() => {
             setRoomState((latest) => {
@@ -4239,6 +4240,7 @@ export default function AdminSandboxPage() {
               const isSoleSurvivor = eligibleTeams.length === 1 && latest.teams.length > 1;
 
               if (sector.type === "LOSE_TURN") {
+                soundManager.playMagicWheelLoseTurn();
                 nextWheel.pendingSpecialAction = "NONE";
                 if (isSoleSurvivor) {
                   nextWheel.phase = "SPIN_WAITING";
@@ -4257,6 +4259,7 @@ export default function AdminSandboxPage() {
                   nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT LƯỢT! Chuyển lượt sang ${nextWheel.currentTurnTeamName}.`;
                 }
               } else if (sector.type === "BANKRUPT") {
+                soundManager.playMagicWheelBankrupt();
                 nextWheel.pendingSpecialAction = "NONE";
                 nextWheel.roundScores[tId] = 0;
                 if (isSoleSurvivor) {
@@ -4276,11 +4279,13 @@ export default function AdminSandboxPage() {
                   nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MẤT ĐIỂM! Điểm vòng bị xóa về 0 và chuyển lượt sang ${nextWheel.currentTurnTeamName}.`;
                 }
               } else if (sector.type === "HALF") {
+                soundManager.playWheelStopChime();
                 nextWheel.pendingSpecialAction = "HALF";
                 nextWheel.roundScores[tId] = Math.floor((nextWheel.roundScores[tId] || 0) / 2);
                 nextWheel.phase = "ACTION_INPUT";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô CHIA ĐÔI! Điểm vòng còn ${nextWheel.roundScores[tId]}đ. Mời chọn chữ cái!`;
               } else if (sector.type === "DOUBLE") {
+                soundManager.playMagicWheelExtraTurn();
                 nextWheel.pendingSpecialAction = "DOUBLE";
                 nextWheel.phase = "ACTION_INPUT";
                 const curPts = nextWheel.roundScores[tId] || 0;
@@ -4288,18 +4293,22 @@ export default function AdminSandboxPage() {
                   ? `Đội ${teamName} quay vào ô NHÂN ĐÔI! Đoán đúng chữ cái để x2 số điểm vòng (${curPts}đ -> ${curPts * 2}đ)!`
                   : `Đội ${teamName} quay vào ô NHÂN ĐÔI! (Chưa có điểm nên không nhân đôi, nhưng cần đoán đúng để tránh bị tính lỗi). Mời chọn chữ cái!`;
               } else if (sector.type === "EXTRA_TURN") {
+                soundManager.playMagicWheelExtraTurn();
                 nextWheel.pendingSpecialAction = "EXTRA_TURN";
                 nextWheel.phase = "ACTION_INPUT";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô THÊM LƯỢT 🎟️! Hãy đoán đúng 1 chữ cái để chính thức nhận thẻ!`;
               } else if (sector.type === "LUCKY") {
+                soundManager.playMagicWheelLucky();
                 nextWheel.pendingSpecialAction = "LUCKY";
                 nextWheel.phase = "LUCKY_PICK";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô MAY MẮN! Mời bấm chọn 1 ô bất kỳ trên bảng để lật mở miễn phí!`;
               } else if (sector.type === "MYSTERY") {
+                soundManager.playWheelStopChime();
                 nextWheel.pendingSpecialAction = "MYSTERY";
                 nextWheel.phase = "MYSTERY_CHOICE";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô BÍ MẬT 🔮! Hãy quyết định lật ô bí mật hay nhận 1000đ an toàn.`;
               } else {
+                soundManager.playWheelStopChime();
                 nextWheel.pendingSpecialAction = "POINTS";
                 nextWheel.phase = "ACTION_INPUT";
                 nextWheel.lastActionMessage = `Đội ${teamName} quay vào ô ${sector.label} điểm! Mời gọi chữ cái!`;
@@ -4333,6 +4342,7 @@ export default function AdminSandboxPage() {
           const eligibleTeams = prev.teams.filter((t) => !(cur.disqualifiedTeamIdsInRound || []).includes(t.id));
 
           if (check.found) {
+            soundManager.playMagicWheelCorrect();
             cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: 0 };
             p.revealedIndices = check.newRevealedIndices;
             let earned = 0;
@@ -4353,6 +4363,7 @@ export default function AdminSandboxPage() {
             }
 
             if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+              soundManager.playMagicWheelSolve();
               cur.phase = "ROUND_RECAP";
               cur.lastActionMessage = `🎉 Đội ${teamName} đã xuất sắc giải được toàn bộ ô chữ và nhận trọn vẹn điểm số vòng!`;
             } else {
@@ -4361,6 +4372,7 @@ export default function AdminSandboxPage() {
               cur.lastActionMessage = `Chính xác! Có ${check.count} chữ ${normLetter}. Mời Đội ${teamName} quay tiếp!`;
             }
           } else {
+            soundManager.playMagicWheelWrong();
             const strikes = (cur.consecutiveWrongGuesses[tId] || 0) + 1;
             cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
 
@@ -4411,10 +4423,12 @@ export default function AdminSandboxPage() {
           const isCorrect = matchWholeSecretPhrase(p.secretPhrase, answer);
 
           if (isCorrect) {
+            soundManager.playMagicWheelSolve();
             p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
             cur.phase = "ROUND_RECAP";
             cur.lastActionMessage = `🎉 Chúc mừng Đội ${teamName} đã giải chính xác toàn bộ ô chữ: "${p.secretPhrase}"!`;
           } else {
+            soundManager.playMagicWheelWrong();
             const strikes = (cur.consecutiveWrongGuesses[tId] || 0) + 1;
             cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
             if (strikes >= 3) {
@@ -4444,6 +4458,7 @@ export default function AdminSandboxPage() {
           const p = cur.currentPuzzle;
           if (!p) return prev;
           if (index >= 0 && index < p.secretPhrase.length && !p.revealedIndices.includes(index)) {
+            soundManager.playMagicWheelCorrect();
             p.revealedIndices = [...p.revealedIndices, index];
             cur.phase = "SPIN_WAITING";
             cur.lastActionMessage = `Ô May Mắn đã lật mở chữ "${p.secretPhrase[index]}"! Mời Đội ${cur.currentTurnTeamName} quay tiếp.`;

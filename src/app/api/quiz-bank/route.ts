@@ -5,6 +5,7 @@ import {
   getCurrentUserFromRequest,
   sanitizeInput,
 } from "@/lib/security";
+import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -49,6 +50,55 @@ export async function GET(req: NextRequest) {
     console.warn("[GET /api/quiz-bank] Ghost cleanup error:", cleanErr);
   }
 
+  // Auto-seed preset banks into database for demo-host-id / public if missing
+  try {
+    const existingPresetCount = await prisma.quizBank.count({
+      where: { id: { in: MAGIC_WHEEL_PRESET_BANKS.map((p) => p.id) } },
+    });
+    if (existingPresetCount < MAGIC_WHEEL_PRESET_BANKS.length) {
+      await prisma.user.upsert({
+        where: { email: "demo-host@quizorra.com" },
+        update: {},
+        create: {
+          id: "demo-host-id",
+          name: "Hệ thống Quizorra",
+          email: "demo-host@quizorra.com",
+          role: "ADMIN",
+        },
+      });
+
+      for (const preset of MAGIC_WHEEL_PRESET_BANKS) {
+        const found = await prisma.quizBank.findUnique({ where: { id: preset.id } });
+        if (!found) {
+          await prisma.quizBank.create({
+            data: {
+              id: preset.id,
+              title: preset.title,
+              description: preset.description,
+              isPublic: true,
+              ownerId: "demo-host-id",
+              questions: {
+                create: (preset.questions || []).map((q: any, i: number) => ({
+                  id: q.id,
+                  type: q.type || "WORD_PUZZLE",
+                  content: q.content,
+                  answer: q.answer,
+                  hint: q.hint,
+                  points: q.points || 20,
+                  timeLimit: q.timeLimit || 30,
+                  options: q.options,
+                  order: i,
+                })),
+              },
+            },
+          });
+        }
+      }
+    }
+  } catch (seedErr) {
+    console.warn("[GET /api/quiz-bank] Auto-seed presets warning:", seedErr);
+  }
+
   const banks = await prisma.quizBank.findMany({
     where: effectiveOwnerId
       ? {
@@ -65,7 +115,28 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json({ banks });
+  // Ensure all MAGIC_WHEEL_PRESET_BANKS are guaranteed to be present even before DB sync
+  const existingIds = new Set(banks.map((b) => b.id));
+  const missingPresets = MAGIC_WHEEL_PRESET_BANKS.filter((p) => !existingIds.has(p.id)).map((p) => ({
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    isPublic: true,
+    ownerId: "demo-host-id",
+    createdAt: p.createdAt || new Date().toISOString(),
+    isBuiltIn: true,
+    _count: { questions: p.questions?.length || 4 },
+  }));
+
+  const finalBanks = [
+    ...missingPresets,
+    ...banks.map((b) => ({
+      ...b,
+      isBuiltIn: b.id.startsWith("bank_mw_preset") || b.ownerId === "demo-host-id",
+    })),
+  ];
+
+  return NextResponse.json({ banks: finalBanks });
 }
 
 export async function POST(req: NextRequest) {

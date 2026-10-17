@@ -528,6 +528,15 @@ export default function PlayPage() {
             setAnswered(false);
           }
         }
+        if (p.magicWheelState !== undefined) {
+          if (p.roomState === undefined || p.roomState.magicWheelState === undefined) {
+            setRoomState((prev) => (prev ? { ...prev, magicWheelState: p.magicWheelState } : prev));
+          }
+          setCurrentQuestion(null);
+          setRevealPayload(null);
+          setTimer(null);
+          setAnswered(false);
+        }
         if (p.teamAnswers !== undefined) {
           const curTid = myTeamIdRef.current || activeTeamId || selectedTeamId;
           if (curTid) {

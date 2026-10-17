@@ -63,6 +63,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.7",
     "opentype.js": "^2.0.0",
+    "puppeteer-core": "^25.14.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

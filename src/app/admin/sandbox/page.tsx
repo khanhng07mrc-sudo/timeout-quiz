@@ -1387,6 +1387,7 @@ export default function AdminSandboxPage() {
       questionPrepare: overrides?.questionPrepare !== undefined ? overrides.questionPrepare : questionPrepareRef.current,
       intermission: intermissionRef.current,
       mysteryQuestState: rState?.mysteryQuestState,
+      magicWheelState: rState?.magicWheelState,
       ...overrides,
     };
     displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
@@ -5317,6 +5318,17 @@ export default function AdminSandboxPage() {
               },
             });
             addLog("🏁 Bàn cờ Caro bắt đầu! Đội hiện tại chọn ô để mở câu hỏi.");
+            return;
+          } else if (selectedMode === "MAGIC_WHEEL") {
+            syncToIframes({
+              matchStarting: null,
+              roomState: {
+                ...(roomState || {}),
+                status: "PLAYING",
+                magicWheelState: roomState?.magicWheelState,
+              },
+            });
+            addLog("🎡 Chiếc Nón Kỳ Diệu bắt đầu! Vòng quay tri thức và ô chữ 4x14 sẵn sàng.");
             return;
           }
 

@@ -347,6 +347,13 @@ export default function DisplayPage() {
             setDisplayModeTab("BOARD");
           }
         }
+        if (p.magicWheelState !== undefined) {
+          setRoomState((prev) => (prev ? { ...prev, magicWheelState: p.magicWheelState } : prev));
+          setCurrentQuestion(null);
+          setRevealPayload(null);
+          setTimer(null);
+          setDisplayModeTab("BOARD");
+        }
       }
     };
     window.addEventListener("message", handlePostMessage);

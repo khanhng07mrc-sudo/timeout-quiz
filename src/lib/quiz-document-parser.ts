@@ -16,7 +16,7 @@ export interface OptionUniformityAnalysis {
 
 export interface ParsedQuestionItem {
   id?: string;
-  type: "MC_SINGLE" | "MC_MULTI" | "TRUE_FALSE" | "FILL_BLANK" | "ESSAY" | "MATCHING" | "DRAG_DROP";
+  type: "MC_SINGLE" | "MC_MULTI" | "TRUE_FALSE" | "FILL_BLANK" | "ESSAY" | "MATCHING" | "DRAG_DROP" | "CLOZE_DROPDOWN" | "WORD_PUZZLE";
   content: string;
   options: { id: string; text: string; isCorrect: boolean }[];
   answer?: string;
@@ -216,6 +216,19 @@ export function validateQuestionItem(q: Partial<ParsedQuestionItem>): ParsedQues
     if (!answer) {
       errors.push("Chưa điền từ cần trả lời");
     }
+  } else if (type === "WORD_PUZZLE") {
+    if (!answer) {
+      errors.push("Chưa nhập cụm từ bí mật (đáp án ô chữ)");
+    } else {
+      const words = answer.trim().split(/\s+/);
+      const oversizedWord = words.find((w) => w.length > 14);
+      if (oversizedWord) {
+        errors.push(`Từ "${oversizedWord}" dài hơn 14 ký tự, vượt quá chiều rộng bàn chữ 4x14`);
+      }
+    }
+    if (!hint) {
+      hint = "Ô CHỮ BÍ MẬT";
+    }
   }
 
   const uniformity = analyzeOptionUniformity(options);
@@ -252,6 +265,7 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
   const isQuestionHeader = (line: string): boolean => {
     const trimmed = line.trim();
     return (
+      /^\[(?:Ô chữ|WORD_PUZZLE|PUZZLE)\]/i.test(trimmed) ||
       /^Câu\s+\d+[:.]/i.test(trimmed) ||
       /^Câu\s+hỏi\s+\d+[:.]/i.test(trimmed) ||
       /^Bài\s+\d+[:.]/i.test(trimmed) ||
@@ -282,6 +296,36 @@ export function parseRawQuizText(rawText: string, defaultPoints = 10, defaultTim
   for (const block of blocks) {
     const blockText = block.join("\n").trim();
     if (!blockText) continue;
+
+    // Check if this block is a Word Puzzle specification
+    if (/^\[(?:Ô chữ|WORD_PUZZLE|PUZZLE)\]/i.test(blockText) || (/Chủ đề:/i.test(blockText) && /(?:Đáp án|Từ khóa|Cụm từ):/i.test(blockText))) {
+      const roundMatch = blockText.match(/Vòng\s*(\d+)/i);
+      const round = roundMatch ? Number(roundMatch[1]) : (parsedItems.length + 1);
+      const categoryMatch = blockText.match(/Chủ\s*đề[:\s]+([^|\n]+)/i);
+      const category = categoryMatch ? categoryMatch[1].trim().toUpperCase() : "Ô CHỮ BÍ MẬT";
+      const phraseMatch = blockText.match(/(?:Đáp\s*án|Từ\s*khóa|Cụm\s*từ|Secret)[:\s]+([^|\n]+)/i);
+      const phrase = phraseMatch ? phraseMatch[1].trim().toUpperCase() : "";
+      const clueMatch = blockText.match(/(?:Gợi\s*ý|Clue|Nội\s*dung)[:\s]+([^|\n]+)/i);
+      const clue = clueMatch ? clueMatch[1].trim() : `Gợi ý ô chữ vòng ${round}`;
+
+      if (phrase) {
+        parsedItems.push(
+          validateQuestionItem({
+            type: "WORD_PUZZLE",
+            content: clue,
+            answer: phrase,
+            hint: category,
+            options: [
+              { id: "round", text: String(round), isCorrect: true },
+              { id: "category", text: category, isCorrect: true },
+            ],
+            points: 20,
+            timeLimit: 30,
+          })
+        );
+        continue;
+      }
+    }
 
     let content = "";
     const options: { id: string; text: string; isCorrect: boolean }[] = [];
@@ -432,6 +476,32 @@ export async function parseExcelQuestions(file: File | ArrayBuffer, defaultPoint
   const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
   return rows.map((row, idx) => {
+    const rawType = String(row.type || row.Loai_Cau_Hoi || row["Loại câu hỏi"] || "").toUpperCase().trim();
+    const isWordPuzzle = rawType === "WORD_PUZZLE" || Boolean(row.Cum_Tu_Bi_Mat || row["Cụm từ bí mật"] || row.secretPhrase);
+
+    if (isWordPuzzle) {
+      const phrase = String(row.Cum_Tu_Bi_Mat || row["Cụm từ bí mật"] || row.secretPhrase || row.answer || row["Đáp án"] || "").toUpperCase().trim();
+      const category = String(row.Chu_De || row["Chủ đề"] || row.category || row.hint || row["Gợi ý"] || "Ô CHỮ BÍ MẬT").toUpperCase().trim();
+      const clue = String(row.Goi_Y_MC || row["Gợi ý MC"] || row.clue || row.content || row.question || row["Câu hỏi"] || `Gợi ý ô chữ vòng ${row.Vong_Thi || idx + 1}`).trim();
+      const round = Number(row.Vong_Thi || row["Vòng thi"] || row.round) || (idx + 1);
+      const rawPoints = Number(row.Diem_So || row.points || row["Điểm"]) || 20;
+      const points = normalizeToThreeLevels(rawPoints);
+      const timeLimit = Number(row.Thoi_Gian_Giay || row.timeLimit || row["Thời gian"]) || 30;
+
+      return validateQuestionItem({
+        type: "WORD_PUZZLE",
+        content: clue,
+        answer: phrase,
+        hint: category,
+        options: [
+          { id: "round", text: String(round), isCorrect: true },
+          { id: "category", text: category, isCorrect: true },
+        ],
+        points,
+        timeLimit,
+      });
+    }
+
     const rawCorrect = String(row.correct || row.answer || row["Đáp án"] || "").toUpperCase().trim();
     const correctKeys = rawCorrect.split(/[,;\s]+/).map((k) => k.trim());
 
@@ -471,6 +541,32 @@ export async function parseCsvQuestions(file: File | string, defaultPoints = 10,
       complete: (results: any) => {
         try {
           const items = results.data.map((row: any, idx: number) => {
+            const rawType = String(row.type || row.Loai_Cau_Hoi || row["Loại câu hỏi"] || "").toUpperCase().trim();
+            const isWordPuzzle = rawType === "WORD_PUZZLE" || Boolean(row.Cum_Tu_Bi_Mat || row["Cụm từ bí mật"] || row.secretPhrase);
+
+            if (isWordPuzzle) {
+              const phrase = String(row.Cum_Tu_Bi_Mat || row["Cụm từ bí mật"] || row.secretPhrase || row.answer || row["Đáp án"] || "").toUpperCase().trim();
+              const category = String(row.Chu_De || row["Chủ đề"] || row.category || row.hint || row["Gợi ý"] || "Ô CHỮ BÍ MẬT").toUpperCase().trim();
+              const clue = String(row.Goi_Y_MC || row["Gợi ý MC"] || row.clue || row.content || row.question || `Gợi ý ô chữ vòng ${row.Vong_Thi || idx + 1}`).trim();
+              const round = Number(row.Vong_Thi || row["Vòng thi"] || row.round) || (idx + 1);
+              const rawPoints = Number(row.Diem_So || row.points || row["Điểm"]) || 20;
+              const points = normalizeToThreeLevels(rawPoints);
+              const timeLimit = Number(row.Thoi_Gian_Giay || row.timeLimit) || 30;
+
+              return validateQuestionItem({
+                type: "WORD_PUZZLE",
+                content: clue,
+                answer: phrase,
+                hint: category,
+                options: [
+                  { id: "round", text: String(round), isCorrect: true },
+                  { id: "category", text: category, isCorrect: true },
+                ],
+                points,
+                timeLimit,
+              });
+            }
+
             const rawCorrect = String(row.correct || row.answer || row["Đáp án"] || "").toUpperCase().trim();
             const correctKeys = rawCorrect.split(/[,;\s]+/).map((k) => k.trim());
 

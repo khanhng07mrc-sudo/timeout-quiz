@@ -12,6 +12,8 @@ import ArenaModeLaunchTransition from "@/components/ui/ArenaModeLaunchTransition
 import { GameMode, CardType } from "@/types";
 import { getDefaultAllowedPowerupsForMode } from "@/lib/game-engine/powerups";
 import { allocateQuestionsForMatch } from "@/lib/game-engine/question-allocator";
+import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
+import { MAGIC_WHEEL_PRESET_BANKS, offlineStorage } from "@/lib/offline-storage";
 
 const GAME_MODES = [
   { value: "CLASSIC", label: "Classic", desc: "Tất cả các đội cùng làm bài, chấm theo Bloom & tỷ lệ đúng phòng", emoji: "🎮", badge: "Toàn năng", badgeColor: "text-purple-300 bg-purple-500/20 border-purple-500/30" },
@@ -155,6 +157,26 @@ export default function CreateRoomPage() {
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    if (!quizBankId) return;
+    const localBank = offlineStorage.getLocalBankById(quizBankId);
+    const questions = localBank?.questions || [];
+    const wordPuzzles = questions.filter((q: any) => q.type === "WORD_PUZZLE");
+    if (wordPuzzles.length > 0) {
+      const parsed = wordPuzzles.map((q: any, i: number) => {
+        const roundOpt = q.options?.find((o: any) => o.id === "round");
+        return {
+          roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+          category: q.hint || "TỔNG HỢP",
+          secretPhrase: (q.answer || "").toUpperCase(),
+          clue: q.content || "",
+        };
+      });
+      setMagicWheelPuzzles(parsed);
+      setMagicWheelRoundsCount(parsed.length);
+    }
+  }, [quizBankId]);
 
   const handleSetModeLayout = (layout: "GRID" | "LIST" | "COMPACT") => {
     setModeLayout(layout);
@@ -1257,6 +1279,62 @@ export default function CreateRoomPage() {
 
               {magicWheelSubMode === "WORD_PUZZLE" && (
                 <div className="space-y-3 pt-2 border-t border-amber-500/20">
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">⚡</span>
+                      <div>
+                        <span className="text-xs font-bold text-amber-200 block">Nạp nhanh bộ đề ô chữ mẫu (Preset):</span>
+                        <p className="text-[10px] text-slate-400">Chọn 1 trong 3 gói đề mẫu biên soạn sẵn chuẩn format VTV3</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        onChange={(e) => {
+                          const presetId = e.target.value;
+                          if (!presetId) return;
+                          const found = MAGIC_WHEEL_PRESET_BANKS.find((b) => b.id === presetId);
+                          if (found && found.questions) {
+                            const newPuzzles = found.questions.map((q, i) => {
+                              const roundOpt = q.options?.find((o: any) => o.id === "round");
+                              return {
+                                roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+                                category: q.hint || "TỔNG HỢP",
+                                secretPhrase: (q.answer || "").toUpperCase(),
+                                clue: q.content || "",
+                              };
+                            });
+                            setMagicWheelPuzzles(newPuzzles);
+                            setMagicWheelRoundsCount(newPuzzles.length);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-black/60 border border-amber-500/40 text-amber-300 text-xs font-bold cursor-pointer"
+                      >
+                        <option value="">— Chọn gói đề mẫu —</option>
+                        {MAGIC_WHEEL_PRESET_BANKS.map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.title}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={downloadMagicWheelExcelTemplate}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        title="Tải tệp mẫu Excel có 2 sheet và hướng dẫn"
+                      >
+                        <span>📊</span> Mẫu Excel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={downloadMagicWheelJsonTemplate}
+                        className="px-2.5 py-1.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        title="Tải tệp mẫu JSON chuẩn format"
+                      >
+                        <span>⚙️</span> Mẫu JSON
+                      </button>
+                    </div>
+                  </div>
+
                   <h4 className="text-xs font-bold text-amber-200">Danh sách Ô Chữ theo từng Vòng:</h4>
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {magicWheelPuzzles.slice(0, magicWheelRoundsCount).map((p, idx) => (

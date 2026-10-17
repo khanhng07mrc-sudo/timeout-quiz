@@ -154,7 +154,48 @@ Mỗi câu hỏi phải được phân bổ điểm số là 10, 20 hoặc 30 đ
 
       const isDocMode = action === "generate_from_document" && Boolean(documentText?.trim());
 
-      prompt = `
+      const isWordPuzzleMode = questionTypes?.includes("WORD_PUZZLE");
+
+      if (isWordPuzzleMode) {
+        prompt = `
+Bạn là chuyên gia biên soạn đề thi Gameshow Chiếc Nón Kỳ Diệu (Vòng Quay Tri Thức - Wheel of Fortune Vietnam) của Đài Truyền hình Việt Nam VTV3.
+${
+  isDocMode
+    ? `DƯỚI ĐÂY LÀ NỘI DUNG TÀI LIỆU CẦN RA ĐỀ Ô CHỮ:\n"""\n${documentText.slice(0, 15000)}\n"""\n`
+    : `CHỦ ĐỀ ĐỀ THI Ô CHỮ: "${topic || "Văn hóa, Lịch sử & Khoa học Việt Nam"}"\n`
+}
+${focusPrompt ? `- TRỌNG TÂM: ${focusPrompt}` : ""}
+${customPrompt ? `- YÊU CẦU BỔ SUNG: ${customPrompt}` : ""}
+- CẤP ĐỘ / ĐỐI TƯỢNG: ${gradeLevel}
+- TỔNG SỐ VÒNG Ô CHỮ: ${totalQuestions} vòng thi (từ Vòng 1 đến Vòng ${totalQuestions}).
+
+QUY TẮC BẮT BUỘC VỀ BÀN Ô CHỮ CHIẾC NÓN KỲ DIỆU (4 HÀNG X 14 Ô):
+1. CỤM TỪ BÍ MẬT (answer): Viết in hoa, có dấu tiếng Việt chuẩn xác (VD: NGUYỄN HUỆ, VỊNH HẠ LONG, UỐNG NƯỚC NHỚ NGUỒN).
+2. ĐỘ DÀI TỪ: Mỗi từ đơn TUYỆT ĐỐI không dài quá 14 ký tự (để không bị tràn biên ngang của bàn chữ 14 ô).
+3. TỔNG ĐỘ DÀI CỤM TỪ: Thường từ 2 đến 5 từ, tổng số ký tự từ 8 đến 35 ký tự, đảm bảo có thể dàn trải vừa khít 4 hàng x 14 ô.
+4. CHỦ ĐỀ (hint / category): Ngắn gọn, hấp dẫn, viết hoa (VD: DANH NHÂN LỊCH SỬ, ĐỊA DANH VIỆT NAM, THÀNH NGỮ TỤC NGỮ, PHÁT MINH KHOA HỌC).
+5. GỢI Ý CỦA MC (content): Câu đố hoặc mô tả đặc trưng (15-30 từ) để MC đọc gợi mở cho người chơi.
+
+QUY ĐỊNH BẮT BUỘC VỀ ĐỊNH DẠNG ĐẦU RA:
+- Trả về DUY NHẤT một mảng JSON thuần (JSON Array). KHÔNG có bất kỳ lời dẫn, markdown bọc ngoài nào khác.
+- Mỗi câu hỏi là một object với cấu trúc:
+[
+  {
+    "type": "WORD_PUZZLE",
+    "content": "Gợi ý của MC về cụm từ bí mật",
+    "answer": "CỤM TỪ BÍ MẬT VIẾT HOA",
+    "hint": "CHỦ ĐỀ Ô CHỮ",
+    "options": [
+      { "id": "round", "text": "1", "isCorrect": true },
+      { "id": "category", "text": "CHỦ ĐỀ Ô CHỮ", "isCorrect": true }
+    ],
+    "points": 20,
+    "timeLimit": 30
+  }
+]
+`;
+      } else {
+        prompt = `
 Bạn là một chuyên gia giáo dục và biên soạn đề thi trắc nghiệm tiếng Việt chất lượng cao chuẩn khảo thí (Psychometrics & Test Construction).
 ${
   isDocMode
@@ -192,6 +233,7 @@ QUY ĐỊNH BẮT BUỘC VỀ ĐỊNH DẠNG ĐẦU RA:
   }
 ]
 `;
+      }
     }
 
     let generatedText = "";

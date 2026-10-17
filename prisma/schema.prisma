@@ -21,6 +21,7 @@ enum QuestionType {
   MATCHING
   DRAG_DROP
   CLOZE_DROPDOWN
+  WORD_PUZZLE
 }
 
 enum GameMode {

@@ -1384,6 +1384,195 @@ export const DEFAULT_OFFLINE_BANK: OfflineQuizBank = {
 ]
 };
 
+export const MAGIC_WHEEL_PRESET_BANKS: OfflineQuizBank[] = [
+  {
+    id: "bank_mw_preset_vtv3",
+    title: "Chiếc Nón Kỳ Diệu - VTV3 Huyền Thoại (Lịch Sử & Văn Học)",
+    description: "Bộ đề 4 vòng chơi chuẩn VTV3: Danh nhân Nguyễn Trãi, Cố đô Huế, Uống nước nhớ nguồn, Truyện Kiều",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 4 },
+    questions: [
+      {
+        id: "mw_vtv3_1",
+        type: "WORD_PUZZLE",
+        content: "Nhà quân sự, danh nhân văn hóa lỗi lạc thế giới của Việt Nam thời Hậu Lê.",
+        answer: "NGUYỄN TRÃI",
+        hint: "DANH NHÂN LỊCH SỬ",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "DANH NHÂN LỊCH SỬ", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_vtv3_2",
+        type: "WORD_PUZZLE",
+        content: "Quần thể di tích kinh thành triều Nguyễn bên dòng sông Hương thơ mộng.",
+        answer: "CỐ ĐÔ HUẾ",
+        hint: "ĐỊA DANH LỊCH SỬ",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "ĐỊA DANH LỊCH SỬ", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_vtv3_3",
+        type: "WORD_PUZZLE",
+        content: "Truyền thống đạo lý tri ân sâu sắc các thế hệ đi trước của dân tộc ta.",
+        answer: "UỐNG NƯỚC NHỚ NGUỒN",
+        hint: "THÀNH NGỮ TỤC NGỮ",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "THÀNH NGỮ TỤC NGỮ", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_vtv3_4",
+        type: "WORD_PUZZLE",
+        content: "Kiệt tác bất hủ gồm 3254 câu thơ lục bát đỉnh cao của văn học trung đại Việt Nam.",
+        answer: "TRUYỆN KIỀU NGUYỄN DU",
+        hint: "KIỆT TÁC THƠ CA",
+        points: 40,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "KIỆT TÁC THƠ CA", isCorrect: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "bank_mw_preset_nature",
+    title: "Chiếc Nón Kỳ Diệu - Non Nước Việt Nam (Du Lịch & Thắng Cảnh)",
+    description: "Bộ đề 4 vòng chơi: Vịnh Hạ Long, Phong Nha Kẻ Bàng, Phở Bò Hà Nội, Đảo Ngọc Phú Quốc",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 4 },
+    questions: [
+      {
+        id: "mw_nature_1",
+        type: "WORD_PUZZLE",
+        content: "Di sản thiên nhiên thế giới kỳ vĩ được UNESCO công nhận tại tỉnh Quảng Ninh.",
+        answer: "VỊNH HẠ LONG",
+        hint: "KỲ QUAN THIÊN NHIÊN",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "KỲ QUAN THIÊN NHIÊN", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_nature_2",
+        type: "WORD_PUZZLE",
+        content: "Vương quốc hang động kỳ vĩ tráng lệ bậc nhất thế giới tại tỉnh Quảng Bình.",
+        answer: "PHONG NHA KẺ BÀNG",
+        hint: "DI SẢN THẾ GIỚI",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "DI SẢN THẾ GIỚI", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_nature_3",
+        type: "WORD_PUZZLE",
+        content: "Món ăn quốc hồn quốc túy trứ danh trên bản đồ ẩm thực quốc tế của thủ đô.",
+        answer: "PHỞ BÒ HÀ NỘI",
+        hint: "ẨM THỰC TRUYỀN THỐNG",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "ẨM THỰC TRUYỀN THỐNG", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_nature_4",
+        type: "WORD_PUZZLE",
+        content: "Hòn đảo du lịch lớn nhất Việt Nam với những bãi biển tuyệt đẹp tại vùng biển Tây Nam.",
+        answer: "ĐẢO NGỌC PHÚ QUỐC",
+        hint: "DANH LAM THẮNG CẢNH",
+        points: 40,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "DANH LAM THẮNG CẢNH", isCorrect: true },
+        ],
+      },
+    ],
+  },
+  {
+    id: "bank_mw_preset_science",
+    title: "Chiếc Nón Kỳ Diệu - Khoa Học & Đời Sống (Tự Nhiên & Công Nghệ)",
+    description: "Bộ đề 4 vòng chơi: Hệ Mặt Trời, Thuyết Tương Đối, Hiệu Ứng Nhà Kính, Mã Di Truyền ADN",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    isLocalOnly: true,
+    _count: { questions: 4 },
+    questions: [
+      {
+        id: "mw_sci_1",
+        type: "WORD_PUZZLE",
+        content: "Hệ hành tinh gồm ngôi sao trung tâm và 8 hành tinh quay quanh trong dải Ngân Hà.",
+        answer: "HỆ MẶT TRỜI",
+        hint: "THIÊN VĂN HỌC",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "1", isCorrect: true },
+          { id: "category", text: "THIÊN VĂN HỌC", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_sci_2",
+        type: "WORD_PUZZLE",
+        content: "Học thuyết vật lý vĩ đại của Albert Einstein làm thay đổi nhận thức về không thời gian.",
+        answer: "THUYẾT TƯƠNG ĐỐI",
+        hint: "VẬT LÝ HỌC",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "2", isCorrect: true },
+          { id: "category", text: "VẬT LÝ HỌC", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_sci_3",
+        type: "WORD_PUZZLE",
+        content: "Hiện tượng các chất khí trong khí quyển giữ nhiệt khiến bề mặt Trái Đất ấm dần lên.",
+        answer: "HIỆU ỨNG NHÀ KÍNH",
+        hint: "MÔI TRƯỜNG SINH THÁI",
+        points: 20,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "3", isCorrect: true },
+          { id: "category", text: "MÔI TRƯỜNG SINH THÁI", isCorrect: true },
+        ],
+      },
+      {
+        id: "mw_sci_4",
+        type: "WORD_PUZZLE",
+        content: "Phân tử mang thông tin di truyền cơ bản quy định sự phát triển của mọi sinh vật sống.",
+        answer: "MÃ DI TRUYỀN ADN",
+        hint: "SINH HỌC TIẾN HÓA",
+        points: 40,
+        timeLimit: 30,
+        options: [
+          { id: "round", text: "4", isCorrect: true },
+          { id: "category", text: "SINH HỌC TIẾN HÓA", isCorrect: true },
+        ],
+      },
+    ],
+  },
+];
+
 export const offlineStorage = {
   isBrowser(): boolean {
     return typeof window !== "undefined";
@@ -1426,7 +1615,28 @@ export const offlineStorage = {
 
   getLocalBankById(id: string): OfflineQuizBank | null {
     const list = this.getLocalBanks();
-    return list.find((b) => b.id === id) || null;
+    const found = list.find((b) => b.id === id);
+    if (found) return found;
+    return MAGIC_WHEEL_PRESET_BANKS.find((b) => b.id === id) || null;
+  },
+
+  getMagicWheelPresetBanks(): OfflineQuizBank[] {
+    return MAGIC_WHEEL_PRESET_BANKS;
+  },
+
+  loadMagicWheelPresetIntoLocal(presetId?: string): OfflineQuizBank | null {
+    const preset = (presetId && MAGIC_WHEEL_PRESET_BANKS.find((b) => b.id === presetId)) || MAGIC_WHEEL_PRESET_BANKS[0];
+    if (!preset) return null;
+    const clone: OfflineQuizBank = {
+      ...preset,
+      id: `bank_mw_${Date.now()}`,
+      title: preset.title,
+      createdAt: new Date().toISOString(),
+      isLocalOnly: true,
+      needsSync: false,
+    };
+    this.saveLocalBank(clone);
+    return clone;
   },
 
   saveLocalBank(bank: OfflineQuizBank): void {

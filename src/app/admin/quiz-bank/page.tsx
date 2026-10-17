@@ -15,6 +15,51 @@ import {
   parseCsvQuestions,
 } from "@/lib/quiz-document-parser";
 import QuizorraQuestionStudioModal from "@/components/admin/QuizorraQuestionStudioModal";
+import { downloadMagicWheelExcelTemplate, downloadMagicWheelJsonTemplate } from "@/lib/quiz-template-generator";
+import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
+
+function buildPuzzle4x14Preview(phrase: string): { rows: string[][]; isOverflow: boolean; oversizedWord?: string } {
+  const clean = (phrase || "").trim().toUpperCase();
+  const words = clean.split(/\s+/).filter(Boolean);
+  const rows: string[][] = Array.from({ length: 4 }, () => Array(14).fill(""));
+  if (words.length === 0) return { rows, isOverflow: false };
+
+  let currentLine = 0;
+  const lineWords: string[][] = [[], [], [], []];
+
+  let oversizedWord: string | undefined = undefined;
+  for (const w of words) {
+    if (w.length > 14) {
+      oversizedWord = w;
+      break;
+    }
+    const currentLineLen = lineWords[currentLine].join(" ").length;
+    const additionalLen = (currentLineLen > 0 ? 1 : 0) + w.length;
+    if (currentLineLen + additionalLen <= 14) {
+      lineWords[currentLine].push(w);
+    } else {
+      currentLine++;
+      if (currentLine >= 4) {
+        return { rows, isOverflow: true, oversizedWord };
+      }
+      lineWords[currentLine].push(w);
+    }
+  }
+
+  // Center align each line on the 14-tile row
+  lineWords.forEach((lWords, rIdx) => {
+    const lineText = lWords.join(" ");
+    if (!lineText) return;
+    const startCol = Math.floor((14 - lineText.length) / 2);
+    for (let c = 0; c < lineText.length; c++) {
+      if (startCol + c < 14) {
+        rows[rIdx][startCol + c] = lineText[c];
+      }
+    }
+  });
+
+  return { rows, isOverflow: false, oversizedWord };
+}
 
 interface QuestionItem {
   id?: string;
@@ -105,6 +150,7 @@ export default function QuizBankPage() {
   const [qTimeLimit, setQTimeLimit] = useState(30);
   const [qHint, setQHint] = useState("");
   const [qAnswer, setQAnswer] = useState("");
+  const [qRound, setQRound] = useState(1);
   const [qAllowManualGrading, setQAllowManualGrading] = useState(false);
   const [qGradingCriteria, setQGradingCriteria] = useState("");
   const [qOptions, setQOptions] = useState([
@@ -148,6 +194,7 @@ export default function QuizBankPage() {
   const [editQTimeLimit, setEditQTimeLimit] = useState(30);
   const [editQHint, setEditQHint] = useState("");
   const [editQAnswer, setEditQAnswer] = useState("");
+  const [editQRound, setEditQRound] = useState(1);
   const [editQAllowManualGrading, setEditQAllowManualGrading] = useState(false);
   const [editQGradingCriteria, setEditQGradingCriteria] = useState("");
   const [editQOptions, setEditQOptions] = useState([
@@ -559,6 +606,16 @@ export default function QuizBankPage() {
       payload.options = qClozeBlanks;
       payload.pairs = null;
       payload.answer = JSON.stringify(qClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
+    } else if (qType === "WORD_PUZZLE") {
+      const phrase = qAnswer.trim().toUpperCase();
+      const category = qHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
+      payload.answer = phrase;
+      payload.hint = category;
+      payload.options = [
+        { id: "round", text: String(qRound || 1), isCorrect: true },
+        { id: "category", text: category, isCorrect: true },
+      ];
+      payload.pairs = null;
     }
 
     try {
@@ -721,6 +778,14 @@ export default function QuizBankPage() {
       ]);
     }
 
+    if (q.type === "WORD_PUZZLE") {
+      setEditQType("WORD_PUZZLE");
+      setEditQAnswer(q.answer || "");
+      setEditQHint(q.hint || "");
+      const roundOpt = q.options?.find((o: any) => o.id === "round");
+      setEditQRound(roundOpt ? Number(roundOpt.text) || 1 : 1);
+    }
+
     setShowEditQModal(true);
   };
 
@@ -772,6 +837,16 @@ export default function QuizBankPage() {
       payload.options = editQClozeBlanks;
       payload.pairs = null;
       payload.answer = JSON.stringify(editQClozeBlanks.map((b) => b.options.find((o) => o.isCorrect)?.id));
+    } else if (editQType === "WORD_PUZZLE") {
+      const phrase = editQAnswer.trim().toUpperCase();
+      const category = editQHint.trim().toUpperCase() || "Ô CHỮ BÍ MẬT";
+      payload.answer = phrase;
+      payload.hint = category;
+      payload.options = [
+        { id: "round", text: String(editQRound || 1), isCorrect: true },
+        { id: "category", text: category, isCorrect: true },
+      ];
+      payload.pairs = null;
     }
 
     try {
@@ -1214,6 +1289,22 @@ export default function QuizBankPage() {
             />
           </label>
           <button
+            onClick={() => {
+              const loaded = offlineStorage.loadMagicWheelPresetIntoLocal();
+              if (loaded) {
+                const local = offlineStorage.getLocalBanks();
+                setBanks(local);
+                selectBank(loaded as any);
+                alert("Đã nạp thành công bộ đề mẫu Chiếc Nón Kỳ Diệu vào danh sách!");
+              }
+            }}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold text-xs sm:text-sm shadow-lg transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            title="Nạp ngay bộ đề mẫu 4 vòng chơi Chiếc Nón Kỳ Diệu chuẩn format VTV3"
+          >
+            <span>🎡</span>
+            <span>Nạp Đề Mẫu Chiếc Nón</span>
+          </button>
+          <button
             onClick={() => setShowNewBankModal(true)}
             className="btn-3d-cyber-cyan px-5 py-2.5 text-xs sm:text-sm flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer"
           >
@@ -1342,6 +1433,36 @@ export default function QuizBankPage() {
                     <span>📤</span>
                     <span>Xuất JSON</span>
                   </button>
+
+                  <div className="relative group inline-block">
+                    <button
+                      type="button"
+                      className="px-3 py-2 rounded-xl glass border border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-300 text-xs sm:text-sm font-semibold transition whitespace-nowrap inline-flex items-center gap-1.5 cursor-pointer"
+                      title="Tải mẫu Excel hoặc JSON cho bộ đề ô chữ Chiếc Nón Kỳ Diệu"
+                    >
+                      <span>📥</span>
+                      <span>Tải Mẫu Đề</span>
+                      <span className="text-[10px] text-emerald-400">▼</span>
+                    </button>
+                    <div className="absolute right-0 top-full mt-1 hidden group-hover:flex flex-col bg-[#14172b] border border-white/10 rounded-xl p-1.5 shadow-2xl z-30 min-w-[210px] backdrop-blur-md">
+                      <button
+                        type="button"
+                        onClick={downloadMagicWheelExcelTemplate}
+                        className="px-3 py-2 rounded-lg text-left text-xs text-emerald-300 hover:bg-emerald-500/20 font-medium flex items-center gap-2 transition"
+                      >
+                        <span>📊</span>
+                        <span>Mẫu Excel Ô Chữ (.xlsx)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={downloadMagicWheelJsonTemplate}
+                        className="px-3 py-2 rounded-lg text-left text-xs text-cyan-300 hover:bg-cyan-500/20 font-medium flex items-center gap-2 transition"
+                      >
+                        <span>⚙️</span>
+                        <span>Mẫu JSON Ô Chữ (.json)</span>
+                      </button>
+                    </div>
+                  </div>
                   <button
                     onClick={() => setShowNewQModal(true)}
                     className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-xs sm:text-sm font-bold transition whitespace-nowrap cursor-pointer"
@@ -1765,6 +1886,7 @@ export default function QuizBankPage() {
                   <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
                   <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
                   <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
+                  <option value="WORD_PUZZLE">Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
                 </select>
               </div>
               <div>
@@ -1800,10 +1922,15 @@ export default function QuizBankPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Nội dung câu hỏi *
+                {qType === "WORD_PUZZLE" ? "Gợi ý của MC về cụm từ bí mật *" : "Nội dung câu hỏi *"}
                 {qType === "CLOZE_DROPDOWN" && (
                   <span className="text-xs text-purple-400 font-normal ml-2">
                     (Dùng [1], [2], [3]... tại vị trí cần đục lỗ)
+                  </span>
+                )}
+                {qType === "WORD_PUZZLE" && (
+                  <span className="text-xs text-amber-300 font-normal ml-2">
+                    (Mô tả hoặc câu hỏi gợi mở để MC đọc cho người chơi)
                   </span>
                 )}
               </label>
@@ -1814,6 +1941,8 @@ export default function QuizBankPage() {
                 placeholder={
                   qType === "CLOZE_DROPDOWN"
                     ? "Ví dụ: Thủ đô của Việt Nam là [1], còn trung tâm kinh tế phía Nam là [2]."
+                    : qType === "WORD_PUZZLE"
+                    ? "Ví dụ: Vị anh hùng áo vải cờ đào đại phá 29 vạn quân Thanh..."
                     : "Nhập nội dung câu hỏi..."
                 }
                 rows={3}
@@ -2205,6 +2334,118 @@ export default function QuizBankPage() {
               </div>
             )}
 
+            {/* 8: WORD_PUZZLE (Ô chữ Chiếc Nón Kỳ Diệu) */}
+            {qType === "WORD_PUZZLE" && (
+              <div className="space-y-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎡</span>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                        Cấu hình Ô Chữ Chiếc Nón Kỳ Diệu (Bàn 4 hàng x 14 ô)
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn VTV3.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-400">Vòng thi:</span>
+                    <select
+                      value={qRound}
+                      onChange={(e) => setQRound(Number(e.target.value) || 1)}
+                      className="px-2.5 py-1 rounded-lg bg-black/50 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer"
+                    >
+                      <option value={1}>Vòng 1</option>
+                      <option value={2}>Vòng 2</option>
+                      <option value={3}>Vòng 3</option>
+                      <option value={4}>Vòng 4 (Chung kết)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-200 mb-1">
+                      Chủ đề ô chữ * <span className="text-muted-foreground font-normal">(Hiển thị cho khán giả & thí sinh)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={qHint}
+                      onChange={(e) => setQHint(e.target.value)}
+                      placeholder="VD: DANH NHÂN LỊCH SỬ, ĐỊA DANH, THƠ CA..."
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 text-sm focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-amber-200">
+                        Cụm từ bí mật (Đáp án) *
+                      </label>
+                      <span className="text-[10px] text-amber-300/80 font-mono">
+                        {qAnswer.replace(/\s+/g, "").length} chữ cái
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={qAnswer}
+                      onChange={(e) => setQAnswer(e.target.value.toUpperCase())}
+                      placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Preview 4x14 Grid */}
+                {(() => {
+                  const preview = buildPuzzle4x14Preview(qAnswer);
+                  return (
+                    <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-amber-300 flex items-center gap-1">
+                          <span>📐</span> Mô phỏng trực quan Bàn Ô Chữ (4 x 14):
+                        </span>
+                        {preview.oversizedWord && (
+                          <span className="text-red-400 font-bold">
+                            ⚠️ Từ &quot;{preview.oversizedWord}&quot; dài hơn 14 ký tự!
+                          </span>
+                        )}
+                        {preview.isOverflow && (
+                          <span className="text-red-400 font-bold">
+                            ⚠️ Cụm từ bị tràn quá 4 hàng!
+                          </span>
+                        )}
+                        {!preview.oversizedWord && !preview.isOverflow && qAnswer.trim() && (
+                          <span className="text-emerald-400 font-semibold">
+                            ✓ Vừa vặn hoàn hảo trên bàn 4x14
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-rows-4 gap-1 p-2 bg-[#0a192f] rounded-lg border border-cyan-500/30">
+                        {preview.rows.map((row, rIdx) => (
+                          <div key={rIdx} className="grid grid-cols-14 gap-1">
+                            {row.map((char, cIdx) => (
+                              <div
+                                key={cIdx}
+                                className={`w-full aspect-square flex items-center justify-center font-black rounded-sm text-xs ${
+                                  char
+                                    ? "bg-amber-400 text-slate-900 border border-amber-200 shadow"
+                                    : "bg-[#050c18] border border-cyan-900/40 text-transparent"
+                                }`}
+                              >
+                                {char || "·"}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* 🎬 MULTIMEDIA ATTACHMENT SECTION (For ALL Question Types) */}
             <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-3">
               <div className="flex items-center justify-between">
@@ -2476,6 +2717,7 @@ export default function QuizBankPage() {
                   <option value="MATCHING">Nối cặp tương ứng A - B (2-8 cặp)</option>
                   <option value="DRAG_DROP">Sắp xếp thứ tự các bước (2-8 bước)</option>
                   <option value="CLOZE_DROPDOWN">Đoạn văn đục lỗ menu thả xuống</option>
+                  <option value="WORD_PUZZLE">Ô chữ Chiếc nón kỳ diệu (4 hàng x 14 ô)</option>
                 </select>
               </div>
               <div>
@@ -2511,10 +2753,15 @@ export default function QuizBankPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Nội dung câu hỏi *
+                {editQType === "WORD_PUZZLE" ? "Gợi ý của MC về cụm từ bí mật *" : "Nội dung câu hỏi *"}
                 {editQType === "CLOZE_DROPDOWN" && (
                   <span className="text-xs text-purple-400 font-normal ml-2">
                     (Dùng [1], [2], [3]... tại vị trí cần đục lỗ)
+                  </span>
+                )}
+                {editQType === "WORD_PUZZLE" && (
+                  <span className="text-xs text-amber-300 font-normal ml-2">
+                    (Mô tả hoặc câu hỏi gợi mở để MC đọc cho người chơi)
                   </span>
                 )}
               </label>
@@ -2525,6 +2772,8 @@ export default function QuizBankPage() {
                 placeholder={
                   editQType === "CLOZE_DROPDOWN"
                     ? "Ví dụ: Thủ đô của Việt Nam là [1], còn trung tâm kinh tế phía Nam là [2]."
+                    : editQType === "WORD_PUZZLE"
+                    ? "Ví dụ: Vị anh hùng áo vải cờ đào đại phá 29 vạn quân Thanh..."
                     : "Nhập nội dung câu hỏi..."
                 }
                 rows={3}
@@ -2916,6 +3165,118 @@ export default function QuizBankPage() {
               </div>
             )}
 
+            {/* 8: WORD_PUZZLE (Ô chữ Chiếc Nón Kỳ Diệu) */}
+            {editQType === "WORD_PUZZLE" && (
+              <div className="space-y-3 p-4 rounded-xl border border-amber-500/40 bg-amber-500/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🎡</span>
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                        Cấu hình Ô Chữ Chiếc Nón Kỳ Diệu (Bàn 4 hàng x 14 ô)
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Hệ thống tự động canh giữa và dàn trải chữ cái trên lưới 4 hàng x 14 ô chuẩn VTV3.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-amber-400">Vòng thi:</span>
+                    <select
+                      value={editQRound}
+                      onChange={(e) => setEditQRound(Number(e.target.value) || 1)}
+                      className="px-2.5 py-1 rounded-lg bg-black/50 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer"
+                    >
+                      <option value={1}>Vòng 1</option>
+                      <option value={2}>Vòng 2</option>
+                      <option value={3}>Vòng 3</option>
+                      <option value={4}>Vòng 4 (Chung kết)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-200 mb-1">
+                      Chủ đề ô chữ * <span className="text-muted-foreground font-normal">(Hiển thị cho khán giả & thí sinh)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={editQHint}
+                      onChange={(e) => setEditQHint(e.target.value)}
+                      placeholder="VD: DANH NHÂN LỊCH SỬ, ĐỊA DANH, THƠ CA..."
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 text-sm focus:border-amber-400"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-amber-200">
+                        Cụm từ bí mật (Đáp án) *
+                      </label>
+                      <span className="text-[10px] text-amber-300/80 font-mono">
+                        {editQAnswer.replace(/\s+/g, "").length} chữ cái
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={editQAnswer}
+                      onChange={(e) => setEditQAnswer(e.target.value.toUpperCase())}
+                      placeholder="VD: NGUYỄN TRÃI, VỊNH HẠ LONG..."
+                      className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/30 text-amber-100 font-bold text-sm tracking-wider uppercase focus:border-amber-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Preview 4x14 Grid */}
+                {(() => {
+                  const preview = buildPuzzle4x14Preview(editQAnswer);
+                  return (
+                    <div className="p-3 rounded-lg bg-black/60 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-amber-300 flex items-center gap-1">
+                          <span>📐</span> Mô phỏng trực quan Bàn Ô Chữ (4 x 14):
+                        </span>
+                        {preview.oversizedWord && (
+                          <span className="text-red-400 font-bold">
+                            ⚠️ Từ &quot;{preview.oversizedWord}&quot; dài hơn 14 ký tự!
+                          </span>
+                        )}
+                        {preview.isOverflow && (
+                          <span className="text-red-400 font-bold">
+                            ⚠️ Cụm từ bị tràn quá 4 hàng!
+                          </span>
+                        )}
+                        {!preview.oversizedWord && !preview.isOverflow && editQAnswer.trim() && (
+                          <span className="text-emerald-400 font-semibold">
+                            ✓ Vừa vặn hoàn hảo trên bàn 4x14
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="grid grid-rows-4 gap-1 p-2 bg-[#0a192f] rounded-lg border border-cyan-500/30">
+                        {preview.rows.map((row, rIdx) => (
+                          <div key={rIdx} className="grid grid-cols-14 gap-1">
+                            {row.map((char, cIdx) => (
+                              <div
+                                key={cIdx}
+                                className={`w-full aspect-square flex items-center justify-center font-black rounded-sm text-xs ${
+                                  char
+                                    ? "bg-amber-400 text-slate-900 border border-amber-200 shadow"
+                                    : "bg-[#050c18] border border-cyan-900/40 text-transparent"
+                                }`}
+                              >
+                                {char || "·"}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* 🎬 MULTIMEDIA ATTACHMENT SECTION (For ALL Question Types) */}
             <div className="p-4 rounded-xl border border-purple-500/30 bg-purple-950/20 space-y-3">
               <div className="flex items-center justify-between">
@@ -3259,19 +3620,66 @@ export default function QuizBankPage() {
                   </label>
                   <input
                     type="range"
-                    min={5}
+                    min={4}
                     max={30}
-                    step={5}
+                    step={1}
                     value={aiQuestionCount}
                     onChange={(e) => setAiQuestionCount(Number(e.target.value))}
                     className="w-full accent-cyan-400 mt-2"
                   />
                   <div className="flex justify-between text-[10px] text-slate-400 px-0.5 mt-0.5">
-                    <span>5 câu</span>
+                    <span>4 câu</span>
                     <span>10 câu</span>
                     <span>20 câu</span>
                     <span>30 câu</span>
                   </div>
+                </div>
+              </div>
+
+              {/* Question Types */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
+                  Định dạng câu hỏi mong muốn
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: "MC_SINGLE", label: "Trắc nghiệm 1 đáp án", icon: "🔘" },
+                    { id: "MC_MULTI", label: "Nhiều đáp án", icon: "☑️" },
+                    { id: "TRUE_FALSE", label: "Đúng / Sai", icon: "⚖️" },
+                    { id: "FILL_BLANK", label: "Điền từ khuyết", icon: "✍️" },
+                    { id: "WORD_PUZZLE", label: "Ô chữ Chiếc nón 🎡", icon: "🔤" },
+                  ].map((qt) => {
+                    const isSelected = aiQuestionTypes.includes(qt.id);
+                    return (
+                      <button
+                        key={qt.id}
+                        type="button"
+                        onClick={() => {
+                          if (qt.id === "WORD_PUZZLE") {
+                            setAiQuestionTypes(isSelected && aiQuestionTypes.length > 1 ? aiQuestionTypes.filter((t) => t !== qt.id) : [qt.id]);
+                          } else {
+                            const withoutPuzzle = aiQuestionTypes.filter((t) => t !== "WORD_PUZZLE");
+                            if (isSelected) {
+                              const next = withoutPuzzle.filter((t) => t !== qt.id);
+                              setAiQuestionTypes(next.length ? next : ["MC_SINGLE"]);
+                            } else {
+                              setAiQuestionTypes([...withoutPuzzle, qt.id]);
+                            }
+                          }
+                        }}
+                        className={`p-2 rounded-xl border text-xs text-left transition flex items-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? qt.id === "WORD_PUZZLE"
+                              ? "bg-amber-500/25 border-amber-500/60 text-amber-200 font-bold shadow-sm"
+                              : "bg-cyan-500/25 border-cyan-500/60 text-cyan-200 font-bold shadow-sm"
+                            : "glass border-white/10 text-slate-400 hover:text-white"
+                        }`}
+                      >
+                        <span>{qt.icon}</span>
+                        <span className="truncate">{qt.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -3432,6 +3840,39 @@ export default function QuizBankPage() {
                   />
                 </div>
 
+                {/* 📥 Tải File Mẫu Chuẩn Cho Người Dùng */}
+                <div className="p-3.5 rounded-2xl bg-black/40 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-inner">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-xl">📥</span>
+                    <div>
+                      <p className="text-xs font-bold text-white">Chưa có tệp định dạng chuẩn?</p>
+                      <p className="text-[11px] text-slate-400">
+                        Tải file mẫu Excel hoặc JSON điền sẵn để đảm bảo hệ thống nhận diện đúng 100%.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={downloadMagicWheelExcelTemplate}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Tải tệp mẫu Excel có 2 sheet và hướng dẫn"
+                    >
+                      <span>📊</span>
+                      <span>Mẫu Excel (.xlsx)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={downloadMagicWheelJsonTemplate}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      title="Tải tệp mẫu JSON chuẩn format"
+                    >
+                      <span>⚙️</span>
+                      <span>Mẫu JSON (.json)</span>
+                    </button>
+                  </div>
+                </div>
+
                 {isParsingFile && (
                   <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-300 text-xs font-bold text-center animate-pulse flex items-center justify-center gap-2">
                     <span className="w-3.5 h-3.5 border-2 border-cyan-300/30 border-t-cyan-300 rounded-full animate-spin" />
@@ -3444,17 +3885,30 @@ export default function QuizBankPage() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-bold text-slate-300">Nội dung văn bản đề thi</label>
-                    <span className="text-[11px] text-purple-300">Hỗ trợ nhận diện tự động</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRawTextContent(
+                            `[Ô chữ] Vòng 1 | Chủ đề: DANH NHÂN LỊCH SỬ | Đáp án: NGUYỄN TRÃI | Gợi ý: Nhà quân sự, danh nhân văn hóa thế giới thời Hậu Lê.\n\n[Ô chữ] Vòng 2 | Chủ đề: ĐỊA DANH VIỆT NAM | Đáp án: VỊNH HẠ LONG | Gợi ý: Di sản thiên nhiên thế giới tại tỉnh Quảng Ninh.\n\n[Ô chữ] Vòng 3 | Chủ đề: THÀNH NGỮ TỤC NGỮ | Đáp án: UỐNG NƯỚC NHỚ NGUỒN | Gợi ý: Truyền thống đạo lý tri ân thế hệ đi trước của dân tộc ta.\n\n[Ô chữ] Vòng 4 | Chủ đề: KIỆT TÁC THƠ CA | Đáp án: TRUYỆN KIỀU NGUYỄN DU | Gợi ý: Kiệt tác lục bát đỉnh cao của văn học trung đại Việt Nam.`
+                          );
+                        }}
+                        className="text-[11px] text-amber-300 hover:text-amber-200 font-bold underline cursor-pointer"
+                      >
+                        + Chèn mẫu [Ô chữ]
+                      </button>
+                      <span className="text-[11px] text-purple-300">Hỗ trợ nhận diện tự động</span>
+                    </div>
                   </div>
                   <textarea
                     rows={10}
                     value={rawTextContent}
                     onChange={(e) => setRawTextContent(e.target.value)}
-                    placeholder={`Ví dụ định dạng chuẩn:\n\nCâu 1: Đâu là hành tinh gần Mặt Trời nhất?\nA. Sao Kim\nB. Sao Thủy*\nC. Sao Hỏa\nD. Sao Mộc\nĐáp án: B\n\nCâu 2: Việt Nam có bao nhiêu tỉnh thành phố trực thuộc Trung ương?\nA. 61\nB. 62\nC. 63*\nD. 64`}
+                    placeholder={`Ví dụ định dạng chuẩn:\n\n[Ô chữ] Vòng 1 | Chủ đề: DANH NHÂN | Đáp án: NGUYỄN HUỆ | Gợi ý: Vị anh hùng áo vải cờ đào\n\nHoặc trắc nghiệm:\nCâu 1: Đâu là hành tinh gần Mặt Trời nhất?\nA. Sao Kim\nB. Sao Thủy*\nC. Sao Hỏa\nD. Sao Mộc\nĐáp án: B`}
                     className="w-full p-3.5 rounded-xl glass border border-white/20 text-xs font-mono text-white leading-relaxed focus:outline-none focus:border-purple-400"
                   />
                   <p className="text-[11px] text-slate-400 mt-1">
-                    💡 <b>Mẹo:</b> Có thể đánh dấu đáp án đúng bằng cách thêm dấu sao <code className="text-amber-300">*</code> vào cuối phương án hoặc viết dòng <code className="text-amber-300">Đáp án: B</code> ở cuối câu!
+                    💡 <b>Mẹo:</b> Có thể viết cú pháp <code className="text-amber-300">[Ô chữ] Vòng X | Chủ đề: ... | Đáp án: ... | Gợi ý: ...</code> cho Chiếc Nón Kỳ Diệu!
                   </p>
                 </div>
 

@@ -38,7 +38,7 @@ import {
   matchWholeSecretPhrase,
 } from "@/lib/game-engine/magic-wheel";
 import TieBreakerOverlay from "@/components/modes/TieBreakerOverlay";
-import type { MagicWheelState } from "@/types";
+import type { MagicWheelState, MagicWheelPuzzle } from "@/types";
 import { soundManager } from "@/lib/sound-manager";
 import {
   generateMysteryStageForTurn,
@@ -1432,6 +1432,56 @@ export default function AdminSandboxPage() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [isOfflineSandbox, syncToIframes]);
 
+  const buildOfflineTournamentMatches = useCallback((teams: TeamState[], questionsPerMatch: number = 3) => {
+    return [
+      {
+        id: "SF-1",
+        roundIndex: 0,
+        roundName: "Bán kết 1",
+        matchIndex: 0,
+        team1Id: teams[0]?.id,
+        team1Name: teams[0]?.name,
+        team1Color: teams[0]?.color,
+        team2Id: teams[3]?.id || teams[1]?.id,
+        team2Name: teams[3]?.name || teams[1]?.name,
+        team2Color: teams[3]?.color || teams[1]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "IN_PROGRESS" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "SF-2",
+        roundIndex: 0,
+        roundName: "Bán kết 2",
+        matchIndex: 1,
+        team1Id: teams[1]?.id,
+        team1Name: teams[1]?.name,
+        team1Color: teams[1]?.color,
+        team2Id: teams[2]?.id,
+        team2Name: teams[2]?.name,
+        team2Color: teams[2]?.color,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+      {
+        id: "FINAL",
+        roundIndex: 1,
+        roundName: "Chung kết",
+        matchIndex: 2,
+        team1Score: 0,
+        team2Score: 0,
+        status: "UPCOMING" as const,
+        currentQuestionInMatch: 0,
+        totalQuestionsInMatch: questionsPerMatch,
+      },
+    ];
+  }, []);
+
   // Offline Sandbox Simulator Initialization
   const startOfflineSandbox = useCallback((mode: GameMode, bankId?: string) => {
     setIsOfflineSandbox(true);
@@ -1576,15 +1626,30 @@ export default function AdminSandboxPage() {
 
     let magicWheelState: any = undefined;
     if (mode === "MAGIC_WHEEL") {
+      const bankWordPuzzles = (bank.questions || []).filter((q: any) => q.type === "WORD_PUZZLE");
+      const activePuzzles: MagicWheelPuzzle[] = bankWordPuzzles.length > 0
+        ? bankWordPuzzles.map((q: any, i: number) => {
+            const roundOpt = q.options?.find((o: any) => o.id === "round");
+            return {
+              id: `puzzle-sandbox-${i + 1}`,
+              roundNumber: roundOpt ? Number(roundOpt.text) || (i + 1) : (i + 1),
+              category: q.hint || "TỔNG HỢP",
+              secretPhrase: (q.answer || "").toUpperCase(),
+              clue: q.content || "",
+              revealedIndices: [],
+            };
+          })
+        : DEFAULT_MAGIC_WHEEL_PUZZLES;
+
       magicWheelState = {
         subMode: "WORD_PUZZLE",
         sectors: generateMagicWheelSectors(1),
         currentTurnTeamId: teams[0].id,
         currentTurnTeamName: teams[0].name,
         currentRound: 1,
-        maxRounds: 4,
-        puzzles: DEFAULT_MAGIC_WHEEL_PUZZLES,
-        currentPuzzle: DEFAULT_MAGIC_WHEEL_PUZZLES[0],
+        maxRounds: activePuzzles.length,
+        puzzles: activePuzzles,
+        currentPuzzle: activePuzzles[0],
         isSpinning: false,
         spinPower: 50,
         targetRotationDegrees: 0,
@@ -1597,6 +1662,16 @@ export default function AdminSandboxPage() {
         pendingSpecialAction: "NONE",
         phase: "SPIN_WAITING",
         lastActionMessage: `Chào mừng đến với Vòng Quay Tri Thức! Mời Đội ${teams[0].name} bấm quay nón!`,
+      };
+    }
+
+    let tournamentState: any = undefined;
+    if (mode === "TOURNAMENT") {
+      const tourMatches = buildOfflineTournamentMatches(teams);
+      tournamentState = {
+        matches: tourMatches,
+        currentMatchId: tourMatches[0]?.id || "SF-1",
+        questionsPerMatch: allocResult.derivedConfig?.tournamentQuestionsPerMatch || 3,
       };
     }
 
@@ -1638,6 +1713,7 @@ export default function AdminSandboxPage() {
       diceRaceState,
       mysteryQuestState,
       magicWheelState,
+      tournamentState,
     };
 
     setRoomState(initialRoomState);
@@ -1928,55 +2004,6 @@ export default function AdminSandboxPage() {
   }, [isOfflineSandbox, addLog, syncToIframes]);
 
   // ── Admin Features Implementation ──────────────────────────────────────────
-  const buildOfflineTournamentMatches = useCallback((teams: TeamState[], questionsPerMatch: number = 3) => {
-    return [
-      {
-        id: "SF-1",
-        roundIndex: 0,
-        roundName: "Bán kết 1",
-        matchIndex: 0,
-        team1Id: teams[0]?.id,
-        team1Name: teams[0]?.name,
-        team1Color: teams[0]?.color,
-        team2Id: teams[3]?.id || teams[1]?.id,
-        team2Name: teams[3]?.name || teams[1]?.name,
-        team2Color: teams[3]?.color || teams[1]?.color,
-        team1Score: 0,
-        team2Score: 0,
-        status: "IN_PROGRESS" as const,
-        currentQuestionInMatch: 0,
-        totalQuestionsInMatch: questionsPerMatch,
-      },
-      {
-        id: "SF-2",
-        roundIndex: 0,
-        roundName: "Bán kết 2",
-        matchIndex: 1,
-        team1Id: teams[1]?.id,
-        team1Name: teams[1]?.name,
-        team1Color: teams[1]?.color,
-        team2Id: teams[2]?.id,
-        team2Name: teams[2]?.name,
-        team2Color: teams[2]?.color,
-        team1Score: 0,
-        team2Score: 0,
-        status: "UPCOMING" as const,
-        currentQuestionInMatch: 0,
-        totalQuestionsInMatch: questionsPerMatch,
-      },
-      {
-        id: "FINAL",
-        roundIndex: 1,
-        roundName: "Chung kết",
-        matchIndex: 2,
-        team1Score: 0,
-        team2Score: 0,
-        status: "UPCOMING" as const,
-        currentQuestionInMatch: 0,
-        totalQuestionsInMatch: questionsPerMatch,
-      },
-    ];
-  }, []);
 
   const handleSkipPrepare = useCallback(() => {
     if (isOfflineSandbox) {

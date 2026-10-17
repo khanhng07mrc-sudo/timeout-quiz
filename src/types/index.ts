@@ -12,7 +12,8 @@ export type QuestionType =
   | "ESSAY"
   | "MATCHING"
   | "DRAG_DROP"
-  | "CLOZE_DROPDOWN";
+  | "CLOZE_DROPDOWN"
+  | "WORD_PUZZLE";
 
 export interface MatchingPair {
   id: string;

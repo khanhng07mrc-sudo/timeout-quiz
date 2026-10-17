@@ -2045,7 +2045,7 @@ export default function PlayPage() {
               }}
             />
           </div>
-        ) : currentQuestion && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
+        ) : currentQuestion && roomState?.mode !== "MAGIC_WHEEL" && (roomState?.mode !== "WAGER" || (roomState?.wagerState?.phase === "QUESTION_PERIOD" && roomState?.wagerState?.questionReady)) ? (
           <>
             {/* DICE_RACE: Mini-track on top while answering; Full Board after reveal so team can roll dice */}
             {roomState?.mode === "DICE_RACE" && roomState?.diceRaceState && (

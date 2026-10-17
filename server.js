@@ -11826,6 +11826,13 @@ function registerSocketHandlers(io2) {
           }
           return;
         }
+        if (room.mode === "MAGIC_WHEEL") {
+          const wheelState = roomMagicWheels.get(room.id);
+          if (wheelState) {
+            io2.to(`room:${room.code}`).emit("game:magic_wheel:update", wheelState);
+          }
+          return;
+        }
         const launchWarmupToFirstQuestion = async () => {
           try {
             roomPrepareStates.delete(room.id);

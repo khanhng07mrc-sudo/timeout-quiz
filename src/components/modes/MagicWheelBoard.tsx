@@ -224,20 +224,20 @@ export default function MagicWheelBoard({
             ⭐ CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"} ⭐
           </div>
 
-          {/* Grid Container */}
-          <div className="w-full max-w-4xl overflow-x-auto flex justify-center py-2">
-            <div className="grid grid-rows-4 gap-1.5 sm:gap-2 p-2 sm:p-3 rounded-xl bg-[#030d05] border-2 border-[#166534]/50 shadow-inner">
+          {/* Grid Container (Responsive 14 columns, never overflows) */}
+          <div className="w-full max-w-4xl flex justify-center py-1 sm:py-2 px-1">
+            <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2 p-1.5 sm:p-2.5 rounded-xl bg-[#030d05] border-2 border-[#166534]/50 shadow-inner">
               {gridMatrix.map((row, rIdx) => (
-                <div key={rIdx} className="flex gap-1.5 sm:gap-2 justify-center">
+                <div key={rIdx} className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center">
                   {row.map((cell, cIdx) => {
                     // Cell unused (Decorative Green Floral Tile)
                     if (!cell) {
                       return (
                         <div
                           key={cIdx}
-                          className="w-6 h-8 sm:w-10 sm:h-12 md:w-12 md:h-14 rounded-md bg-[#133817] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-75"
+                          className="w-full aspect-[3/4] max-h-[46px] rounded sm:rounded-md bg-[#133817] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-75"
                         >
-                          <svg viewBox="0 0 24 24" className="w-3 h-3 sm:w-5 sm:h-5 text-[#2a7a33] opacity-60 fill-current">
+                          <svg viewBox="0 0 24 24" className="w-2.5 h-2.5 sm:w-4 sm:h-4 text-[#2a7a33] opacity-60 fill-current">
                             <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
                           </svg>
                         </div>
@@ -253,7 +253,7 @@ export default function MagicWheelBoard({
                             onLuckyPick?.(cell.originalIndex);
                           }
                         }}
-                        className={`w-6 h-8 sm:w-10 sm:h-12 md:w-12 md:h-14 rounded-md font-black flex items-center justify-center transition-all duration-500 select-none ${
+                        className={`w-full aspect-[3/4] max-h-[46px] rounded sm:rounded-md font-black flex items-center justify-center transition-all duration-500 select-none ${
                           cell.isRevealed
                             ? "bg-white text-[#0f172a] shadow-[0_4px_10px_rgba(255,255,255,0.4)] border-2 border-white scale-100"
                             : phase === "LUCKY_PICK"
@@ -261,7 +261,7 @@ export default function MagicWheelBoard({
                             : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
                         }`}
                       >
-                        <span className="text-sm sm:text-2xl md:text-3xl font-extrabold tracking-tight">
+                        <span className="text-xs sm:text-base md:text-xl font-extrabold tracking-tight">
                           {cell.isRevealed ? cell.char : phase === "LUCKY_PICK" ? "⭐" : "?"}
                         </span>
                       </div>
@@ -407,7 +407,85 @@ export default function MagicWheelBoard({
           )}
         </div>
 
-        {/* Right Col: Interactive Controls & Letters Keyboard (7 cols on lg) */}
+        {/* Right Col: For Display (TV/Projector) vs Interactive Player/Host */}
+        {isDisplay ? (
+          <div className="lg:col-span-7 flex flex-col gap-4 bg-black/40 p-4 sm:p-6 rounded-2xl border border-white/10 backdrop-blur-md">
+            {/* Action notification message */}
+            <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/60 via-indigo-950/60 to-cyan-950/60 border border-cyan-500/40 text-cyan-200 shadow-lg">
+              <span className="text-xs uppercase font-extrabold tracking-wider text-cyan-400 block mb-1">
+                📢 DIỄN BIẾN TRẬN ĐẤU
+              </span>
+              <p className="text-sm sm:text-base font-black text-white">
+                {lastActionMessage || `Mời Đội ${currentTurnTeamName || "tiếp theo"} quay nón để bắt đầu lượt!`}
+              </p>
+            </div>
+
+            {/* Display Grand Leaderboard */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-300">
+                <span>🏆 BẢNG ĐIỂM CÁC ĐỘI (VÒNG {currentRound})</span>
+                <span className="text-[11px] text-amber-300">Điểm vòng / Tổng điểm</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {teams.map((t) => {
+                  const rScore = roundScores?.[t.id] || 0;
+                  const freeCount = freeSpinCount?.[t.id] || 0;
+                  const isTurn = t.id === currentTurnTeamId;
+                  const strikes = activeState.consecutiveWrongGuesses?.[t.id] || activeState.wrongGuessesCount?.[t.id] || 0;
+                  const isEliminated = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+
+                  return (
+                    <div
+                      key={t.id}
+                      className={`p-3.5 rounded-xl flex flex-col gap-1.5 border transition-all ${
+                        isEliminated
+                          ? "bg-red-950/20 border-red-500/30 opacity-60"
+                          : isTurn
+                          ? "bg-gradient-to-r from-amber-500/20 via-pink-500/20 to-purple-500/20 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.3)] scale-[1.02]"
+                          : "bg-white/5 border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow" style={{ background: t.color || "#6366f1" }} />
+                          <span className="font-extrabold text-sm text-white truncate">{t.name}</span>
+                          {isTurn && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-400 text-black animate-pulse">
+                              LƯỢT
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-mono font-black text-base text-amber-300">+{rScore}đ</div>
+                          <div className="text-[10px] text-slate-400">Tổng: {t.score || 0}đ</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
+                        {freeCount > 0 ? (
+                          <span className="text-[11px] text-sky-300 font-semibold flex items-center gap-1">
+                            🎟️ Thẻ Thêm Lượt: {freeCount}
+                          </span>
+                        ) : (
+                          <span className="text-[11px] text-slate-500">Chưa có thẻ thêm lượt</span>
+                        )}
+                        {isEliminated ? (
+                          <span className="text-rose-400 font-bold uppercase text-[10px]">⛔ Dừng vòng</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-slate-400">Lỗi:</span>
+                            <span className={strikes >= 1 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                            <span className={strikes >= 2 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                            <span className={strikes >= 3 ? "text-rose-400 font-black" : "text-slate-600"}>❌</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="lg:col-span-7 flex flex-col gap-3.5 bg-black/30 p-3 sm:p-5 rounded-2xl border border-white/10 backdrop-blur-md">
           {/* Action notification message */}
           {lastActionMessage && (
@@ -607,7 +685,8 @@ export default function MagicWheelBoard({
               })}
             </div>
           </div>
-        </div>
+          </div>
+        )}
       </div>
 
       {/* ── MODAL: GIẢI Ô CHỮ BÍ MẬT ───────────────────────────────────────── */}

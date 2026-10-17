@@ -441,40 +441,57 @@ export default function CreateRoomPage() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold mb-2 text-slate-300">
-              Bộ đề câu hỏi{" "}
-              <span className="text-muted-foreground font-normal">(có thể chọn sau)</span>
-            </label>
-            <select
-              value={quizBankId}
-              onChange={(e) => setQuizBankId(e.target.value)}
-              className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
-            >
-              <option value="" className="bg-[#151728] text-white">— Chưa chọn bộ đề —</option>
-              {quizBanks.map((bank) => (
-                <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
-                  {bank.title}{bank._count ? ` (${bank._count.questions} câu)` : ""}
-                </option>
-              ))}
-            </select>
-
-            {quizBankId && (
-              <div className="mt-3">
-                <QuizBankQuickSummary
-                  bankId={quizBankId}
-                  onClear={() => setQuizBankId("")}
-                />
+          {mode === "MAGIC_WHEEL" ? (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 shadow-inner">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-3xl shrink-0">🎡</span>
+                <div>
+                  <h4 className="font-bold text-sm text-amber-300">Bộ đề Ô Chữ VTV3 cho Chiếc Nón Kỳ Diệu</h4>
+                  <p className="text-xs text-slate-300">
+                    Chế độ này chuyên biệt cho thể thức Ô Chữ. Hệ thống tự động nạp sẵn ngân hàng Ô Chữ chuẩn VTV3 (hoặc tùy chỉnh danh sách ô chữ theo vòng ở bảng cấu hình bên dưới).
+                  </p>
+                </div>
               </div>
-            )}
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-black shrink-0">
+                ✓ Ô Chữ Chuyên Biệt
+              </span>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-sm font-semibold mb-2 text-slate-300">
+                Bộ đề câu hỏi{" "}
+                <span className="text-muted-foreground font-normal">(có thể chọn sau)</span>
+              </label>
+              <select
+                value={quizBankId}
+                onChange={(e) => setQuizBankId(e.target.value)}
+                className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
+              >
+                <option value="" className="bg-[#151728] text-white">— Chưa chọn bộ đề —</option>
+                {quizBanks.map((bank) => (
+                  <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
+                    {bank.title}{bank._count ? ` (${bank._count.questions} câu)` : ""}
+                  </option>
+                ))}
+              </select>
 
-            {quizBanks.length === 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Chưa có bộ đề nào.{" "}
-                <a href="/admin/quiz-bank" className="text-purple-400 underline">Tạo bộ đề mới</a>
-              </p>
-            )}
-          </div>
+              {quizBankId && (
+                <div className="mt-3">
+                  <QuizBankQuickSummary
+                    bankId={quizBankId}
+                    onClear={() => setQuizBankId("")}
+                  />
+                </div>
+              )}
+
+              {quizBanks.length === 0 && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Chưa có bộ đề nào.{" "}
+                  <a href="/admin/quiz-bank" className="text-purple-400 underline">Tạo bộ đề mới</a>
+                </p>
+              )}
+            </div>
+          )}
 
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
@@ -1231,18 +1248,12 @@ export default function CreateRoomPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-medium mb-1">Thể thức thi đấu</label>
-                  <select
-                    value={magicWheelSubMode}
-                    onChange={(e) => setMagicWheelSubMode(e.target.value as "WORD_PUZZLE" | "WHEEL_QUIZ")}
-                    className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
-                  >
-                    <option value="WORD_PUZZLE">Giải Ô Chữ Bí Mật (Chuẩn VTV3)</option>
-                    <option value="WHEEL_QUIZ">Vòng Quay Trắc Nghiệm (Quay nón chọn điểm)</option>
-                  </select>
+                  <div className="w-full px-3 py-2 rounded-lg bg-black/40 border border-amber-500/40 text-amber-200 text-sm font-bold flex items-center justify-between">
+                    <span>🎯 Giải Ô Chữ Bí Mật (Chuẩn VTV3)</span>
+                    <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">Chuyên biệt</span>
+                  </div>
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    {magicWheelSubMode === "WORD_PUZZLE"
-                      ? "Bảng ô chữ 4 hàng x 14 ô. Đội đến lượt quay nón để nhận điểm/ô đặc biệt, đoán chữ cái hoặc đoán giải toàn bộ ô chữ."
-                      : "Mỗi lượt quay nón để xác định hệ số điểm của câu hỏi trắc nghiệm tiếp theo từ ngân hàng câu hỏi."}
+                    Bảng ô chữ 4 hàng x 14 ô. Đội đến lượt quay nón để nhận điểm/ô đặc biệt, đoán chữ cái hoặc đoán giải toàn bộ ô chữ.
                   </p>
                 </div>
                 <div>

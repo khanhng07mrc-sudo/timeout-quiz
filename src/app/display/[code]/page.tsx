@@ -1354,10 +1354,12 @@ export default function DisplayPage() {
     roomState.mysteryQuestState &&
     roomState.mysteryQuestState.phase !== "QUESTION_ACTIVE"
   );
+  const isMagicWheelMode = Boolean(roomState?.mode === "MAGIC_WHEEL");
   const showQuestion = Boolean(
     currentQuestion &&
     displayModeTab !== "BOARD" &&
-    !isMysteryNonQuestion
+    !isMysteryNonQuestion &&
+    !isMagicWheelMode
   );
 
   const layoutGridClass = showSidebar

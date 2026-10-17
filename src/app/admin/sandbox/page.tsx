@@ -981,7 +981,8 @@ export default function AdminSandboxPage() {
 
     sock.on("room:state", (state) => {
       setRoomState(state);
-      syncToIframes({ roomState: state });
+      roomStateRef.current = state;
+      syncToIframes({ roomState: state, magicWheelState: state?.magicWheelState });
       if (state?.status === "LOBBY") {
         setCurrentQuestion(null);
         setRevealPayload(null);
@@ -990,6 +991,15 @@ export default function AdminSandboxPage() {
         setQuestionPrepare(null);
         setIntermission(null);
       }
+    });
+    sock.on("game:magic_wheel:update" as any, (wheelState: any) => {
+      setRoomState((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev, magicWheelState: wheelState };
+        roomStateRef.current = next;
+        syncToIframes({ roomState: next, magicWheelState: wheelState });
+        return next;
+      });
     });
     sock.on("game:question:clear" as any, () => {
       setCurrentQuestion(null);
@@ -1004,6 +1014,7 @@ export default function AdminSandboxPage() {
       adminQuestionDataRef.current = data;
     });
     sock.on("game:question", (q) => {
+      if (roomStateRef.current?.mode === "MAGIC_WHEEL") return;
       if (q.serverTime) calibrateClockFromPacket(q.serverTime);
       sock.emit("admin:question:get_data", { code: roomCode });
       setCurrentQuestion(q);
@@ -5349,10 +5360,16 @@ export default function AdminSandboxPage() {
             };
             roomStateRef.current = updatedRoomState;
             setRoomState(updatedRoomState);
+            setCurrentQuestion(null);
+            setRevealPayload(null);
+            setTimer(null);
             syncToIframes({
               matchStarting: null,
               roomState: updatedRoomState,
               magicWheelState: updatedRoomState.magicWheelState,
+              currentQuestion: null,
+              revealPayload: null,
+              timer: null,
             });
             addLog("🎡 Chiếc Nón Kỳ Diệu bắt đầu! Vòng quay tri thức và ô chữ 4x14 sẵn sàng.");
             return;
@@ -7330,7 +7347,7 @@ export default function AdminSandboxPage() {
                 )}
 
                 {/* 2. Start Timer if pending */}
-                {currentQuestion?.timerPending && (
+                {currentQuestion?.timerPending && selectedMode !== "MAGIC_WHEEL" && (
                   <button
                     type="button"
                     onClick={handleStartTimer}
@@ -7348,7 +7365,7 @@ export default function AdminSandboxPage() {
                 )}
 
                 {/* 3. Core Next / Start / Conclude Button */}
-                {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
+                {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : selectedMode === "MAGIC_WHEEL" ? null : (
                   (() => {
                     const targetTotal = getTargetTotalQuestions(
                       selectedMode,
@@ -7411,7 +7428,7 @@ export default function AdminSandboxPage() {
                 )}
 
                 {/* 4. Reveal Button - Only when question is active and not yet revealed */}
-                {currentQuestion && !revealPayload && (
+                {currentQuestion && !revealPayload && selectedMode !== "MAGIC_WHEEL" && (
                   <button
                     type="button"
                     onClick={handleAdminReveal}
@@ -9149,7 +9166,7 @@ export default function AdminSandboxPage() {
                   </button>
                 )}
 
-                {currentQuestion?.timerPending && (
+                {currentQuestion?.timerPending && selectedMode !== "MAGIC_WHEEL" && (
                   <button
                     type="button"
                     onClick={handleStartTimer}
@@ -9167,7 +9184,7 @@ export default function AdminSandboxPage() {
                 )}
 
                 {/* Next / Start / Conclude */}
-                {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : (
+                {roomState?.mode === "GRID_CARO" && roomState?.status === "PLAYING" && !currentQuestion ? null : selectedMode === "MAGIC_WHEEL" ? null : (
                   (() => {
                     const targetTotal = getTargetTotalQuestions(
                       selectedMode,
@@ -9224,7 +9241,7 @@ export default function AdminSandboxPage() {
                 )}
 
                 {/* Reveal & In-Question Controls */}
-                {currentQuestion && !revealPayload && (
+                {currentQuestion && !revealPayload && selectedMode !== "MAGIC_WHEEL" && (
                   <div className="space-y-1.5 pt-1">
                     <button
                       type="button"
@@ -9569,11 +9586,36 @@ export default function AdminSandboxPage() {
                       isDisplay={false}
                       teams={roomState.teams}
                       isMyTurn={true}
-                      onSpin={(power) => window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*")}
-                      onGuessLetter={(letter) => window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*")}
-                      onSolvePuzzle={(answer) => window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*")}
-                      onMysteryDecide={(openMystery) => window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*")}
-                      onLuckyPick={(index) => window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*")}
+                      onSpin={(power) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
+                        }
+                      }}
+                      onGuessLetter={(letter) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter });
+                        }
+                      }}
+                      onSolvePuzzle={(answer) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer });
+                        }
+                      }}
+                      onMysteryDecide={(openMystery) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery });
+                        }
+                      }}
+                      onLuckyPick={(index) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
+                        if (adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index });
+                        }
+                      }}
                     />
                   </div>
                 )}

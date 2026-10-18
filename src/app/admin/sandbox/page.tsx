@@ -7246,6 +7246,22 @@ export default function AdminSandboxPage() {
     addLog(`⏩ [Quản trò] Tiến sang vòng kế tiếp`);
   };
 
+  const handleMagicWheelOpenBoard = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
+    addLog(`⭐ [Quản trò] Mở bảng ô chữ & công bố chủ đề!`);
+  };
+
+  const handleMagicWheelStartTossUp = () => {
+    if (adminSocketRef.current?.connected) {
+      adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
+    }
+    window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
+    addLog(`⚡ [Quản trò] Bắt đầu mở các chữ cái vòng đoán nhanh (0.5s/chữ)!`);
+  };
+
   // ── Magic Wheel Bot Automation Timer ──────────────────────────────────────
   const pendingBotWheelTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
@@ -8550,6 +8566,43 @@ export default function AdminSandboxPage() {
                     </button>
                   ) : roomState?.status === "PLAYING" ? (
                     <div className="flex items-center gap-1.5 flex-wrap">
+                      {/* 1. Mở ô chữ & Chủ đề (Nút to nổi bật khi bảng đang đóng EMPTY_56) */}
+                      {roomState?.magicWheelState?.boardStage === "EMPTY_56" ? (
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelOpenBoard}
+                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/50 animate-pulse border-2 border-yellow-200 transition flex items-center gap-1.5 cursor-pointer ring-2 ring-yellow-300"
+                          title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
+                        >
+                          <span>⭐</span>
+                          <span>MỞ Ô CHỮ & CHỦ ĐỀ</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelOpenBoard}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
+                          title="Mở lại / kích hoạt bảng ô chữ"
+                        >
+                          <span>⭐</span>
+                          <span>Mở ô chữ</span>
+                        </button>
+                      )}
+
+                      {/* 2. Bắt đầu mở chữ ngẫu nhiên 0.5s/chữ cho Vòng Đoán Nhanh */}
+                      {(roomState?.magicWheelState?.roundStage === "TOSS_UP_1" || roomState?.magicWheelState?.roundStage === "TOSS_UP_2") &&
+                        roomState?.magicWheelState?.phase === "TOSS_UP_READY" && (
+                          <button
+                            type="button"
+                            onClick={handleMagicWheelStartTossUp}
+                            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 text-white font-black text-xs shadow-lg shadow-cyan-500/50 animate-pulse border-2 border-cyan-300 transition flex items-center gap-1.5 cursor-pointer"
+                            title="Bắt đầu mở các chữ cái ngẫu nhiên (0.5s/chữ)"
+                          >
+                            <span>▶️</span>
+                            <span>BẮT ĐẦU MỞ CHỮ (0.5s/chữ)</span>
+                          </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={handleMagicWheelQuickSpin}

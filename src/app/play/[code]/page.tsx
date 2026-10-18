@@ -2403,7 +2403,7 @@ export default function PlayPage() {
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={false}
-                  isHost={isSandbox}
+                  isHost={false}
                   teams={roomState.teams}
                   isMyTurn={
                     (roomState.magicWheelState.tossUpBuzzedTeamId ||

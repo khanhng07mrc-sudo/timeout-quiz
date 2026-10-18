@@ -185,6 +185,7 @@ function SmartPuzzlePhraseInput({
   });
   const [rawLineInput, setRawLineInput] = useState<string>("");
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const isComposingRef = useRef<boolean>(false);
 
   // Sync when revealedIndices change
   useEffect(() => {
@@ -273,22 +274,8 @@ function SmartPuzzlePhraseInput({
       return;
     }
 
-    // Telex tone shortcuts on revealed vowels or any vowel in slot
-    const keyUpper = e.key.toUpperCase();
-    const telexMap: Record<string, VietnameseToneMark> = {
-      S: "SAC",
-      F: "HUYEN",
-      R: "HOI",
-      X: "NGA",
-      J: "NANG",
-      Z: "NONE",
-    };
-    const currentCh = charValues[slotIdx] || slot.baseChar;
-    if (telexMap[keyUpper] && (slot.isRevealedVowel || isVietnameseVowel(currentCh))) {
-      e.preventDefault();
-      applyToneAtSlot(slotIdx, telexMap[keyUpper]);
-      return;
-    }
+    // Only trigger shortcuts if not in the middle of IME composition
+    if (isComposingRef.current) return;
 
     if (e.key === "Backspace") {
       e.preventDefault();
@@ -312,6 +299,8 @@ function SmartPuzzlePhraseInput({
   const handleSlotChange = (slotIdx: number, rawVal: string) => {
     const slot = slots[slotIdx];
     if (!slot || slot.isSpace || slot.isLockedConsonant) return;
+
+    // Pick the latest character
     const lastChar = rawVal.slice(-1).toUpperCase();
     if (!lastChar) {
       setCharValues((prev) => {
@@ -323,14 +312,13 @@ function SmartPuzzlePhraseInput({
     }
 
     if (slot.isRevealedVowel) {
-      // Only accept if base letter matches the revealed vowel
+      // Allow accepting vowels that match base letter
       if (normalizeVietnameseBaseLetter(lastChar) === slot.baseChar) {
         setCharValues((prev) => {
           const next = [...prev];
           next[slotIdx] = lastChar;
           return next;
         });
-        // Do NOT auto-advance on vowels to allow tone typing in the same box
       }
     } else {
       setCharValues((prev) => {
@@ -338,12 +326,14 @@ function SmartPuzzlePhraseInput({
         next[slotIdx] = lastChar;
         return next;
       });
-      // In Vietnamese IME, vowels and D/Đ can combine with subsequent keystrokes (e.g. A+W -> Ă, A+A -> Â, D+D -> Đ).
-      // Only auto-advance on distinct non-combining consonants.
-      const base = normalizeVietnameseBaseLetter(lastChar);
-      const isComb = isVietnameseVowel(base) || base === "D" || base === "Đ";
-      if (lastChar.trim() && !isComb) {
-        focusNextEditable(slotIdx);
+
+      // Do NOT auto-advance while composing or if it's a combining vowel or D/Đ
+      if (!isComposingRef.current) {
+        const base = normalizeVietnameseBaseLetter(lastChar);
+        const isComb = isVietnameseVowel(base) || base === "D" || base === "Đ";
+        if (lastChar.trim() && !isComb) {
+          focusNextEditable(slotIdx);
+        }
       }
     }
   };
@@ -464,6 +454,13 @@ function SmartPuzzlePhraseInput({
                   type="text"
                   value={val}
                   onFocus={() => setFocusedSlotIdx(slot.index)}
+                  onCompositionStart={() => {
+                    isComposingRef.current = true;
+                  }}
+                  onCompositionEnd={(e) => {
+                    isComposingRef.current = false;
+                    handleSlotChange(slot.index, e.currentTarget.value);
+                  }}
                   onKeyDown={(e) => handleSlotKeyDown(slot.index, e)}
                   onChange={(e) => handleSlotChange(slot.index, e.target.value)}
                   placeholder={slot.isRevealedVowel ? slot.baseChar : "_"}
@@ -647,20 +644,25 @@ export default function MagicWheelBoard({
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
 
+  // In sandbox environment (iframe/nested), only Display preview plays sound to avoid echoing.
+  // In real play, Display and standalone contestant devices play sound normally.
+  const isInsideSandbox = typeof window !== "undefined" && (window.self !== window.top || window.location.search.includes("sandbox=1"));
+  const canPlayBoardAudio = !isInsideSandbox || isDisplay;
+
   useEffect(() => {
     if (!lastSolveFeedback || lastSolveFeedback === prevSolveFeedbackRef.current) return;
     prevSolveFeedbackRef.current = lastSolveFeedback;
 
     const isCorrect = Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success);
     if (isCorrect) {
-      soundManager.playMagicWheelSolveWin();
+      if (canPlayBoardAudio) soundManager.playMagicWheelSolveWin();
     } else {
-      soundManager.playMagicWheelWrong();
+      if (canPlayBoardAudio) soundManager.playMagicWheelWrong();
       setIsBoardShaking(true);
       const timer = setTimeout(() => setIsBoardShaking(false), 800);
       return () => clearTimeout(timer);
     }
-  }, [lastSolveFeedback]);
+  }, [lastSolveFeedback, canPlayBoardAudio]);
 
   const effectiveIsMyTurn =
     isMyTurn !== undefined
@@ -1111,61 +1113,65 @@ export default function MagicWheelBoard({
 
   useEffect(() => {
     if (isSpinning && !prevIsSpinning.current) {
-      soundManager.playMagicWheelSpin();
+      if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
     } else if (!isSpinning && prevIsSpinning.current) {
-      soundManager.stopMagicWheelSpin();
-      if (selectedSector) {
-        if (selectedSector.type === "DOUBLE" || selectedSector.type === "TRIPLE") {
-          soundManager.playMagicWheelDouble();
-        } else if (selectedSector.type === "HALF") {
-          soundManager.playMagicWheelHalve();
-        } else if (selectedSector.type === "BANKRUPT") {
-          soundManager.playMagicWheelBankrupt();
-        } else if (selectedSector.type === "LOSE_TURN") {
-          soundManager.playMagicWheelLoseTurn();
-        } else if (
-          selectedSector.type === "LUCKY" ||
-          selectedSector.type === "EXTRA_TURN" ||
-          selectedSector.type === "EXPRESS" ||
-          selectedSector.type === "JACKPOT"
-        ) {
-          soundManager.playMagicWheelLucky();
-        } else if (selectedSector.type === "PRIZE" || selectedSector.type === "BONUS_ENVELOPE") {
-          soundManager.playMagicWheelReward();
-        } else if (selectedSector.type === "MYSTERY" || selectedSector.type === "STEAL_SWAP") {
-          soundManager.playMagicWheelMystery();
-        } else {
-          soundManager.playWheelStopChime();
+      if (canPlayBoardAudio) {
+        soundManager.stopMagicWheelSpin();
+        if (selectedSector) {
+          if (selectedSector.type === "DOUBLE" || selectedSector.type === "TRIPLE") {
+            soundManager.playMagicWheelDouble();
+          } else if (selectedSector.type === "HALF") {
+            soundManager.playMagicWheelHalve();
+          } else if (selectedSector.type === "BANKRUPT") {
+            soundManager.playMagicWheelBankrupt();
+          } else if (selectedSector.type === "LOSE_TURN") {
+            soundManager.playMagicWheelLoseTurn();
+          } else if (
+            selectedSector.type === "LUCKY" ||
+            selectedSector.type === "EXTRA_TURN" ||
+            selectedSector.type === "EXPRESS" ||
+            selectedSector.type === "JACKPOT"
+          ) {
+            soundManager.playMagicWheelLucky();
+          } else if (selectedSector.type === "PRIZE" || selectedSector.type === "BONUS_ENVELOPE") {
+            soundManager.playMagicWheelReward();
+          } else if (selectedSector.type === "MYSTERY" || selectedSector.type === "STEAL_SWAP") {
+            soundManager.playMagicWheelMystery();
+          } else {
+            soundManager.playWheelStopChime();
+          }
         }
       }
     }
     prevIsSpinning.current = Boolean(isSpinning);
-  }, [isSpinning, selectedSector]);
+  }, [isSpinning, selectedSector, canPlayBoardAudio]);
 
   const totalWrongGuesses = Object.values(activeState.wrongGuessesCount || {}).reduce((a, b) => a + b, 0);
   useEffect(() => {
     if (totalWrongGuesses > prevWrongCount.current) {
-      soundManager.playMagicWheelWrong();
+      if (canPlayBoardAudio) soundManager.playMagicWheelWrong();
     }
     prevWrongCount.current = totalWrongGuesses;
-  }, [totalWrongGuesses]);
+  }, [totalWrongGuesses, canPlayBoardAudio]);
 
   useEffect(() => {
     if (prevPhase.current === "ACTION_INPUT" && (phase as string) !== "ACTION_INPUT") {
-      soundManager.stopMagicWheelThinking();
+      if (canPlayBoardAudio) soundManager.stopMagicWheelThinking();
     }
 
-    if (phase === "ROUND_RECAP") {
-      soundManager.playMagicWheelSolveWin();
-    } else if (phase === "ACTION_INPUT" || phase === "SPECIAL_SOLVING") {
-      soundManager.playMagicWheelThinking();
-    } else if (phase === "TRADE_CHOICE") {
-      soundManager.playMagicWheelTrade();
-    } else if (phase === "TOSS_UP_BUZZED") {
-      soundManager.playBuzz();
+    if (canPlayBoardAudio) {
+      if (phase === "ROUND_RECAP") {
+        soundManager.playMagicWheelSolveWin();
+      } else if (phase === "ACTION_INPUT" || phase === "SPECIAL_SOLVING") {
+        soundManager.playMagicWheelThinking();
+      } else if (phase === "TRADE_CHOICE") {
+        soundManager.playMagicWheelTrade();
+      } else if (phase === "TOSS_UP_BUZZED") {
+        soundManager.playBuzz();
+      }
     }
     prevPhase.current = phase;
-  }, [phase]);
+  }, [phase, canPlayBoardAudio]);
 
   // ── 3D Wheel Animation Loop (RequestAnimationFrame) ──────────────────────
   useEffect(() => {
@@ -2135,16 +2141,23 @@ export default function MagicWheelBoard({
                       </p>
                     </div>
                     {phase === "TOSS_UP_READY" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (boardStage === "EMPTY_56") handleOpenBoard();
-                          onTossUpStart?.();
-                        }}
-                        className="px-4 py-2 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 cursor-pointer animate-pulse"
-                      >
-                        ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN (0.5s/chữ)
-                      </button>
+                      isHost ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (boardStage === "EMPTY_56") handleOpenBoard();
+                            onTossUpStart?.();
+                          }}
+                          className="px-4 py-2 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 cursor-pointer animate-pulse"
+                        >
+                          ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN (0.5s/chữ)
+                        </button>
+                      ) : (
+                        <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 animate-pulse">
+                          <span>⏳</span>
+                          <span>Chờ Quản trò/MC bấm mở các chữ cái... Hãy sẵn sàng bấm chuông!</span>
+                        </div>
+                      )
                     )}
                   </div>
 

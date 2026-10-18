@@ -6520,16 +6520,8 @@ export default function AdminSandboxPage() {
         revealPayload: null,
         timer: null,
       });
-      addLog(`📊 Hiển thị Bảng xếp hạng giữa hiệp (Sau câu #${offlineQIndexRef.current + 1}). Tự động vào câu #${nextIdx + 1} sau 3s...`);
-
-      // 3s auto advance timer
-      offlineIntermissionTimerRef.current = setTimeout(() => {
-        offlineIntermissionTimerRef.current = null;
-        const qId = questions[nextIdx]?.id || `q_${nextIdx + 1}`;
-        offlineUsedQuestionIdsRef.current.add(qId);
-        setIntermission(null);
-        launchOfflineQuestion(nextIdx);
-      }, 3000);
+      // Hiển thị Bảng xếp hạng giữa hiệp (Leaderboard Intermission) - CHỈ chuyển sang câu tiếp theo khi Admin bấm Next!
+      addLog(`📊 Đã hiển thị Bảng xếp hạng giữa hiệp (Sau câu #${offlineQIndexRef.current + 1}). Chờ Admin bấm để vào câu tiếp theo...`);
       return;
     }
 
@@ -10048,7 +10040,7 @@ export default function AdminSandboxPage() {
               <div className="flex-1 min-h-0 bg-black">
                 <iframe
                   ref={displayIframeRef}
-                  src={`/display/${code}`}
+                  src={`/display/${code}?sandbox=1`}
                   title="Display Preview"
                   className="w-full h-full border-0"
                   allow="autoplay; camera; microphone"

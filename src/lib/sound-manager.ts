@@ -39,8 +39,8 @@ const SFX_CONFIG: Record<SFXKey, AudioSourceConfig> = {
   fanfare: { primary: "", fallbacks: [] },
   powerup: { primary: "/sounds/powerup.mp3", fallbacks: ["/sounds/powerup.wav"] },
   timeout: { primary: "/sounds/timeout.mp3", fallbacks: ["/sounds/buzz.mp3"] },
-  mw_letter_reveal: { primary: "/sounds/magic-wheel/letter_reveal.mp3", fallbacks: ["/sounds/correct.mp3"] },
-  mw_mark: { primary: "/sounds/magic-wheel/danh_dau_o_chu.mp3", fallbacks: ["/sounds/tick.mp3"] },
+  mw_letter_reveal: { primary: "/sounds/magic-wheel/letter_open.mp3", fallbacks: ["/sounds/magic-wheel/letter_reveal.mp3", "/sounds/correct.mp3"] },
+  mw_mark: { primary: "/sounds/magic-wheel/highlight.mp3", fallbacks: ["/sounds/magic-wheel/danh_dau_o_chu.mp3", "/sounds/tick.mp3"] },
   mw_board_open: { primary: "/sounds/magic-wheel/mo_o_chu.mp3", fallbacks: ["/sounds/magic-wheel/intro_round.mp3"] },
   mw_wrong_letter: { primary: "/sounds/magic-wheel/wrong_letter.mp3", fallbacks: ["/sounds/wrong.ogg"] },
   mw_bankrupt: { primary: "/sounds/magic-wheel/mat_diem.mp3", fallbacks: ["/sounds/magic-wheel/bankrupt_lose_turn.mp3", "/sounds/wrong.ogg"] },
@@ -1308,29 +1308,10 @@ class SoundManager {
   }
 
   /**
-   * 4. Ting mở ô chữ đúng (chữ cái xuất hiện trên bảng)
+   * 4. Âm thanh lật mở từng ô chữ (letter_open.mp3)
    */
   public playMagicWheelLetterReveal() {
     this.playSFX("mw_letter_reveal", 1.0);
-    const ctx = this.getWheelAudioCtx();
-    if (ctx) {
-      try {
-        const now = ctx.currentTime;
-        [1320, 1760].forEach((f, idx) => {
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(f, now + idx * 0.05);
-          gain.gain.setValueAtTime(0.001, now + idx * 0.05);
-          gain.gain.linearRampToValueAtTime(0.2, now + idx * 0.05 + 0.01);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.35);
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-          osc.start(now + idx * 0.05);
-          osc.stop(now + idx * 0.05 + 0.36);
-        });
-      } catch {}
-    }
   }
 
   /**

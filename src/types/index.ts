@@ -761,11 +761,21 @@ export type MagicWheelSectorType =
   | "LOSE_TURN"
   | "BANKRUPT"
   | "DOUBLE"
+  | "TRIPLE"
   | "HALF"
   | "EXTRA_TURN"
   | "LUCKY"
   | "PRIZE"
-  | "MYSTERY";
+  | "MYSTERY"
+  | "EXPRESS"
+  | "JACKPOT"
+  | "STEAL_SWAP"
+  | "SPECIAL_ENVELOPE"
+  | "BONUS_ENVELOPE";
+
+export type MagicWheelRoundStage = "TOSS_UP_1" | "TOSS_UP_2" | "MAIN" | "MAIN_ROUND" | "SPECIAL_FINAL";
+
+export type MagicWheelOperationMode = "SELF_SERVICE" | "HOST_ASSISTED";
 
 export interface MagicWheelSector {
   id: number;
@@ -775,14 +785,25 @@ export interface MagicWheelSector {
   color: string;
   textColor: string;
   isOverlay?: boolean;
-  overlayType?: "PRIZE" | "MYSTERY";
+  overlayType?:
+    | "PRIZE"
+    | "MYSTERY"
+    | "EXPRESS"
+    | "JACKPOT"
+    | "STEAL_SWAP"
+    | "TRIPLE"
+    | "SPECIAL_ENVELOPE";
   basePoints?: number;
   mysteryContent?: "PRIZE_3M" | "BANKRUPT";
+  envelopePrizePoints?: number;
+  envelopeTitle?: string;
 }
 
 export interface MagicWheelPuzzle {
   id: string;
-  roundNumber: number; // 1, 2, 3, 4 (Chung kết)
+  roundNumber: number; // 1..N (vòng chính), 0/-1 (Toss-up), 99 (Vòng Đặc Biệt)
+  stage?: MagicWheelRoundStage;
+  mainRoundIndex?: number; // 1, 2, 3, 4... cho các vòng chính
   category: string;    // "Danh nhân", "Địa danh", "Văn học", "Khoa học"
   secretPhrase: string; // "NGUYỄN HUỆ"
   clue?: string;        // "Vị anh hùng áo vải cờ đào..."
@@ -791,11 +812,17 @@ export interface MagicWheelPuzzle {
 
 export interface MagicWheelState {
   subMode: "WHEEL_QUIZ" | "WORD_PUZZLE";
+  operationMode?: MagicWheelOperationMode;
   sectors: MagicWheelSector[];
   currentTurnTeamId: string;
   currentTurnTeamName: string;
-  currentRound: number;
-  maxRounds: number;
+  currentRound: number;       // Chỉ số trong mảng puzzles (1-based)
+  maxRounds: number;          // Tổng số màn chơi trong mảng puzzles
+  roundStage?: MagicWheelRoundStage;
+  mainRoundNumber?: number;   // Vòng chính thứ mấy (1, 2, 3, 4...)
+  totalMainRounds?: number;   // Tổng số vòng chính (max(3, số đội))
+  round1StarterTeamId?: string; // Đội chiến thắng Đoán Nhanh 2 đi đầu ở Vòng Chính 1
+  mainRound1StarterTeamId?: string;
   puzzles: MagicWheelPuzzle[];
   currentPuzzle?: MagicWheelPuzzle;
   isSpinning: boolean;
@@ -809,25 +836,80 @@ export interface MagicWheelState {
   roundScores: Record<string, number>; // teamId -> điểm tích lũy trong vòng hiện tại
   disqualifiedTeamIdsInRound: string[]; // Các đội bị loại trong vòng do phạm 3 lỗi liên tiếp
   consecutiveWrongGuesses: Record<string, number>; // teamId -> số lần đoán sai liên tiếp (0, 1, 2, 3)
-  pendingSpecialAction?: "NONE" | "EXTRA_TURN" | "DOUBLE" | "HALF" | "POINTS" | "LUCKY" | "MYSTERY" | "PRIZE";
+  pendingSpecialAction?:
+    | "NONE"
+    | "EXTRA_TURN"
+    | "DOUBLE"
+    | "TRIPLE"
+    | "HALF"
+    | "POINTS"
+    | "LUCKY"
+    | "MYSTERY"
+    | "PRIZE"
+    | "EXPRESS"
+    | "JACKPOT"
+    | "STEAL_SWAP";
   phase:
     | "SPIN_WAITING"      // Chờ đội đến lượt bấm quay
     | "SPINNING"          // Nón đang xoay
     | "SECTOR_RESULT"     // Nón đã dừng, thông báo kết quả ô quay
     | "ACTION_INPUT"      // Chờ đoán chữ cái / trả lời quiz / giải ô chữ
     | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 3000đ vĩnh viễn
-    | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 3 thẻ chức năng
+    | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 20 lá thăm bí mật
     | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (VTV3 2012)
     | "LUCKY_PICK"        // Chờ người chơi chọn ô lật miễn phí
+    | "EXPRESS_CHOICE"    // V4: Chờ chọn Lên Tàu Tốc Độ hay dừng lại
+    | "STEAL_SWAP_CHOICE" // V5: Chờ chọn Cướp 50% hay Hoán Đổi Điểm Vòng
+    | "TOSS_UP_READY"     // Đoán nhanh: Chờ bắt đầu mở chữ ngẫu nhiên
+    | "TOSS_UP_RUNNING"   // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.5s/chữ
+    | "TOSS_UP_REVEALING" // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.5s/chữ
+    | "TOSS_UP_BUZZED"    // Đoán nhanh: Có người bấm chuông đang trả lời
+    | "SPECIAL_ORDER_CHOICE" // Vòng Đặc Biệt: Chọn Quay trước hay Giải ô chữ trước
+    | "SPECIAL_CHOOSE_ORDER"
+    | "SPECIAL_SPIN_WAITING" // Vòng Đặc Biệt: Chờ quay Phong Bì Đặc Biệt
+    | "SPECIAL_PICK_LETTERS" // Vòng Đặc Biệt: Chọn K chữ cái đoán trước
+    | "SPECIAL_THINKING"
+    | "SPECIAL_SOLVING"   // Vòng Đặc Biệt: 30s suy nghĩ + 10s trả lời liên tục
+    | "SPECIAL_FINAL_FLOW"
     | "ROUND_RECAP";      // Kết thúc vòng, tổng kết điểm
   mysteryRevealedType?: "PRIZE_CASH" | "BANKRUPT";
   lastActionMessage?: string;
   lastAwardedPoints?: number;
+  lastSolveAttemptText?: string;
   activeQuestionId?: string; // Dùng trong thể thức WHEEL_QUIZ
   permanentScores?: Record<string, number>; // Điểm vĩnh viễn bảo toàn mang về chung cuộc
   teamShields?: Record<string, boolean>; // Khiên bảo hộ chống mất lượt / mất điểm
   round3TradedTeams?: string[]; // V3: Các đội đã chọn Đổi (dừng vòng 3 lấy quà)
   round3ForbiddenSolveTeams?: string[]; // V3: Các đội bị cấm đoán cả ô chữ (phải lật từng chữ đến cuối)
+  mustSolveWithTones?: boolean; // Đã lộ hết chữ cái gốc trên bảng, bắt buộc Giải Ô Chữ đúng dấu thanh
+  // Toss-up state
+  tossUpRevealOrder?: number[];
+  tossUpWrongTeamIds?: string[];
+  tossUpBuzzedTeamId?: string;
+  tossUpBuzzedTeamName?: string;
+  tossUpAnswerEndsAt?: number;
+  // Vòng 4+: Express & Jackpot & Speed-up
+  jackpotPool?: number;       // Hũ Kim Cương tích lũy ở Vòng 4
+  expressModeActive?: boolean; // Đang trên Chuyến Tàu Tốc Độ (gọi chữ liên hoàn 1000đ/chữ)
+  expressTrainActive?: boolean;
+  speedUpBellActive?: boolean; // Vòng 6+: Chuông Tăng Tốc (1500đ/chữ không cần quay)
+  // Vòng Đặc Biệt (Special Final Round)
+  specialFinalTeamId?: string;
+  specialFinalTeamName?: string;
+  specialOrderMode?: "SPIN_FIRST" | "SOLVE_FIRST";
+  specialFinalChoiceOrder?: "SPIN_FIRST" | "SOLVE_FIRST";
+  specialEnvelopePrize?: { label: string; value: number };
+  specialBonusCompleted?: boolean;
+  specialPuzzleCompleted?: boolean;
+  specialBonusPoints?: number; // Mệnh giá phong bì quay được (ẩn cho đến khi giải xong)
+  specialAllowedLettersCount?: number; // Số chữ cái K được chọn trước
+  specialAllowedLetterCount?: number;
+  specialPickedLetters?: string[];     // Các chữ cái đã chọn ở Vòng Đặc Biệt
+  specialSelectedLetters?: string[];
+  specialThinkEndsAt?: number;
+  specialAnswerEndsAt?: number;
+  specialSolveEndsAt?: number;         // Timestamp hết 40s (30s suy nghĩ + 10s trả lời)
+  specialAttemptLog?: string[];        // Lịch sử các đáp án đã gõ thử trong 40s
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1818,10 +1900,19 @@ export interface ClientToServerEvents {
     cardType?: "POINTS_1500" | "FREE_SPIN" | "SHIELD";
   }) => void;
   "magic_wheel:trade_decide": (payload: { trade: boolean; boxIndex?: number }) => void;
+  "magic_wheel:express_decide": (payload: { rideExpress: boolean }) => void;
+  "magic_wheel:steal_swap_decide": (payload: { action: "STEAL_50" | "SWAP_LEADER"; targetTeamId?: string }) => void;
+  "magic_wheel:toss_up_start": () => void;
+  "magic_wheel:toss_up_buzz": (payload?: { teamId?: string }) => void;
+  "magic_wheel:toss_up_reveal_tick": (payload?: { index?: number }) => void;
+  "magic_wheel:special_choose_order": (payload: { order: "SPIN_FIRST" | "SOLVE_FIRST" }) => void;
+  "magic_wheel:special_pick_letters": (payload: { letters: string[] }) => void;
   "admin:magic_wheel:advance_round": () => void;
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;
   "admin:magic_wheel:guess_letter": (payload: { letter: string }) => void;
   "admin:magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
+  "admin:magic_wheel:judge_solve": (payload: { isCorrect: boolean }) => void;
+  "admin:magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "admin:magic_wheel:override_turn": (payload: { teamId: string }) => void;
   "admin:magic_wheel:pass_turn": () => void;
   "admin:magic_wheel:quick_reveal_letter": () => void;

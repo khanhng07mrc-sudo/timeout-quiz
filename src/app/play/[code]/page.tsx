@@ -1124,24 +1124,17 @@ export default function PlayPage() {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
     socket.on("game:magic_wheel:update", (magicWheelState) => {
-      setMatchStarting(null);
       setQuestionPrepare(null);
       setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
     });
     socket.on("game:magic_wheel:spin_started", () => {
       if (soundEnabledRef.current) soundManager.playWheelSpin();
     });
-    socket.on("game:magic_wheel:letter_guessed", ({ found }) => {
-      if (soundEnabledRef.current) {
-        if (found) soundManager.playCorrect();
-        else soundManager.playWrong();
-      }
+    socket.on("game:magic_wheel:letter_guessed", () => {
+      // Dedicated VTV3 highlight.mp3 + letter_open.mp3 / wrong.mp3 are handled inside MagicWheelBoard
     });
-    socket.on("game:magic_wheel:puzzle_solved", ({ isCorrect }) => {
-      if (soundEnabledRef.current) {
-        if (isCorrect) soundManager.playCorrect();
-        else soundManager.playWrong();
-      }
+    socket.on("game:magic_wheel:puzzle_solved", () => {
+      // Dedicated VTV3 solve_win.mp3 / wrong.mp3 are handled inside MagicWheelBoard
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
@@ -2410,8 +2403,12 @@ export default function PlayPage() {
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={false}
+                  isHost={isSandbox}
                   teams={roomState.teams}
-                  isMyTurn={roomState.magicWheelState.currentTurnTeamId === effectiveTeamId}
+                  isMyTurn={
+                    (roomState.magicWheelState.tossUpBuzzedTeamId ||
+                      roomState.magicWheelState.currentTurnTeamId) === effectiveTeamId || isSandbox
+                  }
                   onSpin={(power) => {
                     if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_SPIN", power, teamId: effectiveTeamId }, "*");
@@ -2454,6 +2451,92 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex, teamId: effectiveTeamId }, "*");
                     }
                     socketRef.current?.emit("magic_wheel:trade_decide", { trade, boxIndex });
+                  }}
+                  onTossUpStart={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START", teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:toss_up_start");
+                  }}
+                  onTossUpBuzz={(targetTeamId) => {
+                    const tId = targetTeamId || effectiveTeamId;
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:toss_up_buzz", { teamId: tId });
+                  }}
+                  onTossUpRevealTick={(index) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:toss_up_reveal_tick", { index });
+                  }}
+                  onExpressDecide={(boardTrain) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_EXPRESS_DECIDE", boardTrain, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:express_decide", { rideExpress: boardTrain });
+                  }}
+                  onStealSwapDecide={(mode, targetTeamId) => {
+                    const action = mode === "STEAL_50" || mode === "STEAL_HALF" ? "STEAL_50" : "SWAP_LEADER";
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_STEAL_SWAP_DECIDE", mode, action, targetTeamId, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:steal_swap_decide", { action, targetTeamId });
+                  }}
+                  onSpecialChooseOrder={(order) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SPECIAL_ORDER", order, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:special_choose_order", { order });
+                  }}
+                  onSpecialPickLetters={(letters) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SPECIAL_PICK_LETTERS", letters, teamId: effectiveTeamId }, "*");
+                    }
+                    socketRef.current?.emit("magic_wheel:special_pick_letters", { letters });
+                  }}
+                  onSetOperationMode={(mode) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_SET_MODE", mode }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:set_mode", { mode });
+                  }}
+                  onJudgeSolve={(correct) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_JUDGE_SOLVE", correct }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:judge_solve", { isCorrect: correct });
+                  }}
+                  onPassTurn={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:pass_turn");
+                  }}
+                  onQuickRevealLetter={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:quick_reveal_letter");
+                  }}
+                  onRevealAll={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:reveal_all");
+                  }}
+                  onOverrideTurn={(targetTeamId) => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:override_turn", { teamId: targetTeamId });
+                  }}
+                  onAdvanceRound={() => {
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
+                    }
+                    socketRef.current?.emit("admin:magic_wheel:advance_round");
                   }}
                 />
               </div>

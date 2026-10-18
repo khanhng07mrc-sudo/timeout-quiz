@@ -683,8 +683,9 @@ export default function DisplayPage() {
       setRoomState((prev) => (prev ? { ...prev, tournamentState } : prev));
     });
     socket.on("game:magic_wheel:update", (magicWheelState) => {
-      matchStartingRef.current = false;
-      setMatchStarting(null);
+      if (!matchStartingRef.current) {
+        setMatchStarting(null);
+      }
       setQuestionPrepare(null);
       setRoomState((prev) => (prev ? { ...prev, magicWheelState } : prev));
       if (magicWheelState.phase !== "ROUND_RECAP") {
@@ -694,13 +695,11 @@ export default function DisplayPage() {
     socket.on("game:magic_wheel:spin_started", () => {
       soundManager.playWheelSpin();
     });
-    socket.on("game:magic_wheel:letter_guessed", ({ found }) => {
-      if (found) soundManager.playCorrect();
-      else soundManager.playWrong();
+    socket.on("game:magic_wheel:letter_guessed", () => {
+      // Dedicated VTV3 highlight.mp3 + letter_open.mp3 / wrong.mp3 are handled inside MagicWheelBoard
     });
-    socket.on("game:magic_wheel:puzzle_solved", ({ isCorrect }) => {
-      if (isCorrect) soundManager.playCorrect();
-      else soundManager.playWrong();
+    socket.on("game:magic_wheel:puzzle_solved", () => {
+      // Dedicated VTV3 solve_win.mp3 / wrong.mp3 are handled inside MagicWheelBoard
     });
     socket.on("game:mystery:update", (mysteryQuestState) => {
       setRoomState((prev) => (prev ? { ...prev, mysteryQuestState } : prev));
@@ -1365,8 +1364,20 @@ export default function DisplayPage() {
   // ── Active Game ────────────────────────────────────────────────────────────
   if (!roomState) return null;
 
+  const getDisplayEntryEffectiveScore = (entry: any) => {
+    const base = entry?.score || 0;
+    if (
+      roomState.mode === "MAGIC_WHEEL" &&
+      roomState.teamMode === "TEAM" &&
+      roomState.magicWheelState?.phase !== "ROUND_RECAP"
+    ) {
+      return base + (roomState.magicWheelState?.roundScores?.[entry.id] || 0);
+    }
+    return base;
+  };
+
   const sortedTeams = [...(roomState.teamMode === "TEAM" ? roomState.teams : roomState.players)]
-    .sort((a: any, b: any) => b.score - a.score)
+    .sort((a: any, b: any) => getDisplayEntryEffectiveScore(b) - getDisplayEntryEffectiveScore(a))
     .slice(0, 10);
 
   const timerAuth = timer
@@ -2344,15 +2355,30 @@ export default function DisplayPage() {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto space-y-1 pr-0.5 min-h-0">
-          {sortedTeams.map((entry: any, i) => (
-            <div key={entry.id} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
-              <span className="text-sm font-black w-6 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold truncate">{entry.name}</p>
+          {sortedTeams.map((entry: any, i) => {
+            const mwRoundScore =
+              roomState.mode === "MAGIC_WHEEL" &&
+              roomState.teamMode === "TEAM" &&
+              roomState.magicWheelState?.phase !== "ROUND_RECAP"
+                ? roomState.magicWheelState?.roundScores?.[entry.id] || 0
+                : 0;
+            return (
+              <div key={entry.id} className="flex items-center gap-2 p-2 rounded-lg text-xs" style={{ background: `${entry.color ?? "#6366f1"}20` }}>
+                <span className="text-sm font-black w-6 text-center shrink-0">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{entry.name}</p>
+                </div>
+                <span className="font-bold font-mono text-cyan-400 shrink-0">
+                  {entry.score.toLocaleString()}đ
+                  {mwRoundScore > 0 && (
+                    <span className="text-amber-300 font-extrabold text-[11px] ml-1">
+                      (+{mwRoundScore.toLocaleString()}đ)
+                    </span>
+                  )}
+                </span>
               </div>
-              <span className="font-bold font-mono text-cyan-400 shrink-0">{entry.score.toLocaleString()}đ</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
       )}

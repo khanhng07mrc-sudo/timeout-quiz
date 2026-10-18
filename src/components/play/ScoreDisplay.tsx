@@ -16,12 +16,27 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
   const targetTeamId = teamId || me?.teamId;
   const myTeam = targetTeamId ? roomState.teams.find((t) => t.id === targetTeamId) : null;
 
+  const getEffectiveTeamScore = (tId: string, baseScore: number) => {
+    if (roomState.mode === "MAGIC_WHEEL" && roomState.magicWheelState?.phase !== "ROUND_RECAP") {
+      return baseScore + (roomState.magicWheelState?.roundScores?.[tId] || 0);
+    }
+    return baseScore;
+  };
+
   const sorted = roomState.teamMode === "TEAM"
-    ? [...roomState.teams].sort((a, b) => b.score - a.score)
+    ? [...roomState.teams].sort(
+        (a, b) => getEffectiveTeamScore(b.id, b.score) - getEffectiveTeamScore(a.id, a.score)
+      )
     : [...roomState.players].sort((a, b) => b.score - a.score);
 
   const myRank = sorted.findIndex((e) => e.id === (myTeam?.id ?? me?.id)) + 1;
   const scoreVal = myTeam ? myTeam.score : (me?.score ?? 0);
+  const magicWheelRoundScore =
+    roomState.mode === "MAGIC_WHEEL" &&
+    myTeam &&
+    roomState.magicWheelState?.phase !== "ROUND_RECAP"
+      ? roomState.magicWheelState?.roundScores?.[myTeam.id] || 0
+      : 0;
   const displayName = overridePlayerName || me?.name || "Bạn";
 
   return (
@@ -69,6 +84,11 @@ export default function ScoreDisplay({ roomState, playerId, teamId, overridePlay
         <p className="text-[9px] sm:text-[10px] text-muted-foreground uppercase whitespace-nowrap">{myTeam ? "Điểm đội" : "Điểm"}</p>
         <p className="font-black text-sm sm:text-base text-cyan-400 font-mono whitespace-nowrap">
           {scoreVal.toLocaleString()}
+          {magicWheelRoundScore > 0 && (
+            <span className="text-amber-300 font-extrabold text-xs ml-1">
+              (+{magicWheelRoundScore.toLocaleString()})
+            </span>
+          )}
           {roomState.mode === "MYSTERY_QUEST" &&
             Boolean(roomState.mysteryQuestState) &&
             roomState.mysteryQuestState!.currentTurnTeamId === myTeam?.id &&

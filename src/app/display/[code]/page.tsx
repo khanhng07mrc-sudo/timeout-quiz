@@ -259,7 +259,7 @@ export default function DisplayPage() {
           setRoomState(p.roomState);
           if (p.roomState?.status === "LOBBY") {
             if (!matchStartingRef.current) {
-              soundManager.playLobbyMusic();
+              soundManager.playLobbyMusic(p.roomState?.mode);
             }
           } else if (p.roomState?.status === "GAME_OVER" || p.roomState?.status === "FINISHED") {
             soundManager.stopMusic(0, true);
@@ -408,7 +408,7 @@ export default function DisplayPage() {
       setRoomState(state);
       if (state.status === "LOBBY") {
         if (!matchStartingRef.current) {
-          soundManager.playLobbyMusic();
+          soundManager.playLobbyMusic(state.mode);
         }
       } else if (state.status === "FINISHED" || state.status === "PAUSED") {
         soundManager.stopMusic(0, true);
@@ -852,7 +852,7 @@ export default function DisplayPage() {
     setSoundMuted(false);
     if (!matchStarting && !questionPrepare) {
       if (!currentQuestion && roomState?.status === "LOBBY") {
-        soundManager.playLobbyMusic();
+        soundManager.playLobbyMusic(roomState?.mode);
       } else if (
         currentQuestion &&
         !revealPayload &&
@@ -1416,7 +1416,8 @@ export default function DisplayPage() {
     !isMagicWheelMode
   );
 
-  const layoutGridClass = showSidebar
+  const effectiveShowSidebar = showSidebar && !isMagicWheelMode;
+  const layoutGridClass = effectiveShowSidebar
     ? "min-[500px]:grid min-[500px]:grid-cols-[1fr_190px] sm:grid-cols-[1fr_220px] md:grid-cols-[1fr_250px] lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px]"
     : "flex flex-col";
 
@@ -2318,19 +2319,11 @@ export default function DisplayPage() {
                 />
               </div>
             ) : roomState.mode === "MAGIC_WHEEL" && roomState.magicWheelState ? (
-              <div className="w-full max-w-6xl my-auto">
+              <div className="w-full max-w-7xl my-auto">
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={true}
                   teams={roomState.teams}
-                  onTossUpRevealTick={(index) => {
-                    if (socketRef.current?.connected) {
-                      socketRef.current.emit("magic_wheel:toss_up_reveal_tick", { index });
-                    }
-                    if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK", index }, "*");
-                    }
-                  }}
                 />
               </div>
             ) : (
@@ -2349,8 +2342,8 @@ export default function DisplayPage() {
         </DualTabTransition>
       </div>
 
-      {/* Leaderboard sidebar */}
-      {showSidebar && (
+      {/* Leaderboard sidebar (Hidden in Magic Wheel mode to eliminate duplicate scoreboard) */}
+      {effectiveShowSidebar && (
         <div className="glass rounded-2xl p-2 sm:p-2.5 flex flex-col gap-1.5 min-h-0 overflow-hidden h-full max-h-full shrink-0 max-[499px]:h-auto max-[499px]:max-h-36 tab-content-enter">
         <div className="flex items-center justify-between pb-1 border-b border-white/10 shrink-0">
           <h3 className="text-sm font-bold inline-flex items-center gap-1.5 text-white">

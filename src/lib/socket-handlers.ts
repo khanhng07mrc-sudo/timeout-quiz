@@ -8246,13 +8246,14 @@ export function registerSocketHandlers(io: IO) {
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
-    const handleTossUpTick = async ({ index }: { index?: number } = {}) => {
+    const handleTossUpTick = async (payload: any = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_REVEALING") || !wheelState.currentPuzzle) return;
 
       const p = wheelState.currentPuzzle;
+      const index = typeof payload === "number" ? payload : (payload?.index ?? payload?.targetIndex);
       if (typeof index === "number" && index >= 0 && index < p.secretPhrase.length) {
         if (!p.revealedIndices.includes(index)) {
           p.revealedIndices.push(index);
@@ -8282,6 +8283,9 @@ export function registerSocketHandlers(io: IO) {
       if (!wheelState || (wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2")) return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
 
+      // Optimistic instant lock to kill latency and prevent race conditions
+      wheelState.phase = "TOSS_UP_BUZZED";
+
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
 
@@ -8289,12 +8293,11 @@ export function registerSocketHandlers(io: IO) {
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId) || room.teams[0];
       if (!buzzTeam) return;
 
-      wheelState.phase = "TOSS_UP_BUZZED";
       wheelState.tossUpBuzzedTeamId = buzzTeam.id;
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 8000;
+      wheelState.tossUpAnswerEndsAt = Date.now() + 10000; // Standard 10s for toss-up answer
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });

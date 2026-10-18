@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { GameMode } from "@/types";
 import { transitionSoundEngine } from "@/lib/audio/transitionSoundEngine";
+import { soundManager } from "@/lib/sound-manager";
 
 interface Props {
   isOpen: boolean;
@@ -493,8 +494,13 @@ export default function ArenaModeLaunchTransition({
       setIsExpanded(true);
     }, 25);
 
-    // Phát âm thanh chuyển cảnh Web Audio API
-    transitionSoundEngine.playTransitionSfx(String(mode));
+    // Phát âm thanh chuyển cảnh: Với Magic Wheel chơi nhạc hình hiệu VTV3 (2012-2016)
+    const modeStr = String(mode || "").toUpperCase();
+    if (modeStr.includes("MAGIC") || modeStr.includes("WHEEL")) {
+      soundManager.playMagicWheelIntro();
+    } else {
+      transitionSoundEngine.playTransitionSfx(modeStr);
+    }
 
     // Thời gian transition mượt mà (1.25s)
     timerOutroRef.current = setTimeout(() => {

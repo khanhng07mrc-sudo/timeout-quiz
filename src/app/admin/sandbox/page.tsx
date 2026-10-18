@@ -396,6 +396,7 @@ export default function AdminSandboxPage() {
   const [cheatMenuPos, setCheatMenuPos] = useState({ top: 0, right: 0 });
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showUtilitiesDropdown, setShowUtilitiesDropdown] = useState(false);
+  const [showMagicWheelMCDropdown, setShowMagicWheelMCDropdown] = useState(false);
   const [revealPayload, setRevealPayload] = useState<any>(null);
   const [mobileTab, setMobileTab] = useState<"PLAYER" | "DISPLAY" | "HOST">("PLAYER");
 
@@ -8605,106 +8606,181 @@ export default function AdminSandboxPage() {
                     </button>
                   ) : roomState?.status === "PLAYING" ? (
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {/* 1. Mở ô chữ & Chủ đề (Nút to nổi bật khi bảng đang đóng EMPTY_56) */}
+                      {/* Context-Aware Primary Actions */}
                       {roomState?.magicWheelState?.boardStage === "EMPTY_56" ? (
                         <button
                           type="button"
                           onClick={handleMagicWheelOpenBoard}
-                          className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/50 animate-pulse border-2 border-yellow-200 transition flex items-center gap-1.5 cursor-pointer ring-2 ring-yellow-300"
+                          className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
                           title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
-                        >
-                          <span>⭐</span>
-                          <span>MỞ Ô CHỮ & CHỦ ĐỀ</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={handleMagicWheelOpenBoard}
-                          className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                          title="Mở lại / kích hoạt bảng ô chữ"
                         >
                           <span>⭐</span>
                           <span>Mở ô chữ</span>
                         </button>
-                      )}
-
-                      {/* 2. Bắt đầu mở chữ ngẫu nhiên 0.5s/chữ cho Vòng Đoán Nhanh */}
-                      {(roomState?.magicWheelState?.roundStage === "TOSS_UP_1" || roomState?.magicWheelState?.roundStage === "TOSS_UP_2") &&
-                        roomState?.magicWheelState?.phase === "TOSS_UP_READY" && (
+                      ) : (roomState?.magicWheelState?.roundStage === "TOSS_UP_1" || roomState?.magicWheelState?.roundStage === "TOSS_UP_2") &&
+                        roomState?.magicWheelState?.phase === "TOSS_UP_READY" ? (
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelStartTossUp}
+                          className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
+                        >
+                          <span>▶️</span>
+                          <span>Bắt đầu mở chữ (0.75s)</span>
+                        </button>
+                      ) : roomState?.magicWheelState?.phase === "ROUND_RECAP" ? (
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelNextRound}
+                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                          title="Chuyển sang vòng tiếp theo"
+                        >
+                          <span>⏩</span>
+                          <span>Sang vòng tiếp theo</span>
+                        </button>
+                      ) : (
+                        <>
                           <button
                             type="button"
-                            onClick={handleMagicWheelStartTossUp}
-                            className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 text-white font-black text-xs shadow-lg shadow-cyan-500/50 animate-pulse border-2 border-cyan-300 transition flex items-center gap-1.5 cursor-pointer"
-                            title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
+                            onClick={handleMagicWheelQuickSpin}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                            title="Quay nón cho đội hiện tại"
                           >
-                            <span>▶️</span>
-                            <span>BẮT ĐẦU MỞ CHỮ (0.75s/chữ)</span>
+                            <span>🎡</span>
+                            <span>Quay nón</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={handleMagicWheelDirectSolve}
+                            className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                            title="Đoán ô chữ chính xác"
+                          >
+                            <span>🎯</span>
+                            <span>Đoán ô chữ</span>
+                          </button>
+                        </>
                       )}
 
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelQuickSpin}
-                        className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Quay nón cho đội hiện tại"
-                      >
-                        <span>🎡</span>
-                        <span>Quay nón</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelPassTurn}
-                        className="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-500/40 text-blue-300 hover:bg-blue-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Chuyển lượt cho đội kế tiếp"
-                      >
-                        <span>⏭️</span>
-                        <span>Đổi lượt</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelQuickRevealLetter}
-                        className="px-2.5 py-1 rounded-lg bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Mở nhanh 1 chữ cái ngẫu nhiên chưa lật"
-                      >
-                        <span>🔤</span>
-                        <span>Mở chữ</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelTriggerLucky}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Kích hoạt ô May Mắn"
-                      >
-                        <span>🎁</span>
-                        <span>May mắn</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelDirectSolve}
-                        className="px-2.5 py-1 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Đoán ô chữ chính xác"
-                      >
-                        <span>🎯</span>
-                        <span>Đoán ô chữ</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelRevealAll}
-                        className="px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Mở toàn bộ ô chữ hoàn thành vòng"
-                      >
-                        <span>💡</span>
-                        <span>Mở hết</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelNextRound}
-                        className="px-2.5 py-1 rounded-lg bg-yellow-500/20 border border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/30 font-bold transition text-xs btn-tactile cursor-pointer shadow-sm flex items-center gap-1"
-                        title="Chuyển nhanh sang vòng tiếp theo"
-                      >
-                        <span>⏩</span>
-                        <span>Vòng kế</span>
-                      </button>
+                      {/* Dropdown Menu: Công cụ MC (Tập trung toàn bộ phím phụ & xử lý khẩn cấp) */}
+                      <div className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={() => setShowMagicWheelMCDropdown((prev) => !prev)}
+                          className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                            showMagicWheelMCDropdown
+                              ? "bg-slate-700/60 border-amber-400 text-amber-300 shadow-sm"
+                              : "bg-slate-800/60 border-white/10 text-slate-300 hover:text-white hover:bg-slate-700/50"
+                          }`}
+                          title="Công cụ điều phối và xử lý sự cố cho MC"
+                        >
+                          <span>🛠️</span>
+                          <span className="whitespace-nowrap">Công cụ MC</span>
+                          <span className="text-[10px] text-muted-foreground">▾</span>
+                        </button>
+
+                        {showMagicWheelMCDropdown && (
+                          <div
+                            className="absolute right-0 top-full mt-1.5 z-50 w-56 rounded-2xl glass border border-white/20 bg-[#151728]/95 backdrop-blur-xl shadow-2xl p-2 flex flex-col gap-1 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center justify-between px-2 py-1 border-b border-white/10 mb-1">
+                              <span className="font-black text-amber-300 text-[11px] uppercase tracking-wider">
+                                🛠️ Công cụ MC
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowMagicWheelMCDropdown(false)}
+                                className="text-muted-foreground hover:text-white text-xs cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelOpenBoard();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-amber-300 transition cursor-pointer text-left"
+                            >
+                              <span>⭐</span>
+                              <span>Mở lại ô chữ</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelPassTurn();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-blue-300 transition cursor-pointer text-left"
+                            >
+                              <span>⏭️</span>
+                              <span>Đổi lượt</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelQuickRevealLetter();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-cyan-300 transition cursor-pointer text-left"
+                            >
+                              <span>🔤</span>
+                              <span>Mở nhanh 1 chữ cái</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelTriggerLucky();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-emerald-300 transition cursor-pointer text-left"
+                            >
+                              <span>🎁</span>
+                              <span>Kích hoạt ô May Mắn</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelNextRound();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-yellow-300 transition cursor-pointer text-left"
+                            >
+                              <span>⏩</span>
+                              <span>Chuyển vòng tiếp theo</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundManager.toggleMagicWheelIntro();
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-white/10 text-indigo-300 transition cursor-pointer text-left border-t border-white/10 mt-1 pt-1.5"
+                            >
+                              <span>🎵</span>
+                              <span>Bật/Tắt Nhạc Hiệu VTV3</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleMagicWheelRevealAll();
+                                setShowMagicWheelMCDropdown(false);
+                              }}
+                              className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg hover:bg-rose-500/20 text-rose-300 transition cursor-pointer text-left"
+                            >
+                              <span>💡</span>
+                              <span>Mở hết ô chữ (Khẩn cấp)</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   ) : null
                 )}
@@ -11009,11 +11085,11 @@ export default function AdminSandboxPage() {
                           window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                         }
                       }}
-                      onTossUpRevealTick={() => {
+                      onTossUpRevealTick={(targetIndex?: number) => {
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:toss_up_tick" as any);
+                          adminSocketRef.current.emit("magic_wheel:toss_up_tick" as any, { targetIndex });
                         } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK" }, "*");
+                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index: targetIndex }, "*");
                         }
                       }}
                       onExpressDecide={(boardTrain) => {

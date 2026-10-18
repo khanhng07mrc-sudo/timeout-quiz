@@ -141,7 +141,7 @@ export default function AdminRoomPage() {
     if (next) {
       soundManager.unlockAudio();
       if (roomState?.status === "LOBBY") {
-        soundManager.playLobbyMusic();
+        soundManager.playLobbyMusic(roomState?.mode);
       }
     } else {
       soundManager.stopMusic();
@@ -339,7 +339,7 @@ export default function AdminRoomPage() {
       if (soundEnabledRef.current) {
         if (state.status === "LOBBY") {
           if (!matchStartingRef.current) {
-            soundManager.playLobbyMusic();
+            soundManager.playLobbyMusic(state.mode);
           }
         } else if (state.status === "FINISHED" || state.status === "PAUSED" || state.status === "PLAYING") {
           soundManager.stopMusic(0);
@@ -1473,6 +1473,17 @@ export default function AdminRoomPage() {
                     emit("magic_wheel:reward_select", data);
                   }}
                   onTradeDecide={(trade, boxIndex) => emit("magic_wheel:trade_decide", { trade, boxIndex })}
+                  onTossUpStart={() => emit("magic_wheel:toss_up_start")}
+                  onTossUpBuzz={(teamId) => emit("magic_wheel:toss_up_buzz", { teamId })}
+                  onTossUpRevealTick={(targetIndex) => emit("magic_wheel:toss_up_reveal_tick", { index: targetIndex })}
+                  onExpressDecide={(boardTrain) => emit("magic_wheel:express_decide", { rideExpress: boardTrain })}
+                  onStealSwapDecide={(mode, targetTeamId) => emit("magic_wheel:steal_swap_decide", { action: mode as any, targetTeamId })}
+                  onSpecialChooseOrder={(order) => emit("magic_wheel:special_choose_order", { order: order as any })}
+                  onSpecialPickLetters={(letters) => emit("magic_wheel:special_pick_letters", { letters })}
+                  onAdvanceRound={() => emit("admin:magic_wheel:advance_round")}
+                  onJudgeSolve={(accepted) => emit("admin:magic_wheel:judge_solve", { isCorrect: accepted })}
+                  onRevealAll={() => emit("admin:magic_wheel:reveal_all")}
+                  onQuickRevealLetter={() => emit("admin:magic_wheel:quick_reveal_letter")}
                 />
               </div>
             </div>

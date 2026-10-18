@@ -1421,29 +1421,39 @@ export default function MagicWheelBoard({
     }
   }, [roundStage, phase, currentRound]);
 
+  // Stable refs to prevent tearing down the 0.75s interval on every letter reveal
+  const animRevealedIndicesRef = useRef<Set<number>>(animRevealedIndices);
+  animRevealedIndicesRef.current = animRevealedIndices;
+  const currentPuzzleRef = useRef(currentPuzzle);
+  currentPuzzleRef.current = currentPuzzle;
+
   useEffect(() => {
     if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") return;
     if (effectiveBoardStage === "EMPTY_56") {
       handleOpenBoard();
     }
 
-    const phrase = currentPuzzle?.secretPhrase || "";
+    const phrase = currentPuzzleRef.current?.secretPhrase || "";
     if (!phrase) return;
 
     // Single authoritative tick driver:
-    // In sandbox: only Display preview drives the ticks to avoid colliding loops.
-    // In live room: Display drives if present, else Host drives.
-    const isTickDriver = isInsideSandbox ? isDisplay : (isDisplay || isHost);
+    // Only execute if an authoritative tick callback is registered
+    // In sandbox: only Host drives (display iframe has no onTossUpRevealTick or is inside iframe)
+    // In live room: Host drives, or standalone Display fallback
+    const isTickDriver = typeof onTossUpRevealTick === "function" && (isHost || (isDisplay && !isInsideSandbox));
     if (!isTickDriver) return;
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let firstOpenTimer: ReturnType<typeof setTimeout> | null = null;
 
     const getUnrevealedLetterIndices = () => {
-      const currentRev = prevServerRevealedRef.current;
+      const p = currentPuzzleRef.current;
+      const ph = p?.secretPhrase || "";
+      const currentRev = p?.revealedIndices || [];
+      const animRev = animRevealedIndicesRef.current;
       const list: number[] = [];
-      for (let i = 0; i < phrase.length; i++) {
-        if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(phrase[i]) && !currentRev.includes(i) && !animRevealedIndices.has(i)) {
+      for (let i = 0; i < ph.length; i++) {
+        if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(ph[i]) && !currentRev.includes(i) && !animRev.has(i)) {
           list.push(i);
         }
       }
@@ -1451,6 +1461,7 @@ export default function MagicWheelBoard({
     };
 
     const startRandomInterval = () => {
+      if (intervalId) clearInterval(intervalId);
       intervalId = setInterval(() => {
         const unrevealed = getUnrevealedLetterIndices();
         if (unrevealed.length === 0) {
@@ -1465,7 +1476,7 @@ export default function MagicWheelBoard({
       }, 750);
     };
 
-    if (!tossUpFirstTileDoneRef.current && (currentPuzzle?.revealedIndices?.length || 0) === 0) {
+    if (!tossUpFirstTileDoneRef.current && (currentPuzzleRef.current?.revealedIndices?.length || 0) === 0) {
       tossUpFirstTileDoneRef.current = true;
       const unrevealed = getUnrevealedLetterIndices();
       if (unrevealed.length > 0) {
@@ -1487,7 +1498,7 @@ export default function MagicWheelBoard({
         setHighlightedIndices(new Set([firstIdx]));
         soundManager.playMagicWheelMark(); // Plays highlight.mp3
 
-        // 2. Right after waiting 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.5s random loop begins
+        // 2. Right after waiting 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s random loop begins
         firstOpenTimer = setTimeout(() => {
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
@@ -1511,10 +1522,7 @@ export default function MagicWheelBoard({
   }, [
     phase,
     effectiveBoardStage,
-    currentPuzzle?.secretPhrase,
-    currentPuzzle?.revealedIndices?.length,
     cellPositionsMap,
-    animRevealedIndices,
     handleOpenBoard,
     isHost,
     isDisplay,
@@ -1584,7 +1592,7 @@ export default function MagicWheelBoard({
       } else if (phase === "TRADE_CHOICE") {
         soundManager.playMagicWheelTrade();
       } else if (phase === "TOSS_UP_BUZZED") {
-        soundManager.playBuzz();
+        soundManager.playMagicWheelBuzzSolve();
       }
     }
     prevPhase.current = phase;
@@ -2199,27 +2207,25 @@ export default function MagicWheelBoard({
               </div>
             </div>
 
-            {/* ── VTV3 Broadcast Lower-Third Chyron (Dải băng truyền hình VTV3) ── */}
-            <div className="w-full mt-3 z-20">
-              <div className="flex flex-col sm:flex-row items-stretch rounded-xl overflow-hidden border border-amber-400/40 shadow-2xl bg-black/85 backdrop-blur-md">
-                {/* Category Pill / Chủ Đề */}
-                <div className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black px-4 py-2 sm:py-2.5 flex items-center justify-center gap-2 uppercase tracking-wider text-xs sm:text-sm shrink-0 shadow-md">
-                  <span>⭐</span>
-                  <span>CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"}</span>
-                </div>
-                {/* Clue Chyron Body with broadcast typography shadow */}
-                <div className="flex-1 px-4 py-2 sm:py-2.5 flex items-center justify-between gap-3 text-slate-100 font-bold text-xs sm:text-sm md:text-base tracking-wide bg-gradient-to-r from-slate-950/90 via-black/95 to-slate-950/90">
-                  <p className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] truncate sm:whitespace-normal">
-                    {effectiveBoardStage === "READY_CLUE"
-                      ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
-                      : "Bảng ô chữ đang chuẩn bị..."}
-                  </p>
-                  {currentPuzzle?.secretPhrase && (
-                    <span className="shrink-0 px-2 py-0.5 rounded bg-white/10 text-amber-300 font-mono text-[11px] sm:text-xs border border-white/15">
-                      {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} KÝ TỰ
-                    </span>
-                  )}
-                </div>
+            {/* ── VTV3 Broadcast Lower-Third Chyron (Dải băng truyền hình VTV3 2 tầng chuẩn) ── */}
+            <div className="w-full mt-3 z-20 flex flex-col items-start drop-shadow-2xl">
+              {/* Tier 1: Category Badge / Chủ Đề (Gọn gàng, góc trên bên trái) */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-md border-t border-x border-amber-300">
+                <span className="text-amber-900">⭐</span>
+                <span>CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"}</span>
+              </div>
+              {/* Tier 2: Clue Chyron Body Full-Width (Không bị co hẹp ngang) */}
+              <div className="w-full px-4 py-2.5 sm:py-3 rounded-b-2xl rounded-tr-2xl bg-black/90 border border-amber-400/40 backdrop-blur-md flex items-center justify-between gap-4 text-slate-100 font-bold text-xs sm:text-sm md:text-base shadow-2xl">
+                <p className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] leading-relaxed flex-1">
+                  {effectiveBoardStage === "READY_CLUE"
+                    ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
+                    : "Bảng ô chữ đang chuẩn bị..."}
+                </p>
+                {currentPuzzle?.secretPhrase && (
+                  <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
+                    {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} KÝ TỰ
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -2632,12 +2638,15 @@ export default function MagicWheelBoard({
                     )}
                   </div>
 
-                  {phase === "TOSS_UP_RUNNING" && (
+                  {(phase === "TOSS_UP_RUNNING" || phase === "TOSS_UP_REVEALING") && (
                     <div className="space-y-2">
                       <button
                         type="button"
-                        onClick={() => onTossUpBuzz?.(myTeamId || currentTurnTeamId)}
-                        className="w-full py-3.5 rounded-2xl font-black text-sm sm:text-base text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 hover:brightness-110 active:scale-98 shadow-[0_0_25px_rgba(251,191,36,0.6)] cursor-pointer transition"
+                        onPointerDown={() => {
+                          soundManager.playMagicWheelBuzzSolve();
+                          onTossUpBuzz?.(myTeamId || currentTurnTeamId);
+                        }}
+                        className="w-full py-4 rounded-2xl font-black text-sm sm:text-base text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] cursor-pointer transition select-none touch-manipulation ring-2 ring-yellow-200"
                       >
                         🔔 BẤM CHUÔNG GIÀNH QUYỀN GIẢI Ô CHỮ NGAY!
                       </button>
@@ -2648,8 +2657,11 @@ export default function MagicWheelBoard({
                             <button
                               key={t.id}
                               type="button"
-                              onClick={() => onTossUpBuzz?.(t.id)}
-                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/10 hover:bg-amber-400 hover:text-slate-950 border border-white/20 transition cursor-pointer"
+                              onPointerDown={() => {
+                                soundManager.playMagicWheelBuzzSolve();
+                                onTossUpBuzz?.(t.id);
+                              }}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white/10 hover:bg-amber-400 hover:text-slate-950 border border-white/20 transition cursor-pointer select-none touch-manipulation"
                             >
                               🔔 {t.name}
                             </button>

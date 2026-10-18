@@ -458,7 +458,11 @@ class SoundManager {
     }
   }
 
-  public playLobbyMusic() {
+  public playLobbyMusic(mode?: string) {
+    if (mode === "MAGIC_WHEEL") {
+      this.playMagicWheelIntro();
+      return;
+    }
     if (this.questionMusicTimeout) {
       clearTimeout(this.questionMusicTimeout);
       this.questionMusicTimeout = null;
@@ -1283,6 +1287,24 @@ class SoundManager {
    */
   public playMagicWheelIntro() {
     this.playMusicTrack("QUESTION", "mw_intro", 0.9, 200);
+  }
+
+  public stopMagicWheelIntro(fadeDurationMs: number = 300) {
+    if (this.currentMusicKey === "mw_intro") {
+      this.stopMusic(fadeDurationMs, true);
+    }
+  }
+
+  public isPlayingMagicWheelIntro(): boolean {
+    return Boolean(this.currentMusicKey === "mw_intro" && this.currentMusicAudio && !this.currentMusicAudio.paused);
+  }
+
+  public toggleMagicWheelIntro() {
+    if (this.isPlayingMagicWheelIntro()) {
+      this.stopMagicWheelIntro(250);
+    } else {
+      this.playMagicWheelIntro();
+    }
   }
 
   /**

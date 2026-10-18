@@ -440,7 +440,7 @@ function checkLetterInSecretPhrase(phrase, letter, alreadyRevealedIndices) {
 function isPuzzleFullyRevealed(phrase, revealedIndices) {
   for (let i = 0; i < phrase.length; i++) {
     const char = phrase[i];
-    if (char !== " " && char !== "-" && char !== "," && char !== "." && char !== "!" && char !== "?") {
+    if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(char)) {
       if (!revealedIndices.includes(i)) {
         return false;
       }
@@ -530,18 +530,18 @@ var DEFAULT_MAGIC_WHEEL_PUZZLES = [
     id: "puzzle-tossup-1",
     roundNumber: 1,
     stage: "TOSS_UP_1",
-    category: "\u0110O\xC1N NHANH 1: \u0110\u1ECAA DANH",
-    secretPhrase: "H\u1ED2 HO\xC0N KI\u1EBEM",
-    clue: "Tr\xE1i tim l\u1ECBch s\u1EED g\u1EAFn v\u1EDBi truy\u1EC1n thuy\u1EBFt r\xF9a v\xE0ng tr\u1EA3 g\u01B0\u01A1m gi\u1EEFa l\xF2ng Th\u1EE7 \u0111\xF4 H\xE0 N\u1ED9i.",
+    category: "\u0110O\xC1N NHANH 1: DI S\u1EA2N L\u1ECACH S\u1EEC",
+    secretPhrase: "HO\xC0NG TH\xC0NH TH\u0102NG LONG",
+    clue: "Qu\u1EA7n th\u1EC3 di t\xEDch l\u1ECBch s\u1EED c\u1ED1 \u0111\xF4 ng\xE0n n\u0103m v\u0103n hi\u1EBFn \u0111\u01B0\u1EE3c UNESCO vinh danh l\xE0 Di s\u1EA3n Th\u1EBF gi\u1EDBi.",
     revealedIndices: []
   },
   {
     id: "puzzle-tossup-2",
     roundNumber: 2,
     stage: "TOSS_UP_2",
-    category: "\u0110O\xC1N NHANH 2: \u1EA8M TH\u1EF0C",
-    secretPhrase: "B\xC1NH CH\u01AFNG XANH",
-    clue: "M\xF3n b\xE1nh truy\u1EC1n th\u1ED1ng t\u01B0\u1EE3ng tr\u01B0ng cho m\u1EB7t \u0111\u1EA5t vu\xF4ng v\u1EE9c m\u1ED7i d\u1ECBp T\u1EBFt Nguy\xEAn \u0110\xE1n.",
+    category: "\u0110O\xC1N NHANH 2: V\u0102N H\xD3A \u1EA8M TH\u1EF0C",
+    secretPhrase: "B\xC1NH CH\u01AFNG - B\xC1NH GI\u1EA6Y",
+    clue: "Hai th\u1EE9c b\xE1nh t\u01B0\u1EE3ng tr\u01B0ng tr\u1EDDi tr\xF2n \u0111\u1EA5t vu\xF4ng g\u1EAFn v\u1EDBi truy\u1EC1n thuy\u1EBFt ho\xE0ng t\u1EED Lang Li\xEAu \u0111\u1EDDi vua H\xF9ng.",
     revealedIndices: []
   },
   {
@@ -15204,7 +15204,7 @@ function registerSocketHandlers(io2) {
       wheelState.tossUpBuzzedTeamId = void 0;
       wheelState.tossUpBuzzedTeamName = void 0;
       wheelState.tossUpAnswerEndsAt = void 0;
-      wheelState.boardStage = "READY_CLUE";
+      wheelState.boardStage = "EMPTY_56";
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);
         wheelState.phase = "TOSS_UP_READY";
@@ -15331,12 +15331,13 @@ function registerSocketHandlers(io2) {
       wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
-    const handleTossUpTick = async ({ index } = {}) => {
+    const handleTossUpTick = async (payload = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_REVEALING" || !wheelState.currentPuzzle) return;
       const p = wheelState.currentPuzzle;
+      const index = typeof payload === "number" ? payload : payload?.index ?? payload?.targetIndex;
       if (typeof index === "number" && index >= 0 && index < p.secretPhrase.length) {
         if (!p.revealedIndices.includes(index)) {
           p.revealedIndices.push(index);
@@ -15363,17 +15364,17 @@ function registerSocketHandlers(io2) {
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2") return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
+      wheelState.phase = "TOSS_UP_BUZZED";
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
       const buzzTeamId = payload?.teamId || isSandboxSocket && roomSandboxActiveTeam.get(roomId) || teamId || wheelState.currentTurnTeamId || room.teams[0]?.id;
       const buzzTeam = room.teams.find((t) => t.id === buzzTeamId) || room.teams[0];
       if (!buzzTeam) return;
-      wheelState.phase = "TOSS_UP_BUZZED";
       wheelState.tossUpBuzzedTeamId = buzzTeam.id;
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 8e3;
+      wheelState.tossUpAnswerEndsAt = Date.now() + 1e4;
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });

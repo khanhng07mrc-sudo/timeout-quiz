@@ -2473,13 +2473,6 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                     }
                   }}
-                  onTossUpRevealTick={(index) => {
-                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                      socketRef.current.emit("magic_wheel:toss_up_reveal_tick", { index });
-                    } else if (typeof window !== "undefined" && window.self !== window.top) {
-                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index }, "*");
-                    }
-                  }}
                   onExpressDecide={(boardTrain) => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("magic_wheel:express_decide", { rideExpress: boardTrain });

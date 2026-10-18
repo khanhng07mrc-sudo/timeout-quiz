@@ -5144,7 +5144,9 @@ export default function AdminSandboxPage() {
           cur.currentPuzzle = p;
           const allIndices: number[] = [];
           for (let i = 0; i < p.secretPhrase.length; i++) {
-            if (p.secretPhrase[i] !== " " && !p.revealedIndices.includes(i)) {
+            const ch = p.secretPhrase[i];
+            const isLetter = /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(ch);
+            if (isLetter && !p.revealedIndices.includes(i)) {
               allIndices.push(i);
             }
           }
@@ -5195,10 +5197,9 @@ export default function AdminSandboxPage() {
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
-          if (cur.phase !== "TOSS_UP_REVEALING" && cur.phase !== "TOSS_UP_READY") return prev;
+          if (cur.phase !== "TOSS_UP_REVEALING" && cur.phase !== "TOSS_UP_READY" && cur.phase !== "TOSS_UP_RUNNING") return prev;
           const buzzTeam = prev.teams.find((t) => t.id === teamId) || prev.teams[0];
           if (!buzzTeam) return prev;
-          soundManager.playBuzz();
           cur.tossUpBuzzedTeamId = buzzTeam.id;
           cur.tossUpBuzzedTeamName = buzzTeam.name;
           cur.phase = "TOSS_UP_BUZZED";
@@ -5485,7 +5486,7 @@ export default function AdminSandboxPage() {
           const totalMain = cur.totalMainRounds || Math.min(8, Math.max(3, prev.teams.length));
           cur.lastSolveFeedback = undefined;
           cur.roundEliminatedTeamIds = [];
-          cur.boardStage = "READY_CLUE";
+          cur.boardStage = "EMPTY_56";
 
           // 1. Từ TOSS_UP_1 -> TOSS_UP_2
           if (cur.roundStage === "TOSS_UP_1") {
@@ -8607,59 +8608,86 @@ export default function AdminSandboxPage() {
                   ) : roomState?.status === "PLAYING" ? (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {/* Context-Aware Primary Actions */}
-                      {roomState?.magicWheelState?.boardStage === "EMPTY_56" ? (
-                        <button
-                          type="button"
-                          onClick={handleMagicWheelOpenBoard}
-                          className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                          title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
-                        >
-                          <span>⭐</span>
-                          <span>Mở ô chữ</span>
-                        </button>
-                      ) : (roomState?.magicWheelState?.roundStage === "TOSS_UP_1" || roomState?.magicWheelState?.roundStage === "TOSS_UP_2") &&
-                        roomState?.magicWheelState?.phase === "TOSS_UP_READY" ? (
-                        <button
-                          type="button"
-                          onClick={handleMagicWheelStartTossUp}
-                          className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                          title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
-                        >
-                          <span>▶️</span>
-                          <span>Bắt đầu mở chữ (0.75s)</span>
-                        </button>
-                      ) : roomState?.magicWheelState?.phase === "ROUND_RECAP" ? (
-                        <button
-                          type="button"
-                          onClick={handleMagicWheelNextRound}
-                          className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-                          title="Chuyển sang vòng tiếp theo"
-                        >
-                          <span>⏩</span>
-                          <span>Sang vòng tiếp theo</span>
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={handleMagicWheelQuickSpin}
-                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
-                            title="Quay nón cho đội hiện tại"
-                          >
-                            <span>🎡</span>
-                            <span>Quay nón</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleMagicWheelDirectSolve}
-                            className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
-                            title="Đoán ô chữ chính xác"
-                          >
-                            <span>🎯</span>
-                            <span>Đoán ô chữ</span>
-                          </button>
-                        </>
-                      )}
+                      {(() => {
+                        const mw = roomState?.magicWheelState;
+                        const isRoundComplete =
+                          mw?.phase === "ROUND_RECAP" ||
+                          Boolean(
+                            mw?.currentPuzzle?.secretPhrase &&
+                            mw?.currentPuzzle?.revealedIndices &&
+                            isPuzzleFullyRevealed(mw.currentPuzzle.secretPhrase, mw.currentPuzzle.revealedIndices) &&
+                            mw.phase !== "TOSS_UP_BUZZED" &&
+                            mw.phase !== "ACTION_INPUT"
+                          );
+
+                        if (mw?.boardStage === "EMPTY_56") {
+                          return (
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelOpenBoard}
+                              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 ring-2 ring-amber-300"
+                              title="Mở các ô chữ và công bố chủ đề cho tất cả các màn hình"
+                            >
+                              <span>⭐</span>
+                              <span>Mở ô chữ</span>
+                            </button>
+                          );
+                        }
+
+                        if (isRoundComplete) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelNextRound}
+                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95 animate-pulse ring-2 ring-emerald-400"
+                              title="Chuyển sang vòng tiếp theo"
+                            >
+                              <span>⏩</span>
+                              <span>Sang vòng tiếp theo</span>
+                            </button>
+                          );
+                        }
+
+                        if (
+                          (mw?.roundStage === "TOSS_UP_1" || mw?.roundStage === "TOSS_UP_2") &&
+                          mw?.phase === "TOSS_UP_READY"
+                        ) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelStartTossUp}
+                              className="px-3.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+                              title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
+                            >
+                              <span>▶️</span>
+                              <span>Bắt đầu mở chữ (0.75s)</span>
+                            </button>
+                          );
+                        }
+
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelQuickSpin}
+                              className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                              title="Quay nón cho đội hiện tại"
+                            >
+                              <span>🎡</span>
+                              <span>Quay nón</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleMagicWheelDirectSolve}
+                              className="px-3 py-1.5 rounded-lg bg-purple-500/20 border border-purple-500/40 text-purple-300 hover:bg-purple-500/30 font-bold transition text-xs cursor-pointer shadow-sm flex items-center gap-1 active:scale-95"
+                              title="Đoán ô chữ chính xác"
+                            >
+                              <span>🎯</span>
+                              <span>Đoán ô chữ</span>
+                            </button>
+                          </>
+                        );
+                      })()}
 
                       {/* Dropdown Menu: Công cụ MC (Tập trung toàn bộ phím phụ & xử lý khẩn cấp) */}
                       <div className="relative inline-block">

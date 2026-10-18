@@ -235,11 +235,13 @@ function SmartPuzzlePhraseInput({
   const slots = useMemo(() => {
     return Array.from(upperPhrase).map((ch, idx) => {
       const isSpace = ch === " ";
-      const isRevealed = revealedIndices.has(idx);
-      const baseChar = normalizeVietnameseBaseLetter(ch);
-      const isVowel = isVietnameseVowel(baseChar);
-      // Consonants that are already revealed are 100% fixed!
-      const isLockedConsonant = !isSpace && isRevealed && !isVowel;
+      const isLetter = /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(ch);
+      const isSymbol = !isSpace && !isLetter;
+      const isRevealed = isSymbol || revealedIndices.has(idx);
+      const baseChar = isSymbol ? ch : normalizeVietnameseBaseLetter(ch);
+      const isVowel = isLetter && isVietnameseVowel(baseChar);
+      // Consonants that are already revealed or non-letter symbols (like '-') are 100% fixed!
+      const isLockedConsonant = isSymbol || (!isSpace && isRevealed && !isVowel);
       // Vowels that are already revealed have their base vowel fixed, only needing tone mark!
       const isRevealedVowel = !isSpace && isRevealed && isVowel;
       return {
@@ -365,12 +367,6 @@ function SmartPuzzlePhraseInput({
     }
 
     if (e.key === "Backspace") {
-      const curVal = charValues[slotIdx] || "";
-      if (!curVal || curVal.trim() === "") {
-        e.preventDefault();
-        focusPrevEditable(slotIdx);
-        return;
-      }
       setCharValues((prev) => {
         const next = [...prev];
         next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
@@ -1028,8 +1024,10 @@ export default function MagicWheelBoard({
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
 
   const isInsideSandbox = typeof window !== "undefined" && (window.self !== window.top || window.location.search.includes("sandbox=1"));
-  // All devices (Display, Contestant, Host) play game sound effects
-  const canPlayBoardAudio = true;
+  // Audio rule: Contestants never play audio.
+  // In sandbox: only Display preview plays audio (prevents duplicate audio on the same machine).
+  // In live room: Host or Display plays audio.
+  const canPlayBoardAudio = !isInsideSandbox ? (isHost || isDisplay) : isDisplay;
 
   useEffect(() => {
     if (!lastSolveFeedback || lastSolveFeedback === prevSolveFeedbackRef.current) return;
@@ -1159,38 +1157,88 @@ export default function MagicWheelBoard({
     const phrase = (currentPuzzle?.secretPhrase || "").toUpperCase();
     if (!phrase) return map;
 
-    const words = phrase.split(" ");
-    const rowLines: Array<Array<{ word: string; startGlobalIdx: number }>> = [[], [], [], []];
-    let targetRow = 1;
-    let charGlobalCounter = 0;
-
-    for (const w of words) {
-      const lineLen = rowLines[targetRow].reduce((acc, curr) => acc + curr.word.length + 1, 0);
-      if (lineLen + w.length <= COLS) {
-        rowLines[targetRow].push({ word: w, startGlobalIdx: charGlobalCounter });
-      } else if (targetRow + 1 < ROWS) {
-        targetRow++;
-        rowLines[targetRow].push({ word: w, startGlobalIdx: charGlobalCounter });
+    // Split into tokens: keep track of global character index
+    const words: Array<{ word: string; startIdx: number }> = [];
+    let curIdx = 0;
+    const rawWords = phrase.split(" ");
+    for (const w of rawWords) {
+      if (w.length > 0) {
+        words.push({ word: w, startIdx: curIdx });
+        curIdx += w.length + 1;
       } else {
-        rowLines[0].push({ word: w, startGlobalIdx: charGlobalCounter });
+        curIdx += 1;
       }
-      charGlobalCounter += w.length + 1;
+    }
+
+    // Allocate words to lines
+    // Priority of rows: [1, 2, 0, 3] for vertical centering
+    const rowLines: Array<Array<{ word: string; startGlobalIdx: number; omitSpaceBefore?: boolean }>> = [
+      [],
+      [],
+      [],
+      [],
+    ];
+    let targetRow = 1;
+
+    for (let i = 0; i < words.length; i++) {
+      const item = words[i];
+      let w = item.word;
+      let startIdx = item.startIdx;
+
+      // Handle extra-long words (> COLS)
+      while (w.length > COLS) {
+        const chunk = w.slice(0, COLS);
+        rowLines[targetRow].push({ word: chunk, startGlobalIdx: startIdx });
+        w = w.slice(COLS);
+        startIdx += COLS;
+        if (targetRow === 1) targetRow = 2;
+        else if (targetRow === 2) targetRow = 0;
+        else if (targetRow === 0) targetRow = 3;
+      }
+
+      if (w.length === 0) continue;
+
+      // Check if word fits with standard space
+      const currentChars = rowLines[targetRow].reduce(
+        (acc, curr) => acc + curr.word.length + (curr.omitSpaceBefore ? 0 : 1),
+        0
+      );
+      const neededWithSpace = rowLines[targetRow].length === 0 ? w.length : currentChars + w.length;
+
+      if (neededWithSpace <= COLS) {
+        rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx });
+      } else {
+        // Try fitting without space before this word (flexible space compression)
+        const neededWithoutSpace = currentChars - (rowLines[targetRow].length > 0 ? 1 : 0) + w.length;
+        if (rowLines[targetRow].length > 0 && neededWithoutSpace <= COLS) {
+          rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx, omitSpaceBefore: true });
+        } else {
+          // Move to next available row
+          if (targetRow === 1) targetRow = 2;
+          else if (targetRow === 2) targetRow = 0;
+          else if (targetRow === 0) targetRow = 3;
+          rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx });
+        }
+      }
     }
 
     rowLines.forEach((lineWords, rIdx) => {
       if (lineWords.length === 0) return;
-      const totalCharsInLine = lineWords.reduce((acc, curr) => acc + curr.word.length, 0) + (lineWords.length - 1);
+      const totalCharsInLine = lineWords.reduce((acc, curr, idx) => {
+        const spaceLen = idx === 0 || curr.omitSpaceBefore ? 0 : 1;
+        return acc + curr.word.length + spaceLen;
+      }, 0);
       let startCol = Math.max(0, Math.floor((COLS - totalCharsInLine) / 2));
       lineWords.forEach((item, wIdx) => {
+        if (wIdx > 0 && !item.omitSpaceBefore && startCol < COLS) {
+          startCol++;
+        }
         const originalIdx = item.startGlobalIdx;
         for (let c = 0; c < item.word.length; c++) {
           if (startCol < COLS) {
             map[originalIdx + c] = { col: startCol, row: rIdx, char: item.word[c] };
             startCol++;
           }
-        }
-        if (wIdx < lineWords.length - 1 && startCol < COLS) {
-          startCol++;
         }
       });
     });
@@ -1754,12 +1802,19 @@ export default function MagicWheelBoard({
 
     Object.entries(cellPositionsMap).forEach(([origIdxStr, pos]) => {
       const origIdx = Number(origIdxStr);
-      const isRev = animRevealedIndices.has(origIdx);
+      const isLetter = /[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(pos.char);
+      // Non-letter characters (like '-') are revealed immediately without requiring players to guess!
+      const isAutoRevealedSymbol = !isLetter;
+      const isRev = isAutoRevealedSymbol || animRevealedIndices.has(origIdx);
       const isHl = highlightedIndices.has(origIdx);
       // CRITICAL REQUIREMENT: Show ONLY base letter without tone marks during play!
       // Full accented phrase is only shown on ROUND_RECAP after solving with exact tones.
       const displayChar =
-        phase === "ROUND_RECAP" ? pos.char : normalizeVietnameseBaseLetter(pos.char);
+        phase === "ROUND_RECAP"
+          ? pos.char
+          : isLetter
+          ? normalizeVietnameseBaseLetter(pos.char)
+          : pos.char;
 
       matrix[pos.row][pos.col] = {
         char: pos.char,
@@ -2644,7 +2699,7 @@ export default function MagicWheelBoard({
                         type="button"
                         onPointerDown={() => {
                           soundManager.playMagicWheelBuzzSolve();
-                          onTossUpBuzz?.(myTeamId || currentTurnTeamId);
+                          onTossUpBuzz?.(myTeamId || currentTurnTeamId || teams[0]?.id);
                         }}
                         className="w-full py-4 rounded-2xl font-black text-sm sm:text-base text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] cursor-pointer transition select-none touch-manipulation ring-2 ring-yellow-200"
                       >
@@ -2843,8 +2898,13 @@ export default function MagicWheelBoard({
               {/* ── C. MAIN ROUNDS 1..N CONTROLS ──────────────────────────── */}
               {roundStage === "MAIN" && (
                 <>
-                  {/* 1. Spin Control */}
-                  {phase === "SPIN_WAITING" && !mustSolveWithTones && !speedUpBellActive && (
+                  {/* 1. Spin Control — Only visible when board is open (READY_CLUE), in SPIN_WAITING, and NOT yet spinning */}
+                  {phase === "SPIN_WAITING" &&
+                    effectiveBoardStage === "READY_CLUE" &&
+                    !effectiveIsSpinning &&
+                    !isSpinning &&
+                    !mustSolveWithTones &&
+                    !speedUpBellActive && (
                     <div className="space-y-2.5 p-3 rounded-xl bg-purple-950/30 border border-purple-500/30">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-300">
                         <span className="flex items-center gap-1 text-amber-300">

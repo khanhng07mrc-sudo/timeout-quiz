@@ -83,6 +83,7 @@ class SoundManager {
   private fadeInterval: NodeJS.Timeout | null = null;
   private questionMusicTimeout: NodeJS.Timeout | null = null;
   private activeFadeMap: Map<HTMLAudioElement, NodeJS.Timeout> = new Map();
+  private hasPlayedMwIntro: boolean = false;
 
   // Pending audio track if blocked by browser autoplay policy
   private pendingMusicTrack: {
@@ -1283,10 +1284,19 @@ class SoundManager {
   // ── Chiếc Nón Kỳ Diệu VTV3 (2013 - 2016) Official Sound Suite ──────────
 
   /**
-   * 1. Nhạc mở đầu vòng thi / giới thiệu ô chữ
+   * 1. Nhạc mở đầu vòng thi / giới thiệu ô chữ (Phát 1 lần duy nhất, tuyệt đối không loop)
    */
-  public playMagicWheelIntro() {
+  public playMagicWheelIntro(force: boolean = false) {
+    if (this.hasPlayedMwIntro && !force) return;
+    this.hasPlayedMwIntro = true;
     this.playMusicTrack("QUESTION", "mw_intro", 0.9, 200);
+    if (this.currentMusicAudio) {
+      this.currentMusicAudio.loop = false;
+    }
+  }
+
+  public resetMagicWheelIntroFlag() {
+    this.hasPlayedMwIntro = false;
   }
 
   public stopMagicWheelIntro(fadeDurationMs: number = 300) {
@@ -1303,7 +1313,7 @@ class SoundManager {
     if (this.isPlayingMagicWheelIntro()) {
       this.stopMagicWheelIntro(250);
     } else {
-      this.playMagicWheelIntro();
+      this.playMagicWheelIntro(true);
     }
   }
 

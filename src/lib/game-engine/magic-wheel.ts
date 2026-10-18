@@ -492,7 +492,7 @@ export function checkLetterInSecretPhrase(
 export function isPuzzleFullyRevealed(phrase: string, revealedIndices: number[]): boolean {
   for (let i = 0; i < phrase.length; i++) {
     const char = phrase[i];
-    if (char !== " " && char !== "-" && char !== "," && char !== "." && char !== "!" && char !== "?") {
+    if (/[A-ZÀ-Ỹa-zà-ỹ0-9]/.test(char)) {
       if (!revealedIndices.includes(i)) {
         return false;
       }
@@ -685,18 +685,18 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     id: "puzzle-tossup-1",
     roundNumber: 1,
     stage: "TOSS_UP_1",
-    category: "ĐOÁN NHANH 1: ĐỊA DANH",
-    secretPhrase: "HỒ HOÀN KIẾM",
-    clue: "Trái tim lịch sử gắn với truyền thuyết rùa vàng trả gươm giữa lòng Thủ đô Hà Nội.",
+    category: "ĐOÁN NHANH 1: DI SẢN LỊCH SỬ",
+    secretPhrase: "HOÀNG THÀNH THĂNG LONG",
+    clue: "Quần thể di tích lịch sử cố đô ngàn năm văn hiến được UNESCO vinh danh là Di sản Thế giới.",
     revealedIndices: [],
   },
   {
     id: "puzzle-tossup-2",
     roundNumber: 2,
     stage: "TOSS_UP_2",
-    category: "ĐOÁN NHANH 2: ẨM THỰC",
-    secretPhrase: "BÁNH CHƯNG XANH",
-    clue: "Món bánh truyền thống tượng trưng cho mặt đất vuông vức mỗi dịp Tết Nguyên Đán.",
+    category: "ĐOÁN NHANH 2: VĂN HÓA ẨM THỰC",
+    secretPhrase: "BÁNH CHƯNG - BÁNH GIẦY",
+    clue: "Hai thức bánh tượng trưng trời tròn đất vuông gắn với truyền thuyết hoàng tử Lang Liêu đời vua Hùng.",
     revealedIndices: [],
   },
   {

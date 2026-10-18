@@ -149,6 +149,7 @@ const roomQuestionStartedAt = new Map<string, number>(); // roomId -> timestamp 
 
 const playerSockets = new Map<string, string>(); // socketId -> playerId
 const adminSockets = new Map<string, string>(); // socketId -> roomId
+const displaySockets = new Map<string, string>(); // socketId -> roomId
 const roomTimers = new Map<string, NodeJS.Timeout>(); // roomId -> timer
 const roomRemainingTimes = new Map<string, number>(); // roomId -> remaining seconds
 const roomTimerEndsAt = new Map<string, number>(); // roomId -> endsAt timestamp (epoch ms)
@@ -2490,6 +2491,7 @@ export function registerSocketHandlers(io: IO) {
         }).catch(() => null);
       }
       if (room) {
+        displaySockets.set(socket.id, room.id);
         restoreGameStateSnapshot(room);
 
         const state = await buildRoomState(room.id);
@@ -8032,7 +8034,7 @@ export function registerSocketHandlers(io: IO) {
           teamId = (isSandboxSocket && roomSandboxActiveTeam.get(player.roomId)) || player.teamId || undefined;
         }
       } else {
-        roomId = adminSockets.get(socket.id);
+        roomId = adminSockets.get(socket.id) || displaySockets.get(socket.id);
         if (roomId) {
           const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
           if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
@@ -8240,11 +8242,11 @@ export function registerSocketHandlers(io: IO) {
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
-      wheelState.lastActionMessage = "Các chữ cái đang lần lượt xuất hiện (0.5s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
+      wheelState.lastActionMessage = "Các chữ cái đang lần lượt xuất hiện (0.75s/chữ)! Hãy bấm chuông ngay khi đoán ra đáp án!";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
-    socket.on("magic_wheel:toss_up_reveal_tick", async ({ index } = {}) => {
+    const handleTossUpTick = async ({ index }: { index?: number } = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
@@ -8268,7 +8270,10 @@ export function registerSocketHandlers(io: IO) {
         }
       }
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
-    });
+    };
+
+    socket.on("magic_wheel:toss_up_reveal_tick", handleTossUpTick);
+    socket.on("magic_wheel:toss_up_tick" as any, handleTossUpTick);
 
     socket.on("magic_wheel:toss_up_buzz", async (payload) => {
       const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
@@ -10139,6 +10144,7 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
+      displaySockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
 

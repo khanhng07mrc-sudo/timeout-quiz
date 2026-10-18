@@ -3,8 +3,8 @@
  * -------------------------------------------------------------
  * Mô phỏng chuẩn xác luật chơi Chiếc nón kỳ diệu (Wheel of Fortune Vietnam) phiên bản 2012 & Mở rộng:
  * - Lộ trình vòng thi:
- *     + Vòng Đoán Nhanh 1 (TOSS_UP_1): Mở chữ ngẫu nhiên 0.5s/ô, bấm chuông giải đúng nhận +500đ.
- *     + Vòng Đoán Nhanh 2 (TOSS_UP_2): Mở chữ ngẫu nhiên 0.5s/ô, bấm chuông giải đúng nhận +1.000đ & quyền đi đầu Vòng Chính 1.
+ *     + Vòng Đoán Nhanh 1 (TOSS_UP_1): Mở chữ ngẫu nhiên 0.75s/ô, bấm chuông giải đúng nhận +500đ.
+ *     + Vòng Đoán Nhanh 2 (TOSS_UP_2): Mở chữ ngẫu nhiên 0.75s/ô, bấm chuông giải đúng nhận +1.000đ & quyền đi đầu Vòng Chính 1.
  *     + Các Vòng Chính 1..N (N = max(3, số đội)): Xoay vòng đội mở màn; mỗi vòng có cơ chế phụ độc quyền:
  *         * Vòng 1: Ô Phần Thưởng (20 lá thăm bí mật)
  *         * Vòng 2: 2 Ô Bí Mật (+3.000đ vĩnh viễn hoặc Mất điểm)
@@ -103,8 +103,8 @@ export interface MagicWheelState {
     | "JACKPOT"
     | "STEAL_SWAP";
   phase:
-    | "TOSS_UP_READY"     // Chờ bắt đầu chạy mở chữ ngẫu nhiên 0.5s/chữ
-    | "TOSS_UP_RUNNING"   // Đang mở chữ ngẫu nhiên 0.5s/chữ, chờ bấm chuông
+    | "TOSS_UP_READY"     // Chờ bắt đầu chạy mở chữ ngẫu nhiên 0.75s/chữ
+    | "TOSS_UP_RUNNING"   // Đang mở chữ ngẫu nhiên 0.75s/chữ, chờ bấm chuông
     | "TOSS_UP_BUZZED"    // Có đội vừa bấm chuông, tạm dừng mở chữ để trả lời (5s)
     | "SPIN_WAITING"      // Chờ đội đến lượt bấm quay
     | "SPINNING"          // Nón đang xoay

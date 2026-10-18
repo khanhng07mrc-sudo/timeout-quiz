@@ -180,14 +180,14 @@ const AVAILABLE_MODES: {
   },
   {
     mode: "MAGIC_WHEEL",
-    name: "Vòng Quay Tri Thức",
+    name: "Magic Wheel",
     emoji: "🎡",
-    tagline: "Chiếc Nón Kỳ Diệu · Quay nón tính điểm, đoán chữ cái & giải ô chữ bí mật",
+    tagline: "Chiếc Nón Kỳ Diệu · 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s",
     badge: "Gameshow VTV3",
     gradient: "from-amber-600 via-orange-600 to-yellow-600",
     accentColor: "#f59e0b",
     glowClass: "glow-neon-amber",
-    perks: ["Ô chữ 4x14", "24 ô chuẩn VTV3", "Luật 3 lỗi liên tiếp"],
+    perks: ["Ô chữ 4x14 chuẩn VTV3", "24 ô điểm thưởng phong phú", "Đoán nhanh 0.75s & Ô Đặc Biệt"],
   },
   {
     mode: "TOURNAMENT",
@@ -230,13 +230,38 @@ export default function AdminSandboxPage() {
   const [inputCode, setInputCode] = useState<string>("");
   const [selectedMode, setSelectedMode] = useState<GameMode>("GRID_CARO");
   const [selectedBankId, setSelectedBankId] = useState<string>("");
-  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
+  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
+
+  const isWordPuzzleBank = useCallback((bank: any) => {
+    if (!bank) return false;
+    if (bank.id?.startsWith("bank_mw_preset")) return true;
+    if (bank.isWordPuzzle === true) return true;
+    return /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(bank.title || "");
+  }, []);
+
   const [creating, setCreating] = useState(false);
   const [isLaunchingAnim, setIsLaunchingAnim] = useState(false);
   const [isLaunchReady, setIsLaunchReady] = useState(false);
   const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [launchingMeta, setLaunchingMeta] = useState<typeof AVAILABLE_MODES[0] | null>(null);
   const [roomState, setRoomState] = useState<RoomState | null>(null);
+
+  const effectiveActiveMode = roomState?.mode || selectedMode;
+  const compatibleBanks = useMemo(() => {
+    const isMw = effectiveActiveMode === "MAGIC_WHEEL";
+    return quizBanks.filter((b) => (isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b)));
+  }, [quizBanks, effectiveActiveMode, isWordPuzzleBank]);
+
+  useEffect(() => {
+    if (compatibleBanks.length > 0) {
+      if (!selectedBankId || !compatibleBanks.some((b) => b.id === selectedBankId)) {
+        setSelectedBankId(compatibleBanks[0].id);
+      }
+    } else if (selectedBankId && !compatibleBanks.some((b) => b.id === selectedBankId)) {
+      setSelectedBankId("");
+    }
+  }, [effectiveActiveMode, compatibleBanks, selectedBankId]);
+
   const [currentQuestion, setCurrentQuestion] = useState<QuestionState | null>(null);
   const [timer, setTimer] = useState<{ remaining: number; total: number; endsAt?: number } | null>(null);
   const [adminQuestionData, setAdminQuestionData] = useState<{
@@ -526,20 +551,25 @@ export default function AdminSandboxPage() {
       .then((data) => {
         const banksList = data.banks || data.quizBanks || [];
         const localOnly = offlineStorage.getLocalBanks().filter((b) => b.isLocalOnly);
-        const combined = [...localOnly, ...banksList];
-        if (combined.length > 0) {
-          setQuizBanks(combined);
-          setSelectedBankId(combined[0].id);
+        const mwPresets = offlineStorage.getMagicWheelPresetBanks();
+        const combined = [...localOnly, ...mwPresets, ...banksList];
+        // Deduplicate by ID
+        const seen = new Set<string>();
+        const unique = combined.filter((b) => {
+          if (seen.has(b.id)) return false;
+          seen.add(b.id);
+          return true;
+        });
+        if (unique.length > 0) {
+          setQuizBanks(unique);
         } else {
-          const local = offlineStorage.getLocalBanks();
+          const local = [...offlineStorage.getLocalBanks(), ...offlineStorage.getMagicWheelPresetBanks()];
           setQuizBanks(local);
-          if (local.length > 0) setSelectedBankId(local[0].id);
         }
       })
       .catch(() => {
-        const local = offlineStorage.getLocalBanks();
+        const local = [...offlineStorage.getLocalBanks(), ...offlineStorage.getMagicWheelPresetBanks()];
         setQuizBanks(local);
-        if (local.length > 0) setSelectedBankId(local[0].id);
       });
   }, []);
 
@@ -1393,7 +1423,6 @@ export default function AdminSandboxPage() {
   const lastExplicitSyncTimeRef = useRef<number>(0);
 
   const syncToIframes = useCallback((overrides?: Record<string, any>) => {
-    if (!isOfflineSandbox) return;
     if (overrides) {
       lastExplicitSyncTimeRef.current = Date.now();
     }
@@ -1696,7 +1725,7 @@ export default function AdminSandboxPage() {
         speedUpBellActive: false,
         pendingSpecialAction: "NONE",
         phase: "TOSS_UP_READY",
-        lastActionMessage: `⚡ VÒNG ĐOÁN NHANH 1 (+500đ): Mời MC/Admin bấm bắt đầu để các chữ cái xuất hiện ngẫu nhiên (0,5s/chữ)!`,
+        lastActionMessage: `⚡ VÒNG ĐOÁN NHANH 1 (+500đ): Mời MC/Admin bấm bắt đầu để các chữ cái xuất hiện ngẫu nhiên (0,75s/chữ)!`,
       };
     }
 
@@ -4671,7 +4700,7 @@ export default function AdminSandboxPage() {
                 isCorrect: false,
                 timestamp: Date.now(),
               };
-              cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,5s/ô) — Tất cả các đội đều có quyền bấm chuông lại!`;
+              cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,75s/ô) — Tất cả các đội đều có quyền bấm chuông lại!`;
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
@@ -5127,7 +5156,7 @@ export default function AdminSandboxPage() {
           cur.tossUpBuzzedTeamId = undefined;
           cur.tossUpBuzzedTeamName = undefined;
           cur.phase = "TOSS_UP_REVEALING";
-          cur.lastActionMessage = `⚡ Người mẫu chạm tay mở ô chữ đầu tiên — Các chữ cái đang xuất hiện ngẫu nhiên (0,5s/ô)! Hãy bấm chuông giành quyền trả lời!`;
+          cur.lastActionMessage = `⚡ Người mẫu chạm tay mở ô chữ đầu tiên — Các chữ cái đang xuất hiện ngẫu nhiên (0,75s/ô)! Hãy bấm chuông giành quyền trả lời!`;
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
@@ -6402,7 +6431,7 @@ export default function AdminSandboxPage() {
               revealPayload: null,
               timer: null,
             });
-            addLog("🎡 Chiếc Nón Kỳ Diệu bắt đầu! Vòng quay tri thức và ô chữ 4x14 sẵn sàng.");
+            addLog("🎡 Magic Wheel (Chiếc Nón Kỳ Diệu) bắt đầu! Vòng quay nón và ô chữ 4x14 sẵn sàng.");
             return;
           }
 
@@ -7260,7 +7289,7 @@ export default function AdminSandboxPage() {
       adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
     }
     window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
-    addLog(`⚡ [Quản trò] Bắt đầu mở các chữ cái vòng đoán nhanh (0.5s/chữ)!`);
+    addLog(`⚡ [Quản trò] Bắt đầu mở các chữ cái vòng đoán nhanh (0.75s/chữ)!`);
   };
 
   // ── Magic Wheel Bot Automation Timer ──────────────────────────────────────
@@ -8420,12 +8449,13 @@ export default function AdminSandboxPage() {
                 onChange={(e) => setSelectedBankId(e.target.value)}
                 className="px-2.5 py-1.5 rounded-lg glass border border-white/20 text-xs font-medium text-white bg-[#151728] focus:outline-none min-w-[140px] max-w-[200px] truncate"
               >
-                {quizBanks.length === 0 ? (
-                  <option value="">📚 Mặc định (25 câu)</option>
+                {compatibleBanks.length === 0 ? (
+                  <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ VTV3 Mặc định" : "📚 Mặc định (25 câu)"}</option>
                 ) : (
-                  quizBanks.map((b) => (
+                  compatibleBanks.map((b) => (
                     <option key={b.id} value={b.id}>
-                      📚 {b.title} ({b._count?.questions ?? 25}c)
+                      {effectiveActiveMode === "MAGIC_WHEEL" ? "🔤 [Ô Chữ] " : "🎯 [Trắc Nghiệm] "}
+                      {b.title} ({b._count?.questions ?? (effectiveActiveMode === "MAGIC_WHEEL" ? 11 : 25)}c)
                     </option>
                   ))
                 )}
@@ -8604,10 +8634,10 @@ export default function AdminSandboxPage() {
                             type="button"
                             onClick={handleMagicWheelStartTossUp}
                             className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-600 hover:from-cyan-400 text-white font-black text-xs shadow-lg shadow-cyan-500/50 animate-pulse border-2 border-cyan-300 transition flex items-center gap-1.5 cursor-pointer"
-                            title="Bắt đầu mở các chữ cái ngẫu nhiên (0.5s/chữ)"
+                            title="Bắt đầu mở các chữ cái ngẫu nhiên (0.75s/chữ)"
                           >
                             <span>▶️</span>
-                            <span>BẮT ĐẦU MỞ CHỮ (0.5s/chữ)</span>
+                            <span>BẮT ĐẦU MỞ CHỮ (0.75s/chữ)</span>
                           </button>
                       )}
 
@@ -9634,12 +9664,16 @@ export default function AdminSandboxPage() {
                           onChange={(e) => handleAssignQuizBank(e.target.value)}
                           className="w-full px-2 py-1 rounded-lg glass border border-white/20 text-white text-[10px] bg-[#0f0f1a] focus:outline-none truncate"
                         >
-                          <option value="">📚 Mặc định (25 câu)</option>
-                          {quizBanks.map((b) => (
-                            <option key={b.id} value={b.id}>
-                              📚 {b.title} ({b._count?.questions ?? 25}c)
-                            </option>
-                          ))}
+                          {compatibleBanks.length === 0 ? (
+                            <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ VTV3 Mặc định" : "📚 Mặc định (25 câu)"}</option>
+                          ) : (
+                            compatibleBanks.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {effectiveActiveMode === "MAGIC_WHEEL" ? "🔤 [Ô Chữ] " : "🎯 [Trắc Nghiệm] "}
+                                {b.title} ({b._count?.questions ?? (effectiveActiveMode === "MAGIC_WHEEL" ? 11 : 25)}c)
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
 
@@ -9808,12 +9842,13 @@ export default function AdminSandboxPage() {
                 onChange={(e) => setSelectedBankId(e.target.value)}
                 className="flex-1 md:w-64 px-3 py-2 rounded-xl glass border border-white/20 text-xs font-bold text-white bg-[#151728] focus:outline-none focus:ring-2 focus:ring-purple-400 truncate cursor-pointer"
               >
-                {quizBanks.length === 0 ? (
-                  <option value="">📚 Bộ đề mẫu Đa chế độ (25 câu)</option>
+                {compatibleBanks.length === 0 ? (
+                  <option value="">{effectiveActiveMode === "MAGIC_WHEEL" ? "🎡 11 Vòng Ô Chữ VTV3 Chuẩn Mẫu" : "📚 Bộ đề mẫu Đa chế độ (25 câu)"}</option>
                 ) : (
-                  quizBanks.map((b) => (
+                  compatibleBanks.map((b) => (
                     <option key={b.id} value={b.id}>
-                      📚 {b.title} ({b._count?.questions ?? 25} câu)
+                      {effectiveActiveMode === "MAGIC_WHEEL" ? "🔤 [Ô Chữ VTV3] " : "📚 [Trắc Nghiệm] "}
+                      {b.title} ({b._count?.questions ?? (effectiveActiveMode === "MAGIC_WHEEL" ? 11 : 25)} câu)
                     </option>
                   ))
                 )}
@@ -10880,7 +10915,7 @@ export default function AdminSandboxPage() {
                 {roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState && (
                   <div className="pt-3 border-t border-white/10 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-amber-300">🎡 Vòng Quay Tri Thức (Admin Sandbox Control)</span>
+                      <span className="font-bold text-amber-300">🎡 Magic Wheel (Admin Sandbox Control)</span>
                       <button
                         type="button"
                         onClick={() => {

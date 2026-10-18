@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import QuizBankQuickSummary from "@/components/admin/QuizBankQuickSummary";
 import PowerupIcon from "@/components/ui/PowerupIcon";
@@ -20,7 +20,7 @@ const GAME_MODES = [
   { value: "BUZZ", label: "Fast Buzz", desc: "Bấm chuông siêu tốc tranh quyền trả lời độc quyền", emoji: "⚡", badge: "Tốc độ", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "BOUNCEBACK", label: "Bounceback", desc: "Đội chính trả lời sai, mở chuông 5s cho đối thủ cướp lượt", emoji: "🔄", badge: "Cướp điểm", badgeColor: "text-cyan-300 bg-cyan-500/20 border-cyan-500/30" },
   { value: "ELIMINATION", label: "Survival", desc: "Loại trực tiếp đội điểm thấp nhất sau mỗi chặng", emoji: "❌", badge: "Sinh tồn", badgeColor: "text-rose-300 bg-rose-500/20 border-rose-500/30" },
-  { value: "MAGIC_WHEEL", label: "Vòng Quay Tri Thức", desc: "Chiếc Nón Kỳ Diệu: Quay nón tính điểm, đoán chữ cái & giải ô chữ bí mật", emoji: "🎡", badge: "Gameshow VTV3", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
+  { value: "MAGIC_WHEEL", label: "Magic Wheel", desc: "Chiếc Nón Kỳ Diệu: 2 Vòng Đoán Nhanh, Vòng Quay Điểm Thưởng & Ô Chữ Đặc Biệt 40s", emoji: "🎡", badge: "Gameshow VTV3", badgeColor: "text-amber-300 bg-amber-500/20 border-amber-500/30" },
   { value: "GRID_CARO", label: "Grid Caro", desc: "Chiếm ô ma trận 4x4, nối chuỗi Caro K ô ăn thưởng lớn", emoji: "🎯", badge: "Chiến thuật", badgeColor: "text-emerald-300 bg-emerald-500/20 border-emerald-500/30" },
   { value: "DICE_RACE", label: "Dice Race", desc: "Đường đua marathon 3D, gieo 2 xí ngầu và vượt cạm bẫy", emoji: "🎲", badge: "Board Game", badgeColor: "text-indigo-300 bg-indigo-500/20 border-indigo-500/30" },
   { value: "WAGER", label: "Secret Wager", desc: "Bí mật cược điểm trước khi công bố nội dung câu hỏi", emoji: "💰", badge: "Tâm lý", badgeColor: "text-orange-300 bg-orange-500/20 border-orange-500/30" },
@@ -52,10 +52,35 @@ export default function CreateRoomPage() {
   const [launchSourceRect, setLaunchSourceRect] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [pendingRedirectUrl, setPendingRedirectUrl] = useState("");
 
+  // Step 1: Basic settings
+  const [roomName, setRoomName] = useState("");
+  const [passcode, setPasscode] = useState("");
+  const [isLockedInitially, setIsLockedInitially] = useState(false);
+  const [mode, setMode] = useState("CLASSIC");
+  const [teamMode, setTeamMode] = useState<"INDIVIDUAL" | "TEAM">("TEAM");
+  const [bouncebackQuestionsPerTurn, setBouncebackQuestionsPerTurn] = useState(1);
+  const [bouncebackCycles, setBouncebackCycles] = useState(1);
+  const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
+  const [eliminationDeepScoring, setEliminationDeepScoring] = useState(true);
+  const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
+  const [eliminationTeamsPerStage, setEliminationTeamsPerStage] = useState(1);
+
   // Quiz banks
-  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; _count?: { questions: number } }[]>([]);
+  const [quizBanks, setQuizBanks] = useState<{ id: string; title: string; isWordPuzzle?: boolean; _count?: { questions: number } }[]>([]);
   const [quizBankId, setQuizBankId] = useState("");
   const [bankQuestions, setBankQuestions] = useState<any[]>([]);
+
+  const isWordPuzzleBank = useCallback((bank: any) => {
+    if (!bank) return false;
+    if (bank.id?.startsWith("bank_mw_preset")) return true;
+    if (bank.isWordPuzzle === true) return true;
+    return /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(bank.title || "");
+  }, []);
+
+  const compatibleBanks = useMemo(() => {
+    const isMw = mode === "MAGIC_WHEEL";
+    return quizBanks.filter((b: any) => (isMw ? isWordPuzzleBank(b) : !isWordPuzzleBank(b)));
+  }, [quizBanks, mode, isWordPuzzleBank]);
 
   useEffect(() => {
     fetch("/api/quiz-bank")
@@ -63,13 +88,21 @@ export default function CreateRoomPage() {
       .then((d) => {
         if (d.banks) {
           setQuizBanks(d.banks);
-          if (d.banks.length > 0 && !quizBankId) {
-            setQuizBankId(d.banks[0].id);
-          }
         }
       })
       .catch(() => {});
   }, []);
+
+  // Tự động chọn bộ đề phù hợp nhất khi đổi mode hoặc khi danh sách bộ đề tải xong
+  useEffect(() => {
+    if (compatibleBanks.length > 0) {
+      if (!quizBankId || !compatibleBanks.some((b: any) => b.id === quizBankId)) {
+        setQuizBankId(compatibleBanks[0].id);
+      }
+    } else if (quizBankId && !compatibleBanks.some((b: any) => b.id === quizBankId)) {
+      setQuizBankId("");
+    }
+  }, [mode, compatibleBanks, quizBankId]);
 
   useEffect(() => {
     if (!quizBankId) {
@@ -85,19 +118,6 @@ export default function CreateRoomPage() {
       })
       .catch(() => setBankQuestions([]));
   }, [quizBankId]);
-
-  // Step 1: Basic settings
-  const [roomName, setRoomName] = useState("");
-  const [passcode, setPasscode] = useState("");
-  const [isLockedInitially, setIsLockedInitially] = useState(false);
-  const [mode, setMode] = useState("CLASSIC");
-  const [teamMode, setTeamMode] = useState<"INDIVIDUAL" | "TEAM">("TEAM");
-  const [bouncebackQuestionsPerTurn, setBouncebackQuestionsPerTurn] = useState(1);
-  const [bouncebackCycles, setBouncebackCycles] = useState(1);
-  const [answerMethod, setAnswerMethod] = useState<"DEVICE" | "MC">("DEVICE");
-  const [eliminationDeepScoring, setEliminationDeepScoring] = useState(true);
-  const [eliminationIntervalQuestions, setEliminationIntervalQuestions] = useState(3);
-  const [eliminationTeamsPerStage, setEliminationTeamsPerStage] = useState(1);
   const [eliminationRevivalCount, setEliminationRevivalCount] = useState(1);
   // Tournament config (Legacy)
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
@@ -448,57 +468,63 @@ export default function CreateRoomPage() {
             </div>
           </div>
 
-          {mode === "MAGIC_WHEEL" ? (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-wrap items-center justify-between gap-3 shadow-inner">
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-3xl shrink-0">🎡</span>
-                <div>
-                  <h4 className="font-bold text-sm text-amber-300">Bộ đề Ô Chữ VTV3 cho Chiếc Nón Kỳ Diệu</h4>
-                  <p className="text-xs text-slate-300">
-                    Chế độ này chuyên biệt cho thể thức Ô Chữ. Hệ thống tự động nạp sẵn ngân hàng Ô Chữ chuẩn VTV3 (hoặc tùy chỉnh danh sách ô chữ theo vòng ở bảng cấu hình bên dưới).
-                  </p>
-                </div>
-              </div>
-              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-400 text-black shrink-0">
-                ✓ Ô Chữ Chuyên Biệt
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-slate-300">
+                {mode === "MAGIC_WHEEL" ? "Bộ đề Ô Chữ VTV3 (Word Puzzle)" : "Bộ đề câu hỏi trắc nghiệm"}
+                <span className="text-muted-foreground font-normal ml-1">(chỉ hiển thị đề tương thích)</span>
+              </label>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                mode === "MAGIC_WHEEL" 
+                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                  : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+              }`}>
+                {mode === "MAGIC_WHEEL" ? "🎡 Chuyên biệt Ô Chữ VTV3" : "🎯 Trắc Nghiệm Đa Năng"}
               </span>
             </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-semibold mb-2 text-slate-300">
-                Bộ đề câu hỏi{" "}
-                <span className="text-muted-foreground font-normal">(có thể chọn sau)</span>
-              </label>
-              <select
-                value={quizBankId}
-                onChange={(e) => setQuizBankId(e.target.value)}
-                className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
-              >
-                <option value="" className="bg-[#151728] text-white">— Chưa chọn bộ đề —</option>
-                {quizBanks.map((bank) => (
-                  <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
-                    {bank.title}{bank._count ? ` (${bank._count.questions} câu)` : ""}
-                  </option>
-                ))}
-              </select>
 
-              {quizBankId && (
-                <div className="mt-3">
-                  <QuizBankQuickSummary
-                    bankId={quizBankId}
-                    onClear={() => setQuizBankId("")}
-                  />
-                </div>
-              )}
+            <select
+              value={quizBankId}
+              onChange={(e) => setQuizBankId(e.target.value)}
+              className="w-full px-4 py-3.5 rounded-2xl bg-[#0e1022]/80 backdrop-blur-md border border-purple-500/30 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 transition-all shadow-inner"
+            >
+              <option value="" className="bg-[#151728] text-white">
+                {mode === "MAGIC_WHEEL" ? "— Sử dụng 11 vòng Ô Chữ VTV3 Mặc Định —" : "— Chưa chọn bộ đề —"}
+              </option>
+              {compatibleBanks.map((bank: any) => (
+                <option key={bank.id} value={bank.id} className="bg-[#151728] text-white">
+                  {mode === "MAGIC_WHEEL" ? "🔤 [Ô Chữ VTV3] " : "🎯 [Trắc Nghiệm] "}
+                  {bank.title}{bank._count ? ` (${bank._count.questions} ${mode === "MAGIC_WHEEL" ? "vòng" : "câu"})` : ""}
+                </option>
+              ))}
+            </select>
 
-              {quizBanks.length === 0 && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Chưa có bộ đề nào.{" "}
-                  <a href="/admin/quiz-bank" className="text-purple-400 underline">Tạo bộ đề mới</a>
-                </p>
-              )}
-            </div>
-          )}
+            {mode === "MAGIC_WHEEL" ? (
+              <p className="text-[11px] text-amber-300/90 mt-2 flex items-center gap-1.5 font-medium">
+                <span>💡 Hệ thống đã tự động lọc: chỉ hiển thị các bộ đề Ô Chữ VTV3 (Word Puzzle) để tránh admin chọn nhầm đề trắc nghiệm A/B/C/D.</span>
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1.5 font-medium">
+                <span>💡 Hệ thống đã ẩn các bộ đề Ô chữ VTV3 và chỉ giữ lại ngân hàng câu hỏi trắc nghiệm tương thích với 8 chế độ thi đấu.</span>
+              </p>
+            )}
+
+            {quizBankId && (
+              <div className="mt-3">
+                <QuizBankQuickSummary
+                  bankId={quizBankId}
+                  onClear={() => setQuizBankId("")}
+                />
+              </div>
+            )}
+
+            {compatibleBanks.length === 0 && (
+              <p className="text-xs text-muted-foreground mt-2">
+                Chưa có bộ đề nào phù hợp với chế độ này.{" "}
+                <a href="/admin/quiz-bank" className="text-purple-400 underline">Tạo bộ đề mới</a>
+              </p>
+            )}
+          </div>
 
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
@@ -1250,7 +1276,7 @@ export default function CreateRoomPage() {
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-4">
               <div className="flex items-center gap-2">
                 <GameModeIcon mode="MAGIC_WHEEL" className="w-6 h-6 shrink-0" />
-                <h3 className="font-bold text-sm text-amber-300">Cấu hình Vòng Quay Tri Thức (Chiếc Nón Kỳ Diệu)</h3>
+                <h3 className="font-bold text-sm text-amber-300">Cấu hình Magic Wheel (Chiếc Nón Kỳ Diệu)</h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

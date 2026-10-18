@@ -16,7 +16,7 @@ const MODE_TAB_NAMES: Partial<Record<GameMode, string>> = {
   BOUNCEBACK: "Bật nảy & Cướp lượt",
   ELIMINATION: "Đấu trường Sinh tồn",
   TOURNAMENT: "Đấu loại 1v1",
-  MAGIC_WHEEL: "Vòng quay Tri thức",
+  MAGIC_WHEEL: "Magic Wheel",
   GRID_CARO: "Chọn ô & Caro",
   DICE_RACE: "Đua cờ Xí ngầu",
   WAGER: "Cược điểm Bí mật",

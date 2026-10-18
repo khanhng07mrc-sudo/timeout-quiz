@@ -1427,7 +1427,7 @@ export default function AdminRoomPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-xl">🎡</span>
                   <div>
-                    <h3 className="font-bold text-sm text-amber-300">Vòng Quay Tri Thức (Chiếc Nón Kỳ Diệu)</h3>
+                    <h3 className="font-bold text-sm text-amber-300">Magic Wheel (Chiếc Nón Kỳ Diệu)</h3>
                     <p className="text-xs text-muted-foreground">
                       Vòng {roomState.magicWheelState.currentRound} / {roomState.magicWheelState.maxRounds} • Đang đến lượt: <strong className="text-white">{roomState.magicWheelState.currentTurnTeamName || "?"}</strong>
                     </p>

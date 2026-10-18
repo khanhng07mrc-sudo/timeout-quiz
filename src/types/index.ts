@@ -190,7 +190,7 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
   },
   MAGIC_WHEEL: {
     mode: "MAGIC_WHEEL",
-    nameVi: "Vòng Quay Tri Thức (Magic Wheel)",
+    nameVi: "Magic Wheel (Chiếc Nón Kỳ Diệu)",
     emoji: "🎡",
     taglineVi: "Quay nón 24 ô, Ô chữ bí mật & Tranh giải thưởng lớn",
     summaryVi: "Mô phỏng chân thực gameshow Chiếc nón kỳ diệu truyền hình. Đội đến lượt bấm chốt lực quay chiếc nón 24 ô định mệnh (100 - 2000đ, Mất lượt, Mất điểm, Nhân đôi, Chia đôi, May mắn, Ô Phần thưởng & Bí mật). Đoán đúng chữ cái hoặc câu hỏi để tích lũy điểm và giữ quyền quay tiếp; đội xuất sắc giải mã toàn bộ ô chữ sẽ ẵm trọn giải thưởng vòng thi!",
@@ -862,8 +862,8 @@ export interface MagicWheelState {
     | "EXPRESS_CHOICE"    // V4: Chờ chọn Lên Tàu Tốc Độ hay dừng lại
     | "STEAL_SWAP_CHOICE" // V5: Chờ chọn Cướp 50% hay Hoán Đổi Điểm Vòng
     | "TOSS_UP_READY"     // Đoán nhanh: Chờ bắt đầu mở chữ ngẫu nhiên
-    | "TOSS_UP_RUNNING"   // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.5s/chữ
-    | "TOSS_UP_REVEALING" // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.5s/chữ
+    | "TOSS_UP_RUNNING"   // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.75s/chữ
+    | "TOSS_UP_REVEALING" // Đoán nhanh: Chữ đang hiện ngẫu nhiên 0.75s/chữ
     | "TOSS_UP_BUZZED"    // Đoán nhanh: Có người bấm chuông đang trả lời
     | "SPECIAL_ORDER_CHOICE" // Vòng Đặc Biệt: Chọn Quay trước hay Giải ô chữ trước
     | "SPECIAL_CHOOSE_ORDER"

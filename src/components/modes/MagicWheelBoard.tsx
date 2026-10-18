@@ -262,13 +262,19 @@ function SmartPuzzlePhraseInput({
       return "";
     })
   );
-  const [focusedSlotIdx, setFocusedSlotIdx] = useState<number | null>(() => {
-    const firstEditable = slots.find((s) => !s.isSpace && !s.isLockedConsonant);
-    return firstEditable ? firstEditable.index : null;
-  });
+  const [focusedSlotIdx, setFocusedSlotIdx] = useState<number | null>(null);
   const [rawLineInput, setRawLineInput] = useState<string>("");
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
+  const fullLineInputRef = useRef<HTMLInputElement | null>(null);
   const isComposingRef = useRef<boolean>(false);
+
+  // Auto-focus full-phrase input on open for immediate natural Vietnamese typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fullLineInputRef.current?.focus();
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Sync when revealedIndices change
   useEffect(() => {
@@ -334,7 +340,6 @@ function SmartPuzzlePhraseInput({
       next[slotIdx] = toned;
       return next;
     });
-    focusNextEditable(slotIdx);
   };
 
   const handleSlotKeyDown = (slotIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -346,7 +351,7 @@ function SmartPuzzlePhraseInput({
       handleTriggerSubmit();
       return;
     }
-    if (e.key === "ArrowRight" || e.key === "Tab" || e.key === " ") {
+    if (e.key === "ArrowRight" || e.key === "Tab") {
       e.preventDefault();
       focusNextEditable(slotIdx);
       return;
@@ -359,40 +364,17 @@ function SmartPuzzlePhraseInput({
 
     if (e.key === "Backspace") {
       const curVal = charValues[slotIdx] || "";
-      // If the slot is ALREADY completely empty, jump back to the previous editable slot
       if (!curVal || curVal.trim() === "") {
         e.preventDefault();
         focusPrevEditable(slotIdx);
         return;
       }
-      // If the slot has a character, clear it (or reset to baseChar if revealed vowel)
-      // DO NOT call e.preventDefault() and DO NOT jump backward!
-      // This allows OS IME (Unikey / EVKey) to delete and replace accented characters natively.
       setCharValues((prev) => {
         const next = [...prev];
         next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
         return next;
       });
       return;
-    }
-
-    // Direct Telex and VNI handling on the current character
-    // E.g.: Current is "A" -> press "F" or "2" -> "À"; press "W" or "8" -> "Ă"; "D" + "D" -> "Đ"
-    const curChar = charValues[slotIdx] || (slot.isRevealedVowel ? slot.baseChar : "");
-    if (curChar && !e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-      const { modifiedChar, isModified } = applyTelexOrVniModifier(curChar, e.key);
-      if (isModified) {
-        if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(modifiedChar) === slot.baseChar) {
-          e.preventDefault();
-          setCharValues((prev) => {
-            const next = [...prev];
-            next[slotIdx] = modifiedChar;
-            return next;
-          });
-          focusNextEditable(slotIdx);
-          return;
-        }
-      }
     }
   };
 
@@ -409,28 +391,8 @@ function SmartPuzzlePhraseInput({
       return;
     }
 
-    // If input received multiple characters (e.g., existing "A" + typed "F" -> rawVal "AF")
-    if (rawVal.length > 1) {
-      const prevChar = rawVal.charAt(0);
-      const incomingKey = rawVal.slice(-1);
-      const { modifiedChar, isModified } = applyTelexOrVniModifier(prevChar, incomingKey);
-      if (isModified) {
-        if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(modifiedChar) === slot.baseChar) {
-          setCharValues((prev) => {
-            const next = [...prev];
-            next[slotIdx] = modifiedChar;
-            return next;
-          });
-          focusNextEditable(slotIdx);
-          return;
-        }
-      }
-    }
-
-    // Single character input or pasted full character
     const lastChar = rawVal.slice(-1).toUpperCase();
     if (slot.isRevealedVowel) {
-      // Allow accepting vowels that match base letter (e.g. "À" matches "A")
       if (normalizeVietnameseBaseLetter(lastChar) === slot.baseChar) {
         setCharValues((prev) => {
           const next = [...prev];
@@ -444,24 +406,21 @@ function SmartPuzzlePhraseInput({
         next[slotIdx] = lastChar;
         return next;
       });
-
-      // Do NOT auto-advance while composing or if it's a combining vowel or D/Đ
-      if (!isComposingRef.current) {
-        const base = normalizeVietnameseBaseLetter(lastChar);
-        const isComb = isVietnameseVowel(base) || base === "D" || base === "Đ";
-        if (lastChar.trim() && !isComb) {
-          focusNextEditable(slotIdx);
-        }
-      }
     }
   };
 
   const handleFullLineChange = (text: string) => {
     setRawLineInput(text);
     const upper = text.toUpperCase();
-    if (!upper.trim()) return;
-    setCharValues((prev) => {
-      const next = [...prev];
+    setCharValues(() => {
+      const next = slots.map((s) => {
+        if (s.isSpace) return " ";
+        if (s.isLockedConsonant) return s.baseChar;
+        if (s.isRevealedVowel) return s.baseChar;
+        return "";
+      });
+      if (!upper) return next;
+
       let cursor = 0;
       for (let i = 0; i < slots.length; i++) {
         const s = slots[i];
@@ -473,20 +432,19 @@ function SmartPuzzlePhraseInput({
         while (cursor < upper.length && upper[cursor] === " " && !s.isSpace) {
           cursor++;
         }
+        if (cursor >= upper.length) break;
         const ch = upper[cursor];
         if (s.isLockedConsonant) {
           next[i] = s.baseChar;
-          if (ch) cursor++;
+          cursor++;
         } else if (s.isRevealedVowel) {
-          if (ch && normalizeVietnameseBaseLetter(ch) === s.baseChar) {
+          if (normalizeVietnameseBaseLetter(ch) === s.baseChar) {
             next[i] = ch;
           }
-          if (ch) cursor++;
+          cursor++;
         } else {
-          if (ch) {
-            next[i] = ch;
-            cursor++;
-          }
+          next[i] = ch;
+          cursor++;
         }
       }
       return next;
@@ -528,17 +486,47 @@ function SmartPuzzlePhraseInput({
   }, [slots]);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3.5">
+      {/* ── Primary Full-Phrase Vietnamese Input ── */}
+      <div className="space-y-1.5 p-3 sm:p-4 rounded-2xl bg-[#080d1a] border-2 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
+            <span>✏️ GÕ ĐÁP ÁN Ô CHỮ (Hỗ trợ bộ gõ Telex / VNI 100%):</span>
+          </label>
+          <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shrink-0">
+            ✓ Chuẩn Telex / VNI
+          </span>
+        </div>
+        <input
+          ref={fullLineInputRef}
+          type="text"
+          value={rawLineInput}
+          onChange={(e) => handleFullLineChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleTriggerSubmit();
+            }
+          }}
+          placeholder="Nhập trực tiếp cả cụm từ đầy đủ dấu thanh tại đây (VD: THĂNG LONG HÀ NỘI)..."
+          className="w-full px-4 py-3 rounded-xl bg-black/80 border-2 border-amber-400 text-white font-black text-sm sm:text-base focus:outline-none focus:ring-4 focus:ring-amber-400/30 uppercase tracking-widest shadow-inner placeholder:text-slate-500 placeholder:font-normal placeholder:tracking-normal"
+        />
+        <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+          <span>💡 Các chữ cái bạn gõ sẽ tự động đồng bộ lên các ô chữ bên dưới.</span>
+          <span>Bấm <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300 font-mono font-bold">Enter ↵</kbd> để chốt</span>
+        </div>
+      </div>
+
       {/* Guided Legend */}
       <div className="flex flex-wrap items-center gap-2 text-[11px] bg-black/40 p-2 rounded-xl border border-white/10">
         <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
-          🔒 Phụ âm đã mở: Tự khóa sẵn
+          🔒 Phụ âm đã mở: Khóa sẵn
         </span>
         <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold">
-          🎵 Nguyên âm đã mở: Bấm chọn dấu thanh (S/F/R/X/J/Z)
+          🎵 Nguyên âm: Tự gắn dấu thanh
         </span>
         <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-bold">
-          ✏️ Ô chưa mở: Gõ chữ cái còn thiếu
+          ✏️ Ô chữ: Tự động điền theo từ bạn gõ
         </span>
       </div>
 
@@ -601,7 +589,7 @@ function SmartPuzzlePhraseInput({
       {/* 1-Click Tone Mark Selector Bar for Vowels */}
       <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-400/30 flex flex-wrap items-center justify-between gap-2">
         <span className="text-[11px] font-bold text-amber-200">
-          🎶 Thanh dấu nhanh cho nguyên âm đang chọn:
+          🎶 Hoặc chọn nhanh dấu thanh cho ô nguyên âm đang click:
         </span>
         <div className="flex flex-wrap items-center gap-1.5">
           {TONE_BUTTONS.map((tb) => (
@@ -622,26 +610,6 @@ function SmartPuzzlePhraseInput({
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Fast Full-Phrase Sync Input */}
-      <div className="space-y-1">
-        <label className="block text-[11px] text-slate-400 font-semibold">
-          Hoặc gõ nhanh cả cụm từ có dấu đầy đủ vào đây (tự đồng bộ lên các ô trên):
-        </label>
-        <input
-          type="text"
-          value={rawLineInput}
-          onChange={(e) => handleFullLineChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleTriggerSubmit();
-            }
-          }}
-          placeholder="Gõ nhanh cả cụm từ khóa đầy đủ dấu thanh..."
-          className="w-full p-2.5 rounded-xl bg-black/60 border border-white/20 text-white font-bold text-xs sm:text-sm focus:outline-none focus:border-amber-400 uppercase tracking-wider"
-        />
       </div>
 
       {/* Continuous Attempt Log (Special Final Round) */}
@@ -711,7 +679,7 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
     <div
       className="absolute z-30 pointer-events-none transition-all duration-500 ease-out select-none"
       style={{
-        left: `${Math.max(-2, Math.min(102, xPercent))}%`,
+        left: `${Math.max(3.5, Math.min(96.5, xPercent))}%`,
         top: isTouching || isWalking ? `${10 + activeRow * 20}%` : "18%",
         transform: `translate(-50%, -10%) translateY(${dynamicTranslateY}px)`,
         perspective: "900px",
@@ -1168,7 +1136,7 @@ export default function MagicWheelBoard({
   // ── Virtual Hostess ("Người Mẫu") Intelligent 1-Way Movement & Reveal ─────
   const [hostessSide, setHostessSide] = useState<"LEFT" | "RIGHT">("LEFT");
   const hostessSideRef = useRef<"LEFT" | "RIGHT">("LEFT");
-  const [hostessXPercent, setHostessXPercent] = useState<number>(-4); // -4% (left edge) to 104% (right edge)
+  const [hostessXPercent, setHostessXPercent] = useState<number>(3.5); // 3.5% (left edge beside board) to 96.5% (right edge beside board)
   const [hostessFacing, setHostessFacing] = useState<"LEFT" | "RIGHT">("RIGHT");
   const [hostessPose, setHostessPose] = useState<"IDLE" | "GESTURE" | "WALKING" | "TOUCHING">("IDLE");
   const [hostessActiveRow, setHostessActiveRow] = useState<number>(1);
@@ -1211,7 +1179,7 @@ export default function MagicWheelBoard({
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(initialSet);
       setHostessPose("IDLE");
-      setHostessXPercent(hostessSideRef.current === "LEFT" ? -4 : 104);
+      setHostessXPercent(hostessSideRef.current === "LEFT" ? 3.5 : 96.5);
     }
   }, [currentPuzzle?.id, currentPuzzle?.revealedIndices, clearChoreographyTimers]);
 
@@ -1355,7 +1323,7 @@ export default function MagicWheelBoard({
       // Continue walking in the SAME direction to park at the opposite side of the board
       const finishWalkTimer = setTimeout(() => {
         setHostessPose("WALKING");
-        setHostessXPercent(targetEndSide === "RIGHT" ? 104 : -4);
+        setHostessXPercent(targetEndSide === "RIGHT" ? 96.5 : 3.5);
       }, elapsedWalkMs);
       activeTimersRef.current.push(finishWalkTimer);
 
@@ -1458,12 +1426,12 @@ export default function MagicWheelBoard({
           soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
           onTossUpRevealTick?.(firstIdx);
           setHostessPose("IDLE");
-          setHostessXPercent(side === "LEFT" ? -4 : 104);
+          setHostessXPercent(side === "LEFT" ? 3.5 : 96.5);
           startRandomInterval();
         }, 1000);
       }
     } else {
-      // Resuming after a wrong buzz: continue 0.5s random letter reveal directly
+      // Resuming after a wrong buzz: continue 0.75s random letter reveal directly
       startRandomInterval();
     }
 
@@ -1759,7 +1727,7 @@ export default function MagicWheelBoard({
     if (phase === "TOSS_UP_RUNNING") {
       return {
         emotion: "⚡",
-        text: "Các chữ cái đang hiện ra ngẫu nhiên mỗi 0,5 giây! Ai nhìn ra từ khóa hãy bấm chuông ngay!",
+        text: "Các chữ cái đang hiện ra ngẫu nhiên mỗi 0,75 giây! Ai nhìn ra từ khóa hãy bấm chuông ngay!",
       };
     }
     if (phase === "TOSS_UP_BUZZED") {
@@ -1999,7 +1967,7 @@ export default function MagicWheelBoard({
           )}
 
           {/* Stage Area with Virtual Hostess ("Người Mẫu") standing beside & walking across the 56-tile board */}
-          <div className="w-full max-w-5xl flex items-center justify-center relative py-2 px-6 sm:px-12">
+          <div className="w-full max-w-5xl flex items-center justify-center relative py-2 px-8 sm:px-14">
             {/* Virtual Hostess 3D Studio Character Overlay */}
             <Hostess3DStudio
               xPercent={hostessXPercent}
@@ -2475,7 +2443,7 @@ export default function MagicWheelBoard({
                           : "⚡ VÒNG ĐOÁN NHANH 2 — Giải đúng nhận +1.000đ & Quyền mở màn Vòng 1"}
                       </h4>
                       <p className="text-[11px] text-slate-300">
-                        MC chạm mở ô đầu tiên (highlight ➔ mở chữ), sau đó cứ 0,5s hiện ngẫu nhiên 1 chữ cái. Đội bấm chuông trả lời sai các đội (kể cả đội vừa bấm) vẫn được bấm tiếp!
+                        MC chạm mở ô đầu tiên (highlight ➔ mở chữ), sau đó cứ 0,75s hiện ngẫu nhiên 1 chữ cái. Đội bấm chuông trả lời sai các đội (kể cả đội vừa bấm) vẫn được bấm tiếp!
                       </p>
                     </div>
                     {phase === "TOSS_UP_READY" && (
@@ -2488,7 +2456,7 @@ export default function MagicWheelBoard({
                           }}
                           className="px-4 py-2 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 cursor-pointer animate-pulse"
                         >
-                          ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN (0.5s/chữ)
+                          ▶️ BẮT ĐẦU MỞ CHỮ NGẪU NHIÊN (0.75s/chữ)
                         </button>
                       ) : (
                         <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 text-amber-300 font-bold text-xs flex items-center gap-1.5 animate-pulse">

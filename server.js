@@ -8644,6 +8644,7 @@ var roomStealEndsAt = /* @__PURE__ */ new Map();
 var roomQuestionStartedAt = /* @__PURE__ */ new Map();
 var playerSockets = /* @__PURE__ */ new Map();
 var adminSockets = /* @__PURE__ */ new Map();
+var displaySockets = /* @__PURE__ */ new Map();
 var roomTimers = /* @__PURE__ */ new Map();
 var roomRemainingTimes = /* @__PURE__ */ new Map();
 var roomTimerEndsAt = /* @__PURE__ */ new Map();
@@ -10592,6 +10593,7 @@ function registerSocketHandlers(io2) {
         }).catch(() => null);
       }
       if (room) {
+        displaySockets.set(socket.id, room.id);
         restoreGameStateSnapshot(room);
         const state = await buildRoomState(room.id);
         socket.emit("room:state", state);
@@ -15174,7 +15176,7 @@ function registerSocketHandlers(io2) {
           teamId = isSandboxSocket && roomSandboxActiveTeam.get(player.roomId) || player.teamId || void 0;
         }
       } else {
-        roomId = adminSockets.get(socket.id);
+        roomId = adminSockets.get(socket.id) || displaySockets.get(socket.id);
         if (roomId) {
           const room = await prisma.room.findUnique({ where: { id: roomId }, select: { code: true, mode: true } });
           if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
@@ -15363,10 +15365,10 @@ function registerSocketHandlers(io2) {
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = void 0;
       wheelState.tossUpBuzzedTeamName = void 0;
-      wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.5s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
+      wheelState.lastActionMessage = "C\xE1c ch\u1EEF c\xE1i \u0111ang l\u1EA7n l\u01B0\u1EE3t xu\u1EA5t hi\u1EC7n (0.75s/ch\u1EEF)! H\xE3y b\u1EA5m chu\xF4ng ngay khi \u0111o\xE1n ra \u0111\xE1p \xE1n!";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
-    socket.on("magic_wheel:toss_up_reveal_tick", async ({ index } = {}) => {
+    const handleTossUpTick = async ({ index } = {}) => {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
@@ -15389,7 +15391,9 @@ function registerSocketHandlers(io2) {
         }
       }
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
-    });
+    };
+    socket.on("magic_wheel:toss_up_reveal_tick", handleTossUpTick);
+    socket.on("magic_wheel:toss_up_tick", handleTossUpTick);
     socket.on("magic_wheel:toss_up_buzz", async (payload) => {
       const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
@@ -17044,6 +17048,7 @@ function registerSocketHandlers(io2) {
     });
     socket.on("disconnect", async () => {
       adminSockets.delete(socket.id);
+      displaySockets.delete(socket.id);
       const playerId = playerSockets.get(socket.id);
       if (!playerId) return;
       playerSockets.delete(socket.id);

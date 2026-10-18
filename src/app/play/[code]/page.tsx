@@ -554,9 +554,7 @@ export default function PlayPage() {
           }
         }
         if (p.magicWheelState !== undefined) {
-          if (p.roomState === undefined || p.roomState.magicWheelState === undefined) {
-            setRoomState((prev) => (prev ? { ...prev, magicWheelState: p.magicWheelState } : prev));
-          }
+          setRoomState((prev) => (prev ? { ...prev, magicWheelState: p.magicWheelState } : prev));
           setCurrentQuestion(null);
           setRevealPayload(null);
           setTimer(null);

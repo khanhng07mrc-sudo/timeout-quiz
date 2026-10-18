@@ -59,7 +59,7 @@ const MODE_CONFIG: Record<
     subGlow: "rgba(234, 179, 8, 0.7)",
   },
   MAGIC_WHEEL: {
-    name: "Vòng Quay Tri Thức",
+    name: "Magic Wheel",
     neonColor: "#ec4899",
     auraGrad: "from-pink-500/40 via-purple-600/30 to-transparent",
     ringColor: "#f472b6",

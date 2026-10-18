@@ -132,7 +132,10 @@ export async function GET(req: NextRequest) {
       : {
           OR: [{ isPublic: true }, { ownerId: "demo-host-id" }],
         },
-    include: { _count: { select: { questions: true } } },
+    include: {
+      _count: { select: { questions: true } },
+      questions: { select: { type: true }, take: 1 },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -146,15 +149,23 @@ export async function GET(req: NextRequest) {
     ownerId: "demo-host-id",
     createdAt: p.createdAt || new Date().toISOString(),
     isBuiltIn: true,
+    isWordPuzzle: true,
     _count: { questions: p.questions?.length || 11 },
   }));
 
   const finalBanks = [
     ...missingPresets,
-    ...banks.map((b) => ({
-      ...b,
-      isBuiltIn: b.id.startsWith("bank_mw_preset") || b.ownerId === "demo-host-id",
-    })),
+    ...banks.map((b) => {
+      const isWordPuzzle =
+        b.id.startsWith("bank_mw_preset") ||
+        (b as any).questions?.some((q: any) => q.type === "WORD_PUZZLE") ||
+        /chiếc nón kỳ diệu|vòng quay tri thức|ô chữ|magic wheel/i.test(b.title);
+      return {
+        ...b,
+        isBuiltIn: b.id.startsWith("bank_mw_preset") || b.ownerId === "demo-host-id",
+        isWordPuzzle: Boolean(isWordPuzzle),
+      };
+    }),
   ];
 
   return NextResponse.json({ banks: finalBanks });

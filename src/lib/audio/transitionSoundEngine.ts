@@ -45,6 +45,8 @@ class TransitionSoundEngine {
         this.playGoldMine(ctx, now);
       } else if (norm.includes("AUCTION") || norm.includes("STEALTH") || norm.includes("DICE")) {
         this.playAuctionStealth(ctx, now);
+      } else if (norm.includes("MAGIC") || norm.includes("WHEEL")) {
+        this.playMagicWheel(ctx, now);
       } else {
         this.playClassicQuiz(ctx, now);
       }
@@ -364,6 +366,52 @@ class TransitionSoundEngine {
     bGain.connect(ctx.destination);
     bell.start(now + 0.55);
     bell.stop(now + 1.4);
+  }
+
+  // 10. Magic Wheel: Tiếng kim gõ chốt nón dồn dập + Kèn mở màn VTV3
+  private playMagicWheel(ctx: AudioContext, now: number) {
+    // Tiếng kim gõ chốt liên thanh dồn dập (24 chốt nón)
+    for (let i = 0; i < 14; i++) {
+      const delay = i * 0.045 + (i * i * 0.003); // Giảm tốc nhẹ
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1400 + (i % 3) * 200, now + delay);
+      gain.gain.setValueAtTime(0.09, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.03);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.035);
+    }
+
+    // Fanfare mở màn hào hùng
+    [
+      { freq: 523.25, time: 0.35, dur: 0.2 }, // C5
+      { freq: 659.25, time: 0.52, dur: 0.2 }, // E5
+      { freq: 783.99, time: 0.70, dur: 0.25 }, // G5
+      { freq: 1046.5, time: 0.92, dur: 0.45 }, // C6
+    ].forEach((note) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(note.freq, now + note.time);
+
+      gain.gain.setValueAtTime(0.001, now + note.time);
+      gain.gain.linearRampToValueAtTime(0.15, now + note.time + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(2500, now + note.time);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + note.time);
+      osc.stop(now + note.time + note.dur + 0.05);
+    });
   }
 }
 

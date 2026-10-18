@@ -65,7 +65,7 @@ const BGM_CONFIG: Record<BGMKey, AudioSourceConfig> = {
   olympia_60s: { primary: "/sounds/olympia_60s.mp3", fallbacks: ["/sounds/olympia_30s.mp3", "/sounds/question_suspense.mp3"] },
   question_suspense: { primary: "/sounds/question_suspense.mp3", fallbacks: ["/sounds/question_suspense.wav"] },
   wheel_spin: { primary: "/sounds/magic-wheel/wheel_spin_2014_2016.mp3", fallbacks: ["/sounds/magic-wheel/wheel_spin.mp3", "/sounds/wheel_spin.mp3"] },
-  mw_intro: { primary: "/sounds/magic-wheel/intro_round.mp3", fallbacks: ["/sounds/lobby.mp3"] },
+  mw_intro: { primary: "/sounds/magic-wheel/intro_hinh_hieu.webm", fallbacks: ["/sounds/magic-wheel/intro_round.mp3", "/sounds/lobby.mp3"] },
   mw_thinking: { primary: "/sounds/magic-wheel/nhac_nen_1.mp3", fallbacks: ["/sounds/magic-wheel/thinking_timer.mp3", "/sounds/olympia_5s.mp3"] },
   mw_trade_bgm: { primary: "/sounds/magic-wheel/trade_offer.mp3", fallbacks: ["/sounds/lobby.mp3"] },
 };

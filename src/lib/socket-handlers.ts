@@ -4113,7 +4113,7 @@ export function registerSocketHandlers(io: IO) {
         }
       }
 
-      if (questions.length === 0) {
+      if (room.mode !== "MAGIC_WHEEL" && questions.length === 0) {
         socket.emit("error", "Phòng chưa có câu hỏi nào! Vui lòng chọn bộ đề câu hỏi trước khi bắt đầu.");
         return;
       }
@@ -4151,31 +4151,33 @@ export function registerSocketHandlers(io: IO) {
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         const config = room.config as any;
 
-        // Auto allocate questions based on matchMaxQuestions and mode
-        const targetQCount = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : undefined;
-        const allocation = allocateQuestionsForMatch({
-          questions,
-          targetCount: targetQCount,
-          mode: room.mode as GameMode,
-          teamsCount: teams.length,
-          allocationStrategy: config?.questionAllocationStrategy || "ORIGINAL_POINTS",
-          options: {
-            eliminationStages: config?.eliminationRounds,
-            bouncebackQuestionsPerTurn: config?.bouncebackQuestionsPerTurn,
-            tournamentQuestionsPerMatch: config?.tournamentQuestionsPerMatch,
-          },
-        });
+        if (room.mode !== "MAGIC_WHEEL" || questions.length > 0) {
+          // Auto allocate questions based on matchMaxQuestions and mode
+          const targetQCount = config?.matchMaxQuestions && config.matchMaxQuestions > 0 ? config.matchMaxQuestions : undefined;
+          const allocation = allocateQuestionsForMatch({
+            questions,
+            targetCount: targetQCount,
+            mode: room.mode as GameMode,
+            teamsCount: teams.length,
+            allocationStrategy: config?.questionAllocationStrategy || "ORIGINAL_POINTS",
+            options: {
+              eliminationStages: config?.eliminationRounds,
+              bouncebackQuestionsPerTurn: config?.bouncebackQuestionsPerTurn,
+              tournamentQuestionsPerMatch: config?.tournamentQuestionsPerMatch,
+            },
+          });
 
-        questions = allocation.allocatedQuestions;
-        roomQuestionsCache.set(room.id, questions);
-        if (room.quizBank) {
-          room.quizBank.questions = questions;
-        }
+          questions = allocation.allocatedQuestions;
+          roomQuestionsCache.set(room.id, questions);
+          if (room.quizBank) {
+            room.quizBank.questions = questions;
+          }
 
-        if (allocation.derivedConfig) {
-          Object.assign(config, allocation.derivedConfig);
-          room.config = config;
-          prisma.room.update({ where: { id: room.id }, data: { config } }).catch(console.error);
+          if (allocation.derivedConfig) {
+            Object.assign(config, allocation.derivedConfig);
+            room.config = config;
+            prisma.room.update({ where: { id: room.id }, data: { config } }).catch(console.error);
+          }
         }
 
         if (room.mode === "CLASSIC") {

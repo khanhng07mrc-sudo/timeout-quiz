@@ -11898,7 +11898,7 @@ function registerSocketHandlers(io2) {
           room.quizBank.questions = questions;
         }
       }
-      if (questions.length === 0) {
+      if (room.mode !== "MAGIC_WHEEL" && questions.length === 0) {
         socket.emit("error", "Ph\xF2ng ch\u01B0a c\xF3 c\xE2u h\u1ECFi n\xE0o! Vui l\xF2ng ch\u1ECDn b\u1ED9 \u0111\u1EC1 c\xE2u h\u1ECFi tr\u01B0\u1EDBc khi b\u1EAFt \u0111\u1EA7u.");
         return;
       }
@@ -11924,28 +11924,30 @@ function registerSocketHandlers(io2) {
         ensureInitialTeamPowerups(room.id, io2).catch(console.error);
         const teams = await prisma.team.findMany({ where: { roomId: room.id }, orderBy: { createdAt: "asc" } });
         const config2 = room.config;
-        const targetQCount = config2?.matchMaxQuestions && config2.matchMaxQuestions > 0 ? config2.matchMaxQuestions : void 0;
-        const allocation = allocateQuestionsForMatch({
-          questions,
-          targetCount: targetQCount,
-          mode: room.mode,
-          teamsCount: teams.length,
-          allocationStrategy: config2?.questionAllocationStrategy || "ORIGINAL_POINTS",
-          options: {
-            eliminationStages: config2?.eliminationRounds,
-            bouncebackQuestionsPerTurn: config2?.bouncebackQuestionsPerTurn,
-            tournamentQuestionsPerMatch: config2?.tournamentQuestionsPerMatch
+        if (room.mode !== "MAGIC_WHEEL" || questions.length > 0) {
+          const targetQCount = config2?.matchMaxQuestions && config2.matchMaxQuestions > 0 ? config2.matchMaxQuestions : void 0;
+          const allocation = allocateQuestionsForMatch({
+            questions,
+            targetCount: targetQCount,
+            mode: room.mode,
+            teamsCount: teams.length,
+            allocationStrategy: config2?.questionAllocationStrategy || "ORIGINAL_POINTS",
+            options: {
+              eliminationStages: config2?.eliminationRounds,
+              bouncebackQuestionsPerTurn: config2?.bouncebackQuestionsPerTurn,
+              tournamentQuestionsPerMatch: config2?.tournamentQuestionsPerMatch
+            }
+          });
+          questions = allocation.allocatedQuestions;
+          roomQuestionsCache.set(room.id, questions);
+          if (room.quizBank) {
+            room.quizBank.questions = questions;
           }
-        });
-        questions = allocation.allocatedQuestions;
-        roomQuestionsCache.set(room.id, questions);
-        if (room.quizBank) {
-          room.quizBank.questions = questions;
-        }
-        if (allocation.derivedConfig) {
-          Object.assign(config2, allocation.derivedConfig);
-          room.config = config2;
-          prisma.room.update({ where: { id: room.id }, data: { config: config2 } }).catch(console.error);
+          if (allocation.derivedConfig) {
+            Object.assign(config2, allocation.derivedConfig);
+            room.config = config2;
+            prisma.room.update({ where: { id: room.id }, data: { config: config2 } }).catch(console.error);
+          }
         }
         if (room.mode === "CLASSIC") {
           const goldSet = selectGoldQuestions(questions);

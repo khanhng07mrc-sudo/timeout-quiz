@@ -1030,6 +1030,10 @@ export default function AdminSandboxPage() {
         setIntermission(null);
       }
     });
+    sock.on("error" as any, (err: any) => {
+      const msg = typeof err === "string" ? err : err?.message || JSON.stringify(err);
+      addLog(`❌ Lỗi từ máy chủ: ${msg}`);
+    });
     sock.on("game:prepare:clear" as any, () => {
       setMatchStarting(null);
       setQuestionPrepare(null);
@@ -6581,6 +6585,10 @@ export default function AdminSandboxPage() {
 
     if (roomState?.status === "LOBBY") {
       addLog("⚡ Admin: Bắt đầu trận đấu — Đang khởi động 5s chuẩn bị...");
+    }
+    if (!adminSocketRef.current || !adminSocketRef.current.connected) {
+      addLog("⚠️ Cảnh báo: Socket Admin chưa kết nối. Đang kết nối lại...");
+      connectAdminSocket(code);
     }
     adminSocketRef.current?.emit("admin:next", { code });
     addLog("Admin: Bắt đầu / Next câu tiếp theo");

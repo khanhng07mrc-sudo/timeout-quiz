@@ -11,6 +11,7 @@ import {
   VietnameseToneMark,
 } from "@/lib/game-engine/magic-wheel";
 import { soundManager } from "@/lib/sound-manager";
+import { formatVietnameseText, VietnameseInputMethod } from "@/lib/vietnamese-ime";
 
 /**
  * 3-Phase Physics Speed Curve for 15s - 21s Authentic Spin:
@@ -264,6 +265,7 @@ function SmartPuzzlePhraseInput({
   );
   const [focusedSlotIdx, setFocusedSlotIdx] = useState<number | null>(null);
   const [rawLineInput, setRawLineInput] = useState<string>("");
+  const [imeMethod, setImeMethod] = useState<VietnameseInputMethod>("AUTO");
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const fullLineInputRef = useRef<HTMLInputElement | null>(null);
   const isComposingRef = useRef<boolean>(false);
@@ -410,8 +412,9 @@ function SmartPuzzlePhraseInput({
   };
 
   const handleFullLineChange = (text: string) => {
-    setRawLineInput(text);
-    const upper = text.toUpperCase();
+    const formatted = imeMethod !== "OFF" ? formatVietnameseText(text, imeMethod) : text;
+    setRawLineInput(formatted);
+    const upper = formatted.toUpperCase();
     setCharValues(() => {
       const next = slots.map((s) => {
         if (s.isSpace) return " ";
@@ -488,14 +491,35 @@ function SmartPuzzlePhraseInput({
   return (
     <div className="space-y-3.5">
       {/* ── Primary Full-Phrase Vietnamese Input ── */}
-      <div className="space-y-1.5 p-3 sm:p-4 rounded-2xl bg-[#080d1a] border-2 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
-        <div className="flex items-center justify-between gap-2">
+      <div className="space-y-2 p-3 sm:p-4 rounded-2xl bg-[#080d1a] border-2 border-amber-400/60 shadow-[0_0_25px_rgba(245,158,11,0.15)]">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <label className="text-xs sm:text-sm font-black text-amber-300 flex items-center gap-2">
-            <span>✏️ GÕ ĐÁP ÁN Ô CHỮ (Hỗ trợ bộ gõ Telex / VNI 100%):</span>
+            <span>✏️ GÕ ĐÁP ÁN Ô CHỮ:</span>
           </label>
-          <span className="text-[10px] text-emerald-300 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40 shrink-0">
-            ✓ Chuẩn Telex / VNI
-          </span>
+          {/* IME Input Method Selector Toolbar */}
+          <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-lg border border-white/10 text-[10px]">
+            {(["AUTO", "TELEX", "VNI", "VIQR", "OFF"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setImeMethod(m)}
+                className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                  imeMethod === m
+                    ? "bg-amber-400 text-slate-950 shadow-sm"
+                    : "text-slate-300 hover:text-white"
+                }`}
+                title={
+                  m === "AUTO"
+                    ? "Tự động nhận diện Telex / VNI / VIQR (Khuyên dùng)"
+                    : m === "OFF"
+                    ? "Tắt bộ gõ web (Dùng Unikey / EVKey trên máy)"
+                    : `Bộ gõ ${m}`
+                }
+              >
+                {m === "AUTO" ? "⚡ Tự động" : m === "OFF" ? "⚙️ EVKey/Unikey" : m}
+              </button>
+            ))}
+          </div>
         </div>
         <input
           ref={fullLineInputRef}
@@ -667,22 +691,22 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
   const isGesture = pose === "GESTURE";
   const isWalking = pose === "WALKING";
 
-  // Dynamic 3D rotation, pitch, and lean (rướn người & quay theo tọa độ hàng)
-  const rowAngles = [-12, -4, 4, 12];
-  const targetPitch = isTouching ? (rowAngles[activeRow] ?? 0) : 0;
-  const baseRotateY = isRightSide ? -22 : 22;
-  const dynamicRotateY = isTouching ? (isRightSide ? -42 : 42) : isGesture ? (isRightSide ? -28 : 28) : baseRotateY;
-  const dynamicLeanZ = isTouching ? (isRightSide ? 7 : -7) : 0;
-  const dynamicTranslateY = isTouching ? -8 : 0;
+  // Dynamic 3D rotation, pitch, and lean
+  const rowReachAngles = [-46, -26, -6, 16];
+  const armReachAngle = isTouching ? (rowReachAngles[activeRow] ?? -16) : isGesture ? -20 : 0;
+  const torsoPitch = isTouching ? (activeRow === 0 ? -10 : activeRow === 1 ? -4 : 4) : 0;
+  const baseRotateY = isRightSide ? -18 : 18;
+  const dynamicRotateY = isTouching ? (isRightSide ? -36 : 36) : isGesture ? (isRightSide ? -24 : 24) : baseRotateY;
+  const dynamicLeanZ = isTouching ? (isRightSide ? 6 : -6) : 0;
 
   return (
     <div
       className="absolute z-30 pointer-events-none transition-all duration-500 ease-out select-none"
       style={{
-        left: `${Math.max(3.5, Math.min(96.5, xPercent))}%`,
-        top: isTouching || isWalking ? `${10 + activeRow * 20}%` : "18%",
-        transform: `translate(-50%, -10%) translateY(${dynamicTranslateY}px)`,
-        perspective: "900px",
+        left: `${Math.max(4.5, Math.min(95.5, xPercent))}%`,
+        bottom: "6px",
+        transform: "translateX(-50%)",
+        perspective: "850px",
       }}
     >
       <div
@@ -698,23 +722,23 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
           <div
             className="absolute z-40 text-xl sm:text-2xl animate-ping"
             style={{
-              top: isTouching ? "12px" : "18px",
-              right: isRightSide ? "auto" : "-14px",
-              left: isRightSide ? "-14px" : "auto",
-              filter: "drop-shadow(0 0 8px #facc15)",
+              top: isTouching ? `${18 + activeRow * 16}px` : "24px",
+              right: isRightSide ? "auto" : "-16px",
+              left: isRightSide ? "-16px" : "auto",
+              filter: "drop-shadow(0 0 10px #facc15)",
             }}
           >
             ✨
           </div>
         )}
 
-        {/* 3D Stylized Studio Hostess Avatar */}
-        <div className={`relative w-16 sm:w-20 md:w-24 h-28 sm:h-36 md:h-44 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] ${isWalking ? "animate-bounce" : ""}`}>
-          <svg viewBox="0 0 100 160" className="w-full h-full overflow-visible">
+        {/* 3D Stylized Studio Hostess Avatar with Full Slender Legs and High Heels */}
+        <div className={`relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] ${isWalking ? "animate-bounce" : ""}`}>
+          <svg viewBox="0 0 100 215" className="w-full h-full overflow-visible">
             <defs>
               <linearGradient id="hostessGownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#f43f5e" />
-                <stop offset="40%" stopColor="#e11d48" />
+                <stop offset="35%" stopColor="#e11d48" />
                 <stop offset="85%" stopColor="#9f1239" />
                 <stop offset="100%" stopColor="#4c0519" />
               </linearGradient>
@@ -728,7 +752,7 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
 
               <linearGradient id="hostessSkinGrad" x1="20%" y1="0%" x2="80%" y2="100%">
                 <stop offset="0%" stopColor="#fff1f2" />
-                <stop offset="60%" stopColor="#ffe4e6" />
+                <stop offset="50%" stopColor="#ffe4e6" />
                 <stop offset="100%" stopColor="#fecdd3" />
               </linearGradient>
 
@@ -745,8 +769,8 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               </radialGradient>
             </defs>
 
-            {/* 3D Floor Shadow */}
-            <ellipse cx="50" cy="154" rx="28" ry="5.5" fill="rgba(0,0,0,0.55)" filter="blur(2px)" />
+            {/* 3D Catwalk Contact Floor Shadow */}
+            <ellipse cx="50" cy="204" rx="28" ry="5.5" fill="rgba(0,0,0,0.65)" filter="blur(2.5px)" />
 
             {/* Back Hair Strands */}
             <path
@@ -754,28 +778,64 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               fill="url(#hostessHairGrad)"
             />
 
-            {/* Evening Gown Flowing Skirt / Áo Dài Tà Xòe */}
+            {/* ── Slender Legs & High-Heeled Stiletto Pumps ── */}
+            <g id="hostessLegs">
+              {/* Back / Supporting Right Leg */}
+              <path
+                d="M52 110 C53 130 55 152 54 172 C53 182 52 192 51 198"
+                stroke="url(#hostessSkinGrad)"
+                strokeWidth="7"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* Right Gold Stiletto Pump */}
+              <path
+                d="M48 196 L53 199 L58 199 C59 198 56 195 53 195 Z"
+                fill="url(#hostessGoldMetal)"
+              />
+              {/* Right Heel Spike */}
+              <line x1="49" y1="196" x2="49" y2="203" stroke="url(#hostessGoldMetal)" strokeWidth="2" strokeLinecap="round" />
+
+              {/* Front Left Shapely Leg (revealed gracefully via slit) */}
+              <path
+                d="M42 105 C40 125 43 148 45 168 C46 178 45 188 44 196"
+                stroke="url(#hostessSkinGrad)"
+                strokeWidth="7.5"
+                strokeLinecap="round"
+                fill="none"
+              />
+              {/* Front Knee Contour */}
+              <ellipse cx="44" cy="148" rx="3.5" ry="4.5" fill="url(#hostessSkinGrad)" opacity="0.9" />
+
+              {/* Left Gold Stiletto Pump */}
+              <path
+                d="M39 194 L44 198 L50 198 C52 197 48 193 44 193 Z"
+                fill="url(#hostessGoldMetal)"
+              />
+              {/* Left Shoe Sparkle */}
+              <circle cx="43" cy="195" r="1.2" fill="#ffffff" />
+              {/* Left Heel Spike reaching ground at y=203 */}
+              <line x1="40" y1="194" x2="40" y2="203" stroke="url(#hostessGoldMetal)" strokeWidth="2.2" strokeLinecap="round" />
+            </g>
+
+            {/* Evening Gown Flowing Skirt with High Side Slit / Áo Dài Tà Xòe */}
             <path
-              d="M36 78 C32 98 22 135 15 150 C35 153 65 153 85 150 C78 135 68 98 64 78 Z"
+              d="M36 78 C30 102 24 135 18 160 C32 163 48 160 52 152 C48 132 46 100 64 78 Z"
               fill="url(#hostessGownGrad)"
               stroke="#fda4af"
               strokeWidth="0.8"
             />
             {/* 3D Gown Silk Pleats */}
-            <path d="M42 80 C38 105 32 135 28 151" stroke="#881337" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
-            <path d="M50 78 C50 105 50 135 50 152" stroke="#f43f5e" strokeWidth="1.2" strokeOpacity="0.8" fill="none" />
-            <path d="M58 80 C62 105 68 135 72 151" stroke="#4c0519" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
+            <path d="M42 80 C36 105 30 135 24 158" stroke="#881337" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
+            <path d="M48 78 C44 105 40 130 36 156" stroke="#f43f5e" strokeWidth="1.2" strokeOpacity="0.8" fill="none" />
+            <path d="M58 80 C60 102 61 125 62 142" stroke="#4c0519" strokeWidth="1.4" strokeOpacity="0.7" fill="none" />
 
             {/* Golden Embroidery Trim on Skirt Slit */}
-            <path d="M15 150 Q50 155 85 150" stroke="url(#hostessGoldMetal)" strokeWidth="2.5" fill="none" />
-            <circle cx="50" cy="152" r="2" fill="#fef08a" />
-
-            {/* High-heeled Stiletto Shoes */}
-            <path d="M43 148 L46 154 L49 148" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" fill="none" />
-            <path d="M51 148 L54 154 L57 148" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" fill="none" />
+            <path d="M18 160 Q35 164 52 152" stroke="url(#hostessGoldMetal)" strokeWidth="2.5" fill="none" />
+            <circle cx="51" cy="153" r="2" fill="#fef08a" />
 
             {/* Hourglass Bodice / Torso (with 3D lean and pitch) */}
-            <g style={{ transform: `rotate(${targetPitch}deg)`, transformOrigin: "50px 75px", transition: "transform 400ms" }}>
+            <g style={{ transform: `rotate(${torsoPitch}deg)`, transformOrigin: "50px 75px", transition: "transform 400ms" }}>
               <path
                 d="M35 52 C35 44 42 42 50 42 C58 42 65 44 65 52 C65 62 60 76 58 78 C54 80 46 80 42 78 C40 76 35 62 35 52 Z"
                 fill="url(#hostessGownGrad)"
@@ -833,9 +893,15 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               />
               <circle cx="33" cy="78" r="2.4" fill="url(#hostessSkinGrad)" />
 
-              {/* Dynamic 3-Joint Arm & Hand (Reaching & Pointing) */}
+              {/* Dynamic Arm Reaching to Target Tile Row */}
               {isTouching ? (
-                <g style={{ transition: "all 400ms ease-out" }}>
+                <g
+                  style={{
+                    transformOrigin: "64px 48px",
+                    transform: `rotate(${armReachAngle}deg)`,
+                    transition: "transform 400ms ease-out",
+                  }}
+                >
                   <path
                     d="M64 48 C76 42 86 32 94 18"
                     stroke="url(#hostessSkinGrad)"
@@ -955,16 +1021,36 @@ export default function MagicWheelBoard({
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
+  const [recapCountdown, setRecapCountdown] = useState<number>(8);
   const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
   const prevSolveFeedbackRef = useRef<typeof lastSolveFeedback>(undefined);
+
+  // Auto-advance to next round after 8s recap when puzzle is announced / solved
+  useEffect(() => {
+    if (phase !== "ROUND_RECAP") return;
+    setRecapCountdown(8);
+    const interval = setInterval(() => {
+      setRecapCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          if (isHost) {
+            if (onNextRound) onNextRound();
+            else if (onAdvanceRound) onAdvanceRound();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [phase, isHost, onNextRound, onAdvanceRound]);
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
 
-  // In sandbox environment (iframe/nested), only Display preview plays sound to avoid echoing.
-  // In real play, Display and standalone contestant devices play sound normally.
   const isInsideSandbox = typeof window !== "undefined" && (window.self !== window.top || window.location.search.includes("sandbox=1"));
-  const canPlayBoardAudio = !isInsideSandbox || isDisplay;
+  // All devices (Display, Contestant, Host) play game sound effects
+  const canPlayBoardAudio = true;
 
   useEffect(() => {
     if (!lastSolveFeedback || lastSolveFeedback === prevSolveFeedbackRef.current) return;
@@ -1198,6 +1284,7 @@ export default function MagicWheelBoard({
       clearChoreographyTimers();
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(new Set(serverRevealed));
+      soundManager.playMagicWheelSolveWin();
       setHostessPose("GESTURE");
       const t = setTimeout(() => setHostessPose("IDLE"), 2500);
       activeTimersRef.current.push(t);
@@ -1206,7 +1293,10 @@ export default function MagicWheelBoard({
 
     // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
-      // Handled by Toss-Up choreography effect below or immediate reveal with letter_open.mp3
+      newLetters.forEach((tileIdx) => {
+        triggerTilePop(tileIdx);
+      });
+      soundManager.playMagicWheelLetterReveal();
       setAnimRevealedIndices(new Set(serverRevealed));
       return;
     }
@@ -1864,6 +1954,45 @@ export default function MagicWheelBoard({
             </div>
           </div>
 
+          {/* Clean Score & Strike Indicators for Display Screen */}
+          {isDisplay && (
+            <div className="flex flex-wrap items-center gap-2">
+              {teams.map((t) => {
+                const rScore = roundScores?.[t.id] || 0;
+                const strikes =
+                  activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                const isEliminatedBySolve = roundEliminatedTeamIds.includes(t.id);
+                const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+                const isEliminated = isEliminatedBySolve || isEliminatedByStrikes;
+
+                return (
+                  <div
+                    key={t.id}
+                    className={`px-3 py-1.5 rounded-xl flex items-center gap-2 border text-xs font-bold transition shadow-sm ${
+                      isTurn
+                        ? "bg-amber-400/20 border-amber-400 text-white shadow-[0_0_14px_rgba(245,158,11,0.35)]"
+                        : isEliminated
+                        ? "bg-red-950/30 border-red-500/30 text-rose-300 opacity-60"
+                        : "bg-black/50 border-white/10 text-slate-200"
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: t.color || "#6366f1" }} />
+                    <span className="truncate max-w-[110px]">{t.name}</span>
+                    <span className="font-mono text-amber-300">+{rScore.toLocaleString()}đ</span>
+                    {isEliminatedBySolve ? (
+                      <span className="text-rose-400 text-[10px] font-bold">⛔</span>
+                    ) : strikes > 0 ? (
+                      <span className="text-rose-400 font-mono text-[10px] tracking-tighter">
+                        {"✕".repeat(Math.min(3, strikes))}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {isHost && onRevealAll && phase !== "ROUND_RECAP" && (
             <button
               type="button"
@@ -1966,99 +2095,152 @@ export default function MagicWheelBoard({
             </div>
           )}
 
-          {/* Stage Area with Virtual Hostess ("Người Mẫu") standing beside & walking across the 56-tile board */}
-          <div className="w-full max-w-5xl flex items-center justify-center relative py-2 px-8 sm:px-14">
-            {/* Virtual Hostess 3D Studio Character Overlay */}
-            <Hostess3DStudio
-              xPercent={hostessXPercent}
-              activeRow={hostessActiveRow}
-              facing={hostessFacing}
-              pose={hostessPose}
-            />
-
-            {/* 14-Column 4-Row Puzzle Matrix */}
-            <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2 p-1.5 sm:p-2.5 rounded-xl bg-[#030d05] border-2 border-[#166534]/60 shadow-inner">
-              {gridMatrix.map((row, rIdx) => (
-                <div
-                  key={rIdx}
-                  className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
-                >
-                  {row.map((cell, cIdx) => {
-                    if (!cell || effectiveBoardStage === "EMPTY_56") {
-                      return (
-                        <div
-                          key={cIdx}
-                          className="w-full aspect-[3/4] max-h-[42px] sm:max-h-[46px] rounded bg-[#133817] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-75"
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 text-[#2a7a33] opacity-60 fill-current"
-                          >
-                            <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
-                          </svg>
-                        </div>
-                      );
-                    }
-
-                    const isLuckyGreen =
-                      phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
-                    const isPopping = justPoppedIndices.has(cell.originalIndex);
-
-                    return (
-                      <div
-                        key={cIdx}
-                        onClick={() => {
-                          if (phase === "LUCKY_PICK" && canInteract && !cell.isRevealed) {
-                            if (luckyGreenSelectedIdx !== cell.originalIndex) {
-                              setLuckyGreenSelectedIdx(cell.originalIndex);
-                              soundManager.playMagicWheelMark(); // highlight.mp3
-                            } else {
-                              setLuckyGreenSelectedIdx(null);
-                              soundManager.playMagicWheelLetterReveal(); // letter_open.mp3
-                              onLuckyPick?.(cell.originalIndex);
-                            }
-                          }
-                        }}
-                        className={`w-full aspect-[3/4] max-h-[42px] sm:max-h-[46px] rounded font-black flex items-center justify-center transition-all duration-300 select-none ${
-                          isPopping
-                            ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_30px_#f59e0b] animate-vtv3-tile-pop z-30"
-                            : isLuckyGreen
-                            ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
-                            : cell.isHighlighted
-                            ? "bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_24px_#f59e0b] animate-bounce z-10"
-                            : cell.isRevealed
-                            ? "bg-white text-[#0f172a] shadow-[0_4px_10px_rgba(255,255,255,0.4)] border-2 border-white scale-100"
-                            : phase === "LUCKY_PICK"
-                            ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
-                            : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
-                        }`}
-                      >
-                        <span className="text-xs sm:text-base md:text-xl font-extrabold tracking-tight">
-                          {cell.isRevealed
-                            ? cell.displayChar
-                            : isLuckyGreen
-                            ? "✓"
-                            : cell.isHighlighted
-                            ? "✨"
-                            : phase === "LUCKY_PICK"
-                            ? "🍀"
-                            : "?"}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
+          {/* ── 3D Gameshow Studio Stage (Sân Khấu Catwalk VTV3 & Bảng Ô Chữ 3D) ── */}
+          <div className="w-full max-w-6xl flex flex-col items-center relative py-2 px-2 sm:px-4 md:px-6">
+            {/* Studio Lighting Truss & Soft Spotlights */}
+            <div className="absolute -top-4 inset-x-0 h-16 pointer-events-none flex justify-around opacity-35 z-0">
+              <div className="w-36 h-24 bg-gradient-to-b from-yellow-300/30 to-transparent blur-xl transform -rotate-12" />
+              <div className="w-48 h-28 bg-gradient-to-b from-emerald-400/25 to-transparent blur-xl" />
+              <div className="w-36 h-24 bg-gradient-to-b from-cyan-400/30 to-transparent blur-xl transform rotate-12" />
             </div>
-          </div>
 
-          {/* Bottom Clue Bar (Dải băng phụ đề VTV3 - hiện khi READY_CLUE) */}
-          <div className="w-full mt-2.5 p-2.5 rounded-xl bg-gradient-to-r from-red-950/80 via-black/90 to-red-950/80 border-y-2 border-red-500/60 shadow-lg flex items-center justify-center text-center">
-            <p className="text-xs sm:text-sm font-semibold text-slate-100 tracking-wide">
-              {effectiveBoardStage === "READY_CLUE"
-                ? currentPuzzle?.clue || "Lắng nghe gợi ý từ người dẫn chương trình và đoán các chữ cái!"
-                : "Bảng ô chữ đang chuẩn bị..."}
-            </p>
+            {/* Main Board Structure with 3D Bevel Border */}
+            <div className="relative w-full z-10 flex flex-col items-center">
+              {/* 14-Column 4-Row Puzzle Matrix with 3D Depth */}
+              <div className="w-full p-2 sm:p-3 md:p-4 rounded-2xl bg-gradient-to-b from-[#021307] via-[#041d0b] to-[#010b04] border-4 border-[#166534] shadow-[0_15px_35px_rgba(0,0,0,0.85),0_0_30px_rgba(22,101,52,0.4)]">
+                <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2">
+                  {gridMatrix.map((row, rIdx) => (
+                    <div
+                      key={rIdx}
+                      className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
+                    >
+                      {row.map((cell, cIdx) => {
+                        if (!cell || effectiveBoardStage === "EMPTY_56") {
+                          return (
+                            <div
+                              key={cIdx}
+                              className="w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded bg-[#0f3414] border border-[#1e5824] flex items-center justify-center shadow-inner opacity-80"
+                            >
+                              <svg
+                                viewBox="0 0 24 24"
+                                className="w-3 h-3 sm:w-4 sm:h-4 text-[#2a7a33] opacity-60 fill-current"
+                              >
+                                <polygon points="12,2 15,9 22,9 17,14 19,21 12,17 5,21 7,14 2,9 9,9" />
+                              </svg>
+                            </div>
+                          );
+                        }
+
+                        const isLuckyGreen =
+                          phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
+                        const isPopping = justPoppedIndices.has(cell.originalIndex);
+
+                        return (
+                          <div
+                            key={cIdx}
+                            onClick={() => {
+                              if (phase === "LUCKY_PICK" && canInteract && !cell.isRevealed) {
+                                if (luckyGreenSelectedIdx !== cell.originalIndex) {
+                                  setLuckyGreenSelectedIdx(cell.originalIndex);
+                                  soundManager.playMagicWheelMark();
+                                } else {
+                                  setLuckyGreenSelectedIdx(null);
+                                  soundManager.playMagicWheelLetterReveal();
+                                  onLuckyPick?.(cell.originalIndex);
+                                }
+                              }
+                            }}
+                            className={`w-full aspect-[3/4] min-h-[36px] sm:min-h-[48px] md:min-h-[60px] lg:min-h-[72px] rounded font-black flex items-center justify-center transition-all duration-300 select-none ${
+                              isPopping
+                                ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_35px_#f59e0b] animate-vtv3-tile-pop z-30"
+                                : isLuckyGreen
+                                ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
+                                : cell.isHighlighted
+                                ? "bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_25px_#f59e0b] animate-bounce z-10"
+                                : cell.isRevealed
+                                ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
+                                : phase === "LUCKY_PICK"
+                                ? "bg-gradient-to-br from-amber-300 via-yellow-300 to-amber-400 text-amber-950 border-2 border-yellow-200 animate-pulse shadow-[0_0_15px_#f59e0b] cursor-pointer hover:scale-105"
+                                : "bg-white/95 text-transparent border-2 border-slate-300 shadow-md"
+                            }`}
+                          >
+                            <span className="text-sm sm:text-lg md:text-2xl lg:text-3xl font-black tracking-tight">
+                              {cell.isRevealed
+                                ? cell.displayChar
+                                : isLuckyGreen
+                                ? "✓"
+                                : cell.isHighlighted
+                                ? "✨"
+                                : phase === "LUCKY_PICK"
+                                ? "🍀"
+                                : "?"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sân Khấu Catwalk VTV3 Floor Platform (Sàn bóng có gạch lát & dải đèn LED) */}
+              <div className="relative w-full h-12 sm:h-16 md:h-20 -mt-2 sm:-mt-3 z-20 flex flex-col justify-end">
+                {/* 3D Catwalk Perspective Floor Plane */}
+                <div
+                  className="absolute inset-0 rounded-b-2xl overflow-hidden border-t border-cyan-400/30"
+                  style={{
+                    background: "linear-gradient(180deg, rgba(15,23,42,0.95) 0%, rgba(2,6,23,0.98) 100%)",
+                    boxShadow: "inset 0 10px 20px rgba(0,0,0,0.8)",
+                  }}
+                >
+                  {/* Catwalk Reflective Grid Lines */}
+                  <div
+                    className="w-full h-full opacity-25"
+                    style={{
+                      backgroundImage: "linear-gradient(90deg, rgba(255,255,255,0.15) 1px, transparent 1px), linear-gradient(0deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+                      backgroundSize: "40px 16px",
+                    }}
+                  />
+                  {/* Stage Center Glow Reflection */}
+                  <div className="absolute top-0 left-1/4 right-1/4 h-6 bg-gradient-to-b from-cyan-400/20 via-emerald-400/10 to-transparent blur-md pointer-events-none" />
+                </div>
+
+                {/* Front Stage Platform Neon LED Edge Strip */}
+                <div className="relative z-10 w-full h-1 sm:h-1.5 bg-gradient-to-r from-cyan-500 via-amber-300 to-cyan-500 shadow-[0_0_15px_#06b6d4,0_0_25px_#f59e0b]" />
+
+                {/* Virtual Hostess 3D Studio Character standing firmly on Catwalk Floor */}
+                <Hostess3DStudio
+                  xPercent={hostessXPercent}
+                  activeRow={hostessActiveRow}
+                  facing={hostessFacing}
+                  pose={hostessPose}
+                />
+              </div>
+            </div>
+
+            {/* ── VTV3 Broadcast Lower-Third Chyron (Dải băng truyền hình VTV3) ── */}
+            <div className="w-full mt-3 z-20">
+              <div className="flex flex-col sm:flex-row items-stretch rounded-xl overflow-hidden border border-amber-400/40 shadow-2xl bg-black/85 backdrop-blur-md">
+                {/* Category Pill / Chủ Đề */}
+                <div className="bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black px-4 py-2 sm:py-2.5 flex items-center justify-center gap-2 uppercase tracking-wider text-xs sm:text-sm shrink-0 shadow-md">
+                  <span>⭐</span>
+                  <span>CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"}</span>
+                </div>
+                {/* Clue Chyron Body with broadcast typography shadow */}
+                <div className="flex-1 px-4 py-2 sm:py-2.5 flex items-center justify-between gap-3 text-slate-100 font-bold text-xs sm:text-sm md:text-base tracking-wide bg-gradient-to-r from-slate-950/90 via-black/95 to-slate-950/90">
+                  <p className="drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)] truncate sm:whitespace-normal">
+                    {effectiveBoardStage === "READY_CLUE"
+                      ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
+                      : "Bảng ô chữ đang chuẩn bị..."}
+                  </p>
+                  {currentPuzzle?.secretPhrase && (
+                    <span className="shrink-0 px-2 py-0.5 rounded bg-white/10 text-amber-300 font-mono text-[11px] sm:text-xs border border-white/15">
+                      {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} KÝ TỰ
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Round Victory & Full Reveal Celebration Banner */}
@@ -2088,9 +2270,9 @@ export default function MagicWheelBoard({
                   if (onNextRound) onNextRound();
                   else if (onAdvanceRound) onAdvanceRound();
                 }}
-                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer animate-pulse"
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer animate-pulse shrink-0"
               >
-                ⏭️ Sang vòng tiếp theo
+                ⏭️ Sang vòng tiếp theo ({recapCountdown}s)
               </button>
             </div>
           )}
@@ -3039,92 +3221,94 @@ export default function MagicWheelBoard({
             </div>
           )}
 
-          {/* Compact Scoreboard */}
-          <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
-            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400">
-              <span>🏆 BẢNG ĐIỂM ({stageBadgeLabel})</span>
-              <span className="text-amber-300">Điểm vòng / Tổng điểm chung cuộc</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-              {teams.map((t) => {
-                const rScore = roundScores?.[t.id] || 0;
-                const freeCount = freeSpinCount?.[t.id] || 0;
-                const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
-                const strikes =
-                  activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
-                const isEliminatedBySolve = roundEliminatedTeamIds.includes(t.id);
-                const isEliminated = isEliminatedByStrikes || isEliminatedBySolve;
+          {/* Compact Scoreboard (Hidden on Display screen to eliminate duplicate scoreboard) */}
+          {!isDisplay && (
+            <div className="p-3 rounded-2xl bg-black/40 border border-white/10 space-y-2">
+              <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <span>🏆 BẢNG ĐIỂM ({stageBadgeLabel})</span>
+                <span className="text-amber-300">Điểm vòng / Tổng điểm chung cuộc</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                {teams.map((t) => {
+                  const rScore = roundScores?.[t.id] || 0;
+                  const freeCount = freeSpinCount?.[t.id] || 0;
+                  const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
+                  const strikes =
+                    activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
+                  const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+                  const isEliminatedBySolve = roundEliminatedTeamIds.includes(t.id);
+                  const isEliminated = isEliminatedByStrikes || isEliminatedBySolve;
 
-                return (
-                  <div
-                    key={t.id}
-                    onClick={() => {
-                      if (isHost && onOverrideTurn) onOverrideTurn(t.id);
-                    }}
-                    className={`p-2 rounded-xl flex flex-col gap-1 border transition ${
-                      isHost ? "cursor-pointer hover:border-amber-300" : ""
-                    } ${
-                      isEliminated
-                        ? "bg-red-950/20 border-red-500/30 opacity-60"
-                        : isTurn
-                        ? "bg-amber-500/15 border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
-                        : "bg-white/5 border-white/10"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow"
-                          style={{ background: t.color || "#6366f1" }}
-                        />
-                        <span className="text-xs font-bold text-white truncate">{t.name}</span>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <span className="text-xs font-mono font-black text-amber-300">+{rScore.toLocaleString()}đ</span>
-                        <span className="text-[10px] font-mono font-bold text-cyan-300 ml-1.5">
-                          ({(t.score || 0).toLocaleString()}đ)
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-white/5">
-                      {freeCount > 0 ? (
-                        <span className="text-[9px] text-sky-300 font-semibold">🎟️ {freeCount}</span>
-                      ) : (
-                        <span className="text-[9px] text-slate-500">0 thẻ</span>
-                      )}
-                      {isEliminatedBySolve ? (
-                        <span className="text-rose-400 font-bold uppercase text-[9px] flex items-center gap-1" title="Đã dùng hết 1 lượt đoán ô chữ vòng này và đoán sai">
-                          <span>⛔ Hết quyền giải (Đoán sai)</span>
-                          <span className="text-rose-500 font-black">✕✕✕</span>
-                        </span>
-                      ) : isEliminatedByStrikes ? (
-                        <span className="text-rose-400 font-bold uppercase text-[9px]">⛔ Dừng vòng (3/3 X)</span>
-                      ) : (
-                        <div className="flex items-center gap-1" title={`Đoán sai liên tiếp: ${strikes}/3`}>
-                          {[1, 2, 3].map((strikeIdx) => {
-                            const isActiveStrike = strikes >= strikeIdx;
-                            return (
-                              <span
-                                key={strikeIdx}
-                                className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black leading-none border transition-all ${
-                                  isActiveStrike
-                                    ? "bg-rose-500/30 border-rose-400 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.65)] scale-105"
-                                    : "bg-slate-900/70 border-slate-700/60 text-slate-600 opacity-35"
-                                }`}
-                              >
-                                ✕
-                              </span>
-                            );
-                          })}
+                  return (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        if (isHost && onOverrideTurn) onOverrideTurn(t.id);
+                      }}
+                      className={`p-2 rounded-xl flex flex-col gap-1 border transition ${
+                        isHost ? "cursor-pointer hover:border-amber-300" : ""
+                      } ${
+                        isEliminated
+                          ? "bg-red-950/20 border-red-500/30 opacity-60"
+                          : isTurn
+                          ? "bg-amber-500/15 border-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.25)]"
+                          : "bg-white/5 border-white/10"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0 shadow"
+                            style={{ background: t.color || "#6366f1" }}
+                          />
+                          <span className="text-xs font-bold text-white truncate">{t.name}</span>
                         </div>
-                      )}
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-mono font-black text-amber-300">+{rScore.toLocaleString()}đ</span>
+                          <span className="text-[10px] font-mono font-bold text-cyan-300 ml-1.5">
+                            ({(t.score || 0).toLocaleString()}đ)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] pt-0.5 border-t border-white/5">
+                        {freeCount > 0 ? (
+                          <span className="text-[9px] text-sky-300 font-semibold">🎟️ {freeCount}</span>
+                        ) : (
+                          <span className="text-[9px] text-slate-500">0 thẻ</span>
+                        )}
+                        {isEliminatedBySolve ? (
+                          <span className="text-rose-400 font-bold uppercase text-[9px] flex items-center gap-1" title="Đã dùng hết 1 lượt đoán ô chữ vòng này và đoán sai">
+                            <span>⛔ Hết quyền giải (Đoán sai)</span>
+                            <span className="text-rose-500 font-black">✕✕✕</span>
+                          </span>
+                        ) : isEliminatedByStrikes ? (
+                          <span className="text-rose-400 font-bold uppercase text-[9px]">⛔ Dừng vòng (3/3 X)</span>
+                        ) : (
+                          <div className="flex items-center gap-1" title={`Đoán sai liên tiếp: ${strikes}/3`}>
+                            {[1, 2, 3].map((strikeIdx) => {
+                              const isActiveStrike = strikes >= strikeIdx;
+                              return (
+                                <span
+                                  key={strikeIdx}
+                                  className={`inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-black leading-none border transition-all ${
+                                    isActiveStrike
+                                      ? "bg-rose-500/30 border-rose-400 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.65)] scale-105"
+                                      : "bg-slate-900/70 border-slate-700/60 text-slate-600 opacity-35"
+                                  }`}
+                                >
+                                  ✕
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 

@@ -595,75 +595,38 @@ export function generateFlexibleMCCommentary(
 
   switch (event) {
     case "TOSS_UP_START":
-      return pick([
-        `Chào mừng quý vị đến với ${roundLabel || "Vòng Đoán Nhanh"}! Các chữ cái sẽ hiện ra ngẫu nhiên sau mỗi nửa giây, hãy nhanh tay bấm chuông ngay khi nhận ra từ khóa nhé!`,
-        `Bước vào ${roundLabel || "Vòng Đoán Nhanh"}! Ai bấm chuông nhanh nhất và giải chính xác từng dấu thanh sẽ giành điểm thưởng mở màn!`,
-      ]);
+      return `Bắt đầu ${roundLabel || "Vòng Đoán Nhanh"}! Nhanh tay bấm chuông khi đoán ra ô chữ!`;
     case "ROUND_START":
-      return pick([
-        `Chúng ta cùng bước vào ${roundLabel}${category ? ` với chủ đề "${category}"` : ""}. Xin mời ${teamName} thực hiện cú quay mở màn thật may mắn!`,
-        `Ở ${roundLabel}, ô chữ đang chờ được khám phá. Quyền quay đầu tiên thuộc về ${teamName}, xin mời!`,
-      ]);
+      return `${roundLabel}${category ? ` · Chủ đề: "${category}"` : ""}. Mời ${teamName} quay ô chữ!`;
     case "SPIN_HIGH":
-      return pick([
-        `Một cú quay quá đẹp mắt từ ${teamName}! Kim chỉ dừng ngay ở mức điểm rất cao ${points}đ — hãy chọn một chữ cái thật đắt giá nào!`,
-        `Tuyệt vời! ${points} điểm trên mỗi chữ cái đang chờ ${teamName}. Bạn sẽ gọi chữ cái nào đây?`,
-      ]);
+      return `Ô điểm cao: ${points}đ! Mời ${teamName} đoán chữ cái.`;
     case "SPIN_NORMAL":
     case "SPIN_POINTS":
-      return pick([
-        `Vòng quay đã dừng ở ô ${points} điểm. Xin mời ${teamName} đọc chữ cái bạn lựa chọn!`,
-        `Ô ${points} điểm! Cơ hội tích lũy điểm số cho ${teamName}, mời bạn chọn chữ cái!`,
-      ]);
+      return `Dừng ở ô ${points}đ. Mời ${teamName} đoán chữ cái!`;
     case "LOSE_TURN":
-      return pick([
-        `Rất tiếc, kim chỉ vào ô MẤT LƯỢT rồi! Quyền quay xin được chuyển sang Đội ${nextTeamName}.`,
-        `Ô MẤT LƯỢT! Cơ hội xin nhường lại cho Đội ${nextTeamName}, mời bạn!`,
-      ]);
+      return `Mất lượt! Quyền chơi chuyển sang ${nextTeamName}.`;
     case "BANKRUPT":
-      return pick([
-        `Ôi thật đáng tiếc, vòng quay dừng ở ô MẤT ĐIỂM! Điểm vòng này của ${teamName} về 0 và quyền chơi chuyển sang Đội ${nextTeamName}.`,
-      ]);
+      return `Mất điểm! Điểm vòng về 0, chuyển lượt sang ${nextTeamName}.`;
     case "LETTER_HIT":
     case "LETTER_HIT_SINGLE":
     case "LETTER_HIT_MULTI":
       return count <= 1
-        ? pick([
-            `Chính xác! Có 1 chữ "${letter}" trên bảng (+${points}đ). Xin mời người mẫu mở giúp chữ "${letter}" cho ${teamName}!`,
-            `Rất nhạy bén! Có ngay 1 chữ "${letter}" (+${points}đ). Mời người mẫu nhẹ nhàng lật mở ô chữ và ${teamName} tiếp tục giữ quyền quay!`,
-          ])
-        : pick([
-            `Quá ấn tượng! Có tới ${count} chữ "${letter}" xuất hiện trong ô chữ (+${points}đ)! Xin mời bước chân duyên dáng của người mẫu cùng mở ra cả ${count} chữ "${letter}"!`,
-            `Một lựa chọn xuất sắc của ${teamName}! Bảng ô chữ vừa sáng lên ${count} vị trí của chữ "${letter}" (+${points}đ). Mời người mẫu mở giúp các ô chữ!`,
-          ]);
+        ? `Chính xác! Có 1 chữ "${letter}" (+${points}đ). Mời ${teamName} tiếp tục!`
+        : `Chính xác! Có ${count} chữ "${letter}" (+${points}đ). Mời ${teamName} tiếp tục!`;
     case "LETTER_MISS":
-      return pick([
-        `Thật đáng tiếc, trong ô chữ lần này chưa có chữ "${letter}" (Lỗi ${strikes}/3). Cơ hội xin được nhường lại cho ${nextTeamName}!`,
-        `Chữ "${letter}" chưa xuất hiện trên bảng rồi (${strikes}/3 X). Xin mời ${nextTeamName} tiếp tục!`,
-      ]);
+      return `Không có chữ "${letter}" (${strikes}/3 X). Chuyển lượt sang ${nextTeamName}!`;
     case "ALL_BASE_REVEALED":
     case "ALL_LETTERS_OPEN_NEED_TONES":
-      return pick([
-        `Tất cả các chữ cái gốc trên bảng đã lộ diện! Lưu ý các ô chữ chưa kèm dấu thanh điệu — mời ${teamName} bấm Giải Ô Chữ với đầy đủ dấu thanh chính xác để giành chiến thắng!`,
-        `Toàn bộ mặt chữ cái đã mở ra rồi, nhưng thử thách cuối cùng là đặt đúng từng dấu thanh điệu! Xin mời ${teamName} đưa ra đáp án hoàn chỉnh!`,
-      ]);
+      return `Đã lộ hết chữ cái gốc! Mời ${teamName} bấm GIẢI Ô CHỮ với đầy đủ dấu thanh!`;
     case "SOLVE_SUCCESS":
     case "SOLVE_WIN":
-      return pick([
-        `Hoàn toàn chính xác từng chữ cái và dấu thanh! Xin chúc mừng ${teamName} đã chinh phục xuất sắc ô chữ của vòng này (+${points}đ)!`,
-        `Đó chính là đáp án chuẩn xác của chương trình! Một tràng pháo tay thật lớn dành cho ${teamName} (+${points}đ)!`,
-      ]);
+      return `Chính xác! Chúc mừng ${teamName} giải mã thành công (+${points}đ)!`;
     case "SOLVE_WRONG_TONE":
     case "SOLVE_FAIL":
-      return pick([
-        `Rất gần với chiến thắng rồi nhưng dấu thanh hoặc chữ cái chưa hoàn toàn trùng khớp (${strikes}/3 X)! Quyền chơi xin chuyển sang ${nextTeamName}!`,
-        `Câu trả lời vừa rồi chưa khớp chính xác dấu thanh điệu của từ khóa (${strikes}/3 X). Cơ hội đang rộng mở cho ${nextTeamName}!`,
-      ]);
+      return `Đáp án chưa chính xác (${strikes}/3 X)! Chuyển lượt sang ${nextTeamName}.`;
     case "SPECIAL_START":
     case "SPECIAL_INTRO":
-      return pick([
-        `Chào mừng nhà vô địch ${teamName} bước vào Vòng Đặc Biệt! Bạn muốn thử vận may Quay Phong Bì Giải Thưởng trước hay chinh phục Giải Ô Chữ trước?`,
-      ]);
+      return `Vòng Đặc Biệt: Mời ${teamName} chọn phần thi trước!`;
     default:
       return `Mời ${teamName} tiếp tục phần thi!`;
   }

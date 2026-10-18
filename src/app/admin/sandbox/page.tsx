@@ -5484,6 +5484,7 @@ export default function AdminSandboxPage() {
           const totalMain = cur.totalMainRounds || Math.min(8, Math.max(3, prev.teams.length));
           cur.lastSolveFeedback = undefined;
           cur.roundEliminatedTeamIds = [];
+          cur.boardStage = "READY_CLUE";
 
           // 1. Từ TOSS_UP_1 -> TOSS_UP_2
           if (cur.roundStage === "TOSS_UP_1") {

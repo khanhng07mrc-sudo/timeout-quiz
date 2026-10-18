@@ -8101,7 +8101,7 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
       wheelState.tossUpAnswerEndsAt = undefined;
-      wheelState.boardStage = "EMPTY_56";
+      wheelState.boardStage = "READY_CLUE";
 
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);

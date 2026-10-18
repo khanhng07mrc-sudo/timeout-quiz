@@ -469,73 +469,36 @@ function generateFlexibleMCCommentary(eventOrParams, extraParams) {
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   switch (event) {
     case "TOSS_UP_START":
-      return pick([
-        `Ch\xE0o m\u1EEBng qu\xFD v\u1ECB \u0111\u1EBFn v\u1EDBi ${roundLabel || "V\xF2ng \u0110o\xE1n Nhanh"}! C\xE1c ch\u1EEF c\xE1i s\u1EBD hi\u1EC7n ra ng\u1EABu nhi\xEAn sau m\u1ED7i n\u1EEDa gi\xE2y, h\xE3y nhanh tay b\u1EA5m chu\xF4ng ngay khi nh\u1EADn ra t\u1EEB kh\xF3a nh\xE9!`,
-        `B\u01B0\u1EDBc v\xE0o ${roundLabel || "V\xF2ng \u0110o\xE1n Nhanh"}! Ai b\u1EA5m chu\xF4ng nhanh nh\u1EA5t v\xE0 gi\u1EA3i ch\xEDnh x\xE1c t\u1EEBng d\u1EA5u thanh s\u1EBD gi\xE0nh \u0111i\u1EC3m th\u01B0\u1EDFng m\u1EDF m\xE0n!`
-      ]);
+      return `B\u1EAFt \u0111\u1EA7u ${roundLabel || "V\xF2ng \u0110o\xE1n Nhanh"}! Nhanh tay b\u1EA5m chu\xF4ng khi \u0111o\xE1n ra \xF4 ch\u1EEF!`;
     case "ROUND_START":
-      return pick([
-        `Ch\xFAng ta c\xF9ng b\u01B0\u1EDBc v\xE0o ${roundLabel}${category ? ` v\u1EDBi ch\u1EE7 \u0111\u1EC1 "${category}"` : ""}. Xin m\u1EDDi ${teamName} th\u1EF1c hi\u1EC7n c\xFA quay m\u1EDF m\xE0n th\u1EADt may m\u1EAFn!`,
-        `\u1EDE ${roundLabel}, \xF4 ch\u1EEF \u0111ang ch\u1EDD \u0111\u01B0\u1EE3c kh\xE1m ph\xE1. Quy\u1EC1n quay \u0111\u1EA7u ti\xEAn thu\u1ED9c v\u1EC1 ${teamName}, xin m\u1EDDi!`
-      ]);
+      return `${roundLabel}${category ? ` \xB7 Ch\u1EE7 \u0111\u1EC1: "${category}"` : ""}. M\u1EDDi ${teamName} quay \xF4 ch\u1EEF!`;
     case "SPIN_HIGH":
-      return pick([
-        `M\u1ED9t c\xFA quay qu\xE1 \u0111\u1EB9p m\u1EAFt t\u1EEB ${teamName}! Kim ch\u1EC9 d\u1EEBng ngay \u1EDF m\u1EE9c \u0111i\u1EC3m r\u1EA5t cao ${points}\u0111 \u2014 h\xE3y ch\u1ECDn m\u1ED9t ch\u1EEF c\xE1i th\u1EADt \u0111\u1EAFt gi\xE1 n\xE0o!`,
-        `Tuy\u1EC7t v\u1EDDi! ${points} \u0111i\u1EC3m tr\xEAn m\u1ED7i ch\u1EEF c\xE1i \u0111ang ch\u1EDD ${teamName}. B\u1EA1n s\u1EBD g\u1ECDi ch\u1EEF c\xE1i n\xE0o \u0111\xE2y?`
-      ]);
+      return `\xD4 \u0111i\u1EC3m cao: ${points}\u0111! M\u1EDDi ${teamName} \u0111o\xE1n ch\u1EEF c\xE1i.`;
     case "SPIN_NORMAL":
     case "SPIN_POINTS":
-      return pick([
-        `V\xF2ng quay \u0111\xE3 d\u1EEBng \u1EDF \xF4 ${points} \u0111i\u1EC3m. Xin m\u1EDDi ${teamName} \u0111\u1ECDc ch\u1EEF c\xE1i b\u1EA1n l\u1EF1a ch\u1ECDn!`,
-        `\xD4 ${points} \u0111i\u1EC3m! C\u01A1 h\u1ED9i t\xEDch l\u0169y \u0111i\u1EC3m s\u1ED1 cho ${teamName}, m\u1EDDi b\u1EA1n ch\u1ECDn ch\u1EEF c\xE1i!`
-      ]);
+      return `D\u1EEBng \u1EDF \xF4 ${points}\u0111. M\u1EDDi ${teamName} \u0111o\xE1n ch\u1EEF c\xE1i!`;
     case "LOSE_TURN":
-      return pick([
-        `R\u1EA5t ti\u1EBFc, kim ch\u1EC9 v\xE0o \xF4 M\u1EA4T L\u01AF\u1EE2T r\u1ED3i! Quy\u1EC1n quay xin \u0111\u01B0\u1EE3c chuy\u1EC3n sang \u0110\u1ED9i ${nextTeamName}.`,
-        `\xD4 M\u1EA4T L\u01AF\u1EE2T! C\u01A1 h\u1ED9i xin nh\u01B0\u1EDDng l\u1EA1i cho \u0110\u1ED9i ${nextTeamName}, m\u1EDDi b\u1EA1n!`
-      ]);
+      return `M\u1EA5t l\u01B0\u1EE3t! Quy\u1EC1n ch\u01A1i chuy\u1EC3n sang ${nextTeamName}.`;
     case "BANKRUPT":
-      return pick([
-        `\xD4i th\u1EADt \u0111\xE1ng ti\u1EBFc, v\xF2ng quay d\u1EEBng \u1EDF \xF4 M\u1EA4T \u0110I\u1EC2M! \u0110i\u1EC3m v\xF2ng n\xE0y c\u1EE7a ${teamName} v\u1EC1 0 v\xE0 quy\u1EC1n ch\u01A1i chuy\u1EC3n sang \u0110\u1ED9i ${nextTeamName}.`
-      ]);
+      return `M\u1EA5t \u0111i\u1EC3m! \u0110i\u1EC3m v\xF2ng v\u1EC1 0, chuy\u1EC3n l\u01B0\u1EE3t sang ${nextTeamName}.`;
     case "LETTER_HIT":
     case "LETTER_HIT_SINGLE":
     case "LETTER_HIT_MULTI":
-      return count <= 1 ? pick([
-        `Ch\xEDnh x\xE1c! C\xF3 1 ch\u1EEF "${letter}" tr\xEAn b\u1EA3ng (+${points}\u0111). Xin m\u1EDDi ng\u01B0\u1EDDi m\u1EABu m\u1EDF gi\xFAp ch\u1EEF "${letter}" cho ${teamName}!`,
-        `R\u1EA5t nh\u1EA1y b\xE9n! C\xF3 ngay 1 ch\u1EEF "${letter}" (+${points}\u0111). M\u1EDDi ng\u01B0\u1EDDi m\u1EABu nh\u1EB9 nh\xE0ng l\u1EADt m\u1EDF \xF4 ch\u1EEF v\xE0 ${teamName} ti\u1EBFp t\u1EE5c gi\u1EEF quy\u1EC1n quay!`
-      ]) : pick([
-        `Qu\xE1 \u1EA5n t\u01B0\u1EE3ng! C\xF3 t\u1EDBi ${count} ch\u1EEF "${letter}" xu\u1EA5t hi\u1EC7n trong \xF4 ch\u1EEF (+${points}\u0111)! Xin m\u1EDDi b\u01B0\u1EDBc ch\xE2n duy\xEAn d\xE1ng c\u1EE7a ng\u01B0\u1EDDi m\u1EABu c\xF9ng m\u1EDF ra c\u1EA3 ${count} ch\u1EEF "${letter}"!`,
-        `M\u1ED9t l\u1EF1a ch\u1ECDn xu\u1EA5t s\u1EAFc c\u1EE7a ${teamName}! B\u1EA3ng \xF4 ch\u1EEF v\u1EEBa s\xE1ng l\xEAn ${count} v\u1ECB tr\xED c\u1EE7a ch\u1EEF "${letter}" (+${points}\u0111). M\u1EDDi ng\u01B0\u1EDDi m\u1EABu m\u1EDF gi\xFAp c\xE1c \xF4 ch\u1EEF!`
-      ]);
+      return count <= 1 ? `Ch\xEDnh x\xE1c! C\xF3 1 ch\u1EEF "${letter}" (+${points}\u0111). M\u1EDDi ${teamName} ti\u1EBFp t\u1EE5c!` : `Ch\xEDnh x\xE1c! C\xF3 ${count} ch\u1EEF "${letter}" (+${points}\u0111). M\u1EDDi ${teamName} ti\u1EBFp t\u1EE5c!`;
     case "LETTER_MISS":
-      return pick([
-        `Th\u1EADt \u0111\xE1ng ti\u1EBFc, trong \xF4 ch\u1EEF l\u1EA7n n\xE0y ch\u01B0a c\xF3 ch\u1EEF "${letter}" (L\u1ED7i ${strikes}/3). C\u01A1 h\u1ED9i xin \u0111\u01B0\u1EE3c nh\u01B0\u1EDDng l\u1EA1i cho ${nextTeamName}!`,
-        `Ch\u1EEF "${letter}" ch\u01B0a xu\u1EA5t hi\u1EC7n tr\xEAn b\u1EA3ng r\u1ED3i (${strikes}/3 X). Xin m\u1EDDi ${nextTeamName} ti\u1EBFp t\u1EE5c!`
-      ]);
+      return `Kh\xF4ng c\xF3 ch\u1EEF "${letter}" (${strikes}/3 X). Chuy\u1EC3n l\u01B0\u1EE3t sang ${nextTeamName}!`;
     case "ALL_BASE_REVEALED":
     case "ALL_LETTERS_OPEN_NEED_TONES":
-      return pick([
-        `T\u1EA5t c\u1EA3 c\xE1c ch\u1EEF c\xE1i g\u1ED1c tr\xEAn b\u1EA3ng \u0111\xE3 l\u1ED9 di\u1EC7n! L\u01B0u \xFD c\xE1c \xF4 ch\u1EEF ch\u01B0a k\xE8m d\u1EA5u thanh \u0111i\u1EC7u \u2014 m\u1EDDi ${teamName} b\u1EA5m Gi\u1EA3i \xD4 Ch\u1EEF v\u1EDBi \u0111\u1EA7y \u0111\u1EE7 d\u1EA5u thanh ch\xEDnh x\xE1c \u0111\u1EC3 gi\xE0nh chi\u1EBFn th\u1EAFng!`,
-        `To\xE0n b\u1ED9 m\u1EB7t ch\u1EEF c\xE1i \u0111\xE3 m\u1EDF ra r\u1ED3i, nh\u01B0ng th\u1EED th\xE1ch cu\u1ED1i c\xF9ng l\xE0 \u0111\u1EB7t \u0111\xFAng t\u1EEBng d\u1EA5u thanh \u0111i\u1EC7u! Xin m\u1EDDi ${teamName} \u0111\u01B0a ra \u0111\xE1p \xE1n ho\xE0n ch\u1EC9nh!`
-      ]);
+      return `\u0110\xE3 l\u1ED9 h\u1EBFt ch\u1EEF c\xE1i g\u1ED1c! M\u1EDDi ${teamName} b\u1EA5m GI\u1EA2I \xD4 CH\u1EEE v\u1EDBi \u0111\u1EA7y \u0111\u1EE7 d\u1EA5u thanh!`;
     case "SOLVE_SUCCESS":
     case "SOLVE_WIN":
-      return pick([
-        `Ho\xE0n to\xE0n ch\xEDnh x\xE1c t\u1EEBng ch\u1EEF c\xE1i v\xE0 d\u1EA5u thanh! Xin ch\xFAc m\u1EEBng ${teamName} \u0111\xE3 chinh ph\u1EE5c xu\u1EA5t s\u1EAFc \xF4 ch\u1EEF c\u1EE7a v\xF2ng n\xE0y (+${points}\u0111)!`,
-        `\u0110\xF3 ch\xEDnh l\xE0 \u0111\xE1p \xE1n chu\u1EA9n x\xE1c c\u1EE7a ch\u01B0\u01A1ng tr\xECnh! M\u1ED9t tr\xE0ng ph\xE1o tay th\u1EADt l\u1EDBn d\xE0nh cho ${teamName} (+${points}\u0111)!`
-      ]);
+      return `Ch\xEDnh x\xE1c! Ch\xFAc m\u1EEBng ${teamName} gi\u1EA3i m\xE3 th\xE0nh c\xF4ng (+${points}\u0111)!`;
     case "SOLVE_WRONG_TONE":
     case "SOLVE_FAIL":
-      return pick([
-        `R\u1EA5t g\u1EA7n v\u1EDBi chi\u1EBFn th\u1EAFng r\u1ED3i nh\u01B0ng d\u1EA5u thanh ho\u1EB7c ch\u1EEF c\xE1i ch\u01B0a ho\xE0n to\xE0n tr\xF9ng kh\u1EDBp (${strikes}/3 X)! Quy\u1EC1n ch\u01A1i xin chuy\u1EC3n sang ${nextTeamName}!`,
-        `C\xE2u tr\u1EA3 l\u1EDDi v\u1EEBa r\u1ED3i ch\u01B0a kh\u1EDBp ch\xEDnh x\xE1c d\u1EA5u thanh \u0111i\u1EC7u c\u1EE7a t\u1EEB kh\xF3a (${strikes}/3 X). C\u01A1 h\u1ED9i \u0111ang r\u1ED9ng m\u1EDF cho ${nextTeamName}!`
-      ]);
+      return `\u0110\xE1p \xE1n ch\u01B0a ch\xEDnh x\xE1c (${strikes}/3 X)! Chuy\u1EC3n l\u01B0\u1EE3t sang ${nextTeamName}.`;
     case "SPECIAL_START":
     case "SPECIAL_INTRO":
-      return pick([
-        `Ch\xE0o m\u1EEBng nh\xE0 v\xF4 \u0111\u1ECBch ${teamName} b\u01B0\u1EDBc v\xE0o V\xF2ng \u0110\u1EB7c Bi\u1EC7t! B\u1EA1n mu\u1ED1n th\u1EED v\u1EADn may Quay Phong B\xEC Gi\u1EA3i Th\u01B0\u1EDFng tr\u01B0\u1EDBc hay chinh ph\u1EE5c Gi\u1EA3i \xD4 Ch\u1EEF tr\u01B0\u1EDBc?`
-      ]);
+      return `V\xF2ng \u0110\u1EB7c Bi\u1EC7t: M\u1EDDi ${teamName} ch\u1ECDn ph\u1EA7n thi tr\u01B0\u1EDBc!`;
     default:
       return `M\u1EDDi ${teamName} ti\u1EBFp t\u1EE5c ph\u1EA7n thi!`;
   }
@@ -15241,7 +15204,7 @@ function registerSocketHandlers(io2) {
       wheelState.tossUpBuzzedTeamId = void 0;
       wheelState.tossUpBuzzedTeamName = void 0;
       wheelState.tossUpAnswerEndsAt = void 0;
-      wheelState.boardStage = "EMPTY_56";
+      wheelState.boardStage = "READY_CLUE";
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);
         wheelState.phase = "TOSS_UP_READY";

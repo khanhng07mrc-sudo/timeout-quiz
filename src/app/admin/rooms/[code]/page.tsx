@@ -1460,8 +1460,10 @@ export default function AdminRoomPage() {
                 <MagicWheelBoard
                   wheelState={roomState.magicWheelState}
                   isDisplay={false}
+                  isHost={true}
                   teams={roomState.teams}
                   isMyTurn={true}
+                  onOpenBoard={() => emit("admin:magic_wheel:open_board")}
                   onSpin={(power) => emit("magic_wheel:spin", { power })}
                   onGuessLetter={(letter) => emit("magic_wheel:guess_letter", { letter })}
                   onSolvePuzzle={(answer) => emit("magic_wheel:solve_puzzle", { answer })}

@@ -830,6 +830,7 @@ export interface MagicWheelState {
   targetRotationDegrees: number;
   selectedSectorIndex?: number;
   selectedSector?: MagicWheelSector;
+  boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE"; // Trạng thái hiển thị bảng ô chữ 56 ô
   guessedLetters: string[]; // Các chữ cái đã đoán ("A", "B", "C"...)
   wrongGuessesCount: Record<string, number>; // teamId -> số lỗi liên tiếp
   freeSpinCount: Record<string, number>; // teamId -> số lần có Thêm Lượt
@@ -1928,9 +1929,11 @@ export interface ClientToServerEvents {
   "magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "magic_wheel:set_operation_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "magic_wheel:judge_solve": (payload: { isCorrect?: boolean; correct?: boolean }) => void;
+  "magic_wheel:open_board": () => void;
   "magic_wheel:pass_turn": () => void;
   "magic_wheel:quick_reveal": () => void;
   "magic_wheel:override_turn": (payload: { teamId: string }) => void;
+  "admin:magic_wheel:open_board": () => void;
   "admin:magic_wheel:next_round": () => void;
   "admin:magic_wheel:advance_round": () => void;
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;

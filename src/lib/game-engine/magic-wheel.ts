@@ -82,6 +82,7 @@ export interface MagicWheelState {
   targetRotationDegrees: number;
   selectedSectorIndex?: number;
   selectedSector?: MagicWheelSector;
+  boardStage?: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE";
   guessedLetters: string[]; // Các chữ cái đã đoán ("A", "B", "C"...)
   wrongGuessesCount: Record<string, number>; // teamId -> số lỗi liên tiếp
   freeSpinCount: Record<string, number>; // teamId -> số lần có Thêm Lượt

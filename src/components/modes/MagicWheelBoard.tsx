@@ -77,6 +77,7 @@ export interface MagicWheelBoardProps {
   onSetOperationMode?: (mode: MagicWheelOperationMode) => void;
   onJudgeSolve?: (isCorrect: boolean) => void;
   onNextRound?: () => void;
+  onOpenBoard?: () => void;
 }
 
 interface RewardCardItem {
@@ -598,6 +599,7 @@ export default function MagicWheelBoard({
   onNextRound,
   onRevealAll,
   onQuickRevealLetter,
+  onOpenBoard,
 }: MagicWheelBoardProps) {
   const activeState = magicWheelState || wheelState;
   if (!activeState) return null;
@@ -719,25 +721,22 @@ export default function MagicWheelBoard({
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
+  const effectiveBoardStage: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE" =
+    activeState.boardStage || boardStage;
 
   const handleOpenBoard = useCallback(() => {
-    soundManager.playMagicWheelBoardOpen();
+    if (canPlayBoardAudio) soundManager.playMagicWheelBoardOpen();
     setBoardStage("BLANK_PHRASE");
+    onOpenBoard?.();
     setTimeout(() => {
       setBoardStage("READY_CLUE");
     }, 1400);
-  }, []);
+  }, [canPlayBoardAudio, onOpenBoard]);
 
   useEffect(() => {
-    setBoardStage("EMPTY_56");
-    // In SELF_SERVICE mode, automatically open the puzzle board 1.2s after round starts (after the 5s warmup countdown has completed)
-    if (operationMode === "SELF_SERVICE") {
-      const t = setTimeout(() => {
-        handleOpenBoard();
-      }, 1200);
-      return () => clearTimeout(t);
-    }
-  }, [currentRound, operationMode, handleOpenBoard]);
+    // Luôn giữ ở trạng thái theo phòng (mặc định EMPTY_56), KHÔNG TỰ ĐỘNG MỞ nếu MC chưa bấm!
+    setBoardStage(activeState.boardStage || "EMPTY_56");
+  }, [currentRound, activeState.boardStage]);
 
   // ── Ô May Mắn 2-Step Interaction State ──────────────────────────────────
   const [luckyGreenSelectedIdx, setLuckyGreenSelectedIdx] = useState<number | null>(null);
@@ -1011,7 +1010,7 @@ export default function MagicWheelBoard({
 
   useEffect(() => {
     if (phase !== "TOSS_UP_RUNNING") return;
-    if (boardStage === "EMPTY_56") {
+    if (effectiveBoardStage === "EMPTY_56") {
       handleOpenBoard();
     }
 
@@ -1094,7 +1093,7 @@ export default function MagicWheelBoard({
     };
   }, [
     phase,
-    boardStage,
+    effectiveBoardStage,
     currentPuzzle?.secretPhrase,
     currentPuzzle?.revealedIndices?.length,
     cellPositionsMap,
@@ -1531,27 +1530,49 @@ export default function MagicWheelBoard({
         </div>
       </div>
 
+      {/* ── MC DEDICATED CONTROL BAR: MỞ Ô CHỮ & CHỦ ĐỀ (ĐỘC LẬP, KHÔNG ĐÈ LÊN MA TRẬN Ô CHỮ) ── */}
+      {isHost && effectiveBoardStage === "EMPTY_56" && (
+        <div className="w-full flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-amber-950/85 via-slate-900/95 to-amber-950/85 border-2 border-amber-400/60 shadow-xl">
+          <div className="flex items-center gap-2.5">
+            <span className="text-2xl animate-pulse">🎙️</span>
+            <div>
+              <div className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+                Bảng ô chữ đang đóng (56 ô xanh VTV3)
+              </div>
+              <div className="text-[11px] text-slate-300">
+                Chỉ có Quản trò/MC mới có quyền mở câu hỏi. Nhấn nút để mở các ô chữ và công bố chủ đề cho tất cả các máy!
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleOpenBoard}
+            className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_20px_rgba(245,158,11,0.6)] hover:brightness-110 active:scale-95 transition cursor-pointer animate-pulse border-2 border-yellow-200 shrink-0"
+          >
+            ⭐ MỞ Ô CHỮ & CHỦ ĐỀ (MC) ⭐
+          </button>
+        </div>
+      )}
+
       {/* ── THE ICONIC VTV3 PUZZLE BOARD GRID (4 ROWS x 14 COLS = 56 TILES) + VIRTUAL HOSTESS ─ */}
       {subMode === "WORD_PUZZLE" && (
         <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden">
-          {/* Header Action: MC/Admin Open Board Button OR Category Banner */}
-          {boardStage === "EMPTY_56" ? (
-            <div className="mb-2 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={handleOpenBoard}
-                className="px-5 py-2 rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-amber-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-[0_0_25px_rgba(245,158,11,0.7)] hover:brightness-110 active:scale-95 transition cursor-pointer animate-bounce border-2 border-yellow-200"
-              >
-                ⭐ MỞ Ô CHỮ & CHỦ ĐỀ ⭐
-              </button>
-            </div>
-          ) : (
-            <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
-              {boardStage === "READY_CLUE"
-                ? `⭐ CHỦ ĐỀ: ${currentPuzzle?.category || "TỔNG HỢP"} ⭐`
-                : "⭐ ĐANG LẬT MỞ BẢNG Ô CHỮ... ⭐"}
-            </div>
-          )}
+          {/* Header Action: Category Banner OR Waiting Badge (Tuyệt đối không có nút bấm đè lên ô chữ) */}
+          <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
+            {effectiveBoardStage === "EMPTY_56" ? (
+              isHost ? (
+                <span>⭐ BẢNG Ô CHỮ SẴN SÀNG — BẤM NÚT MC PHÍA TRÊN ĐỂ MỞ ⭐</span>
+              ) : isDisplay ? (
+                <span className="animate-pulse">⭐ MỜI QUÝ VỊ ĐÓN XEM Ô CHỮ & CHỦ ĐỀ SẮP ĐƯỢC MỞ ⭐</span>
+              ) : (
+                <span className="animate-pulse">⏳ Chờ Quản trò/MC mở ô chữ & chủ đề...</span>
+              )
+            ) : effectiveBoardStage === "BLANK_PHRASE" ? (
+              <span className="animate-pulse">⭐ ĐANG LẬT MỞ BẢNG Ô CHỮ... ⭐</span>
+            ) : (
+              <span>⭐ CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"} ⭐</span>
+            )}
+          </div>
 
           {/* Mandatory Tone Solve Alert when all base letters are open */}
           {mustSolveWithTones && phase !== "ROUND_RECAP" && (
@@ -1681,7 +1702,7 @@ export default function MagicWheelBoard({
                   className="grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1 sm:gap-1.5 md:gap-2 w-full items-center justify-items-center"
                 >
                   {row.map((cell, cIdx) => {
-                    if (!cell || boardStage === "EMPTY_56") {
+                    if (!cell || effectiveBoardStage === "EMPTY_56") {
                       return (
                         <div
                           key={cIdx}
@@ -1749,7 +1770,7 @@ export default function MagicWheelBoard({
           {/* Bottom Clue Bar (Dải băng phụ đề VTV3 - hiện khi READY_CLUE) */}
           <div className="w-full mt-2.5 p-2.5 rounded-xl bg-gradient-to-r from-red-950/80 via-black/90 to-red-950/80 border-y-2 border-red-500/60 shadow-lg flex items-center justify-center text-center">
             <p className="text-xs sm:text-sm font-semibold text-slate-100 tracking-wide">
-              {boardStage === "READY_CLUE"
+              {effectiveBoardStage === "READY_CLUE"
                 ? currentPuzzle?.clue || "Lắng nghe gợi ý từ người dẫn chương trình và đoán các chữ cái!"
                 : "Bảng ô chữ đang chuẩn bị..."}
             </p>
@@ -2145,7 +2166,7 @@ export default function MagicWheelBoard({
                         <button
                           type="button"
                           onClick={() => {
-                            if (boardStage === "EMPTY_56") handleOpenBoard();
+                            if (effectiveBoardStage === "EMPTY_56") handleOpenBoard();
                             onTossUpStart?.();
                           }}
                           className="px-4 py-2 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 shadow-lg hover:brightness-110 cursor-pointer animate-pulse"

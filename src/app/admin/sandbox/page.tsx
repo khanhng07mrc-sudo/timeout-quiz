@@ -5085,6 +5085,27 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
+      } else if (e.data?.type === "MAGIC_WHEEL_OPEN_BOARD") {
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState, boardStage: "BLANK_PHRASE" as const };
+          cur.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          setTimeout(() => {
+            setRoomState((latest) => {
+              if (!latest || !latest.magicWheelState) return latest;
+              const readyCur = { ...latest.magicWheelState, boardStage: "READY_CLUE" as const };
+              readyCur.lastActionMessage = `⭐ CHỦ ĐỀ: ${readyCur.currentPuzzle?.category || "TỔNG HỢP"} — ${readyCur.currentPuzzle?.clue || ""}`;
+              const readyRoom = { ...latest, magicWheelState: readyCur };
+              roomStateRef.current = readyRoom;
+              syncToIframes({ roomState: readyRoom });
+              return readyRoom;
+            });
+          }, 1400);
+          return nextRoom;
+        });
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_START") {
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState?.currentPuzzle) return prev;
@@ -10175,9 +10196,6 @@ export default function AdminSandboxPage() {
 
                 {/* Quick Test Controls */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {/* Contextual Quick MC Action */}
-                  {renderQuickMcAction()}
-
                   {selectedMode === "MAGIC_WHEEL" ? null : (
                     <>
                       <button
@@ -10822,6 +10840,13 @@ export default function AdminSandboxPage() {
                       isHost={true}
                       teams={roomState.teams}
                       isMyTurn={true}
+                      onOpenBoard={() => {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
+                        }
+                      }}
                       onSpin={(power) => {
                         if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:spin" as any, { power });

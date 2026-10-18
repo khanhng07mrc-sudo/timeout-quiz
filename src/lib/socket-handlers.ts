@@ -4201,6 +4201,7 @@ export function registerSocketHandlers(io: IO) {
           const wheelState: MagicWheelState = {
             subMode,
             operationMode,
+            boardStage: "EMPTY_56",
             sectors: generateMagicWheelSectors(1, firstStage),
             currentTurnTeamId: teams[0]?.id || "",
             currentTurnTeamName: teams[0]?.name || "",
@@ -8074,6 +8075,7 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
       wheelState.tossUpAnswerEndsAt = undefined;
+      wheelState.boardStage = "EMPTY_56";
 
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);
@@ -9348,6 +9350,34 @@ export function registerSocketHandlers(io: IO) {
       const { roomId, roomCode } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       await handleAdvanceMagicWheelRound(roomId, roomCode);
+    });
+
+    const handleOpenMagicWheelBoard = async (roomId: string, roomCode: string) => {
+      const wheelState = roomMagicWheels.get(roomId);
+      if (!wheelState) return;
+      wheelState.boardStage = "BLANK_PHRASE";
+      wheelState.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
+      io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      setTimeout(() => {
+        const cur = roomMagicWheels.get(roomId);
+        if (cur && cur.boardStage === "BLANK_PHRASE") {
+          cur.boardStage = "READY_CLUE";
+          cur.lastActionMessage = `⭐ CHỦ ĐỀ: ${cur.currentPuzzle?.category || "TỔNG HỢP"} — ${cur.currentPuzzle?.clue || ""}`;
+          io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+        }
+      }, 1400);
+    };
+
+    socket.on("admin:magic_wheel:open_board", async () => {
+      const room = await getAdminRoom(socket);
+      if (!room || room.mode !== "MAGIC_WHEEL") return;
+      await handleOpenMagicWheelBoard(room.id, room.code);
+    });
+
+    socket.on("magic_wheel:open_board", async () => {
+      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      if (!roomId || !roomCode) return;
+      await handleOpenMagicWheelBoard(roomId, roomCode);
     });
 
     socket.on("magic_wheel:set_mode", async (payload: { mode: MagicWheelOperationMode }) => {

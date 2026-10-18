@@ -1898,7 +1898,9 @@ export default function MagicWheelBoard({
               )}
             </div>
             <p className="text-[11px] text-slate-400 font-medium">
-              Màn {currentRound}/{maxRounds} · Chữ mở trên bảng không kèm dấu thanh · Giải ô chữ cần đúng dấu thanh
+              {isDisplay
+                ? `Màn ${currentRound}/${maxRounds}`
+                : `Màn ${currentRound}/${maxRounds} · Chữ mở trên bảng không kèm dấu thanh · Giải ô chữ cần đúng dấu thanh`}
             </p>
           </div>
         </div>
@@ -2058,25 +2060,25 @@ export default function MagicWheelBoard({
       {/* ── THE ICONIC VTV3 PUZZLE BOARD GRID (4 ROWS x 14 COLS = 56 TILES) + VIRTUAL HOSTESS ─ */}
       {subMode === "WORD_PUZZLE" && (
         <div className="w-full flex flex-col items-center bg-gradient-to-b from-[#0e2a14] via-[#091f0e] to-[#051408] p-2.5 sm:p-4 rounded-2xl border-4 border-[#1b4e22] shadow-[0_0_30px_rgba(22,101,52,0.3)] relative overflow-hidden">
-          {/* Header Action: Category Banner OR Waiting Badge (Tuyệt đối không có nút bấm đè lên ô chữ) */}
-          <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
-            {effectiveBoardStage === "EMPTY_56" ? (
-              isHost ? (
-                <span>⭐ BẢNG Ô CHỮ SẴN SÀNG — BẤM NÚT MC PHÍA TRÊN ĐỂ MỞ ⭐</span>
-              ) : isDisplay ? (
-                <span className="animate-pulse">⭐ MỜI QUÝ VỊ ĐÓN XEM Ô CHỮ & CHỦ ĐỀ SẮP ĐƯỢC MỞ ⭐</span>
+          {/* Header Action: Category Banner OR Waiting Badge (Hidden on Display to avoid duplicate with lower-third) */}
+          {!isDisplay && (
+            <div className="mb-2 px-3.5 py-1 rounded-full bg-black/60 border border-amber-400/40 text-amber-300 font-black text-xs sm:text-sm uppercase tracking-widest shadow transition-all duration-500 animate-scale-up">
+              {effectiveBoardStage === "EMPTY_56" ? (
+                isHost ? (
+                  <span>⭐ BẢNG Ô CHỮ SẴN SÀNG — BẤM NÚT MC PHÍA TRÊN ĐỂ MỞ ⭐</span>
+                ) : (
+                  <span className="animate-pulse">⏳ Chờ Quản trò/MC mở ô chữ & chủ đề...</span>
+                )
+              ) : effectiveBoardStage === "BLANK_PHRASE" ? (
+                <span className="animate-pulse">⭐ ĐANG LẬT MỞ BẢNG Ô CHỮ... ⭐</span>
               ) : (
-                <span className="animate-pulse">⏳ Chờ Quản trò/MC mở ô chữ & chủ đề...</span>
-              )
-            ) : effectiveBoardStage === "BLANK_PHRASE" ? (
-              <span className="animate-pulse">⭐ ĐANG LẬT MỞ BẢNG Ô CHỮ... ⭐</span>
-            ) : (
-              <span>⭐ CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"} ⭐</span>
-            )}
-          </div>
+                <span>⭐ CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"} ⭐</span>
+              )}
+            </div>
+          )}
 
-          {/* Mandatory Tone Solve Alert when all base letters are open */}
-          {mustSolveWithTones && phase !== "ROUND_RECAP" && (
+          {/* Mandatory Tone Solve Alert when all base letters are open (Player/Host only) */}
+          {!isDisplay && mustSolveWithTones && phase !== "ROUND_RECAP" && (
             <div className="mb-2 px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/30 via-yellow-400/30 to-amber-500/30 border-2 border-amber-300 text-amber-100 text-xs sm:text-sm font-black flex items-center gap-2 animate-pulse shadow-lg">
               <span>🔔</span>
               <span>
@@ -2085,8 +2087,8 @@ export default function MagicWheelBoard({
             </div>
           )}
 
-          {/* Ô May Mắn MC Guide Banner */}
-          {phase === "LUCKY_PICK" && (
+          {/* Ô May Mắn MC Guide Banner (Player/Host only) */}
+          {!isDisplay && phase === "LUCKY_PICK" && (
             <div className="mb-2 px-3 py-1.5 rounded-xl bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 text-[11px] sm:text-xs font-bold flex items-center gap-2 animate-pulse shadow-lg">
               <span className="text-base">🍀</span>
               <span>

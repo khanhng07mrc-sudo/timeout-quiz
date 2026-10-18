@@ -526,7 +526,7 @@ export function matchWholeSecretPhrase(phrase: string, guess: string): boolean {
     .trim()
     .toUpperCase()
     .normalize("NFC")
-    .replace(/[-,.!?]/g, " ")
+    .replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -534,7 +534,7 @@ export function matchWholeSecretPhrase(phrase: string, guess: string): boolean {
     .trim()
     .toUpperCase()
     .normalize("NFC")
-    .replace(/[-,.!?]/g, " ")
+    .replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 

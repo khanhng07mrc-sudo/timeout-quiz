@@ -1178,7 +1178,10 @@ export default function MagicWheelBoard({
       [],
       [],
     ];
-    let targetRow = 1;
+    // Order of rows to use for visual centering: row 1, row 2, row 0, row 3
+    const rowOrder = [1, 2, 0, 3];
+    let rowOrderIdx = 0;
+    let targetRow = rowOrder[rowOrderIdx];
 
     for (let i = 0; i < words.length; i++) {
       const item = words[i];
@@ -1191,9 +1194,10 @@ export default function MagicWheelBoard({
         rowLines[targetRow].push({ word: chunk, startGlobalIdx: startIdx });
         w = w.slice(COLS);
         startIdx += COLS;
-        if (targetRow === 1) targetRow = 2;
-        else if (targetRow === 2) targetRow = 0;
-        else if (targetRow === 0) targetRow = 3;
+        if (rowOrderIdx < rowOrder.length - 1) {
+          rowOrderIdx++;
+          targetRow = rowOrder[rowOrderIdx];
+        }
       }
 
       if (w.length === 0) continue;
@@ -1208,16 +1212,19 @@ export default function MagicWheelBoard({
       if (neededWithSpace <= COLS) {
         rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx });
       } else {
-        // Try fitting without space before this word (flexible space compression)
-        const neededWithoutSpace = currentChars - (rowLines[targetRow].length > 0 ? 1 : 0) + w.length;
-        if (rowLines[targetRow].length > 0 && neededWithoutSpace <= COLS) {
-          rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx, omitSpaceBefore: true });
-        } else {
-          // Move to next available row
-          if (targetRow === 1) targetRow = 2;
-          else if (targetRow === 2) targetRow = 0;
-          else if (targetRow === 0) targetRow = 3;
+        // Priority: Wrap to next available row first
+        if (rowOrderIdx < rowOrder.length - 1) {
+          rowOrderIdx++;
+          targetRow = rowOrder[rowOrderIdx];
           rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx });
+        } else {
+          // If all 4 rows are used, attempt space compression on the last line
+          const neededWithoutSpace = currentChars - (rowLines[targetRow].length > 0 ? 1 : 0) + w.length;
+          if (rowLines[targetRow].length > 0 && neededWithoutSpace <= COLS) {
+            rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx, omitSpaceBefore: true });
+          } else {
+            rowLines[targetRow].push({ word: w, startGlobalIdx: startIdx });
+          }
         }
       }
     }

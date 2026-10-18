@@ -449,8 +449,8 @@ function isPuzzleFullyRevealed(phrase, revealedIndices) {
   return true;
 }
 function matchWholeSecretPhrase(phrase, guess) {
-  const cleanPhrase = phrase.trim().toUpperCase().normalize("NFC").replace(/[-,.!?]/g, " ").replace(/\s+/g, " ").trim();
-  const cleanGuess = guess.trim().toUpperCase().normalize("NFC").replace(/[-,.!?]/g, " ").replace(/\s+/g, " ").trim();
+  const cleanPhrase = phrase.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const cleanGuess = guess.trim().toUpperCase().normalize("NFC").replace(/[^A-ZÀ-Ỹ0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   return cleanPhrase.length > 0 && cleanPhrase === cleanGuess;
 }
 function generateFlexibleMCCommentary(eventOrParams, extraParams) {

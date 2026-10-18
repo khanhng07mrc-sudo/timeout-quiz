@@ -1021,29 +1021,8 @@ export default function MagicWheelBoard({
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
-  const [recapCountdown, setRecapCountdown] = useState<number>(8);
   const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
   const prevSolveFeedbackRef = useRef<typeof lastSolveFeedback>(undefined);
-
-  // Auto-advance to next round after 8s recap when puzzle is announced / solved
-  useEffect(() => {
-    if (phase !== "ROUND_RECAP") return;
-    setRecapCountdown(8);
-    const interval = setInterval(() => {
-      setRecapCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          if (isHost) {
-            if (onNextRound) onNextRound();
-            else if (onAdvanceRound) onAdvanceRound();
-          }
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [phase, isHost, onNextRound, onAdvanceRound]);
 
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
@@ -2266,16 +2245,18 @@ export default function MagicWheelBoard({
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (onNextRound) onNextRound();
-                  else if (onAdvanceRound) onAdvanceRound();
-                }}
-                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer animate-pulse shrink-0"
-              >
-                ⏭️ Sang vòng tiếp theo ({recapCountdown}s)
-              </button>
+              {isHost && (onNextRound || onAdvanceRound) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onNextRound) onNextRound();
+                    else if (onAdvanceRound) onAdvanceRound();
+                  }}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer animate-pulse shrink-0 border-2 border-yellow-200"
+                >
+                  ⏭️ Sang vòng tiếp theo
+                </button>
+              )}
             </div>
           )}
 

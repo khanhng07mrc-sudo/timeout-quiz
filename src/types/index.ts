@@ -1904,9 +1904,9 @@ export interface ClientToServerEvents {
   "tournament:predict": (payload: { matchId: string; predictedWinnerId: string }) => void;
   "tournament:cheer": (payload: { matchId: string; targetTeamId: string; emoji: string }) => void;
   // Magic Wheel Client Events
-  "magic_wheel:spin": (payload: { power: number }) => void;
-  "magic_wheel:guess_letter": (payload: { letter: string }) => void;
-  "magic_wheel:solve_puzzle": (payload: { answer: string }) => void;
+  "magic_wheel:spin": (payload: { power: number; teamId?: string }) => void;
+  "magic_wheel:guess_letter": (payload: { letter: string; teamId?: string }) => void;
+  "magic_wheel:solve_puzzle": (payload: { answer: string; teamId?: string }) => void;
   "magic_wheel:mystery_decide": (payload: { openMystery: boolean }) => void;
   "magic_wheel:lucky_pick": (payload: { index: number }) => void;
   "magic_wheel:reward_select": (payload: {

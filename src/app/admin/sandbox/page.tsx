@@ -5133,12 +5133,13 @@ export default function AdminSandboxPage() {
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
-      } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_TICK") {
+      } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_TICK" || e.data?.type === "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK") {
+        const tickIdx = e.data.index;
         setRoomState((prev) => {
           if (
             !prev ||
             !prev.magicWheelState?.currentPuzzle ||
-            prev.magicWheelState.phase !== "TOSS_UP_REVEALING"
+            (prev.magicWheelState.phase !== "TOSS_UP_REVEALING" && prev.magicWheelState.phase !== "TOSS_UP_RUNNING")
           ) {
             return prev;
           }
@@ -5146,9 +5147,9 @@ export default function AdminSandboxPage() {
           const p = { ...prev.magicWheelState.currentPuzzle };
           cur.currentPuzzle = p;
           const order = [...(cur.tossUpRevealOrder || [])];
-          const nextIdx = order.find((idx) => !p.revealedIndices.includes(idx));
-          if (nextIdx !== undefined) {
-            p.revealedIndices = [...p.revealedIndices, nextIdx];
+          const targetIndex = typeof tickIdx === "number" ? tickIdx : order.find((idx) => !p.revealedIndices.includes(idx));
+          if (targetIndex !== undefined && !p.revealedIndices.includes(targetIndex)) {
+            p.revealedIndices = [...p.revealedIndices, targetIndex];
           }
           if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
             cur.mustSolveWithTones = true;
@@ -8111,6 +8112,13 @@ export default function AdminSandboxPage() {
         teamIndex: idx,
         code,
       });
+      if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
+        adminSocketRef.current?.emit("admin:magic_wheel:override_turn" as any, { teamId: targetTeam.id });
+      }
+    } else {
+      if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
+        window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeam.id }, "*");
+      }
     }
 
     const targetName = idx === 0 ? "Bạn (Tester)" : `Bạn (Tester - ${targetTeam.name})`;

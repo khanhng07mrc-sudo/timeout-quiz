@@ -681,14 +681,31 @@ export function calculateSpinDestination(
   landingSectorIndex: number;
 } {
   const sectorAngle = 360 / totalSectors;
-  const minRotations = 4;
   const powerFactor = Math.max(0.1, Math.min(1.0, powerPercent / 100));
-  const additionalSpins = Math.floor(powerFactor * 4);
-  const randomJitter = (Math.random() * 0.8 + 0.1) * sectorAngle;
-  const totalTravel = (minRotations + additionalSpins) * 360 + powerFactor * 360 + randomJitter;
-  const targetDegrees = Math.round(currentDegrees + totalTravel);
-  const normalizedAngle = (360 - (targetDegrees % 360)) % 360;
-  const landingSectorIndex = Math.floor(normalizedAngle / sectorAngle) % totalSectors;
+  const minFullSpins = 4;
+  const additionalSpins = Math.floor(powerFactor * 3);
+  const totalFullSpins = minFullSpins + additionalSpins;
+
+  // Determine current sector at 12 o'clock
+  const currentAngle = (360 - (currentDegrees % 360)) % 360;
+  const currentSector = Math.floor(currentAngle / sectorAngle) % totalSectors;
+
+  // Travel a deterministic distance based on spin power + natural variation
+  const travelSectors = Math.floor(powerFactor * totalSectors * 2) + Math.floor(Math.random() * totalSectors);
+  const landingSectorIndex = (currentSector + travelSectors + 1) % totalSectors;
+
+  // Crucial physical detent ratchet behavior:
+  // Wheel NEVER stops perched on a peg! Settle securely within the central 50% body of the sector (safe margin >= 3.75 deg from any peg)
+  const safeJitter = (Math.random() - 0.5) * (sectorAngle * 0.5); // [-0.25*sectorAngle, +0.25*sectorAngle]
+  const thetaTarget = (landingSectorIndex + 0.5) * sectorAngle + safeJitter;
+
+  // Calculate rotation degrees needed to align thetaTarget with 12 o'clock (0 deg)
+  const neededMod360 = (360 - (thetaTarget % 360)) % 360;
+  const currentMod360 = currentDegrees % 360;
+  let deltaMod = neededMod360 - currentMod360;
+  if (deltaMod <= 0) deltaMod += 360;
+
+  const targetDegrees = Math.round(currentDegrees + totalFullSpins * 360 + deltaMod);
 
   return {
     targetDegrees,

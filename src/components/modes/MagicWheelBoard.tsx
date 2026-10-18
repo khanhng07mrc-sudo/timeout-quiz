@@ -275,69 +275,26 @@ function SmartPuzzlePhraseInput({
       return;
     }
 
-    // Only trigger shortcuts if not in the middle of IME composition
-    if (isComposingRef.current) return;
-
-    // Direct Telex Tone Keyboard Shortcuts: F (huyền), S (sắc), R (hỏi), X (ngã), J (nặng), Z (xóa dấu)
-    const keyLower = e.key.toLowerCase();
-    const telexToneMap: Record<string, VietnameseToneMark> = {
-      s: "SAC",
-      f: "HUYEN",
-      r: "HOI",
-      x: "NGA",
-      j: "NANG",
-      z: "NONE",
-    };
-
-    const currentCh = charValues[slotIdx] || slot.baseChar;
-    const baseVowel = slot.isRevealedVowel ? slot.baseChar : normalizeVietnameseBaseLetter(currentCh);
-    const hasVowel = isVietnameseVowel(baseVowel);
-
-    if (hasVowel && telexToneMap[keyLower]) {
-      e.preventDefault();
-      applyToneAtSlot(slotIdx, telexToneMap[keyLower]);
-      return;
-    }
-
-    // Direct Telex Vowel Modification: W (Ă/Ơ/Ư), A (Â), E (Ê), O (Ô), D (Đ)
-    const telexVowelModMap: Record<string, Record<string, string>> = {
-      a: { a: "Â", w: "Ă" },
-      e: { e: "Ê" },
-      o: { o: "Ô", w: "Ơ" },
-      u: { w: "Ư" },
-      d: { d: "Đ" },
-    };
-    const baseLower = baseVowel.toLowerCase();
-    if (telexVowelModMap[baseLower]?.[keyLower]) {
-      const transformed = telexVowelModMap[baseLower][keyLower];
-      if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(transformed) === slot.baseChar) {
-        e.preventDefault();
+    if (e.key === "Backspace") {
+      const curVal = charValues[slotIdx] || "";
+      // If the current slot has a value, clear it and DO NOT jump backward!
+      // This allows Unikey/EVKey to delete and replace accented characters natively.
+      if (curVal && curVal !== "" && (!slot.isRevealedVowel || curVal !== slot.baseChar)) {
         setCharValues((prev) => {
           const next = [...prev];
-          next[slotIdx] = transformed;
+          next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
           return next;
         });
         return;
       }
+      // If the slot is ALREADY empty, jump back to the previous editable slot
+      e.preventDefault();
+      focusPrevEditable(slotIdx);
+      return;
     }
 
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      if (slot.isRevealedVowel) {
-        setCharValues((prev) => {
-          const next = [...prev];
-          next[slotIdx] = slot.baseChar;
-          return next;
-        });
-      } else {
-        setCharValues((prev) => {
-          const next = [...prev];
-          next[slotIdx] = "";
-          return next;
-        });
-      }
-      focusPrevEditable(slotIdx);
-    }
+    // Do NOT intercept normal letters or Telex keys with e.preventDefault()!
+    // Let the browser and OS IME (Unikey / EVKey) handle composition natively.
   };
 
   const handleSlotChange = (slotIdx: number, rawVal: string) => {
@@ -991,6 +948,13 @@ export default function MagicWheelBoard({
   const [clientWheelAngle, setClientWheelAngle] = useState<number>(0);
   const [isWheelZoomedIn, setIsWheelZoomedIn] = useState<boolean>(false);
   const [wheelZoomDurationMs, setWheelZoomDurationMs] = useState<number>(7000);
+  const [localIsSpinning, setLocalIsSpinning] = useState<boolean>(false);
+  const effectiveIsSpinning = Boolean(isSpinning || localIsSpinning);
+  useEffect(() => {
+    if (isSpinning) {
+      setLocalIsSpinning(false);
+    }
+  }, [isSpinning]);
 
   // ── TV Board Staged Appearance Sequence ───────────────────────────────────
   const [boardStage, setBoardStage] = useState<"EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE">("EMPTY_56");
@@ -1344,7 +1308,7 @@ export default function MagicWheelBoard({
         triggerTilePop(randIdx);
         soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
         onTossUpRevealTick?.(randIdx);
-      }, 500);
+      }, 750);
     };
 
     if (!tossUpFirstTileDoneRef.current && (currentPuzzle?.revealedIndices?.length || 0) === 0) {
@@ -1486,10 +1450,12 @@ export default function MagicWheelBoard({
     }
 
     const startAngle = wheelPrevAngleRef.current;
-    if (!isSpinning || target <= startAngle) {
-      wheelPrevAngleRef.current = target;
-      setClientWheelAngle(target);
-      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
+    if (!effectiveIsSpinning) {
+      if (target !== undefined && target !== null) {
+        wheelPrevAngleRef.current = target;
+        setClientWheelAngle(target);
+        if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
+      }
       setIsWheelZoomedIn(false);
       setWheelZoomDurationMs(800);
       lastSnapTimeRef.current = 0;
@@ -1497,9 +1463,14 @@ export default function MagicWheelBoard({
       return;
     }
 
+    // If local spin started before server target arrives, accelerate forward smoothly
+    const effectiveTarget = (target !== undefined && target !== null && target > startAngle)
+      ? target
+      : startAngle + 2160;
+
     const durationMs = 15000 + Math.round(((activeState.spinPower || 65) / 100) * 6000);
     const segAngle = 360 / (sectors.length || 24);
-    const totalDelta = target - startAngle;
+    const totalDelta = effectiveTarget - startAngle;
     const startTime = performance.now();
     let lastPegIndex = Math.floor(startAngle / segAngle);
     let rafId = 0;
@@ -1542,13 +1513,16 @@ export default function MagicWheelBoard({
         const pegDistToSnap = segAngle - (currentLiveAngle % segAngle);
         const contactWindow = 3.6;
 
+        // Physical needle contact with oncoming chrome peg:
+        // Wheel turns clockwise -> rim moves left-to-right past 12h -> peg pushes needle tip to the RIGHT (+deg)!
         if (pegDistToSnap <= contactWindow) {
           const contactProgress = 1.0 - pegDistToSnap / contactWindow;
-          needleAngle = -22.0 * Math.pow(contactProgress, 1.15);
+          needleAngle = 20.0 * Math.pow(contactProgress, 1.15);
         } else if (lastSnapTimeRef.current > 0) {
           const dt = (now - lastSnapTimeRef.current) / 1000;
           if (dt < 0.085) {
-            needleAngle = 14.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
+            // Rebound bounce to left (-deg) with damped oscillation settling to 0
+            needleAngle = -12.0 * Math.exp(-32.0 * dt) * Math.cos(50.0 * dt);
           } else {
             needleAngle = 0;
           }
@@ -1564,11 +1538,12 @@ export default function MagicWheelBoard({
       if (rawProgress < 1) {
         rafId = requestAnimationFrame(step);
       } else {
+        setLocalIsSpinning(false);
         if (wheelRef.current) {
-          wheelRef.current.style.transform = `rotate(${target}deg)`;
+          wheelRef.current.style.transform = `rotate(${effectiveTarget}deg)`;
         }
-        setClientWheelAngle(target);
-        wheelPrevAngleRef.current = target;
+        setClientWheelAngle(effectiveTarget);
+        wheelPrevAngleRef.current = effectiveTarget;
         if (needleRef.current) {
           needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
         }
@@ -1581,7 +1556,7 @@ export default function MagicWheelBoard({
       cancelAnimationFrame(rafId);
       if (zoomStartTimer) clearTimeout(zoomStartTimer);
     };
-  }, [isSpinning, targetRotationDegrees, activeState.spinPower, sectors.length]);
+  }, [effectiveIsSpinning, targetRotationDegrees, activeState.spinPower, sectors.length]);
 
   const activeTeam = teams.find((t) => t.id === (tossUpBuzzedTeamId || currentTurnTeamId));
 
@@ -2508,9 +2483,11 @@ export default function MagicWheelBoard({
                       </p>
                       <button
                         type="button"
-                        disabled={isSpinning}
+                        disabled={effectiveIsSpinning}
                         onClick={() => {
+                          if (effectiveIsSpinning) return;
                           soundManager.playMagicWheelSpin();
+                          setLocalIsSpinning(true);
                           onSpin?.(oscillatingPower);
                         }}
                         className="w-full py-3 rounded-xl font-black text-xs sm:text-sm text-slate-950 bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 hover:brightness-110 cursor-pointer shadow-lg"
@@ -2627,11 +2604,12 @@ export default function MagicWheelBoard({
                           <button
                             type="button"
                             onClick={() => {
-                              if (isSpinning || isCurrentTeamEliminated) return;
+                              if (effectiveIsSpinning || isCurrentTeamEliminated) return;
                               soundManager.playMagicWheelSpin();
+                              setLocalIsSpinning(true);
                               onSpin?.(oscillatingPower);
                             }}
-                            disabled={isSpinning || isCurrentTeamEliminated}
+                            disabled={effectiveIsSpinning || isCurrentTeamEliminated}
                             className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
                               isCurrentTeamEliminated
                                 ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"

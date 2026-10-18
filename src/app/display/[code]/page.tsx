@@ -2323,6 +2323,14 @@ export default function DisplayPage() {
                   wheelState={roomState.magicWheelState}
                   isDisplay={true}
                   teams={roomState.teams}
+                  onTossUpRevealTick={(index) => {
+                    if (socketRef.current?.connected) {
+                      socketRef.current.emit("magic_wheel:toss_up_reveal_tick", { index });
+                    }
+                    if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_REVEAL_TICK", index }, "*");
+                    }
+                  }}
                 />
               </div>
             ) : (

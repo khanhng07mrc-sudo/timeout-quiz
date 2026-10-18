@@ -294,8 +294,9 @@ export default function PlayPage() {
           setErrorMessage(null);
           setConnected(true);
 
+          const teamIdx = e.data.payload?.teamIndex ?? e.data.teamIndex ?? 0;
           const teamPlayerId = isSandboxRef.current
-            ? `sb_${code}_t0`
+            ? `sb_${code}_t${teamIdx}`
             : playerIdRef.current;
           playerIdRef.current = teamPlayerId;
           setPlayerId(teamPlayerId);
@@ -2411,21 +2412,21 @@ export default function PlayPage() {
                   }
                   onSpin={(power) => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                      socketRef.current.emit("magic_wheel:spin", { power });
+                      socketRef.current.emit("magic_wheel:spin", { power, teamId: effectiveTeamId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_SPIN", power, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onGuessLetter={(letter) => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                      socketRef.current.emit("magic_wheel:guess_letter", { letter });
+                      socketRef.current.emit("magic_wheel:guess_letter", { letter, teamId: effectiveTeamId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter, teamId: effectiveTeamId }, "*");
                     }
                   }}
                   onSolvePuzzle={(answer) => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
-                      socketRef.current.emit("magic_wheel:solve_puzzle", { answer });
+                      socketRef.current.emit("magic_wheel:solve_puzzle", { answer, teamId: effectiveTeamId });
                     } else if (typeof window !== "undefined" && window.self !== window.top) {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer, teamId: effectiveTeamId }, "*");
                     }

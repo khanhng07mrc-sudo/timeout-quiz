@@ -7,6 +7,7 @@ import {
   normalizeVietnameseBaseLetter,
   isVietnameseVowel,
   applyToneToVietnameseVowel,
+  extractToneFromVietnameseChar,
   VietnameseToneMark,
 } from "@/lib/game-engine/magic-wheel";
 import { soundManager } from "@/lib/sound-manager";
@@ -120,6 +121,87 @@ const TONE_BUTTONS: Array<{ tone: VietnameseToneMark; label: string; keyHint: st
   { tone: "NGA", label: "Ngã (~)", keyHint: "X" },
   { tone: "NANG", label: "Nặng (.)", keyHint: "J" },
 ];
+
+/**
+ * Intelligent Telex and VNI character / tone composer for single-letter slots.
+ * Supports:
+ * - Telex tones: S (sắc), F (huyền), R (hỏi), X (ngã), J (nặng), Z (thanh ngang / xóa dấu)
+ * - VNI tones: 1 (sắc), 2 (huyền), 3 (hỏi), 4 (ngã), 5 (nặng), 0 (thanh ngang / xóa dấu)
+ * - Telex modifiers: A -> Â (aa), W -> Ă (aw), E -> Ê (ee), O -> Ô (oo), W -> Ơ (ow), W -> Ư (uw), D -> Đ (dd)
+ * - VNI modifiers: 6 (^: Â, Ê, Ô), 7 (móc: Ơ, Ư), 8 (trăng: Ă), 9 (gạch: Đ)
+ */
+function applyTelexOrVniModifier(
+  currentChar: string,
+  key: string
+): { modifiedChar: string; isModified: boolean } {
+  if (!currentChar) return { modifiedChar: currentChar, isModified: false };
+  const upperCur = currentChar.toUpperCase();
+  const k = key.toUpperCase();
+
+  // 1. Tones (Telex: S, F, R, X, J, Z | VNI: 1, 2, 3, 4, 5, 0)
+  let tone: VietnameseToneMark | null = null;
+  if (k === "S" || k === "1") tone = "SAC";
+  else if (k === "F" || k === "2") tone = "HUYEN";
+  else if (k === "R" || k === "3") tone = "HOI";
+  else if (k === "X" || k === "4") tone = "NGA";
+  else if (k === "J" || k === "5") tone = "NANG";
+  else if (k === "Z" || k === "0") tone = "NONE";
+
+  if (tone !== null) {
+    const baseVowel = normalizeVietnameseBaseLetter(upperCur);
+    if (isVietnameseVowel(baseVowel)) {
+      const res = applyToneToVietnameseVowel(baseVowel, tone);
+      return { modifiedChar: res, isModified: true };
+    }
+  }
+
+  // 2. Vowel & Consonant base transformations (Telex & VNI)
+  const currentTone = extractToneFromVietnameseChar(upperCur);
+  const baseLetter = normalizeVietnameseBaseLetter(upperCur);
+
+  let newBase: string | null = null;
+  if (baseLetter === "A") {
+    if (k === "A" || k === "6") newBase = "Â";
+    else if (k === "W" || k === "8") newBase = "Ă";
+  } else if (baseLetter === "Ă") {
+    if (k === "A" || k === "6") newBase = "Â";
+    else if (k === "W" || k === "8") newBase = "A"; // Toggle back
+  } else if (baseLetter === "Â") {
+    if (k === "A" || k === "6") newBase = "A"; // Toggle back
+    else if (k === "W" || k === "8") newBase = "Ă";
+  } else if (baseLetter === "E") {
+    if (k === "E" || k === "6") newBase = "Ê";
+  } else if (baseLetter === "Ê") {
+    if (k === "E" || k === "6") newBase = "E"; // Toggle back
+  } else if (baseLetter === "O") {
+    if (k === "O" || k === "6") newBase = "Ô";
+    else if (k === "W" || k === "7") newBase = "Ơ";
+  } else if (baseLetter === "Ô") {
+    if (k === "O" || k === "6") newBase = "O"; // Toggle back
+    else if (k === "W" || k === "7") newBase = "Ơ";
+  } else if (baseLetter === "Ơ") {
+    if (k === "W" || k === "7") newBase = "O"; // Toggle back
+    else if (k === "O" || k === "6") newBase = "Ô";
+  } else if (baseLetter === "U") {
+    if (k === "W" || k === "7") newBase = "Ư";
+  } else if (baseLetter === "Ư") {
+    if (k === "W" || k === "7") newBase = "U"; // Toggle back
+  } else if (baseLetter === "D") {
+    if (k === "D" || k === "9") newBase = "Đ";
+  } else if (baseLetter === "Đ") {
+    if (k === "D" || k === "9") newBase = "D"; // Toggle back
+  }
+
+  if (newBase !== null) {
+    if (isVietnameseVowel(newBase)) {
+      const res = applyToneToVietnameseVowel(newBase, currentTone);
+      return { modifiedChar: res, isModified: true };
+    }
+    return { modifiedChar: newBase, isModified: true };
+  }
+
+  return { modifiedChar: upperCur, isModified: false };
+}
 
 /**
  * SmartPuzzlePhraseInput:
@@ -277,33 +359,15 @@ function SmartPuzzlePhraseInput({
 
     if (e.key === "Backspace") {
       const curVal = charValues[slotIdx] || "";
-      // If the current slot has a value, clear it and DO NOT jump backward!
-      // This allows Unikey/EVKey to delete and replace accented characters natively.
-      if (curVal && curVal !== "" && (!slot.isRevealedVowel || curVal !== slot.baseChar)) {
-        setCharValues((prev) => {
-          const next = [...prev];
-          next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
-          return next;
-        });
+      // If the slot is ALREADY completely empty, jump back to the previous editable slot
+      if (!curVal || curVal.trim() === "") {
+        e.preventDefault();
+        focusPrevEditable(slotIdx);
         return;
       }
-      // If the slot is ALREADY empty, jump back to the previous editable slot
-      e.preventDefault();
-      focusPrevEditable(slotIdx);
-      return;
-    }
-
-    // Do NOT intercept normal letters or Telex keys with e.preventDefault()!
-    // Let the browser and OS IME (Unikey / EVKey) handle composition natively.
-  };
-
-  const handleSlotChange = (slotIdx: number, rawVal: string) => {
-    const slot = slots[slotIdx];
-    if (!slot || slot.isSpace || slot.isLockedConsonant) return;
-
-    // Pick the latest character
-    const lastChar = rawVal.slice(-1).toUpperCase();
-    if (!lastChar) {
+      // If the slot has a character, clear it (or reset to baseChar if revealed vowel)
+      // DO NOT call e.preventDefault() and DO NOT jump backward!
+      // This allows OS IME (Unikey / EVKey) to delete and replace accented characters natively.
       setCharValues((prev) => {
         const next = [...prev];
         next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
@@ -312,8 +376,61 @@ function SmartPuzzlePhraseInput({
       return;
     }
 
+    // Direct Telex and VNI handling on the current character
+    // E.g.: Current is "A" -> press "F" or "2" -> "À"; press "W" or "8" -> "Ă"; "D" + "D" -> "Đ"
+    const curChar = charValues[slotIdx] || (slot.isRevealedVowel ? slot.baseChar : "");
+    if (curChar && !e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
+      const { modifiedChar, isModified } = applyTelexOrVniModifier(curChar, e.key);
+      if (isModified) {
+        if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(modifiedChar) === slot.baseChar) {
+          e.preventDefault();
+          setCharValues((prev) => {
+            const next = [...prev];
+            next[slotIdx] = modifiedChar;
+            return next;
+          });
+          focusNextEditable(slotIdx);
+          return;
+        }
+      }
+    }
+  };
+
+  const handleSlotChange = (slotIdx: number, rawVal: string) => {
+    const slot = slots[slotIdx];
+    if (!slot || slot.isSpace || slot.isLockedConsonant) return;
+
+    if (!rawVal) {
+      setCharValues((prev) => {
+        const next = [...prev];
+        next[slotIdx] = slot.isRevealedVowel ? slot.baseChar : "";
+        return next;
+      });
+      return;
+    }
+
+    // If input received multiple characters (e.g., existing "A" + typed "F" -> rawVal "AF")
+    if (rawVal.length > 1) {
+      const prevChar = rawVal.charAt(0);
+      const incomingKey = rawVal.slice(-1);
+      const { modifiedChar, isModified } = applyTelexOrVniModifier(prevChar, incomingKey);
+      if (isModified) {
+        if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(modifiedChar) === slot.baseChar) {
+          setCharValues((prev) => {
+            const next = [...prev];
+            next[slotIdx] = modifiedChar;
+            return next;
+          });
+          focusNextEditable(slotIdx);
+          return;
+        }
+      }
+    }
+
+    // Single character input or pasted full character
+    const lastChar = rawVal.slice(-1).toUpperCase();
     if (slot.isRevealedVowel) {
-      // Allow accepting vowels that match base letter
+      // Allow accepting vowels that match base letter (e.g. "À" matches "A")
       if (normalizeVietnameseBaseLetter(lastChar) === slot.baseChar) {
         setCharValues((prev) => {
           const next = [...prev];

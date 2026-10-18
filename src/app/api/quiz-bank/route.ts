@@ -50,49 +50,70 @@ export async function GET(req: NextRequest) {
     console.warn("[GET /api/quiz-bank] Ghost cleanup error:", cleanErr);
   }
 
-  // Auto-seed preset banks into database for demo-host-id / public if missing
+  // Auto-seed or upgrade preset banks into database for demo-host-id / public
   try {
-    const existingPresetCount = await prisma.quizBank.count({
-      where: { id: { in: MAGIC_WHEEL_PRESET_BANKS.map((p) => p.id) } },
+    await prisma.user.upsert({
+      where: { email: "demo-host@quizorra.com" },
+      update: {},
+      create: {
+        id: "demo-host-id",
+        name: "Hệ thống Quizorra",
+        email: "demo-host@quizorra.com",
+        role: "ADMIN",
+      },
     });
-    if (existingPresetCount < MAGIC_WHEEL_PRESET_BANKS.length) {
-      await prisma.user.upsert({
-        where: { email: "demo-host@quizorra.com" },
-        update: {},
-        create: {
-          id: "demo-host-id",
-          name: "Hệ thống Quizorra",
-          email: "demo-host@quizorra.com",
-          role: "ADMIN",
-        },
-      });
 
-      for (const preset of MAGIC_WHEEL_PRESET_BANKS) {
-        const found = await prisma.quizBank.findUnique({ where: { id: preset.id } });
-        if (!found) {
-          await prisma.quizBank.create({
-            data: {
-              id: preset.id,
-              title: preset.title,
-              description: preset.description,
-              isPublic: true,
-              ownerId: "demo-host-id",
-              questions: {
-                create: (preset.questions || []).map((q: any, i: number) => ({
-                  id: q.id,
-                  type: q.type || "WORD_PUZZLE",
-                  content: q.content,
-                  answer: q.answer,
-                  hint: q.hint,
-                  points: q.points || 20,
-                  timeLimit: q.timeLimit || 30,
-                  options: q.options,
-                  order: i,
-                })),
-              },
+    for (const preset of MAGIC_WHEEL_PRESET_BANKS) {
+      const found = await prisma.quizBank.findUnique({
+        where: { id: preset.id },
+        include: { _count: { select: { questions: true } } },
+      });
+      const targetLen = preset.questions?.length || 11;
+      if (!found) {
+        await prisma.quizBank.create({
+          data: {
+            id: preset.id,
+            title: preset.title,
+            description: preset.description,
+            isPublic: true,
+            ownerId: "demo-host-id",
+            questions: {
+              create: (preset.questions || []).map((q: any, i: number) => ({
+                id: q.id,
+                type: q.type || "WORD_PUZZLE",
+                content: q.content,
+                answer: q.answer,
+                hint: q.hint,
+                points: q.points || 20,
+                timeLimit: q.timeLimit || 30,
+                options: q.options,
+                order: i,
+              })),
             },
-          });
-        }
+          },
+        });
+      } else if ((found._count?.questions ?? 0) < targetLen) {
+        await prisma.question.deleteMany({ where: { quizBankId: preset.id } });
+        await prisma.quizBank.update({
+          where: { id: preset.id },
+          data: {
+            title: preset.title,
+            description: preset.description,
+            questions: {
+              create: (preset.questions || []).map((q: any, i: number) => ({
+                id: q.id,
+                type: q.type || "WORD_PUZZLE",
+                content: q.content,
+                answer: q.answer,
+                hint: q.hint,
+                points: q.points || 20,
+                timeLimit: q.timeLimit || 30,
+                options: q.options,
+                order: i,
+              })),
+            },
+          },
+        });
       }
     }
   } catch (seedErr) {
@@ -125,7 +146,7 @@ export async function GET(req: NextRequest) {
     ownerId: "demo-host-id",
     createdAt: p.createdAt || new Date().toISOString(),
     isBuiltIn: true,
-    _count: { questions: p.questions?.length || 4 },
+    _count: { questions: p.questions?.length || 11 },
   }));
 
   const finalBanks = [

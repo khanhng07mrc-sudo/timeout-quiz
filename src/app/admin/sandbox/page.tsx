@@ -4246,6 +4246,10 @@ export default function AdminSandboxPage() {
         }
       }
 
+      if (typeof e.data?.type === "string" && e.data.type.startsWith("MAGIC_WHEEL_") && !isOfflineSandbox && adminSocketRef.current?.connected) {
+        return;
+      }
+
       if (e.data?.type === "MAGIC_WHEEL_SPIN") {
         const { power } = e.data;
         setRoomState((prev) => {
@@ -4634,10 +4638,20 @@ export default function AdminSandboxPage() {
               cur.tossUpBuzzedTeamId = undefined;
               cur.tossUpBuzzedTeamName = undefined;
               cur.phase = "ROUND_RECAP";
+              cur.lastAwardedPoints = bonusPts;
+              cur.lastSolveFeedback = {
+                teamId: tId,
+                teamName,
+                guess: answer,
+                isCorrect: true,
+                pointsAwarded: bonusPts,
+                correctPhrase: p.secretPhrase,
+                timestamp: Date.now(),
+              };
               cur.lastActionMessage =
                 cur.roundStage === "TOSS_UP_1"
-                  ? `⚡ CHÍNH XÁC! Đội ${teamName} giải đúng Ô chữ Đoán Nhanh 1 và nhận ngay +500 điểm thưởng!`
-                  : `⚡ XUẤT SẮC! Đội ${teamName} giải đúng Ô chữ Đoán Nhanh 2 (+1.000đ) và giành quyền QUAY ĐẦU TIÊN ở Vòng Chính 1!`;
+                  ? `⚡ CHÍNH XÁC! Đội ${teamName} giải đúng Ô chữ Đoán Nhanh 1 ("${p.secretPhrase}") và nhận ngay +500 điểm thưởng!`
+                  : `⚡ XUẤT SẮC! Đội ${teamName} giải đúng Ô chữ Đoán Nhanh 2 ("${p.secretPhrase}", +1.000đ) và giành quyền QUAY ĐẦU TIÊN ở Vòng Chính 1!`;
               const updatedTeams = prev.teams.map((t) =>
                 t.id === tId ? { ...t, score: (t.score || 0) + bonusPts } : t
               );
@@ -4650,6 +4664,13 @@ export default function AdminSandboxPage() {
               cur.tossUpBuzzedTeamId = undefined;
               cur.tossUpBuzzedTeamName = undefined;
               cur.phase = "TOSS_UP_REVEALING";
+              cur.lastSolveFeedback = {
+                teamId: tId,
+                teamName,
+                guess: answer,
+                isCorrect: false,
+                timestamp: Date.now(),
+              };
               cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,5s/ô) — Tất cả các đội đều có quyền bấm chuông lại!`;
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
@@ -4667,7 +4688,15 @@ export default function AdminSandboxPage() {
               if (cur.specialFinalChoiceOrder === "SOLVE_FIRST" && !cur.specialEnvelopePrize) {
                 cur.phase = "SPIN_WAITING";
                 cur.sectors = generateSpecialRoundWheelSectors();
-                cur.lastActionMessage = `🎉 TUYỆT VỜI! Đội ${teamName} đã giải đúng Ô Chữ Đặc Biệt! Bây giờ mời bạn QUAY NÓN để mở Phong bì Giải Thưởng Chung Cuộc!`;
+                cur.lastSolveFeedback = {
+                  teamId: tId,
+                  teamName,
+                  guess: answer,
+                  isCorrect: true,
+                  correctPhrase: p.secretPhrase,
+                  timestamp: Date.now(),
+                };
+                cur.lastActionMessage = `🎉 TUYỆT VỜI! Đội ${teamName} đã giải đúng Ô Chữ Đặc Biệt ("${p.secretPhrase}")! Bây giờ mời bạn QUAY NÓN để mở Phong bì Giải Thưởng Chung Cuộc!`;
                 const nextRoom = { ...prev, magicWheelState: cur };
                 roomStateRef.current = nextRoom;
                 syncToIframes({ roomState: nextRoom });
@@ -4678,7 +4707,17 @@ export default function AdminSandboxPage() {
                 perm[tId] = (perm[tId] || 0) + prizeVal;
                 cur.permanentScores = perm;
                 cur.phase = "ROUND_RECAP";
-                cur.lastActionMessage = `🏆 CHÚC MỪNG NHÀ VÔ ĐỊCH ${teamName}! Giải chính xác Ô Chữ Đặc Biệt và nhận giải thưởng +${prizeVal.toLocaleString()}đ!`;
+                cur.lastAwardedPoints = prizeVal;
+                cur.lastSolveFeedback = {
+                  teamId: tId,
+                  teamName,
+                  guess: answer,
+                  isCorrect: true,
+                  pointsAwarded: prizeVal,
+                  correctPhrase: p.secretPhrase,
+                  timestamp: Date.now(),
+                };
+                cur.lastActionMessage = `🏆 CHÚC MỪNG NHÀ VÔ ĐỊCH ${teamName}! Giải chính xác Ô Chữ Đặc Biệt ("${p.secretPhrase}") và nhận giải thưởng +${prizeVal.toLocaleString()}đ!`;
                 const updatedTeams = prev.teams.map((t) =>
                   t.id === tId ? { ...t, score: (t.score || 0) + prizeVal } : t
                 );
@@ -4690,6 +4729,13 @@ export default function AdminSandboxPage() {
             } else {
               // Trong Vòng Đặc Biệt người chơi được gõ liên tục trong thời gian quy định
               soundManager.playMagicWheelWrong();
+              cur.lastSolveFeedback = {
+                teamId: tId,
+                teamName,
+                guess: answer,
+                isCorrect: false,
+                timestamp: Date.now(),
+              };
               cur.lastActionMessage = `Chưa chính xác ("${answer}")! Bạn vẫn có thể tiếp tục gõ đáp án khác trong thời gian quy định!`;
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
@@ -4698,7 +4744,11 @@ export default function AdminSandboxPage() {
             }
           }
 
-          // Vòng Chính 1..N
+          // Vòng Chính 1..N (Mỗi đội chỉ có duy nhất 1 lượt Giải Ô Chữ mỗi vòng — sai là dừng cuộc chơi ở vòng đó!)
+          if ((cur.roundEliminatedTeamIds || []).includes(tId)) {
+            return prev;
+          }
+
           if (isCorrect) {
             soundManager.playMagicWheelSolveWin();
             p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
@@ -4715,6 +4765,16 @@ export default function AdminSandboxPage() {
             perm[tId] = (perm[tId] || 0) + totalWon;
             cur.permanentScores = perm;
             cur.phase = "ROUND_RECAP";
+            cur.lastAwardedPoints = totalWon;
+            cur.lastSolveFeedback = {
+              teamId: tId,
+              teamName,
+              guess: answer,
+              isCorrect: true,
+              pointsAwarded: totalWon,
+              correctPhrase: p.secretPhrase,
+              timestamp: Date.now(),
+            };
             cur.lastActionMessage = generateFlexibleMCCommentary({
               event: "SOLVE_WIN",
               teamName,
@@ -4730,34 +4790,43 @@ export default function AdminSandboxPage() {
           } else {
             soundManager.playMagicWheelWrong();
             cur.expressTrainActive = false;
-            const strikes = (cur.consecutiveWrongGuesses[tId] ?? cur.wrongGuessesCount[tId] ?? 0) + 1;
-            cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: strikes };
-            cur.wrongGuessesCount = { ...cur.wrongGuessesCount, [tId]: strikes };
-            if (strikes >= 3) {
-              cur.disqualifiedTeamIdsInRound = [...(cur.disqualifiedTeamIdsInRound || []), tId];
-              cur.roundScores = { ...cur.roundScores, [tId]: 0 };
-            }
+            const elimList = Array.from(new Set([...(cur.roundEliminatedTeamIds || []), tId]));
+            const disqList = Array.from(new Set([...(cur.disqualifiedTeamIdsInRound || []), tId]));
+            cur.roundEliminatedTeamIds = elimList;
+            cur.disqualifiedTeamIdsInRound = disqList;
+            cur.consecutiveWrongGuesses = { ...cur.consecutiveWrongGuesses, [tId]: 3 };
+            cur.wrongGuessesCount = { ...cur.wrongGuessesCount, [tId]: 3 };
+            cur.roundScores = { ...cur.roundScores, [tId]: 0 };
+
             const remaining = prev.teams.filter(
               (t) =>
-                !(cur.disqualifiedTeamIdsInRound || []).includes(t.id) &&
+                !disqList.includes(t.id) &&
+                !elimList.includes(t.id) &&
                 !(cur.round3TradedTeams || []).includes(t.id)
             );
+            const allEliminated = remaining.length === 0;
             if (remaining.length > 0) {
               const activeIdx = remaining.findIndex((t) => t.id === cur.currentTurnTeamId);
               const nextIdx = (activeIdx + 1) % remaining.length;
               cur.currentTurnTeamId = remaining[nextIdx]?.id || "";
               cur.currentTurnTeamName = remaining[nextIdx]?.name || "";
               cur.phase = "SPIN_WAITING";
-              cur.lastActionMessage = generateFlexibleMCCommentary({
-                event: "SOLVE_FAIL",
-                teamName,
-                nextTeamName: cur.currentTurnTeamName,
-                strikes,
-              });
+              cur.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Đội ${teamName} đã hết quyền thi đấu trong vòng này (mỗi đội chỉ có 1 lượt Giải Ô Chữ). Chuyển lượt sang Đội ${cur.currentTurnTeamName}!`;
             } else {
+              p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
               cur.phase = "ROUND_RECAP";
-              cur.lastActionMessage = "Tất cả các đội đều đã hết quyền thi đấu trong vòng này!";
+              cur.lastActionMessage = `❌ Đáp án "${answer}" chưa chính xác! Tất cả các đội đã hết lượt Giải Ô Chữ trong vòng này. Đáp án đúng là: "${p.secretPhrase}"!`;
             }
+            cur.lastSolveFeedback = {
+              teamId: tId,
+              teamName,
+              guess: answer,
+              isCorrect: false,
+              eliminatedFromRound: true,
+              allTeamsEliminated: allEliminated,
+              correctPhrase: allEliminated ? p.secretPhrase : undefined,
+              timestamp: Date.now(),
+            };
             const nextRoom = { ...prev, magicWheelState: cur };
             roomStateRef.current = nextRoom;
             syncToIframes({ roomState: nextRoom });
@@ -4983,8 +5052,25 @@ export default function AdminSandboxPage() {
               cur.currentTurnTeamName = remaining[0].name;
               cur.phase = "SPIN_WAITING";
             } else {
+              soundManager.playMagicWheelSolveWin();
+              if (cur.currentPuzzle) {
+                const p = { ...cur.currentPuzzle };
+                p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
+                cur.currentPuzzle = p;
+              }
+              const phrase = cur.currentPuzzle?.secretPhrase || "";
               cur.phase = "ROUND_RECAP";
-              cur.lastActionMessage = "Tất cả các đội đều đã nhận quà Đổi Hộp Quà ở Vòng 3!";
+              cur.lastSolveFeedback = {
+                teamId: tId,
+                teamName,
+                guess: phrase,
+                isCorrect: true,
+                pointsAwarded: 0,
+                correctPhrase: phrase,
+                allTeamsEliminated: true,
+                timestamp: Date.now(),
+              };
+              cur.lastActionMessage = `🎁 Tất cả các đội đều đã nhận quà Đổi Hộp Quà ở Vòng 3! Đáp án chính xác của chương trình là: "${phrase}"!`;
             }
           } else {
             const forbidden = [...(cur.round3ForbiddenSolveTeams || [])];
@@ -5324,17 +5410,29 @@ export default function AdminSandboxPage() {
           soundManager.playMagicWheelSolveWin();
           cur.mustSolveWithTones = false;
           cur.phase = "ROUND_RECAP";
-          cur.lastActionMessage = `Quản trò đã lật mở toàn bộ ô chữ có dấu: "${p.secretPhrase}"!`;
+          cur.lastSolveFeedback = {
+            teamId: cur.currentTurnTeamId,
+            teamName: "Chương trình",
+            guess: p.secretPhrase,
+            isCorrect: true,
+            pointsAwarded: 0,
+            correctPhrase: p.secretPhrase,
+            allTeamsEliminated: true,
+            timestamp: Date.now(),
+          };
+          cur.lastActionMessage = `📢 Quản trò đã công bố toàn bộ ô chữ có dấu: "${p.secretPhrase}"!`;
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
           return nextRoom;
         });
-      } else if (e.data?.type === "MAGIC_WHEEL_ADVANCE_ROUND") {
+      } else if (e.data?.type === "MAGIC_WHEEL_ADVANCE_ROUND" || e.data?.type === "MAGIC_WHEEL_NEXT_ROUND") {
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
-          const totalMain = cur.totalMainRounds || Math.max(3, prev.teams.length);
+          const totalMain = cur.totalMainRounds || Math.min(8, Math.max(3, prev.teams.length));
+          cur.lastSolveFeedback = undefined;
+          cur.roundEliminatedTeamIds = [];
 
           // 1. Từ TOSS_UP_1 -> TOSS_UP_2
           if (cur.roundStage === "TOSS_UP_1") {
@@ -5351,8 +5449,9 @@ export default function AdminSandboxPage() {
           }
           // 2. Từ TOSS_UP_2 -> Vòng Chính 1
           else if (cur.roundStage === "TOSS_UP_2") {
-            cur.roundStage = "MAIN_ROUND";
+            cur.roundStage = "MAIN";
             cur.currentRound = 1;
+            cur.mainRoundNumber = 1;
             cur.sectors = generateMagicWheelSectors(1);
             cur.currentPuzzle = { ...(cur.puzzles[2] || cur.puzzles[0]), revealedIndices: [] };
             const starterId = cur.mainRound1StarterTeamId || prev.teams[0]?.id || "";
@@ -5372,10 +5471,13 @@ export default function AdminSandboxPage() {
             cur.lastActionMessage = `🎡 BẮT ĐẦU VÒNG CHÍNH 1! Đội ${cur.currentTurnTeamName} (Thắng Đoán Nhanh 2) được quyền mở màn!`;
           }
           // 3. Từ Vòng Chính k -> Vòng Chính k+1 hoặc Vòng Đặc Biệt
-          else if (cur.roundStage === "MAIN_ROUND" && cur.currentRound < totalMain) {
-            cur.currentRound++;
-            cur.sectors = generateMagicWheelSectors(cur.currentRound);
-            const puzzleIdx = Math.min(cur.puzzles.length - 2, cur.currentRound + 1);
+          else if ((cur.roundStage === "MAIN" || (cur.roundStage as string) === "MAIN_ROUND") && (cur.mainRoundNumber || cur.currentRound) < totalMain) {
+            cur.roundStage = "MAIN";
+            const nextMainNum = (cur.mainRoundNumber || cur.currentRound) + 1;
+            cur.currentRound = nextMainNum;
+            cur.mainRoundNumber = nextMainNum;
+            cur.sectors = generateMagicWheelSectors(nextMainNum);
+            const puzzleIdx = Math.min(cur.puzzles.length - 2, nextMainNum + 1);
             cur.currentPuzzle = { ...(cur.puzzles[puzzleIdx] || cur.puzzles[0]), revealedIndices: [] };
             // Xoay vòng người chơi mở màn kế tiếp người đã mở màn Vòng 1
             const r1StarterIdx = Math.max(
@@ -5383,7 +5485,7 @@ export default function AdminSandboxPage() {
               prev.teams.findIndex((t) => t.id === cur.mainRound1StarterTeamId)
             );
             const nextStarterTeam =
-              prev.teams[(r1StarterIdx + (cur.currentRound - 1)) % Math.max(1, prev.teams.length)];
+              prev.teams[(r1StarterIdx + (nextMainNum - 1)) % Math.max(1, prev.teams.length)];
             cur.currentTurnTeamId = nextStarterTeam?.id || prev.teams[0]?.id || "";
             cur.currentTurnTeamName = nextStarterTeam?.name || prev.teams[0]?.name || "";
             cur.guessedLetters = [];
@@ -5395,11 +5497,11 @@ export default function AdminSandboxPage() {
             cur.round3ForbiddenSolveTeams = [];
             cur.mustSolveWithTones = false;
             cur.expressTrainActive = false;
-            cur.speedUpBellActive = cur.currentRound >= 6;
+            cur.speedUpBellActive = nextMainNum >= 6;
             cur.pendingSpecialAction = "NONE";
             cur.phase = "SPIN_WAITING";
             cur.selectedSector = undefined;
-            cur.lastActionMessage = `🎡 BẮT ĐẦU VÒNG CHÍNH ${cur.currentRound}! Theo thứ tự xoay vòng, mời Đội ${cur.currentTurnTeamName} mở màn!`;
+            cur.lastActionMessage = `🎡 BẮT ĐẦU VÒNG CHÍNH ${nextMainNum}! Theo thứ tự xoay vòng, mời Đội ${cur.currentTurnTeamName} mở màn!`;
           }
           // 4. Sang Vòng Đặc Biệt (SPECIAL_FINAL)
           else {
@@ -10711,9 +10813,10 @@ export default function AdminSandboxPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                          if (adminSocketRef.current?.connected) {
+                          if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                             adminSocketRef.current.emit("magic_wheel:advance_round" as any);
+                          } else {
+                            window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
                           }
                         }}
                         className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-xs cursor-pointer"
@@ -10728,131 +10831,159 @@ export default function AdminSandboxPage() {
                       teams={roomState.teams}
                       isMyTurn={true}
                       onSpin={(power) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
                         }
                       }}
                       onGuessLetter={(letter) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
                         }
                       }}
                       onSolvePuzzle={(answer) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
                         }
                       }}
                       onMysteryDecide={(openMystery) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
                         }
                       }}
                       onLuckyPick={(index) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
                         }
                       }}
                       onSelectRewardCard={(rewardPayload: any) => {
                         const data = typeof rewardPayload === "string" ? { cardType: rewardPayload } : rewardPayload;
-                        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:reward_select" as any, data);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data }, "*");
                         }
                       }}
                       onTradeDecide={(trade, boxIndex) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade, boxIndex });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
                         }
                       }}
                       onTossUpStart={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
                         }
                       }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
-                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: tId });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
                         }
                       }}
                       onTossUpRevealTick={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:toss_up_tick" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK" }, "*");
                         }
                       }}
                       onExpressDecide={(boardTrain) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_EXPRESS_DECIDE", boardTrain }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:express_decide" as any, { boardTrain });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_EXPRESS_DECIDE", boardTrain }, "*");
                         }
                       }}
                       onStealSwapDecide={(mode, targetTeamId) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_STEAL_SWAP_DECIDE", mode, targetTeamId }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:steal_swap_decide" as any, { mode, targetTeamId });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_STEAL_SWAP_DECIDE", mode, targetTeamId }, "*");
                         }
                       }}
                       onSpecialChooseOrder={(order) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_ORDER", order }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:special_order" as any, { order });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_ORDER", order }, "*");
                         }
                       }}
                       onSpecialPickLetters={(letters) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_PICK_LETTERS", letters }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:special_pick_letters" as any, { letters });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_PICK_LETTERS", letters }, "*");
                         }
                       }}
                       onSetOperationMode={(mode) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_SET_MODE", mode }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:set_mode" as any, { mode });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_SET_MODE", mode }, "*");
                         }
                       }}
                       onJudgeSolve={(correct) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_JUDGE_SOLVE", correct }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:judge_solve" as any, { correct });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_JUDGE_SOLVE", correct }, "*");
                         }
                       }}
                       onPassTurn={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:pass_turn" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
                         }
                       }}
                       onQuickRevealLetter={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:quick_reveal" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
                         }
                       }}
                       onRevealAll={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:reveal_all" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
                         }
                       }}
                       onOverrideTurn={(targetTeamId) => {
-                        window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:override_turn" as any, { teamId: targetTeamId });
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
                         }
                       }}
                       onAdvanceRound={() => {
-                        window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                        if (adminSocketRef.current?.connected) {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
                           adminSocketRef.current.emit("magic_wheel:advance_round" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
+                        }
+                      }}
+                      onNextRound={() => {
+                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+                          adminSocketRef.current.emit("magic_wheel:next_round" as any);
+                        } else {
+                          window.postMessage({ type: "MAGIC_WHEEL_NEXT_ROUND" }, "*");
                         }
                       }}
                     />

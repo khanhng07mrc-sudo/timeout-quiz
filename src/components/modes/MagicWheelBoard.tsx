@@ -76,6 +76,7 @@ export interface MagicWheelBoardProps {
   onSpecialPickLetters?: (letters: string[]) => void;
   onSetOperationMode?: (mode: MagicWheelOperationMode) => void;
   onJudgeSolve?: (isCorrect: boolean) => void;
+  onNextRound?: () => void;
 }
 
 interface RewardCardItem {
@@ -261,7 +262,7 @@ function SmartPuzzlePhraseInput({
       handleTriggerSubmit();
       return;
     }
-    if (e.key === "ArrowRight") {
+    if (e.key === "ArrowRight" || e.key === "Tab" || e.key === " ") {
       e.preventDefault();
       focusNextEditable(slotIdx);
       return;
@@ -329,7 +330,7 @@ function SmartPuzzlePhraseInput({
           next[slotIdx] = lastChar;
           return next;
         });
-        focusNextEditable(slotIdx);
+        // Do NOT auto-advance on vowels to allow tone typing in the same box
       }
     } else {
       setCharValues((prev) => {
@@ -337,7 +338,11 @@ function SmartPuzzlePhraseInput({
         next[slotIdx] = lastChar;
         return next;
       });
-      if (lastChar.trim()) {
+      // In Vietnamese IME, vowels and D/Đ can combine with subsequent keystrokes (e.g. A+W -> Ă, A+A -> Â, D+D -> Đ).
+      // Only auto-advance on distinct non-combining consonants.
+      const base = normalizeVietnameseBaseLetter(lastChar);
+      const isComb = isVietnameseVowel(base) || base === "D" || base === "Đ";
+      if (lastChar.trim() && !isComb) {
         focusNextEditable(slotIdx);
       }
     }
@@ -593,6 +598,9 @@ export default function MagicWheelBoard({
   onSpecialPickLetters,
   onSetOperationMode,
   onJudgeSolve,
+  onNextRound,
+  onRevealAll,
+  onQuickRevealLetter,
 }: MagicWheelBoardProps) {
   const activeState = magicWheelState || wheelState;
   if (!activeState) return null;
@@ -626,11 +634,33 @@ export default function MagicWheelBoard({
     specialAllowedLettersCount = 3,
     specialSolveEndsAt,
     specialAttemptLog = [],
+    roundEliminatedTeamIds = [],
+    lastSolveFeedback,
   } = activeState;
 
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
+  const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
+  const prevSolveFeedbackRef = useRef<typeof lastSolveFeedback>(undefined);
+
+  const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
+  const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
+
+  useEffect(() => {
+    if (!lastSolveFeedback || lastSolveFeedback === prevSolveFeedbackRef.current) return;
+    prevSolveFeedbackRef.current = lastSolveFeedback;
+
+    const isCorrect = Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success);
+    if (isCorrect) {
+      soundManager.playMagicWheelSolveWin();
+    } else {
+      soundManager.playMagicWheelWrong();
+      setIsBoardShaking(true);
+      const timer = setTimeout(() => setIsBoardShaking(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [lastSolveFeedback]);
 
   const effectiveIsMyTurn =
     isMyTurn !== undefined
@@ -1371,7 +1401,9 @@ export default function MagicWheelBoard({
     <div
       className={`w-full flex flex-col gap-3.5 ${
         isDisplay ? "p-3 sm:p-5" : "p-2 sm:p-3"
-      } bg-gradient-to-b from-[#0a0f1d] via-[#10192e] to-[#070b14] text-white rounded-3xl border border-white/10 shadow-2xl overflow-hidden`}
+      } bg-gradient-to-b from-[#0a0f1d] via-[#10192e] to-[#070b14] text-white rounded-3xl border border-white/10 shadow-2xl overflow-y-auto max-h-full ${
+        isBoardShaking ? "animate-shake" : ""
+      }`}
     >
       {/* ── TOP HEADER: ROUND STAGE, MODE SWITCH & TURN INFO ──────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-2xl border border-white/10 backdrop-blur-md">
@@ -1455,6 +1487,17 @@ export default function MagicWheelBoard({
             </div>
           </div>
 
+          {isHost && onRevealAll && phase !== "ROUND_RECAP" && (
+            <button
+              type="button"
+              onClick={onRevealAll}
+              className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition cursor-pointer"
+              title="Công bố toàn bộ đáp án ô chữ ngay lập tức"
+            >
+              📢 Công bố đáp án
+            </button>
+          )}
+
           {isHost && onPassTurn && roundStage === "MAIN" && (
             <button
               type="button"
@@ -1466,10 +1509,13 @@ export default function MagicWheelBoard({
             </button>
           )}
 
-          {isHost && onAdvanceRound && (
+          {isHost && (onNextRound || onAdvanceRound) && (
             <button
               type="button"
-              onClick={onAdvanceRound}
+              onClick={() => {
+                if (onNextRound) onNextRound();
+                else if (onAdvanceRound) onAdvanceRound();
+              }}
               className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 border border-white/20 transition cursor-pointer"
               title="Chuyển sang vòng tiếp theo"
             >
@@ -1702,15 +1748,72 @@ export default function MagicWheelBoard({
                 : "Bảng ô chữ đang chuẩn bị..."}
             </p>
           </div>
+
+          {/* Round Victory & Full Reveal Celebration Banner */}
+          {phase === "ROUND_RECAP" && (
+            <div className="w-full mt-2.5 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-500/25 via-yellow-500/25 to-emerald-500/25 border-2 border-amber-400 shadow-[0_0_30px_rgba(245,158,11,0.5)] flex flex-wrap items-center justify-between gap-3 animate-slide-up">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl sm:text-4xl animate-bounce">👑</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950">
+                      GIẢI MÃ THÀNH CÔNG
+                    </span>
+                    {lastSolveFeedback?.teamName && (
+                      <span className="font-black text-xs sm:text-sm text-amber-300">
+                        🎉 Đội chiến thắng: {lastSolveFeedback.teamName} (+{(lastSolveFeedback.pointsAwarded || 0).toLocaleString()}đ)
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-base sm:text-xl font-black text-white mt-1 tracking-wide">
+                    Ô CHỮ ĐẦY ĐỦ: &ldquo;{currentPuzzle?.secretPhrase}&rdquo;
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onNextRound) onNextRound();
+                  else if (onAdvanceRound) onAdvanceRound();
+                }}
+                className="px-4 py-2 sm:px-5 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:brightness-110 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-lg transition active:scale-95 cursor-pointer animate-pulse"
+              >
+                ⏭️ Sang vòng tiếp theo
+              </button>
+            </div>
+          )}
+
+          {/* Wrong Solve Alert Banner */}
+          {lastSolveFeedback && !(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success) && phase !== "ROUND_RECAP" && (
+            <div className="w-full mt-2.5 p-2.5 sm:p-3 rounded-2xl bg-gradient-to-r from-rose-950/90 via-red-900/90 to-rose-950/90 border-2 border-rose-500 text-white shadow-xl flex items-center justify-between gap-2 animate-bounce">
+              <div className="flex items-center gap-2 text-xs sm:text-sm">
+                <span className="text-xl">❌</span>
+                <div>
+                  <span className="font-black text-rose-300">
+                    ĐỘI {(lastSolveFeedback.teamName || "N/A").toUpperCase()} ĐOÁN SAI:
+                  </span>{" "}
+                  <span className="font-mono font-bold text-white bg-black/40 px-2 py-0.5 rounded border border-rose-500/40">
+                    &ldquo;{lastSolveFeedback.attemptText || lastSolveFeedback.guess || ""}&rdquo;
+                  </span>
+                  <span className="text-rose-200 text-xs ml-2">
+                    {roundStage === "MAIN"
+                      ? "(Mất lượt & hết quyền giải ô chữ trong vòng này)"
+                      : "(Mất quyền đoán nhanh câu này)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── WHEEL & STUDIO CONTROL SECTION ─────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-        {/* Left Col: 3D Wheel Rig (5 cols on lg) */}
-        <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-black/25 rounded-2xl border border-white/5">
-          <div
-            className="w-[290px] h-[290px] sm:w-[350px] sm:h-[350px] relative transition-transform select-none flex items-center justify-center"
+        {/* Left Col: 3D Wheel Rig (Hidden during Toss-Up rounds 1 & 2) */}
+        {!isTossUpRound && (
+          <div className="lg:col-span-5 flex flex-col items-center justify-center relative p-2 bg-black/25 rounded-2xl border border-white/5">
+            <div
+              className="w-[240px] h-[240px] sm:w-[290px] sm:h-[290px] relative transition-transform select-none flex items-center justify-center"
             style={{
               transformOrigin: "50% 0%",
               transform: isWheelZoomedIn ? "scale(1.45) translateY(38px)" : "scale(1.0) translateY(0)",
@@ -1949,15 +2052,16 @@ export default function MagicWheelBoard({
             </div>
           </div>
 
-          {selectedSector && !isSpinning && (
-            <div className="mt-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-black shadow animate-scale-up">
-              🎯 Ô quay: {selectedSector.label}
-            </div>
-          )}
-        </div>
+            {selectedSector && !isSpinning && (
+              <div className="mt-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500/30 to-pink-500/30 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-black shadow animate-scale-up">
+                🎯 Ô quay: {selectedSector.label}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Right Col: Studio Dashboard & Virtual MC (7 cols on lg) */}
-        <div className="lg:col-span-7 flex flex-col gap-3">
+        {/* Right Col: Studio Dashboard & Virtual MC */}
+        <div className={`${isTossUpRound ? "lg:col-span-12 max-w-4xl mx-auto w-full" : "lg:col-span-7"} flex flex-col gap-3`}>
           {/* Virtual MC Card with Flexible Speech Bubble */}
           <div className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-r from-purple-950/70 via-slate-900/80 to-indigo-950/70 border border-purple-500/40 shadow-lg relative overflow-hidden">
             <div className="absolute -left-4 -top-4 w-24 h-24 bg-pink-500/20 rounded-full blur-xl pointer-events-none" />
@@ -2264,27 +2368,39 @@ export default function MagicWheelBoard({
                           <button
                             type="button"
                             onClick={() => {
-                              if (isSpinning) return;
+                              if (isSpinning || isCurrentTeamEliminated) return;
                               soundManager.playMagicWheelSpin();
                               onSpin?.(oscillatingPower);
                             }}
-                            disabled={isSpinning}
-                            className="flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 transition shadow-[0_0_20px_rgba(236,72,153,0.4)] cursor-pointer"
+                            disabled={isSpinning || isCurrentTeamEliminated}
+                            className={`flex-1 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm text-white transition shadow-[0_0_20px_rgba(236,72,153,0.4)] ${
+                              isCurrentTeamEliminated
+                                ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                : "bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:brightness-110 active:scale-98 cursor-pointer"
+                            }`}
                           >
-                            ✦ CHỐT LỰC & QUAY NÓN ({oscillatingPower}%) ✦
+                            {isCurrentTeamEliminated
+                              ? "⛔ ĐÃ HẾT LƯỢT VÒNG NÀY (ĐOÁN SAI Ô CHỮ)"
+                              : `✦ CHỐT LỰC & QUAY NÓN (${oscillatingPower}%) ✦`}
                           </button>
                           {subMode === "WORD_PUZZLE" && (
                             <button
                               type="button"
                               onClick={() => setSolveModalOpen(true)}
-                              disabled={isSpinning || isSolveForbiddenInRound3}
+                              disabled={isSpinning || isSolveForbiddenInRound3 || isCurrentTeamEliminated}
                               className={`px-3.5 py-2.5 rounded-xl font-black text-xs whitespace-nowrap transition shadow ${
-                                isSolveForbiddenInRound3
+                                isCurrentTeamEliminated
+                                  ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
+                                  : isSolveForbiddenInRound3
                                   ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-60"
                                   : "text-black bg-gradient-to-r from-amber-400 to-yellow-500 hover:brightness-110 active:scale-98 cursor-pointer"
                               }`}
                             >
-                              {isSolveForbiddenInRound3 ? "🔒 CẦN MỞ HẾT" : "🎯 GIẢI Ô CHỮ"}
+                              {isCurrentTeamEliminated
+                                ? "⛔ ĐÃ HẾT QUYỀN"
+                                : isSolveForbiddenInRound3
+                                ? "🔒 CẦN MỞ HẾT"
+                                : "🎯 GIẢI Ô CHỮ"}
                             </button>
                           )}
                         </div>
@@ -2314,16 +2430,18 @@ export default function MagicWheelBoard({
                             <button
                               type="button"
                               onClick={() => setSolveModalOpen(true)}
-                              disabled={isSolveForbiddenInRound3}
+                              disabled={isSolveForbiddenInRound3 || isCurrentTeamEliminated}
                               className={`px-3 py-1 rounded-lg text-xs font-black shadow transition ${
-                                isSolveForbiddenInRound3
+                                isCurrentTeamEliminated
+                                  ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed opacity-50"
+                                  : isSolveForbiddenInRound3
                                   ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed"
                                   : mustSolveWithTones
                                   ? "bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 text-slate-950 animate-bounce cursor-pointer shadow-[0_0_20px_#f59e0b]"
                                   : "bg-gradient-to-r from-yellow-500 to-amber-600 text-black cursor-pointer"
                               }`}
                             >
-                              🎯 GIẢI Ô CHỮ (ĐIỀN DẤU THANH)
+                              {isCurrentTeamEliminated ? "⛔ HẾT QUYỀN GIẢI" : "🎯 GIẢI Ô CHỮ (ĐIỀN DẤU THANH)"}
                             </button>
                             {isHost && onJudgeSolve && (
                               <>
@@ -2612,7 +2730,9 @@ export default function MagicWheelBoard({
                 const isTurn = t.id === (tossUpBuzzedTeamId || currentTurnTeamId);
                 const strikes =
                   activeState.consecutiveWrongGuesses?.[t.id] ?? activeState.wrongGuessesCount?.[t.id] ?? 0;
-                const isEliminated = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+                const isEliminatedByStrikes = (activeState.disqualifiedTeamIdsInRound || []).includes(t.id);
+                const isEliminatedBySolve = roundEliminatedTeamIds.includes(t.id);
+                const isEliminated = isEliminatedByStrikes || isEliminatedBySolve;
 
                 return (
                   <div
@@ -2651,7 +2771,12 @@ export default function MagicWheelBoard({
                       ) : (
                         <span className="text-[9px] text-slate-500">0 thẻ</span>
                       )}
-                      {isEliminated ? (
+                      {isEliminatedBySolve ? (
+                        <span className="text-rose-400 font-bold uppercase text-[9px] flex items-center gap-1" title="Đã dùng hết 1 lượt đoán ô chữ vòng này và đoán sai">
+                          <span>⛔ Hết quyền giải (Đoán sai)</span>
+                          <span className="text-rose-500 font-black">✕✕✕</span>
+                        </span>
+                      ) : isEliminatedByStrikes ? (
                         <span className="text-rose-400 font-bold uppercase text-[9px]">⛔ Dừng vòng (3/3 X)</span>
                       ) : (
                         <div className="flex items-center gap-1" title={`Đoán sai liên tiếp: ${strikes}/3`}>

@@ -103,12 +103,19 @@ export default function CreateRoomPage() {
   const [tournamentQuestionsPerMatch, setTournamentQuestionsPerMatch] = useState(3);
   // Magic Wheel config
   const [magicWheelSubMode, setMagicWheelSubMode] = useState<"WORD_PUZZLE" | "WHEEL_QUIZ">("WORD_PUZZLE");
-  const [magicWheelRoundsCount, setMagicWheelRoundsCount] = useState(4);
+  const [magicWheelRoundsCount, setMagicWheelRoundsCount] = useState(11);
   const [magicWheelPuzzles, setMagicWheelPuzzles] = useState<Array<{ roundNumber: number; category: string; secretPhrase: string; clue: string }>>([
-    { roundNumber: 1, category: "DANH NHÂN LỊCH SỬ", secretPhrase: "NGUYỄN HUỆ", clue: "Vị anh hùng áo vải cờ đào đại phá quân Thanh" },
-    { roundNumber: 2, category: "DANH LAM THẮNG CẢNH", secretPhrase: "VỊNH HẠ LONG", clue: "Kỳ quan thiên nhiên thế giới tại tỉnh Quảng Ninh" },
-    { roundNumber: 3, category: "VĂN HỌC NGHỆ THUẬT", secretPhrase: "TRUYỆN KIỀU", clue: "Kiệt tác truyện thơ Nôm của Đại thi hào Nguyễn Du" },
-    { roundNumber: 4, category: "KHOA HỌC CÔNG NGHỆ", secretPhrase: "TRÍ TUỆ NHÂN TẠO", clue: "Công nghệ mô phỏng trí thông minh của con người" },
+    { roundNumber: 1, category: "ĐOÁN NHANH 1: ĐỊA DANH", secretPhrase: "HỒ HOÀN KIẾM", clue: "Trái tim lịch sử gắn với truyền thuyết rùa vàng trả gươm giữa lòng Thủ đô Hà Nội." },
+    { roundNumber: 2, category: "ĐOÁN NHANH 2: ẨM THỰC", secretPhrase: "BÁNH CHƯNG XANH", clue: "Món bánh truyền thống tượng trưng cho mặt đất vuông vức mỗi dịp Tết Nguyên Đán." },
+    { roundNumber: 3, category: "VÒNG 1: DANH NHÂN LỊCH SỬ", secretPhrase: "NGUYỄN TRÃI", clue: "Nhà quân sự, danh nhân văn hóa lỗi lạc thế giới của Việt Nam thời Hậu Lê." },
+    { roundNumber: 4, category: "VÒNG 2: DI SẢN THIÊN NHIÊN", secretPhrase: "VỊNH HẠ LONG", clue: "Kỳ quan thiên nhiên thế giới với hàng nghìn đảo đá vôi kỳ vĩ tại Quảng Ninh." },
+    { roundNumber: 5, category: "VÒNG 3: THÀNH NGỮ TỤC NGỮ", secretPhrase: "UỐNG NƯỚC NHỚ NGUỒN", clue: "Truyền thống đạo lý tri ân sâu sắc các thế hệ đi trước của dân tộc Việt Nam." },
+    { roundNumber: 6, category: "VÒNG 4: VĂN HỌC VIỆT NAM", secretPhrase: "DẾ MÈN PHIÊU LƯU KÝ", clue: "Tác phẩm văn học thiếu nhi kinh điển nổi tiếng nhất của nhà văn Tô Hoài." },
+    { roundNumber: 7, category: "VÒNG 5: LÀNG NGHỀ TRUYỀN THỐNG", secretPhrase: "GỐM SỨ BÁT TRÀNG", clue: "Làng nghề làm gốm lâu đời nằm bên bờ sông Hồng thuộc huyện Gia Lâm, Hà Nội." },
+    { roundNumber: 8, category: "VÒNG 6: ÂM NHẠC DÂN TỘC", secretPhrase: "NHÃ NHẠC CUNG ĐÌNH HUẾ", clue: "Loại hình âm nhạc bác học đầu tiên của Việt Nam được UNESCO vinh danh." },
+    { roundNumber: 9, category: "VÒNG 7: KỲ QUAN HANG ĐỘNG", secretPhrase: "HANG SƠN ĐOÒNG", clue: "Hang động tự nhiên lớn nhất thế giới nằm trong quần thể Phong Nha - Kẻ Bàng." },
+    { roundNumber: 10, category: "VÒNG 8: KHOA HỌC CÔNG NGHỆ", secretPhrase: "TRÍ TUỆ NHÂN TẠO", clue: "Lĩnh vực công nghệ đột phá mô phỏng tư duy và khả năng học hỏi của con người." },
+    { roundNumber: 11, category: "VÒNG ĐẶC BIỆT: KIỆT TÁC THƠ CA", secretPhrase: "TRUYỆN KIỀU NGUYỄN DU", clue: "Kiệt tác thơ Nôm lục bát bất hủ được xem là đỉnh cao của nền văn học trung đại Việt Nam." },
   ]);
   // Grid Caro config
   const [gridRows, setGridRows] = useState(4);
@@ -1257,14 +1264,14 @@ export default function CreateRoomPage() {
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium mb-1">Số vòng thi đấu</label>
+                  <label className="block text-xs font-medium mb-1">Tổng số vòng ô chữ trong bộ đề</label>
                   <input
                     type="number"
-                    min={1}
-                    max={10}
+                    min={4}
+                    max={11}
                     value={magicWheelRoundsCount}
                     onChange={(e) => {
-                      const count = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                      const count = Math.max(4, Math.min(11, parseInt(e.target.value) || 11));
                       setMagicWheelRoundsCount(count);
                       setMagicWheelPuzzles((prev) => {
                         const next = [...prev];
@@ -1273,7 +1280,7 @@ export default function CreateRoomPage() {
                           next.push({
                             roundNumber: idx,
                             category: "CHỦ ĐỀ MỚI",
-                            secretPhrase: "CHIEC NON KY DIEU",
+                            secretPhrase: "CHIẾC NÓN KỲ DIỆU",
                             clue: "Gameshow kinh điển của Đài Truyền hình Việt Nam",
                           });
                         }
@@ -1283,7 +1290,7 @@ export default function CreateRoomPage() {
                     className="w-full px-3 py-2 rounded-lg bg-input border border-border text-sm"
                   />
                   <p className="text-[11px] text-muted-foreground mt-1">
-                    Số vòng chơi chính (sau mỗi vòng hoàn tất giải ô chữ sẽ tự động chuyển sang vòng tiếp theo).
+                    Chuẩn 11 vòng: 2 Vòng Đoán Nhanh + 8 Vòng Chính tối đa (hệ thống tự lấy theo số đội) + 1 Vòng Đặc Biệt.
                   </p>
                 </div>
               </div>
@@ -1295,7 +1302,7 @@ export default function CreateRoomPage() {
                       <span className="text-lg">⚡</span>
                       <div>
                         <span className="text-xs font-bold text-amber-200 block">Nạp nhanh bộ đề ô chữ mẫu (Preset):</span>
-                        <p className="text-[10px] text-slate-400">Chọn 1 trong 3 gói đề mẫu biên soạn sẵn chuẩn format VTV3</p>
+                        <p className="text-[10px] text-slate-400">Chọn 1 trong 3 gói đề mẫu 11 vòng (2 Đoán Nhanh + 8 Vòng Chính + 1 Vòng Đặc Biệt)</p>
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -1348,10 +1355,20 @@ export default function CreateRoomPage() {
 
                   <h4 className="text-xs font-bold text-amber-200">Danh sách Ô Chữ theo từng Vòng:</h4>
                   <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                    {magicWheelPuzzles.slice(0, magicWheelRoundsCount).map((p, idx) => (
+                    {magicWheelPuzzles.slice(0, magicWheelRoundsCount).map((p, idx) => {
+                      const totalCount = magicWheelRoundsCount;
+                      const stageLabel =
+                        idx === 0
+                          ? "Vòng 1 — ⚡ Đoán Nhanh 1 (+500đ)"
+                          : idx === 1
+                          ? "Vòng 2 — ⚡ Đoán Nhanh 2 (+1.000đ & Đi đầu Vòng 1)"
+                          : idx === totalCount - 1
+                          ? `Vòng ${idx + 1} — 👑 Vòng Đặc Biệt (Chung kết)`
+                          : `Vòng ${idx + 1} — 🎡 Vòng Chính ${idx - 1}`;
+                      return (
                       <div key={idx} className="p-3 rounded-lg bg-[#151728]/80 border border-border space-y-2">
                         <div className="flex items-center justify-between text-xs font-bold text-amber-300">
-                          <span>Vòng {idx + 1}</span>
+                          <span>{stageLabel}</span>
                           <span className="text-[11px] text-muted-foreground">Tối đa 14 ký tự/hàng</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1393,7 +1410,8 @@ export default function CreateRoomPage() {
                           className="w-full px-2.5 py-1.5 rounded bg-input border border-border text-xs text-muted-foreground"
                         />
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

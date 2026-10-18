@@ -910,6 +910,21 @@ export interface MagicWheelState {
   specialAnswerEndsAt?: number;
   specialSolveEndsAt?: number;         // Timestamp hết 40s (30s suy nghĩ + 10s trả lời)
   specialAttemptLog?: string[];        // Lịch sử các đáp án đã gõ thử trong 40s
+  roundEliminatedTeamIds?: string[];   // Các đội bị tước quyền giải ô chữ trong vòng này (do đã dùng 1 lượt giải và đoán sai)
+  lastSolveFeedback?: {
+    teamId?: string;
+    teamName?: string;
+    guess?: string;
+    attemptText?: string;
+    isCorrect: boolean;
+    success?: boolean;
+    pointsAwarded?: number;
+    revealedAnswer?: string;
+    correctPhrase?: string;
+    eliminatedFromRound?: boolean;
+    allTeamsEliminated?: boolean;
+    timestamp: number;
+  } | null;
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1907,6 +1922,16 @@ export interface ClientToServerEvents {
   "magic_wheel:toss_up_reveal_tick": (payload?: { index?: number }) => void;
   "magic_wheel:special_choose_order": (payload: { order: "SPIN_FIRST" | "SOLVE_FIRST" }) => void;
   "magic_wheel:special_pick_letters": (payload: { letters: string[] }) => void;
+  "magic_wheel:reveal_all": () => void;
+  "magic_wheel:next_round": () => void;
+  "magic_wheel:advance_round": () => void;
+  "magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
+  "magic_wheel:set_operation_mode": (payload: { mode: MagicWheelOperationMode }) => void;
+  "magic_wheel:judge_solve": (payload: { isCorrect?: boolean; correct?: boolean }) => void;
+  "magic_wheel:pass_turn": () => void;
+  "magic_wheel:quick_reveal": () => void;
+  "magic_wheel:override_turn": (payload: { teamId: string }) => void;
+  "admin:magic_wheel:next_round": () => void;
   "admin:magic_wheel:advance_round": () => void;
   "admin:magic_wheel:spin": (payload?: { power?: number }) => void;
   "admin:magic_wheel:guess_letter": (payload: { letter: string }) => void;

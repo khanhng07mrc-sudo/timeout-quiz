@@ -126,6 +126,20 @@ export interface MagicWheelState {
   teamShields?: Record<string, boolean>;
   round3TradedTeams?: string[];
   round3ForbiddenSolveTeams?: string[];
+  // Các đội đã Giải Ô Chữ SAI trong vòng chơi chính hiện tại -> bị loại khỏi phần còn lại của vòng đó
+  roundEliminatedTeamIds?: string[];
+  // Phản hồi trực quan khi có người chốt đáp án giải ô chữ (Đúng / Sai)
+  lastSolveFeedback?: {
+    teamId?: string;
+    teamName?: string;
+    guess: string;
+    isCorrect: boolean;
+    pointsAwarded?: number;
+    correctPhrase?: string;
+    eliminatedFromRound?: boolean;
+    allTeamsEliminated?: boolean;
+    timestamp: number;
+  } | null;
   // Cơ chế mở hết chữ cái gốc (không dấu thanh) -> bắt buộc Giải Ô Chữ đúng dấu thanh
   mustSolveWithTones?: boolean;
   // Trạng thái Vòng Đoán Nhanh (Toss-Up 1 & 2)
@@ -682,7 +696,8 @@ export function calculateSpinDestination(
 }
 
 /**
- * Kho câu đố ô chữ chuẩn Gameshow Chiếc Nón Kỳ Diệu (Đầy đủ cho 2 Vòng Đoán Nhanh + 6 Vòng Chính + Vòng Đặc Biệt)
+ * Kho câu đố ô chữ chuẩn Gameshow Chiếc Nón Kỳ Diệu
+ * Cấu trúc chuẩn: 2 Vòng Đoán Nhanh + 8 Vòng Chơi Chính tối đa (tương ứng tối đa 8 đội) + 1 Vòng Đặc Biệt = 11 Vòng
  */
 export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
   {
@@ -729,8 +744,8 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     stage: "MAIN",
     mainRoundIndex: 3,
     category: "VÒNG 3: THÀNH NGỮ TỤC NGỮ",
-    secretPhrase: "CÓ CÔNG MÀI SẮT CÓ NGÀY NÊN KIM",
-    clue: "Lời khuyên về lòng kiên trì, nhẫn nại vượt qua thử thách sẽ gặt hái thành công.",
+    secretPhrase: "UỐNG NƯỚC NHỚ NGUỒN",
+    clue: "Truyền thống đạo lý tri ân sâu sắc các thế hệ đi trước của dân tộc Việt Nam.",
     revealedIndices: [],
   },
   {
@@ -764,8 +779,28 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
     revealedIndices: [],
   },
   {
-    id: "puzzle-final",
+    id: "puzzle-r7",
     roundNumber: 9,
+    stage: "MAIN",
+    mainRoundIndex: 7,
+    category: "VÒNG 7: KỲ QUAN HANG ĐỘNG",
+    secretPhrase: "HANG SƠN ĐOÒNG",
+    clue: "Hang động tự nhiên lớn nhất thế giới nằm trong quần thể Phong Nha - Kẻ Bàng.",
+    revealedIndices: [],
+  },
+  {
+    id: "puzzle-r8",
+    roundNumber: 10,
+    stage: "MAIN",
+    mainRoundIndex: 8,
+    category: "VÒNG 8: KHOA HỌC CÔNG NGHỆ",
+    secretPhrase: "TRÍ TUỆ NHÂN TẠO",
+    clue: "Lĩnh vực công nghệ đột phá mô phỏng tư duy và khả năng học hỏi của con người.",
+    revealedIndices: [],
+  },
+  {
+    id: "puzzle-final",
+    roundNumber: 11,
     stage: "SPECIAL_FINAL",
     category: "VÒNG ĐẶC BIỆT: KIỆT TÁC THI CA",
     secretPhrase: "TRUYỆN KIỀU NGUYỄN DU",
@@ -775,7 +810,7 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
 ];
 
 /**
- * Xây dựng danh sách các vòng chơi tự động mở rộng theo số đội (N = max(3, teamsCount)):
+ * Xây dựng danh sách các vòng chơi tự động mở rộng theo số đội (N = min(8, max(3, teamsCount))):
  * [Đoán nhanh 1] -> [Đoán nhanh 2] -> [Vòng chính 1 .. Vòng chính N] -> [Vòng Đặc Biệt]
  */
 export function buildMagicWheelMatchPuzzles(
@@ -794,7 +829,7 @@ export function buildMagicWheelMatchPuzzles(
     ? secondArg
     : undefined;
 
-  const totalMainRounds = Math.max(3, teamsCount || 3);
+  const totalMainRounds = Math.min(8, Math.max(3, teamsCount || 3));
   const pool = customPuzzles && customPuzzles.length >= 4
     ? customPuzzles.map((p, idx) => ({
         id: `custom-puzzle-${idx + 1}`,
@@ -836,12 +871,13 @@ export function buildMagicWheelMatchPuzzles(
     revealedIndices: [],
   });
 
-  // 3. Các Vòng Chính 1..N
+  // 3. Các Vòng Chính 1..N (lấy từ phần giữa của pool câu hỏi: từ index 2 đến trước phần tử cuối cùng)
+  const customMainSlice = pool.length >= 4 ? pool.slice(2, pool.length - 1) : [];
   for (let m = 1; m <= totalMainRounds; m++) {
-    const customMain = pool[m + 1];
+    const customMain = customMainSlice[m - 1];
     const fallbackMain = defaultMainPool[(m - 1) % defaultMainPool.length];
     const src = customMain || fallbackMain;
-    const cleanCat = src.category.replace(/^VÒNG \d+:\s*/i, "");
+    const cleanCat = src.category.replace(/^(VÒNG \d+|ĐOÁN NHANH \d+|VÒNG ĐẶC BIỆT):\s*/i, "");
     schedule.push({
       ...src,
       id: `mw-main-${m}`,
@@ -853,11 +889,9 @@ export function buildMagicWheelMatchPuzzles(
     });
   }
 
-  // 4. Vòng Đặc Biệt
-  const specialSource = pool[pool.length - 1] && pool.length >= 2 + totalMainRounds + 1
-    ? pool[pool.length - 1]
-    : defaultSpecial;
-  const cleanSpecialCat = specialSource.category.replace(/^VÒNG ĐẶC BIỆT:\s*/i, "");
+  // 4. Vòng Đặc Biệt (luôn ưu tiên lấy câu cuối cùng trong bộ đề mẫu/custom)
+  const specialSource = pool.length >= 4 ? pool[pool.length - 1] : defaultSpecial;
+  const cleanSpecialCat = specialSource.category.replace(/^(VÒNG \d+|ĐOÁN NHANH \d+|VÒNG ĐẶC BIỆT):\s*/i, "");
   schedule.push({
     ...specialSource,
     id: "mw-special-final",

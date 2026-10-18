@@ -278,6 +278,49 @@ function SmartPuzzlePhraseInput({
     // Only trigger shortcuts if not in the middle of IME composition
     if (isComposingRef.current) return;
 
+    // Direct Telex Tone Keyboard Shortcuts: F (huyền), S (sắc), R (hỏi), X (ngã), J (nặng), Z (xóa dấu)
+    const keyLower = e.key.toLowerCase();
+    const telexToneMap: Record<string, VietnameseToneMark> = {
+      s: "SAC",
+      f: "HUYEN",
+      r: "HOI",
+      x: "NGA",
+      j: "NANG",
+      z: "NONE",
+    };
+
+    const currentCh = charValues[slotIdx] || slot.baseChar;
+    const baseVowel = slot.isRevealedVowel ? slot.baseChar : normalizeVietnameseBaseLetter(currentCh);
+    const hasVowel = isVietnameseVowel(baseVowel);
+
+    if (hasVowel && telexToneMap[keyLower]) {
+      e.preventDefault();
+      applyToneAtSlot(slotIdx, telexToneMap[keyLower]);
+      return;
+    }
+
+    // Direct Telex Vowel Modification: W (Ă/Ơ/Ư), A (Â), E (Ê), O (Ô), D (Đ)
+    const telexVowelModMap: Record<string, Record<string, string>> = {
+      a: { a: "Â", w: "Ă" },
+      e: { e: "Ê" },
+      o: { o: "Ô", w: "Ơ" },
+      u: { w: "Ư" },
+      d: { d: "Đ" },
+    };
+    const baseLower = baseVowel.toLowerCase();
+    if (telexVowelModMap[baseLower]?.[keyLower]) {
+      const transformed = telexVowelModMap[baseLower][keyLower];
+      if (!slot.isRevealedVowel || normalizeVietnameseBaseLetter(transformed) === slot.baseChar) {
+        e.preventDefault();
+        setCharValues((prev) => {
+          const next = [...prev];
+          next[slotIdx] = transformed;
+          return next;
+        });
+        return;
+      }
+    }
+
     if (e.key === "Backspace") {
       e.preventDefault();
       if (slot.isRevealedVowel) {
@@ -569,6 +612,236 @@ function SmartPuzzlePhraseInput({
   );
 }
 
+interface Hostess3DStudioProps {
+  xPercent: number;
+  activeRow: number;
+  facing: "LEFT" | "RIGHT";
+  pose: "IDLE" | "GESTURE" | "WALKING" | "TOUCHING";
+}
+
+function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioProps) {
+  const isRightSide = facing === "LEFT"; // If facing LEFT, standing on the right edge
+  const isTouching = pose === "TOUCHING";
+  const isGesture = pose === "GESTURE";
+  const isWalking = pose === "WALKING";
+
+  // Dynamic 3D rotation, pitch, and lean (rướn người & quay theo tọa độ hàng)
+  const rowAngles = [-12, -4, 4, 12];
+  const targetPitch = isTouching ? (rowAngles[activeRow] ?? 0) : 0;
+  const baseRotateY = isRightSide ? -22 : 22;
+  const dynamicRotateY = isTouching ? (isRightSide ? -42 : 42) : isGesture ? (isRightSide ? -28 : 28) : baseRotateY;
+  const dynamicLeanZ = isTouching ? (isRightSide ? 7 : -7) : 0;
+  const dynamicTranslateY = isTouching ? -8 : 0;
+
+  return (
+    <div
+      className="absolute z-30 pointer-events-none transition-all duration-500 ease-out select-none"
+      style={{
+        left: `${Math.max(-2, Math.min(102, xPercent))}%`,
+        top: isTouching || isWalking ? `${10 + activeRow * 20}%` : "18%",
+        transform: `translate(-50%, -10%) translateY(${dynamicTranslateY}px)`,
+        perspective: "900px",
+      }}
+    >
+      <div
+        className="relative flex flex-col items-center"
+        style={{
+          transformStyle: "preserve-3d",
+          transform: `rotateY(${dynamicRotateY}deg) rotateZ(${dynamicLeanZ}deg)`,
+          transition: "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)",
+        }}
+      >
+        {/* Pulsing Sparkle Burst at index finger when touching or gesturing */}
+        {(isTouching || isGesture) && (
+          <div
+            className="absolute z-40 text-xl sm:text-2xl animate-ping"
+            style={{
+              top: isTouching ? "12px" : "18px",
+              right: isRightSide ? "auto" : "-14px",
+              left: isRightSide ? "-14px" : "auto",
+              filter: "drop-shadow(0 0 8px #facc15)",
+            }}
+          >
+            ✨
+          </div>
+        )}
+
+        {/* 3D Stylized Studio Hostess Avatar */}
+        <div className={`relative w-16 sm:w-20 md:w-24 h-28 sm:h-36 md:h-44 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] ${isWalking ? "animate-bounce" : ""}`}>
+          <svg viewBox="0 0 100 160" className="w-full h-full overflow-visible">
+            <defs>
+              <linearGradient id="hostessGownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f43f5e" />
+                <stop offset="40%" stopColor="#e11d48" />
+                <stop offset="85%" stopColor="#9f1239" />
+                <stop offset="100%" stopColor="#4c0519" />
+              </linearGradient>
+
+              <linearGradient id="hostessGoldMetal" x1="0%" y1="0%" x2="100%" y2="50%">
+                <stop offset="0%" stopColor="#fef08a" />
+                <stop offset="35%" stopColor="#facc15" />
+                <stop offset="70%" stopColor="#eab308" />
+                <stop offset="100%" stopColor="#854d0e" />
+              </linearGradient>
+
+              <linearGradient id="hostessSkinGrad" x1="20%" y1="0%" x2="80%" y2="100%">
+                <stop offset="0%" stopColor="#fff1f2" />
+                <stop offset="60%" stopColor="#ffe4e6" />
+                <stop offset="100%" stopColor="#fecdd3" />
+              </linearGradient>
+
+              <linearGradient id="hostessHairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#312e81" />
+                <stop offset="30%" stopColor="#1e1b4b" />
+                <stop offset="75%" stopColor="#0f172a" />
+                <stop offset="100%" stopColor="#020617" />
+              </linearGradient>
+
+              <radialGradient id="hostessCheekBlush" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#fb7185" stopOpacity="0.5" />
+                <stop offset="100%" stopColor="#fb7185" stopOpacity="0" />
+              </radialGradient>
+            </defs>
+
+            {/* 3D Floor Shadow */}
+            <ellipse cx="50" cy="154" rx="28" ry="5.5" fill="rgba(0,0,0,0.55)" filter="blur(2px)" />
+
+            {/* Back Hair Strands */}
+            <path
+              d="M32 26 C20 35 18 65 24 82 C32 75 68 75 76 82 C82 65 80 35 68 26 C60 14 40 14 32 26 Z"
+              fill="url(#hostessHairGrad)"
+            />
+
+            {/* Evening Gown Flowing Skirt / Áo Dài Tà Xòe */}
+            <path
+              d="M36 78 C32 98 22 135 15 150 C35 153 65 153 85 150 C78 135 68 98 64 78 Z"
+              fill="url(#hostessGownGrad)"
+              stroke="#fda4af"
+              strokeWidth="0.8"
+            />
+            {/* 3D Gown Silk Pleats */}
+            <path d="M42 80 C38 105 32 135 28 151" stroke="#881337" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
+            <path d="M50 78 C50 105 50 135 50 152" stroke="#f43f5e" strokeWidth="1.2" strokeOpacity="0.8" fill="none" />
+            <path d="M58 80 C62 105 68 135 72 151" stroke="#4c0519" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
+
+            {/* Golden Embroidery Trim on Skirt Slit */}
+            <path d="M15 150 Q50 155 85 150" stroke="url(#hostessGoldMetal)" strokeWidth="2.5" fill="none" />
+            <circle cx="50" cy="152" r="2" fill="#fef08a" />
+
+            {/* High-heeled Stiletto Shoes */}
+            <path d="M43 148 L46 154 L49 148" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" fill="none" />
+            <path d="M51 148 L54 154 L57 148" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" fill="none" />
+
+            {/* Hourglass Bodice / Torso (with 3D lean and pitch) */}
+            <g style={{ transform: `rotate(${targetPitch}deg)`, transformOrigin: "50px 75px", transition: "transform 400ms" }}>
+              <path
+                d="M35 52 C35 44 42 42 50 42 C58 42 65 44 65 52 C65 62 60 76 58 78 C54 80 46 80 42 78 C40 76 35 62 35 52 Z"
+                fill="url(#hostessGownGrad)"
+                stroke="#fda4af"
+                strokeWidth="0.7"
+              />
+              {/* Sweetheart Neckline Trim */}
+              <path d="M38 50 Q50 56 62 50" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" fill="none" />
+
+              {/* Golden Cinched Waist Belt */}
+              <rect x="40" y="74" width="20" height="5" rx="2" fill="url(#hostessGoldMetal)" />
+              <rect x="48" y="73" width="4" height="7" rx="1" fill="#fff" opacity="0.8" />
+
+              {/* Slender Neck & Diamond Choker */}
+              <rect x="46" y="34" width="8" height="9" rx="3" fill="url(#hostessSkinGrad)" />
+              <path d="M45 40 Q50 43 55 40" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
+              <circle cx="50" cy="42" r="1.2" fill="#fff" />
+
+              {/* Head / Face */}
+              <ellipse cx="50" cy="27" rx="12" ry="14" fill="url(#hostessSkinGrad)" />
+              {/* Cheek Blush */}
+              <ellipse cx="43" cy="30" rx="3.5" ry="2" fill="url(#hostessCheekBlush)" />
+              <ellipse cx="57" cy="30" rx="3.5" ry="2" fill="url(#hostessCheekBlush)" />
+
+              {/* Elegant Eyes & Eyelashes */}
+              <ellipse cx="44.5" cy="25" rx="2.2" ry="1.6" fill="#0f172a" />
+              <ellipse cx="55.5" cy="25" rx="2.2" ry="1.6" fill="#0f172a" />
+              <circle cx="45.2" cy="24.4" r="0.7" fill="#ffffff" />
+              <circle cx="56.2" cy="24.4" r="0.7" fill="#ffffff" />
+              <path d="M42 22.5 Q45 21 47.5 22.5" stroke="#1e1b4b" strokeWidth="0.9" fill="none" />
+              <path d="M52.5 22.5 Q55 21 58 22.5" stroke="#1e1b4b" strokeWidth="0.9" fill="none" />
+
+              {/* Radiant Smile with Ruby Lips */}
+              <path d="M46.5 32 Q50 35.5 53.5 32" stroke="#be123c" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+
+              {/* Stylized Voluminous Hair Over Forehead & Shoulders */}
+              <path
+                d="M34 22 C34 10 66 10 66 22 C66 26 62 25 59 23 C53 20 47 20 41 23 C38 25 34 26 34 22 Z"
+                fill="url(#hostessHairGrad)"
+              />
+              <path d="M34 22 C31 30 33 46 37 54 C39 48 37 32 36 24 Z" fill="url(#hostessHairGrad)" />
+              <path d="M66 22 C69 30 67 46 63 54 C61 48 63 32 64 24 Z" fill="url(#hostessHairGrad)" />
+
+              {/* Sparkling Golden Hair Tiara / Crown */}
+              <polygon points="42,12 50,5 58,12 54,14 46,14" fill="url(#hostessGoldMetal)" />
+              <circle cx="50" cy="8" r="1.2" fill="#ffffff" />
+
+              {/* Rest Arm */}
+              <path
+                d="M35 48 C28 58 29 70 33 78"
+                stroke="url(#hostessSkinGrad)"
+                strokeWidth="4.8"
+                fill="none"
+                strokeLinecap="round"
+              />
+              <circle cx="33" cy="78" r="2.4" fill="url(#hostessSkinGrad)" />
+
+              {/* Dynamic 3-Joint Arm & Hand (Reaching & Pointing) */}
+              {isTouching ? (
+                <g style={{ transition: "all 400ms ease-out" }}>
+                  <path
+                    d="M64 48 C76 42 86 32 94 18"
+                    stroke="url(#hostessSkinGrad)"
+                    strokeWidth="5"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M93 19 L99 12"
+                    stroke="url(#hostessSkinGrad)"
+                    strokeWidth="3.2"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="86" cy="32" r="3" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" />
+                </g>
+              ) : isGesture ? (
+                <g style={{ transition: "all 400ms ease-out" }}>
+                  <path
+                    d="M64 48 C76 46 84 38 88 28"
+                    stroke="url(#hostessSkinGrad)"
+                    strokeWidth="4.8"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <path d="M87 29 L92 24" stroke="url(#hostessSkinGrad)" strokeWidth="3" fill="none" strokeLinecap="round" />
+                  <circle cx="82" cy="40" r="2.8" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" />
+                </g>
+              ) : (
+                <g>
+                  <path
+                    d="M65 48 C72 58 70 70 66 78"
+                    stroke="url(#hostessSkinGrad)"
+                    strokeWidth="4.8"
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="66" cy="78" r="2.4" fill="url(#hostessSkinGrad)" />
+                </g>
+              )}
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MagicWheelBoard({
   magicWheelState,
   wheelState,
@@ -724,6 +997,18 @@ export default function MagicWheelBoard({
   const effectiveBoardStage: "EMPTY_56" | "BLANK_PHRASE" | "READY_CLUE" =
     activeState.boardStage || boardStage;
 
+  const prevBoardStageRef = useRef<string>(activeState.boardStage || "EMPTY_56");
+  useEffect(() => {
+    const curStage = activeState.boardStage || "EMPTY_56";
+    if (prevBoardStageRef.current === "EMPTY_56" && curStage === "BLANK_PHRASE") {
+      if (canPlayBoardAudio) {
+        soundManager.playMagicWheelBoardOpen();
+      }
+    }
+    prevBoardStageRef.current = curStage;
+    setBoardStage(curStage);
+  }, [currentRound, activeState.boardStage, canPlayBoardAudio]);
+
   const handleOpenBoard = useCallback(() => {
     if (canPlayBoardAudio) soundManager.playMagicWheelBoardOpen();
     setBoardStage("BLANK_PHRASE");
@@ -732,11 +1017,6 @@ export default function MagicWheelBoard({
       setBoardStage("READY_CLUE");
     }, 1400);
   }, [canPlayBoardAudio, onOpenBoard]);
-
-  useEffect(() => {
-    // Luôn giữ ở trạng thái theo phòng (mặc định EMPTY_56), KHÔNG TỰ ĐỘNG MỞ nếu MC chưa bấm!
-    setBoardStage(activeState.boardStage || "EMPTY_56");
-  }, [currentRound, activeState.boardStage]);
 
   // ── Ô May Mắn 2-Step Interaction State ──────────────────────────────────
   const [luckyGreenSelectedIdx, setLuckyGreenSelectedIdx] = useState<number | null>(null);
@@ -813,12 +1093,25 @@ export default function MagicWheelBoard({
   const [hostessActiveRow, setHostessActiveRow] = useState<number>(1);
 
   const [highlightedIndices, setHighlightedIndices] = useState<Set<number>>(new Set());
+  const [justPoppedIndices, setJustPoppedIndices] = useState<Set<number>>(new Set());
   const [animRevealedIndices, setAnimRevealedIndices] = useState<Set<number>>(
     new Set(currentPuzzle?.revealedIndices || [])
   );
   const prevServerRevealedRef = useRef<number[]>(currentPuzzle?.revealedIndices || []);
   const prevPuzzleIdRef = useRef<string | undefined>(currentPuzzle?.id);
   const activeTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+
+  const triggerTilePop = useCallback((idx: number) => {
+    setJustPoppedIndices((prev) => new Set([...prev, idx]));
+    const t = setTimeout(() => {
+      setJustPoppedIndices((prev) => {
+        const next = new Set(prev);
+        next.delete(idx);
+        return next;
+      });
+    }, 700);
+    activeTimersRef.current.push(t);
+  }, []);
 
   const clearChoreographyTimers = useCallback(() => {
     for (const t of activeTimersRef.current) {
@@ -914,6 +1207,7 @@ export default function MagicWheelBoard({
             return next;
           });
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+          triggerTilePop(tileIdx);
           soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
         }, totalHighlightTime + rStep * revealStepMs);
         activeTimersRef.current.push(t);
@@ -968,6 +1262,7 @@ export default function MagicWheelBoard({
             return next;
           });
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
+          triggerTilePop(tileIdx);
           soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
         }, elapsedWalkMs);
         activeTimersRef.current.push(touchTimer);
@@ -991,7 +1286,7 @@ export default function MagicWheelBoard({
       }, elapsedWalkMs + 550);
       activeTimersRef.current.push(parkTimer);
     }
-  }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers]);
+  }, [currentPuzzle?.revealedIndices, phase, roundStage, cellPositionsMap, clearChoreographyTimers, triggerTilePop]);
 
   // ── Toss-Up 1 & 2 Special Choreography Effect ─────────────────────────────
   // Requirement 10:
@@ -1009,7 +1304,7 @@ export default function MagicWheelBoard({
   }, [roundStage, phase, currentRound]);
 
   useEffect(() => {
-    if (phase !== "TOSS_UP_RUNNING") return;
+    if (phase !== "TOSS_UP_RUNNING" && phase !== "TOSS_UP_REVEALING") return;
     if (effectiveBoardStage === "EMPTY_56") {
       handleOpenBoard();
     }
@@ -1017,8 +1312,10 @@ export default function MagicWheelBoard({
     const phrase = currentPuzzle?.secretPhrase || "";
     if (!phrase) return;
 
-    // Only the active display / host / turn client drives the 0.5s reveal tick to avoid duplicate socket ticks
-    const isTickDriver = isHost || (!isDisplay && effectiveIsMyTurn) || isDisplay;
+    // Single authoritative tick driver:
+    // In sandbox: only Display preview drives the ticks to avoid colliding loops.
+    // In live room: Display drives if present, else Host drives.
+    const isTickDriver = isInsideSandbox ? isDisplay : (isDisplay || isHost);
     if (!isTickDriver) return;
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
@@ -1044,6 +1341,7 @@ export default function MagicWheelBoard({
         }
         const randIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
         setAnimRevealedIndices((prev) => new Set([...prev, randIdx]));
+        triggerTilePop(randIdx);
         soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
         onTossUpRevealTick?.(randIdx);
       }, 500);
@@ -1071,16 +1369,17 @@ export default function MagicWheelBoard({
         setHighlightedIndices(new Set([firstIdx]));
         soundManager.playMagicWheelMark(); // Plays highlight.mp3
 
-        // 2. Right after (~450ms), letter appears at that tile + letter_open.mp3, then 0.5s random loop begins
+        // 2. Right after waiting 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.5s random loop begins
         firstOpenTimer = setTimeout(() => {
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
+          triggerTilePop(firstIdx);
           soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
           onTossUpRevealTick?.(firstIdx);
           setHostessPose("IDLE");
           setHostessXPercent(side === "LEFT" ? -4 : 104);
           startRandomInterval();
-        }, 480);
+        }, 1000);
       }
     } else {
       // Resuming after a wrong buzz: continue 0.5s random letter reveal directly
@@ -1101,7 +1400,8 @@ export default function MagicWheelBoard({
     handleOpenBoard,
     isHost,
     isDisplay,
-    effectiveIsMyTurn,
+    isInsideSandbox,
+    triggerTilePop,
     onTossUpRevealTick,
   ]);
 
@@ -1410,6 +1710,18 @@ export default function MagicWheelBoard({
         isBoardShaking ? "animate-shake" : ""
       }`}
     >
+      {/* ── VTV3 Tile Pop Zoom Keyframe Style ── */}
+      <style>{`
+        @keyframes vtv3TilePopZoom {
+          0% { transform: scale(1); }
+          40% { transform: scale(1.35); box-shadow: 0 0 28px #f59e0b, 0 0 50px rgba(245, 158, 11, 0.75); z-index: 40; }
+          100% { transform: scale(1); box-shadow: 0 4px 10px rgba(255, 255, 255, 0.4); z-index: 10; }
+        }
+        .animate-vtv3-tile-pop {
+          animation: vtv3TilePopZoom 0.65s cubic-bezier(0.34, 1.56, 0.64, 1) forwards !important;
+        }
+      `}</style>
+
       {/* ── TOP HEADER: ROUND STAGE, MODE SWITCH & TURN INFO ──────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 bg-black/40 px-3.5 py-2.5 rounded-2xl border border-white/10 backdrop-blur-md">
         <div className="flex items-center gap-2.5">
@@ -1596,103 +1908,13 @@ export default function MagicWheelBoard({
 
           {/* Stage Area with Virtual Hostess ("Người Mẫu") standing beside & walking across the 56-tile board */}
           <div className="w-full max-w-5xl flex items-center justify-center relative py-2 px-6 sm:px-12">
-            {/* Virtual Hostess Character Overlay */}
-            <div
-              className="absolute z-30 pointer-events-none transition-all ease-in-out"
-              style={{
-                left: `${Math.max(1, Math.min(96, hostessXPercent))}%`,
-                top:
-                  hostessPose === "TOUCHING" || hostessPose === "WALKING"
-                    ? `${12 + hostessActiveRow * 20}%`
-                    : "22%",
-                transform: `translate(-50%, -10%) scaleX(${hostessFacing === "LEFT" ? -1 : 1})`,
-                transitionDuration: hostessPose === "WALKING" ? "340ms" : "450ms",
-              }}
-            >
-              <div className="relative flex flex-col items-center">
-                {/* Sparkle when touching or gesturing */}
-                {(hostessPose === "TOUCHING" || hostessPose === "GESTURE") && (
-                  <div className="absolute -right-4 -top-2 text-lg sm:text-xl animate-ping">✨</div>
-                )}
-                <svg
-                  viewBox="0 0 72 128"
-                  className={`w-11 h-20 sm:w-14 sm:h-24 drop-shadow-[0_6px_14px_rgba(0,0,0,0.85)] ${
-                    hostessPose === "WALKING" ? "animate-bounce" : ""
-                  }`}
-                >
-                  <defs>
-                    <linearGradient id="hostessDressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#f43f5e" />
-                      <stop offset="50%" stopColor="#e11d48" />
-                      <stop offset="100%" stopColor="#9f1239" />
-                    </linearGradient>
-                    <linearGradient id="hostessGoldTrim" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#fef08a" />
-                      <stop offset="100%" stopColor="#f59e0b" />
-                    </linearGradient>
-                  </defs>
-                  {/* Long Flowing Hair */}
-                  <path
-                    d="M24 22 C18 28 18 48 22 56 C28 52 44 52 50 56 C54 48 54 28 48 22 C44 12 28 12 24 22 Z"
-                    fill="#1e1b4b"
-                  />
-                  {/* Crown / Hair Tiara */}
-                  <polygon points="29,14 36,8 43,14 40,16 32,16" fill="url(#hostessGoldTrim)" />
-                  {/* Head */}
-                  <circle cx="36" cy="24" r="9.5" fill="#fde68a" />
-                  {/* Eyes & Graceful Smile */}
-                  <circle cx="33" cy="23" r="1.2" fill="#0f172a" />
-                  <circle cx="39.5" cy="23" r="1.2" fill="#0f172a" />
-                  <path d="M33.5 27.5 Q36.5 30 39.5 27.5" stroke="#be123c" strokeWidth="1.3" fill="none" strokeLinecap="round" />
-                  {/* Neck & Necklace */}
-                  <rect x="33.5" y="33" width="5" height="5" rx="2" fill="#fde68a" />
-                  <path d="M31 37 Q36 40 41 37" stroke="#fef08a" strokeWidth="1.5" fill="none" />
-                  {/* Evening Gown / Áo Dài Cách Tân Torso & Skirt */}
-                  <path
-                    d="M26 38 L46 38 L43 62 L52 114 L20 114 L29 62 Z"
-                    fill="url(#hostessDressGrad)"
-                    stroke="#fda4af"
-                    strokeWidth="0.8"
-                  />
-                  {/* Golden Waist Belt */}
-                  <rect x="28.5" y="59" width="15" height="3.5" rx="1.5" fill="url(#hostessGoldTrim)" />
-                  {/* Left Arm (Relaxed) */}
-                  <path
-                    d="M26 40 Q18 52 21 64"
-                    stroke="#fde68a"
-                    strokeWidth="4.2"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                  {/* Right Arm (Dynamic: Extending to touch tile or graceful gesture) */}
-                  {hostessPose === "TOUCHING" ? (
-                    <path
-                      d="M45 40 Q58 30 68 20"
-                      stroke="#fde68a"
-                      strokeWidth="4.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  ) : hostessPose === "GESTURE" ? (
-                    <path
-                      d="M45 40 Q58 36 65 28"
-                      stroke="#fde68a"
-                      strokeWidth="4.5"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  ) : (
-                    <path
-                      d="M46 40 Q53 52 50 64"
-                      stroke="#fde68a"
-                      strokeWidth="4.2"
-                      fill="none"
-                      strokeLinecap="round"
-                    />
-                  )}
-                </svg>
-              </div>
-            </div>
+            {/* Virtual Hostess 3D Studio Character Overlay */}
+            <Hostess3DStudio
+              xPercent={hostessXPercent}
+              activeRow={hostessActiveRow}
+              facing={hostessFacing}
+              pose={hostessPose}
+            />
 
             {/* 14-Column 4-Row Puzzle Matrix */}
             <div className="w-full grid grid-rows-4 gap-1 sm:gap-1.5 md:gap-2 p-1.5 sm:p-2.5 rounded-xl bg-[#030d05] border-2 border-[#166534]/60 shadow-inner">
@@ -1720,6 +1942,7 @@ export default function MagicWheelBoard({
 
                     const isLuckyGreen =
                       phase === "LUCKY_PICK" && luckyGreenSelectedIdx === cell.originalIndex;
+                    const isPopping = justPoppedIndices.has(cell.originalIndex);
 
                     return (
                       <div
@@ -1737,7 +1960,9 @@ export default function MagicWheelBoard({
                           }
                         }}
                         className={`w-full aspect-[3/4] max-h-[42px] sm:max-h-[46px] rounded font-black flex items-center justify-center transition-all duration-300 select-none ${
-                          isLuckyGreen
+                          isPopping
+                            ? "bg-white text-[#0f172a] border-2 border-yellow-300 shadow-[0_0_30px_#f59e0b] animate-vtv3-tile-pop z-30"
+                            : isLuckyGreen
                             ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                             : cell.isHighlighted
                             ? "bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_24px_#f59e0b] animate-bounce z-10"

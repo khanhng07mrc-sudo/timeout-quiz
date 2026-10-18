@@ -16315,6 +16315,8 @@ function registerSocketHandlers(io2) {
       if (wheelState.currentRound < wheelState.maxRounds) {
         setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams);
         io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+        persistGameStateSnapshot(roomId).catch(() => {
+        });
       }
     };
     socket.on("admin:magic_wheel:advance_round", async () => {
@@ -16343,12 +16345,16 @@ function registerSocketHandlers(io2) {
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "\u2B50 Qu\u1EA3n tr\xF2 m\u1EDF \xF4 ch\u1EEF & ch\u1EE7 \u0111\u1EC1! B\u1EA3ng \xF4 ch\u1EEF \u0111ang l\u1EADt m\u1EDF...";
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {
+      });
       setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.boardStage === "BLANK_PHRASE") {
           cur.boardStage = "READY_CLUE";
           cur.lastActionMessage = `\u2B50 CH\u1EE6 \u0110\u1EC0: ${cur.currentPuzzle?.category || "T\u1ED4NG H\u1EE2P"} \u2014 ${cur.currentPuzzle?.clue || ""}`;
           io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+          persistGameStateSnapshot(roomId).catch(() => {
+          });
         }
       }, 1400);
     };
@@ -19296,6 +19302,43 @@ async function buildRoomState(roomId) {
   const cachedRoom = roomCache.get(roomId);
   const effectiveStatus = cachedRoom?.status ?? room.status;
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
+  if (effectiveStatus === "PLAYING") {
+    restoreGameStateSnapshot(room);
+    if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
+      const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
+      const puzzles = buildMagicWheelMatchPuzzles(teams.length);
+      const firstTeam = teams[0];
+      const initialWheelState = {
+        subMode: "WORD_PUZZLE",
+        operationMode: "HOST_ASSISTED",
+        roundStage: "TOSS_UP_1",
+        mainRoundNumber: 1,
+        totalMainRounds: totalRounds,
+        sectors: generateMagicWheelSectors(1, "TOSS_UP_1"),
+        currentTurnTeamId: firstTeam?.id || "",
+        currentTurnTeamName: firstTeam?.name || "\u0110\u1ED9i 1",
+        currentRound: 1,
+        maxRounds: puzzles.length,
+        puzzles,
+        currentPuzzle: puzzles[0],
+        isSpinning: false,
+        spinPower: 0,
+        targetRotationDegrees: 0,
+        boardStage: "EMPTY_56",
+        guessedLetters: [],
+        wrongGuessesCount: {},
+        freeSpinCount: {},
+        roundScores: {},
+        disqualifiedTeamIdsInRound: [],
+        consecutiveWrongGuesses: {},
+        phase: "TOSS_UP_READY",
+        lastActionMessage: "Ch\xE0o m\u1EEBng \u0111\u1EBFn v\u1EDBi Chi\u1EBFc N\xF3n K\u1EF3 Di\u1EC7u! H\xE3y m\u1EDF \xF4 ch\u1EEF v\xE0 ch\u1EE7 \u0111\u1EC1."
+      };
+      roomMagicWheels.set(room.id, initialWheelState);
+      persistGameStateSnapshot(room.id).catch(() => {
+      });
+    }
+  }
   const mysteryState = roomMysteryQuests.get(room.id);
   const effectiveQuestionIndex = room.mode === "MYSTERY_QUEST" && mysteryState ? mysteryState.currentTurnIndex : effectiveCurrentQuestion;
   return {

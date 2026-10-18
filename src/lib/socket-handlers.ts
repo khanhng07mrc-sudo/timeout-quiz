@@ -9325,6 +9325,7 @@ export function registerSocketHandlers(io: IO) {
       if (wheelState.currentRound < wheelState.maxRounds) {
         setupMagicWheelRoundStage(wheelState, wheelState.currentRound + 1, teams);
         io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+        persistGameStateSnapshot(roomId).catch(() => {});
       }
     };
 
@@ -9358,12 +9359,14 @@ export function registerSocketHandlers(io: IO) {
       wheelState.boardStage = "BLANK_PHRASE";
       wheelState.lastActionMessage = "⭐ Quản trò mở ô chữ & chủ đề! Bảng ô chữ đang lật mở...";
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
+      persistGameStateSnapshot(roomId).catch(() => {});
       setTimeout(() => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.boardStage === "BLANK_PHRASE") {
           cur.boardStage = "READY_CLUE";
           cur.lastActionMessage = `⭐ CHỦ ĐỀ: ${cur.currentPuzzle?.category || "TỔNG HỢP"} — ${cur.currentPuzzle?.clue || ""}`;
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", cur);
+          persistGameStateSnapshot(roomId).catch(() => {});
         }
       }, 1400);
     };
@@ -12940,6 +12943,44 @@ async function buildRoomState(roomId: string): Promise<RoomState> {
   const cachedRoom = roomCache.get(roomId);
   const effectiveStatus = (cachedRoom?.status ?? room.status) as any;
   const effectiveCurrentQuestion = cachedRoom?.currentQuestion ?? room.currentQuestion;
+
+  // Auto-restore snapshots or initialize game state if server restarted while room was PLAYING
+  if (effectiveStatus === "PLAYING") {
+    restoreGameStateSnapshot(room);
+    if (room.mode === "MAGIC_WHEEL" && !roomMagicWheels.has(room.id)) {
+      const totalRounds = Math.min(8, Math.max(3, teams.length || 3));
+      const puzzles = buildMagicWheelMatchPuzzles(teams.length);
+      const firstTeam = teams[0];
+      const initialWheelState: MagicWheelState = {
+        subMode: "WORD_PUZZLE",
+        operationMode: "HOST_ASSISTED",
+        roundStage: "TOSS_UP_1",
+        mainRoundNumber: 1,
+        totalMainRounds: totalRounds,
+        sectors: generateMagicWheelSectors(1, "TOSS_UP_1"),
+        currentTurnTeamId: firstTeam?.id || "",
+        currentTurnTeamName: firstTeam?.name || "Đội 1",
+        currentRound: 1,
+        maxRounds: puzzles.length,
+        puzzles,
+        currentPuzzle: puzzles[0],
+        isSpinning: false,
+        spinPower: 0,
+        targetRotationDegrees: 0,
+        boardStage: "EMPTY_56",
+        guessedLetters: [],
+        wrongGuessesCount: {},
+        freeSpinCount: {},
+        roundScores: {},
+        disqualifiedTeamIdsInRound: [],
+        consecutiveWrongGuesses: {},
+        phase: "TOSS_UP_READY",
+        lastActionMessage: "Chào mừng đến với Chiếc Nón Kỳ Diệu! Hãy mở ô chữ và chủ đề.",
+      };
+      roomMagicWheels.set(room.id, initialWheelState);
+      persistGameStateSnapshot(room.id).catch(() => {});
+    }
+  }
 
   const mysteryState = roomMysteryQuests.get(room.id);
   const effectiveQuestionIndex =

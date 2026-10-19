@@ -1286,28 +1286,31 @@ class SoundManager {
    */
   public playMagicWheelTurnChange() {
     if (this.isMuted) return;
-    this.playSFX("mw_mark", 0.95);
     const ctx = this.getWheelAudioCtx();
     if (ctx && ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }
-    if (!ctx) return;
+    if (!ctx) {
+      this.playSFX("go", 0.7);
+      return;
+    }
     try {
       const now = ctx.currentTime;
+      // Elegant 3-tone ascending chime (F5 -> A5 -> C6)
       const chord = [698.46, 880.0, 1046.5];
       chord.forEach((freq, idx) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "sine";
-        osc.frequency.setValueAtTime(freq, now + idx * 0.04);
-        const peak = Math.max(0.03, this.volume * 0.28);
-        gain.gain.setValueAtTime(0.001, now + idx * 0.04);
-        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.04 + 0.015);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.04 + 0.35);
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        const peak = Math.max(0.04, this.volume * 0.35);
+        gain.gain.setValueAtTime(0.0001, now + idx * 0.08);
+        gain.gain.linearRampToValueAtTime(peak, now + idx * 0.08 + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.08 + 0.45);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(now + idx * 0.04);
-        osc.stop(now + idx * 0.04 + 0.38);
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.5);
       });
     } catch {}
   }

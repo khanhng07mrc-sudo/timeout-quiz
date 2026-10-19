@@ -2534,6 +2534,13 @@ export default function PlayPage() {
                       window.parent.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
                     }
                   }}
+                  onBuyVowel={(vowel) => {
+                    if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
+                      socketRef.current.emit("magic_wheel:buy_vowel", { vowel, teamId: effectiveTeamId });
+                    } else if (typeof window !== "undefined" && window.self !== window.top) {
+                      window.parent.postMessage({ type: "MAGIC_WHEEL_BUY_VOWEL", vowel, teamId: effectiveTeamId }, "*");
+                    }
+                  }}
                   onQuickRevealLetter={() => {
                     if (!code.startsWith("OFFLINE") && socketRef.current?.connected) {
                       socketRef.current.emit("admin:magic_wheel:quick_reveal_letter");

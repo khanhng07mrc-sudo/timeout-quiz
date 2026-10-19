@@ -239,13 +239,13 @@ export default function DisplayPage() {
           setTimer((prev) => (prev ? { ...prev, remaining: auth.remaining } : null));
         }
         if (roomState?.status === "LOBBY" && !soundMuted && !matchStartingRef.current) {
-          soundManager.playLobbyMusic();
+          soundManager.playLobbyMusic(roomState?.mode);
         }
       }
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, [timer?.endsAt, timer?.total, timer?.remaining, roomState?.status, soundMuted]);
+  }, [timer?.endsAt, timer?.total, timer?.remaining, roomState?.status, roomState?.mode, soundMuted]);
 
   useEffect(() => {
     // Default sound ON on Display
@@ -297,7 +297,7 @@ export default function DisplayPage() {
               p.currentQuestion.endsAt > Date.now()
             );
             const activeMode = p.roomState?.mode || roomState?.mode;
-            if (isTimerRunning && activeMode !== "BUZZ") {
+            if (isTimerRunning && activeMode !== "BUZZ" && activeMode !== "MAGIC_WHEEL") {
               soundManager.playQuestionMusic(p.currentQuestion.timeLimit, p.currentQuestion.question?.id);
             }
           } else {
@@ -874,7 +874,8 @@ export default function DisplayPage() {
         !currentQuestion.timerPending &&
         currentQuestion.endsAt &&
         currentQuestion.endsAt > Date.now() &&
-        roomState?.mode !== "BUZZ"
+        roomState?.mode !== "BUZZ" &&
+        roomState?.mode !== "MAGIC_WHEEL"
       ) {
         soundManager.playQuestionMusic(currentQuestion?.timeLimit, currentQuestion?.question?.id);
       }

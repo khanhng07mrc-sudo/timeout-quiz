@@ -1479,12 +1479,16 @@ export default function AdminRoomPage() {
                   onExpressDecide={(boardTrain) => emit("magic_wheel:express_decide", { rideExpress: boardTrain })}
                   onStealSwapDecide={(mode, targetTeamId) => emit("magic_wheel:steal_swap_decide", { action: mode as any, targetTeamId })}
                   onSpecialChooseOrder={(order) => emit("magic_wheel:special_choose_order", { order: order as any })}
-                  onSpecialPickLetters={(letters) => emit("magic_wheel:special_pick_letters", { letters })}
                   onAdvanceRound={() => emit("admin:magic_wheel:advance_round")}
+                  onNextRound={() => emit("admin:magic_wheel:advance_round")}
+                  onPassTurn={() => emit("admin:magic_wheel:pass_turn")}
                   onJudgeSolve={(accepted) => emit("admin:magic_wheel:judge_solve", { isCorrect: accepted })}
                   onRevealAll={() => emit("admin:magic_wheel:reveal_all")}
                   onQuickRevealLetter={() => emit("admin:magic_wheel:quick_reveal_letter")}
                   onLuckyPick={(index) => emit("magic_wheel:lucky_pick", { index })}
+                  onBuyVowel={(vowel) => emit("magic_wheel:buy_vowel", { vowel })}
+                  onSetEdition={(edition) => emit("magic_wheel:set_edition", { edition })}
+                  onSetBlackoutGuessed={(enabled) => emit("magic_wheel:set_blackout_guessed", { enabled })}
                 />
               </div>
             </div>

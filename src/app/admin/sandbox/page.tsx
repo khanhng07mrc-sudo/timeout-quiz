@@ -4397,18 +4397,21 @@ export default function AdminSandboxPage() {
           adminSocketRef.current.emit("magic_wheel:special_pick_letters" as any, { letters: msg.letters });
         } else if (msg.type === "MAGIC_WHEEL_SET_MODE") {
           adminSocketRef.current.emit("magic_wheel:set_operation_mode" as any, { mode: msg.mode });
+        } else if (msg.type === "MAGIC_WHEEL_BUY_VOWEL") {
+          adminSocketRef.current.emit("magic_wheel:buy_vowel" as any, { vowel: msg.vowel });
+        } else if (msg.type === "MAGIC_WHEEL_SET_EDITION") {
+          adminSocketRef.current.emit("magic_wheel:set_edition" as any, { edition: msg.edition });
+        } else if (msg.type === "MAGIC_WHEEL_SET_BLACKOUT_GUESSED") {
+          adminSocketRef.current.emit("magic_wheel:set_blackout_guessed" as any, { enabled: msg.enabled });
         }
       }
 
       if (e.data?.type === "MAGIC_WHEEL_SPIN") {
-        const { power, teamId } = e.data;
-        if (
-          teamId &&
-          roomStateRef.current?.magicWheelState?.currentTurnTeamId &&
-          teamId !== roomStateRef.current.magicWheelState.currentTurnTeamId
-        ) {
+        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
+          // Online sandbox: Server is the single authoritative driver for spin degrees and landing sector!
           return;
         }
+        const { power } = e.data;
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState || prev.magicWheelState.isSpinning) return prev;
           const cur = { ...prev.magicWheelState };
@@ -4424,6 +4427,8 @@ export default function AdminSandboxPage() {
           cur.selectedSectorIndex = landingSectorIndex;
           cur.phase = "SPINNING";
           const spinDurationMs = 15000 + Math.round((effPower / 100) * 6000);
+          const spinningRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = spinningRoom;
 
           setTimeout(() => {
             setRoomState((latest) => {
@@ -4661,17 +4666,26 @@ export default function AdminSandboxPage() {
             }
 
             if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
-              cur.mustSolveWithTones = true;
-              cur.expressTrainActive = false;
-              cur.phase = "SPIN_WAITING";
-              cur.pendingSpecialAction = "NONE";
-              cur.lastActionMessage = generateFlexibleMCCommentary({
-                event: "ALL_LETTERS_OPEN_NEED_TONES",
-                teamName,
-                letter: normLetter,
-                count: check.count,
-                earnedPoints: earned,
-              });
+              if (cur.edition === "ENGLISH") {
+                cur.phase = "ROUND_RECAP";
+                cur.expressTrainActive = false;
+                cur.pendingSpecialAction = "NONE";
+                cur.lastActionMessage = `🎉 Tuyệt vời! Đội ${teamName} đã lật mở chữ cái cuối cùng và giải mã trọn vẹn ô chữ: "${p.secretPhrase}"! Đội ${teamName} giành chiến thắng vòng này!`;
+                if (!cur.permanentScores) cur.permanentScores = {};
+                cur.permanentScores[tId] = (cur.permanentScores[tId] || 0) + (cur.roundScores[tId] || 0);
+              } else {
+                cur.mustSolveWithTones = true;
+                cur.expressTrainActive = false;
+                cur.phase = "SPIN_WAITING";
+                cur.pendingSpecialAction = "NONE";
+                cur.lastActionMessage = generateFlexibleMCCommentary({
+                  event: "ALL_LETTERS_OPEN_NEED_TONES",
+                  teamName,
+                  letter: normLetter,
+                  count: check.count,
+                  earnedPoints: earned,
+                });
+              }
             } else if (cur.expressTrainActive) {
               cur.phase = "ACTION_INPUT";
               cur.lastActionMessage = `🚄 [TÀU TỐC HÀNH] Tuyệt vời! Có ${check.count} chữ ${normLetter} (+${earned.toLocaleString()}đ). Mời Đội ${teamName} đoán tiếp chữ cái hoặc bấm Giải Ô Chữ!`;
@@ -4744,6 +4758,75 @@ export default function AdminSandboxPage() {
             }
           }
 
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_BUY_VOWEL") {
+        const { vowel } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState };
+          const p = cur.currentPuzzle ? { ...cur.currentPuzzle } : null;
+          if (!p) return prev;
+          cur.currentPuzzle = p;
+          const tId = cur.currentTurnTeamId;
+          const teamObj = prev.teams.find((t) => t.id === tId);
+          const teamName = teamObj?.name || cur.currentTurnTeamName;
+          const currentScore = cur.roundScores[tId] || 0;
+          if (currentScore < 250) return prev;
+          const normVowel = vowel.trim().toUpperCase();
+          if (!["A", "E", "I", "O", "U"].includes(normVowel) || cur.guessedLetters.includes(normVowel)) return prev;
+
+          cur.roundScores = { ...cur.roundScores, [tId]: currentScore - 250 };
+          cur.guessedLetters = [...cur.guessedLetters, normVowel];
+
+          const check = checkLetterInSecretPhrase(p.secretPhrase, normVowel, p.revealedIndices);
+          if (check.count > 0) {
+            p.revealedIndices = check.newRevealedIndices;
+            if (isPuzzleFullyRevealed(p.secretPhrase, p.revealedIndices)) {
+              cur.phase = "ROUND_RECAP";
+              cur.lastActionMessage = `🎉 Tuyệt vời! Đội ${teamName} đã mua nguyên âm "${normVowel}" và giải mã trọn vẹn ô chữ: "${p.secretPhrase}"!`;
+              if (!cur.permanentScores) cur.permanentScores = {};
+              cur.permanentScores[tId] = (cur.permanentScores[tId] || 0) + (cur.roundScores[tId] || 0);
+            } else {
+              cur.phase = "SPIN_WAITING";
+              cur.lastActionMessage = `🛒 Mua nguyên âm thành công! Có ${check.count} chữ "${normVowel}" (-250đ). Mời Đội ${teamName} tiếp tục quay nón, mua tiếp nguyên âm hoặc Giải ô chữ!`;
+            }
+          } else {
+            const eligibleTeams = prev.teams.filter(
+              (t) =>
+                !(cur.disqualifiedTeamIdsInRound || []).includes(t.id) &&
+                !(cur.round3TradedTeams || []).includes(t.id)
+            );
+            const activeIdx = eligibleTeams.findIndex((t) => t.id === cur.currentTurnTeamId);
+            const nextIdx = (activeIdx + 1) % Math.max(1, eligibleTeams.length);
+            cur.currentTurnTeamId = eligibleTeams[nextIdx]?.id || "";
+            cur.currentTurnTeamName = eligibleTeams[nextIdx]?.name || "";
+            cur.phase = "SPIN_WAITING";
+            cur.lastActionMessage = `🛒 Không có nguyên âm "${normVowel}" (-250đ)! Quyền chơi chuyển sang ${cur.currentTurnTeamName}.`;
+          }
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_SET_EDITION") {
+        const { edition } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState, edition };
+          const nextRoom = { ...prev, magicWheelState: cur };
+          roomStateRef.current = nextRoom;
+          syncToIframes({ roomState: nextRoom });
+          return nextRoom;
+        });
+      } else if (e.data?.type === "MAGIC_WHEEL_SET_BLACKOUT_GUESSED") {
+        const { enabled } = e.data;
+        setRoomState((prev) => {
+          if (!prev || !prev.magicWheelState) return prev;
+          const cur = { ...prev.magicWheelState, blackoutGuessedLetters: enabled };
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
           syncToIframes({ roomState: nextRoom });
@@ -11895,15 +11978,51 @@ export default function AdminSandboxPage() {
 
                 {roomState?.mode === "MAGIC_WHEEL" && roomState?.magicWheelState && (
                   <div className="pt-3 border-t border-white/10 space-y-3">
-                    <div className="flex items-center justify-between text-xs">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <span className="font-bold text-amber-300">🎡 Magic Wheel (Admin Sandbox Control)</span>
-                      <button
-                        type="button"
-                        onClick={handleMagicWheelNextRound}
-                        className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-xs cursor-pointer"
-                      >
-                        ⏩ Sang Vòng Tiếp Theo
-                      </button>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const curEd = roomState.magicWheelState?.edition || "VIETNAMESE";
+                            const nextEd = curEd === "ENGLISH" ? "VIETNAMESE" : "ENGLISH";
+                            if (adminSocketRef.current?.connected) {
+                              adminSocketRef.current.emit("admin:magic_wheel:set_edition" as any, { edition: nextEd });
+                            } else {
+                              window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition: nextEd }, "*");
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs cursor-pointer shadow transition"
+                        >
+                          {roomState.magicWheelState?.edition === "ENGLISH" ? "🇺🇸 Bản Anh (Wheel of Fortune)" : "🇻🇳 Bản Việt (VTV3)"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const curBlackout = roomState.magicWheelState?.blackoutGuessedLetters !== false;
+                            const nextBlackout = !curBlackout;
+                            if (adminSocketRef.current?.connected) {
+                              adminSocketRef.current.emit("admin:magic_wheel:set_blackout_guessed" as any, { enabled: nextBlackout });
+                            } else {
+                              window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled: nextBlackout }, "*");
+                            }
+                          }}
+                          className={`px-2.5 py-1 rounded font-bold text-xs cursor-pointer shadow transition ${
+                            roomState.magicWheelState?.blackoutGuessedLetters === false
+                              ? "bg-slate-700 text-slate-300 border border-slate-600"
+                              : "bg-emerald-600 text-white"
+                          }`}
+                        >
+                          ⬛ Bôi đen chữ: {roomState.magicWheelState?.blackoutGuessedLetters === false ? "TẮT" : "BẬT"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleMagicWheelNextRound}
+                          className="px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs cursor-pointer shadow transition"
+                        >
+                          ⏩ Sang Vòng Tiếp Theo
+                        </button>
+                      </div>
                     </div>
                     <MagicWheelBoard
                       wheelState={roomState.magicWheelState}
@@ -11919,6 +12038,15 @@ export default function AdminSandboxPage() {
                       }}
                       onGuessLetter={(letter) => {
                         window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
+                      }}
+                      onBuyVowel={(vowel) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_BUY_VOWEL", vowel }, "*");
+                      }}
+                      onSetEdition={(edition) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_SET_EDITION", edition }, "*");
+                      }}
+                      onSetBlackoutGuessed={(enabled) => {
+                        window.postMessage({ type: "MAGIC_WHEEL_SET_BLACKOUT_GUESSED", enabled }, "*");
                       }}
                       onSolvePuzzle={(answer) => {
                         window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");

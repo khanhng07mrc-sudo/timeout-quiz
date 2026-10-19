@@ -110,6 +110,7 @@ export interface MagicWheelState {
     | "SPINNING"          // Nón đang xoay
     | "SECTOR_RESULT"     // Nón đã dừng, thông báo kết quả ô quay
     | "ACTION_INPUT"      // Chờ đoán chữ cái / trả lời quiz / giải ô chữ
+    | "VOWEL_BUY"         // Bản Anh: Chờ chọn 1 trong 5 nguyên âm (A, E, I, O, U) với 250đ
     | "MYSTERY_CHOICE"    // V2: Chờ quyết định lật ô Bí Mật hay lấy điểm an toàn
     | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 20 lá thăm bí mật
     | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi
@@ -169,6 +170,8 @@ export interface MagicWheelState {
   specialPickedLetters?: string[];
   specialTimerEndsAt?: number;
   specialSolvedSuccess?: boolean;
+  edition?: "VIETNAMESE" | "ENGLISH"; // Phiên bản Việt (VTV3) hoặc Anh (Wheel of Fortune)
+  blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
 }
 
 // ── Bảng 24 ô chuẩn phiên bản 2012 của Chiếc Nón Kỳ Diệu ────────────────────
@@ -815,13 +818,308 @@ export const DEFAULT_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
   },
 ];
 
+// ── Bảng chữ cái tiếng Anh & Nguyên âm / Phụ âm chuẩn Wheel of Fortune ──
+export const ENGLISH_ALPHABET = [
+  "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
+  "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"
+];
+export const ENGLISH_VOWELS = ["A", "E", "I", "O", "U"];
+export const ENGLISH_CONSONANTS = [
+  "B", "C", "D", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "V", "W", "X", "Y", "Z"
+];
+
+export function isEnglishVowel(char: string): boolean {
+  return ENGLISH_VOWELS.includes(char.toUpperCase());
+}
+
+export type EnglishPuzzleSetPreset = "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3";
+
+// ── BỘ 1: "Vietnam Heritage & Flavors" (Văn hoá, ẩm thực, danh thắng VN bằng tiếng Anh) ──
+export const ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE: MagicWheelPuzzle[] = [
+  {
+    id: "en-set1-tossup-1",
+    roundNumber: 1,
+    stage: "TOSS_UP_1",
+    category: "FOOD & DRINK",
+    secretPhrase: "PHO NOODLE SOUP",
+    clue: "Iconic Vietnamese aromatic broth served with fresh herbs and rice noodles.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-tossup-2",
+    roundNumber: 2,
+    stage: "TOSS_UP_2",
+    category: "LANDMARK(S)",
+    secretPhrase: "HA LONG BAY",
+    clue: "UNESCO World Heritage site famous for emerald waters and thousands of towering limestone islands.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r1",
+    roundNumber: 3,
+    stage: "MAIN",
+    mainRoundIndex: 1,
+    category: "WHAT ARE YOU WEARING?",
+    secretPhrase: "AO DAI TRADITIONAL DRESS",
+    clue: "Elegant Vietnamese national garment featuring a graceful tunic worn over silk trousers.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r2",
+    roundNumber: 4,
+    stage: "MAIN",
+    mainRoundIndex: 2,
+    category: "LANDMARK(S)",
+    secretPhrase: "GOLDEN BRIDGE DA NANG",
+    clue: "Spectacular pedestrian walkway held aloft by two gigantic weathered stone hands.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r3",
+    roundNumber: 5,
+    stage: "MAIN",
+    mainRoundIndex: 3,
+    category: "SHOW BIZ",
+    secretPhrase: "WATER PUPPET THEATRE",
+    clue: "Centuries-old folk art performed on a waist-deep pool in the Red River Delta.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r4",
+    roundNumber: 6,
+    stage: "MAIN",
+    mainRoundIndex: 4,
+    category: "FOOD & DRINK",
+    secretPhrase: "CRISPY BANH MI SANDWICH",
+    clue: "World-famous fusion baguette stuffed with savory fillings, pate, cilantro, and pickled veggies.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r5",
+    roundNumber: 7,
+    stage: "MAIN",
+    mainRoundIndex: 5,
+    category: "PLACE(S)",
+    secretPhrase: "ANCIENT TOWN OF HOI AN",
+    clue: "Charming historic trading port renowned for glowing silk lanterns and timber architecture.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-r6",
+    roundNumber: 8,
+    stage: "MAIN",
+    mainRoundIndex: 6,
+    category: "LIVING THING(S)",
+    secretPhrase: "PINK LOTUS BLOSSOM",
+    clue: "Sacred national flower of Vietnam symbolizing serenity, purity, and spiritual grace.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set1-special",
+    roundNumber: 9,
+    stage: "SPECIAL_FINAL",
+    category: "LANDMARK(S)",
+    secretPhrase: "SON DOONG CAVE",
+    clue: "The largest natural cave in the world nestled in the karst heart of Phong Nha.",
+    revealedIndices: [],
+  },
+];
+
+// ── BỘ 2: "Global Wonders & Pop Culture" (Điện ảnh, âm nhạc, nghệ thuật & kỳ quan thế giới) ──
+export const ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS: MagicWheelPuzzle[] = [
+  {
+    id: "en-set2-tossup-1",
+    roundNumber: 1,
+    stage: "TOSS_UP_1",
+    category: "SHOW BIZ",
+    secretPhrase: "BROADWAY MUSICAL",
+    clue: "The pinnacle of American theatrical stagecraft and spectacular showtunes in NYC.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-tossup-2",
+    roundNumber: 2,
+    stage: "TOSS_UP_2",
+    category: "LANDMARK(S)",
+    secretPhrase: "STATUE OF LIBERTY",
+    clue: "Colossal copper neoclassical monument welcoming voyagers to New York Harbor.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r1",
+    roundNumber: 3,
+    stage: "MAIN",
+    mainRoundIndex: 1,
+    category: "SHOW BIZ",
+    secretPhrase: "ACADEMY AWARD WINNER",
+    clue: "Prestigious golden statuette honoring outstanding artistic and technical merit in cinema.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r2",
+    roundNumber: 4,
+    stage: "MAIN",
+    mainRoundIndex: 2,
+    category: "LANDMARK(S)",
+    secretPhrase: "EIFFEL TOWER PARIS",
+    clue: "Gustave Eiffel's wrought-iron lattice masterpiece overlooking the Champ de Mars.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r3",
+    roundNumber: 5,
+    stage: "MAIN",
+    mainRoundIndex: 3,
+    category: "ON MY PLAYLIST",
+    secretPhrase: "JAZZ AND BLUES FESTIVAL",
+    clue: "Soulful syncopated brass improvisation originating in New Orleans.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r4",
+    roundNumber: 6,
+    stage: "MAIN",
+    mainRoundIndex: 4,
+    category: "LANDMARK(S)",
+    secretPhrase: "SYDNEY OPERA HOUSE",
+    clue: "Architectural wonder in Sydney Harbour renowned for sweeping precast concrete shells.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r5",
+    roundNumber: 7,
+    stage: "MAIN",
+    mainRoundIndex: 5,
+    category: "TITLE(S)",
+    secretPhrase: "THE LION KING",
+    clue: "Beloved animated classic celebrating the circle of life on the African savanna.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-r6",
+    roundNumber: 8,
+    stage: "MAIN",
+    mainRoundIndex: 6,
+    category: "LANDMARK(S)",
+    secretPhrase: "TAJ MAHAL PALACE",
+    clue: "Ivory-white marble mausoleum on the Yamuna river bank built by Shah Jahan.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set2-special",
+    roundNumber: 9,
+    stage: "SPECIAL_FINAL",
+    category: "LANDMARK(S)",
+    secretPhrase: "GREAT WALL OF CHINA",
+    clue: "Ancient monumental fortification snaking thousands of miles across northern frontiers.",
+    revealedIndices: [],
+  },
+];
+
+// ── BỘ 3: "Classic Idioms & Wheel Phrases" (Thành ngữ và cụm từ kinh điển phong cách Wheel of Fortune) ──
+export const ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS: MagicWheelPuzzle[] = [
+  {
+    id: "en-set3-tossup-1",
+    roundNumber: 1,
+    stage: "TOSS_UP_1",
+    category: "PHRASE(S)",
+    secretPhrase: "PIECE OF CAKE",
+    clue: "An informal expression describing a task that is exceptionally easy to accomplish.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-tossup-2",
+    roundNumber: 2,
+    stage: "TOSS_UP_2",
+    category: "WHAT ARE YOU DOING?",
+    secretPhrase: "BREAKING THE ICE",
+    clue: "Starting a conversation to ease social tension and make people feel comfortable.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r1",
+    roundNumber: 3,
+    stage: "MAIN",
+    mainRoundIndex: 1,
+    category: "PHRASE(S)",
+    secretPhrase: "BETTER LATE THAN NEVER",
+    clue: "Timeless wisdom that doing something overdue is still preferable to not doing it at all.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r2",
+    roundNumber: 4,
+    stage: "MAIN",
+    mainRoundIndex: 2,
+    category: "PHRASE(S)",
+    secretPhrase: "ON CLOUD NINE",
+    clue: "A whimsical state of euphoria, sheer elation, and supreme contentment.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r3",
+    roundNumber: 5,
+    stage: "MAIN",
+    mainRoundIndex: 3,
+    category: "BEFORE & AFTER",
+    secretPhrase: "WHEEL OF FORTUNE COOKIE",
+    clue: "Hilarious mashup between America's favorite game show and a crispy dessert with a lucky slip.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r4",
+    roundNumber: 6,
+    stage: "MAIN",
+    mainRoundIndex: 4,
+    category: "PHRASE(S)",
+    secretPhrase: "ONCE IN A BLUE MOON",
+    clue: "An astronomical metaphor for an occurrence that takes place very rarely.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r5",
+    roundNumber: 7,
+    stage: "MAIN",
+    mainRoundIndex: 5,
+    category: "SAME NAME",
+    secretPhrase: "SEWING AND SLOT MACHINE",
+    clue: "Two mechanical devices sharing the exact same concluding noun.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-r6",
+    roundNumber: 8,
+    stage: "MAIN",
+    mainRoundIndex: 6,
+    category: "RHYME TIME",
+    secretPhrase: "WINE AND DINE",
+    clue: "To entertain someone lavishly with fine vintage and sumptuous fare.",
+    revealedIndices: [],
+  },
+  {
+    id: "en-set3-special",
+    roundNumber: 9,
+    stage: "SPECIAL_FINAL",
+    category: "PHRASE(S)",
+    secretPhrase: "A BLESSING IN DISGUISE",
+    clue: "An unexpected stroke of good fortune disguised initially as misfortune.",
+    revealedIndices: [],
+  },
+];
+
+export const DEFAULT_ENGLISH_MAGIC_WHEEL_PUZZLES: MagicWheelPuzzle[] = [
+  ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE,
+];
+
 /**
  * Xây dựng danh sách các vòng chơi tự động mở rộng theo số đội (N = min(8, max(3, teamsCount))):
  * [Đoán nhanh 1] -> [Đoán nhanh 2] -> [Vòng chính 1 .. Vòng chính N] -> [Vòng Đặc Biệt]
  */
 export function buildMagicWheelMatchPuzzles(
   firstArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string }>,
-  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string }>
+  secondArg?: number | Array<{ roundNumber?: number; stage?: MagicWheelRoundStage; category: string; secretPhrase: string; clue?: string }>,
+  edition: "VIETNAMESE" | "ENGLISH" = "VIETNAMESE",
+  englishPreset: EnglishPuzzleSetPreset = "RANDOM_MIX"
 ): MagicWheelPuzzle[] {
   const teamsCount =
     typeof firstArg === "number"
@@ -836,22 +1134,61 @@ export function buildMagicWheelMatchPuzzles(
     : undefined;
 
   const totalMainRounds = Math.min(8, Math.max(3, teamsCount || 3));
-  const pool = customPuzzles && customPuzzles.length >= 4
-    ? customPuzzles.map((p, idx) => ({
-        id: `custom-puzzle-${idx + 1}`,
-        roundNumber: idx + 1,
-        stage: p.stage,
-        category: p.category || "TỔNG HỢP",
-        secretPhrase: (p.secretPhrase || "VIỆT NAM").toUpperCase().normalize("NFC"),
-        clue: p.clue || "Lắng nghe gợi ý từ người dẫn chương trình và giải ô chữ!",
-        revealedIndices: [] as number[],
-      }))
-    : [];
+  let pool = DEFAULT_MAGIC_WHEEL_PUZZLES;
 
-  const defaultTossUp1 = DEFAULT_MAGIC_WHEEL_PUZZLES[0];
-  const defaultTossUp2 = DEFAULT_MAGIC_WHEEL_PUZZLES[1];
-  const defaultMainPool = DEFAULT_MAGIC_WHEEL_PUZZLES.filter((p) => p.stage === "MAIN");
-  const defaultSpecial = DEFAULT_MAGIC_WHEEL_PUZZLES[DEFAULT_MAGIC_WHEEL_PUZZLES.length - 1];
+  if (customPuzzles && customPuzzles.length >= 4) {
+    pool = customPuzzles.map((p, idx) => ({
+      id: `puzzle-custom-${idx + 1}`,
+      roundNumber: idx + 1,
+      category: p.category,
+      secretPhrase: p.secretPhrase,
+      clue: p.clue,
+      revealedIndices: [],
+    }));
+  } else if (edition === "ENGLISH") {
+    if (englishPreset === "SET_1") {
+      pool = ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE;
+    } else if (englishPreset === "SET_2") {
+      pool = ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS;
+    } else if (englishPreset === "SET_3") {
+      pool = ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS;
+    } else {
+      // RANDOM_MIX: Lấy ngẫu nhiên từ cả 3 bộ
+      const t1Pool = [
+        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[0],
+        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[0],
+        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[0],
+      ];
+      const t2Pool = [
+        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[1],
+        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[1],
+        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[1],
+      ];
+      const spPool = [
+        ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE[8],
+        ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS[8],
+        ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS[8],
+      ];
+      const mainPuzzles = [
+        ...ENGLISH_PUZZLE_SET_1_VIETNAM_HERITAGE.slice(2, 8),
+        ...ENGLISH_PUZZLE_SET_2_GLOBAL_WONDERS.slice(2, 8),
+        ...ENGLISH_PUZZLE_SET_3_CLASSIC_IDIOMS.slice(2, 8),
+      ].sort(() => Math.random() - 0.5);
+
+      pool = [
+        t1Pool[Math.floor(Math.random() * t1Pool.length)],
+        t2Pool[Math.floor(Math.random() * t2Pool.length)],
+        ...mainPuzzles,
+        spPool[Math.floor(Math.random() * spPool.length)],
+      ];
+    }
+  }
+
+  const defaultPool = edition === "ENGLISH" ? DEFAULT_ENGLISH_MAGIC_WHEEL_PUZZLES : DEFAULT_MAGIC_WHEEL_PUZZLES;
+  const defaultTossUp1 = defaultPool[0];
+  const defaultTossUp2 = defaultPool[1];
+  const defaultMainPool = defaultPool.filter((p) => p.stage === "MAIN");
+  const defaultSpecial = defaultPool[defaultPool.length - 1];
 
   const schedule: MagicWheelPuzzle[] = [];
 

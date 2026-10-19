@@ -495,14 +495,10 @@ export default function ArenaModeLaunchTransition({
     }, 25);
 
     // Phát âm thanh chuyển cảnh: Với Magic Wheel chơi nhạc hình hiệu VTV3 (2012-2016)
-    // Trong Sandbox, chỉ màn hình Display mới được phát âm thanh
-    const isInsideSandbox =
-      typeof window !== "undefined" &&
-      (window.location.pathname.includes("/sandbox") ||
-        window.location.search.includes("sandbox=1") ||
-        window.self !== window.top);
+    // Cửa sổ chính (top window, kể cả trong Sandbox) phát âm thanh; chỉ ngăn chặn iframe con lặp âm
+    const isChildIframe = typeof window !== "undefined" && window.self !== window.top;
 
-    if (!isInsideSandbox) {
+    if (!isChildIframe) {
       const modeStr = String(mode || "").toUpperCase();
       if (modeStr.includes("MAGIC") || modeStr.includes("WHEEL")) {
         soundManager.playMagicWheelIntro();

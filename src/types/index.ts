@@ -856,6 +856,7 @@ export interface MagicWheelState {
     | "SPINNING"          // Nón đang xoay
     | "SECTOR_RESULT"     // Nón đã dừng, thông báo kết quả ô quay
     | "ACTION_INPUT"      // Chờ đoán chữ cái / trả lời quiz / giải ô chữ
+    | "VOWEL_BUY"         // Bản Anh: Chờ chọn 1 trong 5 nguyên âm (A, E, I, O, U) với 250đ
     | "MYSTERY_CHOICE"    // Chờ quyết định lật ô Bí Mật hay lấy 3000đ vĩnh viễn
     | "REWARD_CHOICE"     // V1: Chờ chọn 1 trong 20 lá thăm bí mật
     | "TRADE_CHOICE"      // V3: Chờ quyết định Đổi hay Không Đổi (VTV3 2012)
@@ -932,6 +933,9 @@ export interface MagicWheelState {
     allTeamsEliminated?: boolean;
     timestamp: number;
   } | null;
+  edition?: "VIETNAMESE" | "ENGLISH"; // Phiên bản Việt (VTV3) hoặc Anh (Wheel of Fortune)
+  englishPreset?: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3"; // 3 bộ đề tiếng Anh hoặc trộn ngẫu nhiên
+  blackoutGuessedLetters?: boolean;   // Admin setting: Có bôi đen/làm mờ chữ cái đã đoán hay không (mặc định: true)
 }
 
 // ─── Grid Caro Mode ──────────────────────────────────────────────────────────
@@ -1934,11 +1938,19 @@ export interface ClientToServerEvents {
   "magic_wheel:advance_round": () => void;
   "magic_wheel:set_mode": (payload: { mode: MagicWheelOperationMode }) => void;
   "magic_wheel:set_operation_mode": (payload: { mode: MagicWheelOperationMode }) => void;
+  "magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => void;
+  "magic_wheel:set_english_preset": (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => void;
+  "magic_wheel:set_blackout_guessed": (payload: { enabled: boolean }) => void;
+  "magic_wheel:buy_vowel": (payload: { vowel: string; teamId?: string }) => void;
   "magic_wheel:judge_solve": (payload: { isCorrect?: boolean; correct?: boolean }) => void;
   "magic_wheel:open_board": () => void;
   "magic_wheel:pass_turn": () => void;
   "magic_wheel:quick_reveal": () => void;
   "magic_wheel:override_turn": (payload: { teamId: string }) => void;
+  "admin:magic_wheel:set_edition": (payload: { edition: "VIETNAMESE" | "ENGLISH" }) => void;
+  "admin:magic_wheel:set_english_preset": (payload: { preset: "RANDOM_MIX" | "SET_1" | "SET_2" | "SET_3" }) => void;
+  "admin:magic_wheel:set_blackout_guessed": (payload: { enabled: boolean }) => void;
+  "admin:magic_wheel:buy_vowel": (payload: { vowel: string }) => void;
   "admin:magic_wheel:open_board": () => void;
   "admin:magic_wheel:next_round": () => void;
   "admin:magic_wheel:advance_round": () => void;

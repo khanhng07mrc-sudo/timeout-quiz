@@ -2404,6 +2404,7 @@ export default function PlayPage() {
                   isDisplay={false}
                   isHost={false}
                   teams={roomState.teams}
+                  myTeamId={effectiveTeamId}
                   isMyTurn={
                     (roomState.magicWheelState.tossUpBuzzedTeamId ||
                       roomState.magicWheelState.currentTurnTeamId) === effectiveTeamId || isSandbox

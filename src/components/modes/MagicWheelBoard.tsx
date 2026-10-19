@@ -364,6 +364,9 @@ function SmartPuzzlePhraseInput({
     if (!slot) return;
 
     if (e.key === "Enter") {
+      if (e.nativeEvent.isComposing || e.keyCode === 229) {
+        return;
+      }
       e.preventDefault();
       handleTriggerSubmit();
       return;
@@ -515,7 +518,7 @@ function SmartPuzzlePhraseInput({
 
   const handleTriggerSubmit = () => {
     const candidate = rawLineInput.trim() ? rawLineInput.trim() : composedPhrase.trim();
-    if (!candidate) return;
+    if (!candidate || candidate.replace(/[\s_]/g, "").length === 0) return;
     onSubmit(candidate);
     if (continuousMode) {
       setRawLineInput("");
@@ -587,6 +590,9 @@ function SmartPuzzlePhraseInput({
           onChange={(e) => handleFullLineChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
+              if (e.nativeEvent.isComposing || e.keyCode === 229) {
+                return;
+              }
               e.preventDefault();
               handleTriggerSubmit();
             }
@@ -1098,6 +1104,7 @@ export default function MagicWheelBoard({
     tossUpBuzzedTeamName,
     tossUpRevealOrder,
     tossUpStartTime,
+    tossUpAnswerEndsAt,
     jackpotPool,
     expressModeActive = false,
     speedUpBellActive = false,
@@ -1111,10 +1118,25 @@ export default function MagicWheelBoard({
   const [solveModalOpen, setSolveModalOpen] = useState<boolean>(false);
   const [specialPickedSet, setSpecialPickedSet] = useState<string[]>([]);
   const [specialRemainingSec, setSpecialRemainingSec] = useState<number>(40);
+  const [tossUpRemainingSec, setTossUpRemainingSec] = useState<number>(0);
   const [isBoardShaking, setIsBoardShaking] = useState<boolean>(false);
   const [isLocallyBuzzed, setIsLocallyBuzzed] = useState<boolean>(false);
   const hasBuzzedRef = useRef<boolean>(false);
-  const prevSolveFeedbackRef = useRef<typeof lastSolveFeedback>(undefined);
+  const prevSolveFeedbackKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (phase !== "TOSS_UP_BUZZED" || !tossUpAnswerEndsAt) {
+      setTossUpRemainingSec(0);
+      return;
+    }
+    const updateSec = () => {
+      const rem = Math.max(0, Math.ceil((tossUpAnswerEndsAt - Date.now()) / 1000));
+      setTossUpRemainingSec(rem);
+    };
+    updateSec();
+    const interval = setInterval(updateSec, 250);
+    return () => clearInterval(interval);
+  }, [phase, tossUpAnswerEndsAt]);
 
   useEffect(() => {
     if (phase !== "TOSS_UP_BUZZED") {
@@ -1128,7 +1150,6 @@ export default function MagicWheelBoard({
       if (hasBuzzedRef.current || phase === "TOSS_UP_BUZZED") return;
       hasBuzzedRef.current = true;
       setIsLocallyBuzzed(true);
-      soundManager.playMagicWheelBuzzSolve();
       const buzzId = targetTeamId || myTeamId || currentTurnTeamId || teams[0]?.id;
       onTossUpBuzz?.(buzzId);
     },
@@ -1138,15 +1159,24 @@ export default function MagicWheelBoard({
   const isCurrentTeamEliminated = roundEliminatedTeamIds.includes(currentTurnTeamId);
   const isTossUpRound = roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2";
 
-  const isInsideSandbox = typeof window !== "undefined" && (window.self !== window.top || window.location.search.includes("sandbox=1"));
+  const isInsideSandbox =
+    typeof window !== "undefined" &&
+    (window.self !== window.top ||
+      window.location.search.includes("sandbox=1") ||
+      window.location.pathname.includes("/sandbox"));
   // Audio rule: Contestants never play audio.
-  // In sandbox: only Display preview plays audio (prevents duplicate audio on the same machine).
+  // In sandbox: strictly Display preview plays audio (prevents duplicate audio on the same machine).
   // In live room: Host or Display plays audio.
-  const canPlayBoardAudio = !isInsideSandbox ? (isHost || isDisplay) : isDisplay;
+  const canPlayBoardAudio = isInsideSandbox ? Boolean(isDisplay) : Boolean(isDisplay || isHost);
 
   useEffect(() => {
-    if (!lastSolveFeedback || lastSolveFeedback === prevSolveFeedbackRef.current) return;
-    prevSolveFeedbackRef.current = lastSolveFeedback;
+    if (!lastSolveFeedback) {
+      prevSolveFeedbackKeyRef.current = null;
+      return;
+    }
+    const feedbackKey = `${lastSolveFeedback.timestamp || ""}_${lastSolveFeedback.guess || ""}_${Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success)}`;
+    if (prevSolveFeedbackKeyRef.current === feedbackKey) return;
+    prevSolveFeedbackKeyRef.current = feedbackKey;
 
     const isCorrect = Boolean(lastSolveFeedback.isCorrect ?? lastSolveFeedback.success);
     if (isCorrect) {
@@ -1455,7 +1485,7 @@ export default function MagicWheelBoard({
       clearChoreographyTimers();
       setHighlightedIndices(new Set());
       setAnimRevealedIndices(new Set(serverRevealed));
-      soundManager.playMagicWheelSolveWin();
+      if (canPlayBoardAudio) soundManager.playMagicWheelSolveWin();
       setHostessPose("GESTURE");
       const t = setTimeout(() => setHostessPose("IDLE"), 2500);
       activeTimersRef.current.push(t);
@@ -1467,7 +1497,7 @@ export default function MagicWheelBoard({
       newLetters.forEach((tileIdx) => {
         if (!animRevealedIndicesRef.current.has(tileIdx)) {
           triggerTilePop(tileIdx);
-          soundManager.playMagicWheelLetterReveal();
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
         }
       });
       setAnimRevealedIndices(new Set(serverRevealed));
@@ -1487,7 +1517,7 @@ export default function MagicWheelBoard({
     sortedAsc.forEach((tileIdx, stepIdx) => {
       const t = setTimeout(() => {
         setHighlightedIndices((prev) => new Set([...prev, tileIdx]));
-        soundManager.playMagicWheelMark(); // Plays /sounds/magic-wheel/highlight.mp3
+        if (canPlayBoardAudio) soundManager.playMagicWheelMark(); // Plays /sounds/magic-wheel/highlight.mp3
       }, stepIdx * highlightStepMs);
       activeTimersRef.current.push(t);
     });
@@ -1520,7 +1550,7 @@ export default function MagicWheelBoard({
           });
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
           triggerTilePop(tileIdx);
-          soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
         }, totalHighlightTime + rStep * revealStepMs);
         activeTimersRef.current.push(t);
       });
@@ -1575,7 +1605,7 @@ export default function MagicWheelBoard({
           });
           setAnimRevealedIndices((prev) => new Set([...prev, tileIdx]));
           triggerTilePop(tileIdx);
-          soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays /sounds/magic-wheel/letter_open.mp3
         }, elapsedWalkMs);
         activeTimersRef.current.push(touchTimer);
 
@@ -1704,7 +1734,7 @@ export default function MagicWheelBoard({
         const nextIdx = order.find((idx) => unrevealed.includes(idx)) ?? unrevealed[Math.floor(Math.random() * unrevealed.length)];
         setAnimRevealedIndices((prev) => new Set([...prev, nextIdx]));
         triggerTilePop(nextIdx);
-        soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
+        if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3 directly without highlight
         onTossUpRevealTick?.(nextIdx);
       }, 750);
     };
@@ -1729,7 +1759,7 @@ export default function MagicWheelBoard({
         setHostessActiveRow(firstPos.row);
         setHostessXPercent(((firstPos.col + 0.5) / COLS) * 100);
         setHighlightedIndices(new Set([firstIdx]));
-        soundManager.playMagicWheelMark(); // Plays highlight.mp3
+        if (canPlayBoardAudio) soundManager.playMagicWheelMark(); // Plays highlight.mp3
 
         // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s driver interval begins
         if (tossUpFirstTimerRef.current) clearTimeout(tossUpFirstTimerRef.current);
@@ -1737,7 +1767,7 @@ export default function MagicWheelBoard({
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
           triggerTilePop(firstIdx);
-          soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
+          if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
           if (isTickDriver) {
             onTossUpRevealTick?.(firstIdx);
           }
@@ -1874,7 +1904,7 @@ export default function MagicWheelBoard({
     if (wheelRef.current) wheelRef.current.style.transform = `rotate(${startAngle}deg)`;
     if (needleRef.current) needleRef.current.style.transform = "rotate(0deg) scale(1.06) translateZ(0)";
 
-    soundManager.playWheelPegTick(0.05);
+    if (canPlayBoardAudio) soundManager.playWheelPegTick(0.05);
 
     setIsWheelZoomedIn(false);
     setWheelZoomDurationMs(7000);
@@ -1897,7 +1927,7 @@ export default function MagicWheelBoard({
       if (currentPegIndex > lastPegIndex) {
         lastPegIndex = currentPegIndex;
         lastSnapTimeRef.current = now;
-        soundManager.playWheelPegTick(rawProgress);
+        if (canPlayBoardAudio) soundManager.playWheelPegTick(rawProgress);
       }
 
       let needleAngle = 0;
@@ -2444,10 +2474,10 @@ export default function MagicWheelBoard({
                               if (phase === "LUCKY_PICK" && canInteract && !cell.isRevealed) {
                                 if (luckyGreenSelectedIdx !== cell.originalIndex) {
                                   setLuckyGreenSelectedIdx(cell.originalIndex);
-                                  soundManager.playMagicWheelMark();
+                                  if (canPlayBoardAudio) soundManager.playMagicWheelMark();
                                 } else {
                                   setLuckyGreenSelectedIdx(null);
-                                  soundManager.playMagicWheelLetterReveal();
+                                  if (canPlayBoardAudio) soundManager.playMagicWheelLetterReveal();
                                   onLuckyPick?.(cell.originalIndex);
                                 }
                               }
@@ -3006,9 +3036,16 @@ export default function MagicWheelBoard({
                   {phase === "TOSS_UP_BUZZED" && (
                     <div className="p-3 rounded-xl bg-black/50 border border-amber-400/50 space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-black text-amber-300">
-                          🔔 Đội {tossUpBuzzedTeamName || currentTurnTeamName} đang trả lời:
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-amber-300">
+                            🔔 Đội {tossUpBuzzedTeamName || currentTurnTeamName} đang trả lời:
+                          </span>
+                          {tossUpRemainingSec > 0 && (
+                            <span className="px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono font-black text-xs animate-pulse">
+                              ⏳ Còn {tossUpRemainingSec}s
+                            </span>
+                          )}
+                        </div>
                         {isHost && onJudgeSolve && (
                           <div className="flex items-center gap-1.5">
                             <button
@@ -3028,12 +3065,19 @@ export default function MagicWheelBoard({
                           </div>
                         )}
                       </div>
-                      <SmartPuzzlePhraseInput
-                        secretPhrase={currentPuzzle?.secretPhrase || ""}
-                        revealedIndices={animRevealedIndices}
-                        onSubmit={(ans) => onSolvePuzzle?.(ans)}
-                        submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
-                      />
+
+                      {!isHost && myTeamId && tossUpBuzzedTeamId && myTeamId !== tossUpBuzzedTeamId && !isInsideSandbox ? (
+                        <div className="p-4 text-center text-xs font-bold text-slate-400 italic bg-white/5 rounded-xl border border-white/10">
+                          Đang chờ Đội {tossUpBuzzedTeamName || "đối thủ"} gõ câu trả lời...
+                        </div>
+                      ) : (
+                        <SmartPuzzlePhraseInput
+                          secretPhrase={currentPuzzle?.secretPhrase || ""}
+                          revealedIndices={animRevealedIndices}
+                          onSubmit={(ans) => onSolvePuzzle?.(ans)}
+                          submitLabel="CHỐT ĐÁP ÁN ĐOÁN NHANH ➔"
+                        />
+                      )}
                     </div>
                   )}
                 </div>
@@ -3080,7 +3124,7 @@ export default function MagicWheelBoard({
                         disabled={effectiveIsSpinning}
                         onClick={() => {
                           if (effectiveIsSpinning) return;
-                          soundManager.playMagicWheelSpin();
+                          if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
                           setLocalIsSpinning(true);
                           onSpin?.(oscillatingPower);
                         }}
@@ -3204,7 +3248,7 @@ export default function MagicWheelBoard({
                             type="button"
                             onClick={() => {
                               if (effectiveIsSpinning || isCurrentTeamEliminated) return;
-                              soundManager.playMagicWheelSpin();
+                              if (canPlayBoardAudio) soundManager.playMagicWheelSpin();
                               setLocalIsSpinning(true);
                               onSpin?.(oscillatingPower);
                             }}
@@ -3369,7 +3413,7 @@ export default function MagicWheelBoard({
                                 onClick={() => {
                                   if (pickedRewardCardIdx !== null) return;
                                   setPickedRewardCardIdx(idx);
-                                  soundManager.playMagicWheelReward();
+                                  if (canPlayBoardAudio) soundManager.playMagicWheelReward();
                                   setTimeout(() => {
                                     onSelectRewardCard?.({
                                       cardIndex: idx,

@@ -8288,18 +8288,18 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 10000; // Standard 10s for toss-up answer
+      wheelState.tossUpAnswerEndsAt = Date.now() + 25000; // 25s for typing full accented Vietnamese phrase
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
 
-      // 5. Authoritative 10s server auto-timeout
+      // 5. Authoritative 25s server auto-timeout
       const existingTimer = roomTossUpAnswerTimers.get(roomId);
       if (existingTimer) clearTimeout(existingTimer);
       const answerTimer = setTimeout(async () => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.phase === "TOSS_UP_BUZZED" && cur.tossUpBuzzedTeamId === buzzTeam.id) {
-          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(Hết 10 giây trả lời)", false, buzzTeam.id);
+          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(Hết 25 giây trả lời)", false, buzzTeam.id);
         }
-      }, 10500);
+      }, 25500);
       roomTossUpAnswerTimers.set(roomId, answerTimer);
 
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);

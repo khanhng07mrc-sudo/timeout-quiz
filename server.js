@@ -15418,16 +15418,16 @@ function registerSocketHandlers(io2) {
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
-      wheelState.tossUpAnswerEndsAt = Date.now() + 1e4;
+      wheelState.tossUpAnswerEndsAt = Date.now() + 25e3;
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
       const existingTimer = roomTossUpAnswerTimers.get(roomId);
       if (existingTimer) clearTimeout(existingTimer);
       const answerTimer = setTimeout(async () => {
         const cur = roomMagicWheels.get(roomId);
         if (cur && cur.phase === "TOSS_UP_BUZZED" && cur.tossUpBuzzedTeamId === buzzTeam.id) {
-          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(H\u1EBFt 10 gi\xE2y tr\u1EA3 l\u1EDDi)", false, buzzTeam.id);
+          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(H\u1EBFt 25 gi\xE2y tr\u1EA3 l\u1EDDi)", false, buzzTeam.id);
         }
-      }, 10500);
+      }, 25500);
       roomTossUpAnswerTimers.set(roomId, answerTimer);
       io2.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });

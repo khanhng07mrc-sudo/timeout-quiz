@@ -253,6 +253,10 @@ export default function DisplayPage() {
     soundManager.setVolume(0.8);
 
     const handlePostMessage = (e: MessageEvent) => {
+      if (e.data?.type === "TOGGLE_MAGIC_WHEEL_INTRO") {
+        soundManager.toggleMagicWheelIntro();
+        return;
+      }
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         const p = e.data.payload;
         if (p.roomState !== undefined) {

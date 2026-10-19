@@ -756,10 +756,10 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
   // Dynamic 3D rotation, pitch, and lean
   const rowReachAngles = [-46, -26, -6, 16];
   const armReachAngle = isTouching ? (rowReachAngles[activeRow] ?? -16) : isGesture ? -20 : 0;
-  const torsoPitch = isTouching ? (activeRow === 0 ? -10 : activeRow === 1 ? -4 : 4) : 0;
-  const baseRotateY = isRightSide ? -18 : 18;
-  const dynamicRotateY = isTouching ? (isRightSide ? -36 : 36) : isGesture ? (isRightSide ? -24 : 24) : baseRotateY;
-  const dynamicLeanZ = isTouching ? (isRightSide ? 6 : -6) : 0;
+  const torsoPitch = isTouching ? (activeRow === 0 ? -8 : activeRow === 1 ? -4 : 4) : 0;
+  const baseRotateY = isRightSide ? -16 : 16;
+  const dynamicRotateY = isTouching ? (isRightSide ? -32 : 32) : isGesture ? (isRightSide ? -22 : 22) : baseRotateY;
+  const dynamicLeanZ = isTouching ? (isRightSide ? 5 : -5) : 0;
 
   return (
     <div
@@ -779,30 +779,27 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
           transition: "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1)",
         }}
       >
-        {/* Pulsing Sparkle Burst at index finger when touching or gesturing */}
+        {/* Soft studio light halo at fingertip when pointing to tile */}
         {(isTouching || isGesture) && (
           <div
-            className="absolute z-40 text-xl sm:text-2xl animate-ping"
+            className="absolute z-40 w-3.5 h-3.5 rounded-full bg-cyan-300/80 blur-[2px] shadow-[0_0_15px_#06b6d4,0_0_25px_#38bdf8] animate-pulse pointer-events-none"
             style={{
               top: isTouching ? `${18 + activeRow * 16}px` : "24px",
-              right: isRightSide ? "auto" : "-16px",
-              left: isRightSide ? "-16px" : "auto",
-              filter: "drop-shadow(0 0 10px #facc15)",
+              right: isRightSide ? "auto" : "-10px",
+              left: isRightSide ? "-10px" : "auto",
             }}
-          >
-            ✨
-          </div>
+          />
         )}
 
-        {/* 3D Stylized Studio Hostess Avatar with Full Slender Legs and High Heels */}
+        {/* Refined MC Television Model Vector */}
         <div className={`relative w-20 sm:w-24 md:w-28 lg:w-32 h-44 sm:h-52 md:h-60 lg:h-68 drop-shadow-[0_12px_24px_rgba(0,0,0,0.85)] ${isWalking ? "animate-bounce" : ""}`}>
           <svg viewBox="0 0 100 215" className="w-full h-full overflow-visible">
             <defs>
               <linearGradient id="hostessGownGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#f43f5e" />
-                <stop offset="35%" stopColor="#e11d48" />
-                <stop offset="85%" stopColor="#9f1239" />
-                <stop offset="100%" stopColor="#4c0519" />
+                <stop offset="0%" stopColor="#1e3a8a" />
+                <stop offset="25%" stopColor="#2563eb" />
+                <stop offset="65%" stopColor="#1d4ed8" />
+                <stop offset="100%" stopColor="#0f172a" />
               </linearGradient>
 
               <linearGradient id="hostessGoldMetal" x1="0%" y1="0%" x2="100%" y2="50%">
@@ -815,193 +812,171 @@ function Hostess3DStudio({ xPercent, activeRow, facing, pose }: Hostess3DStudioP
               <linearGradient id="hostessSkinGrad" x1="20%" y1="0%" x2="80%" y2="100%">
                 <stop offset="0%" stopColor="#fff1f2" />
                 <stop offset="50%" stopColor="#ffe4e6" />
-                <stop offset="100%" stopColor="#fecdd3" />
+                <stop offset="100%" stopColor="#fed7aa" />
               </linearGradient>
 
               <linearGradient id="hostessHairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#312e81" />
-                <stop offset="30%" stopColor="#1e1b4b" />
-                <stop offset="75%" stopColor="#0f172a" />
+                <stop offset="0%" stopColor="#27272a" />
+                <stop offset="40%" stopColor="#18181b" />
+                <stop offset="80%" stopColor="#09090b" />
                 <stop offset="100%" stopColor="#020617" />
               </linearGradient>
-
-              <radialGradient id="hostessCheekBlush" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#fb7185" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#fb7185" stopOpacity="0" />
-              </radialGradient>
             </defs>
 
             {/* 3D Catwalk Contact Floor Shadow */}
-            <ellipse cx="50" cy="204" rx="28" ry="5.5" fill="rgba(0,0,0,0.65)" filter="blur(2.5px)" />
+            <ellipse cx="50" cy="204" rx="24" ry="4.5" fill="rgba(0,0,0,0.6)" filter="blur(2.5px)" />
 
             {/* Back Hair Strands */}
             <path
-              d="M32 26 C20 35 18 65 24 82 C32 75 68 75 76 82 C82 65 80 35 68 26 C60 14 40 14 32 26 Z"
+              d="M40 18 C36 28 35 48 38 60 C42 56 58 56 62 60 C65 48 64 28 60 18 C56 12 44 12 40 18 Z"
               fill="url(#hostessHairGrad)"
             />
 
-            {/* ── Slender Legs & High-Heeled Stiletto Pumps ── */}
+            {/* ── Slender Legs & Stiletto Heels ── */}
             <g id="hostessLegs">
               {/* Back / Supporting Right Leg */}
               <path
-                d="M52 110 C53 130 55 152 54 172 C53 182 52 192 51 198"
+                d="M52 115 C53 135 54 158 53 178 C52 187 51 195 50 200"
                 stroke="url(#hostessSkinGrad)"
-                strokeWidth="7"
+                strokeWidth="6"
                 strokeLinecap="round"
                 fill="none"
               />
               {/* Right Gold Stiletto Pump */}
               <path
-                d="M48 196 L53 199 L58 199 C59 198 56 195 53 195 Z"
+                d="M47 198 L52 201 L56 201 C57 200 54 197 51 197 Z"
                 fill="url(#hostessGoldMetal)"
               />
-              {/* Right Heel Spike */}
-              <line x1="49" y1="196" x2="49" y2="203" stroke="url(#hostessGoldMetal)" strokeWidth="2" strokeLinecap="round" />
+              <line x1="48" y1="198" x2="48" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" strokeLinecap="round" />
 
-              {/* Front Left Shapely Leg (revealed gracefully via slit) */}
+              {/* Front Left Slender Leg (revealed via slit) */}
               <path
-                d="M42 105 C40 125 43 148 45 168 C46 178 45 188 44 196"
+                d="M44 112 C42 132 44 154 46 174 C47 183 46 191 44 198"
                 stroke="url(#hostessSkinGrad)"
-                strokeWidth="7.5"
+                strokeWidth="6.5"
                 strokeLinecap="round"
                 fill="none"
               />
-              {/* Front Knee Contour */}
-              <ellipse cx="44" cy="148" rx="3.5" ry="4.5" fill="url(#hostessSkinGrad)" opacity="0.9" />
-
               {/* Left Gold Stiletto Pump */}
               <path
-                d="M39 194 L44 198 L50 198 C52 197 48 193 44 193 Z"
+                d="M40 196 L45 200 L50 200 C51 199 48 196 44 196 Z"
                 fill="url(#hostessGoldMetal)"
               />
-              {/* Left Shoe Sparkle */}
-              <circle cx="43" cy="195" r="1.2" fill="#ffffff" />
-              {/* Left Heel Spike reaching ground at y=203 */}
-              <line x1="40" y1="194" x2="40" y2="203" stroke="url(#hostessGoldMetal)" strokeWidth="2.2" strokeLinecap="round" />
+              <circle cx="44" cy="197" r="1" fill="#ffffff" />
+              <line x1="41" y1="196" x2="41" y2="204" stroke="url(#hostessGoldMetal)" strokeWidth="2" strokeLinecap="round" />
             </g>
 
-            {/* Evening Gown Flowing Skirt with High Side Slit / Áo Dài Tà Xòe */}
+            {/* Evening Gown Flowing Mermaid Skirt with High Side Slit */}
             <path
-              d="M36 78 C30 102 24 135 18 160 C32 163 48 160 52 152 C48 132 46 100 64 78 Z"
+              d="M37 72 C32 98 26 132 20 162 C34 165 48 162 52 154 C48 132 46 96 63 72 Z"
               fill="url(#hostessGownGrad)"
-              stroke="#fda4af"
+              stroke="url(#hostessGoldMetal)"
               strokeWidth="0.8"
             />
-            {/* 3D Gown Silk Pleats */}
-            <path d="M42 80 C36 105 30 135 24 158" stroke="#881337" strokeWidth="1.5" strokeOpacity="0.7" fill="none" />
-            <path d="M48 78 C44 105 40 130 36 156" stroke="#f43f5e" strokeWidth="1.2" strokeOpacity="0.8" fill="none" />
-            <path d="M58 80 C60 102 61 125 62 142" stroke="#4c0519" strokeWidth="1.4" strokeOpacity="0.7" fill="none" />
+            {/* Silk Drape Folds */}
+            <path d="M42 74 C36 102 30 134 25 158" stroke="#1e3a8a" strokeWidth="1.5" strokeOpacity="0.8" fill="none" />
+            <path d="M48 72 C44 100 40 128 36 156" stroke="#3b82f6" strokeWidth="1.2" strokeOpacity="0.6" fill="none" />
+            <path d="M58 74 C60 98 61 124 62 144" stroke="#0f172a" strokeWidth="1.4" strokeOpacity="0.7" fill="none" />
 
             {/* Golden Embroidery Trim on Skirt Slit */}
-            <path d="M18 160 Q35 164 52 152" stroke="url(#hostessGoldMetal)" strokeWidth="2.5" fill="none" />
-            <circle cx="51" cy="153" r="2" fill="#fef08a" />
+            <path d="M20 162 Q36 166 52 154" stroke="url(#hostessGoldMetal)" strokeWidth="2" fill="none" />
+            <circle cx="51" cy="155" r="1.6" fill="#fef08a" />
 
             {/* Hourglass Bodice / Torso (with 3D lean and pitch) */}
-            <g style={{ transform: `rotate(${torsoPitch}deg)`, transformOrigin: "50px 75px", transition: "transform 400ms" }}>
+            <g style={{ transform: `rotate(${torsoPitch}deg)`, transformOrigin: "50px 70px", transition: "transform 400ms" }}>
               <path
-                d="M35 52 C35 44 42 42 50 42 C58 42 65 44 65 52 C65 62 60 76 58 78 C54 80 46 80 42 78 C40 76 35 62 35 52 Z"
+                d="M37 48 C37 41 43 39 50 39 C57 39 63 41 63 48 C63 58 59 70 57 72 C53 74 47 74 43 72 C41 70 37 58 37 48 Z"
                 fill="url(#hostessGownGrad)"
-                stroke="#fda4af"
-                strokeWidth="0.7"
+                stroke="url(#hostessGoldMetal)"
+                strokeWidth="0.8"
               />
               {/* Sweetheart Neckline Trim */}
-              <path d="M38 50 Q50 56 62 50" stroke="url(#hostessGoldMetal)" strokeWidth="1.8" fill="none" />
+              <path d="M40 46 Q50 51 60 46" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
 
               {/* Golden Cinched Waist Belt */}
-              <rect x="40" y="74" width="20" height="5" rx="2" fill="url(#hostessGoldMetal)" />
-              <rect x="48" y="73" width="4" height="7" rx="1" fill="#fff" opacity="0.8" />
+              <rect x="42" y="68" width="16" height="4.5" rx="1.5" fill="url(#hostessGoldMetal)" />
+              <rect x="48" y="67" width="4" height="6.5" rx="1" fill="#fff" opacity="0.9" />
 
-              {/* Slender Neck & Diamond Choker */}
-              <rect x="46" y="34" width="8" height="9" rx="3" fill="url(#hostessSkinGrad)" />
-              <path d="M45 40 Q50 43 55 40" stroke="url(#hostessGoldMetal)" strokeWidth="1.6" fill="none" />
-              <circle cx="50" cy="42" r="1.2" fill="#fff" />
+              {/* Slender Graceful Neck */}
+              <rect x="47" y="30" width="6" height="10" rx="2.5" fill="url(#hostessSkinGrad)" />
+              {/* Subtle Diamond Necklace */}
+              <path d="M46 36 Q50 39 54 36" stroke="url(#hostessGoldMetal)" strokeWidth="1.2" fill="none" />
+              <circle cx="50" cy="38" r="1" fill="#ffffff" />
 
-              {/* Head / Face */}
-              <ellipse cx="50" cy="27" rx="12" ry="14" fill="url(#hostessSkinGrad)" />
-              {/* Cheek Blush */}
-              <ellipse cx="43" cy="30" rx="3.5" ry="2" fill="url(#hostessCheekBlush)" />
-              <ellipse cx="57" cy="30" rx="3.5" ry="2" fill="url(#hostessCheekBlush)" />
+              {/* Head / Face - Refined Fashion MC Proportions */}
+              <ellipse cx="50" cy="22" rx="7.5" ry="9.5" fill="url(#hostessSkinGrad)" />
 
-              {/* Elegant Eyes & Eyelashes */}
-              <ellipse cx="44.5" cy="25" rx="2.2" ry="1.6" fill="#0f172a" />
-              <ellipse cx="55.5" cy="25" rx="2.2" ry="1.6" fill="#0f172a" />
-              <circle cx="45.2" cy="24.4" r="0.7" fill="#ffffff" />
-              <circle cx="56.2" cy="24.4" r="0.7" fill="#ffffff" />
-              <path d="M42 22.5 Q45 21 47.5 22.5" stroke="#1e1b4b" strokeWidth="0.9" fill="none" />
-              <path d="M52.5 22.5 Q55 21 58 22.5" stroke="#1e1b4b" strokeWidth="0.9" fill="none" />
-
-              {/* Radiant Smile with Ruby Lips */}
-              <path d="M46.5 32 Q50 35.5 53.5 32" stroke="#be123c" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-
-              {/* Stylized Voluminous Hair Over Forehead & Shoulders */}
+              {/* Sophisticated Updo Chignon Hairstyle */}
               <path
-                d="M34 22 C34 10 66 10 66 22 C66 26 62 25 59 23 C53 20 47 20 41 23 C38 25 34 26 34 22 Z"
+                d="M43 14 C43 7 57 7 57 14 C60 18 58 23 56 25 C52 27 48 27 44 25 C42 23 41 18 43 14 Z"
                 fill="url(#hostessHairGrad)"
               />
-              <path d="M34 22 C31 30 33 46 37 54 C39 48 37 32 36 24 Z" fill="url(#hostessHairGrad)" />
-              <path d="M66 22 C69 30 67 46 63 54 C61 48 63 32 64 24 Z" fill="url(#hostessHairGrad)" />
+              {/* Subtle Gold Hairpin */}
+              <line x1="53" y1="12" x2="57" y2="10" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="57" cy="10" r="1.2" fill="#ffffff" />
 
-              {/* Sparkling Golden Hair Tiara / Crown */}
-              <polygon points="42,12 50,5 58,12 54,14 46,14" fill="url(#hostessGoldMetal)" />
-              <circle cx="50" cy="8" r="1.2" fill="#ffffff" />
+              {/* Minimalist Television Fashion Face (clean gaze & smile, no cartoon blush) */}
+              <path d="M46 20.5 Q47.5 19.5 49 20.5" stroke="#18181b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+              <path d="M51 20.5 Q52.5 19.5 54 20.5" stroke="#18181b" strokeWidth="0.8" fill="none" strokeLinecap="round" />
+              <path d="M48 26 Q50 28 52 26" stroke="#e11d48" strokeWidth="1.3" fill="none" strokeLinecap="round" />
 
-              {/* Rest Arm */}
+              {/* Left Rest Arm */}
               <path
-                d="M35 48 C28 58 29 70 33 78"
+                d="M37 45 C31 54 32 64 36 72"
                 stroke="url(#hostessSkinGrad)"
-                strokeWidth="4.8"
+                strokeWidth="4.2"
                 fill="none"
                 strokeLinecap="round"
               />
-              <circle cx="33" cy="78" r="2.4" fill="url(#hostessSkinGrad)" />
+              <circle cx="36" cy="72" r="2.2" fill="url(#hostessSkinGrad)" />
 
-              {/* Dynamic Arm Reaching to Target Tile Row */}
+              {/* Right Dynamic Arm Reaching to Target Tile Row */}
               {isTouching ? (
                 <g
                   style={{
-                    transformOrigin: "64px 48px",
+                    transformOrigin: "62px 46px",
                     transform: `rotate(${armReachAngle}deg)`,
                     transition: "transform 400ms ease-out",
                   }}
                 >
                   <path
-                    d="M64 48 C76 42 86 32 94 18"
+                    d="M62 46 C74 40 84 30 92 18"
                     stroke="url(#hostessSkinGrad)"
-                    strokeWidth="5"
+                    strokeWidth="4.5"
                     fill="none"
                     strokeLinecap="round"
                   />
                   <path
-                    d="M93 19 L99 12"
+                    d="M91 19 L97 12"
                     stroke="url(#hostessSkinGrad)"
-                    strokeWidth="3.2"
+                    strokeWidth="3"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  <circle cx="86" cy="32" r="3" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" />
+                  <circle cx="84" cy="30" r="2.5" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.2" />
                 </g>
               ) : isGesture ? (
                 <g style={{ transition: "all 400ms ease-out" }}>
                   <path
-                    d="M64 48 C76 46 84 38 88 28"
+                    d="M62 46 C74 44 82 36 86 26"
                     stroke="url(#hostessSkinGrad)"
-                    strokeWidth="4.8"
+                    strokeWidth="4.5"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  <path d="M87 29 L92 24" stroke="url(#hostessSkinGrad)" strokeWidth="3" fill="none" strokeLinecap="round" />
-                  <circle cx="82" cy="40" r="2.8" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.5" />
+                  <path d="M85 27 L90 22" stroke="url(#hostessSkinGrad)" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+                  <circle cx="80" cy="38" r="2.5" fill="none" stroke="url(#hostessGoldMetal)" strokeWidth="1.2" />
                 </g>
               ) : (
                 <g>
                   <path
-                    d="M65 48 C72 58 70 70 66 78"
+                    d="M63 46 C69 56 67 66 64 74"
                     stroke="url(#hostessSkinGrad)"
-                    strokeWidth="4.8"
+                    strokeWidth="4.2"
                     fill="none"
                     strokeLinecap="round"
                   />
-                  <circle cx="66" cy="78" r="2.4" fill="url(#hostessSkinGrad)" />
+                  <circle cx="64" cy="74" r="2.2" fill="url(#hostessSkinGrad)" />
                 </g>
               )}
             </g>
@@ -1342,6 +1317,25 @@ export default function MagicWheelBoard({
     return map;
   }, [currentPuzzle?.secretPhrase]);
 
+  // ── Show / Hide Hostess ("Người Mẫu") State (persisted to localStorage) ───
+  const [showHostess, setShowHostess] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("magic_wheel_show_hostess");
+      if (saved !== null) return saved === "true";
+    }
+    return true;
+  });
+
+  const toggleHostess = useCallback(() => {
+    setShowHostess((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("magic_wheel_show_hostess", String(next));
+      }
+      return next;
+    });
+  }, []);
+
   // ── Virtual Hostess ("Người Mẫu") Intelligent 1-Way Movement & Reveal ─────
   const [hostessSide, setHostessSide] = useState<"LEFT" | "RIGHT">("LEFT");
   const hostessSideRef = useRef<"LEFT" | "RIGHT">("LEFT");
@@ -1417,9 +1411,11 @@ export default function MagicWheelBoard({
     // In Toss-Up running mode, if 1 letter is revealed via tick, handle it according to Toss-Up rules
     if (roundStage === "TOSS_UP_1" || roundStage === "TOSS_UP_2") {
       newLetters.forEach((tileIdx) => {
-        triggerTilePop(tileIdx);
+        if (!animRevealedIndicesRef.current.has(tileIdx)) {
+          triggerTilePop(tileIdx);
+          soundManager.playMagicWheelLetterReveal();
+        }
       });
-      soundManager.playMagicWheelLetterReveal();
       setAnimRevealedIndices(new Set(serverRevealed));
       return;
     }
@@ -1580,12 +1576,10 @@ export default function MagicWheelBoard({
     const phrase = currentPuzzleRef.current?.secretPhrase || "";
     if (!phrase) return;
 
-    // Single authoritative tick driver:
-    // Only execute if an authoritative tick callback is registered
+    // Authoritative tick driver:
     // In sandbox: only Host drives (display iframe has no onTossUpRevealTick or is inside iframe)
     // In live room: Host drives, or standalone Display fallback
     const isTickDriver = typeof onTossUpRevealTick === "function" && (isHost || (isDisplay && !isInsideSandbox));
-    if (!isTickDriver) return;
 
     let intervalId: ReturnType<typeof setInterval> | null = null;
     let firstOpenTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1605,6 +1599,7 @@ export default function MagicWheelBoard({
     };
 
     const startRandomInterval = () => {
+      if (!isTickDriver) return;
       if (intervalId) clearInterval(intervalId);
       intervalId = setInterval(() => {
         const unrevealed = getUnrevealedLetterIndices();
@@ -1625,17 +1620,20 @@ export default function MagicWheelBoard({
       tossUpFirstTileDoneRef.current = true;
       const unrevealed = getUnrevealedLetterIndices();
       if (unrevealed.length > 0) {
-        // Pick a tile near the current hostess/MC side
-        const side = hostessSideRef.current;
+        // Deterministic first tile near hostess side across ALL screens (MC, Display, Contestant)
+        const side = hostessSideRef.current || "LEFT";
         const sortedByNearSide = [...unrevealed].sort((a, b) => {
           const colA = cellPositionsMap[a]?.col ?? 7;
           const colB = cellPositionsMap[b]?.col ?? 7;
           return side === "LEFT" ? colA - colB : colB - colA;
         });
-        const firstIdx = sortedByNearSide[0];
+        const order = tossUpRevealOrder || [];
+        const firstIdx = (order.length > 0 && unrevealed.includes(order[0]))
+          ? order[0]
+          : sortedByNearSide[0];
         const firstPos = cellPositionsMap[firstIdx] || { col: 2, row: 1 };
 
-        // 1. MC/Hostess places hand on the tile near them -> tile highlights + highlight.mp3
+        // 1. ALL screens: MC/Hostess touches tile -> tile highlights in Cyan Neon + highlight.mp3 for 1.0s
         setHostessFacing(side === "LEFT" ? "RIGHT" : "LEFT");
         setHostessPose("TOUCHING");
         setHostessActiveRow(firstPos.row);
@@ -1643,13 +1641,15 @@ export default function MagicWheelBoard({
         setHighlightedIndices(new Set([firstIdx]));
         soundManager.playMagicWheelMark(); // Plays highlight.mp3
 
-        // 2. Right after waiting 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s random loop begins
+        // 2. Exactly after 1.0s (1000ms), letter appears + pop zoom + letter_open.mp3, then 0.75s driver interval begins
         firstOpenTimer = setTimeout(() => {
           setHighlightedIndices(new Set());
           setAnimRevealedIndices((prev) => new Set([...prev, firstIdx]));
           triggerTilePop(firstIdx);
           soundManager.playMagicWheelLetterReveal(); // Plays letter_open.mp3
-          onTossUpRevealTick?.(firstIdx);
+          if (isTickDriver) {
+            onTossUpRevealTick?.(firstIdx);
+          }
           setHostessPose("IDLE");
           setHostessXPercent(side === "LEFT" ? 3.5 : 96.5);
           startRandomInterval();
@@ -1672,6 +1672,7 @@ export default function MagicWheelBoard({
     isHost,
     isDisplay,
     isInsideSandbox,
+    tossUpRevealOrder,
     triggerTilePop,
     onTossUpRevealTick,
   ]);
@@ -2074,6 +2075,20 @@ export default function MagicWheelBoard({
             </div>
           )}
 
+          {/* Virtual Hostess Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleHostess}
+            className={`px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer border ${
+              showHostess
+                ? "bg-fuchsia-600/30 text-fuchsia-200 border-fuchsia-400/50 hover:bg-fuchsia-600/50 shadow-[0_0_15px_rgba(217,70,239,0.3)]"
+                : "bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white"
+            }`}
+            title="Bật/Tắt người mẫu ảo mở ô chữ trên sân khấu"
+          >
+            💃 Người mẫu: {showHostess ? "BẬT" : "TẮT"}
+          </button>
+
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-cyan-500/15 border border-white/15 shadow">
             <span
               className="w-3.5 h-3.5 rounded-full shadow-md animate-pulse shrink-0"
@@ -2297,7 +2312,7 @@ export default function MagicWheelBoard({
                                 : isLuckyGreen
                                 ? "bg-gradient-to-tr from-emerald-500 via-green-400 to-emerald-300 text-emerald-950 border-2 border-emerald-200 scale-110 shadow-[0_0_25px_#10b981] animate-pulse cursor-pointer z-10"
                                 : cell.isHighlighted
-                                ? "bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 text-amber-950 border-2 border-yellow-100 scale-110 shadow-[0_0_25px_#f59e0b] animate-bounce z-10"
+                                ? "bg-gradient-to-tr from-cyan-400 via-sky-300 to-cyan-200 text-transparent border-2 border-white scale-110 shadow-[0_0_35px_#06b6d4,0_0_15px_#38bdf8] animate-pulse z-20"
                                 : cell.isRevealed
                                 ? "bg-white text-[#0f172a] shadow-[0_4px_12px_rgba(255,255,255,0.45)] border-2 border-white scale-100"
                                 : phase === "LUCKY_PICK"
@@ -2311,7 +2326,7 @@ export default function MagicWheelBoard({
                                 : isLuckyGreen
                                 ? "✓"
                                 : cell.isHighlighted
-                                ? "✨"
+                                ? ""
                                 : phase === "LUCKY_PICK"
                                 ? "🍀"
                                 : "?"}
@@ -2350,12 +2365,14 @@ export default function MagicWheelBoard({
                 <div className="relative z-10 w-full h-1 sm:h-1.5 bg-gradient-to-r from-cyan-500 via-amber-300 to-cyan-500 shadow-[0_0_15px_#06b6d4,0_0_25px_#f59e0b]" />
 
                 {/* Virtual Hostess 3D Studio Character standing firmly on Catwalk Floor */}
-                <Hostess3DStudio
-                  xPercent={hostessXPercent}
-                  activeRow={hostessActiveRow}
-                  facing={hostessFacing}
-                  pose={hostessPose}
-                />
+                {showHostess && (
+                  <Hostess3DStudio
+                    xPercent={hostessXPercent}
+                    activeRow={hostessActiveRow}
+                    facing={hostessFacing}
+                    pose={hostessPose}
+                  />
+                )}
               </div>
             </div>
 
@@ -2364,7 +2381,7 @@ export default function MagicWheelBoard({
               {/* Tier 1: Category Badge / Chủ Đề (Gọn gàng, góc trên bên trái) */}
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-t-xl bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-md border-t border-x border-amber-300">
                 <span className="text-amber-900">⭐</span>
-                <span>CHỦ ĐỀ: {currentPuzzle?.category || "TỔNG HỢP"}</span>
+                <span>CHỦ ĐỀ: {effectiveBoardStage === "EMPTY_56" ? "(Chờ MC mở bảng)" : (currentPuzzle?.category || "TỔNG HỢP")}</span>
               </div>
               {/* Tier 2: Clue Chyron Body Full-Width (Không bị co hẹp ngang) */}
               <div className="w-full px-4 py-2.5 sm:py-3 rounded-b-2xl rounded-tr-2xl bg-black/90 border border-amber-400/40 backdrop-blur-md flex items-center justify-between gap-4 text-slate-100 font-bold text-xs sm:text-sm md:text-base shadow-2xl">
@@ -2373,7 +2390,7 @@ export default function MagicWheelBoard({
                     ? currentPuzzle?.clue || "Lắng nghe gợi ý từ MC và đoán các chữ cái!"
                     : "Bảng ô chữ đang chuẩn bị..."}
                 </p>
-                {currentPuzzle?.secretPhrase && (
+                {currentPuzzle?.secretPhrase && effectiveBoardStage !== "EMPTY_56" && (
                   <span className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/15 text-amber-300 font-mono font-black text-xs sm:text-sm border border-amber-400/30 whitespace-nowrap shadow-inner">
                     {currentPuzzle.secretPhrase.replace(/\s+/g, "").length} KÝ TỰ
                   </span>
@@ -2794,7 +2811,7 @@ export default function MagicWheelBoard({
                     <div className="space-y-2">
                       <button
                         type="button"
-                        disabled={isLocallyBuzzed}
+                        disabled={isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)}
                         onPointerDown={(e) => {
                           e.preventDefault();
                           handleTriggerTossUpBuzz();
@@ -2804,12 +2821,12 @@ export default function MagicWheelBoard({
                           handleTriggerTossUpBuzz();
                         }}
                         className={`w-full py-4 rounded-2xl font-black text-sm sm:text-base transition select-none touch-manipulation cursor-pointer ${
-                          isLocallyBuzzed
-                            ? "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 text-slate-950 shadow-[0_0_35px_rgba(52,211,153,0.9)] animate-pulse scale-98 ring-4 ring-emerald-200"
+                          isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)
+                            ? "bg-gradient-to-r from-emerald-400 via-teal-300 to-emerald-500 text-slate-950 shadow-[0_0_35px_rgba(52,211,153,0.9)] opacity-90 scale-98 ring-4 ring-emerald-200 cursor-not-allowed"
                             : "bg-gradient-to-r from-amber-300 via-yellow-400 to-orange-400 text-slate-950 hover:brightness-110 active:scale-95 shadow-[0_0_25px_rgba(251,191,36,0.6)] ring-2 ring-yellow-200"
                         }`}
                       >
-                        {isLocallyBuzzed
+                        {isLocallyBuzzed || Boolean(tossUpBuzzedTeamId)
                           ? "🔔 ĐÃ GHI NHẬN TIẾNG CHUÔNG! ĐANG KHÓA QUYỀN TRẢ LỜI..."
                           : "🔔 BẤM CHUÔNG GIÀNH QUYỀN GIẢI Ô CHỮ NGAY!"}
                       </button>

@@ -187,6 +187,8 @@ const roomTotalActorsCache = new Map<string, number>(); // roomId -> cached tota
 // New Game Modes in-memory stores
 const roomTournaments = new Map<string, TournamentState>();
 const roomMagicWheels = new Map<string, MagicWheelState>();
+const roomTossUpBuzzLocks = new Map<string, { teamId: string; timestamp: number }>();
+const roomTossUpAnswerTimers = new Map<string, NodeJS.Timeout>();
 const roomGridCaros = new Map<string, GridCaroState>();
 const roomDiceRaces = new Map<string, DiceRaceState>();
 const roomWagers = new Map<string, WagerState>();
@@ -1991,91 +1993,7 @@ export function registerSocketHandlers(io: IO) {
                   });
                 }
               } else {
-                const currentQuestions = await getRoomQuestions(room.id);
-                const currentQ = currentQuestions[room.currentQuestion] || room.quizBank.questions[room.currentQuestion];
-                if (currentQ) {
-                  const qKey = `${room.id}:${currentQ.id}`;
-                  const primary = roomPrimaryTeams.get(qKey);
-                  const stealBuzzed = roomStealBuzzed.get(qKey);
-                  const buzzFirst = roomBuzzFirst.get(qKey);
-                  const isSteal = roomStealPhase.get(qKey) ?? false;
-                  const config = room.config as any;
-                  const mysteryState = roomMysteryQuests.get(room.id);
-                  const gridState = roomGridCaros.get(room.id);
-                  const diceState = roomDiceRaces.get(room.id);
-                  const tournamentState = roomTournaments.get(room.id);
-                  const activeMatch =
-                    room.mode === "TOURNAMENT" && tournamentState && tournamentState.matches
-                      ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
-                      : undefined;
-
-                  const qState = buildQuestionState(currentQ, {
-                    order:
-                      room.mode === "MYSTERY_QUEST" && mysteryState
-                        ? mysteryState.currentTurnIndex + 1
-                        : currentQ.order,
-                    primaryTeamId:
-                      primary?.teamId ||
-                      (room.mode === "MYSTERY_QUEST"
-                        ? mysteryState?.currentTurnTeamId
-                        : room.mode === "GRID_CARO"
-                        ? gridState?.currentTurnTeamId
-                        : room.mode === "DICE_RACE"
-                        ? diceState?.currentTurnTeamId
-                        : room.mode === "TOURNAMENT"
-                        ? activeMatch?.team1Id
-                        : undefined),
-                    primaryTeamName:
-                      primary?.teamName ||
-                      (room.mode === "MYSTERY_QUEST"
-                        ? mysteryState?.currentTurnTeamName
-                        : room.mode === "GRID_CARO"
-                        ? gridState?.currentTurnTeamName
-                        : room.mode === "DICE_RACE"
-                        ? diceState?.currentTurnTeamName
-                        : room.mode === "TOURNAMENT" && activeMatch
-                        ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
-                        : undefined),
-                    tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
-                    tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
-                    bloomLevel: getBloomLevelFromPoints(currentQ.points),
-                    answerMethod: config?.answerMethod ?? "DEVICE",
-                    isStealPhase: isSteal,
-                    stealBuzzedTeamId: stealBuzzed?.teamId,
-                    stealBuzzedTeamName: stealBuzzed?.teamName,
-                    buzzedTeamId: buzzFirst?.teamId,
-                    buzzedTeamName: buzzFirst?.teamName,
-                    timerPending: !isTimerRunning,
-                    timerStarted: isTimerRunning,
-                  });
-
-                  if (endsAt) {
-                    qState.endsAt = endsAt;
-                    qState.serverTime = Date.now();
-                  }
-
-                  roomActiveQuestions.set(room.id, qState);
-                  socket.emit("game:question", qState);
-
-                  if (isTimerRunning) {
-                    const effRemaining =
-                      typeof remaining === "number" && remaining > 0
-                        ? remaining
-                        : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
-                    socket.emit("game:timer:started", {
-                      timeLimit: qState.timeLimit,
-                      endsAt,
-                      serverTime: Date.now(),
-                      questionId: currentQ.id,
-                    });
-                    socket.emit("game:timer", {
-                      remaining: effRemaining,
-                      total: qState.timeLimit,
-                      endsAt,
-                      serverTime: Date.now(),
-                    });
-                  }
-                }
+                socket.emit("game:question:clear");
               }
             }
 
@@ -2540,91 +2458,7 @@ export function registerSocketHandlers(io: IO) {
               });
             }
           } else {
-            const currentQuestions = await getRoomQuestions(room.id);
-            const currentQ = currentQuestions[room.currentQuestion] || room.quizBank?.questions?.[room.currentQuestion];
-            if (currentQ) {
-              const qKey = `${room.id}:${currentQ.id}`;
-              const primary = roomPrimaryTeams.get(qKey);
-              const stealBuzzed = roomStealBuzzed.get(qKey);
-              const buzzFirst = roomBuzzFirst.get(qKey);
-              const isSteal = roomStealPhase.get(qKey) ?? false;
-              const config = room.config as any;
-              const mysteryState = roomMysteryQuests.get(room.id);
-              const gridState = roomGridCaros.get(room.id);
-              const diceState = roomDiceRaces.get(room.id);
-              const tournamentState = roomTournaments.get(room.id);
-              const activeMatch =
-                room.mode === "TOURNAMENT" && tournamentState
-                  ? tournamentState.matches.find((m) => m.id === tournamentState.currentMatchId || m.status === "IN_PROGRESS")
-                  : undefined;
-
-              const qState = buildQuestionState(currentQ, {
-                order:
-                  room.mode === "MYSTERY_QUEST" && mysteryState
-                    ? mysteryState.currentTurnIndex + 1
-                    : currentQ.order,
-                primaryTeamId:
-                  primary?.teamId ||
-                  (room.mode === "MYSTERY_QUEST"
-                    ? mysteryState?.currentTurnTeamId
-                    : room.mode === "GRID_CARO"
-                    ? gridState?.currentTurnTeamId
-                    : room.mode === "DICE_RACE"
-                    ? diceState?.currentTurnTeamId
-                    : room.mode === "TOURNAMENT"
-                    ? activeMatch?.team1Id
-                    : undefined),
-                primaryTeamName:
-                  primary?.teamName ||
-                  (room.mode === "MYSTERY_QUEST"
-                    ? mysteryState?.currentTurnTeamName
-                    : room.mode === "GRID_CARO"
-                    ? gridState?.currentTurnTeamName
-                    : room.mode === "DICE_RACE"
-                    ? diceState?.currentTurnTeamName
-                    : room.mode === "TOURNAMENT" && activeMatch
-                    ? `${activeMatch.team1Name} vs ${activeMatch.team2Name}`
-                    : undefined),
-                tournamentTeam1Id: activeMatch?.team1Id ?? undefined,
-                tournamentTeam2Id: activeMatch?.team2Id ?? undefined,
-                bloomLevel: getBloomLevelFromPoints(currentQ.points),
-                answerMethod: config?.answerMethod ?? "DEVICE",
-                isStealPhase: isSteal,
-                stealBuzzedTeamId: stealBuzzed?.teamId,
-                stealBuzzedTeamName: stealBuzzed?.teamName,
-                buzzedTeamId: buzzFirst?.teamId,
-                buzzedTeamName: buzzFirst?.teamName,
-                timerPending: !isTimerRunning,
-                timerStarted: isTimerRunning,
-              });
-
-              if (endsAt) {
-                qState.endsAt = endsAt;
-                qState.serverTime = Date.now();
-              }
-
-              roomActiveQuestions.set(room.id, qState);
-              socket.emit("game:question", qState);
-
-              if (isTimerRunning) {
-                const effRemaining =
-                  typeof remaining === "number" && remaining > 0
-                    ? remaining
-                    : Math.max(1, Math.ceil(((endsAt || Date.now()) - Date.now()) / 1000));
-                socket.emit("game:timer:started", {
-                  timeLimit: qState.timeLimit,
-                  endsAt,
-                  serverTime: Date.now(),
-                  questionId: currentQ.id,
-                });
-                socket.emit("game:timer", {
-                  remaining: effRemaining,
-                  total: qState.timeLimit,
-                  endsAt,
-                  serverTime: Date.now(),
-                });
-              }
-            }
+            socket.emit("game:question:clear");
           }
         }
 
@@ -8026,6 +7860,7 @@ export function registerSocketHandlers(io: IO) {
       let roomCode: string | undefined;
       let roomId: string | undefined;
       let teamId: string | undefined;
+      const isAdmin = Boolean(adminSockets.get(socket.id));
       const isSandboxSocket = Boolean(playerId && playerId.startsWith("sb_"));
 
       if (playerId) {
@@ -8042,7 +7877,7 @@ export function registerSocketHandlers(io: IO) {
           if (room?.mode === "MAGIC_WHEEL") roomCode = room.code;
         }
       }
-      return { roomId, roomCode, teamId, isSandboxSocket };
+      return { roomId, roomCode, teamId, isSandboxSocket, isAdmin };
     };
 
     const advanceMagicWheelTurnHelper = (wheelState: MagicWheelState, teams: any[]): void => {
@@ -8076,7 +7911,7 @@ export function registerSocketHandlers(io: IO) {
       }
     };
 
-    const setupMagicWheelRoundStage = (wheelState: MagicWheelState, nextRound1Based: number, teams: any[]) => {
+    const setupMagicWheelRoundStage = (wheelState: MagicWheelState, nextRound1Based: number, teams: any[], roomId?: string) => {
       wheelState.currentRound = nextRound1Based;
       const puzzle = wheelState.puzzles[(nextRound1Based - 1) % wheelState.puzzles.length] || wheelState.puzzles[0];
       wheelState.currentPuzzle = puzzle;
@@ -8103,7 +7938,15 @@ export function registerSocketHandlers(io: IO) {
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
       wheelState.tossUpAnswerEndsAt = undefined;
+      wheelState.tossUpWrongTeamIds = [];
       wheelState.boardStage = "EMPTY_56";
+
+      if (roomId) {
+        roomTossUpBuzzLocks.delete(roomId);
+        const oldTimer = roomTossUpAnswerTimers.get(roomId);
+        if (oldTimer) clearTimeout(oldTimer);
+        roomTossUpAnswerTimers.delete(roomId);
+      }
 
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
         wheelState.sectors = generateMagicWheelSectors(1, stage);
@@ -8236,14 +8079,23 @@ export function registerSocketHandlers(io: IO) {
 
     // ── Toss-Up Round Handlers ───────────────────────────────────────────────
     socket.on("magic_wheel:toss_up_start", async () => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
+      if (!isAdmin && !isSandboxSocket) return; // Only host/admin or sandbox can start toss-up
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || (wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2")) return;
+
+      // Clean locks and timeout timers
+      roomTossUpBuzzLocks.delete(roomId);
+      const oldTimer = roomTossUpAnswerTimers.get(roomId);
+      if (oldTimer) clearTimeout(oldTimer);
+      roomTossUpAnswerTimers.delete(roomId);
 
       wheelState.phase = "TOSS_UP_RUNNING";
       wheelState.tossUpBuzzedTeamId = undefined;
       wheelState.tossUpBuzzedTeamName = undefined;
+      wheelState.tossUpAnswerEndsAt = undefined;
+      wheelState.tossUpWrongTeamIds = [];
       wheelState.tossUpStartTime = Date.now();
       if (wheelState.currentPuzzle && (!wheelState.tossUpRevealOrder || wheelState.tossUpRevealOrder.length === 0)) {
         const p = wheelState.currentPuzzle;
@@ -8294,28 +8146,54 @@ export function registerSocketHandlers(io: IO) {
     socket.on("magic_wheel:toss_up_tick" as any, handleTossUpTick);
 
     socket.on("magic_wheel:toss_up_buzz", async (payload) => {
-      const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || (wheelState.roundStage !== "TOSS_UP_1" && wheelState.roundStage !== "TOSS_UP_2")) return;
       if (wheelState.phase !== "TOSS_UP_RUNNING" && wheelState.phase !== "TOSS_UP_READY" && wheelState.phase !== "TOSS_UP_REVEALING") return;
 
-      // Optimistic instant lock to kill latency and prevent race conditions
-      wheelState.phase = "TOSS_UP_BUZZED";
+      // 1. Single first-buzz lock check to prevent socket flooding, spamming, or state thrashing
+      if (roomTossUpBuzzLocks.has(roomId) || Boolean(wheelState.tossUpBuzzedTeamId)) {
+        return;
+      }
+
+      // 2. Prevent packet spoofing: non-admin sockets can only buzz for their authenticated team
+      const buzzTeamId = isSandboxSocket
+        ? (payload?.teamId || roomSandboxActiveTeam.get(roomId) || teamId)
+        : (isAdmin ? (payload?.teamId || teamId) : teamId);
+
+      if (!buzzTeamId) return;
+
+      // 3. Reject if this team already answered incorrectly in this toss-up round
+      if ((wheelState.tossUpWrongTeamIds || []).includes(buzzTeamId)) return;
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
 
-      const buzzTeamId = payload?.teamId || (isSandboxSocket && roomSandboxActiveTeam.get(roomId)) || teamId || wheelState.currentTurnTeamId || room.teams[0]?.id;
-      const buzzTeam = room.teams.find((t) => t.id === buzzTeamId) || room.teams[0];
+      const buzzTeam = room.teams.find((t) => t.id === buzzTeamId);
       if (!buzzTeam) return;
 
+      // 4. Synchronously claim first-buzz lock immediately in 0ms
+      roomTossUpBuzzLocks.set(roomId, { teamId: buzzTeam.id, timestamp: Date.now() });
+      wheelState.phase = "TOSS_UP_BUZZED";
       wheelState.tossUpBuzzedTeamId = buzzTeam.id;
       wheelState.tossUpBuzzedTeamName = buzzTeam.name;
       wheelState.currentTurnTeamId = buzzTeam.id;
       wheelState.currentTurnTeamName = buzzTeam.name;
       wheelState.tossUpAnswerEndsAt = Date.now() + 10000; // Standard 10s for toss-up answer
       wheelState.lastActionMessage = generateFlexibleMCCommentary("TOSS_UP_BUZZ", { teamName: buzzTeam.name });
+
+      // 5. Authoritative 10s server auto-timeout
+      const existingTimer = roomTossUpAnswerTimers.get(roomId);
+      if (existingTimer) clearTimeout(existingTimer);
+      const answerTimer = setTimeout(async () => {
+        const cur = roomMagicWheels.get(roomId);
+        if (cur && cur.phase === "TOSS_UP_BUZZED" && cur.tossUpBuzzedTeamId === buzzTeam.id) {
+          await executeMagicWheelSolvePuzzle(roomId, roomCode, "(Hết 10 giây trả lời)", false, buzzTeam.id);
+        }
+      }, 10500);
+      roomTossUpAnswerTimers.set(roomId, answerTimer);
+
       io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
     });
 
@@ -8483,12 +8361,13 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("magic_wheel:spin", async (payload: { power: number }) => {
       const power = payload?.power;
-      const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       if ((wheelState.roundEliminatedTeamIds || []).includes(wheelState.currentTurnTeamId)) return;
-      if (teamId && !isSandboxSocket && teamId !== wheelState.currentTurnTeamId) return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
       await executeMagicWheelSpin(roomId, roomCode, power);
     });
 
@@ -8695,12 +8574,13 @@ export function registerSocketHandlers(io: IO) {
     };
 
     socket.on("magic_wheel:guess_letter", async ({ letter }) => {
-      const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
       if ((wheelState.roundEliminatedTeamIds || []).includes(wheelState.currentTurnTeamId)) return;
-      if (teamId && !isSandboxSocket && teamId !== wheelState.currentTurnTeamId) return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
       await executeMagicWheelGuessLetter(roomId, roomCode, letter);
     });
 
@@ -8786,6 +8666,12 @@ export function registerSocketHandlers(io: IO) {
 
       // Case 2: Toss-Up 1 or Toss-Up 2
       if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
+        // Clear first-buzz lock and auto-timeout timer
+        roomTossUpBuzzLocks.delete(roomId);
+        const ansTimer = roomTossUpAnswerTimers.get(roomId);
+        if (ansTimer) clearTimeout(ansTimer);
+        roomTossUpAnswerTimers.delete(roomId);
+
         if (isCorrect) {
           wheelState.currentPuzzle.revealedIndices = Array.from(
             { length: wheelState.currentPuzzle.secretPhrase.length },
@@ -8793,6 +8679,11 @@ export function registerSocketHandlers(io: IO) {
           );
           await completeMagicWheelRoundHelper(roomId, roomCode, tId);
         } else {
+          if (!wheelState.tossUpWrongTeamIds) wheelState.tossUpWrongTeamIds = [];
+          if (!wheelState.tossUpWrongTeamIds.includes(tId)) {
+            wheelState.tossUpWrongTeamIds.push(tId);
+          }
+
           wheelState.lastSolveFeedback = {
             teamId: tId,
             teamName,
@@ -8807,11 +8698,25 @@ export function registerSocketHandlers(io: IO) {
             secretPhrase: "",
             roundWonPoints: 0,
           });
-          wheelState.phase = "TOSS_UP_RUNNING";
-          wheelState.tossUpBuzzedTeamId = undefined;
-          wheelState.tossUpBuzzedTeamName = undefined;
-          wheelState.tossUpAnswerEndsAt = undefined;
-          wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và TẤT CẢ các đội đều có quyền bấm chuông lại!`;
+
+          const allTeamsFailed = wheelState.tossUpWrongTeamIds.length >= room.teams.length;
+          if (allTeamsFailed) {
+            wheelState.currentPuzzle.revealedIndices = Array.from(
+              { length: wheelState.currentPuzzle.secretPhrase.length },
+              (_, i) => i
+            );
+            wheelState.phase = "ROUND_RECAP";
+            wheelState.tossUpBuzzedTeamId = undefined;
+            wheelState.tossUpBuzzedTeamName = undefined;
+            wheelState.tossUpAnswerEndsAt = undefined;
+            wheelState.lastActionMessage = `❌ Tất cả ${room.teams.length} đội đều đã trả lời sai trong Vòng Đoán Nhanh! Đáp án chính xác là: "${wheelState.currentPuzzle.secretPhrase}"!`;
+          } else {
+            wheelState.phase = "TOSS_UP_RUNNING";
+            wheelState.tossUpBuzzedTeamId = undefined;
+            wheelState.tossUpBuzzedTeamName = undefined;
+            wheelState.tossUpAnswerEndsAt = undefined;
+            wheelState.lastActionMessage = `❌ Đáp án "${answer}" của Đội ${teamName} chưa chính xác! Các chữ cái tiếp tục mở và các đội còn lại có quyền bấm chuông!`;
+          }
           io.to(`room:${roomCode}`).emit("game:magic_wheel:update", wheelState);
         }
         return;
@@ -8875,13 +8780,31 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("magic_wheel:solve_puzzle", async (payload: { answer: string; teamId?: string }) => {
       const answer = payload?.answer;
-      const { roomId, roomCode, teamId, isSandboxSocket } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState) return;
-      const effectiveTeamId = payload?.teamId || teamId;
+
+      // Contestants cannot spoof teamId
+      const effectiveTeamId = isSandboxSocket
+        ? (payload?.teamId || teamId)
+        : (isAdmin ? (payload?.teamId || teamId) : teamId);
+
       const expectedTeamId = wheelState.tossUpBuzzedTeamId || wheelState.currentTurnTeamId;
-      if (effectiveTeamId && !isSandboxSocket && effectiveTeamId !== expectedTeamId) return;
+      if (effectiveTeamId && !isSandboxSocket && !isAdmin && effectiveTeamId !== expectedTeamId) return;
+
+      // Phase and time-window checks
+      const stage = wheelState.roundStage || "MAIN";
+      if (stage === "TOSS_UP_1" || stage === "TOSS_UP_2") {
+        if (wheelState.phase !== "TOSS_UP_BUZZED") return;
+        if (wheelState.tossUpAnswerEndsAt && Date.now() > wheelState.tossUpAnswerEndsAt + 1500) return;
+      } else if (stage === "SPECIAL_FINAL") {
+        if (wheelState.phase !== "SPECIAL_SOLVING" && wheelState.phase !== "SPECIAL_THINKING") return;
+        if (wheelState.specialSolveEndsAt && Date.now() > wheelState.specialSolveEndsAt + 1500) return;
+      } else {
+        if (wheelState.phase !== "ACTION_INPUT" && wheelState.phase !== "SPIN_WAITING") return;
+      }
+
       await executeMagicWheelSolvePuzzle(roomId, roomCode, answer, undefined, effectiveTeamId);
     });
 
@@ -8913,10 +8836,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:express_decide", async ({ rideExpress }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "EXPRESS_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       if (rideExpress) {
         wheelState.expressModeActive = true;
@@ -8931,10 +8856,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:steal_swap_decide", async ({ action, targetTeamId }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "STEAL_SWAP_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
@@ -8973,10 +8900,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:special_choose_order", async ({ order }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.roundStage !== "SPECIAL_FINAL") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       wheelState.specialOrderMode = order;
       if (order === "SPIN_FIRST") {
@@ -8991,10 +8920,12 @@ export function registerSocketHandlers(io: IO) {
 
     socket.on("magic_wheel:special_pick_letters", async (payload: { letters: string[] }) => {
       const letters = payload?.letters || [];
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "SPECIAL_PICK_LETTERS" || !wheelState.currentPuzzle) return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const maxK = wheelState.specialAllowedLettersCount || 3;
       const cleanLetters: string[] = Array.from(
@@ -9029,10 +8960,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:mystery_decide", async ({ openMystery }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "MYSTERY_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;
@@ -9100,10 +9033,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:lucky_pick", async ({ index }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "LUCKY_PICK" || !wheelState.currentPuzzle) return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const p = wheelState.currentPuzzle;
       if (index >= 0 && index < p.secretPhrase.length && !p.revealedIndices.includes(index)) {
@@ -9139,10 +9074,12 @@ export function registerSocketHandlers(io: IO) {
       points?: number;
       cardType?: "POINTS_1500" | "FREE_SPIN" | "SHIELD";
     }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "REWARD_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const tId = wheelState.currentTurnTeamId;
       const teamName = wheelState.currentTurnTeamName;
@@ -9201,10 +9138,12 @@ export function registerSocketHandlers(io: IO) {
     });
 
     socket.on("magic_wheel:trade_decide", async ({ trade, boxIndex }: { trade: boolean; boxIndex?: number }) => {
-      const { roomId, roomCode } = await resolveMagicWheelSocketContext();
+      const { roomId, roomCode, teamId, isSandboxSocket, isAdmin } = await resolveMagicWheelSocketContext();
       if (!roomId || !roomCode) return;
       const wheelState = roomMagicWheels.get(roomId);
       if (!wheelState || wheelState.phase !== "TRADE_CHOICE") return;
+      if (teamId && !isSandboxSocket && !isAdmin && teamId !== wheelState.currentTurnTeamId) return;
+      if (!teamId && !isSandboxSocket && !isAdmin) return;
 
       const room = await prisma.room.findUnique({ where: { id: roomId }, include: { teams: { orderBy: { createdAt: "asc" } } } });
       if (!room) return;

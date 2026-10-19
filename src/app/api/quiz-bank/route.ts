@@ -7,6 +7,9 @@ import {
 } from "@/lib/security";
 import { MAGIC_WHEEL_PRESET_BANKS } from "@/lib/offline-storage";
 
+let isPresetsSeeded = false;
+let isSeedingInProgress = false;
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const user = getCurrentUserFromRequest(req);
@@ -50,74 +53,89 @@ export async function GET(req: NextRequest) {
     console.warn("[GET /api/quiz-bank] Ghost cleanup error:", cleanErr);
   }
 
-  // Auto-seed or upgrade preset banks into database for demo-host-id / public
-  try {
-    await prisma.user.upsert({
-      where: { email: "demo-host@quizorra.com" },
-      update: {},
-      create: {
-        id: "demo-host-id",
-        name: "Hệ thống Quizorra",
-        email: "demo-host@quizorra.com",
-        role: "ADMIN",
-      },
-    });
-
-    for (const preset of MAGIC_WHEEL_PRESET_BANKS) {
-      const found = await prisma.quizBank.findUnique({
-        where: { id: preset.id },
-        include: { _count: { select: { questions: true } } },
-      });
-      const targetLen = preset.questions?.length || 11;
-      if (!found) {
-        await prisma.quizBank.create({
-          data: {
-            id: preset.id,
-            title: preset.title,
-            description: preset.description,
-            isPublic: true,
-            ownerId: "demo-host-id",
-            questions: {
-              create: (preset.questions || []).map((q: any, i: number) => ({
-                id: q.id,
-                type: q.type || "WORD_PUZZLE",
-                content: q.content,
-                answer: q.answer,
-                hint: q.hint,
-                points: q.points || 20,
-                timeLimit: q.timeLimit || 30,
-                options: q.options,
-                order: i,
-              })),
+  // Auto-seed or upgrade preset banks into database for demo-host-id / public (Only once per process to prevent race conditions)
+  if (!isPresetsSeeded && !isSeedingInProgress) {
+    isSeedingInProgress = true;
+    try {
+      const existingDemoUser = await prisma.user.findUnique({ where: { id: "demo-host-id" } });
+      if (!existingDemoUser) {
+        try {
+          await prisma.user.upsert({
+            where: { id: "demo-host-id" },
+            update: {},
+            create: {
+              id: "demo-host-id",
+              name: "Hệ thống Quizorra",
+              email: "demo-host@quizorra.com",
+              role: "ADMIN",
             },
-          },
-        });
-      } else if ((found._count?.questions ?? 0) < targetLen) {
-        await prisma.question.deleteMany({ where: { quizBankId: preset.id } });
-        await prisma.quizBank.update({
-          where: { id: preset.id },
-          data: {
-            title: preset.title,
-            description: preset.description,
-            questions: {
-              create: (preset.questions || []).map((q: any, i: number) => ({
-                id: q.id,
-                type: q.type || "WORD_PUZZLE",
-                content: q.content,
-                answer: q.answer,
-                hint: q.hint,
-                points: q.points || 20,
-                timeLimit: q.timeLimit || 30,
-                options: q.options,
-                order: i,
-              })),
-            },
-          },
-        });
+          });
+        } catch (err: any) {
+          if (err?.code !== "P2002") {
+            console.warn("[GET /api/quiz-bank] Demo user seed warning:", err);
+          }
+        }
       }
+
+      for (const preset of MAGIC_WHEEL_PRESET_BANKS) {
+        const found = await prisma.quizBank.findUnique({
+          where: { id: preset.id },
+          include: { _count: { select: { questions: true } } },
+        });
+        const targetLen = preset.questions?.length || 11;
+        if (!found) {
+          await prisma.quizBank.create({
+            data: {
+              id: preset.id,
+              title: preset.title,
+              description: preset.description,
+              isPublic: true,
+              ownerId: "demo-host-id",
+              questions: {
+                create: (preset.questions || []).map((q: any, i: number) => ({
+                  id: q.id,
+                  type: q.type || "WORD_PUZZLE",
+                  content: q.content,
+                  answer: q.answer,
+                  hint: q.hint,
+                  points: q.points || 20,
+                  timeLimit: q.timeLimit || 30,
+                  options: q.options,
+                  order: i,
+                })),
+              },
+            },
+          });
+        } else if ((found._count?.questions ?? 0) < targetLen) {
+          await prisma.question.deleteMany({ where: { quizBankId: preset.id } });
+          await prisma.quizBank.update({
+            where: { id: preset.id },
+            data: {
+              title: preset.title,
+              description: preset.description,
+              questions: {
+                create: (preset.questions || []).map((q: any, i: number) => ({
+                  id: q.id,
+                  type: q.type || "WORD_PUZZLE",
+                  content: q.content,
+                  answer: q.answer,
+                  hint: q.hint,
+                  points: q.points || 20,
+                  timeLimit: q.timeLimit || 30,
+                  options: q.options,
+                  order: i,
+                })),
+              },
+            },
+          });
+        }
+      }
+      isPresetsSeeded = true;
+    } catch (seedErr) {
+      console.warn("[GET /api/quiz-bank] Auto-seed presets warning:", seedErr);
+    } finally {
+      isSeedingInProgress = false;
     }
-  } catch (seedErr) {
-    console.warn("[GET /api/quiz-bank] Auto-seed presets warning:", seedErr);
   }
 
   const banks = await prisma.quizBank.findMany({
@@ -189,16 +207,20 @@ export async function POST(req: NextRequest) {
     // Ensure owner user exists in database to satisfy foreign key
     const existingOwner = await prisma.user.findUnique({ where: { id: effectiveOwnerId } });
     if (!existingOwner) {
-      await prisma.user.upsert({
-        where: { email: user?.email || `${effectiveOwnerId}@quizorra.com` },
-        update: {},
-        create: {
-          id: effectiveOwnerId,
-          name: user?.name || "Quiz Creator",
-          email: user?.email || `${effectiveOwnerId}@quizorra.com`,
-          role: "ADMIN",
-        },
-      });
+      try {
+        await prisma.user.upsert({
+          where: { id: effectiveOwnerId },
+          update: {},
+          create: {
+            id: effectiveOwnerId,
+            name: user?.name || "Quiz Creator",
+            email: user?.email || `${effectiveOwnerId}@quizorra.com`,
+            role: "ADMIN",
+          },
+        });
+      } catch (err: any) {
+        if (err?.code !== "P2002") throw err;
+      }
     }
 
     const cleanedTitle = sanitizeInput(title, 100);

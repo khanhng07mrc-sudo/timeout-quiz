@@ -4695,9 +4695,13 @@ export default function AdminSandboxPage() {
               return nextRoom;
             } else {
               soundManager.playMagicWheelWrong();
+              if (!cur.tossUpWrongTeamIds) cur.tossUpWrongTeamIds = [];
+              if (!cur.tossUpWrongTeamIds.includes(tId)) {
+                cur.tossUpWrongTeamIds.push(tId);
+              }
               cur.tossUpBuzzedTeamId = undefined;
               cur.tossUpBuzzedTeamName = undefined;
-              cur.phase = "TOSS_UP_REVEALING";
+              cur.tossUpAnswerEndsAt = undefined;
               cur.lastSolveFeedback = {
                 teamId: tId,
                 teamName,
@@ -4705,7 +4709,16 @@ export default function AdminSandboxPage() {
                 isCorrect: false,
                 timestamp: Date.now(),
               };
-              cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,75s/ô) — Tất cả các đội đều có quyền bấm chuông lại!`;
+
+              const allFailed = cur.tossUpWrongTeamIds.length >= prev.teams.length;
+              if (allFailed) {
+                p.revealedIndices = Array.from({ length: p.secretPhrase.length }, (_, i) => i);
+                cur.phase = "ROUND_RECAP";
+                cur.lastActionMessage = `❌ Tất cả các đội đều đã trả lời sai trong Vòng Đoán Nhanh! Đáp án chính xác là: "${p.secretPhrase}"!`;
+              } else {
+                cur.phase = "TOSS_UP_REVEALING";
+                cur.lastActionMessage = `❌ Đáp án "${answer}" của ${teamName} chưa chính xác! Các chữ cái tiếp tục mở (0,75s/ô) — Mời các đội còn lại bấm chuông!`;
+              }
               const nextRoom = { ...prev, magicWheelState: cur };
               roomStateRef.current = nextRoom;
               syncToIframes({ roomState: nextRoom });
@@ -5199,15 +5212,21 @@ export default function AdminSandboxPage() {
         });
       } else if (e.data?.type === "MAGIC_WHEEL_TOSS_UP_BUZZ") {
         const { teamId } = e.data;
+        if (roomStateRef.current?.magicWheelState?.phase === "TOSS_UP_BUZZED" || roomStateRef.current?.magicWheelState?.tossUpBuzzedTeamId) {
+          return;
+        }
         setRoomState((prev) => {
           if (!prev || !prev.magicWheelState) return prev;
           const cur = { ...prev.magicWheelState };
           if (cur.phase !== "TOSS_UP_REVEALING" && cur.phase !== "TOSS_UP_READY" && cur.phase !== "TOSS_UP_RUNNING") return prev;
+          if (cur.tossUpBuzzedTeamId) return prev;
           const buzzTeam = prev.teams.find((t) => t.id === teamId) || prev.teams[0];
           if (!buzzTeam) return prev;
+          if ((cur.tossUpWrongTeamIds || []).includes(buzzTeam.id)) return prev;
           cur.tossUpBuzzedTeamId = buzzTeam.id;
           cur.tossUpBuzzedTeamName = buzzTeam.name;
           cur.phase = "TOSS_UP_BUZZED";
+          cur.tossUpAnswerEndsAt = Date.now() + 10000;
           cur.lastActionMessage = `🔔 Đội ${buzzTeam.name} đã bấm chuông giành quyền trả lời! Mời nhập đáp án chính xác từng dấu thanh!`;
           const nextRoom = { ...prev, magicWheelState: cur };
           roomStateRef.current = nextRoom;
@@ -8147,6 +8166,9 @@ export default function AdminSandboxPage() {
     const targetTeam = stableTeams[idx];
     if (!targetTeam) return;
     activeTeamIdRef.current = targetTeam.id;
+    if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
+      window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeam.id }, "*");
+    }
     if (!isOfflineSandbox) {
       adminSocketRef.current?.emit("admin:sandbox:set_active_team", {
         teamId: targetTeam.id,
@@ -8155,10 +8177,6 @@ export default function AdminSandboxPage() {
       });
       if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
         adminSocketRef.current?.emit("admin:magic_wheel:override_turn" as any, { teamId: targetTeam.id });
-      }
-    } else {
-      if (roomStateRef.current?.mode === "MAGIC_WHEEL") {
-        window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeam.id }, "*");
       }
     }
 
@@ -11033,11 +11051,7 @@ export default function AdminSandboxPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                            adminSocketRef.current.emit("magic_wheel:advance_round" as any);
-                          } else {
-                            window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                          }
+                          window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
                         }}
                         className="px-2.5 py-1 rounded bg-amber-500 text-black font-bold text-xs cursor-pointer"
                       >
@@ -11051,164 +11065,75 @@ export default function AdminSandboxPage() {
                       teams={roomState.teams}
                       isMyTurn={true}
                       onOpenBoard={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
                       }}
                       onSpin={(power) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
                       }}
                       onGuessLetter={(letter) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
                       }}
                       onSolvePuzzle={(answer) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
                       }}
                       onMysteryDecide={(openMystery) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
                       }}
                       onLuckyPick={(index) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index }, "*");
                       }}
                       onSelectRewardCard={(rewardPayload: any) => {
                         const data = typeof rewardPayload === "string" ? { cardType: rewardPayload } : rewardPayload;
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:reward_select" as any, data);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", ...data }, "*");
                       }}
                       onTradeDecide={(trade, boxIndex) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade, boxIndex });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
                       }}
                       onTossUpStart={() => {
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
-                        }
                       }}
                       onTossUpBuzz={(targetTeamId) => {
                         const tId = targetTeamId || currentTeam?.id || roomState.teams[0]?.id;
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_BUZZ", teamId: tId }, "*");
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:toss_up_buzz" as any, { teamId: tId });
-                        }
                       }}
                       onTossUpRevealTick={(targetIndex?: number) => {
                         window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_TICK", index: targetIndex }, "*");
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:toss_up_tick" as any, { targetIndex });
-                        }
                       }}
                       onExpressDecide={(boardTrain) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:express_decide" as any, { boardTrain });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_EXPRESS_DECIDE", boardTrain }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_EXPRESS_DECIDE", boardTrain }, "*");
                       }}
                       onStealSwapDecide={(mode, targetTeamId) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:steal_swap_decide" as any, { mode, targetTeamId });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_STEAL_SWAP_DECIDE", mode, targetTeamId }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_STEAL_SWAP_DECIDE", mode, targetTeamId }, "*");
                       }}
                       onSpecialChooseOrder={(order) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:special_order" as any, { order });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_ORDER", order }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_ORDER", order }, "*");
                       }}
                       onSpecialPickLetters={(letters) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:special_pick_letters" as any, { letters });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_PICK_LETTERS", letters }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_SPECIAL_PICK_LETTERS", letters }, "*");
                       }}
                       onSetOperationMode={(mode) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:set_mode" as any, { mode });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_SET_MODE", mode }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_SET_MODE", mode }, "*");
                       }}
                       onJudgeSolve={(correct) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:judge_solve" as any, { correct });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_JUDGE_SOLVE", correct }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_JUDGE_SOLVE", correct }, "*");
                       }}
                       onPassTurn={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:pass_turn" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
                       }}
                       onQuickRevealLetter={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:quick_reveal" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
                       }}
                       onRevealAll={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:reveal_all" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
                       }}
                       onOverrideTurn={(targetTeamId) => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:override_turn" as any, { teamId: targetTeamId });
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_OVERRIDE_TURN", teamId: targetTeamId }, "*");
                       }}
                       onAdvanceRound={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:advance_round" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_ADVANCE_ROUND" }, "*");
                       }}
                       onNextRound={() => {
-                        if (!isOfflineSandbox && adminSocketRef.current?.connected) {
-                          adminSocketRef.current.emit("magic_wheel:next_round" as any);
-                        } else {
-                          window.postMessage({ type: "MAGIC_WHEEL_NEXT_ROUND" }, "*");
-                        }
+                        window.postMessage({ type: "MAGIC_WHEEL_NEXT_ROUND" }, "*");
                       }}
                     />
                   </div>

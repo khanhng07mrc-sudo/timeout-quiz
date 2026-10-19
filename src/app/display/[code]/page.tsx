@@ -261,6 +261,10 @@ export default function DisplayPage() {
         soundManager.toggleMagicWheelIntro();
         return;
       }
+      if (e.data?.type === "OFFLINE_TIMER_TICK" && e.data.payload) {
+        setTimer(e.data.payload);
+        return;
+      }
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         const p = e.data.payload;
         if (p.roomState !== undefined) {

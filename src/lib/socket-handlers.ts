@@ -89,6 +89,12 @@ import {
   launchTieBreakerQuestion,
   launchTieBreakerLuckyDraw,
 } from "./game-engine/tie-breaker";
+import {
+  evaluateAnswerCorrectness,
+  normalizeTextForComparison,
+  matchFillBlankText,
+  matchTrueFalseText,
+} from "./game-engine/evaluator";
 
 type IO = SocketIOServer<ClientToServerEvents, ServerToClientEvents>;
 type Sock = Socket<ClientToServerEvents, ServerToClientEvents>;
@@ -770,7 +776,7 @@ function checkGridCaroStreak(
   teamId: string,
   targetK: number
 ): GridCell[] | null {
-  if (rows < 4 || cols < 4 || targetK < 3) return null;
+  if (rows < targetK || cols < targetK || targetK < 3) return null;
 
   const cellMap = new Map<string, GridCell>();
   cells.forEach((c) => {
@@ -7368,84 +7374,6 @@ export function registerSocketHandlers(io: IO) {
       await executeMysteryDrawTarot(room, questState, team);
     });
 
-    socket.on("game:mystery:steal_buzz", async () => {
-      if (!checkActionDebounce(socket.id, 150)) return;
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-
-      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
-      if (!session) {
-        const player = await prisma.player.findUnique({
-          where: { id: playerId },
-          include: { room: true, team: true },
-        });
-        if (!player || !player.room || !player.teamId) return;
-        session = {
-          playerId: player.id,
-          playerName: player.name,
-          roomId: player.room.id,
-          roomCode: player.room.code,
-          teamId: player.teamId,
-          teamName: player.team?.name ?? player.name,
-          roomMode: player.room.mode as any,
-          teamMode: player.room.teamMode as any,
-        };
-        socketPlayerSessions.set(socket.id, session);
-        playerSessions.set(player.id, session);
-      }
-
-      if (session.roomMode !== "MYSTERY_QUEST" || !session.teamId) return;
-
-      const questState = roomMysteryQuests.get(session.roomId);
-      // Atomic in-memory lock: 0ms delay, rejects any subsequent calls immediately
-      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
-      if (questState.currentTurnTeamId === session.teamId) return;
-
-      questState.stealBuzzedTeamId = session.teamId;
-      questState.stealBuzzedTeamName = session.teamName || "Đội cướp";
-      questState.phase = "PUSH_YOUR_LUCK";
-      questState.currentTurnTeamId = session.teamId;
-      questState.currentTurnTeamName = session.teamName || "Đội cướp";
-      questState.potPoints = 15; // base steal pot points
-      roomMysteryQuests.set(session.roomId, questState);
-
-      io.to(`room:${session.roomCode}`).emit("game:mystery:update", questState);
-      io.to(`room:${session.roomCode}`).emit("game:mystery:steal_buzzed", {
-        teamId: session.teamId,
-        teamName: session.teamName || "Đội cướp",
-        timeLimit: 15,
-      });
-    });
-
-    socket.on("admin:mystery:steal_buzz", async ({ targetTeamId }: { targetTeamId?: string } = {}) => {
-      const room = await getAdminRoom(socket);
-      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
-
-      const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
-
-      const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const otherTeams = teams.filter((t) => t.id !== questState.currentTurnTeamId);
-      const team = (targetTeamId ? teams.find((t) => t.id === targetTeamId) : null) || otherTeams[0];
-      if (!team) return;
-
-      questState.stealBuzzedTeamId = team.id;
-      questState.stealBuzzedTeamName = team.name;
-      questState.phase = "PUSH_YOUR_LUCK";
-      questState.currentTurnTeamId = team.id;
-      questState.currentTurnTeamName = team.name;
-      questState.currentTurnTeamColor = team.color;
-      questState.potPoints = 15; // base steal pot points
-      roomMysteryQuests.set(room.id, questState);
-
-      io.to(`room:${room.code}`).emit("game:mystery:update", questState);
-      io.to(`room:${room.code}`).emit("game:mystery:steal_buzzed", {
-        teamId: team.id,
-        teamName: team.name,
-        timeLimit: 15,
-      });
-    });
-
     socket.on("admin:mystery:advance_turn", async (payload?: { code?: string }) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
@@ -10422,68 +10350,6 @@ function isPlayerBot(p?: { id?: string | null; name?: string | null } | null): b
   return false;
 }
 
-function normalizeTextForComparison(text: string): string {
-  if (!text) return "";
-  return text
-    .toString()
-    .normalize("NFC")
-    .toLowerCase()
-    .trim()
-    .replace(/[\u200B-\u200D\uFEFF]/g, "")
-    .replace(/[.,!?;:]+$/, "")
-    .replace(/\s+/g, " ");
-}
-
-function matchFillBlankText(expectedAnswer: string, submittedAnswer: string): boolean {
-  const normExpected = normalizeTextForComparison(expectedAnswer);
-  const normSubmitted = normalizeTextForComparison(submittedAnswer);
-
-  if (!normExpected || !normSubmitted) return false;
-  if (normExpected === normSubmitted) return true;
-
-  const variants = expectedAnswer
-    .split(/[/;|]/)
-    .flatMap((part) => {
-      if (part.includes(",") && !/\d,\d/.test(part)) {
-        return part.split(",");
-      }
-      return [part];
-    })
-    .map((v) => normalizeTextForComparison(v))
-    .filter(Boolean);
-
-  if (variants.includes(normSubmitted)) return true;
-
-  const cleanExpNum = Number(normExpected.replace(",", "."));
-  const cleanSubNum = Number(normSubmitted.replace(",", "."));
-  if (!isNaN(cleanExpNum) && !isNaN(cleanSubNum) && cleanExpNum === cleanSubNum) {
-    return true;
-  }
-
-  return false;
-}
-
-function matchTrueFalseText(expectedTextOrId: string, submittedTextOrId: string): boolean {
-  const normExp = normalizeTextForComparison(expectedTextOrId);
-  const normSub = normalizeTextForComparison(submittedTextOrId);
-
-  if (normExp === normSub) return true;
-
-  const trueTokens = ["true", "đúng", "dung", "t", "d", "1", "yes", "có", "co"];
-  const falseTokens = ["false", "sai", "f", "s", "0", "no", "không", "khong"];
-
-  const isExpTrue = trueTokens.includes(normExp);
-  const isExpFalse = falseTokens.includes(normExp);
-
-  const isSubTrue = trueTokens.includes(normSub);
-  const isSubFalse = falseTokens.includes(normSub);
-
-  if (isExpTrue && isSubTrue) return true;
-  if (isExpFalse && isSubFalse) return true;
-
-  return false;
-}
-
 async function hasUnfinalizedHumanParticipants(
   room: any,
   questionId: string,
@@ -10539,191 +10405,6 @@ async function hasUnfinalizedHumanParticipants(
   }
 
   return false;
-}
-
-function evaluateAnswerCorrectness(
-  question: any,
-  submittedAnswer: string | string[]
-): { isAutoCorrect: boolean | undefined; answerText: string } {
-  if (!question) {
-    return { isAutoCorrect: false, answerText: "(Không có câu hỏi)" };
-  }
-  const options = (question.options as any[]) || [];
-  const ansArray = Array.isArray(submittedAnswer)
-    ? submittedAnswer
-    : submittedAnswer !== undefined && submittedAnswer !== null
-    ? [String(submittedAnswer)]
-    : [];
-
-  if (ansArray.length === 0) {
-    return { isAutoCorrect: false, answerText: "(Chưa chọn đáp án / Hết giờ)" };
-  }
-
-  const selectedOptions = options.filter((o: any) =>
-    ansArray.some((ans) =>
-      ans === o.id ||
-      normalizeTextForComparison(ans) === normalizeTextForComparison(o.id) ||
-      normalizeTextForComparison(ans) === normalizeTextForComparison(o.text)
-    )
-  );
-  const answerText = selectedOptions.length > 0
-    ? selectedOptions.map((o: any) => `${o.text}`).join(", ")
-    : ansArray.join(", ");
-
-  if (question.type === "ESSAY") {
-    return { isAutoCorrect: undefined, answerText };
-  }
-
-  let isAutoCorrect = false;
-
-  if (question.type === "MC_SINGLE") {
-    const correctOption = options.find((o: any) => o.isCorrect);
-    if (correctOption) {
-      const normCorrectId = normalizeTextForComparison(correctOption.id);
-      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
-
-      isAutoCorrect = ansArray.some((ans) => {
-        const normAns = normalizeTextForComparison(ans);
-        return (
-          normAns === normCorrectId ||
-          normAns === normCorrectText ||
-          ans === correctOption.id
-        );
-      });
-    }
-  } else if (question.type === "TRUE_FALSE") {
-    const correctOption = options.find((o: any) => o.isCorrect);
-    if (correctOption) {
-      const normCorrectId = normalizeTextForComparison(correctOption.id);
-      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
-
-      isAutoCorrect = ansArray.some((ans) => {
-        const normAns = normalizeTextForComparison(ans);
-        return (
-          normAns === normCorrectId ||
-          normAns === normCorrectText ||
-          ans === correctOption.id ||
-          matchTrueFalseText(correctOption.text || correctOption.id, ans)
-        );
-      });
-    }
-  } else if (question.type === "MC_MULTI") {
-    const correctOptions = options.filter((o: any) => o.isCorrect);
-    const correctIds = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.id)));
-    const correctTexts = new Set(correctOptions.map((o: any) => normalizeTextForComparison(o.text || "")));
-
-    const submittedNormalized = ansArray.map((ans) => normalizeTextForComparison(ans));
-    let matchedCount = 0;
-    for (const sub of submittedNormalized) {
-      if (correctIds.has(sub) || correctTexts.has(sub)) {
-        matchedCount++;
-      } else {
-        matchedCount = -1;
-        break;
-      }
-    }
-    isAutoCorrect = matchedCount === correctOptions.length && correctOptions.length === ansArray.length;
-  } else if (question.type === "FILL_BLANK") {
-    const expected = question.answer || (options.find((o: any) => o.isCorrect)?.text) || "";
-    const submitted = ansArray[0] || "";
-    isAutoCorrect = matchFillBlankText(expected, submitted);
-  } else if (question.type === "MATCHING") {
-    // Expected pairs can come from question.pairs
-    const rawPairs = (question.pairs as any[]) || [];
-    if (rawPairs.length > 0) {
-      let subObj: Record<string, string> = {};
-      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
-        subObj = submittedAnswer as any;
-      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
-        subObj = ansArray[0] as any;
-      } else if (typeof ansArray[0] === "string") {
-        try {
-          const parsed = JSON.parse(ansArray[0]);
-          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
-            subObj = parsed;
-          }
-        } catch {}
-      } else if (typeof (question as any).rawSubmission === "object") {
-        subObj = (question as any).rawSubmission;
-      }
-
-      let allMatched = Object.keys(subObj).length >= rawPairs.length;
-      for (let i = 0; i < rawPairs.length; i++) {
-        const pair = rawPairs[i];
-        const pairId = pair.id || `p${i + 1}`;
-        const expectedRight = String.fromCharCode(65 + i);
-        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
-        const isMatch =
-          userVal === pairId ||
-          userVal === expectedRight ||
-          userVal === pair.right ||
-          normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
-        if (!isMatch) {
-          allMatched = false;
-          break;
-        }
-      }
-      isAutoCorrect = allMatched;
-    } else {
-      isAutoCorrect = false;
-    }
-  } else if (question.type === "DRAG_DROP") {
-    // Expected order: correct options in order from question.options
-    const correctOrder = options.map((o: any) => o.id);
-    let submittedOrder: string[] = [];
-    if (Array.isArray(submittedAnswer)) {
-      submittedOrder = submittedAnswer;
-    } else if (Array.isArray(ansArray[0])) {
-      submittedOrder = ansArray[0];
-    } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
-      try {
-        const parsed = JSON.parse(ansArray[0]);
-        if (Array.isArray(parsed)) submittedOrder = parsed;
-      } catch {
-        submittedOrder = ansArray;
-      }
-    } else {
-      submittedOrder = ansArray;
-    }
-    const cleanSubmitted = submittedOrder.map((x: any) => (typeof x === "string" ? x : String(x?.id || x)));
-    isAutoCorrect =
-      correctOrder.length === cleanSubmitted.length &&
-      correctOrder.every((id: string, idx: number) => id === cleanSubmitted[idx]);
-  } else if (question.type === "CLOZE_DROPDOWN") {
-    const blanks = ((question as any).clozeBlanks || options || []) as any[];
-    if (blanks.length > 0) {
-      let subMap: Record<string, string> = {};
-      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
-        subMap = submittedAnswer as any;
-      } else if (Array.isArray(submittedAnswer)) {
-        submittedAnswer.forEach((v: any, i: number) => { subMap[String(i + 1)] = typeof v === "string" ? v : v?.id; });
-      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
-        try { subMap = JSON.parse(ansArray[0]); } catch {}
-      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
-        try {
-          const arr = JSON.parse(ansArray[0]);
-          if (Array.isArray(arr)) arr.forEach((v: any, i: number) => { subMap[String(i + 1)] = typeof v === "string" ? v : v?.id; });
-        } catch {}
-      } else {
-        ansArray.forEach((v: any, i: number) => { subMap[String(i + 1)] = v; });
-      }
-
-      let allCorrect = true;
-      for (const blank of blanks) {
-        const correctOpt = blank.options?.find((o: any) => o.isCorrect);
-        const userChoice = subMap[String(blank.blankId)] || subMap[blank.blankId];
-        if (!correctOpt || (userChoice !== correctOpt.id && userChoice !== correctOpt.text)) {
-          allCorrect = false;
-          break;
-        }
-      }
-      isAutoCorrect = allCorrect;
-    } else {
-      isAutoCorrect = false;
-    }
-  }
-
-  return { isAutoCorrect, answerText };
 }
 
 async function processAnswerSubmission(params: {
@@ -11567,8 +11248,8 @@ async function finalizeBuzzAnswer(
   if (isCorrect) {
     points = Math.round(question.points * buzzMultiplier * cardMultiplier);
   } else {
-    // Theo luật mới: Đội sai không bị trừ điểm, chỉ mất cơ hội
-    points = 0;
+    // Trả lời sai bị trừ 50% điểm câu hỏi (-5đ, -10đ, -15đ)
+    points = -Math.floor(question.points * 0.5);
   }
 
   if (existingAns) {
@@ -11604,7 +11285,22 @@ async function finalizeBuzzAnswer(
 
     await revealCurrentAnswer(io, roomId, roomCode, questionId);
   } else {
-    // Đội sai: Không bị trừ điểm. Đánh dấu loại khỏi câu hỏi này.
+    // Đội sai: Bị trừ 50% điểm câu hỏi và bị loại khỏi câu hỏi này
+    if (points !== 0) {
+      const pPlayer = await prisma.player.findUnique({ where: { id: effTeamId } }).catch(() => null);
+      if (pPlayer) {
+        const pRes = await applyScoreDeltaToPlayer(effTeamId, points);
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: effTeamId, score: pRes.newScore, delta: pRes.effectiveDelta },
+        ]);
+      } else {
+        const tRes = await applyScoreDeltaToTeam(effTeamId, points);
+        io.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta },
+        ]);
+      }
+    }
+
     let disqSet = roomBuzzDisqualified.get(qKey);
     if (!disqSet) {
       disqSet = new Set<string>();

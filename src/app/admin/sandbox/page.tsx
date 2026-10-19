@@ -17,6 +17,7 @@ import type {
   GameIntermissionPayload,
   TournamentState,
   MysteryQuestState,
+  GridCaroState,
   TieBreakerState,
   TieBreakerTeam,
 } from "@/types";
@@ -74,6 +75,7 @@ import { generateBalancedDiceTiles, handleDiceRaceLanding } from "@/lib/game-eng
 import { getDefaultAllowedPowerupsForMode, isSharedPowerup, SHARED_POWERUP_TYPES, distributeCategorizedCardsToTeams, DEFAULT_SHARED_POWERUP_PROBABILITY } from "@/lib/game-engine/powerups";
 import { getTargetTotalQuestions } from "@/lib/utils";
 import { normalizeToThreeLevels, getBasePointsForMode, calculateItemIRTMetrics } from "@/lib/game-engine/scoring";
+import { evaluateAnswerCorrectness } from "@/lib/game-engine/evaluator";
 import { getBroadTopic } from "@/lib/topics";
 import { getBloomLevelFromPoints } from "@/types";
 import {
@@ -1454,6 +1456,12 @@ export default function AdminSandboxPage() {
     playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_SYNC", payload }, "*");
   }, [isOfflineSandbox]);
 
+  const syncTimerToIframes = useCallback((timerPayload: { remaining: number; total: number; endsAt?: number } | null) => {
+    setTimer(timerPayload);
+    displayIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_TIMER_TICK", payload: timerPayload }, "*");
+    playerIframeRef.current?.contentWindow?.postMessage({ type: "OFFLINE_TIMER_TICK", payload: timerPayload }, "*");
+  }, []);
+
   useEffect(() => {
     // Tránh gửi lặp 2 lần liên tiếp trong cùng một khung hình khi vừa mới sync trực tiếp từ handler
     if (Date.now() - lastExplicitSyncTimeRef.current < 50) return;
@@ -1583,7 +1591,7 @@ export default function AdminSandboxPage() {
     offlineUsedQuestionIdsRef.current.clear();
 
     const modeAllowedPowerups = getDefaultAllowedPowerupsForMode(mode);
-    const initialScore = mode === "DICE_RACE" ? 1 : 0;
+    const initialScore = mode === "DICE_RACE" ? 1 : mode === "WAGER" ? 50 : 0;
     const teamIds = activeCustomTeams.map((_, idx) => `t_${idx}`);
     initialTeamOrderRef.current = teamIds;
     const offlineCardsMap = distributeCategorizedCardsToTeams(teamIds, modeAllowedPowerups as any, 2, 2);
@@ -1646,7 +1654,7 @@ export default function AdminSandboxPage() {
 
     let diceRaceState: any = undefined;
     if (mode === "DICE_RACE") {
-      const totalTiles = 30;
+      const totalTiles = 60;
       const tiles = generateBalancedDiceTiles(totalTiles);
       const teamPositions: Record<string, any> = {};
       for (const t of teams) {
@@ -1747,6 +1755,18 @@ export default function AdminSandboxPage() {
       };
     }
 
+    let wagerState: any = undefined;
+    if (mode === "WAGER") {
+      wagerState = {
+        isWagerWindowOpen: false,
+        wagers: {},
+        bailoutTeamIds: [],
+        knockoutTeamIds: [],
+        autoWagerSeconds: 15,
+        phase: "WAGER_PERIOD",
+      };
+    }
+
     const initialRoomState: RoomState = {
       id: "room_offline_local",
       code: offlineCode,
@@ -1786,6 +1806,7 @@ export default function AdminSandboxPage() {
       mysteryQuestState,
       magicWheelState,
       tournamentState,
+      wagerState,
     };
 
     setRoomState(initialRoomState);
@@ -1895,6 +1916,12 @@ export default function AdminSandboxPage() {
     } else if (selectedMode === "TOURNAMENT") {
       if (curQ.tournamentTeam1Id && curQ.tournamentTeam2Id) {
         neededTeamIds = [curQ.tournamentTeam1Id, curQ.tournamentTeam2Id];
+      }
+    } else if (selectedMode === "BUZZ") {
+      if (curQ.buzzedTeamId) {
+        neededTeamIds = [curQ.buzzedTeamId];
+      } else {
+        return;
       }
     } else if (selectedMode === "ELIMINATION") {
       neededTeamIds = teams.map((t) => t.id);
@@ -3797,12 +3824,8 @@ export default function AdminSandboxPage() {
           if (isOfflineSandbox && currentQuestion && !offlineFinalizedActorsRef.current.has(teamId)) {
             const qData = currentQuestion.question;
             const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
-            const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
-            const isCorrect = correctOpt
-              ? (correctOpt.id === singleAns ||
-                 (Array.isArray(answer) && answer.includes(correctOpt.id)) ||
-                 (typeof singleAns === "string" && (correctOpt.text?.trim() === singleAns.trim() || correctOpt.id === singleAns.trim())))
-              : false;
+            const { isAutoCorrect } = evaluateAnswerCorrectness(rawQ, answer);
+            const isCorrect = isAutoCorrect === true;
             const timeLimit = currentQuestion.timeLimit || 30;
             const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
             const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
@@ -3820,9 +3843,6 @@ export default function AdminSandboxPage() {
             offlineAnswersRef.current.set(teamId, { answer: singleAns, isCorrect, points: awarded, timeSpent: timeSpentMs });
           }
         }
-        return;
-      }
-      if (e.data?.type === "MYSTERY_STEAL_BUZZ" || e.data?.action === "mystery_steal_buzz") {
         return;
       }
       if (e.data?.type === "MYSTERY_SET_MINIGAME" || e.data?.action === "mystery_set_minigame") {
@@ -3991,12 +4011,8 @@ export default function AdminSandboxPage() {
         const opts = qData.options || [];
         const chosenOpt = opts.find((o: any) => o.id === answer || o.text === answer);
         const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
-        const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
-        const isCorrect = correctOpt
-          ? (correctOpt.id === answer ||
-             (Array.isArray(answer) && answer.includes(correctOpt.id)) ||
-             (typeof answer === "string" && (correctOpt.text?.trim() === answer.trim() || correctOpt.id === answer.trim())))
-          : false;
+        const { isAutoCorrect } = evaluateAnswerCorrectness(rawQ, answer);
+        const isCorrect = isAutoCorrect === true;
         const timeLimit = currentQuestion.timeLimit || 30;
         const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
         const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
@@ -4034,15 +4050,11 @@ export default function AdminSandboxPage() {
         }
         const qData = currentQuestion.question;
         const rawQ = offlineQuestionsRef.current[offlineQIndexRef.current] || qData;
-        const correctOpt = rawQ.options?.find((o: any) => o.isCorrect);
         const existingAns = offlineAnswersRef.current.get(targetTeamId)?.answer;
         const finalAns = answer || existingAns;
         if (finalAns) {
-          const isCorrect = correctOpt
-            ? (correctOpt.id === finalAns ||
-               (Array.isArray(finalAns) && finalAns.includes(correctOpt.id)) ||
-               (typeof finalAns === "string" && (correctOpt.text?.trim() === finalAns.trim() || correctOpt.id === finalAns.trim())))
-            : false;
+          const { isAutoCorrect } = evaluateAnswerCorrectness(rawQ, finalAns);
+          const isCorrect = isAutoCorrect === true;
           const timeLimit = currentQuestion.timeLimit || 30;
           const remaining = offlineRemainingRef.current !== undefined ? offlineRemainingRef.current : (timer?.remaining ?? timeLimit);
           const timeSpentMs = Math.max(500, (timeLimit - remaining) * 1000);
@@ -4084,10 +4096,17 @@ export default function AdminSandboxPage() {
         addLog(`🔒 [${targetTeamName}] đã CHỐT ĐÁP ÁN!`);
         checkOfflineEarlyCompletion();
       } else if (action === "buzz") {
-        if (selectedMode === "BOUNCEBACK" && currentQuestion?.isStealPhase) {
+        if (selectedMode === "BOUNCEBACK") {
+          if (!currentQuestion?.isStealPhase || currentQuestion.stealBuzzedTeamId) {
+            return;
+          }
           if (currentQuestion.primaryTeamId === targetTeamId) {
             addLog(`⚠️ [${targetTeamName}] là đội chính nên không được cướp điểm!`);
             return;
+          }
+          if (offlineTimerRef.current) {
+            clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
           }
           const stealData = { teamId: targetTeamId, teamName: targetTeamName, playerId: "", playerName: "" };
           const updatedQ: QuestionState = {
@@ -4106,7 +4125,58 @@ export default function AdminSandboxPage() {
             stealBuzzed: stealData,
             currentQuestion: updatedQ,
           });
+        } else if (selectedMode === "BUZZ") {
+          if (!currentQuestion) return;
+          if (currentQuestion.buzzedTeamId) return; // Anti race condition lock
+          if (currentQuestion.buzzUnlocked === false) return; // Buzz not unlocked
+          if (currentQuestion.buzzDisqualifiedTeamIds?.includes(targetTeamId)) {
+            addLog(`⚠️ [${targetTeamName}] đã bị loại khỏi câu hỏi này do trả lời sai trước đó!`);
+            return;
+          }
+
+          if (offlineTimerRef.current) {
+            clearInterval(offlineTimerRef.current);
+            offlineTimerRef.current = null;
+          }
+
+          const buzzedQ: QuestionState = {
+            ...currentQuestion,
+            buzzedTeamId: targetTeamId,
+            buzzedTeamName: targetTeamName,
+            buzzAnsweringActive: true,
+            buzzUnlocked: false,
+            timerPending: false,
+            timerStarted: true,
+            timeLimit: 5,
+            endsAt: Date.now() + 5000,
+          };
+          setCurrentQuestion(buzzedQ);
+          setTimer({ remaining: 5, total: 5, endsAt: Date.now() + 5000 });
+          addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG giành quyền trả lời! Có 5s để đưa ra đáp án.`);
+          syncToIframes({
+            buzzedBy: { playerName: targetTeamName, teamId: targetTeamId },
+            currentQuestion: buzzedQ,
+            timer: { remaining: 5, total: 5, endsAt: Date.now() + 5000 },
+          });
+
+          // 5s countdown for the buzzed team
+          let rem5s = 5;
+          offlineRemainingRef.current = 5;
+          offlineTimerRef.current = setInterval(() => {
+            rem5s -= 1;
+            offlineRemainingRef.current = rem5s;
+            if (rem5s <= 0) {
+              if (offlineTimerRef.current) {
+                clearInterval(offlineTimerRef.current);
+                offlineTimerRef.current = null;
+              }
+              handleBuzzJudge(false);
+            } else {
+              syncTimerToIframes({ remaining: rem5s, total: 5, endsAt: Date.now() + rem5s * 1000 });
+            }
+          }, 1000);
         } else {
+          if (currentQuestion?.buzzedTeamId) return;
           setCurrentQuestion((prev) => prev ? { ...prev, buzzedTeamId: targetTeamId, buzzedTeamName: targetTeamName, buzzAnsweringActive: false, timerPending: true, timerStarted: false } : prev);
           addLog(`⚡ [${targetTeamName}] đã BẤM CHUÔNG thành công!`);
           syncToIframes({ buzzedBy: { playerName: targetTeamName, teamId: targetTeamId } });
@@ -6625,11 +6695,11 @@ export default function AdminSandboxPage() {
           const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
           const rem = Math.min(offlineRemainingRef.current, Math.min(timeLimit, rawRem));
           offlineRemainingRef.current = rem;
-          setTimer({ remaining: rem, total: timeLimit, endsAt });
+          syncTimerToIframes({ remaining: rem, total: timeLimit, endsAt });
           if (rem <= 0) {
             if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
             offlineTimerRef.current = null;
-            syncToIframes({ timer: { remaining: 0, total: timeLimit, endsAt: 0 } });
+            syncTimerToIframes({ remaining: 0, total: timeLimit, endsAt: 0 });
           }
         }, 500);
       } else {
@@ -7220,7 +7290,7 @@ export default function AdminSandboxPage() {
 
           return {
             ...t,
-            score: t.score + delta,
+            score: selectedMode === "WAGER" ? t.score + delta : Math.max(0, t.score + delta),
             isGhost: selectedMode === "ELIMINATION" && t.isEliminated,
             ghostStreak: newGhostStreak,
             ghostTotalCorrect: newGhostTotalCorrect,
@@ -7414,15 +7484,162 @@ export default function AdminSandboxPage() {
           }
         }
 
+        let nextGrid = prev.gridCaroState;
+        if (selectedMode === "GRID_CARO" && prev.gridCaroState) {
+          const curGrid = prev.gridCaroState;
+          const targetTid = curGrid.currentTurnTeamId;
+          const curAns = answers.find((a) => a.teamId === targetTid);
+          const isCorrect = Boolean(curAns?.isCorrect);
+          const cell = curGrid.selectedCellId ? curGrid.cells.find((c) => c.id === curGrid.selectedCellId) : null;
+
+          if (cell) {
+            let nextCaroAchieved = [...(curGrid.caroAchievedTeams || [])];
+            const nextCells = curGrid.cells.map((c) => {
+              if (c.id !== cell.id) return c;
+              if (isCorrect && targetTid) {
+                const tObj = updatedTeams.find((t) => t.id === targetTid);
+                return {
+                  ...c,
+                  isCompleted: true,
+                  claimedByTeamId: targetTid,
+                  claimedByTeamName: tObj?.name,
+                  claimedByTeamColor: tObj?.color,
+                };
+              } else {
+                return {
+                  ...c,
+                  isCompleted: false,
+                  claimedByTeamId: undefined,
+                  claimedByTeamName: undefined,
+                  claimedByTeamColor: undefined,
+                };
+              }
+            });
+
+            if (isCorrect && targetTid && curGrid.caroEnabled) {
+              const tObj = updatedTeams.find((t) => t.id === targetTid);
+              if (tObj && !nextCaroAchieved.includes(tObj.name)) {
+                const winningStreak = checkGridCaroStreak(
+                  nextCells,
+                  curGrid.rows,
+                  curGrid.cols,
+                  targetTid,
+                  curGrid.streakTargetK
+                );
+                if (winningStreak && winningStreak.length > 0) {
+                  const streakPtsSum = winningStreak.reduce((acc, c) => acc + c.points, 0);
+                  const avgPts = streakPtsSum / winningStreak.length;
+                  const dynamicBonus = Math.max(10, Math.round(avgPts / 5) * 5);
+                  nextCaroAchieved.push(tObj.name);
+                  updatedTeams = updatedTeams.map((t) =>
+                    t.id === targetTid ? { ...t, score: t.score + dynamicBonus } : t
+                  );
+                  addLog(`🎉 [CARO STREAK!] Đội [${tObj.name}] hoàn thành chuỗi ${curGrid.streakTargetK} ô Caro! Nhận thưởng +${dynamicBonus}đ!`);
+                }
+              }
+            }
+
+            nextGrid = {
+              ...curGrid,
+              cells: nextCells,
+              caroAchievedTeams: nextCaroAchieved,
+            };
+          }
+        }
+
+        let nextTournament = prev.tournamentState;
+        if (selectedMode === "TOURNAMENT" && prev.tournamentState) {
+          const curTour = prev.tournamentState;
+          const curMatch = curTour.matches.find((m) => m.id === curTour.currentMatchId || m.status === "IN_PROGRESS");
+          if (curMatch) {
+            const t1Ans = curMatch.team1Id ? answers.find((a) => a.teamId === curMatch.team1Id) : null;
+            const t2Ans = curMatch.team2Id ? answers.find((a) => a.teamId === curMatch.team2Id) : null;
+            const basePts = currentQuestion?.question?.points || 10;
+
+            const t1Earned = t1Ans?.isCorrect ? basePts : 0;
+            const t2Earned = t2Ans?.isCorrect ? basePts : 0;
+
+            const nextMatches = curTour.matches.map((m) => {
+              if (m.id !== curMatch.id) return m;
+              const updatedMatch = {
+                ...m,
+                team1Score: (m.team1Score || 0) + t1Earned,
+                team2Score: (m.team2Score || 0) + t2Earned,
+                currentQuestionInMatch: (m.currentQuestionInMatch || 0) + 1,
+              };
+
+              if (updatedMatch.currentQuestionInMatch >= updatedMatch.totalQuestionsInMatch) {
+                if (updatedMatch.team1Score === updatedMatch.team2Score && updatedMatch.team1Id && updatedMatch.team2Id) {
+                  updatedMatch.totalQuestionsInMatch += 1;
+                  updatedMatch.isTieBreaker = true;
+                } else {
+                  updatedMatch.status = "COMPLETED" as const;
+                  updatedMatch.isTieBreaker = false;
+                  const winnerId = updatedMatch.team1Score > updatedMatch.team2Score ? updatedMatch.team1Id : updatedMatch.team2Id;
+                  const winnerName = updatedMatch.team1Score > updatedMatch.team2Score ? updatedMatch.team1Name : updatedMatch.team2Name;
+                  const winnerColor = winnerId === updatedMatch.team1Id ? updatedMatch.team1Color : updatedMatch.team2Color;
+                  updatedMatch.winnerTeamId = winnerId;
+                  updatedMatch.recap = {
+                    team1Score: updatedMatch.team1Score,
+                    team2Score: updatedMatch.team2Score,
+                    winnerId,
+                    winnerName: winnerName || "?",
+                  };
+                }
+              }
+              return updatedMatch;
+            });
+
+            const matchNow = nextMatches.find((m) => m.id === curMatch.id);
+            let champId = curTour.championTeamId;
+            let champName = curTour.championTeamName;
+
+            if (matchNow && matchNow.status === "COMPLETED") {
+              if (matchNow.id === "FINAL") {
+                champId = matchNow.winnerTeamId;
+                champName = matchNow.recap?.winnerName;
+                addLog(`🏆 [TOURNAMENT] Đội [${champName}] đã giành chức VÔ ĐỊCH!`);
+              } else {
+                const finalMatch = nextMatches.find((m) => m.id === "FINAL");
+                if (finalMatch) {
+                  if (!finalMatch.team1Id) {
+                    finalMatch.team1Id = matchNow.winnerTeamId;
+                    finalMatch.team1Name = matchNow.recap?.winnerName;
+                    finalMatch.team1Color = matchNow.winnerTeamId === matchNow.team1Id ? matchNow.team1Color : matchNow.team2Color;
+                  } else if (!finalMatch.team2Id) {
+                    finalMatch.team2Id = matchNow.winnerTeamId;
+                    finalMatch.team2Name = matchNow.recap?.winnerName;
+                    finalMatch.team2Color = matchNow.winnerTeamId === matchNow.team1Id ? matchNow.team1Color : matchNow.team2Color;
+                  }
+                }
+              }
+            }
+
+            nextTournament = {
+              ...curTour,
+              matches: nextMatches,
+              championTeamId: champId,
+              championTeamName: champName,
+            };
+          }
+        }
+
         const nextRoomState = {
           ...prev,
           teams: updatedTeams,
           diceRaceState: nextDice,
           wagerState: nextWager,
           mysteryQuestState: nextMystery,
+          gridCaroState: nextGrid,
+          tournamentState: nextTournament,
         };
         roomStateRef.current = nextRoomState;
-        syncToIframes({ roomState: nextRoomState, mysteryQuestState: nextMystery });
+        syncToIframes({
+          roomState: nextRoomState,
+          mysteryQuestState: nextMystery,
+          gridCaroState: nextGrid,
+          tournamentState: nextTournament,
+        });
         return nextRoomState;
       });
 
@@ -7547,12 +7764,11 @@ export default function AdminSandboxPage() {
         const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
         const rem = Math.min(offlineRemainingRef.current, Math.min(timeLimit, rawRem));
         offlineRemainingRef.current = rem;
-        setTimer({ remaining: rem, total: timeLimit, endsAt });
-        syncToIframes({ timer: { remaining: rem, total: timeLimit, endsAt } });
+        syncTimerToIframes({ remaining: rem, total: timeLimit, endsAt });
         if (rem <= 0) {
           if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
           offlineTimerRef.current = null;
-          syncToIframes({ timer: { remaining: 0, total: timeLimit, endsAt: 0 } });
+          syncTimerToIframes({ remaining: 0, total: timeLimit, endsAt: 0 });
         }
       }, 500);
       addLog(`Admin: Bắt đầu tính giờ (${timeLimit}s)${selectedMode === "BUZZ" ? " & Mở chuông ngay lập tức" : ""}`);
@@ -7566,9 +7782,10 @@ export default function AdminSandboxPage() {
   // ── Magic Wheel Dedicated Admin Controls ──────────────────────────────────
   const handleMagicWheelQuickSpin = () => {
     const power = Math.floor(Math.random() * 40 + 50);
-    window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("magic_wheel:spin" as any, { power });
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_SPIN", power }, "*");
     }
     addLog(`🎡 [Quản trò] Quay nón với lực ${power}%`);
   };
@@ -7576,16 +7793,18 @@ export default function AdminSandboxPage() {
   const handleMagicWheelPassTurn = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("admin:magic_wheel:pass_turn" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_PASS_TURN" }, "*");
     addLog(`⏭️ [Quản trò] Đổi lượt sang đội kế tiếp`);
   };
 
   const handleMagicWheelQuickRevealLetter = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("admin:magic_wheel:quick_reveal_letter" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_QUICK_REVEAL" }, "*");
     addLog(`🔤 [Quản trò] Mở nhanh 1 chữ cái trên bàn cờ`);
   };
 
@@ -7601,8 +7820,9 @@ export default function AdminSandboxPage() {
         const randomIdx = unrevealed[Math.floor(Math.random() * unrevealed.length)];
         if (adminSocketRef.current?.connected) {
           adminSocketRef.current.emit("magic_wheel:lucky_pick" as any, { index: randomIdx });
+        } else {
+          window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index: randomIdx }, "*");
         }
-        window.postMessage({ type: "MAGIC_WHEEL_LUCKY_PICK", index: randomIdx }, "*");
         addLog(`🎁 [Quản trò] Kích hoạt ô May Mắn mở vị trí #${randomIdx + 1}`);
       }
     }
@@ -7614,8 +7834,9 @@ export default function AdminSandboxPage() {
       const answer = mw.currentPuzzle.secretPhrase;
       if (adminSocketRef.current?.connected) {
         adminSocketRef.current.emit("magic_wheel:solve_puzzle" as any, { answer });
+      } else {
+        window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
       }
-      window.postMessage({ type: "MAGIC_WHEEL_SOLVE_PUZZLE", answer }, "*");
       addLog(`🎯 [Quản trò] Đoán ô chữ chính xác: "${answer}"`);
     }
   };
@@ -7623,8 +7844,9 @@ export default function AdminSandboxPage() {
   const handleMagicWheelRevealAll = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("admin:magic_wheel:reveal_all" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_REVEAL_ALL" }, "*");
     addLog(`💡 [Quản trò] Mở toàn bộ ô chữ bí mật`);
   };
 
@@ -7645,16 +7867,18 @@ export default function AdminSandboxPage() {
   const handleMagicWheelOpenBoard = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("admin:magic_wheel:open_board" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_OPEN_BOARD" }, "*");
     addLog(`⭐ [Quản trò] Mở bảng ô chữ & công bố chủ đề!`);
   };
 
   const handleMagicWheelStartTossUp = () => {
     if (adminSocketRef.current?.connected) {
       adminSocketRef.current.emit("magic_wheel:toss_up_start" as any);
+    } else {
+      window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
     }
-    window.postMessage({ type: "MAGIC_WHEEL_TOSS_UP_START" }, "*");
     addLog(`⚡ [Quản trò] Bắt đầu mở các chữ cái vòng đoán nhanh (0.75s/chữ)!`);
   };
 
@@ -7690,9 +7914,10 @@ export default function AdminSandboxPage() {
         const availableLetters = VIETNAMESE_ALPHABET.filter((l) => !mw.guessedLetters.includes(l));
         if (availableLetters.length > 0) {
           const letter = availableLetters[Math.floor(Math.random() * availableLetters.length)];
-          window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
           if (adminSocketRef.current?.connected) {
             adminSocketRef.current.emit("magic_wheel:guess_letter" as any, { letter });
+          } else {
+            window.postMessage({ type: "MAGIC_WHEEL_GUESS_LETTER", letter }, "*");
           }
           addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động gọi chữ cái "${letter}"`);
         }
@@ -7701,18 +7926,20 @@ export default function AdminSandboxPage() {
       pendingBotWheelTimerRef.current = setTimeout(() => {
         const cards: ("POINTS_1500" | "FREE_SPIN" | "SHIELD")[] = ["POINTS_1500", "FREE_SPIN", "SHIELD"];
         const chosen = cards[Math.floor(Math.random() * cards.length)];
-        window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType: chosen }, "*");
         if (adminSocketRef.current?.connected) {
           adminSocketRef.current.emit("magic_wheel:reward_select" as any, { cardType: chosen });
+        } else {
+          window.postMessage({ type: "MAGIC_WHEEL_REWARD_SELECT", cardType: chosen }, "*");
         }
         addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động chọn thẻ quà: ${chosen}`);
       }, 2000);
     } else if (mw.phase === "MYSTERY_CHOICE") {
       pendingBotWheelTimerRef.current = setTimeout(() => {
         const openMystery = Math.random() >= 0.4;
-        window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
         if (adminSocketRef.current?.connected) {
           adminSocketRef.current.emit("magic_wheel:mystery_decide" as any, { openMystery });
+        } else {
+          window.postMessage({ type: "MAGIC_WHEEL_MYSTERY_DECIDE", openMystery }, "*");
         }
         addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động chọn ô Bí Mật: ${openMystery ? "Lật Hộp Đỏ" : "Nhận 3.000đ vĩnh viễn"}`);
       }, 2000);
@@ -7720,9 +7947,10 @@ export default function AdminSandboxPage() {
       pendingBotWheelTimerRef.current = setTimeout(() => {
         const trade = Math.random() >= 0.5;
         const boxIndex = Math.floor(Math.random() * 4);
-        window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
         if (adminSocketRef.current?.connected) {
           adminSocketRef.current.emit("magic_wheel:trade_decide" as any, { trade, boxIndex });
+        } else {
+          window.postMessage({ type: "MAGIC_WHEEL_TRADE_DECIDE", trade, boxIndex }, "*");
         }
         addLog(`🤖 [Bot ${mw.currentTurnTeamName}] Tự động quyết định Vòng 3: ${trade ? `Đổi lấy Hộp Quà #${boxIndex + 1}` : "Không Đổi"}`);
       }, 2000);
@@ -7781,12 +8009,11 @@ export default function AdminSandboxPage() {
         const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
         const rem = Math.min(offlineRemainingRef.current, Math.min(finalDuration, rawRem));
         offlineRemainingRef.current = rem;
-        setTimer({ remaining: rem, total: finalDuration, endsAt });
-        syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
+        syncTimerToIframes({ remaining: rem, total: finalDuration, endsAt });
         if (rem <= 0) {
           if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
           offlineTimerRef.current = null;
-          syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
+          syncTimerToIframes({ remaining: 0, total: finalDuration, endsAt: 0 });
         }
       }, 500);
       addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cho đội bấm chuông`);
@@ -7844,12 +8071,11 @@ export default function AdminSandboxPage() {
         const rawRem = Math.max(0, Math.ceil((endsAt - Date.now()) / 1000));
         const rem = Math.min(offlineRemainingRef.current, Math.min(finalDuration, rawRem));
         offlineRemainingRef.current = rem;
-        setTimer({ remaining: rem, total: finalDuration, endsAt });
-        syncToIframes({ timer: { remaining: rem, total: finalDuration, endsAt } });
+        syncTimerToIframes({ remaining: rem, total: finalDuration, endsAt });
         if (rem <= 0) {
           if (offlineTimerRef.current) clearInterval(offlineTimerRef.current);
           offlineTimerRef.current = null;
-          syncToIframes({ timer: { remaining: 0, total: finalDuration, endsAt: 0 } });
+          syncTimerToIframes({ remaining: 0, total: finalDuration, endsAt: 0 });
         }
       }, 500);
       addLog(`Admin: Bắt đầu ${finalDuration}s trả lời cướp điểm`);
@@ -7985,6 +8211,206 @@ export default function AdminSandboxPage() {
     addLog(`Admin phán quyết Bounceback: ${isCorrect ? "ĐÚNG" : "SAI"}`);
   };
 
+  const handleBuzzJudge = (isCorrect: boolean) => {
+    if (isOfflineSandbox) {
+      if (offlineTimerRef.current) {
+        clearInterval(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+      if (!currentQuestion) return;
+
+      const qRaw = offlineQuestionsRef.current[offlineQIndexRef.current] || currentQuestion.question;
+      const correctOpt = qRaw.options?.find((o: any) => o.isCorrect);
+      const correctId = correctOpt ? correctOpt.id : (qRaw.answer || "A");
+      const basePoints = normalizeToThreeLevels(currentQuestion.question.points || 10);
+      const effTeamId = currentQuestion.buzzedTeamId;
+      const effTeamName = currentQuestion.buzzedTeamName || "Đội bấm chuông";
+
+      if (!effTeamId) return;
+
+      const attemptNum = currentQuestion.buzzAttemptNumber || 1;
+      const multiplier = attemptNum === 1 ? 1.5 : attemptNum === 2 ? 1.0 : 0.5;
+
+      if (isCorrect) {
+        const awardedPoints = Math.round(basePoints * multiplier);
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedTeams = prev.teams.map((t) => {
+            if (t.id === effTeamId) return { ...t, score: Math.max(0, t.score + awardedPoints) };
+            return t;
+          });
+          return { ...prev, teams: updatedTeams };
+        });
+
+        const answers = (roomState?.teams || []).map((t) => ({
+          teamId: t.id,
+          name: t.name,
+          answer: t.id === effTeamId ? [correctId] : [],
+          isCorrect: t.id === effTeamId ? true : false,
+          pointsAwarded: t.id === effTeamId ? awardedPoints : 0,
+          timeSpent: 2000,
+        }));
+
+        const payload = {
+          questionId: currentQuestion.question.id,
+          correctAnswer: [correctId],
+          answers,
+        };
+
+        setRevealPayload(payload);
+        setCurrentQuestion((prev) => prev ? { ...prev, buzzAnsweringActive: false, buzzUnlocked: false } : prev);
+        syncToIframes({
+          revealPayload: payload,
+          currentQuestion: { ...currentQuestion, buzzAnsweringActive: false, buzzUnlocked: false },
+        });
+        addLog(`⚖️ MC chấm: Đội [${effTeamName}] ĐÚNG! Nhận +${awardedPoints}đ (hệ số x${multiplier})!`);
+      } else {
+        const penalty = Math.floor(basePoints * 0.5);
+        setRoomState((prev) => {
+          if (!prev) return prev;
+          const updatedTeams = prev.teams.map((t) => {
+            if (t.id === effTeamId) return { ...t, score: Math.max(0, t.score - penalty) };
+            return t;
+          });
+          return { ...prev, teams: updatedTeams };
+        });
+
+        const disq = new Set(currentQuestion.buzzDisqualifiedTeamIds || []);
+        disq.add(effTeamId);
+        const disqArray = Array.from(disq);
+
+        const totalTeams = roomState?.teams.length || 4;
+        const maxAttempts = totalTeams <= 2 ? 2 : 3;
+        const canRetry = attemptNum < maxAttempts && disqArray.length < totalTeams;
+
+        if (canRetry) {
+          const nextAttempt = attemptNum + 1;
+          const updatedQ: QuestionState = {
+            ...currentQuestion,
+            buzzedTeamId: undefined,
+            buzzedTeamName: undefined,
+            buzzAnsweringActive: false,
+            buzzUnlocked: true,
+            buzzAttemptNumber: nextAttempt,
+            buzzDisqualifiedTeamIds: disqArray,
+            timerStarted: true,
+            timerPending: false,
+            timeLimit: 5,
+            endsAt: Date.now() + 5000,
+          };
+          setCurrentQuestion(updatedQ);
+          setTimer({ remaining: 5, total: 5, endsAt: Date.now() + 5000 });
+          syncToIframes({
+            currentQuestion: updatedQ,
+            timer: { remaining: 5, total: 5, endsAt: Date.now() + 5000 },
+          });
+
+          let rem5s = 5;
+          offlineRemainingRef.current = 5;
+          offlineTimerRef.current = setInterval(() => {
+            rem5s -= 1;
+            offlineRemainingRef.current = rem5s;
+            if (rem5s <= 0) {
+              if (offlineTimerRef.current) {
+                clearInterval(offlineTimerRef.current);
+                offlineTimerRef.current = null;
+              }
+              handleAdminReveal();
+            } else {
+              syncTimerToIframes({ remaining: rem5s, total: 5, endsAt: Date.now() + rem5s * 1000 });
+            }
+          }, 1000);
+
+          addLog(`⚖️ MC chấm: Đội [${effTeamName}] SAI! Bị trừ -${penalty}đ và bị loại khỏi câu hỏi này. Mở lại chuông 5s cho các đội khác!`);
+        } else {
+          addLog(`⚖️ MC chấm: Đội [${effTeamName}] SAI! Bị trừ -${penalty}đ. Đã hết lượt bấm chuông, công bố đáp án!`);
+          handleAdminReveal();
+        }
+      }
+      return;
+    }
+
+    adminSocketRef.current?.emit("admin:buzz:judge" as any, { isCorrect, code });
+    addLog(`Admin phán quyết BUZZ: ${isCorrect ? "ĐÚNG" : "SAI"}`);
+  };
+
+  const checkGridCaroStreak = (
+    cells: any[],
+    rows: number,
+    cols: number,
+    teamId: string,
+    targetK: number
+  ): any[] | null => {
+    if (rows < targetK || cols < targetK || targetK < 3) return null;
+
+    const cellMap = new Map<string, any>();
+    cells.forEach((c) => {
+      cellMap.set(`${c.row},${c.col}`, c);
+    });
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c <= cols - targetK; c++) {
+        const streakCells: any[] = [];
+        for (let k = 0; k < targetK; k++) {
+          const cell = cellMap.get(`${r},${c + k}`);
+          if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+            streakCells.push(cell);
+          } else {
+            break;
+          }
+        }
+        if (streakCells.length === targetK) return streakCells;
+      }
+    }
+
+    for (let c = 0; c < cols; c++) {
+      for (let r = 0; r <= rows - targetK; r++) {
+        const streakCells: any[] = [];
+        for (let k = 0; k < targetK; k++) {
+          const cell = cellMap.get(`${r + k},${c}`);
+          if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+            streakCells.push(cell);
+          } else {
+            break;
+          }
+        }
+        if (streakCells.length === targetK) return streakCells;
+      }
+    }
+
+    for (let r = 0; r <= rows - targetK; r++) {
+      for (let c = 0; c <= cols - targetK; c++) {
+        const streakCells: any[] = [];
+        for (let k = 0; k < targetK; k++) {
+          const cell = cellMap.get(`${r + k},${c + k}`);
+          if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+            streakCells.push(cell);
+          } else {
+            break;
+          }
+        }
+        if (streakCells.length === targetK) return streakCells;
+      }
+    }
+
+    for (let r = 0; r <= rows - targetK; r++) {
+      for (let c = targetK - 1; c < cols; c++) {
+        const streakCells: any[] = [];
+        for (let k = 0; k < targetK; k++) {
+          const cell = cellMap.get(`${r + k},${c - k}`);
+          if (cell && cell.isCompleted && cell.claimedByTeamId === teamId) {
+            streakCells.push(cell);
+          } else {
+            break;
+          }
+        }
+        if (streakCells.length === targetK) return streakCells;
+      }
+    }
+
+    return null;
+  };
+
   const handleAdminBouncebackSelectPoints = (points: 10 | 20 | 30) => {
     if (isOfflineSandbox) {
       handleOfflineBouncebackPointsPicked(points);
@@ -8108,6 +8534,43 @@ export default function AdminSandboxPage() {
     if (isOfflineSandbox) {
       setCurrentQuestion(null);
       setRevealPayload(null);
+      setTimer(null);
+      setRoomState((prev) => {
+        if (!prev || !prev.gridCaroState) return prev;
+        const curGrid = prev.gridCaroState;
+        const turnsCompleted = (curGrid.turnsCompleted || 0) + 1;
+        const numTeams = Math.max(1, prev.teams.length);
+        const currentRound = Math.min(curGrid.maxRounds, Math.floor(turnsCompleted / numTeams) + 1);
+        let nextTurnTeamId = curGrid.currentTurnTeamId;
+        let nextTurnTeamName = curGrid.currentTurnTeamName;
+        if (prev.teams.length > 0) {
+          const curIdx = prev.teams.findIndex((t) => t.id === curGrid.currentTurnTeamId);
+          const nextIdx = (curIdx + 1) % prev.teams.length;
+          nextTurnTeamId = prev.teams[nextIdx].id;
+          nextTurnTeamName = prev.teams[nextIdx].name;
+        }
+        const nextGridState: GridCaroState = {
+          ...curGrid,
+          selectedCellId: undefined,
+          selectedCellAnimation: false,
+          selectedCellInfo: undefined,
+          questionReady: false,
+          turnsCompleted,
+          currentRound,
+          currentTurnTeamId: nextTurnTeamId,
+          currentTurnTeamName: nextTurnTeamName,
+        };
+        const nextRoomState = { ...prev, gridCaroState: nextGridState };
+        roomStateRef.current = nextRoomState;
+        syncToIframes({
+          roomState: nextRoomState,
+          gridCaroState: nextGridState,
+          currentQuestion: null,
+          revealPayload: null,
+          timer: null,
+        });
+        return nextRoomState;
+      });
       addLog("Admin: Quay về bảng ô");
       return;
     }
@@ -8121,6 +8584,7 @@ export default function AdminSandboxPage() {
       setCurrentQuestion(null);
       setRevealPayload(null);
       setTimer(null);
+      syncToIframes({ currentQuestion: null, revealPayload: null, timer: null });
       setRoomState((prev) => {
         if (!prev) return prev;
         const nextDice = prev.diceRaceState
@@ -9240,14 +9704,42 @@ export default function AdminSandboxPage() {
 
                 {/* 4. Reveal Button - Only when question is active and not yet revealed */}
                 {currentQuestion && !revealPayload && selectedMode !== "MAGIC_WHEEL" && (
-                  <button
-                    type="button"
-                    onClick={handleAdminReveal}
-                    className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer animate-pulse btn-tactile"
-                  >
-                    <span>👁️</span>
-                    <span>Công bố đáp án</span>
-                  </button>
+                  <>
+                    {roomState?.mode === "BUZZ" && currentQuestion.buzzedTeamId ? (
+                      <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/40 px-2 py-0.5 rounded-lg shadow-sm">
+                        <span className="text-[11px] font-black text-amber-300 flex items-center gap-1">
+                          🔔 <span className="underline">{currentQuestion.buzzedTeamName || "Đội chuông"}</span>:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleBuzzJudge(true)}
+                          className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                          title="Chấm ĐÚNG (+100% / +150% điểm câu hỏi)"
+                        >
+                          <span>✓</span>
+                          <span>ĐÚNG</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBuzzJudge(false)}
+                          className="px-2.5 py-1 rounded-md bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                          title="Chấm SAI (-50% điểm câu hỏi & mở lại chuông 5s)"
+                        >
+                          <span>✗</span>
+                          <span>SAI (-50%)</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAdminReveal}
+                        className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center gap-1 whitespace-nowrap cursor-pointer animate-pulse btn-tactile"
+                      >
+                        <span>👁️</span>
+                        <span>Công bố đáp án</span>
+                      </button>
+                    )}
+                  </>
                 )}
 
                 {/* 4b. Essay & Manual Grading Modal Trigger */}
@@ -11072,14 +11564,41 @@ export default function AdminSandboxPage() {
                 {/* Reveal & In-Question Controls */}
                 {currentQuestion && !revealPayload && selectedMode !== "MAGIC_WHEEL" && (
                   <div className="space-y-1.5 pt-1">
-                    <button
-                      type="button"
-                      onClick={handleAdminReveal}
-                      className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
-                    >
-                      <span>👁️</span>
-                      <span>Công bố đáp án ngay</span>
-                    </button>
+                    {roomState?.mode === "BUZZ" && currentQuestion.buzzedTeamId ? (
+                      <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 space-y-2">
+                        <div className="text-xs font-black text-amber-300 flex items-center justify-between">
+                          <span className="flex items-center gap-1">🔔 <span className="underline">{currentQuestion.buzzedTeamName || "Đội chuông"}</span></span>
+                          <span className="text-[10px] text-amber-400 font-semibold bg-amber-500/20 px-1.5 py-0.5 rounded">
+                            Lần {currentQuestion.buzzAttemptNumber || 1}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleBuzzJudge(true)}
+                            className="py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer transition active:scale-95"
+                          >
+                            <span>✓ ĐÚNG</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBuzzJudge(false)}
+                            className="py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow flex items-center justify-center gap-1 cursor-pointer transition active:scale-95"
+                          >
+                            <span>✗ SAI (-50%)</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleAdminReveal}
+                        className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow flex items-center justify-center gap-1.5 cursor-pointer animate-pulse"
+                      >
+                        <span>👁️</span>
+                        <span>Công bố đáp án ngay</span>
+                      </button>
+                    )}
 
                     <div className="grid grid-cols-3 gap-1.5">
                       <button

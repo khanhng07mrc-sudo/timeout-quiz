@@ -415,6 +415,10 @@ export default function PlayPage() {
         }
         return;
       }
+      if (e.data?.type === "OFFLINE_TIMER_TICK" && e.data.payload) {
+        setTimer(e.data.payload);
+        return;
+      }
       if (e.data?.type === "OFFLINE_SYNC" && e.data.payload) {
         setConnected(true);
         const p = e.data.payload;

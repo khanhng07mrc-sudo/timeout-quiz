@@ -8607,6 +8607,207 @@ function handleTieBreakerLuckyPick({
   tieBreakerTimers.set(roomId, endTimer);
 }
 
+// src/lib/game-engine/evaluator.ts
+function normalizeTextForComparison(text) {
+  if (text === void 0 || text === null) return "";
+  return text.toString().normalize("NFC").toLowerCase().trim().replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/[.,!?;:]+$/, "").replace(/\s+/g, " ");
+}
+function matchFillBlankText(expectedAnswer, submittedAnswer) {
+  const normExpected = normalizeTextForComparison(expectedAnswer);
+  const normSubmitted = normalizeTextForComparison(submittedAnswer);
+  if (!normExpected || !normSubmitted) return false;
+  if (normExpected === normSubmitted) return true;
+  const variants = expectedAnswer.split(/[/;|]/).flatMap((part) => {
+    if (part.includes(",") && !/\d,\d/.test(part)) {
+      return part.split(",");
+    }
+    return [part];
+  }).map((v) => normalizeTextForComparison(v)).filter(Boolean);
+  if (variants.includes(normSubmitted)) return true;
+  const cleanExpNum = Number(normExpected.replace(",", "."));
+  const cleanSubNum = Number(normSubmitted.replace(",", "."));
+  if (!isNaN(cleanExpNum) && !isNaN(cleanSubNum) && cleanExpNum === cleanSubNum) {
+    return true;
+  }
+  return false;
+}
+function matchTrueFalseText(expectedTextOrId, submittedTextOrId) {
+  const normExp = normalizeTextForComparison(expectedTextOrId);
+  const normSub = normalizeTextForComparison(submittedTextOrId);
+  if (normExp === normSub) return true;
+  const trueTokens = ["true", "\u0111\xFAng", "dung", "t", "d", "1", "yes", "c\xF3", "co", "y"];
+  const falseTokens = ["false", "sai", "f", "s", "0", "no", "kh\xF4ng", "khong", "n"];
+  const isExpTrue = trueTokens.includes(normExp);
+  const isExpFalse = falseTokens.includes(normExp);
+  const isSubTrue = trueTokens.includes(normSub);
+  const isSubFalse = falseTokens.includes(normSub);
+  if (isExpTrue && isSubTrue) return true;
+  if (isExpFalse && isSubFalse) return true;
+  return false;
+}
+function evaluateAnswerCorrectness(question, submittedAnswer) {
+  if (!question) {
+    return { isAutoCorrect: false, answerText: "(Kh\xF4ng c\xF3 c\xE2u h\u1ECFi)" };
+  }
+  const options = question.options || [];
+  const ansArray = Array.isArray(submittedAnswer) ? submittedAnswer : submittedAnswer !== void 0 && submittedAnswer !== null ? [String(submittedAnswer)] : [];
+  if (ansArray.length === 0) {
+    return { isAutoCorrect: false, answerText: "(Ch\u01B0a ch\u1ECDn \u0111\xE1p \xE1n / H\u1EBFt gi\u1EDD)" };
+  }
+  const selectedOptions = options.filter(
+    (o) => ansArray.some(
+      (ans) => ans === o.id || normalizeTextForComparison(ans) === normalizeTextForComparison(o.id) || normalizeTextForComparison(ans) === normalizeTextForComparison(o.text)
+    )
+  );
+  const answerText = selectedOptions.length > 0 ? selectedOptions.map((o) => `${o.text}`).join(", ") : ansArray.join(", ");
+  if (question.type === "ESSAY") {
+    return { isAutoCorrect: void 0, answerText };
+  }
+  let isAutoCorrect = false;
+  if (question.type === "MC_SINGLE") {
+    const correctOption = options.find((o) => o.isCorrect);
+    if (correctOption) {
+      const normCorrectId = normalizeTextForComparison(correctOption.id);
+      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
+      isAutoCorrect = ansArray.some((ans) => {
+        const normAns = normalizeTextForComparison(ans);
+        return normAns === normCorrectId || normAns === normCorrectText || ans === correctOption.id;
+      });
+    }
+  } else if (question.type === "TRUE_FALSE") {
+    const correctOption = options.find((o) => o.isCorrect);
+    if (correctOption) {
+      const normCorrectId = normalizeTextForComparison(correctOption.id);
+      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
+      isAutoCorrect = ansArray.some((ans) => {
+        const normAns = normalizeTextForComparison(ans);
+        return normAns === normCorrectId || normAns === normCorrectText || ans === correctOption.id || matchTrueFalseText(correctOption.text || correctOption.id, ans);
+      });
+    } else if (question.answer) {
+      isAutoCorrect = ansArray.some((ans) => matchTrueFalseText(question.answer, ans));
+    }
+  } else if (question.type === "MC_MULTI") {
+    const correctOptions = options.filter((o) => o.isCorrect);
+    const correctIds = new Set(correctOptions.map((o) => normalizeTextForComparison(o.id)));
+    const correctTexts = new Set(correctOptions.map((o) => normalizeTextForComparison(o.text || "")));
+    const submittedNormalized = ansArray.map((ans) => normalizeTextForComparison(ans));
+    let matchedCount = 0;
+    for (const sub of submittedNormalized) {
+      if (correctIds.has(sub) || correctTexts.has(sub)) {
+        matchedCount++;
+      } else {
+        matchedCount = -1;
+        break;
+      }
+    }
+    isAutoCorrect = matchedCount === correctOptions.length && correctOptions.length === ansArray.length;
+  } else if (question.type === "FILL_BLANK") {
+    const expected = question.answer || options.find((o) => o.isCorrect)?.text || "";
+    const submitted = ansArray[0] || "";
+    isAutoCorrect = matchFillBlankText(expected, submitted);
+  } else if (question.type === "WORD_PUZZLE") {
+    const expected = question.answer || question.secretPhrase || "";
+    const submitted = ansArray[0] || "";
+    isAutoCorrect = normalizeTextForComparison(expected) === normalizeTextForComparison(submitted);
+  } else if (question.type === "MATCHING") {
+    const rawPairs = question.pairs || [];
+    if (rawPairs.length > 0) {
+      let subObj = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subObj = submittedAnswer;
+      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
+        subObj = ansArray[0];
+      } else if (typeof ansArray[0] === "string") {
+        try {
+          const parsed = JSON.parse(ansArray[0]);
+          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
+            subObj = parsed;
+          }
+        } catch {
+        }
+      } else if (typeof question.rawSubmission === "object") {
+        subObj = question.rawSubmission;
+      }
+      let allMatched = Object.keys(subObj).length >= rawPairs.length;
+      for (let i = 0; i < rawPairs.length; i++) {
+        const pair = rawPairs[i];
+        const pairId = pair.id || `p${i + 1}`;
+        const expectedRight = String.fromCharCode(65 + i);
+        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
+        const isMatch = userVal === pairId || userVal === expectedRight || userVal === pair.right || normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
+        if (!isMatch) {
+          allMatched = false;
+          break;
+        }
+      }
+      isAutoCorrect = allMatched;
+    } else {
+      isAutoCorrect = false;
+    }
+  } else if (question.type === "DRAG_DROP") {
+    const correctOrder = options.map((o) => o.id);
+    let submittedOrder = [];
+    if (Array.isArray(submittedAnswer)) {
+      submittedOrder = submittedAnswer;
+    } else if (Array.isArray(ansArray[0])) {
+      submittedOrder = ansArray[0];
+    } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+      try {
+        const parsed = JSON.parse(ansArray[0]);
+        if (Array.isArray(parsed)) submittedOrder = parsed;
+      } catch {
+        submittedOrder = ansArray;
+      }
+    } else {
+      submittedOrder = ansArray;
+    }
+    const cleanSubmitted = submittedOrder.map((x) => typeof x === "string" ? x : String(x?.id || x));
+    isAutoCorrect = correctOrder.length === cleanSubmitted.length && correctOrder.every((id, idx) => id === cleanSubmitted[idx]);
+  } else if (question.type === "CLOZE_DROPDOWN") {
+    const blanks = question.clozeBlanks || options || [];
+    if (blanks.length > 0) {
+      let subMap = {};
+      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
+        subMap = submittedAnswer;
+      } else if (Array.isArray(submittedAnswer)) {
+        submittedAnswer.forEach((v, i) => {
+          subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
+        });
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
+        try {
+          subMap = JSON.parse(ansArray[0]);
+        } catch {
+        }
+      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
+        try {
+          const arr = JSON.parse(ansArray[0]);
+          if (Array.isArray(arr)) arr.forEach((v, i) => {
+            subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
+          });
+        } catch {
+        }
+      } else {
+        ansArray.forEach((v, i) => {
+          subMap[String(i + 1)] = v;
+        });
+      }
+      let allCorrect = true;
+      for (const blank of blanks) {
+        const correctOpt = blank.options?.find((o) => o.isCorrect);
+        const userChoice = subMap[String(blank.blankId)] || subMap[blank.blankId];
+        if (!correctOpt || userChoice !== correctOpt.id && userChoice !== correctOpt.text) {
+          allCorrect = false;
+          break;
+        }
+      }
+      isAutoCorrect = allCorrect;
+    } else {
+      isAutoCorrect = false;
+    }
+  }
+  return { isAutoCorrect, answerText };
+}
+
 // src/lib/socket-handlers.ts
 var globalIO;
 var pendingDisconnects = /* @__PURE__ */ new Map();
@@ -9109,7 +9310,7 @@ function startWager15sCountdown(ioInstance, roomId, roomCode, duration) {
   roomWagerTimers.set(roomId, wTimer);
 }
 function checkGridCaroStreak(cells, rows, cols, teamId, targetK) {
-  if (rows < 4 || cols < 4 || targetK < 3) return null;
+  if (rows < targetK || cols < targetK || targetK < 3) return null;
   const cellMap = /* @__PURE__ */ new Map();
   cells.forEach((c) => {
     cellMap.set(`${c.row},${c.col}`, c);
@@ -14640,72 +14841,6 @@ function registerSocketHandlers(io2) {
       if (!team) return;
       await executeMysteryDrawTarot(room, questState, team);
     });
-    socket.on("game:mystery:steal_buzz", async () => {
-      if (!checkActionDebounce(socket.id, 150)) return;
-      const playerId = playerSockets.get(socket.id);
-      if (!playerId) return;
-      let session = socketPlayerSessions.get(socket.id) || playerSessions.get(playerId);
-      if (!session) {
-        const player = await prisma.player.findUnique({
-          where: { id: playerId },
-          include: { room: true, team: true }
-        });
-        if (!player || !player.room || !player.teamId) return;
-        session = {
-          playerId: player.id,
-          playerName: player.name,
-          roomId: player.room.id,
-          roomCode: player.room.code,
-          teamId: player.teamId,
-          teamName: player.team?.name ?? player.name,
-          roomMode: player.room.mode,
-          teamMode: player.room.teamMode
-        };
-        socketPlayerSessions.set(socket.id, session);
-        playerSessions.set(player.id, session);
-      }
-      if (session.roomMode !== "MYSTERY_QUEST" || !session.teamId) return;
-      const questState = roomMysteryQuests.get(session.roomId);
-      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
-      if (questState.currentTurnTeamId === session.teamId) return;
-      questState.stealBuzzedTeamId = session.teamId;
-      questState.stealBuzzedTeamName = session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp";
-      questState.phase = "PUSH_YOUR_LUCK";
-      questState.currentTurnTeamId = session.teamId;
-      questState.currentTurnTeamName = session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp";
-      questState.potPoints = 15;
-      roomMysteryQuests.set(session.roomId, questState);
-      io2.to(`room:${session.roomCode}`).emit("game:mystery:update", questState);
-      io2.to(`room:${session.roomCode}`).emit("game:mystery:steal_buzzed", {
-        teamId: session.teamId,
-        teamName: session.teamName || "\u0110\u1ED9i c\u01B0\u1EDBp",
-        timeLimit: 15
-      });
-    });
-    socket.on("admin:mystery:steal_buzz", async ({ targetTeamId } = {}) => {
-      const room = await getAdminRoom(socket);
-      if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
-      const questState = roomMysteryQuests.get(room.id);
-      if (!questState || questState.phase !== "STEAL_PHASE" || questState.stealBuzzedTeamId) return;
-      const teams = await prisma.team.findMany({ where: { roomId: room.id } });
-      const otherTeams = teams.filter((t) => t.id !== questState.currentTurnTeamId);
-      const team = (targetTeamId ? teams.find((t) => t.id === targetTeamId) : null) || otherTeams[0];
-      if (!team) return;
-      questState.stealBuzzedTeamId = team.id;
-      questState.stealBuzzedTeamName = team.name;
-      questState.phase = "PUSH_YOUR_LUCK";
-      questState.currentTurnTeamId = team.id;
-      questState.currentTurnTeamName = team.name;
-      questState.currentTurnTeamColor = team.color;
-      questState.potPoints = 15;
-      roomMysteryQuests.set(room.id, questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:update", questState);
-      io2.to(`room:${room.code}`).emit("game:mystery:steal_buzzed", {
-        teamId: team.id,
-        teamName: team.name,
-        timeLimit: 15
-      });
-    });
     socket.on("admin:mystery:advance_turn", async (payload) => {
       const room = await getAdminRoom(socket, payload?.code);
       if (!room || room.mode !== "MYSTERY_QUEST" || room.status !== "PLAYING") return;
@@ -17281,43 +17416,6 @@ function isPlayerBot(p) {
   if (p.name?.toLowerCase().startsWith("bot ")) return true;
   return false;
 }
-function normalizeTextForComparison(text) {
-  if (!text) return "";
-  return text.toString().normalize("NFC").toLowerCase().trim().replace(/[\u200B-\u200D\uFEFF]/g, "").replace(/[.,!?;:]+$/, "").replace(/\s+/g, " ");
-}
-function matchFillBlankText(expectedAnswer, submittedAnswer) {
-  const normExpected = normalizeTextForComparison(expectedAnswer);
-  const normSubmitted = normalizeTextForComparison(submittedAnswer);
-  if (!normExpected || !normSubmitted) return false;
-  if (normExpected === normSubmitted) return true;
-  const variants = expectedAnswer.split(/[/;|]/).flatMap((part) => {
-    if (part.includes(",") && !/\d,\d/.test(part)) {
-      return part.split(",");
-    }
-    return [part];
-  }).map((v) => normalizeTextForComparison(v)).filter(Boolean);
-  if (variants.includes(normSubmitted)) return true;
-  const cleanExpNum = Number(normExpected.replace(",", "."));
-  const cleanSubNum = Number(normSubmitted.replace(",", "."));
-  if (!isNaN(cleanExpNum) && !isNaN(cleanSubNum) && cleanExpNum === cleanSubNum) {
-    return true;
-  }
-  return false;
-}
-function matchTrueFalseText(expectedTextOrId, submittedTextOrId) {
-  const normExp = normalizeTextForComparison(expectedTextOrId);
-  const normSub = normalizeTextForComparison(submittedTextOrId);
-  if (normExp === normSub) return true;
-  const trueTokens = ["true", "\u0111\xFAng", "dung", "t", "d", "1", "yes", "c\xF3", "co"];
-  const falseTokens = ["false", "sai", "f", "s", "0", "no", "kh\xF4ng", "khong"];
-  const isExpTrue = trueTokens.includes(normExp);
-  const isExpFalse = falseTokens.includes(normExp);
-  const isSubTrue = trueTokens.includes(normSub);
-  const isSubFalse = falseTokens.includes(normSub);
-  if (isExpTrue && isSubTrue) return true;
-  if (isExpFalse && isSubFalse) return true;
-  return false;
-}
 async function hasUnfinalizedHumanParticipants(room, questionId, finSet) {
   const activeParticipants = await getActiveParticipantsForQuestion(room, questionId);
   if (activeParticipants.length === 0) return false;
@@ -17360,162 +17458,6 @@ async function hasUnfinalizedHumanParticipants(room, questionId, finSet) {
     }
   }
   return false;
-}
-function evaluateAnswerCorrectness(question, submittedAnswer) {
-  if (!question) {
-    return { isAutoCorrect: false, answerText: "(Kh\xF4ng c\xF3 c\xE2u h\u1ECFi)" };
-  }
-  const options = question.options || [];
-  const ansArray = Array.isArray(submittedAnswer) ? submittedAnswer : submittedAnswer !== void 0 && submittedAnswer !== null ? [String(submittedAnswer)] : [];
-  if (ansArray.length === 0) {
-    return { isAutoCorrect: false, answerText: "(Ch\u01B0a ch\u1ECDn \u0111\xE1p \xE1n / H\u1EBFt gi\u1EDD)" };
-  }
-  const selectedOptions = options.filter(
-    (o) => ansArray.some(
-      (ans) => ans === o.id || normalizeTextForComparison(ans) === normalizeTextForComparison(o.id) || normalizeTextForComparison(ans) === normalizeTextForComparison(o.text)
-    )
-  );
-  const answerText = selectedOptions.length > 0 ? selectedOptions.map((o) => `${o.text}`).join(", ") : ansArray.join(", ");
-  if (question.type === "ESSAY") {
-    return { isAutoCorrect: void 0, answerText };
-  }
-  let isAutoCorrect = false;
-  if (question.type === "MC_SINGLE") {
-    const correctOption = options.find((o) => o.isCorrect);
-    if (correctOption) {
-      const normCorrectId = normalizeTextForComparison(correctOption.id);
-      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
-      isAutoCorrect = ansArray.some((ans) => {
-        const normAns = normalizeTextForComparison(ans);
-        return normAns === normCorrectId || normAns === normCorrectText || ans === correctOption.id;
-      });
-    }
-  } else if (question.type === "TRUE_FALSE") {
-    const correctOption = options.find((o) => o.isCorrect);
-    if (correctOption) {
-      const normCorrectId = normalizeTextForComparison(correctOption.id);
-      const normCorrectText = normalizeTextForComparison(correctOption.text || "");
-      isAutoCorrect = ansArray.some((ans) => {
-        const normAns = normalizeTextForComparison(ans);
-        return normAns === normCorrectId || normAns === normCorrectText || ans === correctOption.id || matchTrueFalseText(correctOption.text || correctOption.id, ans);
-      });
-    }
-  } else if (question.type === "MC_MULTI") {
-    const correctOptions = options.filter((o) => o.isCorrect);
-    const correctIds = new Set(correctOptions.map((o) => normalizeTextForComparison(o.id)));
-    const correctTexts = new Set(correctOptions.map((o) => normalizeTextForComparison(o.text || "")));
-    const submittedNormalized = ansArray.map((ans) => normalizeTextForComparison(ans));
-    let matchedCount = 0;
-    for (const sub of submittedNormalized) {
-      if (correctIds.has(sub) || correctTexts.has(sub)) {
-        matchedCount++;
-      } else {
-        matchedCount = -1;
-        break;
-      }
-    }
-    isAutoCorrect = matchedCount === correctOptions.length && correctOptions.length === ansArray.length;
-  } else if (question.type === "FILL_BLANK") {
-    const expected = question.answer || options.find((o) => o.isCorrect)?.text || "";
-    const submitted = ansArray[0] || "";
-    isAutoCorrect = matchFillBlankText(expected, submitted);
-  } else if (question.type === "MATCHING") {
-    const rawPairs = question.pairs || [];
-    if (rawPairs.length > 0) {
-      let subObj = {};
-      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
-        subObj = submittedAnswer;
-      } else if (typeof ansArray[0] === "object" && ansArray[0] !== null && !Array.isArray(ansArray[0])) {
-        subObj = ansArray[0];
-      } else if (typeof ansArray[0] === "string") {
-        try {
-          const parsed = JSON.parse(ansArray[0]);
-          if (typeof parsed === "object" && !Array.isArray(parsed) && parsed !== null) {
-            subObj = parsed;
-          }
-        } catch {
-        }
-      } else if (typeof question.rawSubmission === "object") {
-        subObj = question.rawSubmission;
-      }
-      let allMatched = Object.keys(subObj).length >= rawPairs.length;
-      for (let i = 0; i < rawPairs.length; i++) {
-        const pair = rawPairs[i];
-        const pairId = pair.id || `p${i + 1}`;
-        const expectedRight = String.fromCharCode(65 + i);
-        const userVal = subObj[pairId] || subObj[`L_${i}`] || subObj[String(i)] || subObj[pair.left];
-        const isMatch = userVal === pairId || userVal === expectedRight || userVal === pair.right || normalizeTextForComparison(userVal) === normalizeTextForComparison(pair.right);
-        if (!isMatch) {
-          allMatched = false;
-          break;
-        }
-      }
-      isAutoCorrect = allMatched;
-    } else {
-      isAutoCorrect = false;
-    }
-  } else if (question.type === "DRAG_DROP") {
-    const correctOrder = options.map((o) => o.id);
-    let submittedOrder = [];
-    if (Array.isArray(submittedAnswer)) {
-      submittedOrder = submittedAnswer;
-    } else if (Array.isArray(ansArray[0])) {
-      submittedOrder = ansArray[0];
-    } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
-      try {
-        const parsed = JSON.parse(ansArray[0]);
-        if (Array.isArray(parsed)) submittedOrder = parsed;
-      } catch {
-        submittedOrder = ansArray;
-      }
-    } else {
-      submittedOrder = ansArray;
-    }
-    const cleanSubmitted = submittedOrder.map((x) => typeof x === "string" ? x : String(x?.id || x));
-    isAutoCorrect = correctOrder.length === cleanSubmitted.length && correctOrder.every((id, idx) => id === cleanSubmitted[idx]);
-  } else if (question.type === "CLOZE_DROPDOWN") {
-    const blanks = question.clozeBlanks || options || [];
-    if (blanks.length > 0) {
-      let subMap = {};
-      if (typeof submittedAnswer === "object" && !Array.isArray(submittedAnswer) && submittedAnswer !== null) {
-        subMap = submittedAnswer;
-      } else if (Array.isArray(submittedAnswer)) {
-        submittedAnswer.forEach((v, i) => {
-          subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
-        });
-      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("{")) {
-        try {
-          subMap = JSON.parse(ansArray[0]);
-        } catch {
-        }
-      } else if (typeof ansArray[0] === "string" && ansArray[0].startsWith("[")) {
-        try {
-          const arr = JSON.parse(ansArray[0]);
-          if (Array.isArray(arr)) arr.forEach((v, i) => {
-            subMap[String(i + 1)] = typeof v === "string" ? v : v?.id;
-          });
-        } catch {
-        }
-      } else {
-        ansArray.forEach((v, i) => {
-          subMap[String(i + 1)] = v;
-        });
-      }
-      let allCorrect = true;
-      for (const blank of blanks) {
-        const correctOpt = blank.options?.find((o) => o.isCorrect);
-        const userChoice = subMap[String(blank.blankId)] || subMap[blank.blankId];
-        if (!correctOpt || userChoice !== correctOpt.id && userChoice !== correctOpt.text) {
-          allCorrect = false;
-          break;
-        }
-      }
-      isAutoCorrect = allCorrect;
-    } else {
-      isAutoCorrect = false;
-    }
-  }
-  return { isAutoCorrect, answerText };
 }
 async function processAnswerSubmission(params) {
   let pendingSet = roomPendingSubmissions.get(params.roomId);
@@ -18199,7 +18141,7 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
   if (isCorrect) {
     points = Math.round(question.points * buzzMultiplier * cardMultiplier);
   } else {
-    points = 0;
+    points = -Math.floor(question.points * 0.5);
   }
   if (existingAns) {
     await prisma.answer.update({
@@ -18231,6 +18173,20 @@ async function finalizeBuzzAnswer(io2, roomId, roomCode, questionId, overrideIsC
     }
     await revealCurrentAnswer(io2, roomId, roomCode, questionId);
   } else {
+    if (points !== 0) {
+      const pPlayer = await prisma.player.findUnique({ where: { id: effTeamId } }).catch(() => null);
+      if (pPlayer) {
+        const pRes = await applyScoreDeltaToPlayer(effTeamId, points);
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { playerId: effTeamId, score: pRes.newScore, delta: pRes.effectiveDelta }
+        ]);
+      } else {
+        const tRes = await applyScoreDeltaToTeam(effTeamId, points);
+        io2.to(`room:${roomCode}`).emit("game:score:update", [
+          { teamId: effTeamId, score: tRes.newScore, delta: tRes.effectiveDelta }
+        ]);
+      }
+    }
     let disqSet = roomBuzzDisqualified.get(qKey);
     if (!disqSet) {
       disqSet = /* @__PURE__ */ new Set();

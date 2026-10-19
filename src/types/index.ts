@@ -296,17 +296,17 @@ export const MODE_RULES: Record<GameMode, ModeRuleDetail> = {
       "Chọn ô & Giải câu hỏi: Đội chọn 1 ô thử thách, vượt qua câu hỏi để lật mở bí mật phía sau.",
       "Hiệu ứng Ô số phận: Các ô phía sau có tác động cực lớn (+50đ, +100đ, Nhân đôi x2, Chia đôi /2, Trộm điểm, Thêm lượt hoặc né Bom).",
       "Đặc thù duy nhất - Không hỗ trợ Power-up: Chế độ duy nhất trong game không dùng Thẻ Bổ Trợ (Power-up), giữ trọn vẹn sự tinh gọn và kịch tính chân thật của gameshow.",
-      "Chuông cướp 5s khi đội chính trả lời SAI: Nếu đội chính sai, các đội khác có 5s bấm chuông cướp quyền trả lời để giật trọn ô bí mật!",
+      "Thử thách Sinh Tử khi trả lời sai: Nếu đội chính trả lời sai, đội sẽ bị trừ tim hoặc phải đối mặt với Minigame Sinh Tử (Penalty Wheel / Hiến tế tim) để bảo toàn điểm số!",
     ],
     scoringVi: [
       "Điểm câu hỏi gốc: Dễ 10đ | Trung bình 20đ | Khó 30đ.",
       "Tác động Ô số phận: Điểm thưởng khủng (+50đ, +100đ), Nhân đôi (x2), Chia đôi (/2), Trộm điểm (+20đ từ đội dẫn đầu), Mất điểm, Thêm lượt.",
-      "Đội cướp đúng: Nhận trọn điểm câu hỏi + toàn bộ phần thưởng ô bí mật.",
-      "Đội cướp sai: Trừ 50% điểm câu hỏi.",
+      "Trả lời đúng: Nhận trọn điểm câu hỏi + toàn bộ phần thưởng ô bí mật.",
+      "Trả lời sai: Bị trừ tim thử thách và đối mặt với Vòng quay Sinh tử phạt điểm.",
     ],
     tipsVi: [
       "Cố gắng trả lời đúng câu hỏi thử thách của ô mình đã chọn để nắm bắt cơ hội lật mở kho báu khổng lồ!",
-      "Luôn tập trung theo dõi màn hình chính để sẵn sàng bấm chuông cướp ô khi đội bạn trả lời sai!",
+      "Quản lý số tim cẩn thận, cân nhắc giữ điểm an toàn hoặc mạo hiểm để không bị trừ sạch điểm số!",
     ],
   },
 };

@@ -152,6 +152,7 @@ export default function GameQuestion({
   });
 
   const isSubmittingSingleRef = useRef(false);
+  const isComposingRef = useRef(false);
 
   // Clean reset of input and selection states whenever question ID or active participant changes
   useEffect(() => {
@@ -1259,10 +1260,18 @@ export default function GameQuestion({
               type="text"
               value={fillText}
               onChange={(e) => setFillText(e.target.value)}
+              onCompositionStart={() => { isComposingRef.current = true; }}
+              onCompositionEnd={() => { isComposingRef.current = false; }}
               placeholder={isMcMode ? "Đang ở chế độ trả lời qua MC..." : "Điền câu trả lời rồi nhấn Enter..."}
               disabled={!canAnswerThisQuestion()}
               className="flex-1 px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmitFill()}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229 || isComposingRef.current) return;
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleSubmitFill();
+                }
+              }}
             />
             <button
               onClick={handleSubmitFill}
@@ -1293,11 +1302,14 @@ export default function GameQuestion({
           <textarea
             value={essayText}
             onChange={(e) => setEssayText(e.target.value)}
+            onCompositionStart={() => { isComposingRef.current = true; }}
+            onCompositionEnd={() => { isComposingRef.current = false; }}
             placeholder={isMcMode ? "Đang ở chế độ trả lời qua MC..." : "Viết câu trả lời của bạn..."}
             rows={3}
             disabled={!canAnswerThisQuestion()}
             className="w-full px-4 py-3 rounded-xl bg-input border border-border focus:outline-none focus:ring-2 focus:ring-ring resize-none disabled:opacity-60"
             onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing || e.keyCode === 229 || isComposingRef.current) return;
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSubmitEssay();
